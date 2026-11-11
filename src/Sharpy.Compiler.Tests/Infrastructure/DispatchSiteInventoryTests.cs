@@ -191,6 +191,9 @@ public class DispatchSiteInventoryTests
         // #1938: the struct constructor roster ranges over the two roster-bearing member kinds
         // (instance field, defaulted auto-property); every other statement is not a roster member.
         ["CodeGen/RoslynEmitter.ClassMembers.Constructors.cs::RoslynEmitter.StructConstructorRoster"] = "refusal-net:StructHostMemberMatrixTests",
+        // The SPY0488 message names the covered handler by shape (bare, tuple, one type); each arm's
+        // text is asserted by the hand cells (#2363).
+        ["Semantic/Validation/ExceptHandlerOrderValidator.cs::ExceptHandlerOrderValidator.DescribeHandler"] = "refusal-net:ExceptHandlerReachabilityTests",
         ["CodeGen/RoslynEmitter.ClassMembers.cs::RoslynEmitter.GenerateClassMembers"] = "refusal-net:FileBasedIntegrationTests",
         ["CodeGen/RoslynEmitter.ClassMembers.cs::RoslynEmitter.GenerateInterfaceMembers"] = "refusal-net:FileBasedIntegrationTests",
         ["CodeGen/RoslynEmitter.Expressions.Access.Calls.cs::RoslynEmitter.IsMethodGroup"] = "refusal-net:FileBasedIntegrationTests",

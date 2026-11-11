@@ -12,7 +12,8 @@ namespace Sharpy.Compiler.Tests.Semantic;
 /// covered from two clauses back, the same type twice, nested <c>try</c>, and <c>else</c>/<c>finally</c>.
 /// Every python-spellable cell's expected stdout was run with python3.15.2 (a <c>when</c> cell has no
 /// python spelling; its expectation is C#'s filter semantics, which the spec states). Each cell also
-/// pins how many SPY0488 warnings it draws, and that none of them is SPY0908.
+/// pins how many SPY0488 warnings it draws, and that none of them is SPY0908; the SystemExit cells pin
+/// the one deviation (no BaseException) and its refusal, SPY0709.
 /// </summary>
 public class ExceptHandlerReachabilityTests : IntegrationTestBase
 {
@@ -37,12 +38,20 @@ public class ExceptHandlerReachabilityTests : IntegrationTestBase
             "def main() -> None:\n    try:\n        raise KeyError(\"k\")\n    except Exception:\n        print(\"exc\")\n"
             + "    except:\n        print(\"bare\")\n",
             "exc", 1 },
-        // python3.15 prints "exit": SystemExit is a BaseException there; Sharpy has no BaseException
-        // (docs/deviations.yaml except-exception-catches-systemexit), and the warning says so.
-        new object[] { "systemexit_after_exception",
-            "def main() -> None:\n    try:\n        raise SystemExit(2)\n    except Exception:\n        print(\"exc\")\n"
-            + "    except SystemExit:\n        print(\"exit\")\n",
-            "exc", 1 },
+        // python3.15.2 prints "first" for both: the earlier SystemExit handler, not `except Exception:`,
+        // is what covers the third handler, so it is a plain dead handler and the message names it.
+        new object[] { "systemexit_exception_systemexit",
+            "def main() -> None:\n    try:\n        raise SystemExit(2)\n    except SystemExit:\n        print(\"first\")\n"
+            + "    except Exception:\n        print(\"exc\")\n    except SystemExit:\n        print(\"third\")\n",
+            "first", 1 },
+        new object[] { "systemexit_exception_bare",
+            "def main() -> None:\n    try:\n        raise SystemExit(2)\n    except SystemExit:\n        print(\"first\")\n"
+            + "    except Exception:\n        print(\"exc\")\n    except:\n        print(\"bare\")\n",
+            "first", 1 },
+        new object[] { "one_tuple_covered",
+            "def main() -> None:\n    try:\n        raise KeyError(\"k\")\n    except LookupError:\n        print(\"lookup\")\n"
+            + "    except (KeyError,):\n        print(\"one\")\n",
+            "lookup", 1 },
         new object[] { "bare_last_reachable",
             "def main() -> None:\n    try:\n        raise KeyError(\"k\")\n    except ValueError:\n        print(\"value\")\n"
             + "    except:\n        print(\"bare\")\n",
@@ -99,10 +108,55 @@ public class ExceptHandlerReachabilityTests : IntegrationTestBase
         Assert.Equal(expected, run.StandardOutput.Trim().Replace("\r\n", "\n"));
         Assert.Equal(warnings, run.RawDiagnostics.Count(d => d.Code == DiagnosticCodes.Validation.UnreachableArm));
 
-        // The two cells CPython would run differently (no BaseException in Sharpy) say so; no other does.
-        var pythonWouldRun = name is "systemexit_after_exception" or "bare_after_exception";
-        Assert.Equal(pythonWouldRun ? warnings : 0, run.RawDiagnostics.Count(d =>
+        // The one cell CPython would run differently (no BaseException in Sharpy) says so; no other does.
+        Assert.Equal(name == "bare_after_exception" ? warnings : 0, run.RawDiagnostics.Count(d =>
             d.Code == DiagnosticCodes.Validation.UnreachableArm && d.Message.Contains("never runs in Sharpy", StringComparison.Ordinal)));
+
+        // Each way the warning names the covered handler (DescribeHandler's arms).
+        if (MessageFragments.TryGetValue(name, out var fragment))
+        {
+            Assert.Contains(run.RawDiagnostics, d =>
+                d.Code == DiagnosticCodes.Validation.UnreachableArm && d.Message.Contains(fragment, StringComparison.Ordinal));
+        }
+    }
+
+    private static readonly Dictionary<string, string> MessageFragments = new(StringComparer.Ordinal)
+    {
+        ["user_hierarchy_base_first"] = "catches 'AppError', which covers 'DbError'",
+        ["tuple_wholly_covered"] = "covers every type of this handler",
+        ["one_tuple_covered"] = "catches 'LookupError', which covers 'KeyError'",
+        ["systemexit_exception_systemexit"] = "catches 'SystemExit', which covers 'SystemExit'",
+        ["systemexit_exception_bare"] = "covers this bare 'except:'",
+        ["bare_after_exception"] = "This bare 'except:' never runs in Sharpy",
+    };
+
+    /// <summary>
+    /// A handler that NAMES a type CPython roots at BaseException, after <c>except Exception:</c>, is
+    /// refused (SPY0709): CPython runs it (python3.15.2 prints "tuple" / "one-tuple"), Sharpy cannot.
+    /// The message names only the BaseException-rooted types. Verified by direction: the same handlers
+    /// moved first run and print what CPython prints.
+    /// </summary>
+    [Theory]
+    [InlineData("except SystemExit:", "'SystemExit'", "exit")]
+    [InlineData("except (ValueError, SystemExit):", "for 'SystemExit'. Move", "exit")]
+    [InlineData("except (SystemExit,):", "for 'SystemExit'. Move", "exit")]
+    public void NamedBaseExceptionHandlerAfterException_IsRefused_AndRunsWhenMovedFirst(string header, string fragment, string moved)
+    {
+        var refused = "def main() -> None:\n    try:\n        raise SystemExit(2)\n    except Exception:\n        print(\"exc\")\n"
+            + "    " + header + "\n        print(\"exit\")\n";
+        var run = CompileAndExecute(refused, "systemexit_after_exception.spy");
+        Assert.False(run.Success);
+        var error = Assert.Single(run.RawDiagnostics, d => d.Code == DiagnosticCodes.ValidationOverflow.BaseExceptionHandlerAfterException);
+        Assert.Contains(fragment, error.Message, StringComparison.Ordinal);
+        Assert.DoesNotContain("ValueError", error.Message, StringComparison.Ordinal);
+        Assert.Equal(6, error.Line);
+        Assert.DoesNotContain(run.RawDiagnostics, d => d.Code == DiagnosticCodes.Infrastructure.GeneratedCodeCompilationError);
+
+        var reordered = "def main() -> None:\n    try:\n        raise SystemExit(2)\n    " + header + "\n        print(\"exit\")\n"
+            + "    except Exception:\n        print(\"exc\")\n";
+        var movedRun = CompileAndExecute(reordered, "systemexit_moved_first.spy");
+        Assert.True(RanToCompletion(movedRun), JudgeRun(movedRun, reordered, "SystemExit handler moved first") ?? "timed out");
+        Assert.Equal(moved, movedRun.StandardOutput.Trim());
     }
 
     /// <summary>

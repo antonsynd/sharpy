@@ -39,7 +39,10 @@ internal static class ClrTypeHelper
     /// for inspection only answers the same as one loaded for execution.
     /// </summary>
     internal static bool IsPythonBaseExceptionType(Type clrType)
-        => clrType.CustomAttributes.Any(a => a.AttributeType.FullName == typeof(SharpyRT::Sharpy.PythonBaseExceptionAttribute).FullName);
+        => _pythonBaseExceptionCache.GetOrAdd(clrType, static t =>
+            t.CustomAttributes.Any(a => a.AttributeType.FullName == typeof(SharpyRT::Sharpy.PythonBaseExceptionAttribute).FullName));
+
+    private static readonly ConcurrentDictionary<Type, bool> _pythonBaseExceptionCache = new();
 
     /// <summary>
     /// Resolves the original CLR method name on <paramref name="clrType"/> whose reverse-mangled

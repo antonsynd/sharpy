@@ -145,9 +145,11 @@ other types still catch. So is a tuple element that an earlier element of the sa
 catches (`except (LookupError, KeyError):` catches as `except LookupError:` does), without a warning.
 
 Because there is [no `BaseException`](#no-baseexception), `except Exception:` also catches
-`SystemExit`, and everything a later bare `except:` would. A later `except SystemExit:` or bare
-`except:` therefore never runs in Sharpy although CPython runs it; it is left out with a SPY0488
-warning that says so. Put the `SystemExit` handler first to keep CPython's behaviour.
+`SystemExit`, which CPython leaves to a later handler. A later handler that names `SystemExit`
+(alone or in a tuple) could never run, though CPython runs it, so it is refused as **SPY0709**;
+moving it before `except Exception:` keeps CPython's behaviour. A later bare `except:` never runs in
+Sharpy either; it is left out with a SPY0488 warning that says CPython would still run it for
+`SystemExit` (unless an earlier handler already catches `SystemExit`).
 
 <!-- spec-sweep: output -->
 ```python

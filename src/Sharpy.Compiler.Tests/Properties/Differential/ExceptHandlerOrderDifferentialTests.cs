@@ -30,10 +30,12 @@ namespace Sharpy.Compiler.Tests.Properties.Differential;
 /// <c>except (T, U):</c> with a <c>U</c> unrelated to the derived type}: 12 cells per pair, one <c>try</c>
 /// each, in ONE program compiled and run once under Sharpy and once under python3 (one
 /// <see cref="PythonBatchOracle"/> batch, after one probe batch that settles the builtin set).</para>
-/// <para><b>One generated deviation.</b> Sharpy has no <c>BaseException</c>: a type Core marks
-/// <c>[PythonBaseException]</c> (<c>SystemExit</c>) is caught by <c>except Exception:</c>, so in the
-/// base-first order Sharpy prints <c>first</c> where python prints <c>second</c>
-/// (<c>docs/deviations.yaml</c> except-exception-catches-systemexit); that handler's SPY0488 says so.</para>
+/// <para><b>One generated refusal.</b> Sharpy has no <c>BaseException</c>: a type Core marks
+/// <c>[PythonBaseException]</c> (<c>SystemExit</c>) is caught by <c>except Exception:</c>, so a later
+/// handler naming it, which python runs, cannot run in Sharpy and is refused (SPY0709;
+/// <c>docs/deviations.yaml</c> except-exception-catches-systemexit). Those base-first cells are
+/// compiled on their own and must each draw SPY0709; their derived-first twins (the handler moved
+/// first) are in the run matrix and print what python prints.</para>
 /// <para>Generic exception types have no python spelling (<c>except Box[int]:</c> is a TypeError
 /// there), so <see cref="ExceptHandlerOrder_GenericHierarchy_RunsFirstMatchWins"/> crosses them with
 /// their own expected verdict: the first clause whose type the raised instance is an instance of.</para>
@@ -92,9 +94,8 @@ public class ExceptHandlerOrderDifferentialTests : IntegrationTestBase
         /// <summary>The second clause is dead in Sharpy: the first clause's type covers every type it names.</summary>
         public bool SecondIsDead => Order == Order.BaseFirst && (Spelling != Spelling.Tuple || Pair.UnrelatedCaughtByBase);
 
-        /// <summary>The generated deviation: Sharpy's <c>Exception</c> catches a python-<c>BaseException</c> type.</summary>
-        public bool IsBaseExceptionDeviation =>
-            Order == Order.BaseFirst && Raised == Raised.Derived && Pair.DerivedIsPythonBaseException;
+        /// <summary>The generated refusal: a python-<c>BaseException</c> handler after <c>except Exception:</c>.</summary>
+        public bool IsRefused => Order == Order.BaseFirst && Pair.DerivedIsPythonBaseException;
     }
 
     /// <summary>Every public, concrete, non-generic Core exception type with a one-argument constructor
@@ -120,8 +121,16 @@ public class ExceptHandlerOrderDifferentialTests : IntegrationTestBase
         return null;
     }
 
-    private static bool IsPythonBaseException(ClrType type) =>
-        type.IsDefined(typeof(SharpyRT::Sharpy.PythonBaseExceptionAttribute), inherit: true);
+    /// <summary>The compiler's rule: the type or a base carries the (non-inherited) marker.</summary>
+    private static bool IsPythonBaseException(ClrType type)
+    {
+        for (var t = type; t != null; t = t.BaseType)
+        {
+            if (t.IsDefined(typeof(SharpyRT::Sharpy.PythonBaseExceptionAttribute), inherit: false))
+                return true;
+        }
+        return false;
+    }
 
     private static string SharpyName(ClrType type) => type.Name;
 
@@ -242,7 +251,8 @@ public class ExceptHandlerOrderDifferentialTests : IntegrationTestBase
     [SkippableFact]
     public void ExceptHandlerOrder_EveryHierarchyPair_MatchesCPython()
     {
-        var oracle = PythonBatchOracle.Over(PythonInterpreter.RequireOrSkip(minMinor: 12));
+        // The oracle minor is the repository's .python-version pin (3.15).
+        var oracle = PythonBatchOracle.Over(PythonInterpreter.RequireOrSkip(minMinor: 15));
 
         var types = CandidateTypes();
         var builtins = ProbePythonBuiltins(oracle, types.Select(t => (SharpyName(t), ArgumentFor(t)!)));
@@ -258,6 +268,9 @@ public class ExceptHandlerOrderDifferentialTests : IntegrationTestBase
         Assert.Contains(pairs, p => p.Base == "Exception" && p.DerivedIsPythonBaseException);
 
         var source = ProgramFor(cells);
+        var refusedCells = cells.Where(c => c.IsRefused).ToList();
+        var runCells = cells.Where(c => !c.IsRefused).ToList();
+        var runSource = ProgramFor(runCells);
 
         var py = oracle.RunBatch(new[] { new PyRequest(0, source + "\nmain()\n") });
         Assert.True(py.TryGetValue(0, out var pyResult) && pyResult.Ok,
@@ -265,15 +278,15 @@ public class ExceptHandlerOrderDifferentialTests : IntegrationTestBase
         var pythonById = ParseLines(pyResult!.Stdout);
         Assert.Equal(cells.Count, pythonById.Count);
 
-        var run = CompileAndExecute(source, "except_order_matrix.spy", executionTimeoutMs: 120_000);
-        Assert.True(RanToCompletion(run), JudgeRun(run, source, "Sharpy handler-order matrix") ?? "timed out");
+        var run = CompileAndExecute(runSource, "except_order_matrix.spy", executionTimeoutMs: 120_000);
+        Assert.True(RanToCompletion(run), JudgeRun(run, runSource, "Sharpy handler-order matrix") ?? "timed out");
         var sharpyById = ParseLines(run.StandardOutput);
 
         var divergences = new List<string>();
-        foreach (var cell in cells)
+        foreach (var cell in runCells)
         {
             var python = pythonById[cell.Id];
-            var expected = cell.IsBaseExceptionDeviation ? "first" : python;
+            var expected = python;
             var actual = sharpyById.TryGetValue(cell.Id, out var s) ? s : "<no line>";
             if (!string.Equals(expected, actual, StringComparison.Ordinal))
             {
@@ -282,26 +295,31 @@ public class ExceptHandlerOrderDifferentialTests : IntegrationTestBase
             }
         }
         Assert.True(divergences.Count == 0,
-            $"{divergences.Count} of {cells.Count} handler-order cells diverge from CPython:\n" + string.Join("\n", divergences));
+            $"{divergences.Count} of {runCells.Count} handler-order cells diverge from CPython:\n" + string.Join("\n", divergences));
 
         // The python column reaches both answers: a dead second clause, and a live one that runs.
         Assert.Contains(cells, c => c.SecondIsDead && pythonById[c.Id] == "first");
         Assert.Contains(cells, c => pythonById[c.Id] == "second");
         Assert.DoesNotContain(cells, c => pythonById[c.Id] == "escaped");
-        // The deviation is real in python (it runs the second clause) and generated, not listed.
-        Assert.Contains(cells, c => c.IsBaseExceptionDeviation && pythonById[c.Id] == "second");
+        // The refusal is real in python (it runs the SystemExit handler) and generated, not listed.
+        Assert.Contains(refusedCells, c => c.Raised == Raised.Derived && pythonById[c.Id] == "second");
 
         // Exactly one SPY0488 per dead second clause, and none for a live or a partly covered one.
-        var deadClauses = cells.Count(c => c.SecondIsDead);
+        var deadClauses = runCells.Count(c => c.SecondIsDead);
         var warned = run.RawDiagnostics.Where(d => d.Code == DiagnosticCodes.Validation.UnreachableArm).ToList();
         Assert.Equal(deadClauses, warned.Count);
+        Assert.DoesNotContain(run.RawDiagnostics, d => d.Code == DiagnosticCodes.ValidationOverflow.BaseExceptionHandlerAfterException);
 
-        // A handler dead only because Sharpy has no BaseException says so, and only it does.
-        var pythonWouldRun = cells.Count(c => c.SecondIsDead && c.Pair.DerivedIsPythonBaseException);
-        Assert.True(pythonWouldRun > 0, "no SystemExit-after-Exception clause was generated");
-        Assert.Equal(pythonWouldRun, warned.Count(d => d.Message.Contains("never runs in Sharpy", StringComparison.Ordinal)));
+        // Every refused cell draws SPY0709, and nothing reaches Roslyn.
+        var refusedSource = ProgramFor(refusedCells);
+        var refusedRun = CompileAndExecute(refusedSource, "except_order_refused.spy");
+        Assert.False(refusedRun.Success, "a SystemExit handler after `except Exception:` is refused");
+        Assert.True(refusedCells.Count > 0, "no SystemExit-after-Exception clause was generated");
+        Assert.Equal(refusedCells.Count,
+            refusedRun.RawDiagnostics.Count(d => d.Code == DiagnosticCodes.ValidationOverflow.BaseExceptionHandlerAfterException));
+        Assert.DoesNotContain(refusedRun.RawDiagnostics, d => d.Code == DiagnosticCodes.Infrastructure.GeneratedCodeCompilationError);
 
-        AssertWarnedEqualsPruned(source);
+        AssertWarnedEqualsPruned(runSource);
     }
 
     // ---- generic exception types: no python spelling, their own expected verdict -------------------

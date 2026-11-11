@@ -1663,6 +1663,7 @@ public class TypedGeneratorRosterTests
         new KnownRedSpecCode("#2287", "events.md", "SPY0708"),
         new KnownRedSpecCode("#2324", "exception_handling.md", "SPY0138"),
         new KnownRedSpecCode("#2287", "exception_handling.md", "SPY0151"),
+        new KnownRedSpecCode("#2287", "exception_handling.md", "SPY0709"),
         new KnownRedSpecCode("#2324", "exception_handling.md", "SPY0272"),
         new KnownRedSpecCode("#2324", "exception_handling.md", "SPY0702"),
         new KnownRedSpecCode("#2287", "feature_roadmap.md", "SPY0130"),

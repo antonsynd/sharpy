@@ -16,15 +16,21 @@ namespace Sharpy.Compiler.Semantic;
 /// elements of <c>except (A, B):</c>, or the one type of <c>except A:</c>. Empty for a bare
 /// <c>except:</c>. A type is unreachable when an earlier handler, or an earlier element of the same
 /// tuple, already catches it.</param>
-/// <param name="PythonWouldRunIt">The handler is unreachable only because Sharpy has no
-/// <c>BaseException</c>: the covering handler is <c>except Exception:</c> and the handler is a bare
-/// <c>except:</c> or names a type CPython roots at <c>BaseException</c> (<c>SystemExit</c>), so CPython
-/// would run it. The warning says so instead of calling the handler dead in python too.</param>
+/// <param name="ElementTypes">The recorded type of each element (null where the checker recorded
+/// none), aligned with <paramref name="TypeReachable"/>; empty for a bare <c>except:</c>.</param>
+/// <param name="PythonLiveTypes">The handler's types that only <c>except Exception:</c> covers and that
+/// CPython roots at <c>BaseException</c> (<c>SystemExit</c>): CPython would run the handler for them,
+/// Sharpy cannot (no <c>BaseException</c>). Empty when there are none.</param>
+/// <param name="BareStillRunsInPython">A bare <c>except:</c> covered by <c>except Exception:</c> while no
+/// earlier handler names a <c>BaseException</c>-rooted type: CPython would still run it for
+/// <c>SystemExit</c>.</param>
 internal sealed record ExceptHandlerVerdict(
     bool IsUnreachable,
     SemanticType? CaughtBy,
     ImmutableArray<bool> TypeReachable,
-    bool PythonWouldRunIt = false)
+    ImmutableArray<SemanticType?> ElementTypes,
+    ImmutableArray<SemanticType> PythonLiveTypes,
+    bool BareStillRunsInPython = false)
 {
     /// <summary>Whether anything of this handler is left out of the emitted <c>catch</c> list.</summary>
     public bool PrunesAnything => IsUnreachable || TypeReachable.Any(reachable => !reachable);
@@ -52,8 +58,11 @@ internal sealed record ExceptHandlerVerdict(
 /// throws), so the per-file validator and the post-merge lowering read the same facts.</para>
 /// <para>Sharpy has no <c>BaseException</c> (exception_handling.md): <c>except Exception:</c> catches
 /// <c>SystemExit</c> and everything a bare <c>except:</c> would, so those handlers after it are
-/// unreachable in Sharpy though CPython runs them; <see cref="ExceptHandlerVerdict.PythonWouldRunIt"/>
-/// marks them (deviation <c>except-exception-catches-systemexit</c>).</para>
+/// unreachable in Sharpy though CPython runs them: <see cref="ExceptHandlerVerdict.PythonLiveTypes"/> and
+/// <see cref="ExceptHandlerVerdict.BareStillRunsInPython"/> mark them (deviation
+/// <c>except-exception-catches-systemexit</c>). A more specific earlier catcher is preferred over the
+/// root, so <c>except SystemExit:</c> / <c>except Exception:</c> / <c>except SystemExit:</c> is a plain
+/// dead handler, as in CPython.</para>
 /// <para>A handler with a <c>when</c> filter covers nothing (it can decline), but it can itself be
 /// covered. A bare <c>except:</c> catches every exception; it is covered once an earlier unfiltered
 /// handler catches <see cref="System.Exception"/>, the root every raisable type derives from (there is
@@ -87,31 +96,34 @@ internal static class ExceptHandlerReachability
         {
             if (handler.ExceptionType == null)
             {
-                // Bare `except:` — it catches everything, so it is covered only by a catch-all, which
-                // in CPython leaves it the BaseException-only types.
+                // Bare `except:` — it catches everything, so it is covered only by a catch-all. CPython's
+                // still catches SystemExit there unless an earlier handler names a BaseException-rooted type.
                 verdicts.Add(new ExceptHandlerVerdict(catchesAll != null, catchesAll, ImmutableArray<bool>.Empty,
-                    PythonWouldRunIt: catchesAll != null));
+                    ImmutableArray<SemanticType?>.Empty, ImmutableArray<SemanticType>.Empty,
+                    BareStillRunsInPython: catchesAll != null && !caught.Any(IsPythonBaseExceptionRoot)));
                 continue;
             }
 
             var elements = ElementsOf(handler.ExceptionType);
             var reachable = ImmutableArray.CreateBuilder<bool>(elements.Length);
+            var elementTypes = ImmutableArray.CreateBuilder<SemanticType?>(elements.Length);
+            var pythonLive = ImmutableArray.CreateBuilder<SemanticType>();
             var withinHandler = new List<SemanticType>();
             var allCoveredByEarlierHandlers = true;
-            var pythonWouldRunIt = false;
             SemanticType? firstCover = null;
 
             foreach (var element in elements)
             {
                 var type = RecordedType(element, info);
-                var cover = type == null ? null : catchesAll ?? FindCover(type, caught);
+                elementTypes.Add(type);
+                var cover = type == null ? null : FindCover(type, caught);
                 if (cover == null)
                     allCoveredByEarlierHandlers = false;
                 else
                 {
                     firstCover ??= cover;
                     if (IsExceptionRoot(cover) && IsPythonBaseExceptionType(type!))
-                        pythonWouldRunIt = true;
+                        pythonLive.Add(type!);
                 }
 
                 var dead = cover != null || (type != null && FindCover(type, withinHandler) != null);
@@ -123,7 +135,7 @@ internal static class ExceptHandlerReachability
             var isUnreachable = elements.Length > 0 && allCoveredByEarlierHandlers;
             verdicts.Add(new ExceptHandlerVerdict(
                 isUnreachable, isUnreachable ? firstCover : null, reachable.MoveToImmutable(),
-                PythonWouldRunIt: isUnreachable && pythonWouldRunIt));
+                elementTypes.MoveToImmutable(), pythonLive.ToImmutable()));
 
             if (handler.Filter == null && !isUnreachable)
             {
@@ -148,7 +160,8 @@ internal static class ExceptHandlerReachability
     private static ExceptHandlerVerdict AllReachable(ExceptHandler handler)
     {
         var count = handler.ExceptionType == null ? 0 : ElementsOf(handler.ExceptionType).Length;
-        return new ExceptHandlerVerdict(false, null, Enumerable.Repeat(true, count).ToImmutableArray());
+        return new ExceptHandlerVerdict(false, null, Enumerable.Repeat(true, count).ToImmutableArray(),
+            Enumerable.Repeat<SemanticType?>(null, count).ToImmutableArray(), ImmutableArray<SemanticType>.Empty);
     }
 
     /// <summary>The closed type the checker classified for one handler type (#1235), or null.</summary>
@@ -158,12 +171,20 @@ internal static class ExceptHandlerReachability
             ? type
             : null;
 
-    /// <summary>The first of <paramref name="catchers"/> that catches every <paramref name="type"/>, or null.</summary>
+    /// <summary>
+    /// The earlier catcher that catches every <paramref name="type"/>, or null: a specific one before the
+    /// <see cref="System.Exception"/> root, so the answer names the handler CPython would run.
+    /// </summary>
     private static SemanticType? FindCover(SemanticType type, List<SemanticType> catchers)
     {
         foreach (var catcher in catchers)
         {
-            if (Covers(catcher, type))
+            if (!IsExceptionRoot(catcher) && Covers(catcher, type))
+                return catcher;
+        }
+        foreach (var catcher in catchers)
+        {
+            if (IsExceptionRoot(catcher) && Covers(catcher, type))
                 return catcher;
         }
         return null;
@@ -204,6 +225,10 @@ internal static class ExceptHandlerReachability
     }
 
     /// <summary>Whether CPython roots the type at <c>BaseException</c>: it, or a base, carries Core's marker.</summary>
+    /// <summary>A catcher for a marked type itself (<c>except SystemExit:</c>), which catches every instance of it.</summary>
+    private static bool IsPythonBaseExceptionRoot(SemanticType catcher)
+        => catcher is UserDefinedType { Symbol.ClrType: { } clrType } && ClrTypeHelper.IsPythonBaseExceptionType(clrType);
+
     private static bool IsPythonBaseExceptionType(SemanticType type)
     {
         var symbol = type switch

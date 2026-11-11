@@ -2707,14 +2707,14 @@ deviations:
                 print('caught as BaseExceptionGroup')
 
   - id: except-exception-catches-systemexit
-    code: SPY0488
+    code: SPY0709
     category: semantics
     audience: python
-    severity: warning
+    severity: error
     python_behavior: "`SystemExit`, `KeyboardInterrupt` and `GeneratorExit` derive from `BaseException`, not `Exception`, so `except Exception:` does not catch them: a later `except SystemExit:` (or a bare `except:`) after `except Exception:` runs for them."
-    sharpy_behavior: "There is no `BaseException` (exception_handling.md \"No BaseException\"): `SystemExit` derives from `System.Exception` (Core marks it `[PythonBaseException]`; `KeyboardInterrupt` and `GeneratorExit` are not defined). `except Exception:` therefore catches it, and a later `except SystemExit:` or bare `except:` can never run: it is left out of the compiled program with a SPY0488 warning that names the divergence (C# refuses the catch, CS0160). Put `except SystemExit:` before `except Exception:` to keep python's behavior (#2363)."
+    sharpy_behavior: "There is no `BaseException` (exception_handling.md \"No BaseException\"): `SystemExit` derives from `System.Exception` (Core marks it `[PythonBaseException]`; `KeyboardInterrupt` and `GeneratorExit` are not defined). `except Exception:` therefore catches it, so a later handler that names `SystemExit` (alone or in a tuple) could never run: it is refused SPY0709 with a steer to move it before `except Exception:`, where it runs as in python. A later bare `except:` is left out with a SPY0488 warning that says python would still run it for `SystemExit` (#2363)."
     spec_ref: docs/language_specification/exception_handling.md
-    existing_diagnostic: SPY0488
+    existing_diagnostic: SPY0709
     planned_diagnostic: null
     example:
       python: |
@@ -2729,6 +2729,6 @@ deviations:
             try:
                 raise SystemExit(2)
             except Exception:
-                print('exc')    # printed
-            except SystemExit:  # WARNING SPY0488: never runs in Sharpy (no BaseException)
+                print('exc')
+            except SystemExit:  # ERROR SPY0709: move this handler before the 'Exception' handler
                 print('exit')

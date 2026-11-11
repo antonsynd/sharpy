@@ -787,8 +787,10 @@ public static class DiagnosticCodes
         public const string DefaultsErasedByConversion = "SPY0486"; // Active (#1563)
         // SPY0487: Reserved — never emitted (#1558, removed #1634)
         // An arm of a multi-arm statement that an earlier arm makes unreachable: an except handler
-        // whose every type an earlier handler already catches. Python accepts it and never runs it,
-        // so it is a warning and the emitter omits the arm (#2363).
+        // whose every type an earlier handler already catches, so it is a warning and the emitter
+        // omits the arm (#2363). CPython never runs such a handler either, with one exception Sharpy
+        // cannot follow (no BaseException): a bare `except:` after `except Exception:`, which CPython
+        // still runs for SystemExit; the warning says so. A NAMED SystemExit handler there is SPY0709.
         public const string UnreachableArm = "SPY0488";             // Active (#2363)
         // SPY0489: Reserved for future validation warnings
 
@@ -1062,6 +1064,10 @@ public static class DiagnosticCodes
         // module-level fact). Refused by DeclarationPositionValidator instead of reaching the
         // TypeChecker's "symbol not found" or the emitter's SPY0510 (#2063, R-CS).
         public const string DeclarationOutsideDeclaringPosition = "SPY0708"; // Active (#2063, R-CS)
-        // SPY0709-SPY0799: Available for new validation diagnostics
+        // An `except` handler naming a type CPython roots at BaseException (SystemExit) after an
+        // `except Exception:` handler: CPython runs it, Sharpy cannot (no BaseException; C# refuses the
+        // catch, CS0160), so it is refused with a steer to move it first (#2363).
+        public const string BaseExceptionHandlerAfterException = "SPY0709"; // Active (#2363)
+        // SPY0710-SPY0799: Available for new validation diagnostics
     }
 }
