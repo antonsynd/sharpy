@@ -19,11 +19,30 @@ namespace Sharpy
                 ? (compressType.Value == 0 ? CompressionLevel.NoCompression : CompressionLevel.Optimal)
                 : GetCompressionLevel();
 
-            var entry = _archive!.CreateEntry(entryName, level);
-            using (var entryStream = entry.Open())
-            using (var fileStream = System.IO.File.OpenRead(filename))
+            // python stats the file first (`ZipInfo.from_file`): a directory becomes a directory
+            // entry, a file is opened for reading; every refusal is the classifier's (plan-638e8b D1).
+            PathErrors.CheckNeedsAny(filename);
+            if (Directory.Exists(filename))
             {
-                fileStream.CopyTo(entryStream);
+                _archive!.CreateEntry(entryName.EndsWith("/") ? entryName : entryName + "/");
+                return;
+            }
+            FileStream fileStream;
+            try
+            {
+                fileStream = System.IO.File.OpenRead(filename);
+            }
+            catch (Exception ex) when (ex is IOException || ex is UnauthorizedAccessException)
+            {
+                throw PathErrors.TranslateNeedsFileToRead(ex, filename);
+            }
+            using (fileStream)
+            {
+                var entry = _archive!.CreateEntry(entryName, level);
+                using (var entryStream = entry.Open())
+                {
+                    fileStream.CopyTo(entryStream);
+                }
             }
         }
 
@@ -75,7 +94,6 @@ namespace Sharpy
         {
             EnsureOpen();
             string destDir = path ?? Directory.GetCurrentDirectory();
-            Directory.CreateDirectory(destDir);
 
             if (members != null)
             {
@@ -120,19 +138,53 @@ namespace Sharpy
                 throw new ValueError("Entry is outside the target directory: " + entry.FullName);
             }
 
-            string? dirPath = System.IO.Path.GetDirectoryName(destPath);
-            if (dirPath != null)
+            // python's _extract_member: the upper directories are made only when missing, then the
+            // member is created; every refusal is the classifier's (plan-638e8b D1).
+            string targetPath = destPath.TrimEnd(System.IO.Path.DirectorySeparatorChar, System.IO.Path.AltDirectorySeparatorChar);
+            string? upperDirs = System.IO.Path.GetDirectoryName(targetPath);
+            if (!string.IsNullOrEmpty(upperDirs) && !Directory.Exists(upperDirs) && !File.Exists(upperDirs))
             {
-                Directory.CreateDirectory(dirPath);
+                try
+                {
+                    Directory.CreateDirectory(upperDirs!);
+                }
+                catch (Exception ex) when (ex is IOException || ex is UnauthorizedAccessException)
+                {
+                    throw PathErrors.TranslateCreatesDir(ex, upperDirs!);
+                }
             }
 
             if (string.IsNullOrEmpty(entry.Name))
             {
+                // A directory member: python's os.mkdir, an existing directory accepted.
+                if (!Directory.Exists(targetPath))
+                {
+                    PathErrors.CheckCreatesDir(targetPath);
+                    try
+                    {
+                        Directory.CreateDirectory(targetPath);
+                    }
+                    catch (Exception ex) when (ex is IOException || ex is UnauthorizedAccessException)
+                    {
+                        throw PathErrors.TranslateCreatesDir(ex, targetPath);
+                    }
+                }
                 return destPath;
             }
 
+            // python: open(targetpath, "wb").
+            PathErrors.CheckNeedsFileToWrite(destPath);
+            FileStream fileStream;
+            try
+            {
+                fileStream = new FileStream(destPath, FileMode.Create, FileAccess.Write, FileShare.None);
+            }
+            catch (Exception ex) when (ex is IOException || ex is UnauthorizedAccessException)
+            {
+                throw PathErrors.TranslateNeedsFileToWrite(ex, destPath);
+            }
             using (var entryStream = entry.Open())
-            using (var fileStream = new FileStream(destPath, FileMode.Create, FileAccess.Write, FileShare.None))
+            using (fileStream)
             {
                 entryStream.CopyTo(fileStream);
             }

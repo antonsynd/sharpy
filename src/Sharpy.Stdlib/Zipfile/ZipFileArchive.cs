@@ -21,27 +21,46 @@ namespace Sharpy
             _compression = compression;
             _closed = false;
 
+            // python opens the archive first (`io.open(file, "rb" | "w+b" | "r+b")`, "a" falling back
+            // to "w+b"); its refusal is the classifier's (plan-638e8b D1).
             ZipArchiveMode archiveMode;
             switch (mode)
             {
                 case "r":
                     archiveMode = ZipArchiveMode.Read;
+                    PathErrors.CheckNeedsFileToRead(file);
                     try
                     {
                         _stream = new FileStream(file, FileMode.Open, FileAccess.Read, FileShare.Read);
                     }
-                    catch (FileNotFoundException)
+                    catch (Exception ex) when (ex is IOException || ex is UnauthorizedAccessException)
                     {
-                        throw new OSError("No such file or directory: '" + file + "'");
+                        throw PathErrors.TranslateNeedsFileToRead(ex, file);
                     }
                     break;
                 case "w":
                     archiveMode = ZipArchiveMode.Create;
-                    _stream = new FileStream(file, FileMode.Create, FileAccess.Write, FileShare.None);
+                    PathErrors.CheckNeedsFileToWrite(file);
+                    try
+                    {
+                        _stream = new FileStream(file, FileMode.Create, FileAccess.Write, FileShare.None);
+                    }
+                    catch (Exception ex) when (ex is IOException || ex is UnauthorizedAccessException)
+                    {
+                        throw PathErrors.TranslateNeedsFileToWrite(ex, file);
+                    }
                     break;
                 case "a":
                     archiveMode = ZipArchiveMode.Update;
-                    _stream = new FileStream(file, FileMode.OpenOrCreate, FileAccess.ReadWrite, FileShare.None);
+                    PathErrors.CheckNeedsFileToWrite(file);
+                    try
+                    {
+                        _stream = new FileStream(file, FileMode.OpenOrCreate, FileAccess.ReadWrite, FileShare.None);
+                    }
+                    catch (Exception ex) when (ex is IOException || ex is UnauthorizedAccessException)
+                    {
+                        throw PathErrors.TranslateNeedsFileToWrite(ex, file);
+                    }
                     break;
                 default:
                     throw new ValueError("Bad mode: '" + mode + "'");

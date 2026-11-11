@@ -3,7 +3,8 @@
 # from another module (e.g. re.error). `except socket.error:` must catch a raised
 # socket.timeout and socket.gaierror, and isinstance agrees.
 # type(socket.error(...)) / type(socket.timeout(...)) are not printed: python's are
-# OSError / TimeoutError, and Sharpy's are distinct classes (#2087).
+# OSError / TimeoutError, and Sharpy's are distinct classes (#2087; docs/deviations.yaml
+# `socket-error-timeout-distinct-classes`).
 import socket
 
 
@@ -27,3 +28,23 @@ def main() -> None:
 
     print(isinstance(socket.timeout("slow"), socket.error))
     print(isinstance(socket.gaierror("dns"), socket.error))
+
+    # #2087 / plan-638e8b D3: every socket exception is in the OSError family, so
+    # `except OSError` (and its alias `except IOError`) catches it, and isinstance agrees.
+    for exc in [socket.error("boom"), socket.timeout("slow"), socket.gaierror("dns"), socket.herror("legacy")]:
+        try:
+            raise exc
+        except OSError:
+            print("caught by OSError")
+
+    io_caught = False
+    try:
+        raise socket.error("boom")
+    except IOError:
+        io_caught = True
+    print(io_caught)
+
+    print(isinstance(socket.error("boom"), OSError))
+    print(isinstance(socket.timeout("slow"), OSError))
+    print(isinstance(socket.gaierror("dns"), OSError))
+    print(isinstance(socket.herror("legacy"), OSError))

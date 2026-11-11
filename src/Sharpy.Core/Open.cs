@@ -74,23 +74,41 @@ namespace Sharpy
                     throw new LookupError("unknown encoding: " + encoding);
             }
 
+            // The requirement each mode selects is answered by the one classifier (plan-638e8b D1):
+            // its check door first, in python's class, for every state the table names (the empty
+            // path included, which .NET refuses with an ArgumentException); its translate door for
+            // any I/O failure .NET reports anyway — an access refusal, a race.
+            switch (mode)
+            {
+                case "r":
+                    PathErrors.CheckNeedsFileToRead(path);
+                    break;
+                case "w":
+                case "a":
+                    PathErrors.CheckNeedsFileToWrite(path);
+                    break;
+                case "x":
+                    PathErrors.CheckCreatesExclusively(path);
+                    break;
+                default:
+                    throw new ValueError("invalid mode: '" + mode + "'");
+            }
+
             try
             {
                 return new TextFile(path, mode, enc);
             }
-            // .NET's I/O failures are not OSError subclasses; translate each to the python class
-            // so `except OSError` sees every failure open() reports (#2124).
-            catch (UnauthorizedAccessException ex)
+            catch (Exception ex) when (ex is System.IO.IOException || ex is UnauthorizedAccessException)
             {
-                throw new PermissionError("Permission denied: '" + path + "'", ex);
-            }
-            catch (System.IO.IOException ex) when (ex is System.IO.FileNotFoundException || ex is System.IO.DirectoryNotFoundException)
-            {
-                throw new FileNotFoundError("No such file or directory: '" + path + "'", ex);
-            }
-            catch (System.IO.IOException ex) when (!(ex is OSError))
-            {
-                throw new OSError(ex.Message + ": '" + path + "'", ex);
+                switch (mode)
+                {
+                    case "r":
+                        throw PathErrors.TranslateNeedsFileToRead(ex, path);
+                    case "x":
+                        throw PathErrors.TranslateCreatesExclusively(ex, path);
+                    default:
+                        throw PathErrors.TranslateNeedsFileToWrite(ex, path);
+                }
             }
         }
     }

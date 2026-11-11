@@ -343,6 +343,24 @@ namespace Sharpy
     }
 
     /// <summary>
+    /// Not a directory error — raised when a directory operation is attempted on something that
+    /// is not a directory, or when a path component that must be a directory is a file.
+    /// Equivalent to Python's <c>NotADirectoryError</c>.
+    /// </summary>
+    public class NotADirectoryError : OSError
+    {
+        /// <summary>Create a NotADirectoryError with the specified message.</summary>
+        public NotADirectoryError(string message) : base(message)
+        {
+        }
+
+        /// <summary>Create a NotADirectoryError with the specified message and inner exception.</summary>
+        public NotADirectoryError(string message, Exception innerException) : base(message, innerException)
+        {
+        }
+    }
+
+    /// <summary>
     /// Raised when argument parsing fails.
     /// </summary>
     public class ArgumentError : Exception
