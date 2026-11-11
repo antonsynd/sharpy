@@ -113,7 +113,7 @@ Applies whenever any input to the plan is a bug, ICE, or regression issue. Grade
 - **Standing harness** — the `gap-discovery-contracts.md` harness that should have caught it and which allowlist entries the fix drains, or "none; Phase N adds one"
 - **Owner rulings** — cited by issue-comment link; the plan does not re-ask a ruled question
 
-A plan that patches one arm of a mirrored/parallel-site structure without a completeness scan is **NEEDS REVISION** — regardless of Dimensions 1–5. If the plan has no Defect Class section for a bug input, draft one from the issues and the touched sites, insert it marked `[ADDED: adequacy]` for the author, and grade the plan `CELL` until the author confirms the matrix.
+A plan that patches one arm of a mirrored/parallel-site structure without a completeness scan is **NEEDS REVISION** — regardless of Dimensions 1–5. If the plan has no Defect Class section for a bug input, draft one from the issues and the touched sites, insert it, and grade the plan `CELL` until the author confirms the matrix.
 
 Adequacy verdict: **CLASS** (contract, matrix, cure, harness all present and checked — for a generator plan: every axis roster-closed with its totality assertion), **CELL** (any missing, or the fix lands on one arm — for a generator plan: an axis carried as a hand list, named by the enumeration that closes it), **N/A** (no bug/ICE/regression input — docs-only, feature work, tooling).
 
@@ -188,7 +188,7 @@ Adequacy: `CLASS` / `CELL` / `N/A` per Dimension 6. `/implement-plan` refuses a 
 **Plan file:** `docs/process/plans/<plan-id>.md` (committed in §4 at every result, NEEDS REVISION included)
 
 ### Corrections Made
-- (each inline correction with before/after)
+- (each correction and added section, before/after)
 
 ### Adequacy
 - **Contract:** [named / missing] — <the sentence, or what the verifier drafted>
@@ -219,9 +219,9 @@ Adequacy: `CLASS` / `CELL` / `N/A` per Dimension 6. `/implement-plan` refuses a 
 - (claims that couldn't be verified, with the reason and what would verify them)
 ```
 
-### 3. Fix errors inline
+### 3. Fix errors in place
 
-For each error, edit the plan text directly. Mark corrections `[CORRECTED: reason]`; mark drafted sections `[ADDED: adequacy]`; mark added steps `[ADDED: missing step]` so the author can review every change.
+Rewrite the plan text so it reads as if first written correctly: no `[CORRECTED…]` or `[ADDED…]` markers, no pass history, no "(first pass)" tags. Each change's before/after lives only in the Verification Summary.
 
 Present a brief summary to the user: result, adequacy verdict, the corrections that changed a decision (not every path fix), the warnings the author must act on before `/implement-plan`, and the commit that holds the stamped plan (§4).
 
