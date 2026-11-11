@@ -48,6 +48,7 @@ For each open issue, verify the fix exists in the codebase:
    ```bash
    git log --oneline --all --grep="#<number>"
    ```
+   A fix counts only once it is on `origin/dev` (`git branch -r --contains <sha>` lists `origin/dev`): a commit that exists only on an open lane branch is PARTIAL until its pull request merges.
 3. If no commit references the issue, search by keywords from the issue title:
    ```bash
    git log --oneline -20 --grep="<keyword>"
@@ -67,11 +68,7 @@ For each VERIFIED issue:
 gh issue close <number> --reason completed --comment "Closed — implemented in $(git log --oneline --all --grep='#<number>' | head -1 | cut -d' ' -f1). Verified in codebase."
 ```
 
-If the commit hash isn't found via `--grep`, reference the branch name instead:
-
-```bash
-gh issue close <number> --reason completed --comment "Closed — implemented on branch $(git branch --show-current)."
-```
+If the commit hash isn't found via `--grep`, cite the merged pull request that carried the change into `dev` instead (`gh api "repos/{owner}/{repo}/commits/<sha>/pulls" --jq '.[0].html_url'`), never a lane branch name — lane branches are restarted after their pull request merges.
 
 ### 5. Handle unverified issues
 
