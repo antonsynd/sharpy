@@ -130,7 +130,7 @@ Class-level; the implementer sequences the work. Order constraint only: G1 lands
 Tier: light (override "Keep light") · Adequacy: CLASS (converged) · base sha `a6691fe2` (dev tip at implementation start; the plan was verified @ 09367ede and no `src/` change landed between). Names fixed by the lead for D1: public static class `PathErrors` (Core), internal enum `PathRequirement`, internal stamp `PathRequirementAttribute`.
 
 - [ ] W1-A — A7 widened + D4 `test-fast` edit (resolves deferred finding 1) — test-expert — blocked by none
-- [ ] W1-B — D2 `NotADirectoryError` + spec row/prose + A4 + A6 (D2 by direction) — core-library-expert — blocked by none
+- [x] W1-B (286bc58b, 19df0c5f) — D2 `NotADirectoryError` + spec row/prose + A4 + A6 (D2 by direction) — core-library-expert — blocked by none
 - [ ] W1-C — D3 socket bases + regen + A3 C3 theory (resolves deferred finding 2) + fixture + deviation row + socket docs — stdlib-expert — blocked by none
 - [ ] W1-D — G1 RED with its allowlist (T1–T5, R1, scan theory (g), exemption roster, oracle) + `PathRequirement` declaration + A6 D1.4 fixture + Stdlib.Tests in A7's floor — test-expert — blocked by none
 - [ ] W2-E — D1 `PathErrors` (check / translate / pair door) + R0 + Core.Tests translate theory + `open()` as first caller — core-library-expert — blocked by W1-D
