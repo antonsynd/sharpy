@@ -108,7 +108,7 @@ Applies whenever any input to the plan is a bug, ICE, or regression issue. Grade
 - **Standing harness** — the `gap-discovery-contracts.md` harness that should have caught it and which allowlist entries the fix drains, or "none; Phase N adds one"
 - **Owner rulings** — cited by issue-comment link; the plan does not re-ask a ruled question
 
-A plan that patches one arm of a mirrored/parallel-site structure without a completeness scan is **NEEDS REVISION** — regardless of Dimensions 1–5. If the plan has no Defect Class section for a bug input, draft one from the issues and the touched sites, insert it, and grade the plan `CELL` until the author confirms the matrix.
+A plan that patches one arm of a mirrored/parallel-site structure without a completeness scan is **NEEDS REVISION** — regardless of Dimensions 1–5. If the plan has no Defect Class section for a bug input, draft one from the issues and the touched sites, insert it, list it under Corrections Made, and grade the plan `CELL`. A drafted Defect Class is the author's only once a `## Revision log` line says `drafted Defect Class confirmed` or `replaced`; check for that line before grading it as theirs.
 
 Adequacy verdict: **CLASS** (contract, matrix, cure, harness all present and checked — for a generator plan: every axis roster-closed with its totality assertion), **CELL** (any missing, or the fix lands on one arm — for a generator plan: an axis carried as a hand list, named by the enumeration that closes it), **N/A** (no bug/ICE/regression input — docs-only, feature work, tooling).
 
