@@ -340,7 +340,8 @@ GRANDFATHERED: dict[str, tuple[int, int]] = {
     "plan-4e3055.md": (31634, 1),
     "plan-52c6fe.md": (68164, 1),
     "plan-5379fe.md": (81228, 1),
-    "plan-638e8b.md": (46717, 3),
+    # 46717 until #2567 put its revision log below its new `## Implementation Checklist`
+    "plan-638e8b.md": (44149, 3),
     "plan-683c8b.md": (60387, 1),
     "plan-6ca898.md": (86622, 1),
     "plan-6ce1a5.md": (54464, 1),

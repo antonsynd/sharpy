@@ -117,12 +117,26 @@ def test_grandfathered_row_goes_stale_when_compliant(monkeypatch):
     assert "delete its GRANDFATHERED row" in msg
 
 
-def test_real_grandfathered_plan_growing_is_red():
-    # mutation record on a real row: plan-638e8b (47 KB body, 3 passes) grows by one byte -> red
+def test_grandfathered_real_plan_copy_growing_is_red(monkeypatch):
+    # mutation record on a copy of a real plan, frozen at its own measure (not the live record,
+    # which moves when the plan legitimately changes below its stop-lines): one more body byte -> red
     text = (PLANS / "plan-638e8b.md").read_text(encoding="utf-8")
-    assert cpr.cap_violations("plan-638e8b.md", text) == []
+    monkeypatch.setitem(
+        cpr.GRANDFATHERED,
+        "plan-copy001.md",
+        (cpr.body_bytes(text), cpr.verify_passes(text)),
+    )
+    assert cpr.cap_violations("plan-copy001.md", text) == []
     grown = text.replace("## Acceptance\n", "## Acceptance\nx\n", 1)
-    assert any("may not grow" in m for m in cpr.cap_violations("plan-638e8b.md", grown))
+    assert cpr.body_bytes(grown) == cpr.body_bytes(text) + 2
+    assert any(
+        "may not grow" in m for m in cpr.cap_violations("plan-copy001.md", grown)
+    )
+    # text added below the checklist heading is not body, so it does not trip the frozen size
+    below = text.replace(
+        "## Implementation Checklist\n", "## Implementation Checklist\nx\n", 1
+    )
+    assert cpr.cap_violations("plan-copy001.md", below) == []
 
 
 @pytest.mark.parametrize(
