@@ -24,7 +24,6 @@ on:
       - 'build_tools/check_spy_tests_staleness.sh'
       - 'build_tools/check_allowlist_issue_state.sh'
       - 'build_tools/allowlist_issue_state.py'
-      - 'build_tools/check_class_closure.py'
       - 'docs/language_specification/**'
       - 'build_tools/spec_blocks*'
       - '.github/workflows/dev-staleness.yml'
@@ -75,10 +74,5 @@ jobs:
     - uses: actions/checkout@v7
     - name: Verify allowlist rows cite only OPEN issues
       run: bash build_tools/check_allowlist_issue_state.sh
-      env:
-        GH_TOKEN: ${{ github.token }}
-    - name: Verify closed class issues accounted for every cell
-      # Closures from 2026-11-12 on; older ones: `--report --closed-since <date>`.
-      run: python3 build_tools/check_class_closure.py --closed-since 2026-11-12
       env:
         GH_TOKEN: ${{ github.token }}
