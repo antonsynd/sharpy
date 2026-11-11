@@ -6,38 +6,75 @@ License (see LICENSE, LICENSE-APACHE and LICENSE-MIT). Some files in this
 repository contain code derived from third-party software that is distributed
 under its own license. The components identified so far are listed below,
 each with the Sharpy files derived from it, the upstream source, and the full
-license text under which it is used. This list is not yet exhaustive: the audit
-of other files that may be derived from CPython source is tracked in issue
-#2602 of the Sharpy repository.
+license text under which it is used. The audit for CPython-derived code is
+tracked in issue #2602 of the Sharpy repository. Files that follow CPython's
+behaviour or algorithm without a line-by-line source port are not listed;
+these were judged borderline and remain open in that audit:
+src/Sharpy.Core/PyFormatSpec.cs, src/Sharpy.Stdlib/Threading/Barrier.cs,
+src/Sharpy.Core/Str.cs (the format_float_short layout rule) and
+src/Sharpy.Stdlib/Threading/ThreadRegistry.cs.
 
 
 CPython
 =======
 
-Sharpy file(s) derived from it:
-
-    src/Sharpy.Stdlib/Datetime/DatetimeIso.cs
-
-Upstream source:
-
-    CPython 3.15, Modules/_datetimemodule.c
-    https://github.com/python/cpython
-
-Ported to C#: the entry points date_fromisoformat and datetime_fromisoformat
-(the length check, the multi-byte separator skip, the 24:00 rollover and its
-message), _sanitize_isoformat_str (the separator-surrogate replacement),
-_find_isoformat_datetime_separator, parse_isoformat_date,
-parse_isoformat_time, parse_hh_mm_ss_ff and iso_to_ymd, and the helpers
-parse_digits and days_in_month (ymd_to_ord's result is reproduced with
-System.DateTime).
-
 Copyright (c) 2001 Python Software Foundation; All Rights Reserved
 
-Summary of changes (PSF License Version 2, clause 3): the functions were
-translated from C to C#. The C# version parses a byte array holding the
-string's UTF-8 encoding (reading a position past the end as NUL, as the C code
-reads its terminator), reports errors by raising Sharpy's ValueError, and
-builds Sharpy's date, datetime and timezone objects in place of CPython's.
+Sharpy files derived from it:
+
+    src/Sharpy.Stdlib/Datetime/DatetimeIso.cs
+    src/Sharpy.Stdlib/Fractions/Fraction.Format.cs
+    src/Sharpy.Core/PyFormat.cs
+
+Upstream: https://github.com/python/cpython
+
+Each file's derived portions and the summary of changes required by clause 3
+of the PSF License Version 2 follow.
+
+1. src/Sharpy.Stdlib/Datetime/DatetimeIso.cs
+
+   Upstream source: CPython 3.15, Modules/_datetimemodule.c
+
+   Ported to C#: the entry points date_fromisoformat and
+   datetime_fromisoformat (the length check, the multi-byte separator skip,
+   the 24:00 rollover and its message), _sanitize_isoformat_str (the
+   separator-surrogate replacement), _find_isoformat_datetime_separator,
+   parse_isoformat_date, parse_isoformat_time, parse_hh_mm_ss_ff and
+   iso_to_ymd, and the helpers parse_digits and days_in_month (ymd_to_ord's
+   result is reproduced with System.DateTime).
+
+   Summary of changes: the functions were translated from C to C#. The C#
+   version parses a byte array holding the string's UTF-8 encoding (reading
+   a position past the end as NUL, as the C code reads its terminator),
+   reports errors by raising Sharpy's ValueError, and builds Sharpy's date,
+   datetime and timezone objects in place of CPython's.
+
+2. src/Sharpy.Stdlib/Fractions/Fraction.Format.cs
+
+   Upstream source: CPython Lib/fractions.py. The formatting code is
+   identical in CPython 3.14 and 3.15 (compared against 3.14.5 and 3.15.2).
+
+   Ported to C#: Fraction.__format__, _format_general, _format_float_style,
+   _round_to_exponent and _round_to_figures, and the regular expressions
+   _GENERAL_FORMAT_SPECIFICATION_MATCHER and
+   _FLOAT_FORMAT_SPECIFICATION_MATCHER.
+
+   Summary of changes: translated from Python to C# over
+   System.Numerics.BigInteger. The two regular expressions are hand-written
+   full-match scanners. A width or precision beyond the range of a C# int
+   raises ValueError. The entry point is IFormattable.ToString, and errors
+   are raised as Sharpy's ValueError.
+
+3. src/Sharpy.Core/PyFormat.cs (only the private method
+   InsertThousandsGrouping)
+
+   Upstream source: CPython's _PyUnicode_InsertThousandsGrouping
+   (Objects/unicodeobject.c).
+
+   Summary of changes: translated from C to C#. Only a uniform group size is
+   handled (no locale grouping string), and the result is built as a .NET
+   string from right to left instead of being written into a preallocated
+   Unicode buffer.
 
 The CPython license text follows, verbatim from the LICENSE.txt shipped with
 CPython 3.15.2 (lib/python3.15/LICENSE.txt). It is the complete file.

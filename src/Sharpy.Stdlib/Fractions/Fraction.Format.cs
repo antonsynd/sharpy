@@ -1,3 +1,13 @@
+// Portions of this file are a C# port of CPython's Lib/fractions.py (the formatting code is identical in
+// CPython 3.14 and 3.15): Fraction.__format__, _format_general, _format_float_style, _round_to_exponent,
+// _round_to_figures, and the _GENERAL_FORMAT_SPECIFICATION_MATCHER and _FLOAT_FORMAT_SPECIFICATION_MATCHER
+// regular expressions.
+// Copyright (c) 2001 Python Software Foundation; All Rights Reserved
+// Licensed under the PSF License Version 2; see THIRD-PARTY-NOTICES.txt at the repository root.
+// Changes: translated from Python to C# over System.Numerics.BigInteger; the two regular expressions are
+// hand-written full-match scanners; a width or precision past int range raises ValueError; the entry point
+// is IFormattable.ToString, and errors are Sharpy's ValueError.
+
 using System;
 using System.Globalization;
 using System.Numerics;
