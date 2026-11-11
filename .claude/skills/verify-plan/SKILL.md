@@ -19,11 +19,12 @@ In the nine-dimension pass this skill reads the plan, extracts every verifiable 
 
 If `$ARGUMENTS` is non-empty, use it as the path to the plan file.
 
-If `$ARGUMENTS` is empty, the input is a draft in `.claude/plans/` (repo-local, gitignored — a plan is verified before it is committed). Never pick one silently: list the three newest and ask which to verify.
+If `$ARGUMENTS` is empty, never pick one silently: list the three newest files of record and the three newest working copies and ask which to verify.
 ```bash
-ls -t .claude/plans/*.md 2>/dev/null | head -3
+ls -t docs/process/plans/*.md 2>/dev/null | head -3    # files of record — a DRAFT marker on line 1 means no pass has stamped it
+ls -t .claude/plans/*.md 2>/dev/null | head -3         # working copies (gitignored) — this container's only
 ```
-A path under `docs/process/plans/` is a re-verification of an already-committed plan: stamp that file in place and commit the re-stamp (Output §4).
+The pass edits the working copy `.claude/plans/<plan-id>.md` and commits it over the file of record `docs/process/plans/<plan-id>.md` (Output §4; `docs/process/README.md` › The stage trail). Given a path under `docs/process/plans/`, or when the working copy is missing (a new container), copy the file of record to `.claude/plans/` first and drop its `<!-- DRAFT … -->` marker line. When both exist and differ beyond that marker, stop and ask which is current. A file of record that already carries a stamp is a re-verification: the new stamp and summary replace the old ones.
 
 Read the plan file completely before proceeding. Record `git rev-parse --short HEAD` — every check below is made against that sha, and the stamp names it (line numbers drift; a sha does not).
 
@@ -189,7 +190,7 @@ Adequacy: `CLASS` / `CELL` / `N/A` per Dimension 6. `/implement-plan` refuses a 
 **Result:** [PASS / PASS WITH CORRECTIONS / NEEDS REVISION / CONVERGED]
 **Adequacy:** [CLASS / CELL / N/A]
 **Verified on:** YYYY-MM-DD @ <sha>
-**Plan file:** [`docs/process/plans/<plan-id>.md` on PASS / PASS WITH CORRECTIONS / CONVERGED (committed in §4); the draft path on NEEDS REVISION]
+**Plan file:** `docs/process/plans/<plan-id>.md` (committed in §4 at every result, NEEDS REVISION included)
 
 ### Corrections Made
 - (each inline correction with before/after)
@@ -227,24 +228,31 @@ Adequacy: `CLASS` / `CELL` / `N/A` per Dimension 6. `/implement-plan` refuses a 
 
 For each error, edit the plan text directly. Mark corrections `[CORRECTED: reason]`; mark drafted sections `[ADDED: adequacy]`; mark added steps `[ADDED: missing step]` so the author can review every change.
 
-Present a brief summary to the user: result, adequacy verdict, the corrections that changed a decision (not every path fix), the warnings the author must act on before `/implement-plan`, and the commit that holds the plan (§4) or why none was made.
+Present a brief summary to the user: result, adequacy verdict, the corrections that changed a decision (not every path fix), the warnings the author must act on before `/implement-plan`, and the commit that holds the stamped plan with its pull request's URL (§4).
 
-### 4. Commit the passing plan
+### 4. Commit the stamped plan and open the pull request
 
-A plan the implementation will follow is committed development history (`docs/process/README.md`); the draft in `.claude/plans/` is not. When the result is **PASS**, **PASS WITH CORRECTIONS** (after every inline correction from §3 is in the file) or **CONVERGED**, copy the stamped file to `docs/process/plans/` and commit it:
+Every pass is committed, whatever its result (owner, 2026-11-10; `docs/process/README.md` › The stage trail). A NEEDS REVISION summary that exists only in the gitignored working copy is lost with its container, and the revising session — a fresh context, often a new container — then has nothing to read. Once the stamp, the Verification Summary and (nine-dimension pass) every inline correction from §3 are in the working copy, copy it over the file of record and commit it on the plan's lane:
 
 ```bash
+git fetch origin dev
+git switch claude/<group>-plan       # the lane /create-plan opened, while its PR is open;
+                                     # merged or absent → `git switch -C claude/<group>-plan origin/dev`
 mkdir -p docs/process/plans
-cp .claude/plans/<plan-id>.md docs/process/plans/<plan-id>.md   # <plan-id> = the draft's stem, e.g. plan-a1b2c3
+cp .claude/plans/<plan-id>.md docs/process/plans/<plan-id>.md   # replaces the DRAFT copy: the stamp is now line 1
 git add docs/process/plans/<plan-id>.md                            # explicit pathspec, never -A or .
 git diff --cached --stat                                           # exactly this one file
-git commit -m "process(plan): <plan-id> — <plan title> verified <result> @ <sha>"
+git commit -m "process(plan): <plan-id> — verified <result> @ <sha>"   # the plan's title goes in the body: the subject gate is 72 characters
 ```
 
-The committed copy carries the stamp and the Verification Summary, and the summary's `**Plan file:**` line names the committed path. Commit only this plan — never the charter, another draft or any other file — with the trailer the harness provides. The routing line to the user names the committed path: `/implement-plan docs/process/plans/<plan-id>.md`. On **NEEDS REVISION** nothing is committed: the draft stays in `.claude/plans/` and the revision happens there (§5). A re-verification of a plan already under `docs/process/plans/` stamps that file in place and commits the re-stamp the same way.
+The committed copy carries the stamp and the Verification Summary, and the summary's `**Plan file:**` line names the committed path. Commit only this plan — never the charter, another draft or any other file — with the trailer the harness provides.
+
+Then `/push` and open the pull request into `dev` unless the lane already has an open one (the push updates it): title = the commit subject; body = the result and adequacy verdict, the findings that changed a decision (on NEEDS REVISION: every finding the revision must answer, by dimension), the unchecked claims that need the owner's word, and the next step. The routing line to the user names the committed path and the pull request: `/implement-plan docs/process/plans/<plan-id>.md` on PASS, PASS WITH CORRECTIONS or CONVERGED; `/create-plan revise docs/process/plans/<plan-id>.md` in a fresh context (§5) on NEEDS REVISION. Merging is the owner's.
+
+A committed NEEDS REVISION copy is a record, not a plan to implement: `/implement-plan` reads the stamp and refuses it. The revision overwrites the file through `/create-plan` §3.1; the pass's findings stay in git history and on the pull request.
 
 ### 5. After NEEDS REVISION — how the revision begins
 
-There is no revision skill; the revision is plan-author work and runs as `/create-plan` with no argument (it lists the three newest plans and asks which to re-plan), on the same model that writes plans, in a **fresh context** — the next `/verify-plan` must be a fresh read, so the verifier that stamped NEEDS REVISION does not also revise unless the user says so explicitly (then the user runs the re-verify from a new session). When summarizing a NEEDS REVISION result, end with that one-line routing so the user does not have to ask. The revising session: (1) deletes the stale stamp and `## Verification Summary` (the next pass writes fresh ones; a left-over stamp is read by `/implement-plan` as the current verdict), (2) keeps a one-line `## Revision log` entry naming the pass's sha, its result and dimension as `(NEEDS REVISION, Dimension N)` — the next verifier reads the dimension from this line to apply the Convergence rule, since the stamp is gone — and the decisions it changed, (3) re-runs `python3 build_tools/check_plan_refs.py <plan>` before handing back. `/implement-plan` stays refused until a new stamp reads PASS or CONVERGED.
+There is no revision skill; the revision is plan-author work and runs as `/create-plan revise docs/process/plans/<plan-id>.md` (its **Revising a plan** section; `/create-plan` with no argument still lists the newest plans and asks), on the same model that writes plans, in a **fresh context** — the next `/verify-plan` must be a fresh read, so the verifier that stamped NEEDS REVISION does not also revise unless the user says so explicitly (then the user runs the re-verify from a new session). When summarizing a NEEDS REVISION result, end with that one-line routing — the full command with the committed path — so the user does not have to ask. The revising session: (1) deletes the stale stamp and `## Verification Summary` (the next pass writes fresh ones; a left-over stamp is read by `/implement-plan` as the current verdict), (2) keeps a one-line `## Revision log` entry naming the pass's sha, its result and dimension as `(NEEDS REVISION, Dimension N)` — the next verifier reads the dimension from this line to apply the Convergence rule, since the stamp is gone — and the decisions it changed, (3) re-runs `python3 build_tools/check_plan_refs.py <plan>`, (4) commits the revised draft over the file of record and pushes its lane (`/create-plan` §3.1) before handing back. The revising session starts from the committed copy when its container has no working copy. `/implement-plan` stays refused until a new stamp reads PASS or CONVERGED.
 
 When the result is **CONVERGED** there is no revision: the routing line reads `/implement-plan docs/process/plans/<plan-id>.md` (committed in §4) — the `### Deferred findings` rows are its first task, resolved in code, and a revising session started anyway must not edit the plan's design sections (Scope, Defect Class, Design Decisions, Acceptance, Issues to Close) beyond one `## Revision log` line (contract §12 Convergence: a design section revised after a CONVERGED stamp is a red; the Implementation Checklist and override records `/implement-plan` writes are not design sections).

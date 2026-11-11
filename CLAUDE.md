@@ -35,7 +35,7 @@ src/Sharpy.Cli/bin/Debug/net10.0/sharpyc project x.spyproj
 - **Serialized dotnet:** never call `dotnet build`/`test`/`run` directly; use `.claude/scripts/dotnet-serialized` (same args, output, exit code), enforced by a PreToolUse hook.
 - **Parallel agents share one working tree.** Tell agents *never run `git checkout` / `restore` / `clean` / `stash` / `reset` / `rm` on repo paths*. Commit in small slices; re-check `git diff --stat` after each wave.
 - **Test logs:** every `.claude/scripts/dotnet-serialized` call tees stdout+stderr to its own `.claude/tmp/dotnet-serialized-<yyyymmdd-HHMMSS>-<pid>.log` and prints `dotnet-serialized: log -> <path>` as its first stdout line, before it queues. `.claude/tmp/dotnet-serialized-latest.path` names the newest invocation's log, which may be a peer's. Read your own printed path, and grep it instead of re-running a suite. Logs older than 7 days are deleted. A waiter reaps a dead holder's dotnet child once that child's log has been silent past the stall window. Timings and lock facts: the wrapper's header.
-- **Plans** are scratch in `.claude/plans/` until `/verify-plan` commits them ([process](docs/process/README.md)).
+- **Plans**: every stage commits `docs/process/plans/<id>.md` and opens a PR into `dev`; `.claude/plans/` is a session's working copy ([process](docs/process/README.md)).
 
 ## Critical Rules
 
