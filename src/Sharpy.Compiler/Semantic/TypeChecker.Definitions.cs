@@ -259,6 +259,9 @@ internal partial class TypeChecker
         var previousMethodIsDunder = _currentMethodIsDunder;
         var previousControlFlowDepth = _controlFlowDepth;
         var previousSuperInitCalled = _superInitCalled;
+        var previousSelfInitCalled = _selfInitCalled;
+        var previousHoistedInitializerCall = _hoistedInitializerCall;
+        var previousHoistedInitializerCallRepeated = _hoistedInitializerCallRepeated;
 
         _currentMethodName = functionDef.Name;
         _currentMethodSymbol = functionSymbol;
@@ -268,6 +271,16 @@ internal partial class TypeChecker
         _currentMethodIsDunder = IsDunderMethod(functionDef.Name);
         _controlFlowDepth = 0;
         _superInitCalled = false;
+        _selfInitCalled = false;
+        _hoistedInitializerCall = null;
+        _hoistedInitializerCallRepeated = false;
+        if (_currentClass != null && functionDef.Name == DunderNames.Init)
+        {
+            var hoistedIndex = AstHelper.FindConstructorInitializerIndex(functionDef.Body);
+            if (hoistedIndex >= 0
+                && AstHelper.TryGetConstructorInitializerCall(functionDef.Body[hoistedIndex], out var hoisted, out var _))
+                _hoistedInitializerCall = hoisted;
+        }
 
         // Validate override requirements and abstract method constraints
         ValidateOverrideRequirements(functionDef);
@@ -328,6 +341,9 @@ internal partial class TypeChecker
             }
         }
 
+        if (_currentClass != null && functionDef.Name == DunderNames.Init)
+            ValidateConstructorInitializerPosition(functionDef);
+
         _narrowingFlow = previousFlow;
         _currentFacts = previousFacts;
 
@@ -350,6 +366,9 @@ internal partial class TypeChecker
         _currentFunctionIsAsync = previousIsAsync;
         _controlFlowDepth = previousControlFlowDepth;
         _superInitCalled = previousSuperInitCalled;
+        _selfInitCalled = previousSelfInitCalled;
+        _hoistedInitializerCall = previousHoistedInitializerCall;
+        _hoistedInitializerCallRepeated = previousHoistedInitializerCallRepeated;
 
         _symbolTable.ExitScope();
         _currentFunctionReturnType = previousFunctionReturnType;

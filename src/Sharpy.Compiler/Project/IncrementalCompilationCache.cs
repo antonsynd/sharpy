@@ -210,6 +210,12 @@ internal class IncrementalCompilationCache
     private UpToDateRecord? _lastBuild;
 
     /// <summary>
+    /// File identities for this cache instance's own keys (<see cref="FileContentIdentity"/>): one hash
+    /// per file per instance, never shared with another instance, a registry or a later build.
+    /// </summary>
+    private readonly FileContentIdentity _identities;
+
+    /// <summary>
     /// Generator outputs cached via <see cref="CacheGeneratorOutput"/> before the
     /// owning <see cref="FileCacheEntry"/> exists. Merged into the entry by
     /// <see cref="SaveFileCache"/>.
@@ -246,13 +252,14 @@ internal class IncrementalCompilationCache
         FeatureFlags? features = null)
     {
         _logger = logger ?? NullLogger.Instance;
+        _identities = new FileContentIdentity();
 
         // Store cache in obj/{Configuration}/.sharpy-cache
         var objDir = Path.Combine(projectConfig.ProjectDirectory, "obj", projectConfig.Configuration);
         Directory.CreateDirectory(objDir);
         _cacheFilePath = Path.Combine(objDir, ".sharpy-cache");
         _symbolCachePath = Path.Combine(objDir, ".sharpy-symbols");
-        _projectFacts = ProjectFactsOf(projectConfig, features);
+        _projectFacts = ProjectFactsOf(projectConfig, features, _identities);
 
         _fileHashes = LoadHashCache();
     }
@@ -272,7 +279,8 @@ internal class IncrementalCompilationCache
     ///   framework, the configuration, the test-host bit and <c>#line</c> emission, all of which reach
     ///   code generation.</item>
     ///   <item>The reference closure (#2114): each <c>-r</c> assembly, each module search path's
-    ///   assemblies and each package's resolved assemblies, by path, size and write time. A changed
+    ///   assemblies and each package's resolved assemblies, by path, size, write time and content
+    ///   (<see cref="FileContentIdentity"/>). A changed
     ///   assembly changes what the cached units' symbols bind to, so serving them was SPY0908 where
     ///   a cold build reports SPY0301.</item>
     /// </list>
@@ -281,8 +289,10 @@ internal class IncrementalCompilationCache
     /// The compiler's own identity is checked separately (<see cref="GetCompilerVersion"/>).
     /// Each line is <c>key=value</c>, so <see cref="ChangedFactKeys"/> can name what moved.
     /// </summary>
-    internal static string ProjectFactsOf(ProjectConfig config, FeatureFlags? features = null)
+    internal static string ProjectFactsOf(ProjectConfig config, FeatureFlags? features = null,
+        FileContentIdentity? identities = null)
     {
+        identities ??= new FileContentIdentity();
         var effectiveFeatures = features ?? FeatureFlags.None.Enable(config.Features);
         var lines = new List<string>
         {
@@ -300,7 +310,7 @@ internal class IncrementalCompilationCache
         // Order is kept as written: the registry loads references in this order, so a reorder can
         // change which assembly answers a name.
         foreach (var reference in config.References)
-            lines.Add("reference=" + FileIdentity(reference));
+            lines.Add("reference=" + identities.Of(reference));
 
         foreach (var modulePath in config.ModulePaths)
         {
@@ -309,7 +319,7 @@ internal class IncrementalCompilationCache
             if (!Directory.Exists(full))
                 continue;
             foreach (var assembly in SourceGlob.EnumerateArtifacts(full, "*.dll").OrderBy(f => f, StringComparer.Ordinal))
-                lines.Add("module-path-assembly=" + FileIdentity(assembly));
+                lines.Add("module-path-assembly=" + identities.Of(assembly));
         }
 
         foreach (var package in config.PackageReferences)
@@ -320,28 +330,10 @@ internal class IncrementalCompilationCache
             // A local ~/.nuget scan, the same one CompilerApi.BuildAnalysisCacheKey keys on.
             foreach (var assembly in NuGetResolver.ResolvePackage(
                 package, config.TargetFramework, logger: null, config.ResolvedVersions))
-                lines.Add("package-assembly=" + FileIdentity(assembly));
+                lines.Add("package-assembly=" + identities.Of(assembly));
         }
 
         return string.Join("\n", lines);
-    }
-
-    /// <summary>
-    /// A file's identity for the facts fingerprint — the reference load context's definition, so a
-    /// reference that appears, disappears or is rebuilt in place moves the fingerprint. A path the
-    /// file system refuses to describe is fingerprinted as unreadable rather than failing the build.
-    /// </summary>
-    private static string FileIdentity(string path)
-    {
-        try
-        {
-            return Discovery.ReferenceLoadContext.FileIdentity(path);
-        }
-        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or ArgumentException
-            or NotSupportedException)
-        {
-            return path + ":unreadable";
-        }
     }
 
     /// <summary>
@@ -373,7 +365,8 @@ internal class IncrementalCompilationCache
     /// would be handed the same compilation, so the assembly it emitted last time is still the answer.
     /// </summary>
     internal static string EmissionKeyOf(
-        ProjectConfig config, IReadOnlyDictionary<string, string> csharpSources, string? entryTypeName)
+        ProjectConfig config, IReadOnlyDictionary<string, string> csharpSources, string? entryTypeName,
+        FileContentIdentity? identities = null)
     {
         using var sha = IncrementalHash.CreateHash(HashAlgorithmName.SHA256);
         foreach (var (path, text) in csharpSources.OrderBy(kv => kv.Key, StringComparer.Ordinal))
@@ -387,7 +380,7 @@ internal class IncrementalCompilationCache
         return string.Join("\n",
             "csharp=" + Convert.ToHexStringLower(sha.GetHashAndReset()),
             "entry-type=" + (entryTypeName ?? string.Empty),
-            EnvironmentOf(config));
+            EnvironmentOf(config, identities));
     }
 
     /// <summary>
@@ -396,13 +389,18 @@ internal class IncrementalCompilationCache
     /// the runtime config come from. One definition for Phase 7's key and the whole-build record
     /// (<see cref="UpToDateRecord.Environment"/>, #2468).
     /// </summary>
-    internal static string EnvironmentOf(ProjectConfig config)
-        => string.Join("\n",
+    internal static string EnvironmentOf(ProjectConfig config, FileContentIdentity? identities = null)
+    {
+        // The corlib is a runtime file, identified by its disk identity: the runtime= line's exact
+        // version fixes its bytes (FileContentIdentity.IsRuntimeFile).
+        identities ??= new FileContentIdentity();
+        return string.Join("\n",
             "assembly-name=" + (config.AssemblyName ?? config.RootNamespace),
             "output-path=" + PathNormalizer.Normalize(Path.GetFullPath(config.OutputAssemblyPath)),
             "runtime=" + Environment.Version,
-            "corlib=" + FileIdentity(typeof(object).Assembly.Location),
-            "sharpy-core=" + FileIdentity(typeof(SharpyRT::Sharpy.Builtins).Assembly.Location));
+            "corlib=" + identities.Of(typeof(object).Assembly.Location),
+            "sharpy-core=" + identities.Of(typeof(SharpyRT::Sharpy.Builtins).Assembly.Location));
+    }
 
     /// <summary>
     /// A build's source set: every source path, normalized, ordinal-sorted, one per line (#2468).
@@ -412,8 +410,11 @@ internal class IncrementalCompilationCache
 
     /// <summary>
     /// The identity of every file Phase 7 writes beside the assembly — the assembly, its pdb, its
-    /// runtime config, its deps file and a test project's scaffold — present or absent. A skip leaves
-    /// these files as they are, so it is only sound while they are the ones the recorded build wrote.
+    /// runtime config, its deps file and a test project's scaffold — present or absent, and by content
+    /// (<see cref="FileContentIdentity.Compute"/>, never a build's memo: the build itself rewrites them). A
+    /// skip leaves these files as they are, so it is only sound while they
+    /// hold the bytes the recorded build wrote; another build's output copied over them with its write
+    /// time preserved is not that.
     /// </summary>
     internal static string OutputIdentityOf(ProjectConfig config)
     {
@@ -427,7 +428,7 @@ internal class IncrementalCompilationCache
             Path.ChangeExtension(assembly, ".runtimeconfig.json"),
             Path.ChangeExtension(assembly, ".deps.json"),
             scaffold,
-        }.Select(path => File.Exists(path) ? FileIdentity(path) : path + ":absent"));
+        }.Select(path => File.Exists(path) ? FileContentIdentity.Compute(path) : path + ":absent"));
     }
 
     /// <summary>
@@ -437,9 +438,12 @@ internal class IncrementalCompilationCache
     /// </summary>
     public IReadOnlyList<CachedDiagnostic>? UpToDateAssemblyDiagnostics(string emissionKey, ProjectConfig config)
     {
+        var outputs = OutputIdentityOf(config);
         if (_emittedAssembly is not { } record
+            || FileContentIdentity.IsUnreadable(emissionKey)
+            || FileContentIdentity.IsUnreadable(outputs)
             || !string.Equals(record.EmissionKey, emissionKey, StringComparison.Ordinal)
-            || !string.Equals(record.Outputs, OutputIdentityOf(config), StringComparison.Ordinal))
+            || !string.Equals(record.Outputs, outputs, StringComparison.Ordinal))
         {
             return null;
         }
@@ -465,7 +469,7 @@ internal class IncrementalCompilationCache
     public void RecordLastBuild(ProjectConfig config, IEnumerable<Diagnostics.CompilerDiagnostic> reported)
     {
         var diagnostics = reported.Select(CachedDiagnostic.From).ToList();
-        _lastBuild = new UpToDateRecord(SourceSetOf(config.SourceFiles), EnvironmentOf(config),
+        _lastBuild = new UpToDateRecord(SourceSetOf(config.SourceFiles), EnvironmentOf(config, _identities),
             diagnostics.Count > 0 ? diagnostics : null);
     }
 
@@ -481,8 +485,8 @@ internal class IncrementalCompilationCache
         if (_lastBuild is not { } record
             || _emittedAssembly is not { } emitted
             || !string.Equals(record.SourceSet, SourceSetOf(config.SourceFiles), StringComparison.Ordinal)
-            || !string.Equals(record.Environment, EnvironmentOf(config), StringComparison.Ordinal)
-            || !string.Equals(emitted.Outputs, OutputIdentityOf(config), StringComparison.Ordinal)
+            || !IsProvenEqual(record.Environment, EnvironmentOf(config, _identities))
+            || !IsProvenEqual(emitted.Outputs, OutputIdentityOf(config))
             || !config.SourceFiles.All(HasValidFileCache))
         {
             return null;
@@ -492,14 +496,17 @@ internal class IncrementalCompilationCache
     }
 
     /// <summary>
-    /// Computes the SHA-256 hash of a file's contents.
+    /// Equal, and readable: a key holding an identity whose content could not be read proves nothing,
+    /// so it never compares as unchanged, even with itself.
     /// </summary>
-    public static string ComputeFileHash(string filePath)
-    {
-        using var stream = File.OpenRead(filePath);
-        var hashBytes = SHA256.HashData(stream);
-        return Convert.ToHexStringLower(hashBytes);
-    }
+    private static bool IsProvenEqual(string? recorded, string current)
+        => !FileContentIdentity.IsUnreadable(current)
+           && string.Equals(recorded, current, StringComparison.Ordinal);
+
+    /// <summary>
+    /// Computes the SHA-256 hash of a file's contents (<see cref="FileContentIdentity.Sha256Of"/>).
+    /// </summary>
+    public static string ComputeFileHash(string filePath) => FileContentIdentity.Sha256Of(filePath);
 
     /// <summary>
     /// Checks if a file has changed since the last build.
@@ -1008,7 +1015,7 @@ internal class IncrementalCompilationCache
                     return new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
                 }
 
-                if (!string.Equals(metadata.ProjectFacts, _projectFacts, StringComparison.Ordinal))
+                if (!IsProvenEqual(metadata.ProjectFacts, _projectFacts))
                 {
                     _logger.LogInfo("Project facts changed ("
                         + string.Join(", ", ChangedFactKeys(metadata.ProjectFacts, _projectFacts))

@@ -116,6 +116,62 @@ public class IncrementalOptionsKeyE2ETests : IDisposable
         warm.ExitCode.Should().Be(clean.ExitCode);
     }
 
+    /// <summary>
+    /// The same sequence with the library replaced by bytes of the SAME size and the SAME write time
+    /// (<c>cp -p</c>, <c>rsync -t</c>, a restored build cache): v1 exports <c>f</c>, v2 exports <c>g</c>
+    /// instead. The up-to-date key identifies the reference by content, so the warm build is not up to
+    /// date, and this fresh process binds v2: it reports what a clean build reports (SPY0301). Before,
+    /// the key held path, size and write time, and the warm build replayed v1's success. Controls: the
+    /// unchanged warm build IS up to date; the replacement keeps the size and write time.
+    /// </summary>
+    [Fact]
+    public void ALibraryReplacedBySameSizeSameTimeBytes_WarmReportsWhatCleanReports()
+    {
+        string BuildLib(string version, string function)
+        {
+            _ws.WriteFile($"lib_{version}/m6.spy", $"def {function}() -> int:\n    return 1\n");
+            var project = _ws.WriteFile($"lib_{version}/lib.spyproj",
+                Project("Library", "Lib6", "    <SpyFile Include=\"m6.spy\" />", "\n    <AssemblyName>Lib6</AssemblyName>"));
+            var dir = Path.GetDirectoryName(project)!;
+            var built = ExecCli(dir, "project", project);
+            built.ExitCode.Should().Be(0, built.StdOut + built.StdErr);
+            return Directory.GetFiles(Path.Combine(dir, "bin"), "Lib6.dll", SearchOption.AllDirectories).Single();
+        }
+
+        var v1 = BuildLib("v1", "f");
+        var v2 = BuildLib("v2", "g");
+        new FileInfo(v2).Length.Should().Be(new FileInfo(v1).Length, "precondition: the same size");
+
+        var dll = Path.Combine(Path.GetDirectoryName(_ws.WriteFile("ref/README", "references"))!, "Lib6.dll");
+        File.Copy(v1, dll);
+        var writeTime = File.GetLastWriteTimeUtc(dll);
+
+        _ws.WriteFile("app6/main.spy", "from m6 import f\n\n\ndef main() -> None:\n    print(f())\n");
+        var appProject = _ws.WriteFile("app6/app.spyproj", Project("Exe", "App6",
+            "    <SpyFile Include=\"main.spy\" />\n"
+            + $"    <Reference Include=\"Lib6\"><HintPath>{dll}</HintPath></Reference>"));
+        var appDir = Path.GetDirectoryName(appProject)!;
+
+        var first = ExecCli(appDir, "project", appProject, "--clean", "--incremental");
+        first.ExitCode.Should().Be(0, "control: the consumer builds against v1. " + first.StdOut + first.StdErr);
+        var unchanged = ExecCli(appDir, "project", appProject, "--incremental", "--metrics-format", "text");
+        unchanged.StdOut.Should().Contain("Up to date:", "control: the unchanged warm build is up to date");
+
+        var staged = dll + ".staged";
+        File.Copy(v2, staged);
+        File.SetLastWriteTimeUtc(staged, writeTime);
+        File.Move(staged, dll, overwrite: true);
+        File.GetLastWriteTimeUtc(dll).Should().Be(writeTime, "precondition: the write time is kept");
+
+        var warm = ExecCli(appDir, "project", appProject, "--incremental", "--metrics-format", "text");
+        var clean = ExecCli(appDir, "project", appProject, "--clean", "--incremental");
+
+        warm.StdOut.Should().NotContain("Up to date:", "the reference's bytes changed");
+        Codes(clean).Should().Contain("SPY0301", "control: v2 has no f. " + clean.StdErr);
+        Codes(warm).Should().Equal(Codes(clean), "a fresh process binds v2. Warm: " + warm.StdOut + warm.StdErr);
+        warm.ExitCode.Should().Be(clean.ExitCode);
+    }
+
     static IReadOnlyList<string> Codes(ProcessResult result)
         => System.Text.RegularExpressions.Regex.Matches(result.StdOut + result.StdErr, @"SPY\d{4}")
             .Select(m => m.Value).Distinct().OrderBy(c => c, StringComparer.Ordinal).ToList();

@@ -136,6 +136,10 @@ class Dog(Animal):
         self.breed = breed
 ```
 
+`super().__init__(...)` runs as C#'s `: base(...)` initializer, before the rest of the body. It must therefore be the first statement of `__init__`; only a docstring may precede it. It must be written once, as a statement of its own: not under control flow, not inside an expression, and not together with `self.__init__(...)`. Any statement ahead of it, `pass` included, is refused with SPY0292, and combining it with `self.__init__(...)` is SPY0351. [Constructor Chaining](constructors.md#constructor-chaining) states the full rule.
+
+A base class that declares no `__init__` still has an implicit parameterless constructor. `super().__init__()` calls it, as Python's `object.__init__` would.
+
 **Calling Overridden Methods:**
 
 When a method overrides a parent method, `super()` can call the parent implementation:

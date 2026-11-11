@@ -39,7 +39,7 @@ namespace Sharpy.Compiler.Tests.Properties.Semantic;
 /// were generated, had a refusal and had no injection cited #2324 until P63b's mutation lanes
 /// (<c>ErrorInjector.Mutations.cs</c> over <c>Generators/Typed/Mutations/</c>) drained them by measurement
 /// (2026-10-24) — to <see cref="YInjected"/>, to a compiler pin, or to <see cref="ByDesign"/> with its spec line
-/// and census control; compiler cells pinned by an injection cite their tracker (#2143, #2335, #2021, #2363). A construct with no refusal surface is <c>ByDesign("no typing surface")</c>; same-scope
+/// and census control; compiler cells pinned by an injection cite their tracker (#2143, #2335, #2021). A construct with no refusal surface is <c>ByDesign("no typing surface")</c>; same-scope
 /// re-<c>let</c> is <see cref="ByDesign"/> by <c>variable_scoping.md</c> §Variable Shadowing.</item>
 /// <item><b>NoConstruct exemption</b> — allowed only for a file with NO fenced Sharpy block
 /// (<c>```python</c>/<c>spy</c>/<c>sharpy</c>, the fences <c>build_tools/spec_blocks.py</c> reads), whatever
@@ -153,7 +153,9 @@ public class TypedGeneratorRosterTests
             new YInjected("ErrorInjector.InjectWrongTypedArithmeticOperand", "SPY0222", CompilerDiagnosticSeverity.Error)),
         new("arithmetic_operators.md", "Division Operator `/`", "true division /",
             new KnownRedRow("#2287", "no typed generator emits /"),
-            new KnownRedRow("#2287", "not generated, so no injection can break it")),
+            new KnownRedRow("#2287", "not generated, so no injection can break it; the file's SPY0401 (a parameter default "
+                + "whose divisor is a known-zero constant, #2517) is pinned outside the typed generators, by "
+                + "ZeroDivisionDifferentialTests and ParameterDefaultConstantMatrixTests' ConstNameDivisorZero kind")),
         new("arithmetic_operators.md", "Floor Division Operator `//`", "floor division //",
             new KnownRedRow("#2287", "no typed generator emits //"),
             new KnownRedRow("#2287", "not generated, so no injection can break it")),
@@ -271,6 +273,14 @@ public class TypedGeneratorRosterTests
         new("constructors.md", "Constructors", "__init__ with typed parameters assigning fields",
             new Y("GenClasses.ModuleWithClasses", () => Classes(), n => n is FunctionDef { Name: "__init__", Parameters.Length: > 1 }),
             new YInjected("ErrorInjector.InjectWrongConstructorArgs", "SPY0224", CompilerDiagnosticSeverity.Error)),
+        new("constructors.md", "Constructor Chaining", "super().__init__(...) as the constructor's first statement",
+            new Y("GenClasses.ModuleWithClasses", () => Classes(), n => n is FunctionDef { Name: "__init__" } f
+                && Sharpy.Compiler.Shared.AstHelper.FindConstructorInitializerIndex(f.Body) == 0),
+            new YInjected("ErrorInjector.InjectStatementAheadOfChainingCall", "SPY0292", CompilerDiagnosticSeverity.Error)),
+        new("constructors.md", "Constructor Chaining", "one chaining call per constructor",
+            new Y("GenClasses.ModuleWithClasses", () => Classes(), n => n is FunctionDef { Name: "__init__" } f
+                && Sharpy.Compiler.Shared.AstHelper.FindConstructorInitializerIndex(f.Body) == 0),
+            new YInjected("ErrorInjector.InjectBothChainingCalls", "SPY0351", CompilerDiagnosticSeverity.Error)),
         new("constructors.md", "Constructor Overloading", "overloaded __init__",
             new KnownRedRow("#2287", "no typed generator emits an overloaded constructor"),
             new KnownRedRow("#2287", "not generated, so no injection can break it")),
@@ -415,7 +425,7 @@ public class TypedGeneratorRosterTests
         new("exception_handling.md", "Exception Type Hierarchy", "subclass handler before its base",
             new Y("GenExceptions.ModuleWithExceptionHierarchy", () => GenExceptions.ModuleWithExceptionHierarchy(), n => n is TryStatement { Handlers.Length: >= 2 }),
             // declaration shape — a hand lane (DeclarationShapes), the axis the site enumerator cannot list
-            new KnownRedRow("#2363", "analyses clean; run is SPY0908 CS0160 — handler reachability is left to Roslyn (ErrorInjector.InjectHandlerOrderBaseFirst)")),
+            new YInjected("ErrorInjector.InjectHandlerOrderBaseFirst", "SPY0488", CompilerDiagnosticSeverity.Warning)),
         new("exception_handling.md", "Exception Filters (`when`)", "except ... when",
             new KnownRedRow("#2287", "no typed generator emits an exception filter"),
             new KnownRedRow("#2287", "not generated, so no injection can break it")),
@@ -1662,6 +1672,8 @@ public class TypedGeneratorRosterTests
         new KnownRedSpecCode("#2287", "events.md", "SPY0496"),
         new KnownRedSpecCode("#2287", "events.md", "SPY0708"),
         new KnownRedSpecCode("#2324", "exception_handling.md", "SPY0138"),
+        new KnownRedSpecCode("#2287", "exception_handling.md", "SPY0151"),
+        new KnownRedSpecCode("#2287", "exception_handling.md", "SPY0709"),
         new KnownRedSpecCode("#2324", "exception_handling.md", "SPY0272"),
         new KnownRedSpecCode("#2324", "exception_handling.md", "SPY0702"),
         new KnownRedSpecCode("#2287", "feature_roadmap.md", "SPY0130"),
@@ -1894,6 +1906,10 @@ public class TypedGeneratorRosterTests
         // module_system.md §Name Qualification in Generated C# cites the import-binding collision only by link; the construct and
         // its claiming row (GenImports.NameCollisionPair, SPY0204) are import_statements.md's.
         new ProseCrossReference("module_system.md", "SPY0204", "import_statements.md"),
+        // inheritance.md's super() section states the chaining-call rule briefly and links to constructors.md, whose
+        // "Constructor Chaining" rows claim both codes (#2507).
+        new ProseCrossReference("inheritance.md", "SPY0292", "constructors.md"),
+        new ProseCrossReference("inheritance.md", "SPY0351", "constructors.md"),
     };
 
     private static readonly Regex SpecCode = new(@"SPY\d{4}");
@@ -2014,11 +2030,11 @@ public class TypedGeneratorRosterTests
     // generator tracker (#2287 P62; #2324's 62 rows drained by P63b, 2026-10-24); KnownRed = lanes pinning a
     // compiler cell to its tracker; ByDesign and the Y counts are lanes; NoConstruct counts rows.
     private const int ExpectedSpecFiles = 125;
-    private const int ExpectedRows = 202;
-    private const int ExpectedYGenerated = 103;
-    private const int ExpectedYInjected = 90;
+    private const int ExpectedRows = 204;
+    private const int ExpectedYGenerated = 105;
+    private const int ExpectedYInjected = 93;
     private const int ExpectedN = 181;
-    private const int ExpectedKnownRed = 5;
+    private const int ExpectedKnownRed = 4;
     private const int ExpectedByDesign = 17;
     private const int ExpectedNoConstruct = 4;
 

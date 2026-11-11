@@ -330,6 +330,9 @@ internal static class SymbolSerializer
         };
         if (vs.ClrFieldName != null)
             props["ClrFieldName"] = vs.ClrFieldName;
+        // #2517: a warm build keeps the `/` divisor rule's const value, so it emits what the cold build did.
+        if (vs.FloatConstantValue is { } floatValue)
+            props["FloatConstantValue"] = floatValue.ToString("R", System.Globalization.CultureInfo.InvariantCulture);
         return props;
     }
 
@@ -785,6 +788,10 @@ internal static class SymbolSerializer
             IsStatic = GetBoolProperty(props, "IsStatic"),
             IsFinal = GetBoolProperty(props, "IsFinal"),
             ClrFieldName = GetStringProperty(props, "ClrFieldName"),
+            FloatConstantValue = double.TryParse(GetStringProperty(props, "FloatConstantValue"),
+                System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out var floatConstant)
+                    ? floatConstant
+                    : null,
             ConstantValue = !string.IsNullOrEmpty(cached.ConstantValue)
                 ? System.Numerics.BigInteger.Parse(cached.ConstantValue, System.Globalization.CultureInfo.InvariantCulture)
                 : null,

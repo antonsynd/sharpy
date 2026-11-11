@@ -505,14 +505,9 @@ internal partial class TypeChecker
 
             // Record operator lowering for augmented assignments (#1623).
             if (assignment.Operator == AssignmentOperator.SlashAssign
-                && resultType == SemanticType.Double
-                && !PrimitiveCatalog.IsDecimal(targetType) && !PrimitiveCatalog.IsDecimal(valueType)
-                && !PrimitiveCatalog.IsFloatingPoint(targetType) && !PrimitiveCatalog.IsFloatingPoint(valueType)
-                && targetType is not UserDefinedType and not GenericType
-                && valueType is not UserDefinedType and not GenericType)
+                && ClassifyTrueDivision(targetType, valueType, resultType, assignment.Value, ConstantLookup) is { } divisionKind)
             {
-                _semanticInfo.SetOperatorLowering(assignment,
-                    new OperatorLowering(OperatorLoweringKind.TrueDivisionCastLeft));
+                _semanticInfo.SetOperatorLowering(assignment, new OperatorLowering(divisionKind));
             }
 
             if (assignment.Operator is AssignmentOperator.LeftShiftAssign or AssignmentOperator.RightShiftAssign
@@ -2532,6 +2527,35 @@ internal partial class TypeChecker
             || (varDecl.IsConst && SymbolTable.ClassifyScope(scopeName) == SymbolTable.ScopeKind.Module);
     }
 
+    /// <summary>
+    /// Resolves a constant NAME to its folded value for <see cref="TrueDivisionRules"/>: the const symbol the
+    /// name denotes in the current scope (same backtick rule as the integer fold), or null.
+    /// </summary>
+    private TrueDivisionRules.ConstantLookup ConstantLookup => new(LookupFoldedConst, LookupQualifiedConst);
+
+    /// <summary>
+    /// The const a qualified divisor names: a type member the checker resolved (<c>C.K</c>), or a module
+    /// export (<c>a.SCALE</c> after <c>import a</c>) — the imported symbol carries its folded value.
+    /// </summary>
+    private VariableSymbol? LookupQualifiedConst(MemberAccess member)
+    {
+        if (_semanticInfo.GetMemberAccessResolution(member)?.Member is VariableSymbol resolved)
+            return resolved;
+        return member.Object is Identifier root
+            && _symbolTable.Lookup(root.Name) is ModuleSymbol module
+            && module.TryGetExport(member.Member, out var exported)
+                ? exported as VariableSymbol
+                : null;
+    }
+
+    private VariableSymbol? LookupFoldedConst(Identifier id)
+    {
+        var sym = _symbolTable.Lookup(id.Name);
+        if (sym != null && id.IsNameBacktickEscaped != sym.IsNameBacktickEscaped)
+            return null;
+        return sym as VariableSymbol is { IsConstant: true } vs ? vs : null;
+    }
+
     private void TryFoldConstantValue(
         VariableSymbol symbol, SemanticType declaredType, Expression? initializer)
     {
@@ -2539,6 +2563,13 @@ internal partial class TypeChecker
             return;
 
         var info = Registry.PrimitiveCatalog.GetPrimitiveInfo(declaredType);
+        if (Registry.PrimitiveCatalog.IsFloatingPoint(declaredType) || Registry.PrimitiveCatalog.IsDecimal(declaredType))
+        {
+            // The `/` divisor rule reads a float/decimal const's value (#2517).
+            symbol.FloatConstantValue = TrueDivisionRules.FoldFloatConstant(initializer, ConstantLookup, declaredType);
+            return;
+        }
+
         if (info?.Kind is not (Registry.PrimitiveCatalog.NumericKind.SignedInteger
                 or Registry.PrimitiveCatalog.NumericKind.UnsignedInteger))
             return;

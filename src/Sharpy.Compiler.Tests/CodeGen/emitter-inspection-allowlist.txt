@@ -9,12 +9,12 @@
 # Row: file | kind | name | count | cite=#N | note    (file = a CodeGen/ file name; one row per key)
 # Kinds, as the test measures them:
 #   type-name         a hierarchy type named (declaration, cast, pattern, generic argument, static
-#                     call) — Roslyn identifier scan, per (file, type); TypeSyntaxMapper.cs exempt
+#                     call) — Roslyn identifier scan, per (file, type); TypeSyntaxMapper.cs pinned
 #   type-name-compare a name compare on a denied type, per (file, shape) — Roslyn syntax:
 #                     name-compare = `r.Name`/`r?.Name` under ==, !=, `is` or a switch, `r` a parameter,
 #                     explicitly typed local or pattern designation of a denied type; name-subpattern =
 #                     `T { Name: … }` with T denied. `var`-bound receivers and fields are not bound (no
-#                     semantic model); union-case compares are name-lookup rows. TypeSyntaxMapper.cs exempt
+#                     semantic model); union-case compares are name-lookup rows. TypeSyntaxMapper.cs pinned
 #   type-read         invocations of a reflected accessor — every public SemanticInfo/SemanticBinding
 #                     method returning a SemanticType or an IEnumerable<T> of one — or of the emitter
 #                     helper GetExpressionSemanticType, per (file, accessor)
@@ -25,9 +25,17 @@
 #
 # Ratchet, both ways: more sites than the count fails (a NEW inspection: materialize the fact);
 # fewer fails (STALE: lower the count, delete the row at 0, in the commit that removed the sites);
-# sites without a row fail; a row naming a file that no longer exists fails. Drains to empty.
+# sites without a row fail; a row naming a file that no longer exists fails. Drains to empty,
+# except the pinned rows below.
 # Counts measured by the test's own scanner at 0ea13e3a6; the type-name-compare rows and the
 # reflected type-read rows were seeded at the scanner's counts by plan-1faae3 Phase 1.
+#
+# PINNED, not draining: TypeSyntaxMapper.cs's type-name and type-name-compare rows. The mapper may
+# name the hierarchies (contract item 1), so these are kept out of the drain census
+# (CARRIER-INSPECTION-CENSUS) — but they are ratcheted like every other row, so an inspection moved
+# from an emitter file INTO the mapper raises a pin and fails instead of reading as a drain (tranche 2's
+# 4b8f36e89 moved `generic.Name != builtinName` here while the census fell). Seeded at the scanner's
+# counts @ fd876b842.
 CodeGenContext.cs | type-name | Symbol | 1 | cite=#2443 | names a Symbol-hierarchy type; read the recorded CodeGenInfo/SemanticInfo fact
 NameResolutionService.cs | type-name | ModuleSymbol | 1 | cite=#2443 | names a Symbol-hierarchy type; read the recorded CodeGenInfo/SemanticInfo fact
 NameResolutionService.cs | type-name | Symbol | 4 | cite=#2443 | names a Symbol-hierarchy type; read the recorded CodeGenInfo/SemanticInfo fact
@@ -214,5 +222,29 @@ RoslynEmitter.cs | type-name | TypeSymbol | 2 | cite=#2443 | names a Symbol-hier
 RoslynEmitter.cs | type-name | VariableSymbol | 2 | cite=#2443 | names a Symbol-hierarchy type; read the recorded CodeGenInfo/SemanticInfo fact
 RoslynEmitter.cs | type-read | GetTypeAnnotation | 1 | cite=#2443 | reads a SemanticType via GetTypeAnnotation (reflected type-read accessor); drains when the decision rides the IR or the mapper hand-off
 RoslynEmitter.cs | type-read | GetVariableType | 1 | cite=#2443 | reads a variable's SemanticType (SemanticBinding.GetVariableType or the emitter wrapper of that name); drains when callers read a recorded fact
+TypeSyntaxMapper.cs | type-name | BuiltinType | 9 | cite=#2443 | PINNED: the exempt mapper (contract item 1); a rise is an inspection moved into the mapper
+TypeSyntaxMapper.cs | type-name | ConstructorReferenceType | 1 | cite=#2443 | PINNED: the exempt mapper (contract item 1); a rise is an inspection moved into the mapper
+TypeSyntaxMapper.cs | type-name | FunctionType | 4 | cite=#2443 | PINNED: the exempt mapper (contract item 1); a rise is an inspection moved into the mapper
+TypeSyntaxMapper.cs | type-name | GenericFunctionType | 1 | cite=#2443 | PINNED: the exempt mapper (contract item 1); a rise is an inspection moved into the mapper
+TypeSyntaxMapper.cs | type-name | GenericType | 3 | cite=#2443 | PINNED: the exempt mapper (contract item 1); a rise is an inspection moved into the mapper
+TypeSyntaxMapper.cs | type-name | LiteralStringType | 1 | cite=#2443 | PINNED: the exempt mapper (contract item 1); a rise is an inspection moved into the mapper
+TypeSyntaxMapper.cs | type-name | ModuleSymbol | 1 | cite=#2443 | PINNED: the exempt mapper (contract item 1); a rise is an inspection moved into the mapper
+TypeSyntaxMapper.cs | type-name | ModuleType | 1 | cite=#2443 | PINNED: the exempt mapper (contract item 1); a rise is an inspection moved into the mapper
+TypeSyntaxMapper.cs | type-name | NullableType | 4 | cite=#2443 | PINNED: the exempt mapper (contract item 1); a rise is an inspection moved into the mapper
+TypeSyntaxMapper.cs | type-name | OptionalType | 1 | cite=#2443 | PINNED: the exempt mapper (contract item 1); a rise is an inspection moved into the mapper
+TypeSyntaxMapper.cs | type-name | ResultType | 1 | cite=#2443 | PINNED: the exempt mapper (contract item 1); a rise is an inspection moved into the mapper
+TypeSyntaxMapper.cs | type-name | SelfType | 3 | cite=#2443 | PINNED: the exempt mapper (contract item 1); a rise is an inspection moved into the mapper
+TypeSyntaxMapper.cs | type-name | SemanticType | 13 | cite=#2443 | PINNED: the exempt mapper (contract item 1); a rise is an inspection moved into the mapper
+TypeSyntaxMapper.cs | type-name | Symbol | 6 | cite=#2443 | PINNED: the exempt mapper (contract item 1); a rise is an inspection moved into the mapper
+TypeSyntaxMapper.cs | type-name | TaskType | 1 | cite=#2443 | PINNED: the exempt mapper (contract item 1); a rise is an inspection moved into the mapper
+TypeSyntaxMapper.cs | type-name | TupleType | 2 | cite=#2443 | PINNED: the exempt mapper (contract item 1); a rise is an inspection moved into the mapper
+TypeSyntaxMapper.cs | type-name | TypeParameterType | 1 | cite=#2443 | PINNED: the exempt mapper (contract item 1); a rise is an inspection moved into the mapper
+TypeSyntaxMapper.cs | type-name | TypeSymbol | 12 | cite=#2443 | PINNED: the exempt mapper (contract item 1); a rise is an inspection moved into the mapper
+TypeSyntaxMapper.cs | type-name | UnionType | 1 | cite=#2443 | PINNED: the exempt mapper (contract item 1); a rise is an inspection moved into the mapper
+TypeSyntaxMapper.cs | type-name | UnknownType | 4 | cite=#2443 | PINNED: the exempt mapper (contract item 1); a rise is an inspection moved into the mapper
+TypeSyntaxMapper.cs | type-name | UnmappedClrType | 1 | cite=#2443 | PINNED: the exempt mapper (contract item 1); a rise is an inspection moved into the mapper
+TypeSyntaxMapper.cs | type-name | UserDefinedType | 7 | cite=#2443 | PINNED: the exempt mapper (contract item 1); a rise is an inspection moved into the mapper
+TypeSyntaxMapper.cs | type-name | VoidType | 2 | cite=#2443 | PINNED: the exempt mapper (contract item 1); a rise is an inspection moved into the mapper
+TypeSyntaxMapper.cs | type-name-compare | name-compare | 2 | cite=#2443 | PINNED: the exempt mapper (contract item 1); a rise is a compare moved into the mapper
 TypeSyntaxMapper.cs | type-read | GetExpressionType | 1 | cite=#2443 | the node-type lookup inside TypeSyntaxMapper (its contract is SemanticType -> TypeSyntax); drains when callers pass the SemanticType they already hold
 TypeSyntaxMapper.cs | type-read | GetTypeAnnotation | 3 | cite=#2443 | reads a SemanticType via GetTypeAnnotation (reflected type-read accessor); drains when the decision rides the IR or the mapper hand-off

@@ -214,6 +214,7 @@ type Handle = int
 type Pair[T] = tuple[T, T]
 
 const LIMIT: int = 200
+const RATE: float = 2.5
 ";
 
     /// <summary>
@@ -236,6 +237,7 @@ from lib import SubRegistry
 from lib import Handle
 from lib import Pair
 from lib import LIMIT
+from lib import RATE
 
 
 def main() -> None:
@@ -296,6 +298,7 @@ def main() -> None:
             ["typeAlias"] = lookup("Handle") as TypeAliasSymbol,
             ["genericAlias"] = lookup("Pair") as TypeAliasSymbol,
             ["constVar"] = lookup("LIMIT") as VariableSymbol,
+            ["floatConstVar"] = lookup("RATE") as VariableSymbol,
         };
     }
 
@@ -457,6 +460,13 @@ def main() -> None:
         F<VariableSymbol>("ConstantValue", v => v.ConstantValue?.ToString(),
             CacheStatus.RoundTrips,
             "CachedSymbol.ConstantValue — BigInteger? serialized as invariant-culture string (#1460)"),
+        F<VariableSymbol>("FloatConstantValue",
+            v => v.FloatConstantValue?.ToString("R", System.Globalization.CultureInfo.InvariantCulture),
+            CacheStatus.RoundTrips,
+            "CachedSymbol.Properties[FloatConstantValue] — double? serialized \"R\" invariant; the `/` "
+            + "divisor rule reads it, so an imported float/decimal const divisor emits the same native or "
+            + "guarded division in a warm build as in the cold one (#2517). ModuleLoader folds it for an "
+            + "in-project import, as it folds ConstantValue"),
         F<VariableSymbol>("IsCompileTimeConstant", v => v.IsCompileTimeConstant,
             CacheStatus.RoundTrips,
             "CachedSymbol.IsCompileTimeConstant — the ONE const-eligibility fact (#1791). A project "

@@ -297,6 +297,16 @@ public class ErrorCompletenessPropertyTests
     public void SuperInitArity_IsRejected() =>
         RunInjectionTest(ErrorInjector.InjectSuperInitArity, "super().__init__ with an extra argument", MutationBases.Classes());
 
+    /// <summary>#2507: a statement ahead of <c>super().__init__(…)</c>, which runs as the constructor initializer — SPY0292.</summary>
+    [Fact]
+    public void StatementAheadOfChainingCall_IsRejected() =>
+        RunInjectionTest(ErrorInjector.InjectStatementAheadOfChainingCall, "a statement ahead of super().__init__", MutationBases.Classes());
+
+    /// <summary>#2507: a constructor using both <c>super().__init__(…)</c> and <c>self.__init__(…)</c> — SPY0351.</summary>
+    [Fact]
+    public void BothChainingCalls_AreRejected() =>
+        RunInjectionTest(ErrorInjector.InjectBothChainingCalls, "super().__init__ and self.__init__ in one constructor", MutationBases.Classes());
+
     /// <summary>P63b (#2324): a user constructor's argument replaced by a literal its parameter refuses — SPY0220.</summary>
     [Fact]
     public void WrongTypedConstructorArgument_IsRejected() =>
@@ -519,10 +529,9 @@ public class ErrorCompletenessPropertyTests
         RunInjectionTest(ErrorInjector.InjectConditionalExpressionStatement, "conditional expression statement", MutationBases.TypedStatements());
 
     /// <summary>P63b (#2324): a <c>try</c> whose handlers go subclass → base, reordered base first: the
-    /// subclass handler is dead, Sharpy accepts it and Roslyn refuses it (SPY0908 CS0160) — a KnownRed pin
-    /// on #2363.</summary>
+    /// subclass handler is dead, as in python — exactly one SPY0488 warning and no error (#2363).</summary>
     [Fact]
-    public void HandlerOrderBaseFirst_IsPinned() =>
+    public void HandlerOrderBaseFirst_IsWarned() =>
         RunInjectionTest(ErrorInjector.InjectHandlerOrderBaseFirst, "handler order base first", GenExceptions.ModuleWithExceptionHierarchy());
 
     /// <summary>P63b (#2324): <c>def main(arg: int)</c>: Sharpy accepts it and Roslyn refuses it (SPY0908 CS1558) — a KnownRed pin on #2335 that fails the first time the program is refused.</summary>

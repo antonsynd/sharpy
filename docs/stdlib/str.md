@@ -232,10 +232,13 @@ Python: `str.translate(table)`
 
 ### `encode(encoding: str = "utf-8", errors: str = "strict") -> bytes`
 
-Encode the string using the specified encoding and return as bytes. An unencodable
-character raises `UnicodeEncodeError` under `errors="strict"`, becomes
-`?` under `"replace"` and is dropped under `"ignore"`; any other handler name
-raises `LookupError` when an error occurs (#2477).
+Encode the string using the specified encoding and return as bytes. The encoding is named as
+python names it (aliases, any case, `-`/`_`/space alike); `utf-16`,
+`utf-32` and `utf-8-sig` write a byte-order mark first. An unencodable character
+raises `UnicodeEncodeError` under `errors="strict"`, becomes `?` under
+`"replace"`, is dropped under `"ignore"`, and is escaped under
+`"backslashreplace"` and `"xmlcharrefreplace"`; an unknown handler name raises
+`LookupError` when an error occurs (#2477, #2495).
 Python: `str.encode(encoding='utf-8', errors='strict')`
 
 ### `find(sub: str) -> int`

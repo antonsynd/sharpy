@@ -21,7 +21,7 @@ namespace Sharpy.Statistics
         public static double Mean(Sharpy.List<double> data)
         {
             Sharpy.List<double> values = global::Sharpy.Statistics.StatisticsModule._Materialize(data);
-            return global::Sharpy.Statistics.StatisticsModule._Sum(values) / global::Sharpy.Builtins.Len(values);
+            return global::Sharpy.Builtins.TrueDiv(global::Sharpy.Statistics.StatisticsModule._Sum(values), global::Sharpy.Builtins.Len(values));
         }
 
         /// <summary>
@@ -153,9 +153,9 @@ namespace Sharpy.Statistics
                 throw new global::Sharpy.StatisticsError("variance requires at least two data points");
             }
 
-            double m = global::Sharpy.Statistics.StatisticsModule._Sum(values) / global::Sharpy.Builtins.Len(values);
+            double m = global::Sharpy.Builtins.TrueDiv(global::Sharpy.Statistics.StatisticsModule._Sum(values), global::Sharpy.Builtins.Len(values));
             double ss = global::Sharpy.Statistics.StatisticsModule._SumOfSquaredDeviations(values, m);
-            return ss / (global::Sharpy.Builtins.Len(values) - 1);
+            return global::Sharpy.Builtins.TrueDiv(ss, (global::Sharpy.Builtins.Len(values) - 1));
         }
 
         /// <summary>
@@ -164,9 +164,9 @@ namespace Sharpy.Statistics
         public static double Pvariance(Sharpy.List<double> data)
         {
             Sharpy.List<double> values = global::Sharpy.Statistics.StatisticsModule._Materialize(data);
-            double m = global::Sharpy.Statistics.StatisticsModule._Sum(values) / global::Sharpy.Builtins.Len(values);
+            double m = global::Sharpy.Builtins.TrueDiv(global::Sharpy.Statistics.StatisticsModule._Sum(values), global::Sharpy.Builtins.Len(values));
             double ss = global::Sharpy.Statistics.StatisticsModule._SumOfSquaredDeviations(values, m);
-            return ss / global::Sharpy.Builtins.Len(values);
+            return global::Sharpy.Builtins.TrueDiv(ss, global::Sharpy.Builtins.Len(values));
         }
 
         /// <summary>

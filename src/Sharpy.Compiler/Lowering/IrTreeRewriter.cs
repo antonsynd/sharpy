@@ -85,6 +85,16 @@ internal abstract class IrTreeRewriter
                         : storeWrap;
                 }
 
+            case IrPrunedTry prunedTry:
+                {
+                    // A try whose covered handlers are left out (#2363) is still a try: its body and
+                    // its surviving handlers hold foldable operands, as the opaque try it replaced did.
+                    var children = RewriteChildren(prunedTry.Children, context, out var childrenChanged);
+                    return childrenChanged
+                        ? new IrPrunedTry(prunedTry.Handlers, prunedTry.Span, children)
+                        : prunedTry;
+                }
+
             case IrOptionalWrappedElement wrappedElement:
                 {
                     // The wrapped element is a foldable operand (P82 #2443): `p, q = 2 + 3, 4`.

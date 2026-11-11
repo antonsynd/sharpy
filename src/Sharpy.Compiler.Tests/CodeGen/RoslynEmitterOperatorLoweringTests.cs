@@ -294,7 +294,8 @@ public class RoslynEmitterOperatorLoweringTests
     [InlineData(OperatorLoweringKind.IntegerPowULong, "global::Sharpy.Builtins.CheckedIntPow((ulong)(a), (ulong)(b))")]
     [InlineData(OperatorLoweringKind.IntegerPowULongExponentLong, "global::Sharpy.Builtins.CheckedIntPow((ulong)(a), (long)(b))")]
     [InlineData(OperatorLoweringKind.IntegerPowLongExponentULong, "global::Sharpy.Builtins.CheckedIntPow((long)(a), (ulong)(b))")]
-    [InlineData(OperatorLoweringKind.FloatPow, "global::System.Math.Pow(a, b)")]
+    [InlineData(OperatorLoweringKind.FloatPow, "global::Sharpy.Builtins.FloatPow(a, b)")]
+    [InlineData(OperatorLoweringKind.Float32Pow, "(float)global::Sharpy.Builtins.FloatPow(a, b)")]
     [InlineData(OperatorLoweringKind.DecimalPow, "global::System.Math.Pow((double)(a), (double)(b))")]
     public void Power_SameAst_FollowsTheRecordedFamily(OperatorLoweringKind kind, string expected)
     {
@@ -315,6 +316,34 @@ public class RoslynEmitterOperatorLoweringTests
         var act = () => Emit(binOp);
 
         act.Should().Throw<InvalidOperationException>().WithMessage("*No power lowering recorded*");
+    }
+
+    #endregion
+
+    #region True division (#2517)
+
+    [Theory]
+    [InlineData(OperatorLoweringKind.GuardedTrueDivisionCastLeft, "global::Sharpy.Builtins.TrueDiv((double)(a), b)")]
+    [InlineData(OperatorLoweringKind.GuardedTrueDivision, "global::Sharpy.Builtins.TrueDiv(a, b)")]
+    [InlineData(OperatorLoweringKind.TrueDivisionCastLeft, "(double)(a) / b")]
+    public void Divide_SameAst_FollowsTheRecordedFamily(OperatorLoweringKind kind, string expected)
+    {
+        var binOp = new BinaryOp { Left = Id("a"), Operator = BinaryOperator.Divide, Right = Id("b") };
+        var info = new SemanticInfo();
+        info.SetOperatorLowering(binOp, new OperatorLowering(kind));
+        _context.SemanticInfo = info;
+
+        Emit(binOp).Should().Be(expected);
+    }
+
+    [Fact]
+    public void Divide_WithoutTag_EmitsNativeDivide()
+    {
+        // A user __truediv__ / CLR op_Division operand records nothing and keeps the native operator.
+        var binOp = new BinaryOp { Left = Id("a"), Operator = BinaryOperator.Divide, Right = Id("b") };
+        _context.SemanticInfo = new SemanticInfo();
+
+        Emit(binOp).Should().Be("a / b");
     }
 
     #endregion

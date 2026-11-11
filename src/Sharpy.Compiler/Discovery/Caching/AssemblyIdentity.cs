@@ -1,6 +1,4 @@
 using System.Reflection;
-using System.Security.Cryptography;
-using System.Text;
 
 namespace Sharpy.Compiler.Discovery.Caching;
 
@@ -32,7 +30,7 @@ internal class AssemblyIdentity
         {
             Name = assemblyName.Name ?? "Unknown",
             Version = assemblyName.Version?.ToString() ?? "1.0.0",
-            ContentHash = string.IsNullOrEmpty(location) ? string.Empty : ComputeFileHash(location),
+            ContentHash = ImageIdentityOf(assembly),
             FilePath = location,
             CompilerVersion = Shared.CompilerIdentity.Version
         };
@@ -51,16 +49,15 @@ internal class AssemblyIdentity
         return $"{Name.ToLowerInvariant()}-{Version}-{hash}-{compilerTag}.json.gz";
     }
 
-    private static string ComputeFileHash(string filePath)
-    {
-        if (!File.Exists(filePath))
-            return string.Empty;
-
-        using var stream = File.OpenRead(filePath);
-        using var sha256 = SHA256.Create();
-        var hashBytes = sha256.ComputeHash(stream);
-        return Convert.ToHexString(hashBytes).ToLowerInvariant();
-    }
+    /// <summary>
+    /// The identity of the LOADED image: its module version id, as 32 hex digits. Not a hash of the
+    /// file now at <see cref="Assembly.Location"/>: that file can have been replaced since the load (an
+    /// index built from the old image would be filed under the new file's hash, #2114) or deleted (a
+    /// pruned cache copy; the hash was empty and the key <c>{name}-{version}-no-hash</c> collided across
+    /// builds). The MVID names the bytes the runtime mapped, survives the file, and costs no read.
+    /// </summary>
+    private static string ImageIdentityOf(Assembly assembly)
+        => assembly.ManifestModule.ModuleVersionId.ToString("N");
 
     public override bool Equals(object? obj)
     {

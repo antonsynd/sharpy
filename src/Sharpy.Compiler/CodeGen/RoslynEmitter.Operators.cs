@@ -1158,8 +1158,8 @@ internal partial class RoslynEmitter
     /// <see cref="OperatorLoweringKind.IntegerPowULong"/>,
     /// <see cref="OperatorLoweringKind.IntegerPowULongExponentLong"/>,
     /// <see cref="OperatorLoweringKind.IntegerPowLongExponentULong"/>;
-    /// <see cref="OperatorLoweringKind.FloatPow"/> is <c>Math.Pow</c>,
-    /// <see cref="OperatorLoweringKind.Float32Pow"/> is <c>(float)Math.Pow</c> (#2189),
+    /// <see cref="OperatorLoweringKind.FloatPow"/> is <c>Builtins.FloatPow</c> (zero-guarded <c>Math.Pow</c>, #2517),
+    /// <see cref="OperatorLoweringKind.Float32Pow"/> is <c>(float)Builtins.FloatPow</c> (#2189),
     /// <see cref="OperatorLoweringKind.DecimalPow"/> is <c>Math.Pow</c> over <c>(double)</c> casts.
     /// There is no type-inspecting fallback: an unrecorded power throws, because a <c>**</c> that
     /// passed inference is always one of these eight (a user-defined or CLR operand is refused by
@@ -1184,10 +1184,10 @@ internal partial class RoslynEmitter
                     CastExpression(PredefinedType(Token(SyntaxKind.DoubleKeyword)), ParenthesizedExpression(right)));
 
             case OperatorLoweringKind.FloatPow:
-                return GenerateDoublePow(left, right);
+                return GenerateGuardedFloatPow(left, right);
 
             case OperatorLoweringKind.Float32Pow:
-                return CastExpression(PredefinedType(Token(SyntaxKind.FloatKeyword)), GenerateDoublePow(left, right));
+                return CastExpression(PredefinedType(Token(SyntaxKind.FloatKeyword)), GenerateGuardedFloatPow(left, right));
 
             case OperatorLoweringKind.IntegerPowInt:
                 return GenerateCheckedIntPow(left, right,
@@ -1232,6 +1232,24 @@ internal partial class RoslynEmitter
                 Argument(right));
     }
 
+    /// <summary>
+    /// Generates <c>global::Sharpy.Builtins.FloatPow(left, right)</c> — the float64/float32
+    /// exponentiation arm: <c>Math.Pow</c> behind CPython's zero rule, so zero raised to a finite
+    /// negative power raises <c>ZeroDivisionError</c> instead of yielding <c>inf</c> (#2517). The
+    /// decimal arm keeps <see cref="GenerateDoublePow"/>: CPython's <c>Decimal(0) ** -1</c> is
+    /// <c>Infinity</c>, not an error.
+    /// </summary>
+    private ExpressionSyntax GenerateGuardedFloatPow(ExpressionSyntax left, ExpressionSyntax right)
+    {
+        return InvocationExpression(
+            MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression,
+                MakeGlobalQualifiedName("Sharpy", "Builtins"),
+                IdentifierName("FloatPow")))
+            .AddArgumentListArguments(
+                Argument(left),
+                Argument(right));
+    }
+
     private ExpressionSyntax GenerateCheckedIntPow(
         ExpressionSyntax left,
         ExpressionSyntax right,
@@ -1245,6 +1263,52 @@ internal partial class RoslynEmitter
             .AddArgumentListArguments(
                 Argument(CastExpression(PredefinedType(Token(leftCastKind)), ParenthesizedExpression(left))),
                 Argument(CastExpression(PredefinedType(Token(rightCastKind)), ParenthesizedExpression(right))));
+    }
+
+    /// <summary>
+    /// Single routing seam for <c>/</c> — used by both the binary-operator site and the augmented
+    /// <c>/=</c> site so neither can drift (#2517). The lowering is the <see cref="OperatorLowering"/>
+    /// tag the TypeChecker recorded on <paramref name="operatorNode"/>:
+    /// <see cref="OperatorLoweringKind.GuardedTrueDivisionCastLeft"/> is
+    /// <c>Builtins.TrueDiv((double)(left), right)</c>, <see cref="OperatorLoweringKind.GuardedTrueDivision"/>
+    /// is <c>Builtins.TrueDiv(left, right)</c> (C# picks the float64/float32/decimal overload). The
+    /// helper owns the <c>ZeroDivisionError</c> guard, so each operand is spliced once and no
+    /// literal zero divisor reaches a C# operator (no CS0020 for <c>7m / 0m</c>, no Roslyn-folded
+    /// <c>inf</c> for <c>1 / 0</c>). <see cref="OperatorLoweringKind.TrueDivisionCastLeft"/> (a
+    /// non-zero literal divisor) is the native <c>(double)(left) / right</c>. <b>No record</b> is a
+    /// legitimate cell, as for <c>%</c>: a non-zero literal float/decimal divisor, a user
+    /// <c>__truediv__</c> type or a CLR <c>op_Division</c> type keeps the native <c>/</c>.
+    /// </summary>
+    private ExpressionSyntax GenerateTrueDivideValue(ExpressionSyntax left, ExpressionSyntax right, Node operatorNode)
+    {
+        switch (_context.SemanticInfo?.GetOperatorLowering(operatorNode)?.Kind)
+        {
+            case OperatorLoweringKind.GuardedTrueDivisionCastLeft:
+                return GenerateTrueDiv(CastLeftToDouble(left), right);
+
+            case OperatorLoweringKind.GuardedTrueDivision:
+                return GenerateTrueDiv(left, right);
+
+            case OperatorLoweringKind.TrueDivisionCastLeft:
+                return EmittedTreePrecedence.Binary(SyntaxKind.DivideExpression, CastLeftToDouble(left), right);
+
+            default:
+                return EmittedTreePrecedence.Binary(SyntaxKind.DivideExpression, left, right);
+        }
+    }
+
+    private static ExpressionSyntax CastLeftToDouble(ExpressionSyntax left)
+        => CastExpression(PredefinedType(Token(SyntaxKind.DoubleKeyword)), ParenthesizedExpression(left));
+
+    private ExpressionSyntax GenerateTrueDiv(ExpressionSyntax left, ExpressionSyntax right)
+    {
+        return InvocationExpression(
+            MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression,
+                MakeGlobalQualifiedName("Sharpy", "Builtins"),
+                IdentifierName("TrueDiv")))
+            .AddArgumentListArguments(
+                Argument(left),
+                Argument(right));
     }
 
     /// <summary>

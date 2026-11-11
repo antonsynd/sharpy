@@ -577,6 +577,26 @@ deviations:
         len("😀")        # 2  (UTF-16 code units)
         "😀"[0]          # high-surrogate code unit '\uD83D'
 
+  - id: timedelta-range-timespan
+    code: null
+    category: stdlib
+    audience: python
+    severity: none
+    python_behavior: "`timedelta` holds any magnitude up to 999999999 days (`timedelta.max` is `999999999 days, 23:59:59.999999`); `OverflowError` only past that."
+    sharpy_behavior: "A `timedelta` is a .NET `TimeSpan` (Axiom 1): its magnitude is at most 10675199 days, 2:48:05.477580, about 1.07% of Python's range. Construction or arithmetic whose result lies between the two limits raises `OverflowError` (`days=N; outside the range Sharpy can represent: ...`) where Python returns a value; past Python's own limit both raise `OverflowError` with Python's text. Ruling on #2109 (batching 2026-09-30): the overflow is a Python-named `OverflowError` with this row, never a raw `System.OverflowException`."
+    spec_ref: null
+    existing_diagnostic: null
+    planned_diagnostic: null
+    example:
+      python: |
+        from datetime import timedelta
+        print(timedelta(days=11000000))      # 11000000 days, 0:00:00
+        print(timedelta(days=10675199, hours=3))   # 10675199 days, 3:00:00
+      sharpy: |
+        from datetime import timedelta
+        print(timedelta(days=11000000))      # OverflowError: days=11000000; outside the range Sharpy can represent ...
+        print(timedelta(days=10675199, hours=3))   # OverflowError: days=10675199; outside the range Sharpy can represent ...
+
   - id: format-spec-non-bmp-code-units
     code: null
     category: stdlib
@@ -1630,6 +1650,42 @@ deviations:
         print(d < decimal(f))       # True  — compare as decimal
         print(float(d) < f)         # True  — or compare as float64
 
+  - id: decimal-power-is-float
+    code: null
+    category: operators
+    audience: python
+    severity: none
+    python_behavior: "`Decimal ** Decimal` is a `Decimal`, computed in the decimal context; zero to a negative power is `Decimal('Infinity')` (the DivisionByZero signal is not trapped by default): `Decimal(0) ** -1` prints `Infinity` (python3 3.15)."
+    sharpy_behavior: "`decimal ** decimal` lowers to `Math.Pow((double)x, (double)y)` and is typed `float` (arithmetic_operators.md, the `**` table), so `0m ** -1` prints `inf`, not `Infinity`. It is the one power arm that does NOT raise ZeroDivisionError for zero to a negative power (#2517): CPython's Decimal does not raise there either. Convert explicitly when a decimal result is needed."
+    spec_ref: docs/language_specification/arithmetic_operators.md
+    existing_diagnostic: null
+    planned_diagnostic: null
+    example:
+      python: |
+        from decimal import Decimal
+        print(Decimal(0) ** -1)     # Infinity
+      sharpy: |
+        print(0m ** -1)             # inf  — a float result
+
+  - id: decimal-zero-by-zero-raises-zerodivisionerror
+    code: null
+    category: semantics
+    audience: python
+    severity: none
+    python_behavior: "`Decimal(0) / Decimal(0)` (and `//`) raises `decimal.InvalidOperation` (DivisionUndefined), which is NOT a `ZeroDivisionError`; a non-zero dividend raises `decimal.DivisionByZero`, which is (python3 3.15)."
+    sharpy_behavior: "Every decimal division by zero raises `ZeroDivisionError` (\"division by zero\" for `/`, \"decimal floor division by zero\" for `//`), including a zero dividend, so `except InvalidOperation` does not catch `0m / 0m` and `except ZeroDivisionError` does. Decimal `%` by zero raises `InvalidOperation` as CPython does."
+    spec_ref: docs/language_specification/arithmetic_operators.md
+    existing_diagnostic: null
+    planned_diagnostic: null
+    example:
+      python: |
+        from decimal import Decimal
+        z = Decimal(0)
+        z / z                       # decimal.InvalidOperation
+      sharpy: |
+        z: decimal = 0m
+        print(z / z)                # ZeroDivisionError: division by zero
+
   - id: float-is-double
     code: null
     category: types
@@ -1759,6 +1815,33 @@ deviations:
         class B(A):
             def __init__(self) -> None:
                 super().__init__()   # OK
+
+  - id: constructor-chaining-call-first
+    code: SPY0292
+    category: semantics
+    audience: python
+    severity: error
+    python_behavior: "`super().__init__(...)` (and a call to another `__init__`) is an ordinary call: statements written ahead of it run first, in source order, and it may sit under control flow or inside an expression."
+    sharpy_behavior: "A chaining call (`super().__init__(...)` or `self.__init__(...)`) runs as the C# constructor initializer (`: base(...)` / `: this(...)`), before the body, so it must be the constructor's first statement (a docstring may precede it), written once, as a statement of its own. Any statement ahead of it is refused, including `pass`, `...`, a bare annotation and a nested `def`. So is a call under control flow, a repeated call, or one inside an expression. All of these are SPY0292 (R-ML, #2507; owner ruling 2026-11-11: stay strict). Using both chaining calls is SPY0351. A value an argument needs is computed inside the argument expression or in a `@static` helper. Statements after the call run in source order as in Python."
+    spec_ref: docs/language_specification/constructors.md
+    existing_diagnostic: SPY0292
+    planned_diagnostic: null
+    example:
+      python: |
+        class Base:
+            def __init__(self, value: int):
+                self.value = value
+        class Child(Base):
+            def __init__(self, value: int, extra: int):
+                self.extra = extra
+                super().__init__(value)
+        c = Child(10, 20)
+        print(c.value, c.extra)   # 10 20
+      sharpy: |
+        class Child(Base):
+            def __init__(self, value: int, extra: int):
+                self.extra = extra
+                super().__init__(value)   # ERROR SPY0292: move the call first
 
   - id: pow-returns-float
     code: null
@@ -2705,3 +2788,30 @@ deviations:
                 raise ExceptionGroup('errors', errors)
             except BaseExceptionGroup as eg:  # ERROR SPY0202: Type 'BaseExceptionGroup' not found
                 print('caught as BaseExceptionGroup')
+
+  - id: except-exception-catches-systemexit
+    code: SPY0709
+    category: semantics
+    audience: python
+    severity: error
+    python_behavior: "`SystemExit`, `KeyboardInterrupt` and `GeneratorExit` derive from `BaseException`, not `Exception`, so `except Exception:` does not catch them: a later `except SystemExit:` (or a bare `except:`) after `except Exception:` runs for them."
+    sharpy_behavior: "There is no `BaseException` (exception_handling.md \"No BaseException\"): `SystemExit` derives from `System.Exception` (Core marks it `[PythonBaseException]`; `KeyboardInterrupt` and `GeneratorExit` are not defined). `except Exception:` therefore catches it, so a later handler that names `SystemExit` (alone or in a tuple) could never run: it is refused SPY0709. A handler naming only `SystemExit` is told to move before `except Exception:`, where it runs as in python; a tuple that also names other types is told to handle `SystemExit` in a handler of its own first, since moving the whole tuple would take its other types away from the `Exception` handler. A later bare `except:` is left out with a SPY0488 warning that says python would still run it for `SystemExit` (#2363)."
+    spec_ref: docs/language_specification/exception_handling.md
+    existing_diagnostic: SPY0709
+    planned_diagnostic: null
+    example:
+      python: |
+        try:
+            raise SystemExit(2)
+        except Exception:
+            print('exc')
+        except SystemExit:
+            print('exit')   # printed
+      sharpy: |
+        def main():
+            try:
+                raise SystemExit(2)
+            except Exception:
+                print('exc')
+            except SystemExit:  # ERROR SPY0709: move this handler before the 'Exception' handler
+                print('exit')

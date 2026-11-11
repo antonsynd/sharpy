@@ -1,6 +1,7 @@
 using System.Collections;
 using System.Collections.Immutable;
 using System.Diagnostics.CodeAnalysis;
+using Sharpy.Compiler.Diagnostics;
 using Sharpy.Compiler.Parser.Ast;
 using Sharpy.Compiler.Semantic;
 using Sharpy.Compiler.Shared;
@@ -59,10 +60,30 @@ internal sealed partial class LoweringPass
             irModules.Add(new IrModule(filePath, body.ToImmutable()));
         }
 
+        AssertMarksConsumed(state);
+
         return new IrCompilation(irModules.ToImmutable(), new IrIndex(state.Index), state.WithItems, state.GeneratorFunctions)
         {
             GeneratorQualifiedNames = state.GeneratorQualifiedNames,
         };
+    }
+
+    /// <summary>
+    /// The mark-then-consume side map is empty once the walk is done: every tuple element an
+    /// unpacking marked (<see cref="MarkWrappedTupleElements"/>) is consumed when
+    /// <see cref="LowerExpression"/> reaches it. A leftover mark is an element the walk never
+    /// lowered, whose store would silently lose its Optional wrap.
+    /// </summary>
+    private static void AssertMarksConsumed(LoweringState state)
+    {
+        if (state.WrappedElements.Count == 0)
+            return;
+
+        var leftover = state.WrappedElements.Keys.First();
+        throw new InternalCompilerErrorException("LoweringPass",
+            $"{state.WrappedElements.Count} Optional-wrapped tuple element mark(s) were never consumed "
+            + $"(first: {leftover.GetType().Name})",
+            leftover);
     }
 
     private static IrStatement LowerStatement(Statement statement, SemanticInfo semanticInfo, LoweringState state)
@@ -138,7 +159,18 @@ internal sealed partial class LoweringPass
             }
         }
 
+        // A decorator's arguments are not child nodes, but the emitter generates a bracket
+        // attribute's arguments as C# constant expressions (`@[obsolete("m", 1 == 2)]`), reading
+        // their lowering facts from the IR like any other expression. They lower first, in source
+        // order, ahead of the statement's own children.
+        var decoratorArguments = DecoratorArgumentsOf(statement);
+        var loweredDecoratorArguments = ImmutableArray.CreateBuilder<IrNode>(decoratorArguments.Count);
+        foreach (var argument in decoratorArguments)
+            loweredDecoratorArguments.Add(LowerExpression(argument, semanticInfo, state));
+
         var children = LowerChildren(statement, semanticInfo, state);
+        if (loweredDecoratorArguments.Count > 0)
+            children = loweredDecoratorArguments.ToImmutable().AddRange(children);
 
         // A `match None:` scrutinee carries the typed-null cast on the IR (P82 #2443, migrates
         // _matchScrutineeLowerings).
@@ -147,6 +179,18 @@ internal sealed partial class LoweringPass
 
         if (scopeName != null)
             state.QualifiedNamePrefix.RemoveAt(state.QualifiedNamePrefix.Count - 1);
+
+        // A `try` whose handlers (or tuple-handler types) an earlier handler already covers carries
+        // which catches to emit (#2363): the classifier the SPY0488 warning reads.
+        if (statement is TryStatement tryStatement
+            && ExceptHandlerReachability.Classify(tryStatement, semanticInfo) is var verdicts
+            && verdicts.Any(v => v.PrunesAnything))
+        {
+            var plans = verdicts.Select(v => new IrHandlerPlan(!v.IsUnreachable, v.TypeReachable)).ToImmutableArray();
+            var pruned = new IrPrunedTry(plans, SpanOf(tryStatement), children);
+            state.Index[tryStatement] = pruned;
+            return pruned;
+        }
 
         var ir = new IrOpaqueStatement(statement, SpanOf(statement), children);
         state.Index[statement] = ir;
@@ -387,17 +431,9 @@ internal sealed partial class LoweringPass
         var children = LowerChildren(lambda, semanticInfo, state);
         var body = state.Index[lambda.Body];
         var elided = new IrElidedNoneBody(body.Type, body.Span, body.Children);
-        state.Index[lambda.Body] = elided;
-
-        var builder = children.ToBuilder();
-        for (var i = 0; i < builder.Count; i++)
-        {
-            if (ReferenceEquals(builder[i], body))
-                builder[i] = elided;
-        }
 
         return new IrOpaqueExpression(lambda, semanticInfo.GetExpressionType(lambda), SpanOf(lambda),
-            builder.ToImmutable());
+            Splice(lambda.Body, body, elided, children, state));
     }
 
     /// <summary>
@@ -422,15 +458,38 @@ internal sealed partial class LoweringPass
 
         var lowered = state.Index[scrutinee];
         var typed = new IrTypedNullScrutinee(lowered.Type, lowered.Span, lowered.Children);
-        state.Index[scrutinee] = typed;
+        return Splice(scrutinee, lowered, typed, children, state);
+    }
 
+    /// <summary>
+    /// Replaces the already-lowered node of <paramref name="ast"/> by <paramref name="replacement"/>
+    /// in both places it lives: the index entry and its slot among the parent's
+    /// <paramref name="children"/>. Exactly one slot holds <paramref name="lowered"/> (by reference),
+    /// because the child walk lowers each AST node once; a miss or a second hit would break the
+    /// tree's totality, so it is an internal compiler error rather than a silent no-op.
+    /// </summary>
+    private static ImmutableArray<IrNode> Splice(
+        Node ast, IrNode lowered, IrNode replacement, ImmutableArray<IrNode> children, LoweringState state)
+    {
         var builder = children.ToBuilder();
+        var replaced = 0;
         for (var i = 0; i < builder.Count; i++)
         {
             if (ReferenceEquals(builder[i], lowered))
-                builder[i] = typed;
+            {
+                builder[i] = replacement;
+                replaced++;
+            }
         }
 
+        if (replaced != 1)
+        {
+            throw new InternalCompilerErrorException("LoweringPass",
+                $"splicing the lowered {ast.GetType().Name} into its parent replaced {replaced} child slot(s), expected 1",
+                ast);
+        }
+
+        state.Index[ast] = replacement;
         return builder.ToImmutable();
     }
 
@@ -546,6 +605,47 @@ internal sealed partial class LoweringPass
     }
 
     private static TextSpan SpanOf(Node node) => node.Span ?? TextSpan.Empty;
+
+    /// <summary>
+    /// The decorators a statement carries. Decorators are not child nodes, so the child walk never
+    /// reaches their arguments; this names every AST statement with a <c>Decorators</c> property
+    /// (<c>DecoratorCoverageTests</c> checks the list against the AST by reflection).
+    /// </summary>
+    internal static ImmutableArray<Decorator> DecoratorsOf(Statement statement) => statement switch
+    {
+        DecoratedStatement s => s.Decorators,
+        VariableDeclaration s => s.Decorators,
+        FunctionDef s => s.Decorators,
+        ClassDef s => s.Decorators,
+        StructDef s => s.Decorators,
+        InterfaceDef s => s.Decorators,
+        EnumDef s => s.Decorators,
+        PropertyDef s => s.Decorators,
+        UnionDef s => s.Decorators,
+        EventDef s => s.Decorators,
+        _ => ImmutableArray<Decorator>.Empty,
+    };
+
+    /// <summary>
+    /// Every argument expression of <paramref name="statement"/>'s decorators — positional, then
+    /// keyword values — in source order.
+    /// </summary>
+    internal static IReadOnlyList<Expression> DecoratorArgumentsOf(Statement statement)
+    {
+        var decorators = DecoratorsOf(statement);
+        if (decorators.IsEmpty)
+            return Array.Empty<Expression>();
+
+        var arguments = new List<Expression>();
+        foreach (var decorator in decorators)
+        {
+            arguments.AddRange(decorator.Arguments);
+            foreach (var keyword in decorator.KeywordArguments)
+                arguments.Add(keyword.Value);
+        }
+
+        return arguments;
+    }
 
     /// <summary>
     /// Mutable accumulation state for a single lowering run: the reference-keyed AST→IR index and the
