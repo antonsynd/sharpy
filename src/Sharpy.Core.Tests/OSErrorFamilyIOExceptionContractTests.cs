@@ -12,14 +12,26 @@ namespace Sharpy.Core.Tests;
 /// </summary>
 public class OSErrorFamilyIOExceptionContractTests
 {
-    public static IEnumerable<object[]> Family() => new[]
+    /// <summary>
+    /// The family by reflection: <c>OSError</c> and every public Core type derived from it, each built
+    /// through its message constructor — so a subclass added to Core (<c>NotADirectoryError</c>, P33 D2)
+    /// joins the theory without a hand row.
+    /// </summary>
+    public static IEnumerable<object[]> Family() => FamilyTypes()
+        .Select(t => new object[] { (Exception)Activator.CreateInstance(t, "x")! });
+
+    internal static IEnumerable<Type> FamilyTypes() => typeof(OSError).Assembly.GetExportedTypes()
+        .Where(t => typeof(OSError).IsAssignableFrom(t) && !t.IsAbstract)
+        .OrderBy(t => t.FullName, StringComparer.Ordinal);
+
+    /// <summary>Floor and positive control: the scan finds the family the hand list named, and D2's addition.</summary>
+    [Fact]
+    public void Generated_family_holds_the_known_members()
     {
-        new object[] { new OSError("x") },
-        new object[] { new FileNotFoundError("x") },
-        new object[] { new FileExistsError("x") },
-        new object[] { new IsADirectoryError("x") },
-        new object[] { new PermissionError("x") },
-    };
+        var names = FamilyTypes().Select(t => t.Name).ToHashSet(StringComparer.Ordinal);
+        foreach (var expected in new[] { "OSError", "FileNotFoundError", "FileExistsError", "IsADirectoryError", "NotADirectoryError", "PermissionError" })
+            Assert.Contains(expected, names);
+    }
 
     [Theory]
     [MemberData(nameof(Family))]
