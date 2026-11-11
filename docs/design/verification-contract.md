@@ -324,9 +324,12 @@ only the owner changes a tier, and only upward (band → light → full) once im
 
 | Tier | Plan | `/verify-plan` | `/implement-plan` | `/verify-implementation` |
 |---|---|---|---|---|
-| **band** | none (charter §3.0 row) | — | one commit per chore; the band's gate + staleness gates are the verification | — |
+| **band** | none (charter §3.0 row) | — | one commit per chore; the band's gate + staleness gates, then the independent review below | — |
 | **light** | `/create-plan --light`: design-of-record only (Scope, Defect Class, Design Decisions with rungs, acceptance bullets with their mutations, Issues to Close with close criteria); no task list | `/verify-plan --adequacy`: a fresh reader grades Dimensions 6 and 7 only (matrix vs the touched arms; each guard's mutation, exemption and positive control) and the design decisions' predicates (Dimension 4's design rows); `check_plan_refs.py` replaces Dimension 1; Dimensions 2, 3, 5, 8, 9 are skipped and nothing is corrected inline | unchanged | Agents 2, 3 (whole) and 4; the lead checks every acceptance bullet itself in place of Agent 1 |
 | **full** | `/create-plan` | all nine dimensions | unchanged | all four auditors |
+
+At every tier, a pull request that changes code (`docs/process/README.md` item 6) merges only after
+the independent review of `/implement-plan` › Cleanup and Report step 4.
 
 A group is **full** when any one holds, and the charter row names the letter:
 (a) a decision is still open at planning time, or the group's surface is DEVIATION-by-default
