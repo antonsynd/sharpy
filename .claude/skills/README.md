@@ -63,6 +63,7 @@ How much of the pipeline a group runs is its **tier**, set at `/batch-issues` an
 | `/implement-plan` | `<path/to/plan.md> [--exclude "section1,section2"]` | Implement a stamped plan (`Adequacy-only` stamp + clean `check_plan_refs.py` on a `light` plan) with coordinated agents, lead-owned gates, and mutation-tested guards; promotes a light plan to full when an unruled door surfaces; opens the pull request once the gate is read |
 | `/verify-implementation` | `<path/to/plan.md>` | Verify completed plan implementation with refuting auditors (Agents 2–4 on a `light` plan, completeness by the lead), fix gaps/bugs/regressions, commit fixes, append the verify record to the committed plan on the implementation's pull request |
 | `/compiler-audit` | `[focus-area]` | Run a comprehensive compiler health audit |
+| `/health-watch` | `[--until <date>] [--goals <doc>] [--merge]` | Standing watch over merged PRs, issues and process changes: independent reviews, a dated health page, owner decisions; drives lane PRs to merge only when asked |
 
 ## Dogfooding
 
