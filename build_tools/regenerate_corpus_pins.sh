@@ -5,8 +5,10 @@
 # Run it after adding or changing a fixture under src/Sharpy.Compiler.Tests/Integration/TestFixtures/ when those
 # sweeps name the file. Each twin's rows are rewritten in place (sorted, one per line); review `git diff`: a new
 # fixture adds its own rows, and a changed or missing row of an existing stem is a finding until explained.
-# A stem whose Format Selection refusal ratio exceeds its route's bound fails the run instead of being written
-# (formatting-route-refusal-bounds.txt); the run never writes on CI.
+# The run fails before writing anything when a gate a regeneration cannot move does not hold: a stem above its route's
+# refusal-ratio bound without a hand-written row in formatting-route-refusal-exceptions.txt, an excepted stem whose
+# counts moved, or a corpus-level ceiling (refusal ratio, exemption cells per stem). It never writes on CI.
+# The stems file and the census stay human-reviewed: read the row diff and the totals lines printed at the end.
 #
 # Usage:
 #   bash build_tools/regenerate_corpus_pins.sh             # build Sharpy.Lsp.Tests, then regenerate
@@ -36,5 +38,9 @@ for class in FormattingRouteParitySweepTests CodeActionShapeSweepTests; do
     build="--no-build"
 done
 
-git --no-pager diff --stat -- src/Sharpy.Lsp.Tests/Conformance/formatting-route-census.txt \
-    src/Sharpy.Lsp.Tests/Conformance/code-action-shape-stems.txt
+FILES="src/Sharpy.Lsp.Tests/Conformance/formatting-route-census.txt src/Sharpy.Lsp.Tests/Conformance/code-action-shape-stems.txt"
+# shellcheck disable=SC2086  # two plain paths
+git --no-pager diff --stat -- $FILES
+echo "Volume (generated totals lines that moved; none printed means none moved):"
+# shellcheck disable=SC2086
+git --no-pager diff -U0 -- $FILES | grep -E '^[-+]# total ' || true

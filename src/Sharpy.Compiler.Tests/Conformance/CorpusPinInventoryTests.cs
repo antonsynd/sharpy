@@ -186,10 +186,11 @@ public sealed class CorpusPinInventoryTests
     internal static readonly string[] Reasons = CheckedReasons.Concat(new[] { "tuning-constant", "fixed-input", In }).ToArray();
 
     /// <summary>
-    /// The symbols a <c>rate-tolerance</c> row may sit in: the per-stem refusal-ratio bounds of the formatting route sweep
-    /// (R-DK's decision-rule instrument, R-MY), which judge each stem alone, so no fixture moves them for another.
+    /// The symbols a <c>rate-tolerance</c> row may sit in: the formatting route sweep's per-stem refusal-ratio bounds, its
+    /// corpus refusal-ratio ceilings and its census measures' ceilings per corpus stem (R-DK's decision-rule instrument, R-MY):
+    /// ratios, not counts, so an ordinary fixture does not move them.
     /// </summary>
-    internal static readonly string[] RateToleranceSymbols = { "RefusalRatioBoundPercent" };
+    internal static readonly string[] RateToleranceSymbols = { "RefusalRatioBoundPercent", "RefusalCorpusCeilingPercent", "CensusCellsPerThousandStemsCeiling" };
 
     /// <summary>The D3 set files: a per-stem column there is a set row, not a count pin.</summary>
     internal static readonly string[] SetFiles = { "formatting-route-census.txt", "code-action-shape-stems.txt", "generate-expression-uncompilable.txt" };

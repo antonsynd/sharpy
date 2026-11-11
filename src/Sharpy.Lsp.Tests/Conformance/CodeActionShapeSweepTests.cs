@@ -1961,13 +1961,17 @@ public sealed class CodeActionShapeSweepTests : IDisposable
             // The stem rows are generated; a key's cite row (its reason) is written by hand. The committed pins are read only
             // after the rewrite, so a cite row edited first never blocks it; a key of this twin that has stems but no cite
             // row, or a cite row whose key drained, is named now from the rewritten files.
-            GeneratedSetFile.Rewrite(StemsFileName, twin, Twins, actualRows);
+            GeneratedSetFile.Rewrite(StemsFileName, twin, Twins, actualRows, StemTotals(twin, actualRegular));
             _output.WriteLine($"CODEACTION-TWIN {twin} regenerated: {actualRows.Count} rows written to Conformance/{StemsFileName}");
-            var mismatch = TotalityProblem(ReadPins);
-            if (mismatch is not null && mismatch.Contains($" {twin} ", StringComparison.Ordinal))
-                Assert.Fail($"{twin} twin regenerated, but the cite rows do not match the stems: {mismatch}");
+            var mismatches = TotalityProblems(ParseAllowlist(ReadConformance(AllowlistFileName)), ParseStems(ReadConformance(StemsFileName)))
+                .Where(m => m.Twin == twin).Select(m => m.Message).ToList();
+            if (mismatches.Count > 0)
+                Assert.Fail($"{twin} twin regenerated, but its cite rows do not match its stems:\n  " + string.Join("\n  ", mismatches));
             return;
         }
+
+        var totals = GeneratedSetFile.TotalsOf(ReadConformance(StemsFileName), twin);
+        totals.Should().Equal(StemTotals(twin, actualRegular), $"the {twin} twin's totals header in Conformance/{StemsFileName} is generated: {GeneratedSetFile.Remedy}");
 
         var committed = Pins.Value.Stems.Where(r => r.Twin == twin)
             .GroupBy(r => new PinKey(r.Action, r.Bucket, r.Cite))
@@ -2245,45 +2249,42 @@ public sealed class CodeActionShapeSweepTests : IDisposable
     /// <summary>Totality of the two files: a key with stems needs its cite row; a cite row needs stems (no stemless cite row).</summary>
     internal static PinSet Total(IReadOnlyList<CiteRow> cites, IReadOnlyList<StemRow> stems)
     {
-        var citeKeys = cites.Select(r => KeyOf(r.Action, r.Twin, r.Bucket, r.Cite)).ToHashSet(StringComparer.Ordinal);
-        var stemKeys = stems.Select(r => KeyOf(r.Action, r.Twin, r.Bucket, r.Cite)).ToHashSet(StringComparer.Ordinal);
-        foreach (var key in stemKeys.Where(k => !citeKeys.Contains(k)).OrderBy(k => k, StringComparer.Ordinal))
-            throw new InvalidOperationException($"key {key} has stems but no cite row: add `{key.Insert(key.LastIndexOf(' '), " #")} reason` to Conformance/{AllowlistFileName}.");
-        foreach (var key in citeKeys.Where(k => !stemKeys.Contains(k)).OrderBy(k => k, StringComparer.Ordinal))
-        {
-            throw new InvalidOperationException($"Conformance/{AllowlistFileName}: the cite row of {key} has no stems in Conformance/{StemsFileName}: "
-                + "a stemless cite row is refused — a drained key loses its cite row; a FULL-only key is a record on its tracker.");
-        }
-
+        var problems = TotalityProblems(cites, stems);
+        if (problems.Count > 0)
+            throw new InvalidOperationException(string.Join("\n", problems.Select(p => p.Message)));
         return new PinSet(cites, stems);
     }
 
-    /// <summary>The loader's refusal of the two files read by <paramref name="read"/>, or null when they are total.</summary>
-    internal static string? TotalityProblem(Func<PinSet> read)
+    /// <summary>Every totality problem of the two files, each with the twin of its key: a key with stems but no cite row, a stemless cite row.</summary>
+    internal static SCG.List<(string Twin, string Message)> TotalityProblems(IReadOnlyList<CiteRow> cites, IReadOnlyList<StemRow> stems)
     {
-        try
+        var citeKeys = cites.ToDictionary(r => KeyOf(r.Action, r.Twin, r.Bucket, r.Cite), r => r.Twin, StringComparer.Ordinal);
+        var stemKeys = stems.GroupBy(r => KeyOf(r.Action, r.Twin, r.Bucket, r.Cite), StringComparer.Ordinal).ToDictionary(g => g.Key, g => g.First().Twin, StringComparer.Ordinal);
+        var problems = new SCG.List<(string Twin, string Message)>();
+        foreach (var (key, twin) in stemKeys.Where(k => !citeKeys.ContainsKey(k.Key)).OrderBy(k => k.Key, StringComparer.Ordinal))
+            problems.Add((twin, $"key {key} has stems but no cite row: add `{key.Insert(key.LastIndexOf(' '), " #")} reason` to Conformance/{AllowlistFileName}."));
+        foreach (var (key, twin) in citeKeys.Where(k => !stemKeys.ContainsKey(k.Key)).OrderBy(k => k.Key, StringComparer.Ordinal))
         {
-            read();
-            return null;
-        }
-        catch (InvalidOperationException ex)
-        {
-            return ex.Message;
-        }
-    }
-
-    private static PinSet ReadPins()
-    {
-        string[] Read(string file)
-        {
-            var path = GeneratedSetFile.PathOf(file);
-            if (!File.Exists(path))
-                throw new InvalidOperationException($"Conformance/{file} is missing. Its presence is what arms the set.");
-            return File.ReadAllLines(path);
+            problems.Add((twin, $"Conformance/{AllowlistFileName}: the cite row of {key} has no stems in Conformance/{StemsFileName}: "
+                + "a stemless cite row is refused — a drained key loses its cite row; a FULL-only key is a record on its tracker."));
         }
 
-        return Total(ParseAllowlist(Read(AllowlistFileName)), ParseStems(Read(StemsFileName)));
+        return problems;
     }
+
+    /// <summary>The generated totals line of one twin's stem set: its keys and rows.</summary>
+    internal static SCG.List<string> StemTotals(string twin, SCG.IReadOnlyDictionary<PinKey, SortedSet<string>> stems)
+        => new() { $"# total stems {twin} keys={stems.Count(p => p.Value.Count > 0)} rows={stems.Sum(p => p.Value.Count)}" };
+
+    private static string[] ReadConformance(string file)
+    {
+        var path = GeneratedSetFile.PathOf(file);
+        if (!File.Exists(path))
+            throw new InvalidOperationException($"Conformance/{file} is missing. Its presence is what arms the set.");
+        return File.ReadAllLines(path);
+    }
+
+    private static PinSet ReadPins() => Total(ParseAllowlist(ReadConformance(AllowlistFileName)), ParseStems(ReadConformance(StemsFileName)));
 
     [Fact]
     public void Allowlist_Grammar_RefusesMalformedRows()
@@ -2330,6 +2331,11 @@ public sealed class CodeActionShapeSweepTests : IDisposable
             .WithMessage("key wrap-try identity line #2232 has stems but no cite row*");
         FluentActions.Invoking(() => Total(cite, Array.Empty<StemRow>())).Should().Throw<InvalidOperationException>()
             .WithMessage("*stemless cite row is refused*");
+
+        // Every problem is collected with its key's twin, so one twin's mismatch is never masked by another's.
+        var both = TotalityProblems(ParseAllowlist(new[] { "wrap-try crlf line # #2232 r" }), ParseStems(new[] { "wrap-try identity line a/b # #2232" }));
+        both.Select(p => p.Twin).Should().Equal(Identity, Crlf);
+        both.Should().OnlyContain(p => p.Message.Contains($" {p.Twin} ", StringComparison.Ordinal));
     }
 
     /// <summary>The set diff: equal holds; an unlisted failing stem, a committed stem that holds, and a key that holds everywhere are each named.</summary>
