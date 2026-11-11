@@ -40,6 +40,10 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.run_id }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
+# The default for every job (`changes` and `gate` set none of their own): read-only.
+permissions:
+  contents: read
+
 jobs:
   changes:
     name: Detect relevant changes

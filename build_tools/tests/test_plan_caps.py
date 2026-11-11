@@ -530,3 +530,12 @@ def test_numbers_the_skills_state_equal_the_constants():
     }
     # the cap is stated once
     assert sum(w == "body cap" for w, _, _ in stated) == 1
+
+
+def test_stamp_lines_are_blank_or_one_whole_comment():
+    from build_tools.check_plan_refs import is_stamp_line
+
+    for line in ("", "   ", "<!---->", "<!-- DRAFT, not verified -->", "  <!-- a -->\t", "<!-- a --> <!-- b -->"):
+        assert is_stamp_line(line), line
+    for line in ("<!--->", "<!-->", "<!-- a", "a -->", "<!-- a --> x", "x <!-- a -->", "text"):
+        assert not is_stamp_line(line), line

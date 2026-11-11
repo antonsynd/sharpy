@@ -302,7 +302,17 @@ TERMINAL_RECORDS = (
     "Implementation Verification Record",
     "Implementation Verification Report",
 )
-STAMP_LINE_RE = re.compile(r"^\s*(?:<!--.*-->\s*)?$")
+
+
+def is_stamp_line(line: str) -> bool:
+    """A blank line, or a line that is one whole HTML comment (a DRAFT marker or a verify stamp).
+
+    String tests, not a regex: this recognises a marker line in a plan file, it filters no HTML.
+    """
+    s = line.strip()
+    return not s or (len(s) >= 7 and s.startswith("<!--") and s.endswith("-->"))
+
+
 VERIFY_STAMP_RE = re.compile(r"^<!-- Verified by /verify-plan\b", re.MULTILINE)
 REVISION_LOG_RE = re.compile(
     r"^## Revision log\b.*?(?=^## |\Z)", re.MULTILINE | re.DOTALL
@@ -491,7 +501,7 @@ def plan_body(text: str) -> str:
             below.append(text[start : hs[i + 1][0] if i + 1 < len(hs) else len(text)])
     lines = head.split("\n")
     i = 0
-    while i < len(lines) and STAMP_LINE_RE.match(lines[i]):
+    while i < len(lines) and is_stamp_line(lines[i]):
         i += 1
     return "\n".join(lines[i:]) + "".join(below)
 
