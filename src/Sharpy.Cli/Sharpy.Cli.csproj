@@ -16,6 +16,8 @@
 
   <ItemGroup>
     <None Include="$(MSBuildThisFileDirectory)../../nuget/sharpyc.README.md" Pack="true" PackagePath="\README.md" />
+    <!-- The tool package ships Sharpy.Stdlib.dll (through Sharpy.Lsp), which carries third-party code -->
+    <None Include="$(MSBuildThisFileDirectory)../../THIRD-PARTY-NOTICES.txt" Pack="true" PackagePath="\" />
   </ItemGroup>
 
   <ItemGroup>
