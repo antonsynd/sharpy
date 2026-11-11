@@ -1,6 +1,7 @@
 using System.Collections;
 using System.Collections.Immutable;
 using System.Diagnostics.CodeAnalysis;
+using Sharpy.Compiler.Diagnostics;
 using Sharpy.Compiler.Parser.Ast;
 using Sharpy.Compiler.Semantic;
 using Sharpy.Compiler.Shared;
@@ -59,10 +60,30 @@ internal sealed partial class LoweringPass
             irModules.Add(new IrModule(filePath, body.ToImmutable()));
         }
 
+        AssertMarksConsumed(state);
+
         return new IrCompilation(irModules.ToImmutable(), new IrIndex(state.Index), state.WithItems, state.GeneratorFunctions)
         {
             GeneratorQualifiedNames = state.GeneratorQualifiedNames,
         };
+    }
+
+    /// <summary>
+    /// The mark-then-consume side map is empty once the walk is done: every tuple element an
+    /// unpacking marked (<see cref="MarkWrappedTupleElements"/>) is consumed when
+    /// <see cref="LowerExpression"/> reaches it. A leftover mark is an element the walk never
+    /// lowered, whose store would silently lose its Optional wrap.
+    /// </summary>
+    private static void AssertMarksConsumed(LoweringState state)
+    {
+        if (state.WrappedElements.Count == 0)
+            return;
+
+        var leftover = state.WrappedElements.Keys.First();
+        throw new InternalCompilerErrorException("LoweringPass",
+            $"{state.WrappedElements.Count} Optional-wrapped tuple element mark(s) were never consumed "
+            + $"(first: {leftover.GetType().Name})",
+            leftover);
     }
 
     private static IrStatement LowerStatement(Statement statement, SemanticInfo semanticInfo, LoweringState state)
@@ -387,17 +408,9 @@ internal sealed partial class LoweringPass
         var children = LowerChildren(lambda, semanticInfo, state);
         var body = state.Index[lambda.Body];
         var elided = new IrElidedNoneBody(body.Type, body.Span, body.Children);
-        state.Index[lambda.Body] = elided;
-
-        var builder = children.ToBuilder();
-        for (var i = 0; i < builder.Count; i++)
-        {
-            if (ReferenceEquals(builder[i], body))
-                builder[i] = elided;
-        }
 
         return new IrOpaqueExpression(lambda, semanticInfo.GetExpressionType(lambda), SpanOf(lambda),
-            builder.ToImmutable());
+            Splice(lambda.Body, body, elided, children, state));
     }
 
     /// <summary>
@@ -422,15 +435,38 @@ internal sealed partial class LoweringPass
 
         var lowered = state.Index[scrutinee];
         var typed = new IrTypedNullScrutinee(lowered.Type, lowered.Span, lowered.Children);
-        state.Index[scrutinee] = typed;
+        return Splice(scrutinee, lowered, typed, children, state);
+    }
 
+    /// <summary>
+    /// Replaces the already-lowered node of <paramref name="ast"/> by <paramref name="replacement"/>
+    /// in both places it lives: the index entry and its slot among the parent's
+    /// <paramref name="children"/>. Exactly one slot holds <paramref name="lowered"/> (by reference),
+    /// because the child walk lowers each AST node once; a miss or a second hit would break the
+    /// tree's totality, so it is an internal compiler error rather than a silent no-op.
+    /// </summary>
+    private static ImmutableArray<IrNode> Splice(
+        Node ast, IrNode lowered, IrNode replacement, ImmutableArray<IrNode> children, LoweringState state)
+    {
         var builder = children.ToBuilder();
+        var replaced = 0;
         for (var i = 0; i < builder.Count; i++)
         {
             if (ReferenceEquals(builder[i], lowered))
-                builder[i] = typed;
+            {
+                builder[i] = replacement;
+                replaced++;
+            }
         }
 
+        if (replaced != 1)
+        {
+            throw new InternalCompilerErrorException("LoweringPass",
+                $"splicing the lowered {ast.GetType().Name} into its parent replaced {replaced} child slot(s), expected 1",
+                ast);
+        }
+
+        state.Index[ast] = replacement;
         return builder.ToImmutable();
     }
 
