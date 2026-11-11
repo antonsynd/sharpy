@@ -2,6 +2,7 @@ using SCG = System.Collections.Generic;
 using System.Reflection;
 using System.Reflection.Emit;
 using System.Runtime.CompilerServices;
+using Sharpy.TestInfrastructure;
 
 namespace Sharpy.Stdlib.Tests.Conformance.ExceptionEscape;
 
@@ -30,6 +31,12 @@ internal sealed record Reach(string? SideEffect, string? Unfollowable, string? R
 /// </list>
 /// A stated limit: a BCL class's virtual method (<c>object.ToString</c>) is a leaf, although a Sharpy override may
 /// answer it.
+/// <para><b>Coverage-on runs</b> (#2512): the collector's static instrumentation injects a tracker type into each
+/// product assembly and a hit probe (a reference to the tracker) into every body; the tracker's static constructor maps
+/// a <c>System.IO.MemoryMappedFiles</c> view, so following the probe would mark every Sharpy body a side effect. A
+/// reference whose owner <see cref="CoverageInstrumentation.IsInjected(Type)"/> is not part of the member's body and is
+/// not followed; each body where that happened is recorded in <see cref="ProbedBodies"/>, which the sweep's tests hold
+/// to the detector, so a plain run that sees through anything is red.</para>
 /// </summary>
 internal static class SideEffectRule
 {
@@ -39,6 +46,17 @@ internal static class SideEffectRule
     private static readonly Dictionary<MethodBase, Node> Nodes = new();
     private static readonly Dictionary<MethodBase, SCG.List<MethodBase>> Implementations = new();
     private static readonly object Gate = new();
+    private static readonly SortedSet<string> Probed = new(StringComparer.Ordinal);
+
+    /// <summary>The bodies the walk read whose IL references a collector-injected type (empty unless coverage-on).</summary>
+    public static IReadOnlyCollection<string> ProbedBodies
+    {
+        get
+        {
+            lock (Gate)
+                return Probed.ToArray();
+        }
+    }
 
     /// <summary>In-memory <c>System.IO</c> types: no file, console or device behind them.</summary>
     private static readonly HashSet<string> InMemoryIo = new(StringComparer.Ordinal)
@@ -263,7 +281,11 @@ internal static class SideEffectRule
                 {
                     node.Shapes.Add($"unresolvable method token in {Name(method)}");
                 }
-                if (callee is not null)
+                if (callee?.DeclaringType is { } calleeOwner && CoverageInstrumentation.IsInjected(calleeOwner))
+                {
+                    Probed.Add(Name(method));
+                }
+                else if (callee is not null)
                 {
                     if (op == OpCodes.Ldftn || op == OpCodes.Ldvirtftn)
                         createsDelegate = true;
@@ -274,7 +296,11 @@ internal static class SideEffectRule
             {
                 try
                 {
-                    AddTypeInitializer(node, method.Module.ResolveField(BitConverter.ToInt32(il, pc), typeArgs, methodArgs)?.DeclaringType);
+                    var owner = method.Module.ResolveField(BitConverter.ToInt32(il, pc), typeArgs, methodArgs)?.DeclaringType;
+                    if (owner is not null && CoverageInstrumentation.IsInjected(owner))
+                        Probed.Add(Name(method));
+                    else
+                        AddTypeInitializer(node, owner);
                 }
                 catch (Exception e) when (e is ArgumentException or BadImageFormatException or TypeLoadException or MissingFieldException)
                 {

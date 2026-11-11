@@ -1,5 +1,6 @@
 using SCG = System.Collections.Generic;
 using System.Text.RegularExpressions;
+using Sharpy.TestInfrastructure;
 using Sharpy.TestInfrastructure.Integration;
 using Xunit;
 using Xunit.Abstractions;
@@ -240,6 +241,26 @@ public class StdlibExceptionEscapeSweepTests
         Assert.Contains("System.IO.File", Reason("shapes:EscapeShapeModule.CallsAnIoImplementation(Int32)"), StringComparison.Ordinal);
         Assert.Contains("shapes:EscapeShapeModule.UsesItsOwnLambda(Int32)", result.Swept);
         Assert.Empty(result.Leaks);
+    }
+
+    /// <summary>
+    /// The coverage-on run (#2512): the walk sees through the collector's hit probes (<see cref="SideEffectRule"/>), and
+    /// does so exactly when the swept assemblies are instrumented. The detector and the IL are held to each other: a
+    /// plain run in which the walk skipped any reference is red, and so is an instrumented run in which it skipped none
+    /// (the probes then went unrecognised), so the see-through can never hide a member's real body.
+    /// </summary>
+    [Fact]
+    public void TheWalkSeesThroughCoverageProbes_ExactlyWhenInstrumented()
+    {
+        _ = Results.Value;
+        var probed = SideEffectRule.ProbedBodies;
+        bool instrumented = CoverageInstrumentation.IsInstrumented(typeof(KeyError).Assembly)
+            || CoverageInstrumentation.IsInstrumented(typeof(Date).Assembly);
+        _output.WriteLine($"instrumented={instrumented}; bodies whose collector probe the walk did not follow: {probed.Count}");
+        Assert.True(instrumented == (probed.Count > 0),
+            $"coverage detector says instrumented={instrumented}, but the walk skipped a reference to a " +
+            $"{CoverageInstrumentation.InjectedNamespacePrefix}.* type in {probed.Count} bodies: the detector and the IL " +
+            "disagree, so the see-through cannot be trusted:\n  " + string.Join("\n  ", probed.Take(20)));
     }
 
     /// <summary>Positive control: the accepted set is Core's hierarchy, and a CLR type is never in it.</summary>
