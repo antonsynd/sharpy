@@ -377,7 +377,7 @@ After all fixes are committed (`FINAL=<sha>`):
 6. Every spec example the plan promised executes at `$FINAL` with the documented output
 7. Every guard added by the plan or by remediation has a recorded mutation outcome
 8. `git diff --stat $BASE..$FINAL` — matches the declared scope; no unclaimed working-tree delta (`git status`)
-9. On a pull request that changes code (README item 6; on a `-verify` lane, the one Cleanup step 4 opens, checked once it is open), the body's `Independent review @ <sha>` line (`gh api -X GET repos/<owner>/<repo>/pulls/N --jq .body`) names `$FINAL`, or an ancestor with only non-code commits since, and its verdict is not `do not merge`; absent or stale is a finding; stale after a code fix: run `/implement-plan` › Cleanup and Report step 4 on `$FINAL`, then re-check (not a remediation loop).
+9. On a pull request that changes code (README item 6; on a `-verify` lane, the one Cleanup step 4 opens, checked once it is open), the body's `Independent review @ <sha>` line (`gh api -X GET repos/<owner>/<repo>/pulls/N --jq .body`) is current at `$FINAL` and its verdict is not `do not merge`; absent or stale is a finding; stale after a code fix: run `/implement-plan` › Cleanup and Report step 4 on `$FINAL`, then re-check (not a remediation loop).
 
 If a step fails, loop back to remediation. Maximum 3 remediation loops — after that, report the residue as unresolved with its evidence. A failing step invalidates its dependents, not its siblings: complete every independent step and label suspect readings.
 
