@@ -842,9 +842,12 @@ internal partial class RoslynEmitter
                     assignNode ?? throw new InvalidOperationException(
                         "Augmented '**=' needs its Assignment node to read the recorded power lowering (#1623)")),
 
-            // x /= y → true division with Python semantics (always returns float64)
-            // Cast left to double if both operands are integers
-            AssignmentOperator.SlashAssign => GenerateTrueDivisionAugmented(left, right, assignNode),
+            // x /= y → the binary `/` routing wrapper (#2517): Builtins.TrueDiv for numeric
+            // operands (left cast to double when both are integers), native `/` otherwise.
+            AssignmentOperator.SlashAssign =>
+                GenerateTrueDivideValue(left, right,
+                    assignNode ?? throw new InvalidOperationException(
+                        "Augmented '/=' needs its Assignment node to read the recorded division lowering (#2517)")),
 
             // x //= y → floor division with Python semantics (toward negative infinity):
             // Builtins.FloorDiv (int/long/float/double overloads) or the native truncating
@@ -1047,23 +1050,6 @@ internal partial class RoslynEmitter
         body.AddRange(valueEvals);
         body.Add(store);
         return Block(body);
-    }
-
-    /// <summary>
-    /// Generates true division for augmented assignment (x /= y).
-    /// Reads the OperatorLowering tag to decide whether to cast the left operand (#1623).
-    /// </summary>
-    private ExpressionSyntax GenerateTrueDivisionAugmented(ExpressionSyntax left, ExpressionSyntax right, Assignment? assignNode)
-    {
-        if (assignNode != null
-            && _context.SemanticInfo?.GetOperatorLowering(assignNode)?.Kind
-                == OperatorLoweringKind.TrueDivisionCastLeft)
-        {
-            return Binary(SyntaxKind.DivideExpression,
-                CastExpression(PredefinedType(Token(SyntaxKind.DoubleKeyword)), ParenthesizedExpression(left)),
-                right);
-        }
-        return Binary(SyntaxKind.DivideExpression, left, right);
     }
 
     private StatementSyntax GenerateVariableDeclaration(VariableDeclaration varDecl)

@@ -698,11 +698,11 @@ internal partial class TypeChecker
                     && constDecl.InitialValue != null)
                 {
                     var sym = _symbolTable.Lookup(constDecl.Name) as VariableSymbol;
-                    if (sym is { IsConstant: true, ConstantValue: null })
+                    if (sym is { IsConstant: true, ConstantValue: null, FloatConstantValue: null })
                     {
                         var declaredType = _typeResolver.ResolveTypeAnnotation(constDecl.Type, AnnotationPosition.Value);
                         TryFoldConstantValue(sym, declaredType, constDecl.InitialValue);
-                        if (sym.ConstantValue != null)
+                        if (sym.ConstantValue != null || sym.FloatConstantValue != null)
                             foldedAny = true;
                     }
                 }

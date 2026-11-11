@@ -253,15 +253,11 @@ internal partial class TypeChecker
         }
 
         // Record operator lowering tags so the emitter never re-derives these decisions (#1623).
+        // `/` (#2517): ONE classifier shared with the augmented `/=` site.
         if (binOp.Operator == BinaryOperator.Divide
-            && resultType == SemanticType.Double
-            && !PrimitiveCatalog.IsDecimal(leftType) && !PrimitiveCatalog.IsDecimal(rightType)
-            && !PrimitiveCatalog.IsFloatingPoint(leftType) && !PrimitiveCatalog.IsFloatingPoint(rightType)
-            && leftType is not UserDefinedType and not GenericType
-            && rightType is not UserDefinedType and not GenericType)
+            && ClassifyTrueDivision(leftType, rightType, resultType, binOp.Right, ConstantLookup) is { } divisionKind)
         {
-            _semanticInfo.SetOperatorLowering(binOp,
-                new OperatorLowering(OperatorLoweringKind.TrueDivisionCastLeft));
+            _semanticInfo.SetOperatorLowering(binOp, new OperatorLowering(divisionKind));
         }
 
         if (binOp.Operator is BinaryOperator.LeftShift or BinaryOperator.RightShift
@@ -622,6 +618,55 @@ internal partial class TypeChecker
                 return null;
         }
     }
+
+    /// <summary>
+    /// Classifies how a <c>/</c> lowers, shared by the binary site and the augmented <c>/=</c> site
+    /// (target = left operand, value = divisor) so the two cannot drift (#2517). Python raises
+    /// <c>ZeroDivisionError</c> where IEEE gives <c>inf</c>/<c>nan</c> (and where C# decimal throws
+    /// <c>DivideByZeroException</c>, or refuses a constant zero with CS0020), so every numeric true
+    /// division whose divisor might be zero routes through the guarded <c>Builtins.TrueDiv</c>:
+    /// <list type="bullet">
+    /// <item>integer ⊗ integer with a float64 result → <see cref="OperatorLoweringKind.GuardedTrueDivisionCastLeft"/>
+    /// (<c>TrueDiv((double)(x), y)</c>);</item>
+    /// <item>any other numeric-primitive pair (a float32/float64 or decimal operand) →
+    /// <see cref="OperatorLoweringKind.GuardedTrueDivision"/> (<c>TrueDiv(x, y)</c>; C# overload
+    /// resolution picks the float64, float32 or decimal overload from the promoted operand types,
+    /// matching the inferred result type);</item>
+    /// <item>a divisor that is a constant known non-zero — a literal or a folded const name
+    /// (<see cref="TrueDivisionRules.IsNonZeroConstantDivisor"/>) — cannot trap,
+    /// so the pair keeps the native operator — <see cref="OperatorLoweringKind.TrueDivisionCastLeft"/>
+    /// for integers, no record otherwise. That keeps <c>1 / 4</c> and <c>2.0 / 8.0</c> C# constant
+    /// expressions (a <c>Final</c> constant, a parameter default) exactly as before;</item>
+    /// <item>a user <c>__truediv__</c> type, a CLR <c>op_Division</c> type or a generic → <c>null</c>:
+    /// no record, native <c>/</c> (<c>Complex</c> guards its own <c>operator /</c>).</item>
+    /// </list>
+    /// </summary>
+    private static OperatorLoweringKind? ClassifyTrueDivision(
+        SemanticType leftType, SemanticType rightType, SemanticType resultType, Expression divisor,
+        TrueDivisionRules.ConstantLookup lookup)
+    {
+        if (leftType is UserDefinedType or GenericType || rightType is UserDefinedType or GenericType)
+            return null;
+
+        var leftNonInteger = PrimitiveCatalog.IsDecimal(leftType) || PrimitiveCatalog.IsFloatingPoint(leftType);
+        var rightNonInteger = PrimitiveCatalog.IsDecimal(rightType) || PrimitiveCatalog.IsFloatingPoint(rightType);
+        if (!leftNonInteger && !rightNonInteger)
+        {
+            if (resultType != SemanticType.Double)
+                return null;
+            return TrueDivisionRules.IsNonZeroConstantDivisor(divisor, lookup)
+                ? OperatorLoweringKind.TrueDivisionCastLeft
+                : OperatorLoweringKind.GuardedTrueDivisionCastLeft;
+        }
+
+        if (!IsTrueDivisionNumeric(leftType) || !IsTrueDivisionNumeric(rightType))
+            return null;
+
+        return TrueDivisionRules.IsNonZeroConstantDivisor(divisor, lookup) ? null : OperatorLoweringKind.GuardedTrueDivision;
+    }
+
+    private static bool IsTrueDivisionNumeric(SemanticType type)
+        => PrimitiveCatalog.IsInteger(type) || PrimitiveCatalog.IsFloatingPoint(type) || PrimitiveCatalog.IsDecimal(type);
 
     /// <summary>
     /// The floored-<c>%</c> operand allowlist: every integer width (int, long, int8,

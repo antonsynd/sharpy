@@ -1994,6 +1994,8 @@ caller (#1228) — see the remarks.
 **Raises:**
 
 - `OverflowError` -- The result does not fit in an `int`.
+- `ZeroDivisionError` -- x is zero and y is negative, as in CPython
+(`0 ** -1`); the same holds for every overload with a signed exponent.
 
 ### `checked_int_pow(x: int64, y: int64) -> int64`
 
@@ -2788,6 +2790,93 @@ Sums a sequence of long integers with a decimal start value.
 ### `sum(iterable: IEnumerable[uint64], start: decimal) -> decimal`
 
 Sums a sequence of unsigned long integers with a decimal start value.
+
+### `true_div(x: float, y: float) -> float`
+
+Returns *x* divided by *y* with Python's True-division
+semantics: an exact zero divisor (`0.0` or `-0.0`) raises
+`ZeroDivisionError` instead of yielding IEEE `inf`/`nan`.
+
+**Parameters:**
+
+- `x` (float) -- The dividend
+- `y` (float) -- The divisor
+
+**Returns:** The IEEE quotient `x / y`
+
+!!! note
+    This is the `/` lowering for every float64 quotient, including `int / int`
+    (whose left operand the emitter casts to `double`). The guard is one branch on the
+    divisor and the method is aggressively inlined, so a constant non-zero divisor folds the
+    branch away after inlining and a variable divisor costs one predictable compare. The
+    `throw` stays inline on purpose: the JIT moves a throw block out of the loop, whereas a
+    call to a throw-helper method (even `[DoesNotReturn]`) made it spill the caller's loop
+    accumulator around the cold call, doubling a tight division loop (#2517, measured).
+    Like `floor_div`, the guard lives in the helper so each
+    operand is spliced exactly once and a side-effecting divisor runs once.
+
+**Raises:**
+
+- `ZeroDivisionError` -- Thrown when *y* is zero
+
+### `true_div(x: float32, y: float32) -> float32`
+
+Returns *x* divided by *y* as a `float32`; a zero
+divisor raises `ZeroDivisionError`. See `true_div`.
+
+**Parameters:**
+
+- `x` (float32) -- The dividend
+- `y` (float32) -- The divisor
+
+**Returns:** The IEEE quotient `x / y`
+
+**Raises:**
+
+- `ZeroDivisionError` -- Thrown when *y* is zero
+
+### `true_div(x: decimal, y: decimal) -> decimal`
+
+Returns *x* divided by *y* as a `decimal`; a zero
+divisor raises `ZeroDivisionError` (CPython raises
+`decimal.DivisionByZero`, a `ZeroDivisionError` subclass) rather than the CLR's
+`System.DivideByZeroException`. As a runtime parameter the divisor is never a
+C# constant, so a literal `7m / 0m` no longer reaches Roslyn as CS0020.
+
+**Parameters:**
+
+- `x` (decimal) -- The dividend
+- `y` (decimal) -- The divisor
+
+**Returns:** The quotient `x / y`
+
+**Raises:**
+
+- `ZeroDivisionError` -- Thrown when *y* is zero
+
+### `float_pow(x: float, y: float) -> float`
+
+Returns *x* raised to the power *y* with Python's
+`float.__pow__` zero rule: zero (`0.0` or `-0.0`) raised to a finite
+negative power raises `ZeroDivisionError` instead of yielding `inf`.
+A negative-infinity exponent keeps the IEEE answer (`0.0 ** -inf` is `inf` in
+CPython too), and every other case is `System.Math.Pow`.
+
+**Parameters:**
+
+- `x` (float) -- The base
+- `y` (float) -- The exponent
+
+**Returns:** x raised to the power y
+
+!!! note
+    This is the `**` lowering for float64 and float32 operands (float32 casts the
+    result back) and the body of the `pow()` builtin's float overloads.
+
+**Raises:**
+
+- `ZeroDivisionError` -- Thrown when *x* is zero and
+*y* is a finite negative number
 
 ### `tuple(enumerable: IEnumerable[object]) -> tuple[T1, T2]`
 

@@ -3321,7 +3321,23 @@ public sealed record MultiAxisAccessLowering(
 public enum OperatorLoweringKind
 {
     Native,
+    /// <summary>
+    /// <c>/</c> over integer operands only, with a non-zero literal divisor: native
+    /// <c>(double)(x) / y</c> (#1623) — the divisor cannot be zero, so no guard is needed and the
+    /// expression stays a C# constant when its operands are.
+    /// </summary>
     TrueDivisionCastLeft,
+    /// <summary>
+    /// <c>/</c> over integer operands only, divisor not a non-zero literal:
+    /// <c>Builtins.TrueDiv((double)(x), y)</c>, whose zero guard raises <c>ZeroDivisionError</c> (#2517).
+    /// </summary>
+    GuardedTrueDivisionCastLeft,
+    /// <summary>
+    /// <c>/</c> with a float32/float64 or decimal operand, divisor not a non-zero literal:
+    /// <c>Builtins.TrueDiv(x, y)</c>, whose zero guard raises <c>ZeroDivisionError</c> (#2517). The
+    /// same pair with a non-zero literal divisor records nothing (native <c>/</c>).
+    /// </summary>
+    GuardedTrueDivision,
     ShiftCountCastToInt,
     OptionalNoneTest,
 
@@ -3355,7 +3371,7 @@ public enum OperatorLoweringKind
     ReflectedOperands,
     DecimalPow,
     FloatPow,
-    /// <summary><c>**</c> whose operands promote to float32 (#2189): <c>(float)Math.Pow(x, y)</c>.</summary>
+    /// <summary><c>**</c> whose operands promote to float32 (#2189): <c>(float)Builtins.FloatPow(x, y)</c> (#2517).</summary>
     Float32Pow,
     IntegerPowInt,
     IntegerPowLong,

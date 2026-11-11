@@ -1650,6 +1650,42 @@ deviations:
         print(d < decimal(f))       # True  — compare as decimal
         print(float(d) < f)         # True  — or compare as float64
 
+  - id: decimal-power-is-float
+    code: null
+    category: operators
+    audience: python
+    severity: none
+    python_behavior: "`Decimal ** Decimal` is a `Decimal`, computed in the decimal context; zero to a negative power is `Decimal('Infinity')` (the DivisionByZero signal is not trapped by default): `Decimal(0) ** -1` prints `Infinity` (python3 3.15)."
+    sharpy_behavior: "`decimal ** decimal` lowers to `Math.Pow((double)x, (double)y)` and is typed `float` (arithmetic_operators.md, the `**` table), so `0m ** -1` prints `inf`, not `Infinity`. It is the one power arm that does NOT raise ZeroDivisionError for zero to a negative power (#2517): CPython's Decimal does not raise there either. Convert explicitly when a decimal result is needed."
+    spec_ref: docs/language_specification/arithmetic_operators.md
+    existing_diagnostic: null
+    planned_diagnostic: null
+    example:
+      python: |
+        from decimal import Decimal
+        print(Decimal(0) ** -1)     # Infinity
+      sharpy: |
+        print(0m ** -1)             # inf  — a float result
+
+  - id: decimal-zero-by-zero-raises-zerodivisionerror
+    code: null
+    category: semantics
+    audience: python
+    severity: none
+    python_behavior: "`Decimal(0) / Decimal(0)` (and `//`) raises `decimal.InvalidOperation` (DivisionUndefined), which is NOT a `ZeroDivisionError`; a non-zero dividend raises `decimal.DivisionByZero`, which is (python3 3.15)."
+    sharpy_behavior: "Every decimal division by zero raises `ZeroDivisionError` (\"division by zero\" for `/`, \"decimal floor division by zero\" for `//`), including a zero dividend, so `except InvalidOperation` does not catch `0m / 0m` and `except ZeroDivisionError` does. Decimal `%` by zero raises `InvalidOperation` as CPython does."
+    spec_ref: docs/language_specification/arithmetic_operators.md
+    existing_diagnostic: null
+    planned_diagnostic: null
+    example:
+      python: |
+        from decimal import Decimal
+        z = Decimal(0)
+        z / z                       # decimal.InvalidOperation
+      sharpy: |
+        z: decimal = 0m
+        print(z / z)                # ZeroDivisionError: division by zero
+
   - id: float-is-double
     code: null
     category: types

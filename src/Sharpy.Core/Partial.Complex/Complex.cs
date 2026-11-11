@@ -45,8 +45,22 @@ namespace Sharpy
         /// <summary>Multiply two complex numbers.</summary>
         public static Complex operator *(Complex a, Complex b) => a._inner * b._inner;
 
-        /// <summary>Divide <paramref name="a"/> by <paramref name="b"/>.</summary>
-        public static Complex operator /(Complex a, Complex b) => a._inner / b._inner;
+        /// <summary>
+        /// Divide <paramref name="a"/> by <paramref name="b"/>. A zero divisor (both parts zero,
+        /// either sign) raises <see cref="ZeroDivisionError"/> as CPython's <c>complex.__truediv__</c>
+        /// does, instead of System.Numerics' NaN result. Every mixed-operand <c>/</c> overload
+        /// below routes through this one.
+        /// </summary>
+        /// <exception cref="ZeroDivisionError">Thrown when <paramref name="b"/> is zero</exception>
+        public static Complex operator /(Complex a, Complex b)
+        {
+            if (b._inner.Real == 0.0 && b._inner.Imaginary == 0.0)
+            {
+                throw new ZeroDivisionError("division by zero");
+            }
+
+            return a._inner / b._inner;
+        }
 
         /// <summary>Negate a complex number.</summary>
         public static Complex operator -(Complex a) => -a._inner;

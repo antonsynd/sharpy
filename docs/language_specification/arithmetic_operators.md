@@ -5,10 +5,10 @@
 | `+` | Addition | `+` |
 | `-` | Subtraction | `-` |
 | `*` | Multiplication | `*` |
-| `/` | Division* | `/` (with cast if necessary) |
+| `/` | Division* | `Sharpy.Builtins.TrueDiv(x, y)` (left cast to `double` for integer operands); native `/` when the divisor is a constant known to be non-zero, and for user-defined/CLR operator types |
 | `//` | Floor division** | `Sharpy.Builtins.FloorDiv` (integer and float); `decimal.Truncate(decimal.Divide(x, y))` for decimal |
 | `%` | Modulo*** | `Sharpy.Builtins.FloorMod` (integer/float); `decimal.Remainder(x, y)` for decimal; native `%` for other types |
-| `**` | Exponentiation | Integer: constant folding / checked integer power; float: `Math.Pow(x, y)` (see below) |
+| `**` | Exponentiation | Integer: constant folding / `Sharpy.Builtins.CheckedIntPow`; float: `Sharpy.Builtins.FloatPow(x, y)`; decimal: `Math.Pow` (see below) |
 
 ## Division Operator `/`
 
@@ -21,6 +21,15 @@ The `/` operator always produces a floating-point result, following Python's sem
 | Any `float64` | `float64` | |
 | Any `float32` (no `float64`/`decimal`) | `float32` | |
 | Integer types only | `float64` | Always promotes to `float64` |
+
+**Division by zero** raises `ZeroDivisionError` (`division by zero`) for every
+numeric operand type, as in Python — never an IEEE `inf`/`nan`. A divisor that
+folds to a constant known to be non-zero — a literal, a `const` name (same
+module or imported), or `+`, `-`, `*` and unary minus over those, evaluated at
+each operand's declared precision — cannot trap, so the division stays a
+compile-time constant expression (usable in a `const`, a parameter default, a
+`case`). A divisor that is a known-zero constant makes a parameter default
+non-constant (**SPY0401**); every other divisor is checked at run time.
 
 ## Floor Division Operator `//`
 
@@ -223,9 +232,10 @@ silently saturates or loses precision:
 |------|----------|
 | Constant `int ** int` (non-negative exponent) | Folded at compile time. Result is typed `int` if it fits, widened to `long` if it fits `long`; otherwise compile error **SPY0328** (`IntegerPowerOverflow`). |
 | Non-constant integer `**` (non-negative exponent) | Checked exponentiation-by-squaring (`Sharpy.Builtins.CheckedIntPow`); raises `OverflowError` on overflow. Results are exact across the full `long` range (no `Math.Pow` rounding above 2^53). |
-| Integer `**` negative exponent | Truncating `Math.Pow` double path (`int ** int` stays `int`, e.g. `2 ** -1` is `0`). |
+| Integer `**` negative exponent | Truncating `Math.Pow` double path (`int ** int` stays `int`, e.g. `2 ** -1` is `0`); a zero base raises `ZeroDivisionError` (`zero to a negative power`), as in Python. |
 | Unsigned 32-/64-bit operands (`uint32`, `uint64`) | Evaluated — and typed — as `int64`: `Sharpy.Builtins.CheckedIntPow` has `(int, int)` and `(long, long)` overloads only, so there is no unsigned arm to bind. |
-| Any float operand | `Math.Pow(x, y)`, result is float. |
+| Any float operand | `Sharpy.Builtins.FloatPow(x, y)`, result is float: `Math.Pow` except that zero raised to a finite negative power raises `ZeroDivisionError` (`zero to a negative power`), as in Python. |
+| Any `decimal` operand | `Math.Pow((double)x, (double)y)`, result is float; zero to a negative power is `inf`, not an error (CPython's `Decimal(0) ** -1` is `Infinity`) — deviation `decimal-power-is-float`. |
 
 ## Constant Integer Arithmetic
 
@@ -293,8 +303,14 @@ constants):
 
 - *Standard: ✅ Native*
 - *`**`: 🔄 Constant-folded or lowered to `Sharpy.Builtins.CheckedIntPow()` for
-integers, `Math.Pow()` for floats. See table above.*
-- *`/`: 🔄 Lowered to floating-point division. See table above.*
+integers, `Sharpy.Builtins.FloatPow()` for floats (zero-base guard inside the
+helper), `Math.Pow()` over `double` casts for decimal. See table above.*
+- *`/`: 🔄 Lowered to `Sharpy.Builtins.TrueDiv()` (float64, float32 and decimal
+overloads; the left operand cast to `double` for integer operands), which owns
+the `ZeroDivisionError` guard so each operand is spliced once and no literal
+zero reaches a C# operator; the native `/` when the divisor is a constant known
+to be non-zero (see above) and for user-defined `__truediv__`/CLR operator
+types. `/=` shares the lowering.*
 - *`//`: 🔄 Lowered to `Sharpy.Builtins.FloorDiv(a, b)` for integers (exact
 integer arithmetic, int/long overloads) and floats, and
 `decimal.Truncate(decimal.Divide(a, b))` for decimal (truncated toward zero,
