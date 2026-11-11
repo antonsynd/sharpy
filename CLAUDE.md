@@ -33,7 +33,7 @@ src/Sharpy.Cli/bin/Debug/net10.0/sharpyc project x.spyproj
 
 - **Serialized dotnet:** never call `dotnet build`/`test`/`run` directly; use `.claude/scripts/dotnet-serialized` (same args, output, exit code), enforced by a PreToolUse hook.
 - **Parallel agents share one working tree.** Tell agents *never run `git checkout` / `restore` / `clean` / `stash` / `reset` / `rm` on repo paths*. Commit in small slices; re-check `git diff --stat` after each wave.
-- **Test logs:** each wrapper call tees to its own `.claude/tmp/dotnet-serialized-<yyyymmdd-HHMMSS>-<pid>.log` and first prints `dotnet-serialized: log -> <path>`. Grep your own printed path (`-latest.path` may be a peer's) instead of re-running.
+- **Test logs:** each wrapper call tees to its own `.claude/tmp/dotnet-serialized-*.log` and first prints `dotnet-serialized: log -> <path>`. Grep your own printed path (`-latest.path` may be a peer's) instead of re-running.
 
 ## Critical Rules
 
@@ -50,7 +50,7 @@ src/Sharpy.Cli/bin/Debug/net10.0/sharpyc project x.spyproj
 11. **Fix the class, not the cell**: name the contract and its cell matrix; a repro list is a symptom report (contract §1).
 12. **Guards are falsifiable**: mutation-test every new guard (break -> red, restore -> green, both in the commit body); the exemption is never the subject; absences need a positive control; refusals are verified by direction with `run` (contract §2–§3).
 13. **One group per plan, one gate**: chores only when seam-free; output/layout changes land alone; a residue group or ≥2-axis × ≥3-value matrix builds a generator first; the tier (`band`/`light`/`full`) is a charter fact, never lowered (contract §11–§12).
-14. **File by class, label at creation** (`lane:*` + `reach:*`): a cell is a comment on its open class tracker, a new issue (cell table) only where contract §10 allows; agents append to the ledger, the lead files per wave; a DEVIATION-by-default divergence is a `docs/deviations.yaml` row ( [fidelity scope](docs/design/python-fidelity-scope.md)).
+14. **File by class, label at creation** (`lane:*` + `reach:*`): a cell is a comment on its open class tracker, a new issue (cell table) only where contract §10 allows; agents append to the ledger, the lead files per wave; a DEVIATION-by-default divergence is a `docs/deviations.yaml` row ([fidelity scope](docs/design/python-fidelity-scope.md)).
 
 ## Axioms
 
@@ -98,4 +98,4 @@ Report `passed/failed/skipped @ sha (measured)`; a red needs a control run at th
 
 ## Git & Release
 
-Work on `claude/<lane>` cut from `origin/dev`; land it by a PR into `dev`. Plan stages are commits of `docs/process/plans/<id>.md`: a `full` plan's stages share one plan PR and its implementation has its own; a `light` plan's stages ride in its implementation PR. A ruled `band` bug (or no charter row, no §12 letter) with a contained fix needs no plan: a PR with a generated or differential test and its mutation record. Implementation PRs list issues closed and filed. `mainline` is reached only by the owner's merge of `dev` after the bump lane. [Process](docs/process/README.md).
+Work on `claude/<lane>` cut from `origin/dev`; land it by a PR into `dev`. Plan stages are commits of `docs/process/plans/<id>.md` (one plan PR for `full`; `light` stages ride in the implementation PR). A ruled `band` bug (or no charter row, no §12 letter) with a contained fix needs no plan: a PR with a generated or differential test and its mutation record. Implementation and no-plan PRs list issues closed and filed and merge only after an independent review (`/implement-plan`). `mainline` is reached only by the owner's merge of `dev` after the bump lane. [Process](docs/process/README.md).

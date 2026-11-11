@@ -7,7 +7,7 @@ argument-hint: "<path/to/plan.md>"
 Read `docs/design/verification-contract.md` before proceeding (§10 file-by-class, §11 one-group-per-plan and §12 the verification tier included); every audit below applies it.
 **Stance: refute, not confirm** — an auditor reports NOT REFUTED only after naming what it tried.
 
-Verify that a plan has been fully and correctly implemented. Reads the plan, derives completion from its acceptance bullets and "Issues to Close", runs the whole-solution gate plus a **control run at the plan's base sha**, spawns four refuting auditors (completeness, regression, class-cure, sibling-cell prober), fixes **regressions, vacuous guards, missing deliverables and stale artifacts**, files everything else by class, and commits the fixes. A verify round never widens a class: a one-arm or sibling finding is a class issue for the next batching, not a fix lane here — the 2026-09-26 round grew eight fix lanes and thirty worktrees by widening, and its own fixes filed ten more issues.
+Verify that a plan has been fully and correctly implemented. Reads the plan, derives completion from its acceptance bullets and "Issues to Close", runs the whole-solution gate plus a **control run at the plan's base sha**, spawns four refuting auditors (completeness, regression, class-cure, sibling-cell prober), fixes **regressions, vacuous guards, missing deliverables and stale artifacts**, files everything else by class, and commits the fixes. A verify round never widens a class: a one-arm or sibling finding is a class issue for the next batching, not a fix lane here. It does not repeat the diff review (`/implement-plan` › Cleanup and Report step 4); run before merge, its fixes land on the open pull request, not as follow-up issues.
 
 ## Argument Handling
 
@@ -40,7 +40,7 @@ Before spawning any agents, perform these checks yourself:
 
 ### 1b. Read the tier (contract §12)
 
-Read the plan's `## Scope` → **Tier** line. `light` → this round spawns **Agents 2, 3 and 4** and skips Agent 1: the completeness checklist (§4 below) is still built, and the **lead checks every acceptance bullet and every "Issues to Close" criterion itself** during Final Verification — the executing ones by running them, the pinned-text ones by grep (P46's unmet "pinned text" bullet was an Agent 1 catch; the lead now owns it). Agent 3 stays whole: its code-reading (seam-or-arm, oracle drift, exemption-is-subject) produced wrong-result catches in the ten-round review behind §12, so it is not a reading stage a tier may drop. `full`, or no Tier line → all four auditors. Say the tier and the auditor set in the report header. An execution auditor is never skipped at either tier; `override: <words>` in `## Scope` is the only way to add Agent 1 to a light round.
+Read the plan's `## Scope` → **Tier** line. `light` → this round spawns **Agents 2, 3 and 4** and skips Agent 1: the completeness checklist (§4 below) is still built, and the **lead checks every acceptance bullet and every "Issues to Close" criterion itself** during Final Verification — the executing ones by running them, the pinned-text ones by grep. Agent 3 stays whole at both tiers. `full`, or no Tier line → all four auditors. Say the tier and the auditor set in the report header. An execution auditor is never skipped at either tier; `override: <words>` in `## Scope` is the only way to add Agent 1 to a light round.
 
 ### 2. Establish the scope: base sha → HEAD
 
@@ -242,21 +242,13 @@ Section A — class cure (do this first)
    Rule-2 evidence). Recorded ≠ applied: a recorded fact needs an executing test that asserts on
    output values.
 
-Section B — conventions and anti-patterns (second)
+Section B — conventions (second; the pre-merge review covers CLAUDE.md's Critical Rules and
+anti-patterns, so only these, plus a FINDING if the PR body has no `Independent review:` line):
 
 - Feature order respected (Lexer → Parser → Semantic → Validation → Lowering → CodeGen → LSP → Tests)
-- Immutable AST: no mutable state on AST records; annotations in SemanticInfo
-- SyntaxFactory only in CodeGen; no string templating
-- Axiom precedence .NET > Type Safety > Python Syntax
-- C# 9.0 on the netstandard2.1 target of Sharpy.Core/Sharpy.Stdlib and in generated code
-- Spec consistency: docs/language_specification/ does not contradict the change; spec examples
-  the range added were executed (ask for the evidence line)
-- No dead code, debug leftovers, magic values, copy-paste that should be one seam
-- TODO/FIXME/BUG comments reference an issue
+- Spec consistency: docs/language_specification/ does not contradict the change
 - Validators at non-conflicting Order values; symbol lifecycle and materialization boundaries
   respected; CompilerServices additions follow the adapter pattern
-- Anti-patterns: "add X because Python has it", runtime type checks, wrapper types over extension
-  methods, multiple ways to do one thing, magic behavior
 
 Remove your worktree when done. Output: Section A findings first (SEAM/ARM per hunk; per-guard
 mutation record; per-refusal direction; SPY0908 named check; MergeFrom status), then Section B as
@@ -358,15 +350,12 @@ Address every item:
 ### Remediation Rules
 
 1. **Priority**: build failures > regressions > missing implementations > one-arm fixes and sibling cells > vacuous guards > conventions > missing tests > formatting/cleanup
-2. **Never modify `.expected` files** to make tests pass — fix the implementation
-3. **Cell patches AND in-round widenings are findings**: if a fix you are about to write touches only the cell an auditor found, stop and file the class issue (contract §1, §10). If the fix would move a check to a new seam or add a matrix axis, it is a plan, not a remediation — file it. This round fixes regressions, vacuous/inverted/inert guards, missing deliverables, stale artifacts and formatting
-4. **Never widen an allowlist** to absorb a new failure; entries drain on fix and are never added without an issue reference
-5. **Every guard added during remediation gets the mutation step** — break it → red, restore → green, both outcomes in the commit body (contract §2)
-6. **Verify each fix by running**, not by reading: the relevant tests via the wrapper, and the program's output for anything that records a fact codegen consumes (contract §4)
-7. **Regenerate before the final gate**: spy-stdlib C#, spy-test C#, stdlib docs, oracle ledger; commit the regen
-8. **Stage specific files**: explicit per-file pathspecs; check `git diff --cached --stat`; never `git add -A` / `git add .`
-9. **Incremental commits**, e.g. `fix: complete missing implementation for [plan step X]`, `fix: resolve regression in [component]`, `fix: move [check] to the shared seam (class [contract])`, `test: mutation-tested guard for [feature]`. Use the commit trailer the harness provides for this session
-10. **Whole-solution gate after all fixes** (see Final Verification)
+2. **Cell patches AND in-round widenings are findings**: if a fix you are about to write touches only the cell an auditor found, stop and file the class issue (contract §1, §10). If the fix would move a check to a new seam or add a matrix axis, it is a plan, not a remediation — file it. This round fixes regressions, vacuous/inverted/inert guards, missing deliverables, stale artifacts and formatting
+3. **Every guard added during remediation gets the mutation step** — break it → red, restore → green, both outcomes in the commit body (contract §2)
+4. **Verify each fix by running**, not by reading: the relevant tests via the wrapper, and the program's output for anything that records a fact codegen consumes (contract §4)
+5. **Regenerate before the final gate**: spy-stdlib C#, spy-test C#, stdlib docs, oracle ledger; commit the regen
+6. **Incremental commits**, e.g. `fix: complete missing implementation for [plan step X]`, `fix: resolve regression in [component]`, `fix: move [check] to the shared seam (class [contract])`, `test: mutation-tested guard for [feature]`. Use the commit trailer the harness provides for this session
+7. **Whole-solution gate after all fixes** (see Final Verification)
 
 ### Delegating Fixes
 
