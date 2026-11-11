@@ -2622,6 +2622,13 @@ public sealed class FormattingRouteParitySweepTests : IDisposable
         CorpusRefusalProblems(Wide, route => (withWork, route == RangeLine ? withWork * ceiling / 100 + 1 : 0)).Should().ContainSingle()
             .Which.Should().StartWith($"corpus: wide range-line refuses {withWork * ceiling / 100 + 1}/{withWork}");
 
+        // A uniform rise every stem keeps under its per-stem bound: no per-stem verdict, and the corpus ceiling is red.
+        var uniform = Enumerable.Range(0, 100).ToDictionary(i => (RangeBlock, $"a/s{i}"), _ => (WithWork: 10, Refused: 8));
+        RefusalBoundProblems(Wide, uniform, Array.Empty<RefusalException>(), uniform.Keys.Select(k => k.Item2).ToHashSet(StringComparer.Ordinal), fullMode: false)
+            .Should().BeEmpty("80% is under wide range-block's 90% per-stem bound");
+        CorpusRefusalProblems(Wide, route => route == RangeBlock ? (1000, 800) : (0, 0)).Should().ContainSingle()
+            .Which.Should().StartWith("corpus: wide range-block refuses 800/1000");
+
         var perThousand = CensusCellsPerThousandStemsCeiling[(ParityExemptMeasure, Comment)];
         CensusCeilingProblems(Comment, new SCG.Dictionary<string, long> { [ParityExemptMeasure] = perThousand }, 1000).Should().BeEmpty();
         CensusCeilingProblems(Comment, new SCG.Dictionary<string, long> { [ParityExemptMeasure] = perThousand + 1 }, 1000).Should().ContainSingle()
