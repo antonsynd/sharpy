@@ -1,5 +1,6 @@
 """check_plan_refs caps (R-LW): plan body <= 20 KB before its summaries; <= 2 verify passes."""
 
+import re
 from pathlib import Path
 
 import pytest
@@ -239,7 +240,10 @@ def _template_keys() -> set[str]:
     assert blocks, "no plan template found in create-plan/SKILL.md"
     keys = set()
     for b in blocks:
-        for heading in cpr.H2_RE.findall(b):
+        inner = b.split("\n", 1)[1].rsplit("\n", 1)[
+            0
+        ]  # drop the fence lines themselves
+        for _, heading in cpr.h2_headings(inner):
             key = cpr.section_key(heading)
             assert key, f"template heading `## {heading}` is not in PLAN_SECTIONS"
             keys.add(key)
@@ -320,14 +324,31 @@ def test_single_plan_cli_reports_budgets_and_exits_on_caps_only(tmp_path, capsys
     assert "NOTE: plan-new001.md: Context + Current State" in out
 
 
-# --- plan sections below a record heading are still body --------------------------------------
+# --- the body is everything but the skills' record sections -----------------------------------
 
 CHECKLIST = "## Implementation Checklist\n\n- [ ] T1 — lead\n"
 TESTING = "## Testing Strategy\n\n" + "t" * 3_000 + "\n"
+SKILLS = [
+    REPO / f".claude/skills/{n}/SKILL.md"
+    for n in ("create-plan", "verify-plan", "implement-plan", "verify-implementation")
+]
+
+
+def test_record_sections_are_the_headings_the_skills_write():
+    text = "".join(p.read_text(encoding="utf-8") for p in SKILLS)
+    named = {cpr.heading_name(h) for h in re.findall(r"`## ([^`]+)`", text)}
+    assert named <= {n.casefold() for n in cpr.PLAN_SECTIONS + cpr.RECORD_SECTIONS}
+    # the report /verify-implementation appends inside its record is a heading of its template
+    assert "\n## Implementation Verification Report\n" in SKILLS[3].read_text(
+        encoding="utf-8"
+    )
+    written = (named - {n.casefold() for n in cpr.PLAN_SECTIONS}) | {
+        "implementation verification report"
+    }
+    assert written == {n.casefold() for n in cpr.RECORD_SECTIONS}
 
 
 def test_plan_section_moved_under_the_checklist_still_counts():
-    # mutation record: plan_body keeping no section below the cut -> red; restored -> green
     filler = "x" * (cpr.BODY_CAP_BYTES - len(BODY.encode()) - len(TESTING.encode()) - 1)
     in_place = _plan(body=BODY + filler + "\n" + TESTING + "\n" + CHECKLIST)
     moved = _plan(body=BODY + filler + "\n" + CHECKLIST + TESTING)
@@ -337,31 +358,73 @@ def test_plan_section_moved_under_the_checklist_still_counts():
     assert cpr.section_bytes(moved)["Testing Strategy"] == len(TESTING.encode()) + 1
 
 
-def test_records_below_the_cut_stay_out_and_revision_log_counts():
-    records = (
-        CHECKLIST
-        + "## Implementation Record (lead)\n\n"
-        + "r" * 5_000
-        + "\n## Implementation Verification Record\n\n"
-        + "v" * 5_000
-        + "\n"
-    )
+ADV_HEAD = "<!-- DRAFT, not verified -->\n# T\n\n## Context\n\nshort\n\n"
+ADV_FILL = "x" * 30_000 + "\n"
+
+
+@pytest.mark.parametrize(
+    "below",
+    [
+        CHECKLIST + "\n## Phases\n\n",
+        CHECKLIST + "\n## Implementation Plan\n\n",
+        "## Verification Summary\n\n## Notes on design\n\n",
+        CHECKLIST + "\n## Design Decisions (cont.)\n\n",
+        CHECKLIST + "\n## design decisions\n\n",
+        CHECKLIST + "\n## Design Decisions:\n\n",
+        CHECKLIST + "\n## Design Decisions — wave 2\n\n",
+        CHECKLIST + "\n## Design Decisions - wave 2\n\n",
+        CHECKLIST + "\n## Design Decision\n\n",
+        CHECKLIST + "\n## Revisions\n\n",
+        CHECKLIST + "\n## REVISION LOG\n\n",
+        CHECKLIST + "\n## Implementation Record (lead)\n\n",
+        CHECKLIST + "\n## Design Decisions\n\nshort\n```\n## not a heading\n```\n",
+        "```\n## Verification Summary\n```\n",
+    ],
+)
+def test_any_non_record_section_below_a_record_is_body(below):
+    # mutation record: plan_body keeping no section below the first record heading -> red
+    text = ADV_HEAD + below + ADV_FILL
+    assert cpr.body_bytes(text) > 30_000
+    assert cpr.cap_violations("plan-new001.md", text)
+    crlf = text.replace("\n", "\r\n")
+    assert cpr.body_bytes(crlf) > 30_000
+
+
+@pytest.mark.parametrize(
+    "below",
+    [
+        CHECKLIST + "\n### Context\n\n",  # a subsection of the checklist
+        "## implementation checklist\n\n",
+        "## Verification Summary — round 2\n\n### Pass 2\n\n",
+        "## Verification Summary - round 2\n\n",  # an ASCII hyphen ends the name like a dash
+        "## Implementation Verification Record\n\n## Acceptance\n\nauditor evidence\n",
+        "## Implementation Verification Report\n\n### Regressions\n\n",
+    ],
+)
+def test_record_sections_and_the_terminal_record_are_not_body(below):
+    # mutation record: plan_body keeping every section below the first record heading -> red
+    text = ADV_HEAD + below + ADV_FILL
+    assert cpr.body_bytes(text) == len((ADV_HEAD.split("\n", 1)[1]).encode())
+    assert cpr.cap_violations("plan-new001.md", text) == []
+
+
+def test_revision_log_counts_wherever_it_sits():
     base = _plan(body=BODY)
-    with_records = _plan(body=BODY + "\n" + records)
-    assert cpr.body_bytes(with_records) == cpr.body_bytes(base)
-    # `## Revision log` is body wherever it sits (after a kept summary here)
     logged = _plan(summary=SUMMARY + REVISED)
     assert cpr.body_bytes(logged) == cpr.body_bytes(base) + len(REVISED.encode()) - 1
 
 
+def test_empty_and_stamp_only_plans_measure_zero():
+    assert cpr.body_bytes("") == 0
+    assert cpr.body_bytes("<!-- a -->\n<!-- b -->\n") == 0
+
+
 def test_real_plan_with_a_mid_plan_checklist_counts_its_plan_sections():
     text = (PLANS / "plan-5c21c8.md").read_text(encoding="utf-8")
-    cut = cpr.SUMMARY_HEADING_RE.search(text)
-    assert cut and cut.group(0) == "## Implementation Checklist"
-    hidden = [h for h, _ in cpr.sections(text[cut.start() :]) if cpr.section_key(h)]
-    assert {"Implementation", "Testing Strategy", "Issues to Close"} <= set(hidden)
+    first = next(h for _, h in cpr.h2_headings(text) if cpr.record_key(h))
+    assert first == "Implementation Checklist"
     body = cpr.plan_body(text)
-    assert (
-        "\n## Issues to Close" in body and "\n## Implementation Checklist" not in body
-    )
+    for heading in ("Implementation", "Testing Strategy", "Issues to Close"):
+        assert f"\n## {heading}\n" in body
+    assert "\n## Implementation Checklist" not in body
     assert cpr.body_bytes(text) > cpr.BODY_CAP_BYTES

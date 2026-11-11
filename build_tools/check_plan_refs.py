@@ -268,23 +268,38 @@ def render(r: dict, *, strict: bool) -> tuple[str, int]:
 
 
 # --- plan caps (charter ruling R-LW) -----------------------------------------------------------------
-# A plan's BODY is at most 20 KB: the text before the first record heading (`## Verification Summary`,
-# `## Implementation Verification Record`, `## Implementation Checklist`), without the stamp lines at
-# the top, PLUS every plan section (a PLAN_SECTIONS heading, `## Revision log` included) that sits
-# below such a heading. Records are not body: the kept summaries, the checklist, the verify records.
-# A plan section is body wherever it sits, so a checklist inserted mid-plan hides nothing.
-# `## Revision log` is body: under the pass cap it is at most a few lines, and as a record it would
-# be an uncapped place to answer findings, which a revision does by rewriting the plan's text.
-# A plan records at most 2 `/verify-plan` passes; each pass beyond that needs its own owner-ruling line:
+# A plan's BODY is at most BODY_CAP_BYTES: the whole file except
+# * the stamp/marker comment lines on top;
+# * each record section the skills write (RECORD_SECTIONS), from its `## ` heading to the next `## `
+#   heading, its `###` subsections included;
+# * everything from the first TERMINAL_RECORDS heading to the end: /verify-implementation appends its
+#   record last, after implementation, when the plan text is final.
+# Every other `## ` section is body wherever it sits, so a record placed mid-plan hides nothing; a
+# heading-like line inside a fenced code block is not a heading. `## Revision log` is body: under the
+# pass cap it is a few lines, and as a record it would be an uncapped place to answer findings, which a
+# revision does by rewriting the plan's text.
+# A plan records at most PASS_CAP `/verify-plan` passes; each pass beyond needs its own owner-ruling line:
 #     Extra verify pass 3: owner 2026-11-12 "<the owner's words>"
+# The skills state these numbers; build_tools/tests/test_plan_caps.py pins each statement to its constant.
 
 BODY_CAP_BYTES = 20_480
 PASS_CAP = 2
+# Net body growth one revision may add (/create-plan › Revising a plan). Stated, not measured: the file
+# holds only its current text, so one revision's growth is not visible in it.
+REVISION_GROWTH_BYTES = 3_072
 PLAN_GLOB = "docs/process/plans/plan-*.md"
 
-SUMMARY_HEADING_RE = re.compile(
-    r"^## (?:Verification Summary|Implementation Verification Record|Implementation Checklist)\b",
-    re.MULTILINE,
+# The `## ` record headings the skills write: /verify-plan's summary, /implement-plan's checklist,
+# /verify-implementation's record and the report it holds. Tests pin the list to the skills.
+RECORD_SECTIONS = (
+    "Verification Summary",
+    "Implementation Checklist",
+    "Implementation Verification Record",
+    "Implementation Verification Report",
+)
+TERMINAL_RECORDS = (
+    "Implementation Verification Record",
+    "Implementation Verification Report",
 )
 STAMP_LINE_RE = re.compile(r"^\s*(?:<!--.*-->\s*)?$")
 VERIFY_STAMP_RE = re.compile(r"^<!-- Verified by /verify-plan\b", re.MULTILINE)
@@ -319,35 +334,36 @@ EXTRA_PASS_RE = re.compile(
     re.MULTILINE,
 )
 
-# Plans that already exceeded a cap when the check landed (measured @ fd876b842 on origin/dev):
-# name -> (body bytes, verify passes). Frozen: a grandfathered plan may not grow on either axis, and
-# no plan joins this list. The body sizes were re-measured once when plan sections below a record
-# heading started to count (a correction of the measure, not growth; plan-5c21c8 joined then, its
-# true body having been hidden under a mid-plan `## Implementation Checklist`).
+# Plans that exceeded a cap when the check landed (@ fd876b842 on origin/dev): name -> (body bytes,
+# verify passes). A grandfathered plan may not grow on either axis. The sizes are re-measured only
+# when the body rule itself changes, a correction of the measure, not growth, listed old -> new in
+# the change that makes it. A plan joins only when such a correction shows that a plan written before
+# the cap was already over it (plan-5c21c8: its plan sections sat below a mid-plan checklist). No plan
+# written under the cap joins.
 GRANDFATHERED: dict[str, tuple[int, int]] = {
     "plan-05dd79.md": (68488, 1),
     "plan-0667c5.md": (88262, 1),
-    "plan-0c1382.md": (75616, 1),
-    "plan-0ca7b7.md": (200973, 1),
+    "plan-0c1382.md": (77212, 1),
+    "plan-0ca7b7.md": (207103, 1),
     "plan-11eef9.md": (46251, 1),
     "plan-14853b.md": (70933, 1),
     "plan-155752.md": (22574, 1),
-    "plan-16cca3.md": (107641, 2),
+    "plan-16cca3.md": (109139, 2),
     "plan-17ad85.md": (91720, 1),
-    "plan-2003b4.md": (70729, 1),
+    "plan-2003b4.md": (74045, 1),
     "plan-202526.md": (30583, 1),
     "plan-21d2f5.md": (22145, 4),
     "plan-299c1b.md": (53054, 1),
     "plan-311458.md": (80526, 1),
     "plan-3eba57.md": (70199, 2),
     "plan-43f241.md": (77732, 1),
-    "plan-460cbf.md": (48336, 6),
-    "plan-46b871.md": (32903, 1),
+    "plan-460cbf.md": (50042, 6),
+    "plan-46b871.md": (37076, 1),
     "plan-499995.md": (83591, 1),
     "plan-4d6288.md": (67455, 1),
     "plan-4e3055.md": (31634, 1),
     "plan-52c6fe.md": (68164, 1),
-    "plan-5379fe.md": (81228, 1),
+    "plan-5379fe.md": (94720, 1),
     "plan-5c21c8.md": (31395, 1),
     "plan-638e8b.md": (46717, 3),
     "plan-683c8b.md": (60387, 1),
@@ -355,58 +371,104 @@ GRANDFATHERED: dict[str, tuple[int, int]] = {
     "plan-6ce1a5.md": (54464, 1),
     "plan-6e12b5.md": (24608, 1),
     "plan-757fbb.md": (76731, 1),
-    "plan-78c581.md": (69226, 1),
-    "plan-791d3a.md": (68169, 1),
-    "plan-82187d.md": (67037, 1),
+    "plan-78c581.md": (71032, 1),
+    "plan-791d3a.md": (69883, 1),
+    "plan-82187d.md": (67791, 1),
     "plan-88736c.md": (23088, 5),
     "plan-92335a.md": (32862, 1),
-    "plan-950124.md": (66790, 1),
+    "plan-950124.md": (70014, 1),
     "plan-96f8e0.md": (73755, 1),
     "plan-99d863.md": (76475, 1),
-    "plan-9ef825.md": (68192, 1),
+    "plan-9ef825.md": (72295, 1),
     "plan-a79696.md": (92559, 1),
-    "plan-add686.md": (51111, 1),
-    "plan-be3b1f.md": (46153, 1),
+    "plan-add686.md": (54854, 1),
+    "plan-be3b1f.md": (50072, 1),
     "plan-be89c1.md": (51379, 1),
-    "plan-bf0244.md": (108593, 1),
+    "plan-bf0244.md": (110626, 1),
     "plan-c068ff.md": (83049, 1),
-    "plan-cbdf79.md": (75282, 1),
+    "plan-cbdf79.md": (76991, 1),
     "plan-d31acd.md": (67654, 1),
     "plan-d35e69.md": (99271, 1),
-    "plan-d923d3.md": (63854, 1),
+    "plan-d923d3.md": (77148, 1),
     "plan-de9fe3.md": (109209, 1),
     "plan-e31e76.md": (40362, 1),
     "plan-e39946.md": (61214, 1),
     "plan-eaaed2.md": (30960, 3),
     "plan-ebd58b.md": (48375, 1),
     "plan-ed89b6.md": (179854, 10),
-    "plan-ee5544.md": (49372, 1),
+    "plan-ee5544.md": (50484, 1),
     "plan-f164be.md": (61762, 1),
-    "plan-f4fb34.md": (50017, 1),
-    "plan-f8f73c.md": (71119, 1),
+    "plan-f4fb34.md": (51370, 1),
+    "plan-f8f73c.md": (72602, 1),
     "plan-f92797.md": (73051, 1),
     "plan-remediation-round-2026-08-13.md": (52988, 0),
     "plan-remediation-round-2026-08-18.md": (24955, 0),
     "plan-remediation-round-2026-08-22.md": (23443, 0),
-    "plan-remediation-round-2026-08-27.md": (67987, 1),
+    "plan-remediation-round-2026-08-27.md": (70133, 1),
 }
 
 
+FENCE_LINE_RE = re.compile(r"^ {0,3}(```|~~~)")
+# A heading's name is its text before a `(`, `:`, an en or em dash, or a spaced hyphen.
+HEADING_SUFFIX_RE = re.compile(r"\s*[(:]|\s*[—–]|\s+-\s")
+
+
+def h2_headings(text: str) -> list[tuple[int, str]]:
+    """(offset, heading text) of each `## ` line outside fenced code blocks."""
+    out, pos, fence = [], 0, None
+    for line in text.splitlines(keepends=True):
+        bare = line.rstrip("\r\n")
+        m = FENCE_LINE_RE.match(bare)
+        if m:
+            if fence is None:
+                fence = m.group(1)
+            elif bare.lstrip().startswith(fence):
+                fence = None
+        elif fence is None and bare.startswith("## "):
+            out.append((pos, bare[3:].strip()))
+        pos += len(line)
+    return out
+
+
+def heading_name(heading: str) -> str:
+    return HEADING_SUFFIX_RE.split(heading, maxsplit=1)[0].strip().casefold()
+
+
+_RECORD_KEYS = {r.casefold(): r for r in RECORD_SECTIONS}
+
+
+def record_key(heading: str) -> str | None:
+    """The RECORD_SECTIONS name a `## ` heading carries, or None for a plan section."""
+    return _RECORD_KEYS.get(heading_name(heading))
+
+
+def sections(text: str) -> list[tuple[str, str]]:
+    """(heading text, section text from its `## ` line to the next one) for each `## ` section."""
+    hs = h2_headings(text)
+    return [
+        (h, text[p : hs[i + 1][0] if i + 1 < len(hs) else len(text)])
+        for i, (p, h) in enumerate(hs)
+    ]
+
+
 def plan_body(text: str) -> str:
-    """The plan without its records: the text before the first record heading, without the
-    stamp/marker comment lines on top, followed by every plan section found below that heading."""
-    m = SUMMARY_HEADING_RE.search(text)
-    head = text[: m.start()] if m else text
-    below = (
-        "".join(sec for heading, sec in sections(text[m.start() :]) if section_key(heading))
-        if m
-        else ""
-    )
+    """The plan without its records (see the comment above BODY_CAP_BYTES)."""
+    hs = h2_headings(text)
+    first = next((i for i, (_, h) in enumerate(hs) if record_key(h)), None)
+    head = text[: hs[first][0]] if first is not None else text
+    below = []
+    for i in range(first if first is not None else len(hs), len(hs)):
+        start, heading = hs[i]
+        key = record_key(heading)
+        if key in TERMINAL_RECORDS:
+            break
+        if not key:
+            below.append(text[start : hs[i + 1][0] if i + 1 < len(hs) else len(text)])
     lines = head.split("\n")
     i = 0
     while i < len(lines) and STAMP_LINE_RE.match(lines[i]):
         i += 1
-    return "\n".join(lines[i:]) + below
+    return "\n".join(lines[i:]) + "".join(below)
 
 
 def body_bytes(text: str) -> int:
@@ -465,29 +527,12 @@ SECTION_BUDGETS = (
         2_048,
     ),
 )
-H2_RE = re.compile(r"^## (.*)$", re.MULTILINE)
 _SECTION_KEYS = {s.casefold(): s for s in PLAN_SECTIONS}
 
 
 def section_key(heading: str) -> str | None:
-    """The PLAN_SECTIONS name a `## ` heading's text opens with (before any `(`, `—`, `–` or `:`)."""
-    return _SECTION_KEYS.get(
-        re.split(r"\s*[(—–:]", heading, maxsplit=1)[0].strip().casefold()
-    )
-
-
-def sections(text: str) -> list[tuple[str, str]]:
-    """(heading text, section text from its `## ` line to the next one) for each `## ` section."""
-    starts = list(H2_RE.finditer(text))
-    return [
-        (
-            m.group(1),
-            text[
-                m.start() : starts[i + 1].start() if i + 1 < len(starts) else len(text)
-            ],
-        )
-        for i, m in enumerate(starts)
-    ]
+    """The PLAN_SECTIONS name a `## ` heading carries (its text before any suffix), or None."""
+    return _SECTION_KEYS.get(heading_name(heading))
 
 
 def section_bytes(text: str) -> dict[str, int]:
@@ -556,7 +601,7 @@ def cap_violations(name: str, text: str) -> list[str]:
     if size > BODY_CAP_BYTES:
         problems.append(
             f"{name}: body is {size:,} bytes, above the R-LW cap of {BODY_CAP_BYTES:,} "
-            "(stamp lines and records excluded; a plan section below a record heading counts)"
+            "(stamp lines and the skills' record sections excluded; every other section counts)"
         )
     if passes > allowed:
         problems.append(
