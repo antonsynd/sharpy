@@ -37,12 +37,9 @@ The shared rules for `/create-plan`, `/verify-plan`, `/implement-plan` and `/ver
    commits onto the open implementation pull request; only when that has merged does its record go on
    a fresh `claude/<group>-verify` lane. Never stack on merged history.
 4. **Commit.** Explicit pathspecs, `git diff --cached --stat` first, a subject of at most 72
-   characters, the trailer the harness provides. A plan-stage commit stages the one plan file. The
-   one other commit on a plan's branch before implementation is a generator group's **stage 0**
-   (contract §11): test files only, committed before the first verify pass, riding where the plan's
-   stages ride (the plan pull request for `full`; the implementation pull request for `light`, though
-   a generator normally makes a group `full`, contract §12 (b)). It changes code, so that pull
-   request merges only after the independent review (item 6).
+   characters, the trailer the harness provides. A plan-stage commit stages the one plan file; a
+   generator group's stage-0 commits (contract §11, `full` only) stage test files, ride the plan pull
+   request, and make it one that changes code (item 6).
 5. **Pull request.** `/push`, then `gh pr create --base dev` (in a cloud session, the GitHub MCP
    `create_pull_request` tool or `gh api -X POST repos/<owner>/<repo>/pulls`). An implementation
    pull request's body names the plan, the gate `passed/failed/skipped @ sha (measured)`, **the issues

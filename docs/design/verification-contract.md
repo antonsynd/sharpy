@@ -299,19 +299,33 @@ A plan implements **one non-chore group** of the charter and lands on **one gate
 ride along only when they touch no seam the group touches. A group that changes printed output or
 emitted layout (snapshot churn) is always alone. A plan whose Defect Class matrix has two or more
 axes with three or more values each, or whose group is a **residue** of an earlier group (a second
-suffix: P11b, P14c), builds a **generative or differential harness** over the matrix FIRST, as
-**stage 0**: a commit on the plan's branch, before the plan's first verify pass, that adds only test
-machinery — the enumeration of cases (each axis the image of a compiler enumeration, or a closed
-literal set), the map from case to expected result, and the totality assertion, with its mutation in
-the commit body (§2). It changes no product code and lands green: every case passes today or is
-known-red with an issue cite, and the known-red list lives inside the test file (not an allowlist
-file) as the ratchet: a known-red case that passes fails the test until its entry is deleted. The
-plan cites the test file and type, gives its counts at the stage-0 sha (cases, known-red), and
-states only decisions: which known-red cases it turns green, and how. It never restates the matrix.
-`/verify-plan` grades the enumeration and the totality assertion by reading the code and running
-the stated mutation; a design it rejects is answered by rewriting the stage-0 test.
-`/implement-plan` drains the known-red list. A hand-written matrix test is allowed only for the axis
-the generator cannot enumerate, and the plan says which axis that is.
+suffix: P11b, P14c), is `full` (§12 (b)) and builds a **generative or differential harness** over the
+matrix first, as **stage 0**:
+
+- **What.** One or more commits on the plan's branch, all before the stamp that passes the plan,
+  touching only test projects (`src/*.Tests/`) and one `SEED_PLAN_FILES` line in
+  `build_tools/scorecard_metrics.py`: the case enumeration (each axis the image of a compiler
+  enumeration, or a closed literal set), the map from case to expected result, and the totality
+  assertion. A generator that needs a product hook is not stage 0: hook and generator are the plan's
+  first task.
+- **Green.** Every case passes at the base or is a known-red row in `<Test>-allowlist.txt`, which the
+  test reads; each row cites an open issue (`allowlist_issue_state.py` checks it). The file's
+  basename joins `SEED_PLAN_FILES`, so its rows count as seeded, outside the ratcheted
+  `allowlist_rows_outside_seed`. A row whose case passes fails the test until the row is deleted.
+- **Who.** The plan author writes it, builds, runs the test filtered to its type
+  (`.claude/scripts/dotnet-serialized test <project> --filter "FullyQualifiedName~<Type>"`), and
+  records two mutations in the commit body (§2): the totality assertion broken, and a passing case
+  added as a known-red row; each broken → red, restored → green. CI on the plan's pull request is
+  the gate.
+- **The plan** cites the test type and its counts at the stage-0 sha (cases, known-red rows) and
+  states only decisions: which rows it turns green, and how. It never restates the matrix.
+- **Checks.** `/verify-plan` runs `git diff --name-only <base>..<stage-0 tip> -- ':!docs/process/plans/'`
+  (every path under `src/*.Tests/`, or `build_tools/scorecard_metrics.py`), reads the enumeration and
+  the totality assertion, and re-runs both mutations; a design it rejects is answered by a new
+  stage-0 commit. `/implement-plan` deletes each row its fix turns green.
+
+A hand-written matrix test is allowed only for the axis the generator cannot enumerate, and the plan
+says which axis that is.
 
 *Why:* plan-0ca7b7 bundled six groups (42 tasks, four gates); its planning, implementation and
 verification filed 89 issues in two days against zero closures, and the verify round needed eight

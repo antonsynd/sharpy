@@ -39,7 +39,7 @@ A revision is plan-author work on an existing file of record. It runs in a **fre
    | stamp, result **PASS** / **PASS WITH CORRECTIONS** | A revision discards that verdict. Say so and ask before editing anything. |
 
 3. **Owner-only questions first, in one batch.** An Unchecked Claim that needs the owner's word, a `worked` → refused change (contract §3), a tier or scope change and an unruled door are asked once, each with its options and a recommendation, before the design is rewritten around them. Each answer is recorded in the plan as the owner's words with the date (`## Scope` `override:` for a tier or scope answer; the Defect Class `Owner rulings` row for the rest), lettered at the next `/batch-issues`.
-4. **Answer each finding at its class, by rewriting the text it names.** Replace, never append: no answer paragraph, pass history or superseded decision beside its replacement. Net body growth per revision ≤ +3 KB. Re-measure what the pass measured before building on it (`run`, at a named sha). A finding against a generator's enumeration, map or totality assertion is answered by rewriting the stage-0 test (a new commit; contract §11) and updating the counts the plan cites — never by adding the cell the verifier found to the plan. A finding the revision declines keeps its reason in the revision-log line, not dropped.
+4. **Answer each finding at its class, by rewriting the text it names.** Replace, never append: no answer paragraph, pass history or superseded decision beside its replacement. Net body growth per revision ≤ +3 KB. Re-measure what the pass measured before building on it (`run`, at a named sha). A finding against a generator's enumeration, map or totality assertion is answered by a new stage-0 commit (contract §11) and the counts the plan cites — never by adding the cell to the plan. A finding the revision declines keeps its reason in the revision-log line, not dropped.
 5. **Reset the record.** Delete the stale stamp lines and the whole `## Verification Summary` (a left-over stamp is read by `/implement-plan` as the current verdict). Append ONE `## Revision log` line: `@ <the pass's sha> — revised after the <n>th pass (NEEDS REVISION, Dimension N): <the decisions changed>`. The stamp is gone, so this line is the only carrier of the dimension the next verifier needs for the Convergence rule. A revised draft that had no pass writes `@ <sha> — revised before the first pass: …`.
 6. **Check, commit, report.** `check_plan_refs.py`, then §3.1 with the subject `process(plan): <plan-id> (<group>) revised after pass <n>`, then the Report (§4) plus each finding and how it was answered, the body bytes before → after, the owner's answers, what was re-measured, and the next step `/verify-plan <path>` **in a fresh context**.
 
@@ -72,7 +72,7 @@ Find the group's row in the newest charter (`ls -t docs/process/rounds/remediati
 ## Defect Class
 
 - **Violated contract:** <one sentence> · **Meta-class → cure:** <§1 row> · **Known cells:** #NNN …
-- **Matrix:** <the arms of every touched dispatch site, beyond the repro lists>
+- **Matrix:** <the arms of every touched dispatch site, beyond the repro lists> · **Generator:** not required: <why>
 - **Standing harness:** <name, or the A<n> that adds one> · **Lane / reach / fidelity row:** <…> · **Owner rulings:** <links>
 
 ## Adversarial Review
@@ -127,6 +127,10 @@ Before writing the plan:
 
 Research `dotnet` runs go through `.claude/scripts/dotnet-serialized` (CLAUDE.md › Operational Contracts); prefer `/spy-run`, `/spy-emit`, `/quick-check`.
 
+### 2.1. Stage 0 (generator groups)
+
+If the matrix has ≥2 axes × ≥3 values or the group is a residue, the group is `full`: cut the plan's branch (§3.1's first command) and land stage 0 now, as contract §11 says; the plan cites its sha and counts.
+
 ### 3. Generate the plan
 
 Write a plan file to `.claude/plans/` with a random name (use `openssl rand -hex 3` for a short hex suffix, e.g., `plan-a1b2c3.md`; the stem is the plan-id, and the plan's file of record is `docs/process/plans/plan-a1b2c3.md`). §3.1 commits the draft there once it is written.
@@ -162,10 +166,10 @@ The plan must follow this structure. `## Defect Class` and `## Adversarial Revie
 - **Violated contract:** <one sentence — what is supposed to be uniform across which axis>
 - **Meta-class:** <from the standard-cure table, verification-contract.md §1> → **standard cure:** <seam / sweep / harness>
 - **Known member cells:** #NNN … (the issues)
-- **Sibling cells this plan must also cover:** <enumerated matrix — the issue repro list is a symptom report. With a stage-0 generator: no cell list; the Generator row cites the test>
+- **Sibling cells this plan must also cover:** <enumerated matrix — the issue repro list is a symptom report. With stage 0: none; see Generator>
 - **Lane / reach:** <lane · program|probe>; **fidelity-scope row:** <COMPARED row | promoted by R-xx>
 - **Standing harness that should have caught it:** <name> — or "none; Phase N adds one"
-- **Generator:** <existing harness the cells join | REQUIRED FIRST (≥2 axes × ≥3 values, or a residue: P11b, P14c) — stage 0 `<test file>` `<type>` @ <sha>: <n> cases, <k> known-red; excluded axes with reasons; this plan turns <which> green by D<n> | not required: <the axis a generator cannot enumerate>>
+- **Generator:** <existing harness the cells join | stage 0 (§2.1) `<Type>` @ <sha>: <n> cases, <k> known-red rows; excluded axes with reasons; rows this plan turns green, by D<n> | not required: <the axis a generator cannot enumerate>>
 - **Owner rulings:** <issue-comment links; authoritative, do not re-ask>
 
 ## Adversarial Review (pre-mortem)
@@ -208,7 +212,6 @@ The plan must follow this structure. `## Defect Class` and `## Adversarial Revie
 
 ## Testing Strategy
 
-- <Generator: the stage-0 test, or the axis it cannot enumerate and the hand matrix for that axis only>
 - <New test fixtures needed (.spy + .expected/.error)> — for every negative fixture, the positive control that must keep passing
 - <Edge cases to cover — cells outside the issues' repro lists; change axis when the spellings you vary all agree>
 - <Outputs that discriminate — an example that prints the same thing with the bug present proves nothing>
@@ -232,7 +235,7 @@ The plan must follow this structure. `## Defect Class` and `## Adversarial Revie
 - Incremental commits — each task is independently committable
 - A plan that fixes one arm of a mirrored/parallel-site structure without a completeness scan is not a plan
 - A plan with a second non-chore group, or an output/layout-changing phase sharing a gate, is not a plan (contract §11) — split it
-- A residue group or a ≥2-axis × ≥3-value matrix without its stage-0 commit before the first verify pass is not a plan (contract §11: test machinery only, axes closed against compiler enumerations, never hand lists; green, the known-red list and its issue cites inside the test file); the plan cites the test and never restates the matrix
+- A residue group or a ≥2-axis × ≥3-value matrix without its stage 0 (§2.1; a generator needing a product hook is T1 instead) is not a plan; one whose axes are hand lists is a hand matrix wearing a generator
 - The plan names the class trackers it posts cells to and never instructs an implementer to `gh issue create` (contract §10)
 - A design decision that adds a name-keyed (`BuiltinNames.X`, type-name string) rule in `Semantic/` or `CodeGen/` without a rung justification is not a plan (layer ladder, CLAUDE.md › Core & Stdlib Conventions)
 - Every new test/guard/harness comes with the mutation that turns it red (verification-contract.md §2)
@@ -252,7 +255,7 @@ git add docs/process/plans/<plan-id>.md           # explicit pathspec; `git diff
 git commit -m "process(plan): <plan-id> (<group>) draft"
 ```
 
-Only the committed copy carries the DRAFT marker, so `/verify-plan` can stamp the working copy's first line. A revision writes `revised by /create-plan on YYYY-MM-DD @ <sha> after pass <n>` in the marker. Then `/push`; a `full` plan opens its one pull request into `dev` on the first push (body: group, tier, issues, the `check_plan_refs.py` result, the next step), and a `light` plan opens none — it rides in the implementation's. A generator group's stage-0 commit (contract §11) lands on this branch before the first `/verify-plan`; it changes code, so the plan pull request then merges only after the independent review (README item 6).
+Only the committed copy carries the DRAFT marker, so `/verify-plan` can stamp the working copy's first line. A revision writes `revised by /create-plan on YYYY-MM-DD @ <sha> after pass <n>` in the marker. Then `/push`; a `full` plan opens its one pull request into `dev` on the first push (body: group, tier, issues, the `check_plan_refs.py` result, the next step), and a `light` plan opens none — it rides in the implementation's.
 
 ### 4. Report
 
