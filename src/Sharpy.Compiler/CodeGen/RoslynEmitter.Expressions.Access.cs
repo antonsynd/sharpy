@@ -2193,13 +2193,41 @@ internal partial class RoslynEmitter
     }
 
     /// <summary>
+    /// The lowering-IR node of kind <typeparamref name="TIr"/> for an AST shape the lowering pass
+    /// lowers to that kind unconditionally (#2443): an <see cref="IndexAccess"/> to an
+    /// <see cref="IrIndexAccess"/>, an <c>==</c>/<c>!=</c> <see cref="BinaryOp"/> to an
+    /// <see cref="IrEqualityComparison"/>, a list/set/dict comprehension to an
+    /// <see cref="IrLoweredLoop"/>, a generator expression to an <see cref="IrLoweredGenerator"/>.
+    /// For those a miss is not "the fact is absent" but a node the walk never lowered, so it throws
+    /// an internal compiler error (SPY0909) instead of falling back to a default.
+    /// <para>The one context without lowering is a unit-test context built over
+    /// <see cref="Lowering.IrCompilation.Empty"/> (no production path uses it: both
+    /// <c>ProjectCompiler</c> code-generation paths pass the <c>LoweringPass</c> result); there the
+    /// read stays optional and the caller's fallback applies.</para>
+    /// </summary>
+    private TIr? RequiredIrNodeFor<TIr>(Node ast) where TIr : IrNode
+    {
+        if (IrNodeFor<TIr>(ast) is { } hit)
+            return hit;
+        if (ReferenceEquals(_context.Ir, Lowering.IrCompilation.Empty))
+            return null;
+
+        var found = _context.Ir.Index.TryGetValue(ast, out var node) ? node.GetType().Name : "no index entry";
+        throw new InternalCompilerErrorException("RoslynEmitter",
+            $"lowering IR missing (#2443): {ast.GetType().Name} always lowers to {typeof(TIr).Name}, "
+            + $"found {found} (file='{_context.SourceFilePath}')",
+            ast);
+    }
+
+    /// <summary>
     /// Reads the index-access lowering strategy from the lowering IR (E2 #1056, migrates
-    /// <c>_indexAccessLowerings</c>). Returns <c>null</c> when the node has no
-    /// <see cref="IrIndexAccess"/>, which the caller treats as the default native element access.
+    /// <c>_indexAccessLowerings</c>). The <see cref="IrIndexAccess"/> is required
+    /// (<see cref="RequiredIrNodeFor{TIr}"/>); a <c>null</c> strategy on it is the default native
+    /// element access.
     /// </summary>
     private IndexAccessLowering? GetIrIndexAccessLowering(IndexAccess indexAccess)
     {
-        return IrNodeFor<IrIndexAccess>(indexAccess)?.Strategy;
+        return RequiredIrNodeFor<IrIndexAccess>(indexAccess)?.Strategy;
     }
 
     /// <summary>
