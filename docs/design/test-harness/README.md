@@ -75,7 +75,7 @@ Every subsystem run emits one `SubsystemReport` JSON to `artifacts/<subsystem>/r
 
 - `harness report merge` combines whatever reports exist into one summary; `harness report comment` upserts a single sticky PR comment (marker-comment + `gh api`, no third-party actions — the repo's CI uses only `actions/*`).
 - **Weekly health report:** the weekly workflow merges the week's nightly/weekly reports into a trend table (coverage %, mutation score per component, oracle verified %, fuzz corpus edges + open crash buckets, visual flake rate, scaffold skeleton-rot count) and publishes it as a `$GITHUB_STEP_SUMMARY` + artifact — same publication pattern as the existing cross-language benchmark summary.
-- Trend storage follows the existing precedent (`benchmarks/cross-language/results/history.json` committed by CI): `test-harness/history/` on `dev`, appended by the nightly job, capped at 52 weeks.
+- Trend storage follows the existing precedent (the cross-language benchmark `history.json`, committed by CI to the `benchmark-results` branch by `benchmarks/cross-language/publish_results.sh`, never to `dev`, whose ruleset rejects direct pushes): `test-harness/history/` on a dedicated results branch, appended by the nightly job, capped at 52 weeks.
 
 ### Cost management
 
