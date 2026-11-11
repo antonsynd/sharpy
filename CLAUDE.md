@@ -6,7 +6,7 @@ Architecture: [docs/architecture.md](docs/architecture.md). "Contract §N": [ver
 
 ## Commands
 
-Needs .NET 10, Python 3.9+. Prefer skills: `/build`, `/run-tests`, `/spy-run`, `/spy-emit`, `/quick-check`, `/ci-gate`, `/commit`, `/push`.
+Needs .NET 10, Python 3.9+. .NET 11 / C# 15 shipped 2026-11-10; every project still targets `net10.0` until #2548 adds `net11.0`, so the 10.0 runtime is required (the 11 SDK builds the solution, an 11-only runtime starts nothing). Prefer skills: `/build`, `/run-tests`, `/spy-run`, `/spy-emit`, `/quick-check`, `/ci-gate`, `/commit`, `/push`.
 
 ```bash
 .claude/scripts/dotnet-serialized build sharpy.sln
