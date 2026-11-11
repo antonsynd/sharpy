@@ -1836,8 +1836,11 @@ def main() -> None:
     [Fact]
     public void ALibraryReplacedByRename_IsReboundByTheNextColdCompileInTheSameProcess()
     {
+        // The replaced library's copy goes to this test's own image cache, never the user's.
+        using var images = Sharpy.Compiler.Discovery.ReferenceImageCache.OverrideRootForTests(
+            Path.Combine(_tempDir, "image-data", "sharpy", "reference-images"));
         const string area = "rebuilt_reference";
-        const string v1 = "def f() -> int:\n    return 1\n\n\ndef h() -> int:\n    return 2\n";
+        const string v1 ="def f() -> int:\n    return 1\n\n\ndef h() -> int:\n    return 2\n";
         const string v2 = "def h() -> str:\n    return \"two\"\n";
 
         string BuildLib(string version, string source)
@@ -1898,6 +1901,8 @@ def main() -> None:
 
         var cold = BuildApp(libPath);
         _output.WriteLine("cold after rename:\n" + Diagnostics(cold));
+        Directory.EnumerateDirectories(Path.Combine(_tempDir, "image-data", "sharpy", "reference-images"))
+            .Should().NotBeEmpty("v2 was loaded from a copy in this test's own image cache");
         cold.Success.Should().BeFalse("v2 has no `f`");
         Codes(cold).Should().Contain("SPY0301",
             "a cold compile after the rename binds the library now at the path, so it refuses the removed "

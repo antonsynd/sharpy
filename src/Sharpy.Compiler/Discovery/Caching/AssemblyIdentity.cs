@@ -1,6 +1,4 @@
 using System.Reflection;
-using System.Security.Cryptography;
-using System.Text;
 
 namespace Sharpy.Compiler.Discovery.Caching;
 
@@ -32,7 +30,7 @@ internal class AssemblyIdentity
         {
             Name = assemblyName.Name ?? "Unknown",
             Version = assemblyName.Version?.ToString() ?? "1.0.0",
-            ContentHash = string.IsNullOrEmpty(location) ? string.Empty : ComputeFileHash(location),
+            ContentHash = ContentHashOf(assembly, location),
             FilePath = location,
             CompilerVersion = Shared.CompilerIdentity.Version
         };
@@ -51,15 +49,27 @@ internal class AssemblyIdentity
         return $"{Name.ToLowerInvariant()}-{Version}-{hash}-{compilerTag}.json.gz";
     }
 
-    private static string ComputeFileHash(string filePath)
+    /// <summary>
+    /// The SHA-256 of the file the assembly was loaded from; when there is no such file to read (an
+    /// in-memory load, or a cached copy deleted after it was mapped), the image's module version id,
+    /// which names the loaded bytes and survives the file. Never empty: an empty hash made the cache
+    /// key <c>{name}-{version}-no-hash</c>, shared by every build of that name and version.
+    /// </summary>
+    private static string ContentHashOf(Assembly assembly, string location)
     {
-        if (!File.Exists(filePath))
-            return string.Empty;
+        if (!string.IsNullOrEmpty(location) && File.Exists(location))
+        {
+            try
+            {
+                return Shared.FileContentIdentity.Sha256Of(location);
+            }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+            {
+                // Unreadable: fall through to the image's own identity.
+            }
+        }
 
-        using var stream = File.OpenRead(filePath);
-        using var sha256 = SHA256.Create();
-        var hashBytes = sha256.ComputeHash(stream);
-        return Convert.ToHexString(hashBytes).ToLowerInvariant();
+        return "mvid" + assembly.ManifestModule.ModuleVersionId.ToString("N");
     }
 
     public override bool Equals(object? obj)

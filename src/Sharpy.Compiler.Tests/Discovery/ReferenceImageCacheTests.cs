@@ -4,6 +4,8 @@ using FluentAssertions;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Sharpy.Compiler.Discovery;
+using AssemblyIdentity = Sharpy.Compiler.Discovery.Caching.AssemblyIdentity;
+using Sharpy.Compiler.Shared;
 using Xunit;
 using Xunit.Abstractions;
 
@@ -12,13 +14,15 @@ namespace Sharpy.Compiler.Tests.Discovery;
 /// <summary>
 /// The copies <see cref="ReferenceLoadContext"/> loads a replaced reference from
 /// (<see cref="ReferenceImageCache"/>): a per-user, owner-only, content-addressed directory whose files
-/// are loaded only after their bytes hash to their entry's name, and whose stale entries are pruned.
-/// Before, the copies went to <c>/tmp/sharpy-reference-images/&lt;key&gt;</c>, a predictable path in a
-/// world-writable directory, and a file already there was returned by name: another local user could
-/// plant the assembly the compiler then loaded, and nothing ever deleted an entry.
+/// are loaded only after their bytes hash to their entry's name, that refuses a root it cannot trust,
+/// and whose stale entries are pruned without taking one a live process holds. Before, the copies went
+/// to <c>/tmp/sharpy-reference-images/&lt;key&gt;</c>, a predictable path in a world-writable directory,
+/// and a file already there was returned by name; nothing ever deleted an entry.
 /// </summary>
 public class ReferenceImageCacheTests : IDisposable
 {
+    private const UnixFileMode OwnerOnly = UnixFileMode.UserRead | UnixFileMode.UserWrite | UnixFileMode.UserExecute;
+
     private readonly ITestOutputHelper _output;
     private readonly string _tempDir;
 
@@ -27,6 +31,8 @@ public class ReferenceImageCacheTests : IDisposable
         _output = output;
         _tempDir = Path.Combine(Path.GetTempPath(), $"sharpy_refimages_{Guid.NewGuid():N}");
         Directory.CreateDirectory(_tempDir);
+        if (!OperatingSystem.IsWindows())
+            File.SetUnixFileMode(_tempDir, OwnerOnly);
     }
 
     public void Dispose()
@@ -42,6 +48,9 @@ public class ReferenceImageCacheTests : IDisposable
         GC.SuppressFinalize(this);
     }
 
+    /// <summary>A trusted root laid out as the per-user one is: &lt;data home&gt;/sharpy/reference-images.</summary>
+    private string Root => Path.Combine(_tempDir, "sharpy", "reference-images");
+
     /// <summary>A one-type assembly named <paramref name="assemblyName"/> whose marker says <paramref name="who"/>.</summary>
     private string EmitMarkerAssembly(string directory, string assemblyName, string who)
     {
@@ -56,6 +65,8 @@ public class ReferenceImageCacheTests : IDisposable
         emitted.Success.Should().BeTrue(string.Join("\n", emitted.Diagnostics));
         return path;
     }
+
+    private string Source(string name, string who) => EmitMarkerAssembly(Path.Combine(_tempDir, "src_" + name), name, who);
 
     /// <summary>What the assembly at <paramref name="path"/> says, loaded as the compiler loads a copy.</summary>
     private static string LoadedMarker(string path)
@@ -73,6 +84,9 @@ public class ReferenceImageCacheTests : IDisposable
         }
     }
 
+    private static bool IsUnder(string path, string directory)
+        => Path.GetFullPath(path).StartsWith(Path.GetFullPath(directory) + Path.DirectorySeparatorChar, StringComparison.Ordinal);
+
     /// <summary>
     /// (a) A file planted where the genuine reference's copy belongs — the right directory (the content
     /// hash of the genuine bytes, which anyone can compute) and the right file name — but holding another
@@ -87,13 +101,13 @@ public class ReferenceImageCacheTests : IDisposable
         var impostor = EmitMarkerAssembly(Path.Combine(_tempDir, "impostor"), "PlantProbe", "planted");
         LoadedMarker(impostor).Should().Be("planted", "positive control: the planted bytes load and answer differently");
 
-        var root = Path.Combine(_tempDir, "cache");
-        var entry = Path.Combine(root, ReferenceImageCache.ContentHash(genuine));
+        ReferenceImageCache.TrustRefusal(Root).Should().BeNull("precondition: the root is trusted");
+        var entry = Path.Combine(Root, FileContentIdentity.Sha256Of(genuine));
         Directory.CreateDirectory(entry);
         var planted = Path.Combine(entry, Path.GetFileName(genuine));
         File.Copy(impostor, planted);
 
-        var published = ReferenceImageCache.Publish(genuine, root);
+        var published = ReferenceImageCache.Publish(genuine, Root);
 
         published.Should().Be(planted, "the entry is where the content hash says, under the reference's own name");
         File.ReadAllBytes(published).Should().Equal(File.ReadAllBytes(genuine),
@@ -108,111 +122,217 @@ public class ReferenceImageCacheTests : IDisposable
     [Fact]
     public void Entries_AreNamedByContent_AndReusedOnlyForTheSameBytes()
     {
-        var root = Path.Combine(_tempDir, "cache");
         var v1 = EmitMarkerAssembly(Path.Combine(_tempDir, "v1"), "ContentProbe", "one");
         var v2 = EmitMarkerAssembly(Path.Combine(_tempDir, "v2"), "ContentProbe", "two");
 
-        var first = ReferenceImageCache.Publish(v1, root);
-        var again = ReferenceImageCache.Publish(v1, root);
-        var other = ReferenceImageCache.Publish(v2, root);
+        var first = ReferenceImageCache.Publish(v1, Root);
+        var again = ReferenceImageCache.Publish(v1, Root);
+        var other = ReferenceImageCache.Publish(v2, Root);
 
+        IsUnder(first, Root).Should().BeTrue("non-vacuity: the trusted root is used, not the fallback");
         again.Should().Be(first);
-        Path.GetFileName(Path.GetDirectoryName(first)).Should().Be(ReferenceImageCache.ContentHash(v1));
+        Path.GetFileName(Path.GetDirectoryName(first)).Should().Be(FileContentIdentity.Sha256Of(v1));
         other.Should().NotBe(first);
         LoadedMarker(first).Should().Be("one");
         LoadedMarker(other).Should().Be("two");
-        Directory.EnumerateFiles(root).Should().BeEmpty("no staging file is left behind");
+        Directory.EnumerateFiles(Root).Should().BeEmpty("no staging file is left behind");
     }
 
     /// <summary>
-    /// On Unix the cache directories are owner-only, and a pre-existing root that others could reach is
-    /// narrowed before anything is published into it.
+    /// On Unix a root that does not exist is created owner-only, with its <c>sharpy/</c> parent.
     /// </summary>
     [SkippableFact]
-    public void TheCacheDirectories_AreOwnerOnly_OnUnix()
+    public void ACreatedRoot_AndItsParent_AreOwnerOnly()
     {
         Skip.If(OperatingSystem.IsWindows(), "Unix file modes; Windows relies on the per-user profile ACL");
         if (OperatingSystem.IsWindows())
             return;
 
-        var root = Path.Combine(_tempDir, "cache");
-        Directory.CreateDirectory(root);
-        File.SetUnixFileMode(root, (UnixFileMode)Convert.ToInt32("777", 8));
+        var published = ReferenceImageCache.Publish(Source("ModeProbe", "mode"), Root);
 
-        var published = ReferenceImageCache.Publish(
-            EmitMarkerAssembly(Path.Combine(_tempDir, "src"), "ModeProbe", "mode"), root);
+        IsUnder(published, Root).Should().BeTrue("non-vacuity: the root was used");
+        File.GetUnixFileMode(Root).Should().Be(OwnerOnly);
+        File.GetUnixFileMode(Path.GetDirectoryName(Root)!).Should().Be(OwnerOnly, "the sharpy/ parent too");
+        File.GetUnixFileMode(Path.GetDirectoryName(published)!).Should().Be(OwnerOnly, "each entry");
+    }
 
-        const UnixFileMode ownerOnly = UnixFileMode.UserRead | UnixFileMode.UserWrite | UnixFileMode.UserExecute;
-        File.GetUnixFileMode(root).Should().Be(ownerOnly, "a root others could write is narrowed");
-        File.GetUnixFileMode(Path.GetDirectoryName(published)!).Should().Be(ownerOnly, "each entry is created owner-only");
+    public static IEnumerable<object[]> UntrustedRoots => new[]
+    {
+        new object[] { "root_wide_mode" },
+        new object[] { "parent_wide_mode" },
+        new object[] { "root_symlink" },
+        new object[] { "parent_symlink" },
+        new object[] { "data_home_writable" },
+        new object[] { "foreign_entry" },
+    };
+
+    /// <summary>
+    /// A root that cannot be trusted is refused, never adopted or narrowed (running as root, a chmod
+    /// would succeed on another user's directory): a pre-existing root or <c>sharpy/</c> parent with any
+    /// access for group or others, either one a symbolic link, a data directory others can write, or a
+    /// root holding something that is not a cache entry. The copy then goes to a private directory and
+    /// still holds the genuine bytes; the refused directory's mode is left as it was.
+    /// </summary>
+    [SkippableTheory]
+    [MemberData(nameof(UntrustedRoots))]
+    public void AnUntrustedRoot_IsRefused_AndTheCopyIsPrivate(string arrangement)
+    {
+        Skip.If(OperatingSystem.IsWindows(), "Unix modes and links; Windows relies on the per-user profile ACL");
+        if (OperatingSystem.IsWindows())
+            return;
+
+        var parent = Path.GetDirectoryName(Root)!;
+        var wide = (UnixFileMode)Convert.ToInt32("777", 8);
+        switch (arrangement)
+        {
+            case "root_wide_mode":
+                Directory.CreateDirectory(Root);
+                File.SetUnixFileMode(Root, wide);
+                break;
+            case "parent_wide_mode":
+                Directory.CreateDirectory(parent);
+                File.SetUnixFileMode(parent, wide);
+                break;
+            case "root_symlink":
+                Directory.CreateDirectory(parent, OwnerOnly);
+                var elsewhere = Path.Combine(_tempDir, "elsewhere");
+                Directory.CreateDirectory(elsewhere, OwnerOnly);
+                Directory.CreateSymbolicLink(Root, elsewhere);
+                break;
+            case "parent_symlink":
+                var otherParent = Path.Combine(_tempDir, "other-parent");
+                Directory.CreateDirectory(otherParent, OwnerOnly);
+                Directory.CreateSymbolicLink(parent, otherParent);
+                break;
+            case "data_home_writable":
+                File.SetUnixFileMode(_tempDir, wide);
+                break;
+            case "foreign_entry":
+                Directory.CreateDirectory(Root, OwnerOnly);
+                Directory.CreateDirectory(parent, OwnerOnly);
+                File.SetUnixFileMode(parent, OwnerOnly);
+                File.WriteAllText(Path.Combine(Root, "Planted.dll"), "not an entry");
+                break;
+        }
+
+        var modeBefore = Directory.Exists(Root) ? File.GetUnixFileMode(Root) : (UnixFileMode?)null;
+        ReferenceImageCache.TrustRefusal(Root).Should().NotBeNull($"[{arrangement}] the root is refused");
+
+        var notices = new List<string>();
+        var published = ReferenceImageCache.Publish(Source("Untrusted" + arrangement.Replace("_", ""), arrangement), Root, notices.Add);
+
+        IsUnder(published, Root).Should().BeFalse($"[{arrangement}] nothing is published under a refused root");
+        Path.GetFileName(Path.GetDirectoryName(published)!).Should().StartWith("sharpy-reference-image-");
+        LoadedMarker(published).Should().Be(arrangement);
+        if (modeBefore is { } mode && new DirectoryInfo(Root).LinkTarget == null)
+            File.GetUnixFileMode(Root).Should().Be(mode, $"[{arrangement}] a refused root is not narrowed");
     }
 
     /// <summary>
-    /// A root that cannot be used (here a file sits where the directory belongs) falls back to a private
-    /// temporary directory, never to a guessable shared path, and still yields the genuine bytes.
+    /// The private fallback keeps one copy per content for the process (a repeated publish reuses it
+    /// rather than leaking another temporary directory), and tells the caller about the fallback only
+    /// on the process's first fallback copy.
     /// </summary>
     [Fact]
-    public void AnUnusableRoot_FallsBackToAPrivateDirectory()
+    public void TheFallback_ReusesOneCopyPerContent_AndIsReportedOnce()
     {
-        var root = Path.Combine(_tempDir, "not-a-directory");
-        File.WriteAllText(root, "occupied");
-        var genuine = EmitMarkerAssembly(Path.Combine(_tempDir, "src"), "FallbackProbe", "fallback");
+        var unusable = Path.Combine(_tempDir, "not-a-directory");
+        File.WriteAllText(unusable, "occupied");
+        var source = Source("FallbackProbe", "fallback");
+        var firstFallbackOfProcess = ReferenceImageCache.PrivateImageCount == 0;
 
-        var published = ReferenceImageCache.Publish(genuine, root);
-        try
-        {
-            published.Should().NotStartWith(root);
-            Path.GetFileName(Path.GetDirectoryName(published)!).Should().StartWith("sharpy-reference-image-");
-            LoadedMarker(published).Should().Be("fallback");
-        }
-        finally
-        {
-            Directory.Delete(Path.GetDirectoryName(published)!, recursive: true);
-        }
+        var notices = new List<string>();
+        var first = ReferenceImageCache.Publish(source, unusable, notices.Add);
+        var again = ReferenceImageCache.Publish(source, unusable, notices.Add);
+
+        _output.WriteLine(string.Join("\n", notices));
+        first.Should().NotStartWith(unusable);
+        again.Should().Be(first, "the same content reuses its private copy");
+        LoadedMarker(first).Should().Be("fallback");
+        notices.Should().HaveCount(firstFallbackOfProcess ? 1 : 0, "the fallback is reported once per process");
     }
 
     /// <summary>
-    /// (c) Pruning deletes entries (and leftover staging files) untouched for longer than
-    /// <see cref="ReferenceImageCache.StaleAfterDays"/>, keeps fresh ones, and never deletes the entry
-    /// about to be loaded even when it is as old as a stale one. Publishing prunes: a stale entry is gone
-    /// after the next publish.
+    /// (c) Pruning deletes entries (and leftover staging files) unused for longer than
+    /// <see cref="ReferenceImageCache.StaleAfterDays"/> — by the newest of write and access times —
+    /// keeps fresh ones, never deletes the entry about to be loaded, and never deletes one this process
+    /// published (it may have it loaded), even when it is as old as a stale one.
     /// </summary>
     [Fact]
-    public void Pruning_RemovesStaleEntries_KeepsFreshOnes_AndTheOneBeingLoaded()
+    public void Pruning_RemovesStaleEntries_KeepsFreshOnes_TheOneBeingLoaded_AndHeldOnes()
     {
-        var root = Path.Combine(_tempDir, "cache");
+        ReferenceImageCache.TrustRefusal(Root).Should().BeNull("precondition: the root is trusted");
         var now = DateTime.UtcNow;
         var old = now.AddDays(-(ReferenceImageCache.StaleAfterDays + 1));
 
-        string Entry(string name, DateTime writeTime)
+        // Published first: publishing prunes too, and the arranged entries must meet only the prune below.
+        var held = ReferenceImageCache.Publish(Source("HeldProbe", "held"), Root);
+        var heldEntry = Path.GetDirectoryName(held)!;
+        IsUnder(held, Root).Should().BeTrue("non-vacuity: the trusted root is used");
+        Directory.SetLastWriteTimeUtc(heldEntry, old);
+        File.SetLastWriteTimeUtc(held, old);
+        File.SetLastAccessTimeUtc(held, old);
+
+        string Entry(string name, DateTime writeTime, DateTime? accessTime = null)
         {
-            var entry = Path.Combine(root, name);
+            var entry = Path.Combine(Root, name);
             Directory.CreateDirectory(entry);
-            File.WriteAllText(Path.Combine(entry, "X.dll"), name);
+            var file = Path.Combine(entry, "X.dll");
+            File.WriteAllText(file, name);
+            File.SetLastWriteTimeUtc(file, writeTime);
+            File.SetLastAccessTimeUtc(file, accessTime ?? writeTime);
             Directory.SetLastWriteTimeUtc(entry, writeTime);
             return entry;
         }
 
-        var stale = Entry("stale", old);
-        var fresh = Entry("fresh", now.AddDays(-(ReferenceImageCache.StaleAfterDays - 1)));
-        var keep = Entry("keep", old);
-        var staging = Path.Combine(root, ".staging-leftover");
+        var stale = Entry(new string('a', 64), old);
+        var fresh = Entry(new string('b', 64), now.AddDays(-(ReferenceImageCache.StaleAfterDays - 1)));
+        var recentlyRead = Entry(new string('c', 64), old, accessTime: now.AddDays(-1));
+        var keep = Entry(new string('d', 64), old);
+        var staging = Path.Combine(Root, ".staging-leftover");
         File.WriteAllText(staging, "partial");
         File.SetLastWriteTimeUtc(staging, old);
+        File.SetLastAccessTimeUtc(staging, old);
 
-        ReferenceImageCache.Prune(root, keep, now);
+        ReferenceImageCache.Prune(Root, keep, now);
 
-        Directory.Exists(stale).Should().BeFalse("an entry untouched past the limit is pruned");
+        Directory.Exists(stale).Should().BeFalse("an entry unused past the limit is pruned");
         File.Exists(staging).Should().BeFalse("a leftover staging file is pruned like an entry");
         Directory.Exists(fresh).Should().BeTrue("an entry inside the limit stays");
+        Directory.Exists(recentlyRead).Should().BeTrue("an entry read inside the limit stays");
         Directory.Exists(keep).Should().BeTrue("the entry about to be loaded is never pruned");
+        File.Exists(held).Should().BeTrue("an entry this process published (and may have loaded) is never pruned by it");
+    }
 
-        var staleAgain = Entry("stale-again", old);
-        var published = ReferenceImageCache.Publish(
-            EmitMarkerAssembly(Path.Combine(_tempDir, "src"), "PruneProbe", "prune"), root);
-        Directory.Exists(staleAgain).Should().BeFalse("publishing prunes");
-        File.Exists(published).Should().BeTrue();
-        Directory.Exists(fresh).Should().BeTrue();
+    /// <summary>
+    /// An assembly whose file is gone (a cached copy pruned while mapped) keeps a content identity of
+    /// its own — the image's module version id — instead of an empty hash, which made the overload index
+    /// key <c>{name}-{version}-no-hash</c> and collided across builds.
+    /// </summary>
+    [Fact]
+    public void AnAssemblyWhoseFileIsGone_IsIdentifiedByItsImage()
+    {
+        var path = Source("GoneProbe", "gone");
+        var copy = Path.Combine(_tempDir, "gone-copy", "GoneProbe.dll");
+        Directory.CreateDirectory(Path.GetDirectoryName(copy)!);
+        File.Copy(path, copy);
+        var context = new AssemblyLoadContext("refimage-gone-" + Guid.NewGuid().ToString("N"), isCollectible: true);
+        try
+        {
+            var assembly = context.LoadFromAssemblyPath(copy);
+            AssemblyIdentity.FromAssembly(assembly).ContentHash.Should().Be(FileContentIdentity.Sha256Of(copy),
+                "control: while the file is there, its content hash");
+
+            File.Delete(copy);
+            var identity = AssemblyIdentity.FromAssembly(assembly);
+
+            identity.ContentHash.Should().Be("mvid" + assembly.ManifestModule.ModuleVersionId.ToString("N"));
+            identity.ToCacheKey().Should().NotContain("no-hash");
+        }
+        finally
+        {
+            context.Unload();
+        }
     }
 
     /// <summary>

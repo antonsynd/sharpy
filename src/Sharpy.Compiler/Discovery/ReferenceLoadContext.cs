@@ -1,5 +1,4 @@
 using System.Collections.Concurrent;
-using System.Globalization;
 using System.Reflection;
 using System.Runtime.Loader;
 using Sharpy.Compiler.Shared;
@@ -14,10 +13,11 @@ namespace Sharpy.Compiler.Discovery;
 /// same-named assembly another compilation loaded from another path is that compilation's own copy,
 /// invisible here, and "already loaded from another path" (the old SPY0306 arm) cannot occur.
 ///
-/// <para><b>Keyed by the reference set.</b> A context is identified by its reference file's identity
-/// (full path, length, last-write time), the identities of the references the registry loaded
-/// BEFORE it, in order, and the registry's module paths at that time — the same identity convention
-/// as <c>AssemblyCompiler.s_referenceCache</c>. Its contents are a pure function of that key, so
+/// <para><b>Keyed by the reference set.</b> A context is identified by its reference file's content
+/// identity (<see cref="FileContentIdentity"/>: full path, length, last-write time and SHA-256 — the
+/// convention <c>AssemblyCompiler.s_referenceCache</c> and the incremental cache share), the module
+/// version ids of the images the registry loaded BEFORE it, in order, and the registry's module paths
+/// at that time. Its contents are a pure function of that key, so
 /// registries with identical inputs share one context (observably one context per compilation) and
 /// any different input — another path, a rebuilt file — gets a different one. Sharing is what keeps
 /// a host that analyses many documents (the LSP, the test suites) from loading one copy of the
@@ -70,12 +70,17 @@ internal sealed class ReferenceLoadContext : AssemblyLoadContext
     private readonly IReadOnlyList<Assembly> _prior;
     private readonly IReadOnlyList<string> _searchDirectories;
     private readonly ConcurrentDictionary<string, Assembly> _own = new(StringComparer.Ordinal);
+    private readonly FileContentIdentity _identities;
+    private readonly Action<string>? _notice;
 
-    private ReferenceLoadContext(string fullPath, IReadOnlyList<Assembly> prior, IReadOnlyList<string> modulePaths)
+    private ReferenceLoadContext(string fullPath, IReadOnlyList<Assembly> prior, IReadOnlyList<string> modulePaths,
+        FileContentIdentity identities, Action<string>? notice)
         : base("sharpy-references-" + Path.GetFileNameWithoutExtension(fullPath) + "-" + Guid.NewGuid().ToString("N"),
             isCollectible: true)
     {
         _prior = prior;
+        _identities = identities;
+        _notice = notice;
         var directories = new List<string>();
         if (Path.GetDirectoryName(fullPath) is { Length: > 0 } directory)
             directories.Add(directory);
@@ -95,11 +100,15 @@ internal sealed class ReferenceLoadContext : AssemblyLoadContext
     /// The context for the reference at <paramref name="fullPath"/>, given the references the registry
     /// loaded before it (in order) and its module paths: the shared one when the key's context is
     /// alive, else a new one. The compiler's one construction of a reference context.
+    /// <paramref name="identities"/> is the compilation's file-identity scope (content, not size and
+    /// write time); <paramref name="notice"/> receives non-fatal notices (the private-copy fallback).
     /// </summary>
     public static ReferenceLoadContext GetOrLoad(
-        string fullPath, IReadOnlyList<Assembly> prior, IReadOnlyList<string> modulePaths)
+        string fullPath, IReadOnlyList<Assembly> prior, IReadOnlyList<string> modulePaths,
+        FileContentIdentity? identities = null, Action<string>? notice = null)
     {
-        var key = KeyOf(fullPath, prior, modulePaths);
+        identities ??= new FileContentIdentity();
+        var key = KeyOf(fullPath, prior, modulePaths, identities);
         lock (s_createGate)
         {
             if (s_shared.TryGetValue(key, out var weak) && weak.TryGetTarget(out var alive))
@@ -112,7 +121,7 @@ internal sealed class ReferenceLoadContext : AssemblyLoadContext
                     s_shared.TryRemove(entry.Key, out _);
             }
 
-            var created = new ReferenceLoadContext(fullPath, prior, modulePaths);
+            var created = new ReferenceLoadContext(fullPath, prior, modulePaths, identities, notice);
             s_shared[key] = new WeakReference<ReferenceLoadContext>(created);
             return created;
         }
@@ -121,40 +130,40 @@ internal sealed class ReferenceLoadContext : AssemblyLoadContext
     /// <summary>The share's keys (live and not yet pruned), for the retention probe.</summary>
     internal static IReadOnlyCollection<string> SharedKeys => s_shared.Keys.ToList();
 
-    private static string KeyOf(string fullPath, IReadOnlyList<Assembly> prior, IReadOnlyList<string> modulePaths)
-        => FileIdentity(fullPath)
-           + "|" + string.Join(";", prior.Select(a => FileIdentity(a.Location)))
+    /// <summary>
+    /// The share key: the reference file's content identity, the image identity (module version id) of
+    /// each reference loaded before it — what was actually loaded, not the file now at its path — and
+    /// the module paths.
+    /// </summary>
+    private static string KeyOf(string fullPath, IReadOnlyList<Assembly> prior, IReadOnlyList<string> modulePaths,
+        FileContentIdentity identities)
+        => identities.Of(fullPath)
+           + "|" + string.Join(";", prior.Select(a => a.ManifestModule.ModuleVersionId.ToString("N")))
            + "|" + string.Join(";", modulePaths);
 
     /// <summary>
-    /// A file's disk identity — full path, length and last write time, or the bare path when it does
-    /// not exist. The incremental cache's file identity extends it with the content's hash
-    /// (<see cref="Project.IncrementalCompilationCache.FileIdentity"/>), so a reference this context
-    /// would load afresh also invalidates the cache, and so does one replaced by other bytes of the same
-    /// size and write time.
-    /// </summary>
-    internal static string FileIdentity(string path)
-    {
-        var info = new FileInfo(path);
-        return info.Exists
-            ? info.FullName + ":" + info.Length.ToString(CultureInfo.InvariantCulture) + ":"
-              + info.LastWriteTimeUtc.Ticks.ToString(CultureInfo.InvariantCulture)
-            : path;
-    }
-
-    /// <summary>
-    /// Loads the file now at <paramref name="fullPath"/>. The path itself while its identity is the one
-    /// this process first loaded from it; otherwise a verified copy of its current bytes
+    /// Loads the file now at <paramref name="fullPath"/>. The path itself while its content identity is
+    /// the one this process first loaded from it; otherwise a verified copy of its current bytes
     /// (<see cref="ReferenceImageCache.Publish"/>), because the runtime would answer the path with the
-    /// image it already mapped (see the summary).
+    /// image it already mapped (see the summary). A copy pruned between publishing and loading (another
+    /// process's prune) is published again once.
     /// </summary>
     private Assembly LoadCurrent(string fullPath)
     {
-        var identity = FileIdentity(fullPath);
+        var identity = _identities.Of(fullPath);
         var first = s_firstLoadedIdentity.GetOrAdd(fullPath, identity);
-        return LoadFromAssemblyPath(string.Equals(first, identity, StringComparison.Ordinal)
-            ? fullPath
-            : ReferenceImageCache.Publish(fullPath));
+        if (string.Equals(first, identity, StringComparison.Ordinal))
+            return LoadFromAssemblyPath(fullPath);
+
+        var copy = ReferenceImageCache.Publish(fullPath, notice: _notice);
+        try
+        {
+            return LoadFromAssemblyPath(copy);
+        }
+        catch (FileNotFoundException)
+        {
+            return LoadFromAssemblyPath(ReferenceImageCache.Publish(fullPath, notice: _notice));
+        }
     }
 
     /// <summary>

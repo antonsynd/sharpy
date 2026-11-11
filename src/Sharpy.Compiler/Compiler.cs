@@ -10,6 +10,7 @@ using Sharpy.Compiler.Project;
 using Sharpy.Compiler.Semantic;
 using Sharpy.Compiler.Semantic.Registry;
 using Sharpy.Compiler.Services;
+using Sharpy.Compiler.Shared;
 using Sharpy.Compiler.Text;
 
 namespace Sharpy.Compiler;
@@ -137,11 +138,15 @@ public class Compiler
         // compile and analyze paths can never diverge (#1109). MaxErrors comes from options only.
         var projectOptions = ProjectOptionsMerge.Merge(_options, projectConfig);
 
+        // One file-identity scope for the whole build: the up-to-date check, the reference loads and
+        // the emitted compilation's references all read a file's identity once, by content.
+        var identities = _moduleRegistry?.BeginFileIdentityScope() ?? new FileContentIdentity();
+
         // A warm build whose every input is the last successful build's: replay that build's report
         // under this build's policy and load nothing (#2468). Stamped like the full path below, so a
         // reference load that ran anyway shows up as discovery time.
         if (projectOptions.UpToDateCheck
-            && ProjectCompiler.TryReplayUpToDateBuild(projectConfig, projectOptions, _logger) is { } upToDate)
+            && ProjectCompiler.TryReplayUpToDateBuild(projectConfig, projectOptions, _logger, identities) is { } upToDate)
         {
             if (_discoveryTime > TimeSpan.Zero)
                 upToDate.Metrics?.SetDiscoveryTime(_discoveryTime);
@@ -220,6 +225,7 @@ public class Compiler
         bool preserveTrivia = false)
     {
         _logger.LogInfo($"Starting analysis of {filePath}");
+        _moduleRegistry?.BeginFileIdentityScope();
         EnsureReferencesLoaded();
         _moduleRegistry?.BeginCompilation();
 
@@ -298,6 +304,7 @@ public class Compiler
     public CompilationResult Compile(string sourceCode, string filePath, CancellationToken cancellationToken)
     {
         _logger.LogInfo($"Starting compilation of {filePath}");
+        _moduleRegistry?.BeginFileIdentityScope();
         EnsureReferencesLoaded();
         _moduleRegistry?.BeginCompilation();
 

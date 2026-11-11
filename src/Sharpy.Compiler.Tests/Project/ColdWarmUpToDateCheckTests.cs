@@ -4,6 +4,7 @@ using FluentAssertions;
 using Sharpy.Compiler.Logging;
 using Sharpy.Compiler.Project;
 using Sharpy.Compiler.Services;
+using Sharpy.Compiler.Shared;
 using Sharpy.Compiler.Utilities;
 using Xunit;
 using Xunit.Abstractions;
@@ -480,16 +481,18 @@ def main() -> None:
     private const string SameSizeLibModule = "coldwarm_samesize_lib";
 
     /// <summary>
-    /// Two builds of one library that differ only in a constant: other bytes (another MVID, another
-    /// literal), the same size (the PE is padded to its file alignment). Returned as (v1, v2) paths.
+    /// Two builds of one library of the same size (the PE is padded to its file alignment) and other
+    /// bytes: v1 exports <c>f</c>, v2 exports <c>g</c> instead (a name of the same length). A consumer of
+    /// <c>f</c> builds against v1 and is refused against v2 (SPY0301), so which one a build BOUND is
+    /// observable. Returned as (v1, v2) paths.
     /// </summary>
     private (string V1, string V2) BuildSameSizeLibraries(string area)
     {
-        string BuildLib(string version, string value)
+        string BuildLib(string version, string function)
         {
             var libDir = Path.Combine(Dir(area), "lib_" + version);
             var file = Write(Path.Combine(area, "lib_" + version), SameSizeLibModule + ".spy",
-                $"def f() -> int:\n    return {value}\n");
+                $"def {function}() -> int:\n    return 1\n");
             var built = new Compiler(new CompilerOptions { Incremental = false }, NullLogger.Instance)
                 .CompileProject(new ProjectConfig
                 {
@@ -505,8 +508,8 @@ def main() -> None:
             return built.OutputAssemblyPath!;
         }
 
-        var v1 = BuildLib("v1", "1");
-        var v2 = BuildLib("v2", "2");
+        var v1 = BuildLib("v1", "f");
+        var v2 = BuildLib("v2", "g");
         new FileInfo(v2).Length.Should().Be(new FileInfo(v1).Length,
             "precondition: the two builds are the same size, so only content can tell them apart");
         File.ReadAllBytes(v2).Should().NotEqual(File.ReadAllBytes(v1), "precondition: their bytes differ");
@@ -522,17 +525,28 @@ def main() -> None:
         return config;
     }
 
+    private static IReadOnlyList<string> Codes(ProjectCompilationResult result)
+        => result.Diagnostics.GetAll().Select(d => d.Code ?? "").Distinct().OrderBy(c => c, StringComparer.Ordinal).ToList();
+
+    /// <summary>A reference-image cache root inside this test's own directory (never the user's).</summary>
+    private IDisposable IsolatedImageCache()
+        => Sharpy.Compiler.Discovery.ReferenceImageCache.OverrideRootForTests(
+            Path.Combine(_tempDir, "image-data", "sharpy", "reference-images"));
+
     /// <summary>
-    /// (b) The hole a size-and-write-time identity leaves: a reference replaced by other bytes of the
-    /// SAME size with the SAME write time (<c>cp -p</c>, <c>rsync -t</c>, a restored build cache) is a
-    /// changed input, so the next build is not up to date and Phase 7 runs again. Controls: the unchanged
-    /// twin IS up to date (F2), and the replacement is invisible to the disk identity
-    /// (<see cref="Sharpy.Compiler.Discovery.ReferenceLoadContext.FileIdentity"/>), so only content
-    /// can catch it.
+    /// (b) The hole a size-and-write-time identity leaves, end to end in one process (the LSP's and the
+    /// test host's case): a reference replaced by other bytes of the SAME size with the SAME write time
+    /// (<c>cp -p</c>, <c>rsync -t</c>, a restored build cache) is a changed input, so the next build is
+    /// not up to date, and the rebuild BINDS the new bytes — v2 has no <c>f</c>, so it is refused with
+    /// SPY0301 exactly as a compile against v2 at a path this process never loaded is. Before, the
+    /// load context share key, its first-load check and the Roslyn reference cache all keyed the file by
+    /// size and write time, so the rebuild compiled against v1's image. Controls: the unchanged twin IS
+    /// up to date (F2); the replacement is invisible to the disk identity; the fresh-path compile.
     /// </summary>
     [Fact]
-    public void AReferenceReplacedBySameSizeSameTimeBytes_IsNotUpToDate()
+    public void AReferenceReplacedBySameSizeSameTimeBytes_IsNotUpToDate_AndTheRebuildBindsTheNewBytes()
     {
+        using var images = IsolatedImageCache();
         const string area = "same_size_reference";
         var (v1, v2) = BuildSameSizeLibraries(area);
         var reference = Path.Combine(Dir(area), "ref", Path.GetFileName(v1));
@@ -545,22 +559,28 @@ def main() -> None:
         first.Success.Should().BeTrue("the consumer builds against v1. Diagnostics:\n" + Diagnostics(first));
         UpToDate(Build(config)).Should().BeTrue("F2 control: the unchanged twin is up to date");
 
-        var diskIdentity = Sharpy.Compiler.Discovery.ReferenceLoadContext.FileIdentity(reference);
+        var diskIdentity = FileContentIdentity.DiskIdentity(reference);
         var staged = reference + ".staged";
         File.Copy(v2, staged);
         File.SetLastWriteTimeUtc(staged, writeTime);
         File.Move(staged, reference, overwrite: true);
-        Sharpy.Compiler.Discovery.ReferenceLoadContext.FileIdentity(reference).Should().Be(diskIdentity,
+        FileContentIdentity.DiskIdentity(reference).Should().Be(diskIdentity,
             "control: path, size and write time cannot see the replacement");
 
         var log = new InfoCapturingLogger();
         var after = Build(config, logger: log);
         UpToDate(after).Should().BeFalse("the reference's bytes changed, so the build is not up to date");
         log.InfoMessages.Should().NotContain(m => m.StartsWith(UpToDateLogPrefix, StringComparison.Ordinal));
-        log.InfoMessages.Should().NotContain(EmissionSkipped,
-            "the facts moved, so the recorded assembly is not reused either");
-        after.Success.Should().BeTrue("Diagnostics:\n" + Diagnostics(after));
-        UpToDate(Build(config)).Should().BeTrue("the rebuild is recorded: the next unchanged build is up to date");
+
+        var freshPath = Path.Combine(Dir(area), "fresh", Path.GetFileName(v2));
+        Directory.CreateDirectory(Path.GetDirectoryName(freshPath)!);
+        File.Copy(v2, freshPath);
+        var fresh = Build(SameSizeConsumer(area + "_fresh", freshPath));
+        Codes(fresh).Should().Contain("SPY0301", "control: v2 has no f, as a fresh process reports");
+
+        _output.WriteLine("rebuild after the replacement:\n" + Diagnostics(after));
+        after.Success.Should().BeFalse("the rebuild binds v2, which has no f (before: v1's image, success)");
+        Codes(after).Should().Equal(Codes(fresh), "the rebuild reports what a compile that never saw v1 reports");
     }
 
     /// <summary>
@@ -575,6 +595,7 @@ def main() -> None:
     {
         Skip.If(OperatingSystem.IsWindows(), "creating symbolic links needs a privilege on Windows");
 
+        using var images = IsolatedImageCache();
         const string area = "symlink_reference";
         var (v1, v2) = BuildSameSizeLibraries(area);
         File.SetLastWriteTimeUtc(v2, File.GetLastWriteTimeUtc(v1));
@@ -586,13 +607,63 @@ def main() -> None:
         Build(config).Success.Should().BeTrue();
         UpToDate(Build(config)).Should().BeTrue("F2 control: the unchanged twin is up to date");
 
-        var diskIdentity = Sharpy.Compiler.Discovery.ReferenceLoadContext.FileIdentity(link);
         File.Delete(link);
         File.CreateSymbolicLink(link, v2);
-        _output.WriteLine($"disk identity before: {diskIdentity}\nafter: "
-            + Sharpy.Compiler.Discovery.ReferenceLoadContext.FileIdentity(link));
 
         UpToDate(Build(config)).Should().BeFalse("the link now resolves to other bytes");
+    }
+
+    /// <summary>
+    /// A file that exists but cannot be read keeps its disk identity (path, size, write time) and carries
+    /// the unreadable marker, rather than collapsing to <c>path:unreadable</c>, which made two different
+    /// unreadable files compare equal. <c>/proc/self/mem</c> stats but fails a read at offset 0, for any
+    /// user, root included (a chmod 000 file is readable by root).
+    /// </summary>
+    [SkippableFact]
+    public void AnUnreadableFile_KeepsItsDiskIdentity_AndIsMarked()
+    {
+        Skip.IfNot(OperatingSystem.IsLinux(), "/proc/self/mem is Linux's");
+        const string unreadable = "/proc/self/mem";
+        File.Exists(unreadable).Should().BeTrue("precondition: the file exists");
+
+        var identity = FileContentIdentity.Compute(unreadable);
+
+        identity.Should().Be(FileContentIdentity.DiskIdentity(unreadable) + FileContentIdentity.UnreadableMarker);
+        FileContentIdentity.IsUnreadable(identity).Should().BeTrue();
+        FileContentIdentity.IsUnreadable(FileContentIdentity.Compute(typeof(ColdWarmUpToDateCheckTests).Assembly.Location))
+            .Should().BeFalse("control: a readable file is not marked");
+    }
+
+    /// <summary>
+    /// An input whose content cannot be read proves nothing, so a build holding one is never up to
+    /// date — not even the very next one with nothing changed. The input here is an assembly in a module
+    /// path (part of the facts) that cannot be read: a link to <c>/proc/self/mem</c>. Control: the same
+    /// project without it IS up to date on its unchanged twin.
+    /// </summary>
+    [SkippableFact]
+    public void ABuildWithAnUnreadableInput_IsNeverUpToDate()
+    {
+        Skip.IfNot(OperatingSystem.IsLinux(), "/proc/self/mem is Linux's");
+
+        const string area = "unreadable_input";
+        var main = Write(area, "main.spy", "def main() -> None:\n    print(1)\n");
+        var modules = Path.Combine(Dir(area), "modules");
+        Directory.CreateDirectory(modules);
+        var config = Config(area, new[] { main });
+        config.ModulePaths.Add(modules);
+
+        Build(config).Success.Should().BeTrue();
+        UpToDate(Build(config)).Should().BeTrue("control: without the unreadable input the twin is up to date");
+
+        File.CreateSymbolicLink(Path.Combine(modules, "Unreadable.dll"), "/proc/self/mem");
+        IncrementalCompilationCache.ProjectFactsOf(config).Should().Contain(FileContentIdentity.UnreadableMarker,
+            "precondition: the facts hold the unreadable input");
+
+        var first = Build(config);
+        first.Success.Should().BeTrue("Diagnostics:\n" + Diagnostics(first));
+        UpToDate(first).Should().BeFalse("the input changed");
+        UpToDate(Build(config)).Should().BeFalse(
+            "nothing changed since, but an unreadable input cannot show that, so the build is not up to date");
     }
 
     /// <summary>The key lines whose value names a file, and how each identifies it.</summary>
@@ -658,7 +729,7 @@ def main() -> None:
                         $"{key} identifies {file} by its content");
                     break;
                 case FileIdentityKind.RuntimeVersioned:
-                    value.Should().Be(Sharpy.Compiler.Discovery.ReferenceLoadContext.FileIdentity(file),
+                    value.Should().Be(FileContentIdentity.DiskIdentity(file),
                         $"{key} is the runtime's own file, identified by the runtime version");
                     lines.Should().Contain(l => l.Key == "key:runtime" && l.Value == Environment.Version.ToString(),
                         "the runtime's exact version is in the key beside it");

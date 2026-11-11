@@ -139,8 +139,11 @@ public class StaticStateConformanceTests
         {
             // ---- Content-addressed (D2 warm-compile caches, #1049) ----
             [("Sharpy.Compiler.AssemblyCompiler", "s_referenceCache")] =
-                "MetadataReference keyed by (assembly path, last-write time UTC): a pure function of the file's " +
-                "bytes; a changed assembly gets a new mtime and thus a new key. Append-only.",
+                "MetadataReference keyed by the file's identity: a project or package reference by its content " +
+                "identity (path + length + last-write time + SHA-256, FileContentIdentity), so other bytes of the " +
+                "same size and time get a new key (#2114); the process's own files (trusted platform assemblies, " +
+                "Sharpy.Core, netstandard) by path + length + last-write time. A pure function of the bytes the " +
+                "key names. Append-only.",
             [("Sharpy.Compiler.Discovery.Caching.OverloadIndexCache", "s_inMemoryIndices")] =
                 "Deserialized OverloadIndex keyed by the cache-file path, which embeds the content-addressed " +
                 "AssemblyIdentity key (name-version-hash); a hit is re-validated against the identity. ClearAll " +
@@ -192,16 +195,25 @@ public class StaticStateConformanceTests
 
             // ---- The per-reference-set load contexts (#2250, P54 Design Decision 2) ----
             [("Sharpy.Compiler.Discovery.ReferenceLoadContext", "s_shared")] =
-                "Reference-set key (each reference file's full path + length + last-write time, the earlier " +
-                "references' identities, the module paths — AssemblyCompiler.s_referenceCache's convention) -> " +
+                "Reference-set key (the reference file's content identity — path + length + last-write time + " +
+                "SHA-256, FileContentIdentity — the module version ids of the images loaded before it, the module " +
+                "paths) -> " +
                 "WeakReference to the context loaded for it: the context's contents are a function of the files " +
                 "its key names, so equal keys may share it; held weakly so it unloads when no registry uses it, " +
                 "and dead entries are pruned on every creation.",
             [("Sharpy.Compiler.Discovery.ReferenceLoadContext", "s_firstLoadedIdentity")] =
-                "Full path -> the identity (path + length + last-write time) of the file this process first loaded " +
-                "from it. Written once per path and never changed; it answers only whether the file now at the " +
-                "path is the one the runtime's per-path image holds, so a replaced reference loads from a copy " +
-                "named by its own identity (#2114's in-process cell).",
+                "Full path -> the content identity (path + length + last-write time + SHA-256, FileContentIdentity) " +
+                "of the file this process first loaded from it. Written once per path and never changed; it answers " +
+                "only whether the file now at the path is the one the runtime's per-path image holds, so a replaced " +
+                "reference loads from a verified copy of its current bytes, held under its content hash in " +
+                "ReferenceImageCache (#2114's in-process cell).",
+            [("Sharpy.Compiler.Discovery.ReferenceImageCache", "s_privateImages")] =
+                "Content hash -> the private temporary directory holding this process's fallback copy of those " +
+                "bytes (used only when the per-user cache is refused). The value holds exactly the bytes its key " +
+                "hashes, verified on reuse; deleted at process exit. Append-only.",
+            [("Sharpy.Compiler.Discovery.ReferenceImageCache", "s_heldEntries")] =
+                "Set of cache-entry directories this process published (and so may have loaded): it only keeps " +
+                "this process's prune off them and refreshes their times; it decides no compile output. Append-only.",
 
             // ---- The visibility seam's framework index (#2250, P54 Design Decision 1) ----
             [("Sharpy.Compiler.Discovery.AssemblyVisibility", "s_framework")] =
@@ -336,7 +348,8 @@ public class StaticStateConformanceTests
         // was rostered (+1): 15 ConcurrentDictionary + 3 Lazy = 18.
         // P54 Phase 2 task 2 (measured): + ReferenceLoadContext.s_shared = 19.
         // #2114 in-process cell: + ReferenceLoadContext.s_firstLoadedIdentity = 20.
-        Assert.Equal(20, flaggedCaches.Count);
+        // Reference image cache (PR #2566 review): + ReferenceImageCache.s_privateImages, s_heldEntries = 22.
+        Assert.Equal(22, flaggedCaches.Count);
     }
 
     /// <summary>

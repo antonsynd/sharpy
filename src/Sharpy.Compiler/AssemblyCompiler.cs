@@ -6,6 +6,7 @@ using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.Emit;
 using Sharpy.Compiler.Logging;
 using Sharpy.Compiler.Diagnostics;
+using Sharpy.Compiler.Shared;
 
 namespace Sharpy.Compiler;
 
@@ -15,17 +16,20 @@ namespace Sharpy.Compiler;
 internal class AssemblyCompiler
 {
     private readonly ICompilerLogger _logger;
+    private readonly FileContentIdentity _identities;
 
-    // Process-lifetime cache of MetadataReference objects keyed by (assembly path, last-write
-    // time UTC). MetadataReference.CreateFromFile reads and parses an assembly's metadata from
-    // disk on every call; done over the full trusted-platform-assembly set on every compile it
-    // is the dominant cold cost the D2 warm path removes (#1049). A reference for a given
-    // (path, mtime) is a pure, immutable function of the file's bytes, so caching it process-wide
-    // is determinism-safe: a changed assembly gets a new mtime and thus a new key
-    // (content-addressed, append-only). Shared by every compile in the process — the keep-alive
-    // server, the LSP, the REPL, and the test host all benefit after the first touch.
-    private static readonly ConcurrentDictionary<(string Path, DateTime ModifiedUtc), MetadataReference>
-        s_referenceCache = new();
+    // Process-lifetime cache of MetadataReference objects keyed by the file's identity.
+    // MetadataReference.CreateFromFile reads and parses an assembly's metadata from disk on every
+    // call; done over the full trusted-platform-assembly set on every compile it is the dominant
+    // cold cost the D2 warm path removes (#1049). A reference is a pure, immutable function of the
+    // file's bytes, so caching it process-wide is determinism-safe when the key names the bytes:
+    // a project or package reference is keyed by its content identity (FileContentIdentity: path,
+    // size, write time and SHA-256), so one replaced by other bytes of the same size and write time
+    // gets a new key (#2114). The process's own files — the trusted platform assemblies, Sharpy.Core,
+    // netstandard — are keyed by their disk identity (path, size, write time): they are what this
+    // process runs on. Append-only; shared by every compile in the process.
+    private static readonly ConcurrentDictionary<string, MetadataReference> s_referenceCache =
+        new(StringComparer.Ordinal);
 
     /// <summary>
     /// The debug-information format is named, never left to Roslyn's host default (#2291). Without
@@ -40,23 +44,29 @@ internal class AssemblyCompiler
     private static readonly EmitOptions PortablePdbEmitOptions =
         new(debugInformationFormat: DebugInformationFormat.PortablePdb);
 
-    public AssemblyCompiler(ICompilerLogger? logger = null)
+    public AssemblyCompiler(ICompilerLogger? logger = null, FileContentIdentity? identities = null)
     {
         _logger = logger ?? NullLogger.Instance;
+        _identities = identities ?? new FileContentIdentity();
     }
 
     /// <summary>
     /// Return a <see cref="MetadataReference"/> for the assembly at <paramref name="assemblyPath"/>,
-    /// reusing the process-lifetime cache (keyed by path + last-write time) so the metadata is read
-    /// and parsed from disk at most once per (path, mtime) per process (#1049).
+    /// reusing the process-lifetime cache (keyed by the disk identity: path, size, last-write time) so
+    /// the metadata of the process's own files is read and parsed at most once per process (#1049).
     /// </summary>
     private static MetadataReference GetOrCreateReference(string assemblyPath)
-    {
-        var mtime = File.GetLastWriteTimeUtc(assemblyPath);
-        return s_referenceCache.GetOrAdd(
-            (assemblyPath, mtime),
-            static key => MetadataReference.CreateFromFile(key.Path));
-    }
+        => s_referenceCache.GetOrAdd(FileContentIdentity.DiskIdentity(assemblyPath),
+            static (_, path) => MetadataReference.CreateFromFile(path), assemblyPath);
+
+    /// <summary>
+    /// A project or package reference's <see cref="MetadataReference"/>, cached under its content
+    /// identity in this build's scope (<paramref name="identities"/>), so a reference replaced by
+    /// other bytes of the same size and write time is read again, never served from the old entry.
+    /// </summary>
+    internal static MetadataReference GetOrCreateUserReference(string assemblyPath, FileContentIdentity identities)
+        => s_referenceCache.GetOrAdd(identities.Of(assemblyPath),
+            static (_, path) => MetadataReference.CreateFromFile(path), assemblyPath);
 
     /// <summary>
     /// Compile C# source code to a .NET assembly.
@@ -426,7 +436,7 @@ internal class AssemblyCompiler
             {
                 if (addedPaths.Add(referencePath))
                 {
-                    references.Add(GetOrCreateReference(referencePath));
+                    references.Add(GetOrCreateUserReference(referencePath, _identities));
                     _logger.LogDebug($"Added reference: {referencePath}");
                 }
             }
@@ -454,7 +464,7 @@ internal class AssemblyCompiler
             {
                 if (addedPaths.Add(assemblyPath))
                 {
-                    references.Add(GetOrCreateReference(assemblyPath));
+                    references.Add(GetOrCreateUserReference(assemblyPath, _identities));
                     _logger.LogDebug($"Added package reference: {assemblyPath}");
                 }
             }
