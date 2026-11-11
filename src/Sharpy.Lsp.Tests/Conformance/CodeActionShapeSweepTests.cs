@@ -94,7 +94,8 @@ namespace Sharpy.Lsp.Tests.Conformance;
 /// reason</c> cite row per key (<see cref="ReadPins"/>: a key with stems needs its cite row, a cite row needs stems). The
 /// run's stems must equal the committed ones (<see cref="CompareStems"/>): a new failing stem is red naming it, a committed
 /// stem that holds now is red naming it, and a key whose every stem holds is red naming the key — drain its rows and its cite
-/// row. The actual rows go to <c>.claude/tmp/code-action-sweep/&lt;twin&gt;-actual-stems.txt</c> (the path is in the message).
+/// row. The actual rows go to <c>.claude/tmp/code-action-sweep/&lt;twin&gt;-actual-stems.txt</c> (the path is in the message);
+/// the stems file is generated (<see cref="GeneratedSetFile"/>), the cite rows are not.
 /// Until #2512 each key was a pinned (count, digest) pair for FULL and regular mode; a new fixture moved a count.</para>
 ///
 /// <para><b>Budget and the two modes.</b> Regular mode runs <c>identity</c> on every stem and the other three twins on the
@@ -1950,11 +1951,21 @@ public sealed class CodeActionShapeSweepTests : IDisposable
         var dumpDir = Path.Combine(FixtureRoots.RepositoryRoot, ".claude", "tmp", "code-action-sweep");
         Directory.CreateDirectory(dumpDir);
         var actualPath = Path.Combine(dumpDir, $"{twin}-actual-stems.txt");
-        File.WriteAllLines(actualPath, StemRows(twin, actualRegular));
+        var actualRows = StemRows(twin, actualRegular).ToList();
+        File.WriteAllLines(actualPath, actualRows);
         if (full)
         {
             File.WriteAllLines(Path.Combine(dumpDir, $"{twin}-cells.txt"), cellLines.OrderBy(l => l, StringComparer.Ordinal));
             File.WriteAllLines(Path.Combine(dumpDir, $"{twin}-full-only.txt"), FullOnlyRows(twin, actualFull, actualRegular));
+        }
+
+        if (GeneratedSetFile.Regenerating)
+        {
+            // The stem rows are generated; a key's cite row (its reason) is written by hand, and the loader names a key
+            // that has stems but no cite row, or a cite row whose key drained, on the next run.
+            GeneratedSetFile.Rewrite(StemsFileName, twin, Twins, actualRows);
+            _output.WriteLine($"CODEACTION-TWIN {twin} regenerated: {actualRows.Count} rows written to Conformance/{StemsFileName}");
+            return;
         }
 
         var problems = CompareStems(twin, actualRegular, committed);
@@ -1963,8 +1974,8 @@ public sealed class CodeActionShapeSweepTests : IDisposable
         if (problems.Count > 0)
         {
             Assert.Fail($"{twin} twin: every code action must keep the source shape; the failing stems regular mode judges"
-                + (full ? " (this FULL run's regular projection)" : "") + $" must equal the rows of Conformance/{StemsFileName}. "
-                + $"Actual rows: {actualPath}. {problems.Count} problem(s):\n  " + string.Join("\n  ", problems.Take(60))
+                + (full ? " (this FULL run's regular projection)" : "") + $" must equal the rows of Conformance/{StemsFileName}, a generated "
+                + $"file: run `{GeneratedSetFile.Command}` and review the row diff. Actual rows: {actualPath}. {problems.Count} problem(s):\n  " + string.Join("\n  ", problems.Take(60))
                 + (problems.Count > 60 ? "\n  …" : ""));
         }
     }
@@ -2246,7 +2257,7 @@ public sealed class CodeActionShapeSweepTests : IDisposable
     {
         string[] Read(string file)
         {
-            var path = Path.Combine(FixtureRoots.RepositoryRoot, "src", "Sharpy.Lsp.Tests", "Conformance", file);
+            var path = GeneratedSetFile.PathOf(file);
             if (!File.Exists(path))
                 throw new InvalidOperationException($"Conformance/{file} is missing. Its presence is what arms the set.");
             return File.ReadAllLines(path);

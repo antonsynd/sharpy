@@ -170,20 +170,6 @@ Sharpy.Lsp.Tests/Conformance/CodeActionShapeSweepTests.cs | regions.Should().Hav
 Sharpy.Lsp.Tests/Conformance/CodeActionShapeSweepTests.cs | s_cells.GetValueOrDefault((spec.Name, twin)).Should().BeGreaterThan(0, $"the sweep judges ≥ 1 {spec.Name} cell on the {twin} twin"); | ×1 | floor | lower bound
 Sharpy.Lsp.Tests/Conformance/CodeActionShapeSweepTests.cs | stringStatement.LineEnd.Should().Be(9, "the parser fact P47 works around (ledgered as #2295)"); | ×1 | fixed-input | in-test input of BuildRequests_HandDocument_CoversEveryKindItAdmits
 Sharpy.Lsp.Tests/Conformance/FormattingRouteParitySweepTests.cs | .Should().HaveCount(7); | ×1 | fixed-input | in-test input of Allowlist_RefusesCliAndFullRowsOnParseableStates_AndMalformedRows
-Sharpy.Lsp.Tests/Conformance/FormattingRouteParitySweepTests.cs | [(RangeBlock, Comment)] = 1, | ×1 | rate-tolerance | one-sided refusal ceiling (R-DK decision-rule instrument; residual for #2458)
-Sharpy.Lsp.Tests/Conformance/FormattingRouteParitySweepTests.cs | [(RangeBlock, Identity)] = 1, | ×1 | rate-tolerance | one-sided refusal ceiling (R-DK decision-rule instrument; residual for #2458)
-Sharpy.Lsp.Tests/Conformance/FormattingRouteParitySweepTests.cs | [(RangeBlock, Wide)] = 32, | ×1 | rate-tolerance | one-sided refusal ceiling (R-DK decision-rule instrument; residual for #2458)
-Sharpy.Lsp.Tests/Conformance/FormattingRouteParitySweepTests.cs | [(RangeLine, Comment)] = 12, | ×1 | rate-tolerance | one-sided refusal ceiling (R-DK decision-rule instrument; residual for #2458)
-Sharpy.Lsp.Tests/Conformance/FormattingRouteParitySweepTests.cs | [(RangeLine, Identity)] = 4, | ×1 | rate-tolerance | one-sided refusal ceiling (R-DK decision-rule instrument; residual for #2458)
-Sharpy.Lsp.Tests/Conformance/FormattingRouteParitySweepTests.cs | [(RangeLine, Wide)] = 54, | ×1 | rate-tolerance | one-sided refusal ceiling (R-DK decision-rule instrument; residual for #2458)
-Sharpy.Lsp.Tests/Conformance/FormattingRouteParitySweepTests.cs | [(RangeStatement, Comment)] = 1, | ×1 | rate-tolerance | one-sided refusal ceiling (R-DK decision-rule instrument; residual for #2458)
-Sharpy.Lsp.Tests/Conformance/FormattingRouteParitySweepTests.cs | [(RangeStatement, Identity)] = 1, | ×1 | rate-tolerance | one-sided refusal ceiling (R-DK decision-rule instrument; residual for #2458)
-Sharpy.Lsp.Tests/Conformance/FormattingRouteParitySweepTests.cs | [(RangeStatement, Wide)] = 6, | ×1 | rate-tolerance | one-sided refusal ceiling (R-DK decision-rule instrument; residual for #2458)
-Sharpy.Lsp.Tests/Conformance/FormattingRouteParitySweepTests.cs | [(RangeWhole, Comment)] = 1, | ×1 | rate-tolerance | one-sided refusal ceiling (R-DK decision-rule instrument; residual for #2458)
-Sharpy.Lsp.Tests/Conformance/FormattingRouteParitySweepTests.cs | [(RangeWhole, Identity)] = 1, | ×1 | rate-tolerance | one-sided refusal ceiling (R-DK decision-rule instrument; residual for #2458)
-Sharpy.Lsp.Tests/Conformance/FormattingRouteParitySweepTests.cs | [(RangeWhole, Wide)] = 1, | ×1 | rate-tolerance | one-sided refusal ceiling (R-DK decision-rule instrument; residual for #2458)
-Sharpy.Lsp.Tests/Conformance/FormattingRouteParitySweepTests.cs | [Comment] = 6, | ×1 | rate-tolerance | one-sided refusal ceiling (R-DK decision-rule instrument; residual for #2458)
-Sharpy.Lsp.Tests/Conformance/FormattingRouteParitySweepTests.cs | [Identity] = 9, | ×1 | rate-tolerance | one-sided refusal ceiling (R-DK decision-rule instrument; residual for #2458)
 Sharpy.Lsp.Tests/Conformance/FormattingRouteParitySweepTests.cs | [S1] = new[] { Full, RangeWhole, RangeStatement, RangeBlock, OnType }, | ×1 | non-integer | route/bucket/name table row
 Sharpy.Lsp.Tests/Conformance/FormattingRouteParitySweepTests.cs | [S2] = new[] { Cli, Full, RangeWhole, RangeStatement, RangeBlock, RangeLine, OnType }, | ×1 | non-integer | route/bucket/name table row
 Sharpy.Lsp.Tests/Conformance/FormattingRouteParitySweepTests.cs | [S3] = new[] { Full, RangeWhole, RangeLine, OnType }, | ×1 | non-integer | route/bucket/name table row
@@ -197,7 +183,6 @@ Sharpy.Lsp.Tests/Conformance/FormattingRouteParitySweepTests.cs | [S6ok] = new[]
 Sharpy.Lsp.Tests/Conformance/FormattingRouteParitySweepTests.cs | [S6r] = new[] { Full, RangeWhole, RangeLine, OnType }, | ×1 | non-integer | route/bucket/name table row
 Sharpy.Lsp.Tests/Conformance/FormattingRouteParitySweepTests.cs | [S6x] = new[] { Full, RangeWhole, RangeLine, OnType }, | ×1 | non-integer | route/bucket/name table row
 Sharpy.Lsp.Tests/Conformance/FormattingRouteParitySweepTests.cs | [S7] = new[] { Full, RangeWhole, RangeLine, OnType }, | ×1 | non-integer | route/bucket/name table row
-Sharpy.Lsp.Tests/Conformance/FormattingRouteParitySweepTests.cs | [Wide] = 55, | ×1 | rate-tolerance | one-sided refusal ceiling (R-DK decision-rule instrument; residual for #2458)
 Sharpy.Lsp.Tests/Conformance/FormattingRouteParitySweepTests.cs | d.Lines.Should().HaveCount(6); | ×1 | fixed-input | in-test input of PositiveControl_Whole_OnACrDocument_RangeWholeKeepsCr
 Sharpy.Lsp.Tests/Conformance/FormattingRouteParitySweepTests.cs | d1.Hunks.Should().HaveCount(2); | ×1 | fixed-input | in-test input of SelectionRule_D1_MainsBodyDoesNotTakeTheBlankLinesAbove
 Sharpy.Lsp.Tests/Conformance/FormattingRouteParitySweepTests.cs | d1.Hunks.Where(h => Selects(h, 1, 2, n)).Should().ContainSingle().Which.Start.Should().Be(2); | ×1 | fixed-input | in-test input of SelectionRule_D1_MainsBodyDoesNotTakeTheBlankLinesAbove
