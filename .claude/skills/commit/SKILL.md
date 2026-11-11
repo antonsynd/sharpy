@@ -57,7 +57,7 @@ Run `git status` after the commit to confirm success. Report the commit hash.
 
 ## Rules
 
-- **Never** amend a previous commit unless the user explicitly asks
+- **Never** amend a previous commit unless the user explicitly asks (`/push`'s subject-check reword excepted)
 - If a pre-commit hook fails, fix the issue and create a **new** commit (do not use `--amend`)
 - If there are no changes to commit, say so and stop
 - The PostToolUse hook `.claude/hooks/format-on-save.sh` formats each edited `.cs`, `build_tools/*.py` and `editors/vscode/*.ts` best-effort; it is not a gate — `/push` runs the solution-wide whitespace check

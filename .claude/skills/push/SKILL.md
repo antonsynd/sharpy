@@ -36,7 +36,7 @@ CI's `Commit Subjects` workflow fails a PR whose non-merge, non-revert subjects 
 bash build_tools/check_commit_subjects.sh "$(git rev-parse --abbrev-ref --symbolic-full-name @{upstream} 2>/dev/null || echo origin/dev)..HEAD"
 ```
 
-A red means reword before pushing: `git commit --amend` for the tip, a non-interactive `git rebase` for older ones, your own unpushed commits only.
+A red means reword before pushing: `git commit --amend` for the tip, a non-interactive `git rebase` for older ones, your own unpushed commits only (pushed ones: the force-push exception in step 2).
 
 ### 1.25. Version bump check (bump lanes and mainline only)
 
@@ -87,7 +87,7 @@ Then run the matching regeneration checks (use `dangerouslyDisableSandbox` — t
 git push -u origin <current-branch>
 ```
 
-If the push fails due to diverged history, **do not force push**: report the error and suggest `git pull --rebase` or ask the user how to proceed. The one exception is CLAUDE.md › Git & Release: `git push --force-with-lease` on a `claude/*` branch this session created, after it rewrote its own unmerged commits. A `GH013: Repository rule violations` refusal on `dev` is the PR-only ruleset, not a transient: move the commits to a lane branch (`git branch claude/<lane>` then open the PR) rather than retrying.
+If the push fails due to diverged history, **do not force push**: report the error and suggest `git pull --rebase` or ask the user how to proceed. The one exception is CLAUDE.md › Git & Release: `git push --force-with-lease --force-if-includes` on a `claude/*` branch this session created, after it rewrote its own unmerged commits. A `GH013: Repository rule violations` refusal on `dev` is the PR-only ruleset, not a transient: move the commits to a lane branch (`git branch claude/<lane>` then open the PR) rather than retrying.
 
 ### 3. Close issues (if requested)
 
