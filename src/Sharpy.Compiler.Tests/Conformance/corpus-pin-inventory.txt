@@ -203,6 +203,7 @@ Sharpy.Stdlib.Tests/Conformance/NuGetModuleCoverageTests.cs | ["MathNet.Numerics
 Sharpy.Stdlib.Tests/Conformance/NuGetModuleCoverageTests.cs | ["Microsoft.Data.Sqlite"] = new[] { "sqlite3" }, | ×1 | non-integer | route/bucket/name table row
 Sharpy.Stdlib.Tests/Conformance/NuGetModuleCoverageTests.cs | ["Tomlyn"] = new[] { "toml" }, | ×1 | non-integer | route/bucket/name table row
 Sharpy.Stdlib.Tests/Conformance/NuGetModuleCoverageTests.cs | ["YamlDotNet"] = new[] { "yaml" }, | ×1 | non-integer | route/bucket/name table row
+Sharpy.Stdlib.Tests/Conformance/OSErrorPathState/Map2RosterTests.cs | Assert.True(Enum.GetValues<PathRequirement>().Length >= 2, "the requirement enum must be read, not empty"); | ×1 | floor | lower bound
 Sharpy.Stdlib.Tests/Conformance/StdlibClrThrowScanTests.cs | Assert.True(counts.Count > 0 || Directory.Exists(root), "the Stdlib source root was not found"); | ×1 | floor | lower bound
 Sharpy.Stdlib.Tests/Conformance/StdlibFixtureShardTotalityTests.cs | private const int ExpectedShardClasses = 4; | ×1 | fixed-input | reflection over this assembly's Stdlib fixture shard classes (no fixture moves it)
 Sharpy.Stdlib.Tests/Conformance/StdlibModuleGlobalRosterTests.cs | Assert.True(census.Declared.Count >= 5, "control: the synthetic statics are scanned"); | ×1 | floor | lower bound

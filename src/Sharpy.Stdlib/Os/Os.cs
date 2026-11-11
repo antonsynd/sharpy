@@ -25,23 +25,14 @@ namespace Sharpy.OsModule
         /// </summary>
         public static void Remove(string path)
         {
-            if (!global::System.IO.File.Exists(path))
-            {
-                throw new global::Sharpy.FileNotFoundError("No such file or directory: '" + path + "'");
-            }
-
-            if (global::System.IO.Directory.Exists(path))
-            {
-                throw new global::Sharpy.IsADirectoryError("Is a directory: '" + path + "'");
-            }
-
+            global::Sharpy.PathErrors.CheckRemovesFile(path);
             try
             {
                 global::System.IO.File.Delete(path);
             }
-            catch (global::System.UnauthorizedAccessException)
+            catch (global::System.Exception e)
             {
-                throw new global::Sharpy.PermissionError("Permission denied: '" + path + "'");
+                throw global::Sharpy.PathErrors.TranslateRemovesFile(e, path);
             }
         }
 
@@ -50,18 +41,7 @@ namespace Sharpy.OsModule
         /// </summary>
         public static void Rename(string src, string dst)
         {
-            if (global::System.IO.File.Exists(src))
-            {
-                global::System.IO.File.Move(src, dst);
-            }
-            else if (global::System.IO.Directory.Exists(src))
-            {
-                global::System.IO.Directory.Move(src, dst);
-            }
-            else
-            {
-                throw new global::Sharpy.FileNotFoundError("No such file or directory: '" + src + "'");
-            }
+            global::Sharpy.PathErrors.Rename(src, dst);
         }
 
         /// <summary>
@@ -69,21 +49,15 @@ namespace Sharpy.OsModule
         /// </summary>
         public static void Mkdir(string path)
         {
-            if (global::System.IO.Directory.Exists(path))
+            global::Sharpy.PathErrors.CheckCreatesDir(path);
+            try
             {
-                throw new global::Sharpy.FileExistsError("File exists: '" + path + "'");
+                global::System.IO.Directory.CreateDirectory(path);
             }
-
-            var parent = global::System.IO.Path.GetDirectoryName(path);
-            if (parent is not null)
+            catch (global::System.Exception e)
             {
-                if (parent!.Length > 0 && !global::System.IO.Directory.Exists(parent!))
-                {
-                    throw new global::Sharpy.FileNotFoundError("No such file or directory: '" + path + "'");
-                }
+                throw global::Sharpy.PathErrors.TranslateCreatesDir(e, path);
             }
-
-            global::System.IO.Directory.CreateDirectory(path);
         }
 
         /// <summary>
@@ -91,17 +65,26 @@ namespace Sharpy.OsModule
         /// </summary>
         public static void Makedirs(string path, bool existOk = false)
         {
-            if (global::System.IO.Directory.Exists(path))
+            string name = global::Sharpy.OsModule.OsModuleModule._StripTrailingSeparators(path);
+            string? head = global::System.IO.Path.GetDirectoryName(name);
+            if (head is not null)
             {
-                if (!existOk)
+                if (head!.Length > 0 && !global::Sharpy.OsModule.OsModuleModule.PathExists(head!))
                 {
-                    throw new global::Sharpy.FileExistsError("File exists: '" + path + "'");
+                    global::Sharpy.OsModule.OsModuleModule.Makedirs(head!, existOk);
+                    if (global::System.IO.Path.GetFileName(name) == ".")
+                    {
+                        return;
+                    }
                 }
+            }
 
+            if (existOk && global::System.IO.Directory.Exists(name))
+            {
                 return;
             }
 
-            global::System.IO.Directory.CreateDirectory(path);
+            global::Sharpy.OsModule.OsModuleModule.Mkdir(name);
         }
 
         /// <summary>
@@ -109,18 +92,14 @@ namespace Sharpy.OsModule
         /// </summary>
         public static void Rmdir(string path)
         {
-            if (!global::System.IO.Directory.Exists(path))
-            {
-                throw new global::Sharpy.FileNotFoundError("No such file or directory: '" + path + "'");
-            }
-
+            global::Sharpy.PathErrors.CheckRemovesDir(path);
             try
             {
                 global::System.IO.Directory.Delete(path, false);
             }
-            catch (global::System.Exception)
+            catch (global::System.Exception e)
             {
-                throw new global::Sharpy.OSError("Directory not empty: '" + path + "'");
+                throw global::Sharpy.PathErrors.TranslateRemovesDir(e, path);
             }
         }
 
@@ -129,18 +108,29 @@ namespace Sharpy.OsModule
         /// </summary>
         public static Sharpy.List<string> Listdir(string path = ".")
         {
-            if (!global::System.IO.Directory.Exists(path))
+            Sharpy.List<string> entries = new Sharpy.List<string>()
             {
-                throw new global::Sharpy.FileNotFoundError("No such file or directory: '" + path + "'");
+            };
+            try
+            {
+                foreach (var __loopVar_0 in global::System.IO.Directory.GetFileSystemEntries(path))
+                {
+                    var entry = __loopVar_0;
+                    entries.Append(entry);
+                }
+            }
+            catch (global::System.Exception e)
+            {
+                throw global::Sharpy.PathErrors.TranslateNeedsDir(e, path);
             }
 
             Sharpy.List<string> result = new Sharpy.List<string>()
             {
             };
-            foreach (var __loopVar_0 in global::System.IO.Directory.GetFileSystemEntries(path))
+            foreach (var __loopVar_1 in entries)
             {
-                var entry = __loopVar_0;
-                result.Append(global::System.IO.Path.GetFileName(entry));
+                var full = __loopVar_1;
+                result.Append(global::System.IO.Path.GetFileName(full));
             }
 
             return result;
@@ -159,12 +149,14 @@ namespace Sharpy.OsModule
         /// </summary>
         public static void Chdir(string path)
         {
-            if (!global::System.IO.Directory.Exists(path))
+            try
             {
-                throw new global::Sharpy.FileNotFoundError("No such file or directory: '" + path + "'");
+                global::System.IO.Directory.SetCurrentDirectory(path);
             }
-
-            global::System.IO.Directory.SetCurrentDirectory(path);
+            catch (global::System.Exception e)
+            {
+                throw global::Sharpy.PathErrors.TranslateNeedsDir(e, path);
+            }
         }
 
         /// <summary>
@@ -211,9 +203,9 @@ namespace Sharpy.OsModule
             Sharpy.Dict<string, string> result = new Sharpy.Dict<string, string>()
             {
             };
-            foreach (var __loopVar_1 in global::System.Environment.GetEnvironmentVariables())
+            foreach (var __loopVar_2 in global::System.Environment.GetEnvironmentVariables())
             {
-                var entry = __loopVar_1;
+                var entry = __loopVar_2;
                 if (entry is global::System.Collections.DictionaryEntry)
                 {
                     var k = ((global::System.Collections.DictionaryEntry)entry!).Key;
@@ -246,10 +238,25 @@ namespace Sharpy.OsModule
         }
 
         /// <summary>
+        /// The path without trailing separators (python's path.split skips an empty tail); a root stays itself.
+        /// </summary>
+        internal static string _StripTrailingSeparators(string path)
+        {
+            string stripped = path.TrimEnd(global::System.IO.Path.DirectorySeparatorChar, global::System.IO.Path.AltDirectorySeparatorChar);
+            if (stripped.Length == 0)
+            {
+                return path;
+            }
+
+            return stripped;
+        }
+
+        /// <summary>
         /// Perform the equivalent of a stat() system call on the given path.
         /// </summary>
         public static global::Sharpy.OsModule.StatResult Stat(string path)
         {
+            global::Sharpy.PathErrors.CheckNeedsAny(path);
             if (global::System.IO.File.Exists(path))
             {
                 global::System.IO.FileInfo finfo = new global::System.IO.FileInfo(path);
@@ -259,16 +266,11 @@ namespace Sharpy.OsModule
                 return new global::Sharpy.OsModule.StatResult(finfo.Length, fw.ToUnixTimeSeconds() + fw.Millisecond / 1000.0d, fc.ToUnixTimeSeconds() + fc.Millisecond / 1000.0d, fa.ToUnixTimeSeconds() + fa.Millisecond / 1000.0d, global::System.Convert.ToInt32(finfo.Attributes));
             }
 
-            if (global::System.IO.Directory.Exists(path))
-            {
-                global::System.IO.DirectoryInfo dinfo = new global::System.IO.DirectoryInfo(path);
-                global::System.DateTimeOffset dw = new global::System.DateTimeOffset(dinfo.LastWriteTimeUtc);
-                global::System.DateTimeOffset dc = new global::System.DateTimeOffset(dinfo.CreationTimeUtc);
-                global::System.DateTimeOffset da = new global::System.DateTimeOffset(dinfo.LastAccessTimeUtc);
-                return new global::Sharpy.OsModule.StatResult(0, dw.ToUnixTimeSeconds() + dw.Millisecond / 1000.0d, dc.ToUnixTimeSeconds() + dc.Millisecond / 1000.0d, da.ToUnixTimeSeconds() + da.Millisecond / 1000.0d, global::System.Convert.ToInt32(dinfo.Attributes));
-            }
-
-            throw new global::Sharpy.FileNotFoundError("No such file or directory: '" + path + "'");
+            global::System.IO.DirectoryInfo dinfo = new global::System.IO.DirectoryInfo(path);
+            global::System.DateTimeOffset dw = new global::System.DateTimeOffset(dinfo.LastWriteTimeUtc);
+            global::System.DateTimeOffset dc = new global::System.DateTimeOffset(dinfo.CreationTimeUtc);
+            global::System.DateTimeOffset da = new global::System.DateTimeOffset(dinfo.LastAccessTimeUtc);
+            return new global::Sharpy.OsModule.StatResult(0, dw.ToUnixTimeSeconds() + dw.Millisecond / 1000.0d, dc.ToUnixTimeSeconds() + dc.Millisecond / 1000.0d, da.ToUnixTimeSeconds() + da.Millisecond / 1000.0d, global::System.Convert.ToInt32(dinfo.Attributes));
         }
 
         [global::Sharpy.SharpyGenerator("_walk_core")]
@@ -292,15 +294,15 @@ namespace Sharpy.OsModule
                 Sharpy.List<string> filenames = new Sharpy.List<string>()
                 {
                 };
-                foreach (var __loopVar_2 in global::System.IO.Directory.GetDirectories(current))
+                foreach (var __loopVar_3 in global::System.IO.Directory.GetDirectories(current))
                 {
-                    var dirEntry = __loopVar_2;
+                    var dirEntry = __loopVar_3;
                     dirnames.Append(global::System.IO.Path.GetFileName(dirEntry));
                 }
 
-                foreach (var __loopVar_3 in global::System.IO.Directory.GetFiles(current))
+                foreach (var __loopVar_4 in global::System.IO.Directory.GetFiles(current))
                 {
-                    var fileEntry = __loopVar_3;
+                    var fileEntry = __loopVar_4;
                     filenames.Append(global::System.IO.Path.GetFileName(fileEntry));
                 }
 

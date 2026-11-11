@@ -365,6 +365,8 @@ extract-method identity diagnostics exception_handling/nested_except_same_variab
 extract-method identity diagnostics exception_handling/user_exception_message_still_resolves_1515 # #2294
 extract-method identity diagnostics exceptions/except_python_base_class_hierarchy_2124 # #2294
 extract-method identity diagnostics exceptions/exception_explicit_init_1367 # #2294
+extract-method identity diagnostics exceptions/not_a_directory_error_builtin_2476 # #2294
+extract-method identity diagnostics exceptions/not_a_directory_error_escaped_user_class_2476 # #2294
 extract-method identity diagnostics exceptions/oserror_family_2124 # #2294
 extract-method identity diagnostics exceptions/try_except_else_0032 # #2294
 extract-method identity diagnostics exceptions/try_except_finally_0016 # #2294
@@ -2103,6 +2105,7 @@ extract-method crlf diagnostics errors/spread_method_non_variadic # #2294
 extract-method crlf diagnostics exception_handling/except_star_multiple # #2294
 extract-method crlf diagnostics exception_handling/except_when_multiple # #2294
 extract-method crlf diagnostics exception_handling/exception_group_len_iter_1595 # #2294
+extract-method crlf diagnostics exceptions/user_types_named_like_core_internals_2476 # #2294
 extract-method crlf diagnostics expressions/fstring_format_alignment_0003 # #2294
 extract-method crlf diagnostics expressions/star_unpacking_0065 # #2294
 extract-method crlf diagnostics fstrings/t_string_conversions_1970 # #2294
