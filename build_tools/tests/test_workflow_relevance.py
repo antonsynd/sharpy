@@ -116,6 +116,10 @@ RUNTIME_READS: Dict[str, Dict[str, str]] = {
         "src/Sharpy.Stdlib.Tests/Spy/cpython": "dual-execution oracle",
         ".claude/scripts/dotnet-serialized": "lock harness",
         ".claude/scripts/ci-gate": "ci-gate harness",
+        # test_third_party_notices.py (#2602): the notices file and the Core/Stdlib sources it scans.
+        "THIRD-PARTY-NOTICES.txt": "third-party notices guard",
+        "src/Sharpy.Core": "third-party notices guard",
+        "src/Sharpy.Stdlib": "third-party notices guard",
     },
 }
 

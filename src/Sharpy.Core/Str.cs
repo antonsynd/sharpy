@@ -241,7 +241,7 @@ namespace Sharpy
         /// <para>
         /// The digits come from .NET's shortest-round-trip formatter (<c>"R"</c>), which is
         /// correct, but the positional-vs-exponential <em>layout</em> is Sharpy's own decision,
-        /// ported from CPython's <c>format_float_short</c>: writing a value as
+        /// following the rule of CPython's <c>format_float_short</c> (the thresholds, not its code): writing a value as
         /// <c>0.d1…dn × 10^decpt</c>, render positionally when <c>-4 &lt; decpt &lt;= 16</c>
         /// and exponentially otherwise. .NET stays positional one decade longer
         /// (<c>decpt &lt;= 17</c>), which is the <c>[1e16, 1e17)</c> divergence band of #1204.
