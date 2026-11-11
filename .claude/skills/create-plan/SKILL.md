@@ -56,7 +56,7 @@ Find the group's row in the newest charter (`ls -t docs/process/rounds/remediati
 - **A flag disagrees with the charter** — obey the flag, write `override: <the user's words>` in `## Scope`, and say so in the report. Never silently promote or demote.
 - **Research moves a light group onto a §12 letter** (an unruled decision surfaces, the seam turns out to be in `Semantic/`·`Lowering/`·`CodeGen/`, the matrix needs a generator) — stop, say which letter, and ask whether to promote; a promotion is written into `## Scope` as `tier: full (<letter>, promoted at /create-plan: <reason>)`.
 
-**Light template.** One page is the goal (no cap below the body's): the decisions an implementer must not re-derive, and no phases, tasks or testing strategy — the implementer sequences the work. Defect Class and Adversarial Review follow §3's rule for bug inputs. Run `python3 build_tools/check_plan_refs.py <plan>` before reporting: the `--adequacy` pass corrects nothing inline, so this is the author's reference check, and the report quotes its result.
+**Light template.** One page is the goal (the cap is the body's 20,480 bytes, §3): the decisions an implementer must not re-derive, and no phases, tasks or testing strategy — the implementer sequences the work. Defect Class and Adversarial Review follow §3's rule for bug inputs. Run `python3 build_tools/check_plan_refs.py <plan>` before reporting: the `--adequacy` pass corrects nothing inline, so this is the author's reference check, and the report quotes its result.
 
 ```markdown
 # <Plan Title>
@@ -130,6 +130,8 @@ Any `dotnet` command you run while researching goes through `.claude/scripts/dot
 ### 3. Generate the plan
 
 Write a plan file to `.claude/plans/` with a random name (use `openssl rand -hex 3` for a short hex suffix, e.g., `plan-a1b2c3.md`; the stem is the plan-id, and the plan's file of record is `docs/process/plans/plan-a1b2c3.md`). §3.1 commits the draft there once it is written.
+
+**Caps (R-LW), at both tiers:** body ≤ 20,480 bytes, ≤ 2 verify passes, checked by `check_plan_refs.py` (§3.1), which also reports the section budgets the templates state.
 
 The plan must follow this structure. `## Defect Class` and `## Adversarial Review` are **mandatory when any input is a bug, ICE, or regression issue**; omit them (with the line "Defect Class: N/A — feature work") only for pure feature work.
 
