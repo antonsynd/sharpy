@@ -275,8 +275,9 @@ public record VariableSymbol : Symbol
     public System.Numerics.BigInteger? ConstantValue { get; internal set { ThrowIfFrozen(); field = value; } }
 
     /// <summary>
-    /// The folded value of a float32/float64/decimal <c>const</c> whose initializer is a literal or another
-    /// folded const (<see cref="TrueDivisionRules.FoldFloatConstant"/>), as a <see cref="double"/>. Null
+    /// The folded value of a float32/float64/decimal <c>const</c> whose initializer folds
+    /// (<see cref="TrueDivisionRules.FoldFloatConstant"/>: literals, other consts, <c>+ - *</c>), as a
+    /// <see cref="double"/> ROUNDED TO THE DECLARED TYPE (a float32 const holds its float32 value). Null
     /// otherwise. Read by the <c>/</c> divisor rule (#2517): a const divisor known non-zero keeps the native
     /// operator, so <c>1.0 / SCALE</c> stays a C# constant expression.
     /// </summary>

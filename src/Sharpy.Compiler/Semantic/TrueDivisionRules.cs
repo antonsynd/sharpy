@@ -1,5 +1,4 @@
 using System.Globalization;
-using System.Numerics;
 using Sharpy.Compiler.Parser.Ast;
 using Sharpy.Compiler.Shared;
 
@@ -10,103 +9,152 @@ namespace Sharpy.Compiler.Semantic;
 /// division routes through the zero-guarded <c>Builtins.TrueDiv</c>), by <see cref="ConstEligibility"/>'s
 /// cross-module route (which has no recorded lowerings and must answer the same way from the AST and the
 /// exported symbols alone), and by the const fold that records a float/decimal const's value
-/// (<see cref="VariableSymbol.FloatConstantValue"/>). Pure: it reads literal text and the values the caller's
-/// <see cref="ConstantLookup"/> resolves.
+/// (<see cref="VariableSymbol.FloatConstantValue"/>). Pure: it reads literal text and the const symbols the
+/// caller's <see cref="ConstantLookup"/> resolves.
 /// </summary>
 internal static class TrueDivisionRules
 {
     /// <summary>
-    /// How a constant NAME resolves to its folded value: an integer const's
-    /// <see cref="VariableSymbol.ConstantValue"/>, a float/decimal const's
-    /// <see cref="VariableSymbol.FloatConstantValue"/>; a qualified name (<c>a.SCALE</c>, <c>C.K</c>) through
-    /// <see cref="ConstantLookup.Member"/>, the const symbol the checker resolved it to. Null for anything that is
-    /// not a folded const.
+    /// How a constant NAME resolves: the <c>const</c> symbol a bare name (<see cref="Name"/>) or a qualified
+    /// name (<see cref="Member"/>: <c>a.SCALE</c>, <c>C.K</c>) denotes, or null. Its folded value is
+    /// <see cref="VariableSymbol.ConstantValue"/> (integers) or <see cref="VariableSymbol.FloatConstantValue"/>
+    /// (float32/float64/decimal, already rounded to the declared type).
     /// </summary>
     public sealed record ConstantLookup(
-        Func<Identifier, BigInteger?> Integer,
-        Func<Identifier, double?> Float,
+        Func<Identifier, VariableSymbol?> Name,
         Func<MemberAccess, VariableSymbol?>? Member = null);
 
+    /// <summary>The precision a folded value is held at; arithmetic is done in this type.</summary>
+    private enum Precision { Integer, Float32, Float64, Decimal }
+
     /// <summary>
-    /// Whether a <c>/</c> divisor is a compile-time constant known to be non-zero: a numeric literal (through
-    /// parentheses and unary <c>+</c>/<c>-</c>), integer arithmetic over literals and integer consts
-    /// (<see cref="IntegerConstantEvaluator"/>), or a const name whose folded value is non-zero. Such a
-    /// division cannot trap, so it keeps the native C# operator and stays a C# constant expression when its
-    /// operands are. A divisor that is zero, unknown (a variable, a call, a member access), or a literal its
-    /// own type cannot hold (<c>1e-46f</c> underflows float32 to zero) answers <c>false</c> and keeps the
-    /// runtime guard.
+    /// Whether a <c>/</c> divisor is a compile-time constant known to be non-zero: a numeric literal, a
+    /// const name, or <c>+</c>/<c>-</c>/<c>*</c>/unary minus over those, each step evaluated in the operand
+    /// type's own precision (<see cref="TryEvaluate"/>). Such a division cannot trap, so it keeps the native
+    /// C# operator and stays a C# constant expression when its operands are. A divisor that folds to ±0, that
+    /// does not fold (a variable, a call, <c>/</c>, <c>**</c>, decimal arithmetic), or whose fold leaves the
+    /// finite range answers <c>false</c> and keeps the runtime guard.
     /// </summary>
     public static bool IsNonZeroConstantDivisor(Expression divisor, ConstantLookup? lookup)
-        => TryEvaluate(divisor, lookup, out var value) && value != 0.0;
+        => TryEvaluate(divisor, lookup, out var value, out _) && value != 0.0;
 
     /// <summary>
-    /// Evaluates a constant numeric expression to a <see cref="double"/> (precise enough to decide zero
-    /// against non-zero for every numeric type: a non-zero decimal is at least 1e-28). Float arithmetic is
-    /// deliberately not folded — a float32 product can underflow to zero where the double product does not —
-    /// so a float value comes only from a literal or a folded const.
+    /// The folded value of a float32/float64/decimal const's initializer ROUNDED TO ITS DECLARED TYPE, or null
+    /// when it does not fold. The rounding is the narrowing the store performs: an unsuffixed <c>1e-46</c>
+    /// stored in a <c>float32</c> const is <c>0f</c> at run time (float_literals.md, Narrowing), so its value
+    /// here must be zero too, or a division by it would be judged non-zero and print inf.
     /// </summary>
-    public static bool TryEvaluate(Expression expression, ConstantLookup? lookup, out double value)
+    public static double? FoldFloatConstant(Expression? initializer, ConstantLookup? lookup, SemanticType declaredType)
     {
-        if (IntegerConstantEvaluator.TryGetConstantInteger(expression, out var integer, lookup?.Integer))
+        if (initializer == null || !TryEvaluate(initializer, lookup, out var value, out _))
+            return null;
+        if (declaredType == SemanticType.Float32)
+            return Finite((float)value);
+        if (declaredType == SemanticType.Decimal)
+            return value == 0.0 || Math.Abs(value) >= 1e-28 ? value : 0.0;
+        return value;
+    }
+
+    private static double? Finite(double value) => double.IsFinite(value) ? value : null;
+
+    /// <summary>
+    /// Evaluates a constant numeric expression to a <see cref="double"/> together with the precision it is held
+    /// at. Integer arithmetic is exact (<see cref="IntegerConstantEvaluator"/>); <c>+</c>, <c>-</c>, <c>*</c> and
+    /// unary minus over float operands are evaluated in the promoted operand type, a float32 step rounded with
+    /// <c>(float)</c> after every operation, as the emitted C# computes. Decimal arithmetic is not folded (a
+    /// double cannot answer a decimal zero exactly), nor is any other operator. A non-finite step fails.
+    /// </summary>
+    private static bool TryEvaluate(Expression expression, ConstantLookup? lookup, out double value, out Precision precision)
+    {
+        if (IntegerConstantEvaluator.TryGetConstantInteger(
+                expression, out var integer, lookup == null ? null : id => lookup.Name(id)?.ConstantValue))
         {
             value = (double)integer;
-            return true;
+            precision = Precision.Integer;
+            return double.IsFinite(value);
         }
 
+        value = 0.0;
+        precision = Precision.Float64;
         switch (AstHelper.UnwrapParenthesized(expression))
         {
             case UnaryOp { Operator: UnaryOperator.Plus } plus:
-                return TryEvaluate(plus.Operand, lookup, out value);
+                return TryEvaluate(plus.Operand, lookup, out value, out precision);
 
             case UnaryOp { Operator: UnaryOperator.Minus } minus:
-                if (TryEvaluate(minus.Operand, lookup, out var operand))
+                if (!TryEvaluate(minus.Operand, lookup, out var operand, out precision))
+                    return false;
+                value = -operand;
+                return true;
+
+            case BinaryOp { Operator: BinaryOperator.Add or BinaryOperator.Subtract or BinaryOperator.Multiply } binary:
                 {
-                    value = -operand;
-                    return true;
+                    if (!TryEvaluate(binary.Left, lookup, out var left, out var leftPrecision)
+                        || !TryEvaluate(binary.Right, lookup, out var right, out var rightPrecision))
+                        return false;
+                    if (leftPrecision == Precision.Decimal || rightPrecision == Precision.Decimal)
+                        return false;
+                    precision = leftPrecision == Precision.Float64 || rightPrecision == Precision.Float64
+                        ? Precision.Float64
+                        : leftPrecision == Precision.Float32 || rightPrecision == Precision.Float32
+                            ? Precision.Float32
+                            : Precision.Float64;
+                    var result = binary.Operator switch
+                    {
+                        BinaryOperator.Add => left + right,
+                        BinaryOperator.Subtract => left - right,
+                        _ => left * right,
+                    };
+                    if (precision == Precision.Float32)
+                        result = (float)result;
+                    value = result;
+                    return double.IsFinite(result);
                 }
-                break;
 
             case FloatLiteral literal:
                 {
                     if (FloatLiteralClassifier.Classify(literal.Value, literal.Suffix).IsError)
-                        break;
+                        return false;
                     var text = literal.Value.Replace("_", "", StringComparison.Ordinal);
-                    if (double.TryParse(text, NumberStyles.Float, CultureInfo.InvariantCulture, out var parsed))
-                    {
-                        value = FloatLiteralClassifier.TypeOf(literal.Suffix) == SemanticType.Float32
-                            ? (float)parsed
-                            : parsed;
-                        return true;
-                    }
-                    break;
+                    if (!double.TryParse(text, NumberStyles.Float, CultureInfo.InvariantCulture, out var parsed))
+                        return false;
+                    var type = FloatLiteralClassifier.TypeOf(literal.Suffix);
+                    precision = type == SemanticType.Float32 ? Precision.Float32
+                        : type == SemanticType.Decimal ? Precision.Decimal
+                        : Precision.Float64;
+                    value = precision == Precision.Float32 ? (float)parsed : parsed;
+                    return double.IsFinite(value);
                 }
 
-            case Identifier id when lookup?.Float(id) is { } folded:
-                value = folded;
-                return true;
+            case Identifier id:
+                return FromConst(lookup?.Name(id), out value, out precision);
 
-            case MemberAccess member when lookup?.Member?.Invoke(member) is { IsConstant: true } constant:
-                if (constant.ConstantValue is { } memberInteger)
-                {
-                    value = (double)memberInteger;
-                    return true;
-                }
-                if (constant.FloatConstantValue is { } memberFloat)
-                {
-                    value = memberFloat;
-                    return true;
-                }
-                break;
+            case MemberAccess member:
+                return FromConst(lookup?.Member?.Invoke(member), out value, out precision);
+
+            default:
+                return false;
         }
-
-        value = 0.0;
-        return false;
     }
 
-    /// <summary>
-    /// The folded value of a float/decimal const's initializer, or null when it does not fold
-    /// (<see cref="TryEvaluate"/>'s rules).
-    /// </summary>
-    public static double? FoldFloatConstant(Expression? initializer, ConstantLookup? lookup)
-        => initializer != null && TryEvaluate(initializer, lookup, out var value) ? value : null;
+    private static bool FromConst(VariableSymbol? symbol, out double value, out Precision precision)
+    {
+        value = 0.0;
+        precision = Precision.Float64;
+        if (symbol is not { IsConstant: true })
+            return false;
+        if (symbol.ConstantValue is { } integer)
+        {
+            value = (double)integer;
+            precision = Precision.Integer;
+            return double.IsFinite(value);
+        }
+        if (symbol.FloatConstantValue is not { } folded)
+            return false;
+        value = folded;
+        precision = symbol.Type == SemanticType.Float32 ? Precision.Float32
+            : symbol.Type == SemanticType.Decimal ? Precision.Decimal
+            : Precision.Float64;
+        return true;
+    }
 }

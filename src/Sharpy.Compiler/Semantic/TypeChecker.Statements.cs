@@ -2531,10 +2531,7 @@ internal partial class TypeChecker
     /// Resolves a constant NAME to its folded value for <see cref="TrueDivisionRules"/>: the const symbol the
     /// name denotes in the current scope (same backtick rule as the integer fold), or null.
     /// </summary>
-    private TrueDivisionRules.ConstantLookup ConstantLookup => new(
-        id => LookupFoldedConst(id)?.ConstantValue,
-        id => LookupFoldedConst(id)?.FloatConstantValue,
-        LookupQualifiedConst);
+    private TrueDivisionRules.ConstantLookup ConstantLookup => new(LookupFoldedConst, LookupQualifiedConst);
 
     /// <summary>
     /// The const a qualified divisor names: a type member the checker resolved (<c>C.K</c>), or a module
@@ -2569,7 +2566,7 @@ internal partial class TypeChecker
         if (Registry.PrimitiveCatalog.IsFloatingPoint(declaredType) || Registry.PrimitiveCatalog.IsDecimal(declaredType))
         {
             // The `/` divisor rule reads a float/decimal const's value (#2517).
-            symbol.FloatConstantValue = TrueDivisionRules.FoldFloatConstant(initializer, ConstantLookup);
+            symbol.FloatConstantValue = TrueDivisionRules.FoldFloatConstant(initializer, ConstantLookup, declaredType);
             return;
         }
 

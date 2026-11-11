@@ -259,7 +259,7 @@ internal class ModuleLoader
                 && constSymbol.IsNameBacktickEscaped == id.IsNameBacktickEscaped
                     ? constSymbol
                     : null;
-        return new TrueDivisionRules.ConstantLookup(id => Const(id)?.ConstantValue, id => Const(id)?.FloatConstantValue);
+        return new TrueDivisionRules.ConstantLookup(Const);
     }
 
     internal void ExtractExportedSymbol(Statement statement, ModuleInfo moduleInfo)
@@ -383,7 +383,7 @@ internal class ModuleLoader
                 var exportedValues = ExportedConstantLookup(moduleInfo);
                 var varFloatValue = varDecl.IsConst
                     && (Registry.PrimitiveCatalog.IsFloatingPoint(varType) || Registry.PrimitiveCatalog.IsDecimal(varType))
-                        ? TrueDivisionRules.FoldFloatConstant(varDecl.InitialValue, exportedValues)
+                        ? TrueDivisionRules.FoldFloatConstant(varDecl.InitialValue, exportedValues, varType)
                         : null;
                 var varIsCompileTime = varDecl.IsConst
                     && ConstEligibility.IsExportedConstCompileTime(

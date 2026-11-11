@@ -326,6 +326,125 @@ public class ZeroDivisionDifferentialTests : IntegrationTestBase
         Assert.Contains(run.RawDiagnostics, d => d.IsError && d.Code == "SPY0401");
     }
 
+    // ── A float32 const narrowed from an unsuffixed literal (float_literals.md, Narrowing) ────────────────
+
+    /// <summary>How a test program reaches <c>T</c>/<c>U</c>: declared in main, <c>from a import</c>, or <c>a.T</c>.</summary>
+    public static IEnumerable<object[]> NarrowedConstRoutes() => new[]
+    {
+        new object[] { "SameModule" }, new object[] { "FromImport" }, new object[] { "Qualified" },
+    };
+
+    private const string NarrowedConsts = "const T: float32 = 1e-46\nconst U: float32 = 1e-30\n";
+
+    private ExecutionResult RunNarrowed(string route, string body)
+    {
+        using var helper = new Helpers.ProjectCompilationHelper(Output);
+        string prefix;
+        string t, u;
+        switch (route)
+        {
+            case "SameModule":
+                prefix = NarrowedConsts + "\n";
+                (t, u) = ("T", "U");
+                break;
+            case "FromImport":
+                helper.AddSourceFile("a.spy", NarrowedConsts);
+                prefix = "from a import T, U\n\n";
+                (t, u) = ("T", "U");
+                break;
+            default:
+                helper.AddSourceFile("a.spy", NarrowedConsts);
+                prefix = "import a\n\n";
+                (t, u) = ("a.T", "a.U");
+                break;
+        }
+        helper.AddSourceFile("main.spy", prefix + body.Replace("{T}", t, StringComparison.Ordinal).Replace("{U}", u, StringComparison.Ordinal));
+        return CompileAndExecuteEntryFile(Path.Combine(helper.SourceDirectory, "main.spy"));
+    }
+
+    /// <summary>
+    /// <c>const T: float32 = 1e-46</c> is <c>0f</c> at run time, so <c>1.0 / T</c> raises (never inf), while
+    /// <c>U = 1e-30</c> is non-zero in float32 and stays a C# constant divisor (its default compiles).
+    /// </summary>
+    [Theory]
+    [MemberData(nameof(NarrowedConstRoutes))]
+    public void NarrowedFloat32Const_ZeroRaises_NonZeroStaysConstant(string route)
+    {
+        var run = RunNarrowed(route,
+            "def g(x: float = 1.0 / {U}) -> float:\n    return x\n\n"
+            + "def main() -> None:\n    print(g() > 0.0)\n"
+            + "    try:\n        print(1.0 / {T})\n    except ZeroDivisionError as e:\n        print(\"ZeroDivisionError\", e)\n");
+        Assert.True(RanToCompletion(run), JudgeRun(run, route, "narrowed float32 const") ?? "timed out");
+        Assert.Equal("True\nZeroDivisionError division by zero",
+            run.StandardOutput.Replace("\r", "", StringComparison.Ordinal).Trim());
+    }
+
+    /// <summary>
+    /// A division by the narrowed-to-zero <c>T</c> is no C# constant: as a parameter default it is refused, and a
+    /// const built from it is no constant either, so a default reading that const is refused too.
+    /// </summary>
+    [Theory]
+    [MemberData(nameof(NarrowedConstRoutes))]
+    public void NarrowedFloat32Const_ZeroDivisorIsNoConstant(string route)
+    {
+        var run = RunNarrowed(route,
+            "const INV: float = 1.0 / {T}\n\n"
+            + "def f(x: float = 1.0 / {T}) -> float:\n    return x\n\n"
+            + "def h(x: float = INV) -> float:\n    return x\n\n"
+            + "def main() -> None:\n    print(f(), h())\n");
+        Assert.Equal(2, run.RawDiagnostics.Count(d => d.IsError && d.Code == "SPY0401"));
+    }
+
+    // ── Float arithmetic in a divisor ─────────────────────────────────────────────────────────────────────
+
+    /// <summary>
+    /// <c>+ - *</c> over float constants fold, each step in its operand type's precision, so a divisor known
+    /// non-zero stays a C# constant (python3.15 prints the same three values); <c>A - A</c> folds to zero and is
+    /// refused.
+    /// </summary>
+    [SkippableFact]
+    public void FloatArithmeticDivisor_FoldsAndStaysConstant_MatchesCPython()
+    {
+        var oracle = PythonBatchOracle.Over(PythonInterpreter.RequireOrSkip(minMinor: 15));
+        const string defs = "def f1(x: float = 1.0 / (2.0 + 1.0)) -> float:\n    return x\n\n"
+            + "def f2(x: float = 1.0 / (A + B)) -> float:\n    return x\n\n"
+            + "def f3(x: float = 1.0 / (S * 2.0)) -> float:\n    return x\n\n"
+            + "def f4(x: float = D) -> float:\n    return x\n\n"
+            + "def main():\n    print(f1())\n    print(f2())\n    print(f3())\n    print(f4())\n";
+        var sharpy = "const A: float = 1.0\nconst B: float = 2.0\nconst S: float = 4.0\nconst D: float = 1.0 / (A + B)\n\n" + defs;
+        var python = "A = 1.0\nB = 2.0\nS = 4.0\nD = 1.0 / (A + B)\n\n"
+            + defs.Replace(": float", "", StringComparison.Ordinal).Replace(" -> float", "", StringComparison.Ordinal) + "\nmain()\n";
+
+        var py = oracle.RunBatch(new[] { new PyRequest(0, python) });
+        Assert.True(py.TryGetValue(0, out var pyResult) && pyResult.Ok, "python3 did not run: " + (pyResult?.Stderr ?? "no verdict"));
+        var run = CompileAndExecute(sharpy, "zero_division_float_fold.spy");
+        Assert.True(RanToCompletion(run), JudgeRun(run, sharpy, "float-arithmetic divisor") ?? "timed out");
+        Assert.Equal(pyResult!.Stdout.Replace("\r", "", StringComparison.Ordinal).Trim(),
+            run.StandardOutput.Replace("\r", "", StringComparison.Ordinal).Trim());
+    }
+
+    /// <summary>
+    /// A divisor whose fold is zero is refused as a default: <c>A - A</c>, and a float32 product that underflows
+    /// to zero in float32 (<c>1e-30f * 1e-30f</c>; the float64 product would be 1e-60). At run time the same
+    /// float32 division raises.
+    /// </summary>
+    [Fact]
+    public void FloatArithmeticDivisor_FoldingToZero_IsRefused_AndRaises()
+    {
+        var refused = CompileAndExecute(
+            "const A: float = 1.0\nconst P: float32 = 1e-30f\nconst Q: float32 = 1e-30f\n\n"
+            + "def f(x: float = 1.0 / (A - A)) -> float:\n    return x\n\n"
+            + "def g(x: float32 = 1.0f / (P * Q)) -> float32:\n    return x\n\n"
+            + "def main():\n    print(f(), g())\n", "zero_division_float_fold_zero.spy");
+        Assert.Equal(2, refused.RawDiagnostics.Count(d => d.IsError && d.Code == "SPY0401"));
+
+        var source = "const P: float32 = 1e-30f\nconst Q: float32 = 1e-30f\n\ndef main():\n"
+            + "    try:\n        print(1.0f / (P * Q))\n    except ZeroDivisionError as e:\n        print(\"ZeroDivisionError\", e)\n";
+        var run = CompileAndExecute(source, "zero_division_float32_underflow.spy");
+        Assert.True(RanToCompletion(run), JudgeRun(run, source, "float32 underflow divisor") ?? "timed out");
+        Assert.Equal("ZeroDivisionError division by zero", run.StandardOutput.Trim());
+    }
+
     /// <summary>
     /// Positive control for the const rule: a parameter default dividing by a const that IS zero is not a
     /// constant expression (CPython raises at definition time), so it is refused, never folded to inf.
