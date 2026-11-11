@@ -318,3 +318,50 @@ def test_single_plan_cli_reports_budgets_and_exits_on_caps_only(tmp_path, capsys
     out = capsys.readouterr().out
     assert "section budgets" in out
     assert "NOTE: plan-new001.md: Context + Current State" in out
+
+
+# --- plan sections below a record heading are still body --------------------------------------
+
+CHECKLIST = "## Implementation Checklist\n\n- [ ] T1 — lead\n"
+TESTING = "## Testing Strategy\n\n" + "t" * 3_000 + "\n"
+
+
+def test_plan_section_moved_under_the_checklist_still_counts():
+    # mutation record: plan_body keeping no section below the cut -> red; restored -> green
+    filler = "x" * (cpr.BODY_CAP_BYTES - len(BODY.encode()) - len(TESTING.encode()) - 1)
+    in_place = _plan(body=BODY + filler + "\n" + TESTING + "\n" + CHECKLIST)
+    moved = _plan(body=BODY + filler + "\n" + CHECKLIST + TESTING)
+    assert cpr.body_bytes(moved) == cpr.body_bytes(in_place) == cpr.BODY_CAP_BYTES + 1
+    assert cpr.cap_violations("plan-new001.md", in_place)
+    assert cpr.cap_violations("plan-new001.md", moved)
+    assert cpr.section_bytes(moved)["Testing Strategy"] == len(TESTING.encode()) + 1
+
+
+def test_records_below_the_cut_stay_out_and_revision_log_counts():
+    records = (
+        CHECKLIST
+        + "## Implementation Record (lead)\n\n"
+        + "r" * 5_000
+        + "\n## Implementation Verification Record\n\n"
+        + "v" * 5_000
+        + "\n"
+    )
+    base = _plan(body=BODY)
+    with_records = _plan(body=BODY + "\n" + records)
+    assert cpr.body_bytes(with_records) == cpr.body_bytes(base)
+    # `## Revision log` is body wherever it sits (after a kept summary here)
+    logged = _plan(summary=SUMMARY + REVISED)
+    assert cpr.body_bytes(logged) == cpr.body_bytes(base) + len(REVISED.encode()) - 1
+
+
+def test_real_plan_with_a_mid_plan_checklist_counts_its_plan_sections():
+    text = (PLANS / "plan-5c21c8.md").read_text(encoding="utf-8")
+    cut = cpr.SUMMARY_HEADING_RE.search(text)
+    assert cut and cut.group(0) == "## Implementation Checklist"
+    hidden = [h for h, _ in cpr.sections(text[cut.start() :]) if cpr.section_key(h)]
+    assert {"Implementation", "Testing Strategy", "Issues to Close"} <= set(hidden)
+    body = cpr.plan_body(text)
+    assert (
+        "\n## Issues to Close" in body and "\n## Implementation Checklist" not in body
+    )
+    assert cpr.body_bytes(text) > cpr.BODY_CAP_BYTES

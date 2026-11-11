@@ -59,7 +59,7 @@ Note its **Defect Class** and **Adversarial Review** sections (if any), its **Is
 ### 1. Check the harness
 Team/task-board tools (`TeamCreate`, `TaskCreate`, `TaskUpdate`, `TaskList`, `TaskGet`, `TeamDelete`) exist only in harnesses that expose them. **Check this session's tool list first.**
 - **Present** → create a team `implement-plan`, create tasks with `TaskCreate`, assign via `TaskUpdate`, monitor via `TaskList`.
-- **Absent** (the current Claude Code harness) → coordinate with `Agent` (background, `subagent_type` per the table below) + `SendMessage`, and keep the task checklist **in the plan file itself**: add a `## Implementation Checklist` section (one line per task: `- [ ] <task> — <owner> — blocked by <tasks>`) that the lead updates as tasks land. The plan file is the board — a tracked one, so checklist updates are committed with the lead's slices (Pre-Implementation §2).
+- **Absent** (the current Claude Code harness) → coordinate with `Agent` (background, `subagent_type` per the table below) + `SendMessage`, and keep the task checklist **in the plan file itself**: append a `## Implementation Checklist` section at the end of the file, after every plan section (one line per task: `- [ ] <task> — <owner> — blocked by <tasks>`), that the lead updates as tasks land. The plan file is the board — a tracked one, so checklist updates are committed with the lead's slices (Pre-Implementation §2).
 
 ### 2. Choose agents
 Determine which agents to spawn based on what the plan touches:
