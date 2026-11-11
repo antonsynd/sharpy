@@ -1,0 +1,57 @@
+# Builtin-exception absence allowlist (ratchet ledger) for PythonBuiltinExceptionPresenceTests.
+#
+# Each row is a name in python-builtin-exceptions.txt (python 3.15's builtin exception classes) that Sharpy.Core
+# does not define and exception_handling.md does not rule. An absent name without a row is red; a row whose name
+# now exists is red too (stale: delete it with the type). Adding a builtin reserves its spelling (a user class of
+# that name becomes SPY0212), so each addition is an owner ruling, made on the cited issue.
+#
+# Row: `<Name> # #N <reason>`
+
+# The OSError family's remainder named by #2554 (each needs the owner's per-name ruling there).
+TimeoutError # #2554 OSError subclass; a fixture declares a user TimeoutError that would be refused
+ConnectionError # #2554 OSError subclass; CLR full-name collision with the requests module's Sharpy.ConnectionError
+BrokenPipeError # #2554 ConnectionError subclass; waits on ConnectionError
+ConnectionAbortedError # #2554 ConnectionError subclass; waits on ConnectionError
+ConnectionRefusedError # #2554 ConnectionError subclass; waits on ConnectionError
+ConnectionResetError # #2554 ConnectionError subclass; waits on ConnectionError
+EnvironmentError # #2554 an alias of OSError in python, not a class: a rung question
+
+# P33 (plan-638e8b) adds NotADirectoryError under #2476 by owner ruling; this row goes stale when it lands.
+NotADirectoryError # #2476 added by P33's OSError lane (branch claude/p33-oserror)
+
+# Not covered by any open issue at 2026-11-11: the lead files one class issue and replaces TO-FILE with its number.
+BaseExceptionGroup # #TO-FILE ExceptionGroup's base in python; Sharpy's ExceptionGroup sits on AggregateException
+BlockingIOError # #TO-FILE OSError subclass outside #2554's list
+ChildProcessError # #TO-FILE OSError subclass outside #2554's list
+InterruptedError # #TO-FILE OSError subclass outside #2554's list
+ProcessLookupError # #TO-FILE OSError subclass outside #2554's list
+BufferError # #TO-FILE absent
+EOFError # #TO-FILE absent; python's input() raises it at end of input
+FloatingPointError # #TO-FILE ArithmeticError subclass; absent
+GeneratorExit # #TO-FILE absent
+ImportCycleError # #TO-FILE new in python 3.15 (ImportError subclass); absent
+ImportError # #TO-FILE absent
+ModuleNotFoundError # #TO-FILE ImportError subclass; absent
+IndentationError # #TO-FILE SyntaxError subclass; absent
+KeyboardInterrupt # #TO-FILE absent
+MemoryError # #TO-FILE absent
+PythonFinalizationError # #TO-FILE RuntimeError subclass; absent
+RecursionError # #TO-FILE RuntimeError subclass; absent
+ReferenceError # #TO-FILE absent
+StopAsyncIteration # #TO-FILE absent
+SyntaxError # #TO-FILE absent
+SystemError # #TO-FILE absent
+TabError # #TO-FILE IndentationError subclass; absent
+UnicodeTranslateError # #TO-FILE UnicodeError subclass; absent
+Warning # #TO-FILE the warning category root; the whole category tree below is absent
+BytesWarning # #TO-FILE Warning subclass; absent
+DeprecationWarning # #TO-FILE Warning subclass; absent
+EncodingWarning # #TO-FILE Warning subclass; absent
+FutureWarning # #TO-FILE Warning subclass; absent
+ImportWarning # #TO-FILE Warning subclass; absent
+PendingDeprecationWarning # #TO-FILE Warning subclass; absent
+ResourceWarning # #TO-FILE Warning subclass; absent
+RuntimeWarning # #TO-FILE Warning subclass; absent
+SyntaxWarning # #TO-FILE Warning subclass; absent
+UnicodeWarning # #TO-FILE Warning subclass; absent
+UserWarning # #TO-FILE Warning subclass; absent
