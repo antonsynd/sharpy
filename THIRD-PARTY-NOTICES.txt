@@ -6,10 +6,10 @@ License (see LICENSE, LICENSE-APACHE and LICENSE-MIT). Some files in this
 repository contain code derived from third-party software that is distributed
 under its own license. The components identified so far are listed below,
 each with the Sharpy files derived from it, the upstream source, and the full
-license text under which it is used. The audit for CPython-derived code is
-tracked in issue #2602 of the Sharpy repository. Files that follow CPython's
-behaviour or algorithm without a line-by-line source port are not listed;
-these were judged borderline and remain open in that audit:
+license text under which it is used. This list is not yet exhaustive. The
+audit of CPython-derived code, including files that do not describe
+themselves as ports, is tracked in issue #2602 of the Sharpy repository.
+Among the files still open in that audit are, for example,
 src/Sharpy.Core/PyFormatSpec.cs, src/Sharpy.Stdlib/Threading/Barrier.cs,
 src/Sharpy.Core/Str.cs (the format_float_short layout rule) and
 src/Sharpy.Stdlib/Threading/ThreadRegistry.cs.
@@ -68,8 +68,8 @@ of the PSF License Version 2 follow.
 3. src/Sharpy.Core/PyFormat.cs (only the private method
    InsertThousandsGrouping)
 
-   Upstream source: CPython's _PyUnicode_InsertThousandsGrouping
-   (Objects/unicodeobject.c).
+   Upstream source: _PyUnicode_InsertThousandsGrouping, in CPython's C
+   implementation (Objects/).
 
    Summary of changes: translated from C to C#. Only a uniform group size is
    handled (no locale grouping string), and the result is built as a .NET

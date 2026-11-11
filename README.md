@@ -76,8 +76,8 @@ dotnet run --project src/Sharpy.Cli -- run hello.spy
 
 Licensed under either of [Apache License, Version 2.0](LICENSE-APACHE) or [MIT License](LICENSE-MIT) at your option.
 
-Sharpy is Apache-2.0 OR MIT; portions ported from CPython are under PSF-2.0, see [THIRD-PARTY-NOTICES.txt](THIRD-PARTY-NOTICES.txt).
-
 Unless you explicitly state otherwise, any contribution intentionally submitted
 for inclusion in this project shall be dual licensed as above, without any
 additional terms or conditions.
+
+Sharpy is Apache-2.0 OR MIT; portions ported from CPython are under PSF-2.0, see [THIRD-PARTY-NOTICES.txt](THIRD-PARTY-NOTICES.txt).
