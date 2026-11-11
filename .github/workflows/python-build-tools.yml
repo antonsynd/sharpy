@@ -16,6 +16,7 @@ on:
       - '.python-version'
       - 'docs/process/**'
       - 'src/**/*allowlist*.txt'
+      - 'src/Sharpy.Compiler/Semantic/SemanticInfo.cs'
       - 'src/Sharpy.Core/**'
       - 'src/Sharpy.Stdlib/**'
       - 'src/Sharpy.Stdlib.Tests/Spy/cpython/**'
@@ -59,6 +60,8 @@ jobs:
         docs/process/**
         # Gap-discovery allowlists, read by build_tools/tests/ checks.
         src/**/*allowlist*.txt
+        # The SemanticInfo scorecard ratchet in build_tools/tests/ reads it.
+        src/Sharpy.Compiler/Semantic/SemanticInfo.cs
         src/Sharpy.Core/**
         src/Sharpy.Stdlib/**
         src/Sharpy.Stdlib.Tests/Spy/cpython/**
@@ -94,6 +97,14 @@ jobs:
       with:
         # Full history: a build_tools/tests/ check diffs against the base branch's merge base.
         fetch-depth: 0
+
+    - name: Fetch the PR's base branch as origin/<base>
+      # fetch-depth 0 already maps every branch to origin/*; this names the base explicitly so a
+      # check that diffs against the merge base with origin/<base> never depends on that default.
+      if: ${{ github.base_ref != '' }}
+      env:
+        BASE: ${{ github.base_ref }}
+      run: git fetch --no-tags origin "+refs/heads/$BASE:refs/remotes/origin/$BASE"
 
     - name: Set up Python
       uses: actions/setup-python@v7

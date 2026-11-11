@@ -305,6 +305,30 @@ def test_every_file_a_workflow_reads_is_in_its_filter(path: Path) -> None:
     assert coverage_problems(path.name, load(path)) == []
 
 
+def test_python_suite_runs_on_the_files_its_checks_read() -> None:
+    # build_tools/tests/ checks read these, which no workflow step names, so the scanner cannot see
+    # them: the SemanticInfo scorecard ratchet and the allowlist severity check.
+    workflow = load(WORKFLOWS / "python-build-tools.yml")
+    listed = relevant_paths(workflow)
+    assert listed
+    allowlists = [
+        str(p.relative_to(REPO)) for p in (REPO / "src").rglob("*allowlist*.txt")
+    ]
+    assert allowlists
+    for read in [
+        "src/Sharpy.Compiler/Semantic/SemanticInfo.cs",
+        ".python-version",
+        "CLAUDE.md",
+        ".claude/settings.json",
+        "docs/process/README.md",
+        *allowlists,
+    ]:
+        assert matches(read, listed), read
+    test = workflow["jobs"]["test"]["steps"]
+    assert test[0]["with"]["fetch-depth"] == 0
+    assert any("refs/remotes/origin/$BASE" in (step.get("run") or "") for step in test)
+
+
 def test_the_scanner_reads_what_the_gate_workflows_read() -> None:
     # Positive control: a scanner that found nothing would pass every workflow.
     dotnet = reads(load(WORKFLOWS / "dotnet10.yml"))
