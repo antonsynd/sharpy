@@ -22,7 +22,7 @@
 #   --no-dotnet11         skip the .NET 11 SDK.
 #   --with-docs           also install mkdocs-material (docs site).
 #   --no-auto-builder     skip sharpy_auto_builder (LangGraph); most build_tools tests then fail to import.
-#   --profile             append `source .venv/sharpy-env.sh` to ~/.bashrc (or ~/.zshrc).
+#   --profile             source .venv/sharpy-env.sh from the first line of ~/.bashrc (or ~/.zshrc).
 #   --build               build sharpy.sln and run the README hello-world smoke test.
 #
 # Afterwards: `source .venv/sharpy-env.sh`
@@ -203,11 +203,17 @@ export PYTHONPATH="$ROOT\${PYTHONPATH:+:\$PYTHONPATH}"
 SH
 if ((PROFILE)); then
   rc="$HOME/.bashrc"; [[ "${SHELL:-}" == */zsh ]] && rc="$HOME/.zshrc"
-  if grep -qF "$ENV_FILE" "$rc" 2>/dev/null; then
+  # FIRST line, not appended: a stock ~/.bashrc returns at `[ -z "$PS1" ] && return` (or
+  # `case $- in *i*) ;; *) return;; esac`), so an appended line never runs in the non-interactive
+  # shells that agents, cloud sessions and `bash -lc` use; they then get the system python3 with
+  # no pytest and no dotnet on PATH.
+  line="[ -f \"$ENV_FILE\" ] && . \"$ENV_FILE\"  # Sharpy"
+  if [[ "$(head -n 1 "$rc" 2>/dev/null)" == "$line" ]]; then
     log "$rc already sources $ENV_FILE"
   else
-    printf '\n[ -f "%s" ] && . "%s"  # Sharpy\n' "$ENV_FILE" "$ENV_FILE" >> "$rc"
-    log "added $ENV_FILE to $rc"
+    rest="$(grep -vxF "$line" "$rc" 2>/dev/null || true)"
+    printf '%s\n%s\n' "$line" "$rest" > "$rc"
+    log "added $ENV_FILE as the first line of $rc"
   fi
 fi
 
