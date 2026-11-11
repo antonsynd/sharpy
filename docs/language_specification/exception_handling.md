@@ -134,6 +134,45 @@ def example() -> int:
 - *try/except/finally: ✅ Native - `try`/`catch`/`finally`*
 - *else clause: 🔄 Lowered - Boolean flag pattern, nested inside the finally-protected region when both clauses are present*
 
+### Handler Order
+
+Handlers are tried in source order and the first one whose type matches runs, as in Python. A
+handler whose every exception type an earlier handler (one without a `when` filter) already catches
+can never run: it is accepted, warned as **SPY0488**, and left out of the compiled program. A type
+of a tuple handler that an earlier handler already catches is left out the same way; the handler's
+other types still catch.
+
+<!-- spec-sweep: output -->
+```python
+def main() -> None:
+    try:
+        raise KeyError("k")
+    except LookupError:
+        print("lookup")
+    except KeyError:       # warning SPY0488: LookupError already catches KeyError
+        print("key")
+```
+
+```output
+lookup
+```
+
+A bare `except:` with no filter catches every exception, so it must be the last handler; one that is
+not last is refused as **SPY0151** (Python: `SyntaxError: default 'except:' must be last`).
+
+<!-- spec-sweep: error SPY0151 -->
+```python
+def main() -> None:
+    try:
+        raise KeyError("k")
+    except:                # error SPY0151
+        print("any")
+    except KeyError:
+        print("key")
+```
+
+*Implementation: 🔄 Lowered - the covered `catch` clauses are omitted (C# refuses a catch after one for its base type, CS0160)*
+
 ## Raise Statement
 
 <!-- spec-sweep: fragment -->

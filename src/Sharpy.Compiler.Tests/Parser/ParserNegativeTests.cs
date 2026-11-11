@@ -538,10 +538,18 @@ public class ParserNegativeTests
     }
 
     [Fact]
-    public void AllowsMultipleExceptWithoutException()
+    public void RejectsBareExceptBeforeAnotherHandler()
     {
-        // Bare except doesn't need to be last - this is a semantic check
+        // python3: "SyntaxError: default 'except:' must be last" — a parse-time refusal (SPY0151, #2363).
         var source = "try:\n    pass\nexcept:\n    pass\nexcept Exception:\n    pass";
+        var errors = ParseExpectingError(source);
+        errors.Should().Contain("bare 'except:' must be the last handler");
+    }
+
+    [Fact]
+    public void AllowsBareExceptLast()
+    {
+        var source = "try:\n    pass\nexcept ValueError:\n    pass\nexcept:\n    pass";
         var module = Parse(source);
         module.Body.Should().HaveCount(1);
     }

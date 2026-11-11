@@ -851,6 +851,19 @@ public static partial class DiagnosticExplanations
 
         // SPY0487 removed (#1634) — was never emitted
 
+        Add(dict, DiagnosticCodes.Validation.UnreachableArm,
+            "Unreachable except handler",
+            "Validation",
+            "An 'except' handler can never run because an earlier handler of the same 'try' already " +
+            "catches every exception type it names: handlers are tried in order and the first match " +
+            "wins, so an 'except LookupError:' before an 'except KeyError:' takes every KeyError. " +
+            "Python accepts this and simply never runs the later handler; Sharpy does the same and " +
+            "leaves the unreachable handler out of the compiled program. One type of a tuple handler " +
+            "that an earlier handler catches is left out the same way, without a warning, when the " +
+            "tuple's other types are still reachable.",
+            "try:\n    load()\nexcept LookupError:\n    print(\"lookup\")\nexcept KeyError:      # warning: never runs\n    print(\"key\")",
+            "Put the more specific handler first, or delete the unreachable one:\n  try:\n      load()\n  except KeyError:\n      print(\"key\")\n  except LookupError:\n      print(\"lookup\")");
+
         // ── Property observer validation (SPY0490-SPY0491, #416) ──────────
 
         Add(dict, DiagnosticCodes.Validation.PropertyObserverInvalidTarget,

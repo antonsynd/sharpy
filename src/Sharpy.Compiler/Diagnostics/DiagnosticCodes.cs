@@ -248,7 +248,13 @@ public static class DiagnosticCodes
 
         #endregion
 
-        // SPY0151-SPY0199: Reserved for future parser diagnostics
+        #region Bare except position (SPY0151)
+
+        public const string BareExceptMustBeLast = "SPY0151"; // Active (#2363)
+
+        #endregion
+
+        // SPY0152-SPY0199: Reserved for future parser diagnostics
     }
 
     /// <summary>
@@ -780,7 +786,11 @@ public static class DiagnosticCodes
         public const string VariantPatternShadowsConstant = "SPY0485"; // Active (#1562)
         public const string DefaultsErasedByConversion = "SPY0486"; // Active (#1563)
         // SPY0487: Reserved — never emitted (#1558, removed #1634)
-        // SPY0488-SPY0489: Reserved for future validation warnings
+        // An arm of a multi-arm statement that an earlier arm makes unreachable: an except handler
+        // whose every type an earlier handler already catches. Python accepts it and never runs it,
+        // so it is a warning and the emitter omits the arm (#2363).
+        public const string UnreachableArm = "SPY0488";             // Active (#2363)
+        // SPY0489: Reserved for future validation warnings
 
         #endregion
 
