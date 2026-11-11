@@ -428,3 +428,55 @@ def test_real_plan_with_a_mid_plan_checklist_counts_its_plan_sections():
         assert f"\n## {heading}\n" in body
     assert "\n## Implementation Checklist" not in body
     assert cpr.body_bytes(text) > cpr.BODY_CAP_BYTES
+
+
+# --- the numbers the skills state are the checker's constants ----------------------------------
+
+NUMBER_RE = re.compile(
+    r"≤ (?P<passes>\d+) verify passes|(?P<sign>[≤+]) ?(?P<n>[\d.,]+) (?P<unit>KB|bytes)"
+)
+# The section a budget statement belongs to: the last of these named before it.
+BUDGET_OWNERS = {
+    "Context": "Context + Current State",
+    "Current State": "Context + Current State",
+    "Adversarial": "Adversarial Review",
+    "Issues to Close": "Scope + Issues to Close + Class trackers",
+}
+
+
+def _stated_numbers() -> list[tuple[str, int, int]]:
+    """(what, stated value, constant) for every cap or budget number the plan skills state."""
+    budgets = {label: cap for label, _, cap in cpr.SECTION_BUDGETS}
+    out = []
+    for path in SKILLS:
+        text = path.read_text(encoding="utf-8")
+        for m in NUMBER_RE.finditer(text):
+            if m.group("passes"):
+                out.append(("verify passes", int(m.group("passes")), cpr.PASS_CAP))
+                continue
+            n = float(m.group("n").replace(",", ""))
+            value = int(n * 1024) if m.group("unit") == "KB" else int(n)
+            if m.group("unit") == "bytes":
+                out.append(("body cap", value, cpr.BODY_CAP_BYTES))
+            elif m.group("sign") == "+":
+                out.append(("revision growth", value, cpr.REVISION_GROWTH_BYTES))
+            else:
+                before = text[: m.start()]
+                owner = max(BUDGET_OWNERS, key=before.rfind)
+                out.append((BUDGET_OWNERS[owner], value, budgets[BUDGET_OWNERS[owner]]))
+    return out
+
+
+def test_numbers_the_skills_state_equal_the_constants():
+    # mutation record: "≤ 2.5 KB" -> "≤ 3 KB" in create-plan/SKILL.md -> red; restored -> green
+    stated = _stated_numbers()
+    assert [(w, v) for w, v, c in stated if v != c] == []
+    kinds = {w for w, _, _ in stated}
+    assert kinds == {
+        "body cap",
+        "verify passes",
+        "revision growth",
+        *(label for label, _, _ in cpr.SECTION_BUDGETS),
+    }
+    # the cap is stated once
+    assert sum(w == "body cap" for w, _, _ in stated) == 1

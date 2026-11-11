@@ -56,7 +56,7 @@ Find the group's row in the newest charter (`ls -t docs/process/rounds/remediati
 - **A flag disagrees with the charter** — obey the flag, write `override: <the user's words>` in `## Scope`, and say so in the report. Never silently promote or demote.
 - **Research moves a light group onto a §12 letter** (an unruled decision surfaces, the seam turns out to be in `Semantic/`·`Lowering/`·`CodeGen/`, the matrix needs a generator) — stop, say which letter, and ask whether to promote; a promotion is written into `## Scope` as `tier: full (<letter>, promoted at /create-plan: <reason>)`.
 
-**Light template.** One page is the goal (the cap is the body's 20,480 bytes, §3): the decisions an implementer must not re-derive, and no phases, tasks or testing strategy — the implementer sequences the work. Defect Class and Adversarial Review follow §3's rule for bug inputs. Run `python3 build_tools/check_plan_refs.py <plan>` before reporting: the `--adequacy` pass corrects nothing inline, so this is the author's reference check, and the report quotes its result.
+**Light template.** One page is the goal (§3's caps apply): the decisions an implementer must not re-derive, and no phases, tasks or testing strategy — the implementer sequences the work. Defect Class and Adversarial Review follow §3's rule for bug inputs. Run `python3 build_tools/check_plan_refs.py <plan>` before reporting: the `--adequacy` pass corrects nothing inline, so this is the author's reference check, and the report quotes its result.
 
 ```markdown
 # <Plan Title>
