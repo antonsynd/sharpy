@@ -618,6 +618,49 @@ deviations:
         format(decimal(1.5), "d")        # SPY0609: Unknown format code 'd' for object of type 'decimal'
         format(decimal(1.5), ".2f")      # '1.50'
 
+  - id: socket-error-timeout-distinct-classes
+    code: null
+    category: stdlib
+    audience: python
+    severity: none
+    python_behavior: "`socket.error` IS `OSError` and `socket.timeout` IS `TimeoutError` (aliases since 3.3 / 3.10): `type(socket.error('x'))` is `<class 'OSError'>`, `except socket.error` catches every `OSError`, and `except TimeoutError` catches `socket.timeout`."
+    sharpy_behavior: "`socket.error` is a class of its own deriving from `OSError` (#2087, plan-638e8b D3), with `socket.timeout`, `socket.gaierror` and `socket.herror` deriving from it, so `except OSError` and `except IOError` catch every socket exception and `except socket.error` catches all four. The identity is not there: `type(socket.error(..))` spells `<class 'socket.error'>` (and `socket.timeout` spells `<class 'socket.timeout'>`); `except socket.error` does not catch an `OSError` raised outside `socket`; `socket.timeout` is not `TimeoutError`, which is not a builtin (SPY0202). Removal path: a module-export alias in the compiler's `Discovery/` + `Semantic/Registry/` (a compiled library emits no member for a module-level `type error = OSError`, and `[SharpyModuleType]` cannot stamp a Core type into a module), then `TimeoutError` in Core."
+    spec_ref: null
+    existing_diagnostic: null
+    planned_diagnostic: null
+    example:
+      python: |
+        import socket
+        print(type(socket.error("boom")))       # <class 'OSError'>
+        print(type(socket.timeout("slow")))     # <class 'TimeoutError'>
+        try:
+            raise OSError("not from socket")
+        except socket.error:
+            print("caught by socket.error")     # this arm runs: socket.error is OSError
+        except OSError:
+            print("caught by OSError only")
+        try:
+            raise socket.timeout("slow")
+        except TimeoutError:
+            print("caught by TimeoutError")     # socket.timeout is TimeoutError
+      sharpy: |
+        import socket
+
+        def main() -> None:
+            print(type(socket.error("boom")))       # <class 'socket.error'>
+            print(type(socket.timeout("slow")))     # <class 'socket.timeout'>
+            try:
+                raise OSError("not from socket")
+            except socket.error:
+                print("caught by socket.error")
+            except OSError:
+                print("caught by OSError only")     # this arm runs
+            try:
+                raise socket.timeout("slow")
+            except OSError:
+                print("caught by OSError")          # socket.timeout is an OSError
+            # `except TimeoutError:` is SPY0202: Type 'TimeoutError' not found
+
   - id: struct-value-semantics
     code: null
     category: semantics
