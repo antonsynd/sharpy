@@ -1,0 +1,13 @@
+# NotADirectoryError is a builtin OSError subclass (P33 D2, #2476), so a module may no longer
+# declare a class of that spelling: SPY0212, the refusal every builtin exception name gets
+# (IsADirectoryError, FileExistsError, ...). Before D2 this program compiled and printed
+# `caught user class`; the owner ruled the worked -> refused change ("Add it", 2026-11-10).
+# The escape SPY0212 offers is the backtick spelling: not_a_directory_error_escaped_user_class_2476.
+class NotADirectoryError(Exception):
+    pass
+
+def main():
+    try:
+        raise NotADirectoryError('x')
+    except NotADirectoryError:
+        print('caught user class')

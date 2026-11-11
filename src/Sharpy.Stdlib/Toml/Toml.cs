@@ -92,19 +92,18 @@ namespace Sharpy
                 throw new TypeError("expected str, not NoneType");
             }
 
+            // python: open(path, "rb"); its refusal is the classifier's (plan-638e8b D1).
+            PathErrors.CheckNeedsFileToRead(path);
+            string content;
             try
             {
-                string content = File.ReadAllText(path);
-                return Loads(content);
+                content = File.ReadAllText(path);
             }
-            catch (System.IO.FileNotFoundException)
+            catch (Exception ex) when (ex is System.IO.IOException || ex is UnauthorizedAccessException)
             {
-                throw new FileNotFoundError("No such file or directory: '" + path + "'");
+                throw PathErrors.TranslateNeedsFileToRead(ex, path);
             }
-            catch (System.IO.DirectoryNotFoundException)
-            {
-                throw new FileNotFoundError("No such file or directory: '" + path + "'");
-            }
+            return Loads(content);
         }
 
         /// <summary>Write an object's TOML representation to a file path.</summary>
@@ -122,7 +121,16 @@ namespace Sharpy
             }
 
             string toml = Dumps(obj, sortKeys);
-            File.WriteAllText(path, toml);
+            // python: open(path, "w"); its refusal is the classifier's (plan-638e8b D1).
+            PathErrors.CheckNeedsFileToWrite(path);
+            try
+            {
+                File.WriteAllText(path, toml);
+            }
+            catch (Exception ex) when (ex is System.IO.IOException || ex is UnauthorizedAccessException)
+            {
+                throw PathErrors.TranslateNeedsFileToWrite(ex, path);
+            }
         }
 
         private static void SortTable(TomlTable table)

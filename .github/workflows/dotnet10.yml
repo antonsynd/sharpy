@@ -331,6 +331,12 @@ jobs:
     needs: build
     runs-on: ubuntu-latest
     timeout-minutes: ${{ (github.event_name == 'push' || inputs.coverage) && 20 || 15 }}
+    env:
+      # The python oracles of Core and Stdlib (Sharpy.Core.Tests -> ExceptionHierarchyPythonMroTests,
+      # and the Stdlib python twins, P33) FAIL instead of skipping when no Python 3.12+ interpreter
+      # is found: a skipped twin guards nothing. Job level, so every step inherits it
+      # (CiFilterCoverageConformanceTests.EveryPythonOracleTest_RunsWithTheOracleRequired).
+      SHARPY_REQUIRE_PYTHON_ORACLE: "1"
 
     steps:
     - uses: actions/checkout@v7
@@ -338,6 +344,14 @@ jobs:
       uses: actions/setup-dotnet@v6
       with:
         dotnet-version: 10.0.x
+    - name: Setup Python
+      # The oracle the Core and Stdlib python twins compare against, pinned by .python-version
+      # (#2497) so their verdicts are CPython's at the repository's minor, not the runner image's.
+      # The twins FAIL if no suitable python is found (the job's SHARPY_REQUIRE_PYTHON_ORACLE), so
+      # removing this step turns the job red. Keep the pin.
+      uses: actions/setup-python@v7
+      with:
+        python-version-file: .python-version
     - name: Restore the NuGet package cache
       id: nuget
       uses: actions/cache/restore@v6
