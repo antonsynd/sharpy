@@ -48,7 +48,7 @@ The audit range is **the plan's own commit range**, never the branch-vs-`mainlin
 
 - **Base sha** = the parent of the plan's first implementation commit. Read it from the plan's implementation commit table/checklist, or from `git log` on the commit messages that reference the plan. If neither identifies it unambiguously, **ask the user** — do not guess.
 - Record `BASE=<sha>` and `HEAD=<sha>`; every `git diff`/`git log` below uses `$BASE..HEAD`.
-- **Branch** (`docs/process/README.md` › The stage trail): commit on the implementation's open pull request; its CI run at `$FINAL` is the gate. Only if it has merged, cut `claude/<group>-verify` from `origin/dev` first.
+- **Branch** (`docs/process/README.md` › The stage trail): commit on the implementation's open pull request; its CI run at `$FINAL` is the gate. Only if it has merged, cut `claude/<group>-verify` from `origin/dev` first and open its own pull request into `dev` (`dev` refuses a direct push). Either pull request is merged on green (`docs/process/README.md` › The stage trail, item 6).
 
 ### 3. Establish the baseline @ HEAD
 
@@ -408,7 +408,8 @@ If a step fails, loop back to remediation. Maximum 3 remediation loops — after
 2. If a team was created, shut teammates down (`SendMessage` `shutdown_request`) and delete it; with background agents, confirm each has returned
 3. **Record the close in the committed plan.** Append the report below to `docs/process/plans/<plan-id>.md` as `## Implementation Verification Record` (verbatim, every count `@ sha`) and commit that one file — `process(plan): <plan-id> — verify-implementation closed @ $FINAL` — as the round's last commit.
 4. `/push`. The implementation's pull request carries the record (on a `-verify` lane, open one with the same body). Add to its body the class-status table, the issues closed with the evidence each close cites, the issues filed, the unresolved items and the gate `@ $FINAL (measured)` with its run id. The tip never carries the skip-ci marker (contract §6).
-5. Present the verification report:
+5. **Merge on green** (`docs/process/README.md` › The stage trail, item 6): when every check at the record commit's tip is green, merge the pull request (a merge commit, expected head = that tip), `git pull origin dev`, then close the plan's "Issues to Close" rows that are CLOSEABLE with `/close-issues` — each close cites its evidence `@ sha` and the merged pull request. A red at the tip is fixed first (a flake with an open issue: one re-run of its job decides); it is never merged over.
+6. Present the verification report:
 
 ```markdown
 ## Implementation Verification Report

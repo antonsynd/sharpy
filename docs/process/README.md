@@ -44,7 +44,12 @@ The shared rules for `/create-plan`, `/verify-plan`, `/implement-plan` and `/ver
    pull request's body names the plan, the gate `passed/failed/skipped @ sha (measured)`, **the issues
    it closes and the issues its work filed**. A cell found outside the plan's scope is filed as contract
    §10 says: a comment on its open class tracker; a new issue only when none exists and the cell is
-   `reach:program` in a silent-wrong, ice, refusal or runtime-throw lane. The tip never carries the skip-ci marker (contract §6). Merging is the owner's.
+   `reach:program` in a silent-wrong, ice, refusal or runtime-throw lane. The tip never carries the skip-ci marker (contract §6).
+6. **Merge on green** (owner, 2026-11-11). The session that opened a pull request into `dev` merges
+   it once every check at its tip has completed green: a merge commit, with the head sha the gate
+   measured as the expected head, so a later push cannot ride in unmeasured. A red or a pending check
+   is never merged over: the red is fixed, or — a flake with an open issue — its job is re-run once
+   and the re-run decides. After the merge, `git pull origin dev`. `mainline` stays the owner's.
 
 ### No-plan lane
 
@@ -58,7 +63,8 @@ no verify stage, the body as in item 5 with `Refs #N`. A `light` or `full` group
 
 The same lane shape holds for every change that is not a plan stage — a `/batch-issues` charter
 call, a chore or band commit, a skill or doc edit, a version bump (owner, 2026-11-11): cut
-`claude/<lane>` from `origin/dev`, commit there, `/push`, and open a pull request into `dev`. `dev`
+`claude/<lane>` from `origin/dev`, commit there, `/push`, open a pull request into `dev`, and merge it
+on green (item 6). `dev`
 is the integration branch; nothing is pushed to it directly, and local `dev` advances only by
 `git pull origin dev` after a merge.
 
