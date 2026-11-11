@@ -276,6 +276,7 @@ s7-parity-exempt identity full exception_handling/multi_except 1 # #2279
 s7-parity-exempt identity full exception_handling/nested_except_same_variable 1 # #2279
 s7-parity-exempt identity full exception_handling/try_else_variable_scoping_error 1 # #2279
 s7-parity-exempt identity full exceptions/exception_explicit_init_1367 1 # #2279
+s7-parity-exempt identity full exceptions/not_a_directory_error_builtin_2476 1 # #2279
 s7-parity-exempt identity full exceptions/oserror_family_2124 1 # #2279
 s7-parity-exempt identity full experimental/defer_in_constructor 1 # #2279
 s7-parity-exempt identity full experimental/defer_in_constructor_ungated 1 # #2279
@@ -760,6 +761,7 @@ s7-parity-exempt identity ontype exception_handling/multi_except 1 # #2279
 s7-parity-exempt identity ontype exception_handling/nested_except_same_variable 1 # #2279
 s7-parity-exempt identity ontype exception_handling/try_else_variable_scoping_error 1 # #2279
 s7-parity-exempt identity ontype exceptions/exception_explicit_init_1367 1 # #2279
+s7-parity-exempt identity ontype exceptions/not_a_directory_error_builtin_2476 1 # #2279
 s7-parity-exempt identity ontype exceptions/oserror_family_2124 1 # #2279
 s7-parity-exempt identity ontype experimental/defer_in_constructor 1 # #2279
 s7-parity-exempt identity ontype experimental/defer_in_constructor_ungated 1 # #2279
@@ -1241,6 +1243,7 @@ s7-parity-exempt identity range-line exception_handling/multi_except 1 # #2279
 s7-parity-exempt identity range-line exception_handling/nested_except_same_variable 1 # #2279
 s7-parity-exempt identity range-line exception_handling/try_else_variable_scoping_error 1 # #2279
 s7-parity-exempt identity range-line exceptions/exception_explicit_init_1367 1 # #2279
+s7-parity-exempt identity range-line exceptions/not_a_directory_error_builtin_2476 1 # #2279
 s7-parity-exempt identity range-line exceptions/oserror_family_2124 1 # #2279
 s7-parity-exempt identity range-line experimental/defer_in_constructor 1 # #2279
 s7-parity-exempt identity range-line experimental/defer_in_constructor_ungated 1 # #2279
@@ -1723,6 +1726,7 @@ s7-parity-exempt identity range-whole exception_handling/multi_except 1 # #2279
 s7-parity-exempt identity range-whole exception_handling/nested_except_same_variable 1 # #2279
 s7-parity-exempt identity range-whole exception_handling/try_else_variable_scoping_error 1 # #2279
 s7-parity-exempt identity range-whole exceptions/exception_explicit_init_1367 1 # #2279
+s7-parity-exempt identity range-whole exceptions/not_a_directory_error_builtin_2476 1 # #2279
 s7-parity-exempt identity range-whole exceptions/oserror_family_2124 1 # #2279
 s7-parity-exempt identity range-whole experimental/defer_in_constructor 1 # #2279
 s7-parity-exempt identity range-whole experimental/defer_in_constructor_ungated 1 # #2279
@@ -2709,6 +2713,7 @@ s7-parity-exempt comment full exception_handling/try_else_variable_0004 1 # #227
 s7-parity-exempt comment full exception_handling/try_else_variable_scoping_error 1 # #2279
 s7-parity-exempt comment full exceptions/except_python_base_class_hierarchy_2124 1 # #2279
 s7-parity-exempt comment full exceptions/exception_explicit_init_1367 1 # #2279
+s7-parity-exempt comment full exceptions/not_a_directory_error_builtin_2476 1 # #2279
 s7-parity-exempt comment full exceptions/oserror_family_2124 1 # #2279
 s7-parity-exempt comment full exceptions/try_except_else_0032 1 # #2279
 s7-parity-exempt comment full exceptions/try_except_finally_0006 1 # #2279
@@ -4363,6 +4368,7 @@ s7-parity-exempt comment ontype exception_handling/try_else_variable_0004 1 # #2
 s7-parity-exempt comment ontype exception_handling/try_else_variable_scoping_error 1 # #2279
 s7-parity-exempt comment ontype exceptions/except_python_base_class_hierarchy_2124 1 # #2279
 s7-parity-exempt comment ontype exceptions/exception_explicit_init_1367 1 # #2279
+s7-parity-exempt comment ontype exceptions/not_a_directory_error_builtin_2476 1 # #2279
 s7-parity-exempt comment ontype exceptions/oserror_family_2124 1 # #2279
 s7-parity-exempt comment ontype exceptions/try_except_else_0032 1 # #2279
 s7-parity-exempt comment ontype exceptions/try_except_finally_0006 1 # #2279
@@ -6014,6 +6020,7 @@ s7-parity-exempt comment range-line exception_handling/try_else_variable_0004 1 
 s7-parity-exempt comment range-line exception_handling/try_else_variable_scoping_error 1 # #2279
 s7-parity-exempt comment range-line exceptions/except_python_base_class_hierarchy_2124 1 # #2279
 s7-parity-exempt comment range-line exceptions/exception_explicit_init_1367 1 # #2279
+s7-parity-exempt comment range-line exceptions/not_a_directory_error_builtin_2476 1 # #2279
 s7-parity-exempt comment range-line exceptions/oserror_family_2124 1 # #2279
 s7-parity-exempt comment range-line exceptions/try_except_else_0032 1 # #2279
 s7-parity-exempt comment range-line exceptions/try_except_finally_0006 1 # #2279
@@ -7666,6 +7673,7 @@ s7-parity-exempt comment range-whole exception_handling/try_else_variable_0004 1
 s7-parity-exempt comment range-whole exception_handling/try_else_variable_scoping_error 1 # #2279
 s7-parity-exempt comment range-whole exceptions/except_python_base_class_hierarchy_2124 1 # #2279
 s7-parity-exempt comment range-whole exceptions/exception_explicit_init_1367 1 # #2279
+s7-parity-exempt comment range-whole exceptions/not_a_directory_error_builtin_2476 1 # #2279
 s7-parity-exempt comment range-whole exceptions/oserror_family_2124 1 # #2279
 s7-parity-exempt comment range-whole exceptions/try_except_else_0032 1 # #2279
 s7-parity-exempt comment range-whole exceptions/try_except_finally_0006 1 # #2279
@@ -8888,6 +8896,7 @@ s7-parity-exempt wide full exception_handling/multi_except 1 # #2279
 s7-parity-exempt wide full exception_handling/nested_except_same_variable 1 # #2279
 s7-parity-exempt wide full exception_handling/try_else_variable_scoping_error 1 # #2279
 s7-parity-exempt wide full exceptions/exception_explicit_init_1367 1 # #2279
+s7-parity-exempt wide full exceptions/not_a_directory_error_builtin_2476 1 # #2279
 s7-parity-exempt wide full exceptions/oserror_family_2124 1 # #2279
 s7-parity-exempt wide full experimental/defer_in_constructor 1 # #2279
 s7-parity-exempt wide full experimental/defer_in_constructor_ungated 1 # #2279
@@ -9373,6 +9382,7 @@ s7-parity-exempt wide range-whole exception_handling/multi_except 1 # #2279
 s7-parity-exempt wide range-whole exception_handling/nested_except_same_variable 1 # #2279
 s7-parity-exempt wide range-whole exception_handling/try_else_variable_scoping_error 1 # #2279
 s7-parity-exempt wide range-whole exceptions/exception_explicit_init_1367 1 # #2279
+s7-parity-exempt wide range-whole exceptions/not_a_directory_error_builtin_2476 1 # #2279
 s7-parity-exempt wide range-whole exceptions/oserror_family_2124 1 # #2279
 s7-parity-exempt wide range-whole experimental/defer_in_constructor 1 # #2279
 s7-parity-exempt wide range-whole experimental/defer_in_constructor_ungated 1 # #2279
@@ -9914,6 +9924,7 @@ s7-parity-exempt crlf full exception_handling/multi_except 1 # #2279
 s7-parity-exempt crlf full exception_handling/nested_except_same_variable 1 # #2279
 s7-parity-exempt crlf full exception_handling/try_else_variable_scoping_error 1 # #2279
 s7-parity-exempt crlf full exceptions/exception_explicit_init_1367 1 # #2279
+s7-parity-exempt crlf full exceptions/not_a_directory_error_builtin_2476 1 # #2279
 s7-parity-exempt crlf full exceptions/oserror_family_2124 1 # #2279
 s7-parity-exempt crlf full experimental/defer_in_constructor 1 # #2279
 s7-parity-exempt crlf full experimental/defer_in_constructor_ungated 1 # #2279
@@ -10398,6 +10409,7 @@ s7-parity-exempt crlf ontype exception_handling/multi_except 1 # #2279
 s7-parity-exempt crlf ontype exception_handling/nested_except_same_variable 1 # #2279
 s7-parity-exempt crlf ontype exception_handling/try_else_variable_scoping_error 1 # #2279
 s7-parity-exempt crlf ontype exceptions/exception_explicit_init_1367 1 # #2279
+s7-parity-exempt crlf ontype exceptions/not_a_directory_error_builtin_2476 1 # #2279
 s7-parity-exempt crlf ontype exceptions/oserror_family_2124 1 # #2279
 s7-parity-exempt crlf ontype experimental/defer_in_constructor 1 # #2279
 s7-parity-exempt crlf ontype experimental/defer_in_constructor_ungated 1 # #2279
@@ -10879,6 +10891,7 @@ s7-parity-exempt crlf range-line exception_handling/multi_except 1 # #2279
 s7-parity-exempt crlf range-line exception_handling/nested_except_same_variable 1 # #2279
 s7-parity-exempt crlf range-line exception_handling/try_else_variable_scoping_error 1 # #2279
 s7-parity-exempt crlf range-line exceptions/exception_explicit_init_1367 1 # #2279
+s7-parity-exempt crlf range-line exceptions/not_a_directory_error_builtin_2476 1 # #2279
 s7-parity-exempt crlf range-line exceptions/oserror_family_2124 1 # #2279
 s7-parity-exempt crlf range-line experimental/defer_in_constructor 1 # #2279
 s7-parity-exempt crlf range-line experimental/defer_in_constructor_ungated 1 # #2279
@@ -11361,6 +11374,7 @@ s7-parity-exempt crlf range-whole exception_handling/multi_except 1 # #2279
 s7-parity-exempt crlf range-whole exception_handling/nested_except_same_variable 1 # #2279
 s7-parity-exempt crlf range-whole exception_handling/try_else_variable_scoping_error 1 # #2279
 s7-parity-exempt crlf range-whole exceptions/exception_explicit_init_1367 1 # #2279
+s7-parity-exempt crlf range-whole exceptions/not_a_directory_error_builtin_2476 1 # #2279
 s7-parity-exempt crlf range-whole exceptions/oserror_family_2124 1 # #2279
 s7-parity-exempt crlf range-whole experimental/defer_in_constructor 1 # #2279
 s7-parity-exempt crlf range-whole experimental/defer_in_constructor_ungated 1 # #2279
@@ -11902,6 +11916,7 @@ s7-parity-exempt cr full exception_handling/multi_except 1 # #2279
 s7-parity-exempt cr full exception_handling/nested_except_same_variable 1 # #2279
 s7-parity-exempt cr full exception_handling/try_else_variable_scoping_error 1 # #2279
 s7-parity-exempt cr full exceptions/exception_explicit_init_1367 1 # #2279
+s7-parity-exempt cr full exceptions/not_a_directory_error_builtin_2476 1 # #2279
 s7-parity-exempt cr full exceptions/oserror_family_2124 1 # #2279
 s7-parity-exempt cr full experimental/defer_in_constructor 1 # #2279
 s7-parity-exempt cr full experimental/defer_in_constructor_ungated 1 # #2279
@@ -12386,6 +12401,7 @@ s7-parity-exempt cr ontype exception_handling/multi_except 1 # #2279
 s7-parity-exempt cr ontype exception_handling/nested_except_same_variable 1 # #2279
 s7-parity-exempt cr ontype exception_handling/try_else_variable_scoping_error 1 # #2279
 s7-parity-exempt cr ontype exceptions/exception_explicit_init_1367 1 # #2279
+s7-parity-exempt cr ontype exceptions/not_a_directory_error_builtin_2476 1 # #2279
 s7-parity-exempt cr ontype exceptions/oserror_family_2124 1 # #2279
 s7-parity-exempt cr ontype experimental/defer_in_constructor 1 # #2279
 s7-parity-exempt cr ontype experimental/defer_in_constructor_ungated 1 # #2279
@@ -12867,6 +12883,7 @@ s7-parity-exempt cr range-line exception_handling/multi_except 1 # #2279
 s7-parity-exempt cr range-line exception_handling/nested_except_same_variable 1 # #2279
 s7-parity-exempt cr range-line exception_handling/try_else_variable_scoping_error 1 # #2279
 s7-parity-exempt cr range-line exceptions/exception_explicit_init_1367 1 # #2279
+s7-parity-exempt cr range-line exceptions/not_a_directory_error_builtin_2476 1 # #2279
 s7-parity-exempt cr range-line exceptions/oserror_family_2124 1 # #2279
 s7-parity-exempt cr range-line experimental/defer_in_constructor 1 # #2279
 s7-parity-exempt cr range-line experimental/defer_in_constructor_ungated 1 # #2279
@@ -13349,6 +13366,7 @@ s7-parity-exempt cr range-whole exception_handling/multi_except 1 # #2279
 s7-parity-exempt cr range-whole exception_handling/nested_except_same_variable 1 # #2279
 s7-parity-exempt cr range-whole exception_handling/try_else_variable_scoping_error 1 # #2279
 s7-parity-exempt cr range-whole exceptions/exception_explicit_init_1367 1 # #2279
+s7-parity-exempt cr range-whole exceptions/not_a_directory_error_builtin_2476 1 # #2279
 s7-parity-exempt cr range-whole exceptions/oserror_family_2124 1 # #2279
 s7-parity-exempt cr range-whole experimental/defer_in_constructor 1 # #2279
 s7-parity-exempt cr range-whole experimental/defer_in_constructor_ungated 1 # #2279
