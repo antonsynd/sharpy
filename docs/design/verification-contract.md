@@ -299,9 +299,38 @@ A plan implements **one non-chore group** of the charter and lands on **one gate
 ride along only when they touch no seam the group touches. A group that changes printed output or
 emitted layout (snapshot churn) is always alone. A plan whose Defect Class matrix has two or more
 axes with three or more values each, or whose group is a **residue** of an earlier group (a second
-suffix: P11b, P14c), builds a **generative or differential harness** over the matrix as its FIRST
-task and uses its allowlist as the ratchet; a hand-written matrix test is allowed only for the axis
-the generator cannot enumerate, and the plan says which axis that is.
+suffix: P11b, P14c), is `full` (§12 (b)) and builds a **generative or differential harness** over the
+matrix first, as **stage 0**:
+
+- **What.** Commits on the plan's branch, before the stamp that passes the plan, changing only test
+  code (`src/Sharpy.*.Tests/`, `src/Sharpy.TestInfrastructure/`, `build_tools/tests/`) and the
+  scorecard files below: the case enumeration (each axis the image of a compiler enumeration, or a
+  closed literal set), the case → expected map, and the totality assertion. A generator that needs a
+  product hook is not stage 0: hook and generator are the plan's first task.
+- **Green.** Every case passes at the base or is a known-red row in a new `<Test>-allowlist.txt` the
+  test reads (a missing file reads as empty); each row cites an open issue, and a row whose case
+  passes fails the test until the row is deleted. The rows count in `allowlist_rows_outside_seed`,
+  raised by `scorecard_metrics.py --set-baseline` in the same commit, with the owner's word in the PR
+  body. Registering the file as a seed harness instead (its exact basename added to
+  `SEED_PLAN_FILES` and to that list's pin in `test_scorecard_metrics.py`, `allowlist_rows_seed`
+  raised) is an owner-ruled step until the owner rules otherwise.
+- **Who.** The plan author writes it, runs it (`.claude/scripts/dotnet-serialized test <project>
+  --filter "FullyQualifiedName~<Type>"`) and records two mutations in the commit body (§2), each
+  broken → red, restored → green: the totality assertion broken, and a passing case listed as
+  known-red. CI on the plan's pull request is the gate.
+- **The plan** cites the test type and its counts at the stage-0 sha (cases, known-red rows) and
+  states only decisions: which rows it turns green, and how. It never restates the matrix.
+- **Checks.** `/verify-plan`, after `git fetch origin`, takes `<base>` = `git merge-base origin/dev
+  <stage-0 tip>` and runs `git diff --name-only <base>..<stage-0 tip> -- ':!docs/process/plans/'`:
+  every path is test code or `build_tools/scorecard-baseline.json`, or, when seeded,
+  `build_tools/scorecard_metrics.py` changed by exactly one added line naming a file that
+  `--diff-filter=A` lists for the same range. It reads the enumeration and the totality assertion
+  and re-runs both mutations; a rejected design is answered by a new stage-0 commit.
+  `/implement-plan` deletes each row its fix turns green; the commit that drains the last row deletes
+  the file, any seed line and pin entry, and runs `--lower`.
+
+A hand-written matrix test is allowed only for the axis the generator cannot enumerate, and the plan
+says which axis that is.
 
 *Why:* plan-0ca7b7 bundled six groups (42 tasks, four gates); its planning, implementation and
 verification filed 89 issues in two days against zero closures, and the verify round needed eight
@@ -313,7 +342,7 @@ from 2026-09-03 to 09-26.
 *Check:* `/verify-plan` Dimension 9 grades scope and convergence; `/implement-plan` refuses a
 multi-group plan without an explicit override; every round report states `filed / closed` and the
 open count per lane. Red = a second non-chore group in a plan, an output- or layout-changing phase
-sharing a gate, or a residue group without a generator task.
+sharing a gate, or a residue group without its stage-0 commit.
 
 ## 12. The verification tier is a charter fact; execution evidence is never skipped, plan-reading is
 
@@ -334,8 +363,8 @@ the independent review of `/implement-plan` › Cleanup and Report step 4.
 A group is **full** when any one holds, and the charter row names the letter:
 (a) a decision is still open at planning time, or the group's surface is DEVIATION-by-default
 without a promotion ruling — the plan is where the door gets written up for the owner;
-(b) `Generator: REQUIRED FIRST` (a ≥2-axis × ≥3-value matrix or a residue group) — the harness
-design is what `/verify-plan` Dimension 7 mutation-tests before anyone builds on it;
+(b) `Generator: REQUIRED FIRST` (a ≥2-axis × ≥3-value matrix or a residue group) — the stage-0
+harness (§11) is what `/verify-plan` mutation-tests before anyone builds on it;
 (c) the cure seam is under `Semantic/`, `Lowering/` or `CodeGen/`, or the group is `alone`
 (printed-output or emitted-layout change) — the full blast radius;
 (d) the group is the residue of a group that already passed a verify round and escaped
@@ -365,8 +394,10 @@ a HAND-listed axis is not deferrable: it has no catcher, and the finding is "clo
 enumeration Y", which is a decision. `/implement-plan` reads CONVERGED as PASS, makes the deferred
 findings its first task, resolved in code where the proof named on each row checks them, and still
 asks the owner once when the `Adequacy:` line reads CELL on a bug-fix plan — the class-not-cell
-door stays with the owner (CLAUDE.md rule 11). The plan's design sections are not revised after a
-CONVERGED stamp; the implementation checklist and override records are not design sections. A
+door stays with the owner (CLAUDE.md rule 11). The plan's design sections (Scope, Defect Class, Design Decisions, Acceptance,
+Issues to Close) are not revised after a CONVERGED stamp, except the Scope Tier line a promotion in
+flight replaces; the implementation
+checklist and override records are not design sections. A
 roster whose source is a compiler enumeration read by reflection (`Enum.GetValues`, a subclass or
 property scan, a call-site census) is graded by the existence of its totality assertion and that
 assertion's mutation, never by re-counting the source; a count the plan carries is a measurement

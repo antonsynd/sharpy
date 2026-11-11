@@ -8,12 +8,12 @@ Read `docs/design/verification-contract.md` before proceeding (§10–§12 inclu
 
 **Mode by tier (contract §12).** Read the plan's `## Scope` → **Tier** line first.
 - `tier: full`, or no Tier line (plans created before 2026-10-28) → the nine-dimension pass below.
-- `tier: light` → **`--adequacy` mode**, whether or not the flag was typed: run `check_plan_refs.py` (Dimension 1's mechanical half), then grade **Dimension 6** (adequacy: list the touched dispatch/route arms yourself and name every arm the matrix lacks — or, on a generator plan, grade axis closure and name no cells, Dimension 6's generator branch), **Dimension 7** (falsifiability: each guard's mutation, exemption-is-subject check, positive control, inert-fix path) and the **design-decision rows of Dimension 4** (does each `## Design Decisions` predicate hold against the code it names — read the code, not the plan). Skip Dimensions 2, 3, 5, 8 and 9. Make **no inline corrections**: write findings into the Verification Summary and set the result; the author fixes the plan. The ten-round review behind §12 found that every plan-reading catch with no downstream catcher was one of these three kinds, and that the other dimensions produced only corrections the build or the generator would have hit again. The light pass is a **fresh read**: if this session wrote the plan, spawn a fresh agent for the pass and relay its summary — anchoring is the failure this stage exists to break.
+- `tier: light` → **`--adequacy` mode**, whether or not the flag was typed: run `check_plan_refs.py` (Dimension 1's mechanical half), then grade **Dimension 6** (every touched dispatch/route arm the matrix lacks), **Dimension 7** (each guard's mutation, exemption, positive control, inert-fix path) and the **design-decision rows of Dimension 4** (each `## Design Decisions` predicate against the code it names, not the plan). Skip Dimensions 2, 3, 5, 8 and 9. Make **no inline corrections**: write findings into the Verification Summary and set the result; the author fixes the plan. The light pass is a **fresh read**: if this session wrote the plan, spawn a fresh agent for the pass and relay its summary — anchoring is the failure this stage exists to break.
 - A typed `--adequacy` on a `full` plan, or a request for the nine-dimension pass on a `light` plan, is an override: do it, and write `override: <the user's words>` into `## Scope`.
 
 **Stance: refute** — for each claim, look for the input that shows it wrong; a dimension passes only after naming what was tried. A plan whose file paths are all accurate can still fail: a bug-fix plan that patches one cell of a class is **NEEDS REVISION**, however correct its references.
 
-In the nine-dimension pass this skill reads the plan, extracts every verifiable claim, checks each against the codebase at a named sha, grades the plan's *adequacy* against the defect class it claims to fix, and edits the plan directly: corrections inline, a stamp at the top, a Verification Summary at the end. In `--adequacy` mode it grades and stamps but corrects nothing inline.
+The nine-dimension pass checks every verifiable claim against the codebase at a named sha, grades the plan's *adequacy* against its defect class, and edits the plan: corrections in place, a stamp at the top, a Verification Summary at the end. `--adequacy` grades and stamps but corrects nothing.
 
 ## Argument Handling
 
@@ -29,7 +29,7 @@ Read the plan file completely before proceeding. Record `git rev-parse --short H
 - An ICE claim (SPY0908 / CS-leak) is confirmed or refuted with **`run`**, never `emit` — `emit csharp` succeeds on broken C#, and `emit diagnostics` cannot see the C# stage. A failing `run` cannot show warnings; use `emit diagnostics` for those.
 - `python3 -c "..."` for every claimed Python behavior; `print(x)` is never a type probe — bind to a deliberately wrong annotation (`b: bool = expr`).
 - `gh` needs `dangerouslyDisableSandbox: true` (TLS in the sandbox).
-- **Run the mechanical check first:** `python3 build_tools/check_plan_refs.py <plan> --issues` (`--issues` needs `gh`, so run it outside the sandbox). It verifies every repo path, `file:line` reference, `SPY` code, PascalCase symbol and `#issue` the plan names and prints what is missing, past end-of-file or ambiguous. Dimension 1 reads its report; re-read by hand only what it flags and the references a decision rests on. Spend the model's time on Dimensions 4, 6, 7 and 9 — those change decisions.
+- **Run the mechanical check first:** `python3 build_tools/check_plan_refs.py <plan> --issues` (`--issues` needs `gh`, so run it outside the sandbox). It checks every repo path, `file:line`, `SPY` code, PascalCase symbol and `#issue` the plan names (Dimension 1 starts from its report). Spend the model's time on Dimensions 4, 6, 7 and 9 — those change decisions.
 
 ## Verification Dimensions
 
@@ -103,17 +103,12 @@ Flag as warning: missing steps. Add them as suggestions in the Verification Summ
 Applies whenever any input to the plan is a bug, ICE, or regression issue. Grade the plan's **Defect Class** section against `verification-contract.md` §1:
 
 - **Violated contract named** — one sentence: what is supposed to be uniform across which axis
-- **Matrix larger than the repro lists** — the issues' repros are a symptom report, not a test plan; the plan enumerates sibling cells (position × operand form, callee kind × usage form, route × entry point, warm × cold …). Check it against the touched dispatch/switch sites yourself: list the arms; every arm the fix does not reach is a cell the plan must name. **This bullet applies to a plan with a FIX.** When the plan's Defect Class `Generator:` row reads `REQUIRED FIRST — this plan IS the generator` (or the plan lands no seam and its product is a generated matrix), grade **axis closure** instead, and never cell naming:
-  - every axis of the generated product is defined as the image of a compiler enumeration (an enum, a switch's arms, a roster test's census) under an explicit map with no default arm, OR as a closed literal set the plan names as closed;
-  - every such map has a totality assertion in the harness (every source value mapped or named in an `excluded…` list with its reason; every roster value the image of ≥ 1 source value; every generated cell's axis values are roster values) and that assertion has its mutation in Dimension 7;
-  - the verdict is a RULE keyed on axis-value classes, never a per-cell table;
-  - the plan names the excluded axes and the reason each cannot be generated.
-  A cell you find by hand on such a plan is evidence that one ROSTER is open — the finding is "axis X is a hand list; close it against enumeration Y", written once, never "add cell Z". Do not probe sibling cells of an axis that is already roster-closed: the harness's first run is where those cells are discovered, and its allowlist ratchet is where they are pinned (contract §11). A generator plan whose every axis is roster-closed is **CLASS** even when you can name a cell it will generate red. A roster whose source is a compiler enumeration read by reflection (`Enum.GetValues`, a subclass or property scan, a call-site census) is graded by the EXISTENCE of its totality assertion (no default arm; every source value mapped or excluded with a reason; every roster value the image of a source value) and that assertion's Dimension 7 mutation — never by re-counting the source: a count the plan carries is a measurement the test re-takes, and a miscount or an unmapped member is a `### Deferred findings` row under CONVERGED, not a NEEDS REVISION (contract §12 Convergence).
-- **Meta-class + standard cure** — from the table in `verification-contract.md` §1 (SPY0908-as-net, silent wrong behavior, qualified/bare divergence, position missing a shared check, warm ≠ cold, vacuous instrument); the cure is a seam, sweep, or harness — not N patches
+- **Matrix larger than the repro lists** — the issues' repros are a symptom report, not a test plan; the plan enumerates sibling cells (position × operand form, callee kind × usage form, route × entry point, warm × cold …). Check it against the touched dispatch/switch sites yourself: list the arms; every arm the fix does not reach is a cell the plan must name. **This bullet applies to a plan without a generator.** When the `Generator:` row cites stage 0, grade **axis closure from the code**, never by naming cells: run contract §11's Checks (the path rule, then both mutations, by `cp`) and read the test. Each axis is the image of a compiler enumeration (enum, switch arms, roster census) under an explicit map with no default arm, or a closed literal set; the totality assertion covers every map (each source value mapped or in an `excluded…` list with its reason; each roster value the image of a source value; each case's axis values roster values); the expected result is a RULE keyed on axis-value classes; the plan names the excluded axes with reasons. A cell you find by hand means one ROSTER is open: the finding is "close axis X against enumeration Y", answered by a new stage-0 commit, never "add cell Z". Do not probe sibling cells of a closed axis; its run and allowlist pin them. A generator whose every axis is closed is **CLASS** even when you can name a case it generates red. A reflection-sourced roster is graded as contract §12 Convergence says.
+- **Meta-class + standard cure** — a row of the table in `verification-contract.md` §1; the cure is a seam, sweep, or harness — not N patches
 - **Standing harness** — the `gap-discovery-contracts.md` harness that should have caught it and which allowlist entries the fix drains, or "none; Phase N adds one"
 - **Owner rulings** — cited by issue-comment link; the plan does not re-ask a ruled question
 
-A plan that patches one arm of a mirrored/parallel-site structure without a completeness scan is **NEEDS REVISION** — regardless of Dimensions 1–5. If the plan has no Defect Class section for a bug input, draft one from the issues and the touched sites, insert it marked `[ADDED: adequacy]` for the author, and grade the plan `CELL` until the author confirms the matrix.
+A plan that patches one arm of a mirrored/parallel-site structure without a completeness scan is **NEEDS REVISION** — regardless of Dimensions 1–5. If the plan has no Defect Class section for a bug input, draft one from the issues and the touched sites, insert it, list it under Corrections Made, and grade the plan `CELL`. A drafted Defect Class is the author's only once a `## Revision log` line holds `drafted Defect Class: confirmed` or `drafted Defect Class: replaced` verbatim; check for it before grading it as theirs.
 
 Adequacy verdict: **CLASS** (contract, matrix, cure, harness all present and checked — for a generator plan: every axis roster-closed with its totality assertion), **CELL** (any missing, or the fix lands on one arm — for a generator plan: an axis carried as a hand list, named by the enumeration that closes it), **N/A** (no bug/ICE/regression input — docs-only, feature work, tooling).
 
@@ -147,7 +142,7 @@ Flag as warning: any missing item; add it as a Missing Step.
 `verification-contract.md` §10–§11:
 
 - **One group** — the plan's `## Scope` block names one non-chore group; chores riding along touch no seam the group touches (grep the chores' files against the group's). A second group, or an output/layout-changing phase sharing a gate with anything, is an error unless `override: <owner's words>` is recorded.
-- **Generator first** — if the Defect Class matrix has ≥2 axes × ≥3 values, or the group is a residue (second suffix), Phase 1 builds a differential/generative harness with an allowlist ratchet, and the hand matrix covers only the axis the generator cannot reach (the plan says which). Missing = error; hand matrices found the next axis on six consecutive format-engine rounds.
+- **Generator first** — if the Defect Class matrix has ≥2 axes × ≥3 values, or the group is a residue (second suffix), stage 0 holds the generator (or the first task does, with the product hook it needs; contract §11), and the hand matrix covers only the axis the generator cannot reach (the plan says which). Missing = error.
 - **Filing rule** — the plan names the class trackers it posts cells to and instructs no implementer to `gh issue create`; cells go to the findings ledger and the lead files by class. A Phase 0 that says "file the siblings" one per cell is a warning; correct it inline.
 - **Fidelity scope** — every Python-parity cell names its row in `python-fidelity-scope.md`; a DEVIATION-by-default surface without a promotion ruling is an error (the plan is fixing a non-bug).
 - **Filing budget** — the plan states the expected verify cost (matrices, gates) and the prober's budget (matrix + ≤2 axis changes).
@@ -167,13 +162,13 @@ After verification, edit the plan file directly.
 <!-- Scope: [ONE-GROUP / MULTI-GROUP (override) / N/A] · Generator: [existing / built-first / not-required / MISSING] -->
 ```
 
-In `--adequacy` mode **all four stamp lines are still written**: the first reads `<!-- Verified by /verify-plan --adequacy (Adequacy-only: Dimensions 4-design, 6, 7; check_plan_refs clean) on YYYY-MM-DD @ <sha> -->`; the result is `PASS`, `NEEDS REVISION` or `CONVERGED` (there are no inline corrections to make it "WITH CORRECTIONS"); the `Adequacy:` line is Dimension 6's verdict as usual; the `Scope:` line is copied from the plan's `## Scope` block and Defect Class `Generator:` row without re-grading Dimension 9 (a light group is never `MULTI-GROUP` or generator-required — if the plan says otherwise, that is a §12 letter and the result is `NEEDS REVISION: promote to full`). The Verification Summary carries only the `### Adequacy`, `### Falsifiability`, `### Design decisions checked` and `### Unchecked Claims` blocks, plus `### Deferred findings` when the result is `CONVERGED`. `/implement-plan` and `/verify-implementation` read these lines exactly as they read a full stamp.
+In `--adequacy` mode all four stamp lines are written: the first reads `<!-- Verified by /verify-plan --adequacy (Adequacy-only: Dimensions 4-design, 6, 7; check_plan_refs clean) on YYYY-MM-DD @ <sha> -->`; the result is `PASS`, `NEEDS REVISION` or `CONVERGED`; `Adequacy:` is Dimension 6's verdict; `Scope:` is copied from the plan's `## Scope` block and `Generator:` row without grading Dimension 9 (a light plan that reads `MULTI-GROUP` or needs a generator is `NEEDS REVISION: promote to full`, §12). The Verification Summary carries only `### Adequacy`, `### Falsifiability`, `### Design decisions checked` and `### Unchecked Claims`, plus `### Deferred findings` on `CONVERGED`; downstream skills read the stamp as a full one.
 
 Result:
 - **PASS** — no errors; at most minor suggestions
 - **PASS WITH CORRECTIONS** — errors found and corrected inline; the plan is now accurate
 - **NEEDS REVISION** — architectural or correctness issues that need the author's judgment, **or Dimension 6 failed** (a cell-only bug-fix plan is NEEDS REVISION however accurate its references), **or Dimension 9 failed** (a second non-chore group without an override, a residue group without its generator, a DEVIATION-by-default surface planned as a bug)
-- **CONVERGED** (contract §12 Convergence) — the plan's `## Revision log` shows the previous pass stamped `NEEDS REVISION, Dimension N` on the SAME dimension, and every finding of this pass is **deferrable**: it changes no decision AND names its catcher — the code change (a map or exclusion entry of a reflection-sourced roster, an assertion's source expression, a test's census constant, a spelling, a file:line) and the assertion, mutation, build or generator run that proves it. Stamp `CONVERGED`, list the findings under `### Deferred findings` (each as `<roster or claim> ← <enumeration> — fix: <code change> — proved by <assertion / mutation / build / generator>`), and route to `/implement-plan`. **Not deferrable:** a value missing from a HAND-listed axis (it has no catcher — the finding is "close the axis against enumeration Y", a decision), a finding that changes a `## Design Decisions` predicate, an acceptance mutation, the tier, the scope or an owner ruling; one such finding keeps the result NEEDS REVISION. A first NEEDS REVISION always earns a revision. A `CONVERGED` stamp whose `Adequacy:` line reads `CELL` on a bug-fix plan still needs the owner's word at `/implement-plan` (the door stays with the owner, CLAUDE.md rule 11).
+- **CONVERGED** — contract §12 Convergence holds: the `## Revision log` shows the previous pass `NEEDS REVISION, Dimension N` on the SAME dimension, and every finding of this pass is **deferrable** as §12 defines it (one that is not keeps NEEDS REVISION). List them under `### Deferred findings` (each `<roster or claim> ← <enumeration> — fix: <code change> — proved by <assertion / mutation / build / generator>`) and route to `/implement-plan`. A first NEEDS REVISION always earns a revision; `CELL` on a bug-fix plan still needs the owner's word at `/implement-plan`.
 
 Adequacy: `CLASS` / `CELL` / `N/A` per Dimension 6. `/implement-plan` refuses a `CELL` plan for bug-fix inputs unless the user explicitly overrides or the result is `CONVERGED`; `N/A` is for plans with no bug/ICE/regression input.
 
@@ -188,7 +183,7 @@ Adequacy: `CLASS` / `CELL` / `N/A` per Dimension 6. `/implement-plan` refuses a 
 **Plan file:** `docs/process/plans/<plan-id>.md` (committed in §4 at every result, NEEDS REVISION included)
 
 ### Corrections Made
-- (each inline correction with before/after)
+- (each correction and added section, before/after)
 
 ### Adequacy
 - **Contract:** [named / missing] — <the sentence, or what the verifier drafted>
@@ -199,7 +194,7 @@ Adequacy: `CLASS` / `CELL` / `N/A` per Dimension 6. `/implement-plan` refuses a 
 
 ### Scope & convergence
 - **Group:** [one / MULTI: <groups> / override: <words>] · **Alone:** [yes/no — required? yes/no] · **Gates:** N
-- **Generator:** [existing <name> / built first in Phase N / not required: <axis> / MISSING — expected: <harness shape>]
+- **Generator:** [existing <name> / stage 0 @ <sha>, mutation re-run / not required: <axis> / MISSING — expected: <harness shape>]
 - **Trackers named:** [#… / MISSING] · **Fidelity rows:** [named / DEVIATION surface planned: <issue>]
 
 ### Falsifiability
@@ -219,9 +214,9 @@ Adequacy: `CLASS` / `CELL` / `N/A` per Dimension 6. `/implement-plan` refuses a 
 - (claims that couldn't be verified, with the reason and what would verify them)
 ```
 
-### 3. Fix errors inline
+### 3. Fix errors in place
 
-For each error, edit the plan text directly. Mark corrections `[CORRECTED: reason]`; mark drafted sections `[ADDED: adequacy]`; mark added steps `[ADDED: missing step]` so the author can review every change.
+Rewrite the plan text so it reads as if first written correctly: no `[CORRECTED…]` or `[ADDED…]` markers, no pass history, no "(first pass)" tags. Each change's before/after lives only in the Verification Summary.
 
 Present a brief summary to the user: result, adequacy verdict, the corrections that changed a decision (not every path fix), the warnings the author must act on before `/implement-plan`, and the commit that holds the stamped plan (§4).
 
@@ -238,4 +233,4 @@ The routing line names the committed path: `/implement-plan docs/process/plans/<
 
 ### 5. After NEEDS REVISION or CONVERGED
 
-The revision is `/create-plan revise <path>` (its **Revising a plan** section) in a **fresh context**: the verifier that stamped NEEDS REVISION does not revise unless the user says so, and the next pass must be a fresh read. `/implement-plan` stays refused until a new stamp reads PASS or CONVERGED. On **CONVERGED** there is no revision: the `### Deferred findings` rows are `/implement-plan`'s first task, resolved in code, and the design sections (Scope, Defect Class, Design Decisions, Acceptance, Issues to Close) are not edited beyond one `## Revision log` line (contract §12 Convergence).
+The revision is `/create-plan revise <path>` (its **Revising a plan** section) in a **fresh context**; it answers each finding by rewriting the text the finding names, never by appending: the verifier that stamped NEEDS REVISION does not revise unless the user says so, and the next pass must be a fresh read. `/implement-plan` stays refused until a new stamp reads PASS or CONVERGED. On **CONVERGED** there is no revision, and the design sections contract §12 Convergence names are not edited.

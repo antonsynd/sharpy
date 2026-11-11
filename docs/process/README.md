@@ -37,14 +37,16 @@ The shared rules for `/create-plan`, `/verify-plan`, `/implement-plan` and `/ver
    commits onto the open implementation pull request; only when that has merged does its record go on
    a fresh `claude/<group>-verify` lane. Never stack on merged history.
 4. **Commit.** Explicit pathspecs, `git diff --cached --stat` first, a subject of at most 72
-   characters, the trailer the harness provides. A plan-stage commit stages the one plan file.
+   characters, the trailer the harness provides. A plan-stage commit stages the one plan file; a
+   `full` generator group's stage-0 commits (contract §11) also ride the plan pull request and make
+   it one that changes code: the session that opened it requests the independent review
+   (`/implement-plan` › Cleanup and Report step 4), writes its line in the body, and merges (item 6).
 5. **Pull request.** `/push`, then `gh pr create --base dev` (in a cloud session, the GitHub MCP
    `create_pull_request` tool or `gh api -X POST repos/<owner>/<repo>/pulls`). An implementation
    pull request's body names the plan, the gate `passed/failed/skipped @ sha (measured)`, **the issues
    it closes and the issues its work filed**, and its independent review line
    (`/implement-plan` › Cleanup and Report step 4). A cell found outside the plan's scope is filed
-   as contract §10 says: a comment on its open class tracker; a new issue only when none exists and the cell is
-   `reach:program` in a silent-wrong, ice, refusal or runtime-throw lane. The tip never carries the skip-ci marker (contract §6).
+   as contract §10 says. The tip never carries the skip-ci marker (contract §6).
 6. **Merge on green** (owner, 2026-11-11). The session that opened a pull request into `dev` merges
    it once every check at its tip has completed green (where path filters start no gate, the subject
    check alone) and, if it changes code, its `Independent review @ <sha>` line is current and its

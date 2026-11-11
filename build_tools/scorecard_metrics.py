@@ -32,11 +32,13 @@ from pathlib import Path
 REPO_ROOT = Path(__file__).resolve().parent.parent
 DEFAULT_BASELINE = REPO_ROOT / "build_tools" / "scorecard-baseline.json"
 
-# Harnesses that landed with a charter plan that seeds rows on purpose: their growth is the plan,
-# not drift. Matched as a substring of the file's basename.
+# Harnesses that landed with a charter plan that seeds rows on purpose. Each entry is the exact
+# basename of one tracked allowlist; their rows are ratcheted on their own key, allowlist_rows_seed.
+# Adding an entry is an owner-ruled step (contract §11 stage 0); test_scorecard_metrics.py pins this
+# tuple so an addition is a deliberate, reviewed diff.
 SEED_PLAN_FILES = (
-    "name-resolution-differential-allowlist.txt",
-)  # P77b (#2433), plan-3eba57
+    "name-resolution-differential-allowlist.txt",  # P77b (#2433), plan-3eba57
+)
 
 # The procedure a light group reads: CLAUDE.md plus seven skills.
 PROCEDURE_FILES = (
@@ -64,9 +66,10 @@ RATCHETED = {
     "procedure_bytes": "Procedure bytes per light group (CLAUDE.md + seven skills)",
     "claude_md_bytes": "CLAUDE.md bytes",
     "allowlist_rows_outside_seed": "Allowlist rows outside seed-plan harnesses",
+    "allowlist_rows_seed": "Allowlist rows in seed-plan harnesses",
 }
 # Ratcheted rows whose fall below baseline is a notice, not a failure.
-NOTICE_WHEN_BELOW = frozenset({"allowlist_rows_outside_seed"})
+NOTICE_WHEN_BELOW = frozenset({"allowlist_rows_outside_seed", "allowlist_rows_seed"})
 
 
 class MeasureError(Exception):
@@ -125,7 +128,7 @@ def allowlist_files(repo: Path) -> list[str]:
 
 
 def is_seed_harness(rel: str) -> bool:
-    return any(seed in Path(rel).name for seed in SEED_PLAN_FILES)
+    return Path(rel).name in SEED_PLAN_FILES
 
 
 def allowlist_rows(repo: Path) -> dict[str, list[str]]:

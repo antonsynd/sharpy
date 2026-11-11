@@ -1,5 +1,6 @@
 """check_plan_refs caps (R-LW): plan body <= 20 KB before its summaries; <= 2 verify passes."""
 
+import re
 from pathlib import Path
 
 import pytest
@@ -222,3 +223,310 @@ def test_implementation_checklist_is_not_body():
     text = _plan(body=BODY + filler + checklist)
     assert cpr.body_bytes(text) == cpr.BODY_CAP_BYTES
     assert cpr.cap_violations("plan-new001.md", text) == []
+
+
+# --- section budgets: reported for plans that are not grandfathered, never a failure -------------
+
+SKILL = REPO / ".claude/skills/create-plan/SKILL.md"
+
+
+def _template_keys() -> set[str]:
+    """The `## ` heading names of every plan template in /create-plan (fenced blocks with a title)."""
+    blocks = [
+        b
+        for b in cpr.FENCE_RE.findall(SKILL.read_text(encoding="utf-8"))
+        if "\n# <" in b
+    ]
+    assert blocks, "no plan template found in create-plan/SKILL.md"
+    keys = set()
+    for b in blocks:
+        inner = b.split("\n", 1)[1].rsplit("\n", 1)[
+            0
+        ]  # drop the fence lines themselves
+        for _, heading in cpr.h2_headings(inner):
+            key = cpr.section_key(heading)
+            assert key, f"template heading `## {heading}` is not in PLAN_SECTIONS"
+            keys.add(key)
+    return keys
+
+
+def test_plan_sections_are_the_template_headings():
+    assert _template_keys() | {"Revision log"} == set(cpr.PLAN_SECTIONS)
+
+
+def test_section_key_matches_heading_variants_only():
+    assert cpr.section_key("Adversarial Review (pre-mortem)") == "Adversarial Review"
+    assert cpr.section_key("Current State — measured @ abc1234") == "Current State"
+    assert cpr.section_key("Revision log") == "Revision log"
+    for record in (
+        "Implementation Checklist",
+        "Implementation Verification Record",
+        "Verification Summary — round 6",
+        "Issues to file during implementation",
+    ):
+        assert cpr.section_key(record) is None, record
+
+
+def _budget_plan(context=0, adversarial=0, scope=0) -> str:
+    body = (
+        "# P99 — sample\n\n## Context\n\n"
+        + "c" * context
+        + "\n## Scope\n\n"
+        + "s" * scope
+        + "\n## Adversarial Review (pre-mortem)\n\n"
+        + "a" * adversarial
+        + "\n## Design Decisions\n\n"
+        + "d" * 5_000
+        + "\n"
+    )
+    return _plan(body=body)
+
+
+def test_section_bytes_measure_each_heading_to_the_next():
+    sizes = cpr.section_bytes(_budget_plan(context=100, adversarial=200, scope=300))
+    assert sizes["Context"] == len("## Context\n\n") + 101
+    assert (
+        sizes["Adversarial Review"]
+        == len("## Adversarial Review (pre-mortem)\n\n") + 201
+    )
+    assert sizes["Scope"] == len("## Scope\n\n") + 301
+    assert "Verification Summary" not in sizes
+
+
+def test_budget_over_is_a_note_not_a_failure():
+    within = _budget_plan(context=1_000, adversarial=1_000, scope=1_000)
+    assert cpr.budget_notes("plan-new001.md", within) == []
+    # mutation record: Context past its budget -> one note naming it; the caps stay green
+    over = _budget_plan(context=3_000, adversarial=1_000, scope=1_000)
+    (note,) = cpr.budget_notes("plan-new001.md", over)
+    assert "Context + Current State" in note and "2,560-byte budget" in note
+    assert cpr.cap_violations("plan-new001.md", over) == []
+    all_over = _budget_plan(context=3_000, adversarial=2_000, scope=3_000)
+    assert (
+        len(cpr.budget_notes("plan-new001.md", all_over))
+        == len(cpr.SECTION_BUDGETS)
+        == 3
+    )
+
+
+def test_grandfathered_plan_gets_no_budget_note(monkeypatch):
+    over = _budget_plan(context=3_000)
+    monkeypatch.setitem(cpr.GRANDFATHERED, "plan-old001.md", (cpr.body_bytes(over), 1))
+    assert cpr.budget_notes("plan-old001.md", over) == []
+
+
+def test_single_plan_cli_reports_budgets_and_exits_on_caps_only(tmp_path, capsys):
+    plan = tmp_path / "plan-new001.md"
+    plan.write_text(_budget_plan(context=3_000))
+    assert cpr.main([str(plan), "--repo", str(tmp_path)]) == 0
+    out = capsys.readouterr().out
+    assert "section budgets" in out
+    assert "NOTE: plan-new001.md: Context + Current State" in out
+
+
+# --- the body is everything but the skills' record sections -----------------------------------
+
+CHECKLIST = "## Implementation Checklist\n\n- [ ] T1 — lead\n"
+TESTING = "## Testing Strategy\n\n" + "t" * 3_000 + "\n"
+SKILLS = [
+    REPO / f".claude/skills/{n}/SKILL.md"
+    for n in ("create-plan", "verify-plan", "implement-plan", "verify-implementation")
+]
+
+
+def test_record_sections_are_the_headings_the_skills_write():
+    text = "".join(p.read_text(encoding="utf-8") for p in SKILLS)
+    named = {cpr.heading_name(h) for h in re.findall(r"`## ([^`]+)`", text)}
+    assert named <= {n.casefold() for n in cpr.PLAN_SECTIONS + cpr.RECORD_SECTIONS}
+    # the report /verify-implementation appends inside its record is a heading of its template
+    assert "\n## Implementation Verification Report\n" in SKILLS[3].read_text(
+        encoding="utf-8"
+    )
+    written = (named - {n.casefold() for n in cpr.PLAN_SECTIONS}) | {
+        "implementation verification report"
+    }
+    assert written == {n.casefold() for n in cpr.RECORD_SECTIONS}
+
+
+def test_plan_section_moved_under_the_checklist_still_counts():
+    filler = "x" * (cpr.BODY_CAP_BYTES - len(BODY.encode()) - len(TESTING.encode()) - 1)
+    in_place = _plan(body=BODY + filler + "\n" + TESTING + "\n" + CHECKLIST)
+    moved = _plan(body=BODY + filler + "\n" + CHECKLIST + TESTING)
+    assert cpr.body_bytes(moved) == cpr.body_bytes(in_place) == cpr.BODY_CAP_BYTES + 1
+    assert cpr.cap_violations("plan-new001.md", in_place)
+    assert cpr.cap_violations("plan-new001.md", moved)
+    assert cpr.section_bytes(moved)["Testing Strategy"] == len(TESTING.encode()) + 1
+
+
+ADV_HEAD = "<!-- DRAFT, not verified -->\n# T\n\n## Context\n\nshort\n\n"
+ADV_FILL = "x" * 30_000 + "\n"
+
+
+@pytest.mark.parametrize(
+    "below",
+    [
+        CHECKLIST + "\n## Phases\n\n",
+        CHECKLIST + "\n## Implementation Plan\n\n",
+        "## Verification Summary\n\n## Notes on design\n\n",
+        CHECKLIST + "\n## Design Decisions (cont.)\n\n",
+        CHECKLIST + "\n## design decisions\n\n",
+        CHECKLIST + "\n## Design Decisions:\n\n",
+        CHECKLIST + "\n## Design Decisions — wave 2\n\n",
+        CHECKLIST + "\n## Design Decisions - wave 2\n\n",
+        CHECKLIST + "\n## Design Decision\n\n",
+        CHECKLIST + "\n## Revisions\n\n",
+        CHECKLIST + "\n## REVISION LOG\n\n",
+        CHECKLIST + "\n## Implementation Record (lead)\n\n",
+        CHECKLIST + "\n## Design Decisions\n\nshort\n```\n## not a heading\n```\n",
+        "```\n## Verification Summary\n```\n",
+    ],
+)
+def test_any_non_record_section_below_a_record_is_body(below):
+    # mutation record: plan_body keeping no section below the first record heading -> red
+    text = ADV_HEAD + below + ADV_FILL
+    assert cpr.body_bytes(text) > 30_000
+    assert cpr.cap_violations("plan-new001.md", text)
+    crlf = text.replace("\n", "\r\n")
+    assert cpr.body_bytes(crlf) > 30_000
+
+
+@pytest.mark.parametrize(
+    "below",
+    [
+        CHECKLIST + "\n### Context\n\n",  # a subsection of the checklist
+        "## implementation checklist\n\n",
+        "## Verification Summary — round 2\n\n### Pass 2\n\n",
+        "## Verification Summary - round 2\n\n",  # an ASCII hyphen ends the name like a dash
+        "## Implementation Verification Report\n\n### Regressions\n\n",
+        "## Implementation Verification Record\n\n## Auditor notes\n\n",
+        # a record's own content is not body, whatever it holds (accepted, not a hole the measure
+        # can close: a reader of the plan sees it)
+        CHECKLIST + "\n### Design notes\n\n",
+        CHECKLIST
+        + "\n##Design Decisions\n\n",  # no space after the hashes: not a heading
+        "## Implementation Checklist - wave 2 design\n\n",
+        "## Verification Summary (and design notes)\n\n",
+        "## Implementation Checklist ##\n\n",
+        "## Implementation Checklist   \n\n",
+    ],
+)
+def test_record_sections_and_the_terminal_record_are_not_body(below):
+    # mutation record: plan_body keeping every section below the first record heading -> red
+    text = ADV_HEAD + below + ADV_FILL
+    assert cpr.body_bytes(text) == len((ADV_HEAD.split("\n", 1)[1]).encode())
+    assert cpr.cap_violations("plan-new001.md", text) == []
+
+
+DD = "## Design Decisions\n\n" + ADV_FILL
+
+
+@pytest.mark.parametrize(
+    "text",
+    [
+        # a plan section after the terminal record is still body
+        ADV_HEAD + "## Implementation Verification Record\n\n(pending)\n\n" + DD,
+        ADV_HEAD + "## implementation verification record:\n\n" + DD,
+        "## Implementation Verification Report\n\n" + ADV_HEAD + DD,
+        ADV_HEAD
+        + "## Implementation Verification Record\n\n## Acceptance\n\n"
+        + ADV_FILL,
+        "## Verification Summary\n\n" + ADV_HEAD + DD,
+        "## Implementation Checklist\n\n# T\n\n" + ADV_FILL,
+        # a fence left open makes the rest of the file body
+        ADV_HEAD + "```\n## Implementation Checklist\n" + ADV_FILL,
+        ADV_HEAD + CHECKLIST + "\n```\n## Design Decisions\n\n" + ADV_FILL,
+        # a fence closes only on its own character, at least as long, with nothing after it
+        ADV_HEAD + CHECKLIST + "\n~~~\n```\n~~~\n" + DD,
+        ADV_HEAD + CHECKLIST + "\n````\n```\n````\n" + DD,
+        ADV_HEAD
+        + "```python\n## Implementation Checklist\n```python\n## still in?\n"
+        + ADV_FILL,
+        ADV_HEAD + "````\n```\n## Implementation Checklist\n```\n````\n" + ADV_FILL,
+        ADV_HEAD + "```\n```python\n## Implementation Checklist\n```\n```\n" + ADV_FILL,
+        # headings CommonMark recognises: indented up to 3 spaces, a tab after the hashes, `#`
+        ADV_HEAD + CHECKLIST + "\n  ## Design Decisions\n\n" + ADV_FILL,
+        ADV_HEAD + CHECKLIST + "\n##\tDesign Decisions\n\n" + ADV_FILL,
+        ADV_HEAD + CHECKLIST + "\n# Design Decisions\n\n" + ADV_FILL,
+        ADV_HEAD + CHECKLIST + "\n<!--\n## Design Decisions\n-->\n" + ADV_FILL,
+        ADV_HEAD + "<!--\n" + ADV_FILL + "-->\n",
+    ],
+)
+def test_early_records_open_fences_and_heading_forms_hide_nothing(text):
+    # mutation records: plan sections after the terminal record dropped; the unclosed-fence rule
+    # removed; fences closed by any fence line; headings only at column 0 with a space -> each red
+    assert cpr.body_bytes(text) > 30_000
+    assert cpr.cap_violations("plan-new001.md", text)
+
+
+def test_revision_log_counts_wherever_it_sits():
+    base = _plan(body=BODY)
+    logged = _plan(summary=SUMMARY + REVISED)
+    assert cpr.body_bytes(logged) == cpr.body_bytes(base) + len(REVISED.encode()) - 1
+
+
+def test_empty_and_stamp_only_plans_measure_zero():
+    assert cpr.body_bytes("") == 0
+    assert cpr.body_bytes("<!-- a -->\n<!-- b -->\n") == 0
+
+
+def test_real_plan_with_a_mid_plan_checklist_counts_its_plan_sections():
+    text = (PLANS / "plan-5c21c8.md").read_text(encoding="utf-8")
+    first = next(h for _, h in cpr.h2_headings(text) if cpr.record_key(h))
+    assert first == "Implementation Checklist"
+    body = cpr.plan_body(text)
+    for heading in ("Implementation", "Testing Strategy", "Issues to Close"):
+        assert f"\n## {heading}\n" in body
+    assert "\n## Implementation Checklist" not in body
+    assert cpr.body_bytes(text) > cpr.BODY_CAP_BYTES
+
+
+# --- the numbers the skills state are the checker's constants ----------------------------------
+
+NUMBER_RE = re.compile(
+    r"≤ (?P<passes>\d+) verify passes|(?P<sign>[≤+]) ?(?P<n>[\d.,]+) (?P<unit>KB|bytes)"
+)
+# The section a budget statement belongs to: the last of these named before it.
+BUDGET_OWNERS = {
+    "Context": "Context + Current State",
+    "Current State": "Context + Current State",
+    "Adversarial": "Adversarial Review",
+    "Issues to Close": "Scope + Issues to Close + Class trackers",
+}
+
+
+def _stated_numbers() -> list[tuple[str, int, int]]:
+    """(what, stated value, constant) for every cap or budget number the plan skills state."""
+    budgets = {label: cap for label, _, cap in cpr.SECTION_BUDGETS}
+    out = []
+    for path in SKILLS:
+        text = path.read_text(encoding="utf-8")
+        for m in NUMBER_RE.finditer(text):
+            if m.group("passes"):
+                out.append(("verify passes", int(m.group("passes")), cpr.PASS_CAP))
+                continue
+            n = float(m.group("n").replace(",", ""))
+            value = int(n * 1024) if m.group("unit") == "KB" else int(n)
+            if m.group("unit") == "bytes":
+                out.append(("body cap", value, cpr.BODY_CAP_BYTES))
+            elif m.group("sign") == "+":
+                out.append(("revision growth", value, cpr.REVISION_GROWTH_BYTES))
+            else:
+                before = text[: m.start()]
+                owner = max(BUDGET_OWNERS, key=before.rfind)
+                out.append((BUDGET_OWNERS[owner], value, budgets[BUDGET_OWNERS[owner]]))
+    return out
+
+
+def test_numbers_the_skills_state_equal_the_constants():
+    # mutation record: "≤ 2.5 KB" -> "≤ 3 KB" in create-plan/SKILL.md -> red; restored -> green
+    stated = _stated_numbers()
+    assert [(w, v) for w, v, c in stated if v != c] == []
+    kinds = {w for w, _, _ in stated}
+    assert kinds == {
+        "body cap",
+        "verify passes",
+        "revision growth",
+        *(label for label, _, _ in cpr.SECTION_BUDGETS),
+    }
+    # the cap is stated once
+    assert sum(w == "body cap" for w, _, _ in stated) == 1
