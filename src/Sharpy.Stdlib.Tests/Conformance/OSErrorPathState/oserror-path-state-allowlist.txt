@@ -1,0 +1,14 @@
+# G1 filesystem differential allowlist (plan-638e8b A1, class tracker #2476) for PathStateDifferentialTests.
+#
+# The contract (C2's Rule): where python3 (CPython on Linux, D4) raises nothing or a class with OSError in
+# its MRO, Sharpy's outcome class is equal — an OSError-family outcome is never a CLR type, a python
+# success is never a raise. Each row is an in-contract cell that diverges TODAY; it drains (deleted) as
+# D1's PathErrors helper and D2's NotADirectoryError land (W2-E, W3-F) and must reach 0 rows to close #2476.
+# A row the run no longer produces (the cell agrees, or its outcomes changed) is stale and red.
+#
+# Row: `<probe id>[<state per placeholder>] python=<outcome> sharpy=<outcome> # #2476`
+#   outcome: `ok` | `OS <class name>` (caught by `except OSError`) | `X <class 'CLR or Sharpy type'>`
+#   (escaped `except OSError`, e.g. a CLR System.IO.IOException).
+#
+# DO NOT DELETE THIS FILE: the differential throws if it is missing rather than passing silently.
+

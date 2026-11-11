@@ -1,0 +1,42 @@
+# The builtin NotADirectoryError is an OSError subclass, as in CPython (P33 D2, #2476):
+# `except NotADirectoryError`, `except OSError` and `except IOError` catch it, the sibling
+# `except IsADirectoryError` does not. Each handler chain ends in `except Exception`, the
+# control that names a miss. Expected output measured with python3 on the same program.
+def main():
+    try:
+        raise NotADirectoryError('x')
+    except NotADirectoryError as e:
+        print(f'1 caught as NotADirectoryError: {type(e).__name__}')
+    except Exception:
+        print('1 missed NotADirectoryError')
+
+    try:
+        raise NotADirectoryError('x')
+    except OSError as e:
+        print(f'2 caught as OSError: {type(e).__name__}')
+    except Exception:
+        print('2 missed OSError')
+
+    try:
+        raise NotADirectoryError('x')
+    except IOError as e:
+        print(f'3 caught as IOError: {type(e).__name__}')
+    except Exception:
+        print('3 missed IOError')
+
+    try:
+        raise NotADirectoryError('x')
+    except IsADirectoryError:
+        print('4 caught as IsADirectoryError')
+    except OSError as e:
+        print(f'4 sibling IsADirectoryError missed, OSError caught: {type(e).__name__}')
+
+    try:
+        raise OSError('x')
+    except NotADirectoryError:
+        print('5 OSError caught as NotADirectoryError')
+    except OSError as e:
+        print(f'5 OSError missed NotADirectoryError: {type(e).__name__}')
+
+    e1 = NotADirectoryError('z')
+    print(f'6 {isinstance(e1, OSError)} {isinstance(e1, IsADirectoryError)} {e1}')

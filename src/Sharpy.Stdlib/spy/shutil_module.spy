@@ -1,65 +1,73 @@
 """High-level file operations (copy, move, remove trees)."""
 
-from system.io import Path as IoPath, File, Directory, IOException, DriveInfo
+from system.io import Path as IoPath, File, Directory, DriveInfo
 from system import Environment
+from sharpy import PathErrors
 
 def copy(src: str, dst: str) -> str:
     """Copy data and mode bits ("cp src dst"). Return the file's destination."""
-    if not File.exists(src):
-        raise OSError("No such file: '" + src + "'")
     dest_path: str = _resolve_destination(src, dst)
-    try:
-        File.copy(src, dest_path, True)
-    except Exception:
-        raise OSError("Failed to copy '" + src + "' to '" + dst + "'")
+    _copyfile(src, dest_path)
     return dest_path
 
 def copy2(src: str, dst: str) -> str:
     """Copy data and metadata. Return the file's destination."""
-    if not File.exists(src):
-        raise OSError("No such file: '" + src + "'")
     dest_path: str = _resolve_destination(src, dst)
+    _copyfile(src, dest_path)
     try:
-        File.copy(src, dest_path, True)
         File.set_last_write_time_utc(dest_path, File.get_last_write_time_utc(src))
         File.set_creation_time_utc(dest_path, File.get_creation_time_utc(src))
-    except Exception:
-        raise OSError("Failed to copy2 '" + src + "' to '" + dst + "'")
+    except Exception as e:
+        raise PathErrors.translate_needs_any(e, dest_path)
     return dest_path
 
 def copytree(src: str, dst: str) -> str:
     """Recursively copy a directory tree and return the destination directory."""
-    if not Directory.exists(src):
-        raise OSError("No such directory: '" + src + "'")
+    # CPython's steps: scan src, then makedirs(dst) (an existing dst is FileExistsError), then copy
+    # each entry — a subdirectory by copytree, a file by copy2.
+    entries: list[str] = []
     try:
-        _copy_directory_recursive(src, dst)
-    except Exception:
-        raise OSError("Failed to copytree '" + src + "' to '" + dst + "'")
+        for entry in Directory.get_file_system_entries(src):
+            entries.append(entry)
+    except Exception as e:
+        raise PathErrors.translate_needs_dir(e, src)
+    _makedirs(dst)
+    for src_name in entries:
+        dst_name: str = IoPath.combine(dst, IoPath.get_file_name(src_name))
+        if Directory.exists(src_name):
+            copytree(src_name, dst_name)
+        else:
+            copy2(src_name, dst_name)
     return dst
 
 def rmtree(path: str) -> None:
     """Recursively delete a directory tree."""
-    if not Directory.exists(path):
-        raise OSError("No such directory: '" + path + "'")
     try:
         Directory.delete(path, True)
-    except Exception:
-        raise OSError("Failed to remove directory tree '" + path + "'")
+    except Exception as e:
+        raise PathErrors.translate_needs_dir(e, path)
 
 def move(src: str, dst: str) -> str:
     """Recursively move a file or directory to another location."""
-    if File.exists(src):
-        dest_path: str = _resolve_destination(src, dst)
-        try:
-            File.move(src, dest_path)
-        except IOException:
-            File.copy(src, dest_path, True)
-            File.delete(src)
-        return dest_path
-    if Directory.exists(src):
-        Directory.move(src, dst)
-        return dst
-    raise OSError("No such file or directory: '" + src + "'")
+    # CPython's steps: into an existing directory dst, then os.rename; when rename(2) refuses, copy
+    # the source (copytree or copy2) and remove it. Its shutil.Error refusals (the destination entry
+    # exists, a directory into itself) are #2556; the second refuses with the rename's own error
+    # here, so the fallback never copies a tree into itself.
+    real_dst: str = dst
+    if Directory.exists(dst):
+        real_dst = IoPath.combine(dst, _basename(src))
+    try:
+        PathErrors.rename(src, real_dst)
+    except OSError:
+        if Directory.exists(src):
+            if _destinsrc(src, dst):
+                raise
+            copytree(src, real_dst)
+            rmtree(src)
+        else:
+            copy2(src, real_dst)
+            _unlink(src)
+    return real_dst
 
 def which(name: str) -> str | None:
     """Return the path to an executable which would be run if name were called, or None if not found."""
@@ -97,11 +105,14 @@ def which(name: str) -> str | None:
 
 def disk_usage(path: str) -> tuple[long, long, long]:
     """Return disk usage statistics about the given path as a (total, used, free) tuple."""
-    drive: DriveInfo = DriveInfo(path)
-    total: long = drive.total_size
-    free: long = drive.available_free_space
-    used: long = total - free
-    return (total, used, free)
+    try:
+        drive: DriveInfo = DriveInfo(path)
+        total: long = drive.total_size
+        free: long = drive.available_free_space
+        used: long = total - free
+        return (total, used, free)
+    except Exception as e:
+        raise PathErrors.translate_needs_any(e, path)
 
 def _resolve_destination(src: str, dst: str) -> str:
     """Resolve the final destination path, appending the source filename if dst is a directory."""
@@ -109,12 +120,56 @@ def _resolve_destination(src: str, dst: str) -> str:
         return IoPath.combine(dst, IoPath.get_file_name(src))
     return dst
 
-def _copy_directory_recursive(src: str, dst: str) -> None:
-    """Recursively copy a directory tree from src to dst."""
-    Directory.create_directory(dst)
-    for file_path in Directory.get_files(src):
-        dest_file: str = IoPath.combine(dst, IoPath.get_file_name(file_path))
-        File.copy(file_path, dest_file, True)
-    for dir_path in Directory.get_directories(src):
-        dest_dir: str = IoPath.combine(dst, IoPath.get_file_name(dir_path))
-        _copy_directory_recursive(dir_path, dest_dir)
+def _copyfile(src: str, dst: str) -> None:
+    """CPython's copyfile steps: open src to read, then dst to write, then copy the bytes."""
+    PathErrors.check_needs_file_to_read(src)
+    PathErrors.check_needs_file_to_write(dst)
+    try:
+        File.copy(src, dst, True)
+    except Exception as e:
+        raise PathErrors.translate_needs_file_to_write(e, dst)
+
+def _makedirs(path: str) -> None:
+    """CPython's os.makedirs(path) steps: create a missing parent chain, then mkdir the leaf."""
+    name: str = _strip_trailing_separators(path)
+    head: str | None = IoPath.get_directory_name(name)
+    if head is not None:
+        if len(head) > 0 and not File.exists(head) and not Directory.exists(head):
+            _makedirs(head)
+            if IoPath.get_file_name(name) == ".":
+                return
+    PathErrors.check_creates_dir(name)
+    try:
+        Directory.create_directory(name)
+    except Exception as e:
+        raise PathErrors.translate_creates_dir(e, name)
+
+def _unlink(path: str) -> None:
+    """os.unlink(path)."""
+    PathErrors.check_removes_file(path)
+    try:
+        File.delete(path)
+    except Exception as e:
+        raise PathErrors.translate_removes_file(e, path)
+
+def _strip_trailing_separators(path: str) -> str:
+    """The path without trailing separators (python's path.split skips an empty tail); a root stays itself."""
+    stripped: str = path.trim_end(IoPath.DirectorySeparatorChar, IoPath.AltDirectorySeparatorChar)
+    if len(stripped) == 0:
+        return path
+    return stripped
+
+def _basename(path: str) -> str:
+    """CPython's shutil._basename: the last component, ignoring trailing separators."""
+    return IoPath.get_file_name(_strip_trailing_separators(path))
+
+def _destinsrc(src: str, dst: str) -> bool:
+    """CPython's shutil._destinsrc: whether dst lies inside the directory src."""
+    sep: str = str(IoPath.DirectorySeparatorChar)
+    full_src: str = IoPath.get_full_path(src)
+    full_dst: str = IoPath.get_full_path(dst)
+    if not full_src.ends_with(sep):
+        full_src = full_src + sep
+    if not full_dst.ends_with(sep):
+        full_dst = full_dst + sep
+    return full_dst.starts_with(full_src)

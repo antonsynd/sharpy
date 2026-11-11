@@ -37,11 +37,11 @@ def test_pathsep_is_not_empty():
 # ===== File operations =====
 
 @test
-def test_remove_on_directory_path_throws_file_not_found_error(tmp_path: str):
-    # File.Exists is false for directories, so Remove throws FileNotFoundError.
+def test_remove_on_directory_path_throws_is_a_directory_error(tmp_path: str):
+    # python's unlink(2) on a directory: IsADirectoryError, an OSError subclass (#2476, plan-638e8b D1).
     d = tmp_path + "/adirtoremove"
     os.mkdir(d)
-    with assert_raises(FileNotFoundError):
+    with assert_raises(IsADirectoryError):
         os.remove(d)
 
 

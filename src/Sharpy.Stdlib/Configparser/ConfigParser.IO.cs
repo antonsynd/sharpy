@@ -18,11 +18,17 @@ namespace Sharpy
         /// <summary>Reads configuration data from a file if it exists.</summary>
         public void Read(string filename)
         {
-            if (!File.Exists(filename))
+            // python's read: `try: open(filename) ... except OSError: continue` — a file that cannot be
+            // read is skipped, whatever the reason (a deliberate swallow, plan-638e8b A2).
+            string content;
+            try
+            {
+                content = File.ReadAllText(filename);
+            }
+            catch (Exception ex) when (ex is IOException || ex is UnauthorizedAccessException)
             {
                 return;
             }
-            string content = File.ReadAllText(filename);
             ReadString(content, filename);
         }
 
@@ -90,9 +96,18 @@ namespace Sharpy
         /// <summary>Writes the current configuration to a file.</summary>
         public void WriteToFile(string filename, bool spaceAroundDelimiters = true)
         {
-            using (var writer = new StreamWriter(filename))
+            // python: config.write(open(filename, "w")); its refusal is the classifier's (plan-638e8b D1).
+            PathErrors.CheckNeedsFileToWrite(filename);
+            try
             {
-                Write(writer, spaceAroundDelimiters);
+                using (var writer = new StreamWriter(filename))
+                {
+                    Write(writer, spaceAroundDelimiters);
+                }
+            }
+            catch (Exception ex) when (ex is IOException || ex is UnauthorizedAccessException)
+            {
+                throw PathErrors.TranslateNeedsFileToWrite(ex, filename);
             }
         }
 
