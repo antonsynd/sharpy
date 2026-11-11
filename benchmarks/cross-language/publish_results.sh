@@ -54,6 +54,12 @@ seed() {
   fi
   fetch_tip
   git show "refs/remotes/$remote/$branch:history.json" > "$results_dir/history.json"
+  # A malformed published history must stop the run, not be silently replaced by a 1-entry one.
+  if ! python3 -c 'import json,sys; h=json.load(open(sys.argv[1])); sys.exit(0 if isinstance(h, list) else 1)' \
+      "$results_dir/history.json" 2>/dev/null; then
+    echo "::error::history.json on $remote/$branch is not a JSON list; fix it on the branch before re-running" >&2
+    return 1
+  fi
   echo "seed: history.json taken from $remote/$branch ($(git rev-parse --short "refs/remotes/$remote/$branch"))"
 }
 

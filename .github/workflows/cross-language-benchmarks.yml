@@ -268,11 +268,14 @@ jobs:
 
         # Append to history
         history_file = "benchmarks/cross-language/results/history.json"
+        # A missing history starts empty; a malformed one fails the step (never silently reset).
         try:
             with open(history_file) as f:
                 history = json.load(f)
-        except (FileNotFoundError, json.JSONDecodeError):
+        except FileNotFoundError:
             history = []
+        if not isinstance(history, list):
+            raise SystemExit(f"{history_file} is not a JSON list")
 
         history.append({"date": now, "results": results})
 
