@@ -39,6 +39,11 @@ public class IrTotalityTests
                 return self.value + extra
 
 
+        @[obsolete("unused", 1 == 2)]
+        def legacy() -> int:
+            return 0
+
+
         def compute(n: int) -> int:
             numbers: list[int] = [1, 2, 3]
             labels: dict[str, int] = {"a": 1}
@@ -500,7 +505,7 @@ public class IrTotalityTests
 
         void Visit(Node parent)
         {
-            foreach (var child in parent.GetChildNodes())
+            foreach (var child in LoweredChildrenOf(parent))
             {
                 if (child is Expression or Statement)
                 {
@@ -564,7 +569,7 @@ public class IrTotalityTests
     /// </summary>
     private static IEnumerable<Node> WalkExpressionsAndStatements(Node root)
     {
-        foreach (var child in root.GetChildNodes())
+        foreach (var child in LoweredChildrenOf(root))
         {
             if (child is Expression or Statement)
                 yield return child;
@@ -572,6 +577,15 @@ public class IrTotalityTests
                 yield return descendant;
         }
     }
+
+    /// <summary>
+    /// What the lowering pass walks under <paramref name="node"/>: a statement's decorator arguments
+    /// (not child nodes, but lowered — <c>LoweringPass.DecoratorArgumentsOf</c>), then its
+    /// <see cref="Node.GetChildNodes"/>.
+    /// </summary>
+    private static IEnumerable<Node> LoweredChildrenOf(Node node)
+        => (node is Statement statement ? LoweringPass.DecoratorArgumentsOf(statement) : Array.Empty<Expression>())
+            .Concat(node.GetChildNodes());
 
     private static int CountExpressionAndStatementNodes(IrCompilation ir)
     {

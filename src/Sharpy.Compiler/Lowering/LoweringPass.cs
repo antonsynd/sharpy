@@ -159,7 +159,18 @@ internal sealed partial class LoweringPass
             }
         }
 
+        // A decorator's arguments are not child nodes, but the emitter generates a bracket
+        // attribute's arguments as C# constant expressions (`@[obsolete("m", 1 == 2)]`), reading
+        // their lowering facts from the IR like any other expression. They lower first, in source
+        // order, ahead of the statement's own children.
+        var decoratorArguments = DecoratorArgumentsOf(statement);
+        var loweredDecoratorArguments = ImmutableArray.CreateBuilder<IrNode>(decoratorArguments.Count);
+        foreach (var argument in decoratorArguments)
+            loweredDecoratorArguments.Add(LowerExpression(argument, semanticInfo, state));
+
         var children = LowerChildren(statement, semanticInfo, state);
+        if (loweredDecoratorArguments.Count > 0)
+            children = loweredDecoratorArguments.ToImmutable().AddRange(children);
 
         // A `match None:` scrutinee carries the typed-null cast on the IR (P82 #2443, migrates
         // _matchScrutineeLowerings).
@@ -582,6 +593,47 @@ internal sealed partial class LoweringPass
     }
 
     private static TextSpan SpanOf(Node node) => node.Span ?? TextSpan.Empty;
+
+    /// <summary>
+    /// The decorators a statement carries. Decorators are not child nodes, so the child walk never
+    /// reaches their arguments; this names every AST statement with a <c>Decorators</c> property
+    /// (<c>DecoratorCoverageTests</c> checks the list against the AST by reflection).
+    /// </summary>
+    internal static ImmutableArray<Decorator> DecoratorsOf(Statement statement) => statement switch
+    {
+        DecoratedStatement s => s.Decorators,
+        VariableDeclaration s => s.Decorators,
+        FunctionDef s => s.Decorators,
+        ClassDef s => s.Decorators,
+        StructDef s => s.Decorators,
+        InterfaceDef s => s.Decorators,
+        EnumDef s => s.Decorators,
+        PropertyDef s => s.Decorators,
+        UnionDef s => s.Decorators,
+        EventDef s => s.Decorators,
+        _ => ImmutableArray<Decorator>.Empty,
+    };
+
+    /// <summary>
+    /// Every argument expression of <paramref name="statement"/>'s decorators — positional, then
+    /// keyword values — in source order.
+    /// </summary>
+    internal static IReadOnlyList<Expression> DecoratorArgumentsOf(Statement statement)
+    {
+        var decorators = DecoratorsOf(statement);
+        if (decorators.IsEmpty)
+            return Array.Empty<Expression>();
+
+        var arguments = new List<Expression>();
+        foreach (var decorator in decorators)
+        {
+            arguments.AddRange(decorator.Arguments);
+            foreach (var keyword in decorator.KeywordArguments)
+                arguments.Add(keyword.Value);
+        }
+
+        return arguments;
+    }
 
     /// <summary>
     /// Mutable accumulation state for a single lowering run: the reference-keyed AST→IR index and the
