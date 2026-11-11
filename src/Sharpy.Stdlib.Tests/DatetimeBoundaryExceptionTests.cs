@@ -82,5 +82,18 @@ public class DatetimeBoundaryExceptionTests
         Assert.Equal(-62135600400.0, new DateTime(1, 1, 1, tzinfo: new Timezone(new Timedelta(hours: 1))).Timestamp());
     }
 
+    /// <summary>
+    /// Deviation <c>timedelta-range-timespan</c> (#2109): python accepts <c>timedelta(days=10675199, hours=3)</c>;
+    /// Sharpy cannot hold it, and its OverflowError names Sharpy's limit rather than echoing python's bound.
+    /// </summary>
+    [Fact]
+    public void TimedeltaPastSharpysRange_NamesSharpysLimit()
+    {
+        var ex = Assert.Throws<OverflowError>(() => new Timedelta(days: 10675199, hours: 3));
+        Assert.Equal("days=10675199; outside the range Sharpy can represent: a timedelta's magnitude is at most "
+            + "10675199 days, 2:48:05.477580 (python allows 999999999 days)", ex.Message);
+        Assert.Equal("10675199 days, 2:48:05.477580", new Timedelta(days: 10675199, seconds: 10085, microseconds: 477580).ToString());
+    }
+
     private static object[] Cell(Func<object> cell, Type type, string message) => new object[] { cell, type, message };
 }

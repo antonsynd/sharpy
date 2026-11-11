@@ -885,6 +885,14 @@ deviations:
   spec_ref: null
   existing_diagnostic: null
   planned_diagnostic: null
+- id: timedelta-range-timespan
+  category: stdlib
+  audience: python
+  severity: none
+  code: null
+  spec_ref: null
+  existing_diagnostic: null
+  planned_diagnostic: null
 - id: tuple-immutability-typed
   category: types
   audience: python
