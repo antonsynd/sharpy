@@ -19,9 +19,14 @@ Usage::
 
     python3 build_tools/check_plan_refs.py <plan.md> [--repo <root>] [--issues] [--strict] [--json]
 
+    python3 build_tools/check_plan_refs.py --caps-all [--repo <root>]
+
 Exit code 1 when any path is missing or a ``file:line`` points past end-of-file (with ``--strict``,
-also when any symbol or code is unknown); 0 otherwise. Never edits anything.
+also when any symbol or code is unknown), or when the plan breaks an R-LW cap (body > 20 KB, more
+than 2 verify passes without an owner-ruling line; see ``cap_violations``); 0 otherwise.
+``--caps-all`` checks only the caps, on every ``docs/process/plans/plan-*.md``. Never edits anything.
 """
+
 from __future__ import annotations
 
 import argparse
@@ -260,9 +265,238 @@ def render(r: dict, *, strict: bool) -> tuple[str, int]:
     return "\n".join(lines), code
 
 
+# --- plan caps (charter ruling R-LW) -----------------------------------------------------------------
+# A plan's BODY is at most 20 KB, excluding the stamp lines at the top and the kept verification
+# summaries from the first `## Verification Summary` (or `## Implementation Verification Record`) on.
+# A plan records at most 2 `/verify-plan` passes; each pass beyond that needs its own owner-ruling line:
+#     Extra verify pass 3: owner 2026-11-12 "<the owner's words>"
+
+BODY_CAP_BYTES = 20_480
+PASS_CAP = 2
+PLAN_GLOB = "docs/process/plans/plan-*.md"
+
+SUMMARY_HEADING_RE = re.compile(
+    r"^## (?:Verification Summary|Implementation Verification Record)\b", re.MULTILINE
+)
+STAMP_LINE_RE = re.compile(r"^\s*(?:<!--.*-->\s*)?$")
+VERIFY_STAMP_RE = re.compile(r"^<!-- Verified by /verify-plan\b", re.MULTILINE)
+REVISION_LOG_RE = re.compile(
+    r"^## Revision log\b.*?(?=^## |\Z)", re.MULTILINE | re.DOTALL
+)
+PASS_HEADING_RE = re.compile(
+    r"^(?:### Pass|## Verification Summary\W+(?:round|pass)) (\d+)\b",
+    re.MULTILINE | re.IGNORECASE,
+)
+RESULT_LINE_RE = re.compile(r"^\*\*Result:\*\*")
+RESULT_PASS_RE = re.compile(r"^\*\*Result:\*\*.*?\(pass (\d+)\b", re.MULTILINE)
+# A pass that stamped NEEDS REVISION is recorded as `(NEEDS REVISION, Dimension N)` (verify-plan
+# skill, revision routing); outside a `**Result:**` line each such record is one failed pass.
+FAILED_PASS_RE = re.compile(r"\(NEEDS REVISION\b")
+STAMP_ROUND_RE = re.compile(
+    r"^<!-- Verified by /verify-plan[^>]*?\((?:round|pass) (\d+)", re.MULTILINE
+)
+ORDINALS = {
+    "first": 1,
+    "second": 2,
+    "third": 3,
+    "fourth": 4,
+    "fifth": 5,
+    "sixth": 6,
+    "seventh": 7,
+    "eighth": 8,
+    "ninth": 9,
+    "tenth": 10,
+}
+LOG_PASS_RE = re.compile(
+    r"\bpass (\d+):|\b(\d+)(?:st|nd|rd|th) (?:`?/verify-plan[^`]*`? )?pass\b|\bverify round (\d+)\b|\b("
+    + "|".join(ORDINALS)
+    + r") (?:`?/verify-plan[^`]*`? )?pass\b",
+    re.IGNORECASE,
+)
+EXTRA_PASS_RE = re.compile(
+    r"^\W*Extra verify pass (\d+):\s*owner,? \d{4}-\d{2}-\d{2},? [\"“].+[\"”]",
+    re.MULTILINE,
+)
+
+# Plans that already exceeded a cap when the check landed (measured @ fd876b842 on origin/dev):
+# name -> (body bytes, verify passes). Frozen: a grandfathered plan may not grow on either axis, and
+# no plan joins this list.
+GRANDFATHERED: dict[str, tuple[int, int]] = {
+    "plan-05dd79.md": (73765, 1),
+    "plan-0667c5.md": (88262, 1),
+    "plan-0c1382.md": (75616, 1),
+    "plan-0ca7b7.md": (230312, 1),
+    "plan-11eef9.md": (50573, 1),
+    "plan-14853b.md": (73182, 1),
+    "plan-155752.md": (22574, 1),
+    "plan-16cca3.md": (107641, 2),
+    "plan-17ad85.md": (94208, 1),
+    "plan-1faae3.md": (22309, 1),
+    "plan-2003b4.md": (70729, 1),
+    "plan-202526.md": (30583, 1),
+    "plan-21d2f5.md": (22145, 4),
+    "plan-299c1b.md": (54297, 1),
+    "plan-311458.md": (80526, 1),
+    "plan-3eba57.md": (81392, 2),
+    "plan-43f241.md": (77732, 1),
+    "plan-460cbf.md": (46830, 6),
+    "plan-46b871.md": (32903, 1),
+    "plan-499995.md": (83591, 1),
+    "plan-4d6288.md": (67455, 1),
+    "plan-4e3055.md": (31634, 1),
+    "plan-52c6fe.md": (68164, 1),
+    "plan-5379fe.md": (81228, 1),
+    "plan-5c21c8.md": (54990, 1),
+    "plan-638e8b.md": (46717, 3),
+    "plan-683c8b.md": (60387, 1),
+    "plan-6ca898.md": (86622, 1),
+    "plan-6ce1a5.md": (54464, 1),
+    "plan-6e12b5.md": (24608, 1),
+    "plan-757fbb.md": (78221, 1),
+    "plan-78c581.md": (81620, 1),
+    "plan-791d3a.md": (68169, 1),
+    "plan-82187d.md": (67037, 1),
+    "plan-88736c.md": (19718, 5),
+    "plan-92335a.md": (32862, 1),
+    "plan-950124.md": (66790, 1),
+    "plan-96f8e0.md": (89073, 1),
+    "plan-99d863.md": (76475, 1),
+    "plan-9ef825.md": (76634, 1),
+    "plan-a79696.md": (92559, 1),
+    "plan-add686.md": (51111, 1),
+    "plan-be3b1f.md": (49869, 1),
+    "plan-be89c1.md": (51379, 1),
+    "plan-bf0244.md": (123591, 1),
+    "plan-c068ff.md": (83049, 1),
+    "plan-cbdf79.md": (75282, 1),
+    "plan-d31acd.md": (71422, 1),
+    "plan-d35e69.md": (99271, 1),
+    "plan-d923d3.md": (63854, 1),
+    "plan-de9fe3.md": (109209, 1),
+    "plan-e31e76.md": (40362, 1),
+    "plan-e39946.md": (72296, 1),
+    "plan-eaaed2.md": (34582, 3),
+    "plan-ebd58b.md": (48375, 1),
+    "plan-ed89b6.md": (181999, 10),
+    "plan-ee5544.md": (49372, 1),
+    "plan-f164be.md": (85545, 1),
+    "plan-f4fb34.md": (50017, 1),
+    "plan-f8f73c.md": (71119, 1),
+    "plan-f92797.md": (79041, 1),
+    "plan-remediation-round-2026-08-13.md": (52988, 0),
+    "plan-remediation-round-2026-08-18.md": (24955, 0),
+    "plan-remediation-round-2026-08-22.md": (23443, 0),
+    "plan-remediation-round-2026-08-27.md": (67987, 1),
+}
+
+
+def plan_body(text: str) -> str:
+    """The plan before its verification summaries, without the stamp/marker comment lines on top."""
+    m = SUMMARY_HEADING_RE.search(text)
+    head = text[: m.start()] if m else text
+    lines = head.split("\n")
+    i = 0
+    while i < len(lines) and STAMP_LINE_RE.match(lines[i]):
+        i += 1
+    return "\n".join(lines[i:])
+
+
+def body_bytes(text: str) -> int:
+    return len(plan_body(text).encode("utf-8"))
+
+
+def verify_passes(text: str) -> int:
+    """The number of `/verify-plan` passes the plan records.
+
+    The largest of: a numbered pass (`### Pass N`, `## Verification Summary — round N`,
+    `**Result:** … (pass N`, `Verified by /verify-plan (round N`, and in a revision log `pass N:` / `Nth pass` / `verify round N`);
+    the `(NEEDS REVISION` records outside `**Result:**` lines, plus one for the current stamp;
+    one when the plan carries a stamp.
+    """
+    stamped = 1 if VERIFY_STAMP_RE.search(text) else 0
+    numbered = [int(n) for n in PASS_HEADING_RE.findall(text)]
+    numbered += [int(n) for n in RESULT_PASS_RE.findall(text)]
+    numbered += [int(n) for n in STAMP_ROUND_RE.findall(text)]
+    failed = sum(
+        1
+        for line in text.split("\n")
+        if FAILED_PASS_RE.search(line) and not RESULT_LINE_RE.match(line)
+    )
+    for log in REVISION_LOG_RE.findall(text):
+        for line in log.split("\n"):
+            for g in LOG_PASS_RE.findall(line):
+                num = next((x for x in g[:3] if x), None)
+                numbered.append(int(num) if num else ORDINALS[g[3].lower()])
+    return max([stamped, failed + stamped] + numbered)
+
+
+def extra_pass_rulings(text: str) -> set[int]:
+    return {int(n) for n in EXTRA_PASS_RE.findall(text)}
+
+
+def cap_violations(name: str, text: str) -> list[str]:
+    """Messages for each R-LW cap the plan breaks; a grandfathered plan is held to its frozen values."""
+    size, passes = body_bytes(text), verify_passes(text)
+    grandfathered = GRANDFATHERED.get(name)
+    ruled, allowed = extra_pass_rulings(text), PASS_CAP
+    while allowed + 1 in ruled:
+        allowed += 1
+    problems = []
+    if grandfathered:
+        g_size, g_passes = grandfathered
+        if size > g_size:
+            problems.append(
+                f"{name}: body is {size:,} bytes, above its grandfathered {g_size:,} "
+                f"(the R-LW cap is {BODY_CAP_BYTES:,}); a grandfathered plan may not grow: condense it, "
+                "or put a kept summary below `## Verification Summary`"
+            )
+        if passes > max(allowed, g_passes):
+            problems.append(
+                f"{name}: records {passes} verify passes, above its grandfathered {g_passes}; "
+                "the open finding goes to the owner, and a further pass needs the line "
+                f'Extra verify pass {passes}: owner YYYY-MM-DD "<the owner\'s words>"'
+            )
+        if size <= BODY_CAP_BYTES and passes <= PASS_CAP:
+            problems.append(
+                f"{name}: is within both caps now ({size:,} bytes, {passes} passes); "
+                "delete its GRANDFATHERED row in build_tools/check_plan_refs.py"
+            )
+        return problems
+    if size > BODY_CAP_BYTES:
+        problems.append(
+            f"{name}: body is {size:,} bytes, above the R-LW cap of {BODY_CAP_BYTES:,} "
+            "(measured before the first `## Verification Summary`, stamp lines excluded)"
+        )
+    if passes > allowed:
+        problems.append(
+            f"{name}: records {passes} verify passes; R-LW allows {PASS_CAP} before the open finding "
+            f"goes to the owner. Each pass beyond {PASS_CAP} needs its own line "
+            f'Extra verify pass N: owner YYYY-MM-DD "<the owner\'s words>"'
+        )
+    return problems
+
+
+def check_all_caps(repo: Path) -> list[str]:
+    problems = []
+    plans = sorted(repo.glob(PLAN_GLOB))
+    names = {p.name for p in plans}
+    for p in plans:
+        problems += cap_violations(p.name, p.read_text(encoding="utf-8"))
+    for name in sorted(set(GRANDFATHERED) - names):
+        problems.append(
+            f"{name}: grandfathered but no longer under docs/process/plans/; delete its row"
+        )
+    return problems
+
+
 def main(argv=None) -> int:
     ap = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
-    ap.add_argument("plan", type=Path)
+    ap.add_argument("plan", type=Path, nargs="?")
+    ap.add_argument(
+        "--caps-all",
+        action="store_true",
+        help="check only the R-LW caps, on every docs/process/plans/plan-*.md",
+    )
     ap.add_argument("--repo", type=Path, default=Path(__file__).resolve().parent.parent)
     ap.add_argument(
         "--issues", action="store_true", help="look up every #NNNN with gh (network)"
@@ -272,10 +506,33 @@ def main(argv=None) -> int:
     )
     ap.add_argument("--json", action="store_true")
     a = ap.parse_args(argv)
-    r = check(a.plan.read_text(), a.repo.resolve(), with_issues=a.issues)
+    if a.caps_all:
+        problems = check_all_caps(a.repo.resolve())
+        for p in problems:
+            print(f"CAP: {p}")
+        print("RESULT: " + ("FAIL" if problems else "OK"))
+        return 1 if problems else 0
+    if a.plan is None:
+        ap.error("a plan path is required unless --caps-all is given")
+    plan_text = a.plan.read_text()
+    r = check(plan_text, a.repo.resolve(), with_issues=a.issues)
     text, code = render(r, strict=a.strict)
+    caps = cap_violations(a.plan.name, plan_text)
+    r["caps"] = {
+        "body_bytes": body_bytes(plan_text),
+        "verify_passes": verify_passes(plan_text),
+        "violations": caps,
+    }
+    if not a.json:
+        text += (
+            f"\ncaps (R-LW): body {r['caps']['body_bytes']:,} / {BODY_CAP_BYTES:,} bytes; "
+            f"{r['caps']['verify_passes']} verify passes / {PASS_CAP}"
+        )
+        text += "".join(f"\n  - CAP: {c}" for c in caps)
+        if caps:
+            text += "\nRESULT: FAIL (caps)"
     print(json.dumps(r, indent=2) if a.json else text)
-    return code
+    return 1 if caps else code
 
 
 if __name__ == "__main__":
