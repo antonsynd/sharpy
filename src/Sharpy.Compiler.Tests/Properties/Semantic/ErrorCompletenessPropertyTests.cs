@@ -302,6 +302,11 @@ public class ErrorCompletenessPropertyTests
     public void StatementAheadOfChainingCall_IsRejected() =>
         RunInjectionTest(ErrorInjector.InjectStatementAheadOfChainingCall, "a statement ahead of super().__init__", MutationBases.Classes());
 
+    /// <summary>#2507: a constructor using both <c>super().__init__(…)</c> and <c>self.__init__(…)</c> — SPY0351.</summary>
+    [Fact]
+    public void BothChainingCalls_AreRejected() =>
+        RunInjectionTest(ErrorInjector.InjectBothChainingCalls, "super().__init__ and self.__init__ in one constructor", MutationBases.Classes());
+
     /// <summary>P63b (#2324): a user constructor's argument replaced by a literal its parameter refuses — SPY0220.</summary>
     [Fact]
     public void WrongTypedConstructorArgument_IsRejected() =>

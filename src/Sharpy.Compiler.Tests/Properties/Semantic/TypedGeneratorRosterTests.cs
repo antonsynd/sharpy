@@ -275,6 +275,10 @@ public class TypedGeneratorRosterTests
             new Y("GenClasses.ModuleWithClasses", () => Classes(), n => n is FunctionDef { Name: "__init__" } f
                 && Sharpy.Compiler.Shared.AstHelper.FindConstructorInitializerIndex(f.Body) == 0),
             new YInjected("ErrorInjector.InjectStatementAheadOfChainingCall", "SPY0292", CompilerDiagnosticSeverity.Error)),
+        new("constructors.md", "Constructor Chaining", "one chaining call per constructor",
+            new Y("GenClasses.ModuleWithClasses", () => Classes(), n => n is FunctionDef { Name: "__init__" } f
+                && Sharpy.Compiler.Shared.AstHelper.FindConstructorInitializerIndex(f.Body) == 0),
+            new YInjected("ErrorInjector.InjectBothChainingCalls", "SPY0351", CompilerDiagnosticSeverity.Error)),
         new("constructors.md", "Constructor Overloading", "overloaded __init__",
             new KnownRedRow("#2287", "no typed generator emits an overloaded constructor"),
             new KnownRedRow("#2287", "not generated, so no injection can break it")),
@@ -1900,6 +1904,10 @@ public class TypedGeneratorRosterTests
         // module_system.md §Name Qualification in Generated C# cites the import-binding collision only by link; the construct and
         // its claiming row (GenImports.NameCollisionPair, SPY0204) are import_statements.md's.
         new ProseCrossReference("module_system.md", "SPY0204", "import_statements.md"),
+        // inheritance.md's super() section states the chaining-call rule briefly and links to constructors.md, whose
+        // "Constructor Chaining" rows claim both codes (#2507).
+        new ProseCrossReference("inheritance.md", "SPY0292", "constructors.md"),
+        new ProseCrossReference("inheritance.md", "SPY0351", "constructors.md"),
     };
 
     private static readonly Regex SpecCode = new(@"SPY\d{4}");
@@ -2020,9 +2028,9 @@ public class TypedGeneratorRosterTests
     // generator tracker (#2287 P62; #2324's 62 rows drained by P63b, 2026-10-24); KnownRed = lanes pinning a
     // compiler cell to its tracker; ByDesign and the Y counts are lanes; NoConstruct counts rows.
     private const int ExpectedSpecFiles = 125;
-    private const int ExpectedRows = 203;
-    private const int ExpectedYGenerated = 104;
-    private const int ExpectedYInjected = 92;
+    private const int ExpectedRows = 204;
+    private const int ExpectedYGenerated = 105;
+    private const int ExpectedYInjected = 93;
     private const int ExpectedN = 181;
     private const int ExpectedKnownRed = 4;
     private const int ExpectedByDesign = 17;

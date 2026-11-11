@@ -181,6 +181,33 @@ internal static class DeclarationShapes
             : AstRewriter.Replace(facts.Module, constructor, constructor with { Body = constructor.Body.Insert(0, new PassStatement()) });
     }
 
+    /// <summary>
+    /// A <c>self.__init__(…)</c> chaining call added right after the <c>super().__init__(…)</c> that opens a
+    /// constructor, passing the constructor's own parameters: one constructor using both chaining calls is
+    /// SPY0351. The arguments bind the constructor's own signature, so the conflict is the one broken fact.
+    /// </summary>
+    public static Module? BothChainingCalls(ProgramFacts facts)
+    {
+        var constructor = AstRewriter.Descendants(facts.Module).OfType<ClassDef>()
+            .SelectMany(c => c.Body.OfType<FunctionDef>())
+            .FirstOrDefault(f => f.Name == "__init__"
+                && Sharpy.Compiler.Shared.AstHelper.FindConstructorInitializerIndex(f.Body) == 0
+                && Sharpy.Compiler.Shared.AstHelper.TryGetConstructorInitializerCall(f.Body[0], out _, out var chainsToBase)
+                && chainsToBase);
+        if (constructor is null)
+            return null;
+        var selfInit = new ExpressionStatement
+        {
+            Expression = new FunctionCall
+            {
+                Function = new MemberAccess { Object = new Identifier { Name = "self" }, Member = "__init__" },
+                Arguments = constructor.Parameters.Skip(1)
+                    .Select(p => (Expression)new Identifier { Name = p.Name }).ToImmutableArray()
+            }
+        };
+        return AstRewriter.Replace(facts.Module, constructor, constructor with { Body = constructor.Body.Insert(1, selfInit) });
+    }
+
     /// <summary>The by-design control for an expression statement: <c>main</c> gains <c>42</c> as a statement.</summary>
     public static Module? ExpressionStatementOfAnyValue(ProgramFacts facts) =>
         MainOf(facts) is { } main

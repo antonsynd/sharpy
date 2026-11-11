@@ -101,6 +101,7 @@ internal static class MutationLanes
     public static Module? ExpressionStatementOfAnyValue(Module m) => MutateModule(m, DeclarationShapes.ExpressionStatementOfAnyValue);
     public static Module? ConditionalExpressionStatement(Module m) => MutateModule(m, DeclarationShapes.ConditionalExpressionStatement);
     public static Module? StatementAheadOfChainingCall(Module m) => MutateModule(m, DeclarationShapes.StatementAheadOfChainingCall);
+    public static Module? BothChainingCalls(Module m) => MutateModule(m, DeclarationShapes.BothChainingCalls);
 
     // ---- the multi-file lane ------------------------------------------------------------------
 
@@ -163,6 +164,7 @@ internal static class MutationLanes
             (nameof(WrongTypedSuperInitArgument), WrongTypedSuperInitArgument),
             (nameof(SuperInitArityPlusOne), SuperInitArityPlusOne),
             (nameof(StatementAheadOfChainingCall), StatementAheadOfChainingCall),
+            (nameof(BothChainingCalls), BothChainingCalls),
             (nameof(ConstructorArityPlusOne), ConstructorArityPlusOne),
             (nameof(MethodArityPlusOne), MethodArityPlusOne),
             (nameof(UndefinedMethod), UndefinedMethod),
