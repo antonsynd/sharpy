@@ -100,13 +100,15 @@ The plan must follow this structure. `## Defect Class` and `## Adversarial Revie
 
 ## Context
 
-<What problem this solves, why it matters, links to GitHub issues>
+<The problem and its issues. With Current State ≤ 2.5 KB: numbers at a sha, no narrative>
 
 ## Current State
 
 <What exists today, what's broken or missing — measured @ <sha>>
 
 ## Scope
+
+<With Issues to Close and Class trackers ≤ 2 KB>
 
 - **Group:** <P<n> — name> (one non-chore group; chores riding along: <none | #… — seam-free because …>)
 - **Tier:** <light | full (<letter a–e>: <one clause>)> — <from charter §3.<k> | derived, not ruled | override: <words>> (contract §12)
@@ -128,6 +130,7 @@ The plan must follow this structure. `## Defect Class` and `## Adversarial Revie
 
 ## Adversarial Review (pre-mortem)
 
+<≤ 1.5 KB>
 - **Alternative root cause:** <what else explains the symptom; the probe that discriminates>
 - **Alternative layer:** <the lower ladder rung that could carry the fact — `.spy` source, dunder-table C#, protocol interface, operator overload — and the reason it cannot, or the plan moves there>
 - **How the fix could be inert:** <fallback path one call later? decision duplicated in a sibling arm?>

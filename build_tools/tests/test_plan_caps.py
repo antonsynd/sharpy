@@ -222,3 +222,100 @@ def test_implementation_checklist_is_not_body():
     text = _plan(body=BODY + filler + checklist)
     assert cpr.body_bytes(text) == cpr.BODY_CAP_BYTES
     assert cpr.cap_violations("plan-new001.md", text) == []
+
+
+# --- section budgets: reported for plans that are not grandfathered, never a failure -------------
+
+SKILL = REPO / ".claude/skills/create-plan/SKILL.md"
+
+
+def _template_keys() -> set[str]:
+    """The `## ` heading names of every plan template in /create-plan (fenced blocks with a title)."""
+    blocks = [
+        b
+        for b in cpr.FENCE_RE.findall(SKILL.read_text(encoding="utf-8"))
+        if "\n# <" in b
+    ]
+    assert blocks, "no plan template found in create-plan/SKILL.md"
+    keys = set()
+    for b in blocks:
+        for heading in cpr.H2_RE.findall(b):
+            key = cpr.section_key(heading)
+            assert key, f"template heading `## {heading}` is not in PLAN_SECTIONS"
+            keys.add(key)
+    return keys
+
+
+def test_plan_sections_are_the_template_headings():
+    # `## Acceptance` replaces `## Implementation` in a light plan (create-plan › Tier check)
+    assert _template_keys() | {"Revision log", "Acceptance"} == set(cpr.PLAN_SECTIONS)
+
+
+def test_section_key_matches_heading_variants_only():
+    assert cpr.section_key("Adversarial Review (pre-mortem)") == "Adversarial Review"
+    assert cpr.section_key("Current State — measured @ abc1234") == "Current State"
+    assert cpr.section_key("Revision log") == "Revision log"
+    for record in (
+        "Implementation Checklist",
+        "Implementation Verification Record",
+        "Verification Summary — round 6",
+        "Issues to file during implementation",
+    ):
+        assert cpr.section_key(record) is None, record
+
+
+def _budget_plan(context=0, adversarial=0, scope=0) -> str:
+    body = (
+        "# P99 — sample\n\n## Context\n\n"
+        + "c" * context
+        + "\n## Scope\n\n"
+        + "s" * scope
+        + "\n## Adversarial Review (pre-mortem)\n\n"
+        + "a" * adversarial
+        + "\n## Design Decisions\n\n"
+        + "d" * 5_000
+        + "\n"
+    )
+    return _plan(body=body)
+
+
+def test_section_bytes_measure_each_heading_to_the_next():
+    sizes = cpr.section_bytes(_budget_plan(context=100, adversarial=200, scope=300))
+    assert sizes["Context"] == len("## Context\n\n") + 101
+    assert (
+        sizes["Adversarial Review"]
+        == len("## Adversarial Review (pre-mortem)\n\n") + 201
+    )
+    assert sizes["Scope"] == len("## Scope\n\n") + 301
+    assert "Verification Summary" not in sizes
+
+
+def test_budget_over_is_a_note_not_a_failure():
+    within = _budget_plan(context=1_000, adversarial=1_000, scope=1_000)
+    assert cpr.budget_notes("plan-new001.md", within) == []
+    # mutation record: Context past its budget -> one note naming it; the caps stay green
+    over = _budget_plan(context=3_000, adversarial=1_000, scope=1_000)
+    (note,) = cpr.budget_notes("plan-new001.md", over)
+    assert "Context + Current State" in note and "2,560-byte budget" in note
+    assert cpr.cap_violations("plan-new001.md", over) == []
+    all_over = _budget_plan(context=3_000, adversarial=2_000, scope=3_000)
+    assert (
+        len(cpr.budget_notes("plan-new001.md", all_over))
+        == len(cpr.SECTION_BUDGETS)
+        == 3
+    )
+
+
+def test_grandfathered_plan_gets_no_budget_note(monkeypatch):
+    over = _budget_plan(context=3_000)
+    monkeypatch.setitem(cpr.GRANDFATHERED, "plan-old001.md", (cpr.body_bytes(over), 1))
+    assert cpr.budget_notes("plan-old001.md", over) == []
+
+
+def test_single_plan_cli_reports_budgets_and_exits_on_caps_only(tmp_path, capsys):
+    plan = tmp_path / "plan-new001.md"
+    plan.write_text(_budget_plan(context=3_000))
+    assert cpr.main([str(plan), "--repo", str(tmp_path)]) == 0
+    out = capsys.readouterr().out
+    assert "section budgets" in out
+    assert "NOTE: plan-new001.md: Context + Current State" in out

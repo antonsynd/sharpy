@@ -24,7 +24,9 @@ Usage::
 Exit code 1 when any path is missing or a ``file:line`` points past end-of-file (with ``--strict``,
 also when any symbol or code is unknown), or when the plan breaks an R-LW cap (body > 20 KB, more
 than 2 verify passes without an owner-ruling line; see ``cap_violations``); 0 otherwise.
-``--caps-all`` checks only the caps, on every ``docs/process/plans/plan-*.md``. Never edits anything.
+``--caps-all`` checks only the caps, on every ``docs/process/plans/plan-*.md``. Both modes also print a
+NOTE for each section budget (``SECTION_BUDGETS``) a plan that is not grandfathered exceeds; a note
+never changes the exit code. Never edits anything.
 """
 
 from __future__ import annotations
@@ -423,6 +425,90 @@ def verify_passes(text: str) -> int:
     return max([stamped, failed + stamped] + numbered)
 
 
+# --- section budgets ---------------------------------------------------------------------------------
+# The `## ` headings of the plan templates in `.claude/skills/create-plan/SKILL.md` (full and light),
+# plus the `## Revision log` a revision appends. The one list: tests pin it to the templates.
+PLAN_SECTIONS = (
+    "Context",
+    "Current State",
+    "Scope",
+    "Defect Class",
+    "Adversarial Review",
+    "Design Decisions",
+    "Implementation",
+    "Acceptance",
+    "Testing Strategy",
+    "Issues to Close",
+    "Class trackers this plan may post cells to",
+    "Revision log",
+)
+# Per-section byte budgets for a plan that is not grandfathered: reported, never a failure (the body
+# cap is the one gate). (label, sections, bytes).
+SECTION_BUDGETS = (
+    ("Context + Current State", ("Context", "Current State"), 2_560),
+    ("Adversarial Review", ("Adversarial Review",), 1_536),
+    (
+        "Scope + Issues to Close + Class trackers",
+        ("Scope", "Issues to Close", "Class trackers this plan may post cells to"),
+        2_048,
+    ),
+)
+H2_RE = re.compile(r"^## (.*)$", re.MULTILINE)
+_SECTION_KEYS = {s.casefold(): s for s in PLAN_SECTIONS}
+
+
+def section_key(heading: str) -> str | None:
+    """The PLAN_SECTIONS name a `## ` heading's text opens with (before any `(`, `—`, `–` or `:`)."""
+    return _SECTION_KEYS.get(
+        re.split(r"\s*[(—–:]", heading, maxsplit=1)[0].strip().casefold()
+    )
+
+
+def sections(text: str) -> list[tuple[str, str]]:
+    """(heading text, section text from its `## ` line to the next one) for each `## ` section."""
+    starts = list(H2_RE.finditer(text))
+    return [
+        (
+            m.group(1),
+            text[
+                m.start() : starts[i + 1].start() if i + 1 < len(starts) else len(text)
+            ],
+        )
+        for i, m in enumerate(starts)
+    ]
+
+
+def section_bytes(text: str) -> dict[str, int]:
+    """Body bytes per PLAN_SECTIONS name (a name that heads several sections sums them)."""
+    out: dict[str, int] = defaultdict(int)
+    for heading, sec in sections(plan_body(text)):
+        key = section_key(heading)
+        if key:
+            out[key] += len(sec.encode("utf-8"))
+    return dict(out)
+
+
+def budget_report(text: str) -> list[tuple[str, int, int]]:
+    """(label, bytes, budget) for each SECTION_BUDGETS row."""
+    sizes = section_bytes(text)
+    return [
+        (label, sum(sizes.get(s, 0) for s in names), cap)
+        for label, names, cap in SECTION_BUDGETS
+    ]
+
+
+def budget_notes(name: str, text: str) -> list[str]:
+    """A notice per budget the plan exceeds; none for a grandfathered plan."""
+    if name in GRANDFATHERED:
+        return []
+    return [
+        f"{name}: {label} is {size:,} bytes, over its {cap:,}-byte budget "
+        "(a notice; the body cap is the gate)"
+        for label, size, cap in budget_report(text)
+        if size > cap
+    ]
+
+
 def extra_pass_rulings(text: str) -> set[int]:
     return {int(n) for n in EXTRA_PASS_RE.findall(text)}
 
@@ -482,6 +568,14 @@ def check_all_caps(repo: Path) -> list[str]:
     return problems
 
 
+def budget_notes_all(repo: Path) -> list[str]:
+    return [
+        n
+        for p in sorted(repo.glob(PLAN_GLOB))
+        for n in budget_notes(p.name, p.read_text(encoding="utf-8"))
+    ]
+
+
 def main(argv=None) -> int:
     ap = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
     ap.add_argument("plan", type=Path, nargs="?")
@@ -503,6 +597,8 @@ def main(argv=None) -> int:
         problems = check_all_caps(a.repo.resolve())
         for p in problems:
             print(f"CAP: {p}")
+        for n in budget_notes_all(a.repo.resolve()):
+            print(f"NOTE: {n}")
         print("RESULT: " + ("FAIL" if problems else "OK"))
         return 1 if problems else 0
     if a.plan is None:
@@ -515,6 +611,10 @@ def main(argv=None) -> int:
         "body_bytes": body_bytes(plan_text),
         "verify_passes": verify_passes(plan_text),
         "violations": caps,
+        "budgets": {
+            label: [size, cap] for label, size, cap in budget_report(plan_text)
+        },
+        "budget_notes": budget_notes(a.plan.name, plan_text),
     }
     if not a.json:
         text += (
@@ -522,6 +622,11 @@ def main(argv=None) -> int:
             f"{r['caps']['verify_passes']} verify passes / {PASS_CAP}"
         )
         text += "".join(f"\n  - CAP: {c}" for c in caps)
+        text += "\nsection budgets (a notice, not a gate): " + "; ".join(
+            f"{label} {size:,} / {cap:,}"
+            for label, size, cap in budget_report(plan_text)
+        )
+        text += "".join(f"\n  - NOTE: {n}" for n in r["caps"]["budget_notes"])
         if caps:
             text += "\nRESULT: FAIL (caps)"
     print(json.dumps(r, indent=2) if a.json else text)
