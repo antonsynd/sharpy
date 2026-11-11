@@ -266,8 +266,9 @@ def render(r: dict, *, strict: bool) -> tuple[str, int]:
 
 
 # --- plan caps (charter ruling R-LW) -----------------------------------------------------------------
-# A plan's BODY is at most 20 KB, excluding the stamp lines at the top and the kept verification
-# summaries from the first `## Verification Summary` (or `## Implementation Verification Record`) on.
+# A plan's BODY is at most 20 KB, excluding the stamp lines at the top and everything from the first
+# `## Verification Summary`, `## Implementation Verification Record` or `## Implementation Checklist`
+# on (the kept summaries, and the checklist `/implement-plan` adds after verification).
 # A plan records at most 2 `/verify-plan` passes; each pass beyond that needs its own owner-ruling line:
 #     Extra verify pass 3: owner 2026-11-12 "<the owner's words>"
 
@@ -276,42 +277,36 @@ PASS_CAP = 2
 PLAN_GLOB = "docs/process/plans/plan-*.md"
 
 SUMMARY_HEADING_RE = re.compile(
-    r"^## (?:Verification Summary|Implementation Verification Record)\b", re.MULTILINE
+    r"^## (?:Verification Summary|Implementation Verification Record|Implementation Checklist)\b",
+    re.MULTILINE,
 )
 STAMP_LINE_RE = re.compile(r"^\s*(?:<!--.*-->\s*)?$")
 VERIFY_STAMP_RE = re.compile(r"^<!-- Verified by /verify-plan\b", re.MULTILINE)
 REVISION_LOG_RE = re.compile(
     r"^## Revision log\b.*?(?=^## |\Z)", re.MULTILINE | re.DOTALL
 )
-PASS_HEADING_RE = re.compile(
-    r"^(?:### Pass|## Verification Summary\W+(?:round|pass)) (\d+)\b",
-    re.MULTILINE | re.IGNORECASE,
+# Sections a verifier writes: `## Verification Summary` (any suffix, e.g. "— round 6").
+SUMMARY_SECTION_RE = re.compile(
+    r"^## Verification Summary\b.*?(?=^## (?!Verification Summary\b)|\Z)",
+    re.MULTILINE | re.DOTALL,
 )
-RESULT_LINE_RE = re.compile(r"^\*\*Result:\*\*")
+SUMMARY_ROUND_RE = re.compile(
+    r"^## Verification Summary\W+(?:round|pass) (\d+)\b", re.MULTILINE | re.IGNORECASE
+)
+PASS_HEADING_RE = re.compile(r"^### Pass (\d+)\b", re.MULTILINE)
 RESULT_PASS_RE = re.compile(r"^\*\*Result:\*\*.*?\(pass (\d+)\b", re.MULTILINE)
-# A pass that stamped NEEDS REVISION is recorded as `(NEEDS REVISION, Dimension N)` (verify-plan
-# skill, revision routing); outside a `**Result:**` line each such record is one failed pass.
-FAILED_PASS_RE = re.compile(r"\(NEEDS REVISION\b")
 STAMP_ROUND_RE = re.compile(
     r"^<!-- Verified by /verify-plan[^>]*?\((?:round|pass) (\d+)", re.MULTILINE
 )
-ORDINALS = {
-    "first": 1,
-    "second": 2,
-    "third": 3,
-    "fourth": 4,
-    "fifth": 5,
-    "sixth": 6,
-    "seventh": 7,
-    "eighth": 8,
-    "ninth": 9,
-    "tenth": 10,
-}
-LOG_PASS_RE = re.compile(
-    r"\bpass (\d+):|\b(\d+)(?:st|nd|rd|th) (?:`?/verify-plan[^`]*`? )?pass\b|\bverify round (\d+)\b|\b("
-    + "|".join(ORDINALS)
-    + r") (?:`?/verify-plan[^`]*`? )?pass\b",
-    re.IGNORECASE,
+# A revision-log entry that records a failed pass, as the revising session writes it
+# (`/verify-plan` skill: "naming the pass's sha, its result and dimension as
+# (NEEDS REVISION, Dimension N)"): a bullet or bold line that opens with an optional date and
+# `@ <sha>`, then the verdict in parentheses with no other parenthesis before it. Spellings in the
+# committed plans: `- @ bb6c693ce — revised after the 1st pass (NEEDS REVISION, Dimension 6): …`,
+# `- 2026-11-07 @ c61599c63, pass 1: \`(NEEDS REVISION, Dimension 6)\` …`,
+# `**2026-11-03 @ 89fba5eec — after verify round 1 (NEEDS REVISION / CELL), by the plan author:**`.
+FAILED_PASS_ENTRY_RE = re.compile(
+    r"^(?:[-*] |\*\*)(?:\d{4}-\d{2}-\d{2} )?@ [0-9a-f]{7,40}\b[^()\n]*?`?\(NEEDS REVISION\b"
 )
 EXTRA_PASS_RE = re.compile(
     r"^\W*Extra verify pass (\d+):\s*owner,? \d{4}-\d{2}-\d{2},? [\"“].+[\"”]",
@@ -322,22 +317,21 @@ EXTRA_PASS_RE = re.compile(
 # name -> (body bytes, verify passes). Frozen: a grandfathered plan may not grow on either axis, and
 # no plan joins this list.
 GRANDFATHERED: dict[str, tuple[int, int]] = {
-    "plan-05dd79.md": (73765, 1),
+    "plan-05dd79.md": (68488, 1),
     "plan-0667c5.md": (88262, 1),
     "plan-0c1382.md": (75616, 1),
-    "plan-0ca7b7.md": (230312, 1),
-    "plan-11eef9.md": (50573, 1),
-    "plan-14853b.md": (73182, 1),
+    "plan-0ca7b7.md": (200973, 1),
+    "plan-11eef9.md": (46251, 1),
+    "plan-14853b.md": (35213, 1),
     "plan-155752.md": (22574, 1),
     "plan-16cca3.md": (107641, 2),
-    "plan-17ad85.md": (94208, 1),
-    "plan-1faae3.md": (22309, 1),
+    "plan-17ad85.md": (86508, 1),
     "plan-2003b4.md": (70729, 1),
     "plan-202526.md": (30583, 1),
     "plan-21d2f5.md": (22145, 4),
-    "plan-299c1b.md": (54297, 1),
+    "plan-299c1b.md": (26177, 1),
     "plan-311458.md": (80526, 1),
-    "plan-3eba57.md": (81392, 2),
+    "plan-3eba57.md": (70199, 2),
     "plan-43f241.md": (77732, 1),
     "plan-460cbf.md": (46830, 6),
     "plan-46b871.md": (32903, 1),
@@ -346,43 +340,42 @@ GRANDFATHERED: dict[str, tuple[int, int]] = {
     "plan-4e3055.md": (31634, 1),
     "plan-52c6fe.md": (68164, 1),
     "plan-5379fe.md": (81228, 1),
-    "plan-5c21c8.md": (54990, 1),
     "plan-638e8b.md": (46717, 3),
     "plan-683c8b.md": (60387, 1),
     "plan-6ca898.md": (86622, 1),
     "plan-6ce1a5.md": (54464, 1),
     "plan-6e12b5.md": (24608, 1),
-    "plan-757fbb.md": (78221, 1),
-    "plan-78c581.md": (81620, 1),
+    "plan-757fbb.md": (35709, 1),
+    "plan-78c581.md": (46796, 1),
     "plan-791d3a.md": (68169, 1),
     "plan-82187d.md": (67037, 1),
     "plan-88736c.md": (19718, 5),
     "plan-92335a.md": (32862, 1),
     "plan-950124.md": (66790, 1),
-    "plan-96f8e0.md": (89073, 1),
+    "plan-96f8e0.md": (73755, 1),
     "plan-99d863.md": (76475, 1),
-    "plan-9ef825.md": (76634, 1),
+    "plan-9ef825.md": (68192, 1),
     "plan-a79696.md": (92559, 1),
     "plan-add686.md": (51111, 1),
-    "plan-be3b1f.md": (49869, 1),
+    "plan-be3b1f.md": (46153, 1),
     "plan-be89c1.md": (51379, 1),
-    "plan-bf0244.md": (123591, 1),
+    "plan-bf0244.md": (101211, 1),
     "plan-c068ff.md": (83049, 1),
     "plan-cbdf79.md": (75282, 1),
-    "plan-d31acd.md": (71422, 1),
+    "plan-d31acd.md": (67654, 1),
     "plan-d35e69.md": (99271, 1),
     "plan-d923d3.md": (63854, 1),
     "plan-de9fe3.md": (109209, 1),
     "plan-e31e76.md": (40362, 1),
-    "plan-e39946.md": (72296, 1),
-    "plan-eaaed2.md": (34582, 3),
+    "plan-e39946.md": (61214, 1),
+    "plan-eaaed2.md": (29567, 3),
     "plan-ebd58b.md": (48375, 1),
-    "plan-ed89b6.md": (181999, 10),
+    "plan-ed89b6.md": (159097, 10),
     "plan-ee5544.md": (49372, 1),
-    "plan-f164be.md": (85545, 1),
+    "plan-f164be.md": (56747, 1),
     "plan-f4fb34.md": (50017, 1),
     "plan-f8f73c.md": (71119, 1),
-    "plan-f92797.md": (79041, 1),
+    "plan-f92797.md": (70065, 1),
     "plan-remediation-round-2026-08-13.md": (52988, 0),
     "plan-remediation-round-2026-08-18.md": (24955, 0),
     "plan-remediation-round-2026-08-22.md": (23443, 0),
@@ -408,25 +401,24 @@ def body_bytes(text: str) -> int:
 def verify_passes(text: str) -> int:
     """The number of `/verify-plan` passes the plan records.
 
-    The largest of: a numbered pass (`### Pass N`, `## Verification Summary — round N`,
-    `**Result:** … (pass N`, `Verified by /verify-plan (round N`, and in a revision log `pass N:` / `Nth pass` / `verify round N`);
-    the `(NEEDS REVISION` records outside `**Result:**` lines, plus one for the current stamp;
-    one when the plan carries a stamp.
+    The largest of: a numbered pass a verifier wrote (`### Pass N` inside a `## Verification Summary`
+    section, `## Verification Summary — round N`, `**Result:** … (pass N`, a stamp's `(round N`);
+    the failed-pass entries of the `## Revision log` (`FAILED_PASS_ENTRY_RE`), plus one for the
+    current stamp; one when the plan carries a stamp. Free text that merely mentions a pass, a
+    NEEDS REVISION verdict or a `### Pass N` design heading in the body is not counted.
     """
     stamped = 1 if VERIFY_STAMP_RE.search(text) else 0
-    numbered = [int(n) for n in PASS_HEADING_RE.findall(text)]
-    numbered += [int(n) for n in RESULT_PASS_RE.findall(text)]
+    numbered = [int(n) for n in SUMMARY_ROUND_RE.findall(text)]
     numbered += [int(n) for n in STAMP_ROUND_RE.findall(text)]
+    for section in SUMMARY_SECTION_RE.findall(text):
+        numbered += [int(n) for n in PASS_HEADING_RE.findall(section)]
+        numbered += [int(n) for n in RESULT_PASS_RE.findall(section)]
     failed = sum(
         1
-        for line in text.split("\n")
-        if FAILED_PASS_RE.search(line) and not RESULT_LINE_RE.match(line)
+        for log in REVISION_LOG_RE.findall(text)
+        for line in log.split("\n")
+        if FAILED_PASS_ENTRY_RE.match(line)
     )
-    for log in REVISION_LOG_RE.findall(text):
-        for line in log.split("\n"):
-            for g in LOG_PASS_RE.findall(line):
-                num = next((x for x in g[:3] if x), None)
-                numbered.append(int(num) if num else ORDINALS[g[3].lower()])
     return max([stamped, failed + stamped] + numbered)
 
 

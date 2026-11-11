@@ -164,3 +164,47 @@ def test_caps_all_cli(tmp_path):
     assert cpr.main([str(single), "--repo", str(tmp_path)]) == 0
     single.write_text(_plan(log=REVISED_TWICE))
     assert cpr.main([str(single), "--repo", str(tmp_path)]) == 1
+
+
+# --- reviewer's false-high cases (PR #2562): text that mentions a pass is not a recorded pass ----
+
+
+def test_design_pass_headings_in_body_are_not_verify_passes():
+    body = (
+        BODY
+        + "\n## Design Decisions\n\n### Pass 1\nbind\n\n### Pass 2\ncheck\n\n### Pass 3\nlower\n"
+    )
+    text = _plan(body=body)
+    assert cpr.verify_passes(text) == 1
+    assert cpr.cap_violations("plan-new001.md", text) == []
+
+
+def test_revision_log_ordinal_prose_is_not_a_pass():
+    log = (
+        REVISED
+        + "- @ 3333333 — D2 moves the walrus check to the third pass of the binder.\n"
+    )
+    assert cpr.verify_passes(_plan(log=log)) == 2
+
+
+def test_summary_bullet_quoting_a_verdict_is_not_a_pass():
+    summary = SUMMARY + "- previous pass (NEEDS REVISION, Dimension 6) answered by D3\n"
+    assert cpr.verify_passes(_plan(log=REVISED, summary=summary)) == 2
+
+
+def test_prose_quoting_the_verdict_format_is_not_a_pass():
+    body = (
+        BODY
+        + "\nA failed pass is logged as `(NEEDS REVISION, Dimension N)`;\n"
+        + "- the revising session writes (NEEDS REVISION, Dimension 7) on its entry.\n"
+    )
+    assert cpr.verify_passes(_plan(body=body)) == 1
+
+
+def test_implementation_checklist_is_not_body():
+    # /implement-plan adds the checklist after verification; it must not turn a compliant plan red
+    filler = "x" * (cpr.BODY_CAP_BYTES - len(BODY.encode()) - 1)
+    checklist = "\n## Implementation Checklist\n\n" + "- [x] task\n" * 500
+    text = _plan(body=BODY + filler + checklist)
+    assert cpr.body_bytes(text) == cpr.BODY_CAP_BYTES
+    assert cpr.cap_violations("plan-new001.md", text) == []
