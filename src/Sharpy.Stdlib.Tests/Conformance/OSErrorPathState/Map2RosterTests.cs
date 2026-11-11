@@ -1,3 +1,4 @@
+using System.Reflection;
 using System.Text.RegularExpressions;
 using Sharpy;
 using Xunit;
@@ -15,11 +16,13 @@ namespace Sharpy.Stdlib.Tests.Conformance.OSErrorPathState;
 /// <item><b>T5</b> — every position of every probed entry point (read off its signature) is classified
 /// <c>path</c> | <c>not a path: &lt;reason&gt;</c>, every <c>path</c> position is a placeholder of ≥ 1 probe
 /// of that entry point, and every placeholder names a <c>path</c> position.</item>
+/// <item><b>R0</b> — every public method of D1's <see cref="PathErrors"/> is stamped with exactly one
+/// requirement (<see cref="PathRequirementAttribute"/>), and every <see cref="PathRequirement"/> member has
+/// its doors: a check door and a translate door, or the pair door — read by reflection, no list.</item>
 /// <item><b>R1</b> — every <see cref="PathRequirement"/> member (by <c>Enum.GetValues</c>) is declared by
-/// ≥ 1 probe or excluded with a reason. R0 (every public door of D1's <c>PathErrors</c> stamped with
-/// exactly one requirement, every member with a door) and R2 (every (entry point, requirement) pair the
-/// stamped doors reach has a probe) land with D1's helper and its callers (W2-E, W3-F): they read the
-/// stamps by reflection and the reach from <see cref="DoorScan"/>, and are not stubbed here.</item>
+/// ≥ 1 probe or excluded with a reason. R2 (every (entry point, requirement) pair the stamped doors reach
+/// has a probe) lands with D1's Stdlib callers (W3-F): it reads the stamps by reflection and the reach
+/// from <see cref="DoorScan"/>, and is not stubbed here.</item>
 /// </list>
 /// </summary>
 public class Map2RosterTests
@@ -160,6 +163,60 @@ public class Map2RosterTests
         }
         Assert.True(Enum.GetValues<PathRequirement>().Length >= 2, "the requirement enum must be read, not empty");
         Assert.True(problems.Count == 0, "R1:\n  " + string.Join("\n  ", problems));
+    }
+
+    /// <summary>The shape of a <see cref="PathErrors"/> door, read off its parameter types.</summary>
+    private static string DoorShape(MethodInfo door)
+    {
+        var parameters = door.GetParameters().Select(p => p.ParameterType).ToArray();
+        if (parameters.SequenceEqual(new[] { typeof(string) }) && door.ReturnType == typeof(void))
+            return "check";
+        if (parameters.SequenceEqual(new[] { typeof(Exception), typeof(string) }) && door.ReturnType == typeof(Exception))
+            return "translate";
+        if (parameters.SequenceEqual(new[] { typeof(string), typeof(string) }) && door.ReturnType == typeof(void))
+            return "pair";
+        return "an unknown shape";
+    }
+
+    /// <summary>
+    /// R0 (plan-638e8b C2 axis 4, D1 predicate 4): every public method of <see cref="PathErrors"/> carries
+    /// exactly one <see cref="PathRequirementAttribute"/> and has a door shape; every requirement has
+    /// either a check door and a translate door, or the pair door, and no shape twice. The enum and the
+    /// stamp stay internal, so the classifier reserves no name a Sharpy program could declare.
+    /// </summary>
+    [Fact]
+    public void R0_EveryPublicDoor_IsStampedWithOneRequirement_AndEveryRequirementHasItsDoors()
+    {
+        var problems = new System.Collections.Generic.List<string>();
+        var doors = typeof(PathErrors).GetMethods(BindingFlags.Public | BindingFlags.Static | BindingFlags.Instance | BindingFlags.DeclaredOnly);
+        Assert.True(doors.Length >= Enum.GetValues<PathRequirement>().Length, "R0 must read the doors, not an empty surface");
+        var shapes = new Dictionary<PathRequirement, System.Collections.Generic.List<string>>();
+        foreach (var door in doors.OrderBy(d => d.ToString(), StringComparer.Ordinal))
+        {
+            var stamps = door.GetCustomAttributes<PathRequirementAttribute>(inherit: false).ToList();
+            if (stamps.Count != 1)
+            {
+                problems.Add($"{door}: {stamps.Count} requirement stamps (exactly one)");
+                continue;
+            }
+            var shape = DoorShape(door);
+            if (shape == "an unknown shape")
+                problems.Add($"{door}: {shape} (check: (string) → void; translate: (Exception, string) → Exception; pair: (string, string) → void)");
+            if (!shapes.TryGetValue(stamps[0].Requirement, out var list))
+                shapes[stamps[0].Requirement] = list = new System.Collections.Generic.List<string>();
+            list.Add(shape);
+        }
+        foreach (var requirement in Enum.GetValues<PathRequirement>())
+        {
+            var have = shapes.TryGetValue(requirement, out var list) ? list.OrderBy(s => s, StringComparer.Ordinal).ToList() : new System.Collections.Generic.List<string>();
+            var single = have.SequenceEqual(new[] { "check", "translate" });
+            var pair = have.SequenceEqual(new[] { "pair" });
+            if (!single && !pair)
+                problems.Add($"{requirement}: doors [{string.Join(", ", have)}] — want a check and a translate door, or the pair door");
+        }
+        Assert.False(typeof(PathRequirement).IsPublic, "D1.4: a public Core enum reserves its name in every program");
+        Assert.False(typeof(PathRequirementAttribute).IsPublic, "D1.4: the stamp stays internal");
+        Assert.True(problems.Count == 0, "R0:\n  " + string.Join("\n  ", problems));
     }
 
     [Fact]
