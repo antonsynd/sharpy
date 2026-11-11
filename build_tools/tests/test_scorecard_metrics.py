@@ -162,6 +162,43 @@ def test_lower_never_raises(repo):
     assert json.loads(path.read_text())["claude_md_bytes"] == 8
 
 
+def test_set_baseline_raises_only_named_keys_loudly(repo, capsys):
+    path = _baseline(repo, procedure_bytes=14, allowlist_rows_outside_seed=2)
+    assert sm.main(["--check", "--repo", str(repo), "--baseline", str(path)]) == 1
+    assert sm.main(["--lower", "--repo", str(repo), "--baseline", str(path)]) == 0
+    assert json.loads(path.read_text())["procedure_bytes"] == 14  # --lower never raises
+    rc = sm.main(
+        [
+            "--set-baseline",
+            "allowlist_rows_outside_seed",
+            "--repo",
+            str(repo),
+            "--baseline",
+            str(path),
+        ]
+    )
+    out = capsys.readouterr().out
+    assert rc == 0 and "RAISED allowlist_rows_outside_seed: 2 -> 3 (+1)" in out
+    assert "owner decision" in out and "PR body" in out
+    data = json.loads(path.read_text())
+    assert (
+        data["allowlist_rows_outside_seed"] == 3 and data["procedure_bytes"] == 14
+    )  # unnamed key kept
+    with pytest.raises(SystemExit):  # the key must be named and ratcheted
+        sm.main(["--set-baseline", "semanticinfo_dictionaries", "--repo", str(repo)])
+
+
+def test_archive_extraction_is_measured_like_a_checkout(repo, tmp_path_factory):
+    # `git archive <sha> | tar -x` has no .git: the walk must find the same tracked allowlists
+    out = tmp_path_factory.mktemp("tree")
+    _git(repo, "-c", "user.email=t@t", "-c", "user.name=t", "commit", "-qm", "x")
+    subprocess.run(
+        f"git -C {repo} archive HEAD | tar -x -C {out}", shell=True, check=True
+    )
+    assert sm.allowlist_files(out) == sm.allowlist_files(repo)
+    assert sm.measure(out) == sm.measure(repo)
+
+
 def test_missing_tracked_allowlist_is_a_clear_failure(repo, capsys):
     (repo / "src/T/foo-allowlist.txt").unlink()
     with pytest.raises(sm.MeasureError, match="src/T/foo-allowlist.txt is missing"):

@@ -9,16 +9,19 @@ Usage::
     python3 build_tools/scorecard_metrics.py --row {allowlists,cites,semanticinfo,procedure}
     python3 build_tools/scorecard_metrics.py --check [--baseline <json>] [--repo <root>]
     python3 build_tools/scorecard_metrics.py --lower [--baseline <json>] [--repo <root>]
+    python3 build_tools/scorecard_metrics.py --set-baseline KEY [--set-baseline KEY ...]
 
 ``--check`` exits 1 when a ratcheted value is above ``build_tools/scorecard-baseline.json`` (a
 regression). Below it, procedure and CLAUDE.md bytes also fail until the baseline is lowered in the
 same change, so it cannot go stale; allowlist rows below baseline only print a notice, because a
-fix that drains rows is routine. ``--lower`` writes the lower values and never raises one.
+fix that drains rows is routine. ``--lower`` writes the lower values and never raises one;
+``--set-baseline KEY`` is the only way to raise one, names the key, and prints the raise.
 """
 
 from __future__ import annotations
 
 import argparse
+import fnmatch
 import json
 import re
 import subprocess
@@ -99,6 +102,19 @@ def _is_row(line: str) -> bool:
 
 
 def allowlist_files(repo: Path) -> list[str]:
+    """Tracked ``*allowlist*.txt`` paths (git pathspec: ``*`` crosses ``/``).
+
+    A directory that is not a git checkout (e.g. a ``git archive <sha>`` extraction, which holds
+    exactly the tracked files) is walked with the same pattern instead.
+    """
+    if not (repo / ".git").exists():
+        return sorted(
+            rel
+            for rel in (
+                p.relative_to(repo).as_posix() for p in repo.rglob("*") if p.is_file()
+            )
+            if fnmatch.fnmatchcase(rel, "*allowlist*.txt")
+        )
     out = subprocess.run(
         ["git", "-C", str(repo), "ls-files", "*allowlist*.txt"],
         capture_output=True,
@@ -108,21 +124,33 @@ def allowlist_files(repo: Path) -> list[str]:
     return [line for line in out.splitlines() if line]
 
 
-def measure(repo: Path) -> Metrics:
-    files = allowlist_files(repo)
-    total = seeded = nonempty = 0
-    cites: set[str] = set()
-    for rel in files:
+def is_seed_harness(rel: str) -> bool:
+    return any(seed in Path(rel).name for seed in SEED_PLAN_FILES)
+
+
+def allowlist_rows(repo: Path) -> dict[str, list[str]]:
+    """Each tracked allowlist's rows (non-blank, non-comment lines), keyed by repo path."""
+    out = {}
+    for rel in allowlist_files(repo):
         if not (repo / rel).is_file():
             raise MeasureError(
                 f"tracked allowlist {rel} is missing from the working tree; restore it or "
                 "`git rm` it, then measure again"
             )
-        rows = [line for line in _lines(repo / rel) if _is_row(line)]
+        out[rel] = [line for line in _lines(repo / rel) if _is_row(line)]
+    return out
+
+
+def measure(repo: Path) -> Metrics:
+    by_file = allowlist_rows(repo)
+    files = list(by_file)
+    total = seeded = nonempty = 0
+    cites: set[str] = set()
+    for rel, rows in by_file.items():
         total += len(rows)
         if rows:
             nonempty += 1
-        if any(seed in Path(rel).name for seed in SEED_PLAN_FILES):
+        if is_seed_harness(rel):
             seeded += len(rows)
         for row in rows:
             cites.update(CITE_RE.findall(row))
@@ -240,6 +268,35 @@ def lower(current: Metrics, path: Path) -> list[str]:
     return changed
 
 
+def set_baseline(current: Metrics, path: Path, keys: list[str]) -> list[str]:
+    """Set each NAMED key to its measured value, raising it if need be. Never touches another key.
+
+    The only way to raise a baseline, so a raise is always a named, printed act: the caller states
+    it, with the owner's words, in the PR body.
+    """
+    unknown = [k for k in keys if k not in RATCHETED]
+    if unknown or not keys:
+        raise ValueError(
+            f"--set-baseline needs ratcheted keys from {list(RATCHETED)}; got {keys}"
+        )
+    data = json.loads(path.read_text())
+    lines = []
+    for key in keys:
+        old, now = int(data[key]), getattr(current, key)
+        if now > old:
+            lines.append(
+                f"RAISED {key}: {old} -> {now} (+{now - old}). This is an owner decision: state it, "
+                "with the owner's words and what raised it, in the PR body."
+            )
+        elif now < old:
+            lines.append(f"lowered {key}: {old} -> {now}")
+        else:
+            lines.append(f"unchanged {key}: {now}")
+        data[key] = now
+    path.write_text(json.dumps(data, indent=2) + "\n")
+    return lines
+
+
 def main(argv=None) -> int:
     ap = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
     mode = ap.add_mutually_exclusive_group(required=True)
@@ -248,6 +305,13 @@ def main(argv=None) -> int:
     )
     mode.add_argument("--check", action="store_true")
     mode.add_argument("--lower", action="store_true")
+    mode.add_argument(
+        "--set-baseline",
+        metavar="KEY",
+        action="append",
+        choices=tuple(RATCHETED),
+        help="set the named key to its measured value, raising it if need be (repeatable)",
+    )
     mode.add_argument("--json", action="store_true", help="print every measured value")
     ap.add_argument("--repo", type=Path, default=REPO_ROOT)
     ap.add_argument("--baseline", type=Path, default=DEFAULT_BASELINE)
@@ -262,6 +326,10 @@ def main(argv=None) -> int:
         return 0
     if a.json:
         print(json.dumps(m.__dict__, indent=2))
+        return 0
+    if a.set_baseline:
+        for line in set_baseline(m, a.baseline, a.set_baseline):
+            print(line)
         return 0
     if a.lower:
         for line in lower(m, a.baseline) or ["nothing to lower"]:
