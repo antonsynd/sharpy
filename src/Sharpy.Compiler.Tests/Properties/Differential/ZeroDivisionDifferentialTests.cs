@@ -292,6 +292,41 @@ public class ZeroDivisionDifferentialTests : IntegrationTestBase
     }
 
     /// <summary>
+    /// The const divisor across the import boundary: module <c>a</c> exports <c>SCALE</c> and <c>ZERO</c>;
+    /// module <c>main</c> divides by them qualified (<c>a.SCALE</c>) and imported by name (<c>from a import</c>).
+    /// A non-zero imported const stays a C# constant (a parameter default compiles), a zero one raises at
+    /// runtime, as python does (python3.15: <c>0.25</c> twice, then <c>ZeroDivisionError division by zero</c>).
+    /// </summary>
+    [Fact]
+    public void ConstNameDivisor_AcrossModules_NonZeroStaysConstant_ZeroRaises()
+    {
+        using var helper = new Helpers.ProjectCompilationHelper(Output);
+        helper.AddSourceFile("a.spy", "const SCALE: float = 4.0\nconst ZERO: float = 0.0\n");
+        helper.AddSourceFile("main.spy",
+            "import a\nfrom a import SCALE, ZERO\n\n"
+            + "def f(x: float = 1.0 / a.SCALE) -> float:\n    return x\n\n"
+            + "def g(x: float = 1.0 / SCALE) -> float:\n    return x\n\n"
+            + "def main() -> None:\n    print(f())\n    print(g())\n"
+            + "    try:\n        print(1.0 / a.ZERO)\n    except ZeroDivisionError as e:\n        print(\"ZeroDivisionError\", e)\n");
+        var run = CompileAndExecuteEntryFile(Path.Combine(helper.SourceDirectory, "main.spy"));
+        Assert.True(RanToCompletion(run), JudgeRun(run, "main.spy", "cross-module const divisor") ?? "timed out");
+        Assert.Equal("0.25\n0.25\nZeroDivisionError division by zero",
+            run.StandardOutput.Replace("\r", "", StringComparison.Ordinal).Trim());
+    }
+
+    /// <summary>A parameter default dividing by an imported const that IS zero is refused (SPY0401).</summary>
+    [Fact]
+    public void ConstNameDivisor_AcrossModules_ZeroInParameterDefault_IsRefused()
+    {
+        using var helper = new Helpers.ProjectCompilationHelper(Output);
+        helper.AddSourceFile("a.spy", "const ZERO: float = 0.0\n");
+        helper.AddSourceFile("main.spy",
+            "import a\n\ndef g(x: float = 1.0 / a.ZERO) -> float:\n    return x\n\ndef main() -> None:\n    print(g())\n");
+        var run = CompileAndExecuteEntryFile(Path.Combine(helper.SourceDirectory, "main.spy"));
+        Assert.Contains(run.RawDiagnostics, d => d.IsError && d.Code == "SPY0401");
+    }
+
+    /// <summary>
     /// Positive control for the const rule: a parameter default dividing by a const that IS zero is not a
     /// constant expression (CPython raises at definition time), so it is refused, never folded to inf.
     /// </summary>

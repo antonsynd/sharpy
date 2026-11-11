@@ -2533,7 +2533,23 @@ internal partial class TypeChecker
     /// </summary>
     private TrueDivisionRules.ConstantLookup ConstantLookup => new(
         id => LookupFoldedConst(id)?.ConstantValue,
-        id => LookupFoldedConst(id)?.FloatConstantValue);
+        id => LookupFoldedConst(id)?.FloatConstantValue,
+        LookupQualifiedConst);
+
+    /// <summary>
+    /// The const a qualified divisor names: a type member the checker resolved (<c>C.K</c>), or a module
+    /// export (<c>a.SCALE</c> after <c>import a</c>) — the imported symbol carries its folded value.
+    /// </summary>
+    private VariableSymbol? LookupQualifiedConst(MemberAccess member)
+    {
+        if (_semanticInfo.GetMemberAccessResolution(member)?.Member is VariableSymbol resolved)
+            return resolved;
+        return member.Object is Identifier root
+            && _symbolTable.Lookup(root.Name) is ModuleSymbol module
+            && module.TryGetExport(member.Member, out var exported)
+                ? exported as VariableSymbol
+                : null;
+    }
 
     private VariableSymbol? LookupFoldedConst(Identifier id)
     {

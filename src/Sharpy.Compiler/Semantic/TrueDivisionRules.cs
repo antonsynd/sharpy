@@ -18,9 +18,14 @@ internal static class TrueDivisionRules
     /// <summary>
     /// How a constant NAME resolves to its folded value: an integer const's
     /// <see cref="VariableSymbol.ConstantValue"/>, a float/decimal const's
-    /// <see cref="VariableSymbol.FloatConstantValue"/>. Null for anything that is not a folded const.
+    /// <see cref="VariableSymbol.FloatConstantValue"/>; a qualified name (<c>a.SCALE</c>, <c>C.K</c>) through
+    /// <see cref="ConstantLookup.Member"/>, the const symbol the checker resolved it to. Null for anything that is
+    /// not a folded const.
     /// </summary>
-    public sealed record ConstantLookup(Func<Identifier, BigInteger?> Integer, Func<Identifier, double?> Float);
+    public sealed record ConstantLookup(
+        Func<Identifier, BigInteger?> Integer,
+        Func<Identifier, double?> Float,
+        Func<MemberAccess, VariableSymbol?>? Member = null);
 
     /// <summary>
     /// Whether a <c>/</c> divisor is a compile-time constant known to be non-zero: a numeric literal (through
@@ -79,6 +84,19 @@ internal static class TrueDivisionRules
             case Identifier id when lookup?.Float(id) is { } folded:
                 value = folded;
                 return true;
+
+            case MemberAccess member when lookup?.Member?.Invoke(member) is { IsConstant: true } constant:
+                if (constant.ConstantValue is { } memberInteger)
+                {
+                    value = (double)memberInteger;
+                    return true;
+                }
+                if (constant.FloatConstantValue is { } memberFloat)
+                {
+                    value = memberFloat;
+                    return true;
+                }
+                break;
         }
 
         value = 0.0;
