@@ -1,4 +1,5 @@
 using Sharpy.Compiler.Diagnostics;
+using Sharpy.Compiler.Tests.Integration;
 using Sharpy.TestInfrastructure.Integration;
 using Xunit;
 using Xunit.Abstractions;
@@ -15,7 +16,7 @@ namespace Sharpy.Compiler.Tests.Semantic;
 /// pins how many SPY0488 warnings it draws, and that none of them is SPY0908; the SystemExit cells pin
 /// the one deviation (no BaseException) and its refusal, SPY0709.
 /// </summary>
-public class ExceptHandlerReachabilityTests : IntegrationTestBase
+public class ExceptHandlerReachabilityTests : StdlibAwareIntegrationTestBase
 {
     public ExceptHandlerReachabilityTests(ITestOutputHelper output) : base(output) { }
 
@@ -52,6 +53,12 @@ public class ExceptHandlerReachabilityTests : IntegrationTestBase
             "def main() -> None:\n    try:\n        raise KeyError(\"k\")\n    except LookupError:\n        print(\"lookup\")\n"
             + "    except (KeyError,):\n        print(\"one\")\n",
             "lookup", 1 },
+        // socket.timeout / socket.error are OSError-family aliases (#2579): a tuple element covered by an
+        // earlier element of the same tuple, and a later handler covered by `except OSError:`, both
+        // order-sensitive in C# (CS0160). python3.15.2 prints the same seven lines.
+        new object[] { "socket_aliases_under_oserror",
+            "import socket\n\n\ndef main() -> None:\n    try:\n        raise socket.timeout(\"t\")\n    except (OSError, socket.timeout):\n        print(\"1 tuple os-first\")\n    try:\n        raise socket.timeout(\"t\")\n    except (socket.timeout, OSError):\n        print(\"2 tuple timeout-first\")\n    try:\n        raise socket.timeout(\"t\")\n    except OSError:\n        print(\"3 os\")\n    except socket.timeout:\n        print(\"3 timeout\")\n    try:\n        raise socket.error(\"e\")\n    except (OSError, socket.error):\n        print(\"4 tuple os-first\")\n    try:\n        raise socket.error(\"e\")\n    except (socket.error, OSError):\n        print(\"5 tuple error-first\")\n    try:\n        raise socket.error(\"e\")\n    except OSError:\n        print(\"6 os\")\n    except socket.error:\n        print(\"6 error\")\n    try:\n        raise OSError(\"o\")\n    except socket.timeout:\n        print(\"10 timeout\")\n    except OSError:\n        print(\"10 os\")\n\n",
+            "1 tuple os-first\n2 tuple timeout-first\n3 os\n4 tuple os-first\n5 tuple error-first\n6 os\n10 os", 2 },
         new object[] { "bare_last_reachable",
             "def main() -> None:\n    try:\n        raise KeyError(\"k\")\n    except ValueError:\n        print(\"value\")\n"
             + "    except:\n        print(\"bare\")\n",
