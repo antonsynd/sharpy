@@ -1,4 +1,4 @@
-# Fix 4: super().__init__() not as first statement
+# A statement ahead of super().__init__() would run after it (the call is hoisted to `: base(...)`), so it is refused: SPY0292 (#2507). CPython runs it in source order (docs/deviations.yaml, constructor-chaining-call-first).
 class Base:
     value: int
 

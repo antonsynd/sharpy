@@ -157,6 +157,14 @@ deviations:
   spec_ref: docs/language_specification/variable_scoping.md
   existing_diagnostic: null
   planned_diagnostic: null
+- id: constructor-chaining-call-first
+  category: semantics
+  audience: python
+  severity: error
+  code: SPY0292
+  spec_ref: docs/language_specification/constructors.md
+  existing_diagnostic: SPY0292
+  planned_diagnostic: null
 - id: cross-type-numeric-hash
   category: semantics
   audience: python
