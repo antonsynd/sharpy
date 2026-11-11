@@ -272,10 +272,11 @@ def render(r: dict, *, strict: bool) -> tuple[str, int]:
 # * the stamp/marker comment lines on top;
 # * each record section the skills write (RECORD_SECTIONS), from its `## ` heading to the next `## `
 #   heading, its `###` subsections included;
-# * everything from the first TERMINAL_RECORDS heading to the end: /verify-implementation appends its
-#   record last, after implementation, when the plan text is final.
-# Every other `## ` section is body wherever it sits, so a record placed mid-plan hides nothing; a
-# heading-like line inside a fenced code block is not a heading. `## Revision log` is body: under the
+# * after the first TERMINAL_RECORDS heading (/verify-implementation appends it last), every section
+#   that is not a plan-template section (PLAN_SECTIONS).
+# Every other `#`/`##` section is body wherever it sits, so a record placed mid-plan hides nothing; a
+# heading-like line inside a fenced code block is not a heading, and a fence left open makes the rest
+# of the file body. `## Revision log` is body: under the
 # pass cap it is a few lines, and as a record it would be an uncapped place to answer findings, which a
 # revision does by rewriting the plan's text.
 # A plan records at most PASS_CAP `/verify-plan` passes; each pass beyond needs its own owner-ruling line:
@@ -408,26 +409,45 @@ GRANDFATHERED: dict[str, tuple[int, int]] = {
 }
 
 
-FENCE_LINE_RE = re.compile(r"^ {0,3}(```|~~~)")
-# A heading's name is its text before a `(`, `:`, an en or em dash, or a spaced hyphen.
-HEADING_SUFFIX_RE = re.compile(r"\s*[(:]|\s*[—–]|\s+-\s")
+# CommonMark: a fence is 3+ backticks or tildes (a backtick fence's info string has no backtick), closed
+# by the same character, at least as many, and nothing else on the line; an ATX heading may be indented
+# up to 3 spaces and its hashes are followed by a space or tab.
+FENCE_LINE_RE = re.compile(r"^ {0,3}(`{3,}|~{3,})(.*)$")
+HEADING_LINE_RE = re.compile(r"^ {0,3}(#{1,2})[ \t]+(.*?)(?:[ \t]+#+)?[ \t]*$")
 
 
-def h2_headings(text: str) -> list[tuple[int, str]]:
-    """(offset, heading text) of each `## ` line outside fenced code blocks."""
+def scan_headings(text: str) -> tuple[list[tuple[int, int, str]], int | None]:
+    """(offset, level, text) of each `#`/`##` heading outside fenced code, and the offset of a fence
+    left open at the end of the file (None when every fence closes)."""
     out, pos, fence = [], 0, None
     for line in text.splitlines(keepends=True):
         bare = line.rstrip("\r\n")
         m = FENCE_LINE_RE.match(bare)
-        if m:
-            if fence is None:
-                fence = m.group(1)
-            elif bare.lstrip().startswith(fence):
-                fence = None
-        elif fence is None and bare.startswith("## "):
-            out.append((pos, bare[3:].strip()))
+        if fence is None:
+            if m and not (m.group(1)[0] == "`" and "`" in m.group(2)):
+                fence = (m.group(1)[0], len(m.group(1)), pos)
+            else:
+                h = HEADING_LINE_RE.match(bare)
+                if h:
+                    out.append((pos, len(h.group(1)), h.group(2).strip()))
+        elif (
+            m
+            and m.group(1)[0] == fence[0]
+            and len(m.group(1)) >= fence[1]
+            and not m.group(2).strip()
+        ):
+            fence = None
         pos += len(line)
-    return out
+    return out, (fence[2] if fence else None)
+
+
+def h2_headings(text: str) -> list[tuple[int, str]]:
+    """(offset, heading text) of each `## ` heading outside fenced code blocks."""
+    return [(p, h) for p, level, h in scan_headings(text)[0] if level == 2]
+
+
+# A heading's name is its text before a `(`, `:`, an en or em dash, or a spaced hyphen.
+HEADING_SUFFIX_RE = re.compile(r"\s*[(:]|\s*[—–]|\s+-\s")
 
 
 def heading_name(heading: str) -> str:
@@ -443,26 +463,31 @@ def record_key(heading: str) -> str | None:
 
 
 def sections(text: str) -> list[tuple[str, str]]:
-    """(heading text, section text from its `## ` line to the next one) for each `## ` section."""
-    hs = h2_headings(text)
+    """(heading text, section text to the next `#`/`##` heading) for each `## ` section."""
+    hs = scan_headings(text)[0]
     return [
         (h, text[p : hs[i + 1][0] if i + 1 < len(hs) else len(text)])
-        for i, (p, h) in enumerate(hs)
+        for i, (p, level, h) in enumerate(hs)
+        if level == 2
     ]
 
 
 def plan_body(text: str) -> str:
     """The plan without its records (see the comment above BODY_CAP_BYTES)."""
-    hs = h2_headings(text)
-    first = next((i for i, (_, h) in enumerate(hs) if record_key(h)), None)
+    hs, unclosed = scan_headings(text)
+    if (
+        unclosed is not None
+    ):  # an unclosed fence hides nothing: the rest of the file is body
+        return plan_body(text[:unclosed]) + text[unclosed:]
+    is_record = [level == 2 and record_key(h) for _, level, h in hs]
+    first = next((i for i, r in enumerate(is_record) if r), None)
     head = text[: hs[first][0]] if first is not None else text
-    below = []
+    below, terminal = [], False
     for i in range(first if first is not None else len(hs), len(hs)):
-        start, heading = hs[i]
-        key = record_key(heading)
-        if key in TERMINAL_RECORDS:
-            break
-        if not key:
+        start, level, heading = hs[i]
+        terminal = terminal or is_record[i] in TERMINAL_RECORDS
+        # after the terminal record only a plan-template section is body
+        if not is_record[i] and (not terminal or (level == 2 and section_key(heading))):
             below.append(text[start : hs[i + 1][0] if i + 1 < len(hs) else len(text)])
     lines = head.split("\n")
     i = 0

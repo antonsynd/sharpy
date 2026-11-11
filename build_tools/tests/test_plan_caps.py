@@ -397,8 +397,17 @@ def test_any_non_record_section_below_a_record_is_body(below):
         "## implementation checklist\n\n",
         "## Verification Summary — round 2\n\n### Pass 2\n\n",
         "## Verification Summary - round 2\n\n",  # an ASCII hyphen ends the name like a dash
-        "## Implementation Verification Record\n\n## Acceptance\n\nauditor evidence\n",
         "## Implementation Verification Report\n\n### Regressions\n\n",
+        "## Implementation Verification Record\n\n## Auditor notes\n\n",
+        # a record's own content is not body, whatever it holds (accepted, not a hole the measure
+        # can close: a reader of the plan sees it)
+        CHECKLIST + "\n### Design notes\n\n",
+        CHECKLIST
+        + "\n##Design Decisions\n\n",  # no space after the hashes: not a heading
+        "## Implementation Checklist - wave 2 design\n\n",
+        "## Verification Summary (and design notes)\n\n",
+        "## Implementation Checklist ##\n\n",
+        "## Implementation Checklist   \n\n",
     ],
 )
 def test_record_sections_and_the_terminal_record_are_not_body(below):
@@ -406,6 +415,47 @@ def test_record_sections_and_the_terminal_record_are_not_body(below):
     text = ADV_HEAD + below + ADV_FILL
     assert cpr.body_bytes(text) == len((ADV_HEAD.split("\n", 1)[1]).encode())
     assert cpr.cap_violations("plan-new001.md", text) == []
+
+
+DD = "## Design Decisions\n\n" + ADV_FILL
+
+
+@pytest.mark.parametrize(
+    "text",
+    [
+        # a plan section after the terminal record is still body
+        ADV_HEAD + "## Implementation Verification Record\n\n(pending)\n\n" + DD,
+        ADV_HEAD + "## implementation verification record:\n\n" + DD,
+        "## Implementation Verification Report\n\n" + ADV_HEAD + DD,
+        ADV_HEAD
+        + "## Implementation Verification Record\n\n## Acceptance\n\n"
+        + ADV_FILL,
+        "## Verification Summary\n\n" + ADV_HEAD + DD,
+        "## Implementation Checklist\n\n# T\n\n" + ADV_FILL,
+        # a fence left open makes the rest of the file body
+        ADV_HEAD + "```\n## Implementation Checklist\n" + ADV_FILL,
+        ADV_HEAD + CHECKLIST + "\n```\n## Design Decisions\n\n" + ADV_FILL,
+        # a fence closes only on its own character, at least as long, with nothing after it
+        ADV_HEAD + CHECKLIST + "\n~~~\n```\n~~~\n" + DD,
+        ADV_HEAD + CHECKLIST + "\n````\n```\n````\n" + DD,
+        ADV_HEAD
+        + "```python\n## Implementation Checklist\n```python\n## still in?\n"
+        + ADV_FILL,
+        ADV_HEAD + "````\n```\n## Implementation Checklist\n```\n````\n" + ADV_FILL,
+        ADV_HEAD + "```\n```python\n## Implementation Checklist\n```\n```\n" + ADV_FILL,
+        # headings CommonMark recognises: indented up to 3 spaces, a tab after the hashes, `#`
+        ADV_HEAD + CHECKLIST + "\n  ## Design Decisions\n\n" + ADV_FILL,
+        ADV_HEAD + CHECKLIST + "\n##\tDesign Decisions\n\n" + ADV_FILL,
+        ADV_HEAD + CHECKLIST + "\n# Design Decisions\n\n" + ADV_FILL,
+        ADV_HEAD + CHECKLIST + "\n<!--\n## Design Decisions\n-->\n" + ADV_FILL,
+        ADV_HEAD + "<!--\n" + ADV_FILL + "-->\n",
+    ],
+)
+def test_early_records_open_fences_and_heading_forms_hide_nothing(text):
+    # mutation records: plan sections after the terminal record dropped; the unclosed-fence rule
+    # removed; fences closed by any fence line; headings only at column 0 with a space -> each red
+    assert cpr.body_bytes(text) > 30_000
+    assert cpr.cap_violations("plan-new001.md", text)
 
 
 def test_revision_log_counts_wherever_it_sits():
