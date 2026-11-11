@@ -22,8 +22,10 @@
 
   <ItemGroup>
     <None Include="$(MSBuildThisFileDirectory)../../nuget/SharpyLang.Stdlib.README.md" Pack="true" PackagePath="\README.md" />
-    <!-- Licence notices for third-party code compiled into this assembly (CPython, Datetime/DatetimeIso.cs) -->
-    <None Include="$(MSBuildThisFileDirectory)../../THIRD-PARTY-NOTICES.txt" Pack="true" PackagePath="\" />
+    <!-- Licence notices for third-party code compiled into this assembly (CPython, Datetime/DatetimeIso.cs):
+         at the nupkg root, and at the root of every publish output that carries this assembly (the
+         release zips; it flows to sharpyc's publish through the project references). Not in build output. -->
+    <None Include="$(MSBuildThisFileDirectory)../../THIRD-PARTY-NOTICES.txt" Link="THIRD-PARTY-NOTICES.txt" Pack="true" PackagePath="\" CopyToPublishDirectory="PreserveNewest" />
   </ItemGroup>
 
   <ItemGroup>
