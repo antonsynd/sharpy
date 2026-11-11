@@ -10,8 +10,15 @@ Sharpy is run as a benevolent dictatorship (see [GOVERNANCE.md](GOVERNANCE.md)):
 
 ## Prerequisites
 
-- [.NET 10 SDK](https://dotnet.microsoft.com/download)
+- [.NET 10 SDK](https://dotnet.microsoft.com/download) (Sharpy targets `net10.0`; .NET 11 is not supported yet, see #2548)
 - Python 3 (for verifying language semantics)
+
+On Linux or macOS, `build_tools/setup_env.sh` installs all of it: the .NET 10 SDK as
+`dotnet`, the .NET 11 SDK in its own directory as `dotnet11` (off PATH, for when #2548
+lands), the local .NET tools, CPython 3.15 plus the CI oracle version in `.python-version`
+(via uv), and a `.venv` with the `build_tools` dependencies. Run
+`build_tools/setup_env.sh --help` for options (`--build` builds and smoke-tests), then
+`source .venv/sharpy-env.sh` in each shell.
 
 ## Build and Test
 

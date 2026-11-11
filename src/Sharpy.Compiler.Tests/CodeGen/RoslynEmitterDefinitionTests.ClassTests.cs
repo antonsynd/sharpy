@@ -930,4 +930,57 @@ public partial class RoslynEmitterDefinitionTests
 
     #endregion
 
+    #region Constructor chaining invariant (#2507)
+
+    private static Module ChildWithSuperInitAt(int index)
+    {
+        var call = new ExpressionStatement
+        {
+            Expression = new FunctionCall
+            {
+                Function = new MemberAccess { Object = new SuperExpression(), Member = "__init__" }
+            }
+        };
+        var body = new List<Statement> { new PassStatement() };
+        body.Insert(index, call);
+        var baseClass = new ClassDef
+        {
+            Name = "Base",
+            Body = ImmutableArray.Create<Statement>(new PassStatement())
+        };
+        var child = new ClassDef
+        {
+            Name = "Child",
+            BaseClasses = ImmutableArray.Create(new TypeAnnotation { Name = "Base" }),
+            Body = ImmutableArray.Create<Statement>(new FunctionDef
+            {
+                Name = "__init__",
+                Parameters = ImmutableArray.Create(new Parameter { Name = "self" }),
+                Body = body.ToImmutableArray()
+            })
+        };
+        return new Module { Body = ImmutableArray.Create<Statement>(baseClass, child) };
+    }
+
+    [Fact]
+    public void GenerateConstructor_ChainingCallFirst_HoistsToBaseInitializer()
+    {
+        var code = _emitter.GenerateRecordedCompilationUnit(ChildWithSuperInitAt(0)).NormalizeWhitespace().ToFullString();
+
+        Assert.Contains(": base()", code);
+    }
+
+    [Fact]
+    public void GenerateConstructor_ChainingCallAfterAStatement_IsAnInternalError()
+    {
+        // The checker refuses this (SPY0292); reaching the emitter is a checker bug, so the emitter fails
+        // loudly instead of hoisting the call above the statement written before it.
+        var ex = Assert.Throws<Sharpy.Compiler.Diagnostics.InternalCompilerErrorException>(
+            () => _emitter.GenerateRecordedCompilationUnit(ChildWithSuperInitAt(1)));
+
+        Assert.Contains("constructor chaining call at body index 1", ex.Message);
+    }
+
+    #endregion
+
 }

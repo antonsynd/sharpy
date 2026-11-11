@@ -7,7 +7,7 @@
 #              zero-guard (an assertion against 0), drained-empty (an equality assertion against 0), non-integer (no
 #              integer literal on the line), code-site-roster / spec-file-roster (every member reading it reaches a
 #              src/ or docs/language_specification/ root and no corpus enumerator), generator-roster (its file group
-#              reads no corpus enumerator), rate-tolerance (a RefusalCeilingPercent/SampledRangeLineCeilingPercent row),
+#              reads no corpus enumerator), rate-tolerance (a RefusalRatioBoundPercent, RefusalCorpusCeilingPercent or CensusCellsPerThousandStemsCeiling row: a ratio),
 #              set-file (a plan-88736c D3 set file). Evidence only, reviewed by the lead in this file's diff at each
 #              gate: tuning-constant (evidence: the identifier), fixed-input (evidence: the named stems, or the member
 #              that reads no corpus). in: a count a new fixture can move, which plan-88736c D3 converted to a set file: none may remain.
@@ -103,6 +103,14 @@ Sharpy.Compiler.Tests/Lowering/IrTotalityTests.cs | Assert.Equal(3, lambdas.Coun
 Sharpy.Compiler.Tests/Lowering/IrTotalityTests.cs | Assert.Equal(4, CollectNodes<IrOptionalWrappedElement>(ir).Count); | ×1 | fixed-input | in-test input of OptionalWalrusStore_LowersAtItsOwnSite_NestedUnderAnUnpackingElement
 Sharpy.Compiler.Tests/Lowering/IrTotalityTests.cs | Assert.Equal(5, CollectNodes<IrOptionalWalrusStore>(ir).Count); | ×1 | fixed-input | in-test input of OptionalWalrusStore_LowersAtItsOwnSite_NestedUnderAnUnpackingElement
 Sharpy.Compiler.Tests/Lowering/IrTotalityTests.cs | Assert.Equal(5, walruses.Count); | ×1 | fixed-input | in-test input of OptionalWalrusStore_LowersAtItsOwnSite_NestedUnderAnUnpackingElement
+Sharpy.Compiler.Tests/Lowering/OptionalStoreWrapAgreementTests.cs | Assert.Equal(0, emptyIrContexts); | ×1 | zero-guard | no emitter unit over IrCompilation.Empty
+Sharpy.Compiler.Tests/Lowering/OptionalStoreWrapAgreementTests.cs | Assert.True(fixtures.Count > 0, "No fixtures discovered — corpus is empty, guard is vacuous"); | ×1 | floor | lower bound
+Sharpy.Compiler.Tests/Lowering/OptionalStoreWrapAgreementTests.cs | Assert.True(fixturesExamined > 0, "no fixture declares an Optional slot — the prefilter selects nothing"); | ×1 | floor | lower bound
+Sharpy.Compiler.Tests/Lowering/OptionalStoreWrapAgreementTests.cs | Assert.True(tally.Augmented > 0, $"no augmented store under an Optional slot was checked: {tally}"); | ×1 | floor | lower bound
+Sharpy.Compiler.Tests/Lowering/OptionalStoreWrapAgreementTests.cs | Assert.True(tally.ElementWrap > 0 && tally.ElementNoWrap > 0, $"unpacking elements need both sides: {tally}"); | ×1 | floor | lower bound
+Sharpy.Compiler.Tests/Lowering/OptionalStoreWrapAgreementTests.cs | Assert.True(tally.PlainWrap > 0 && tally.PlainNoWrap > 0, $"plain stores need both sides: {tally}"); | ×1 | floor | lower bound
+Sharpy.Compiler.Tests/Lowering/OptionalStoreWrapAgreementTests.cs | Assert.True(tally.WalrusWrap > 0 && tally.WalrusNoWrap > 0, $"walrus stores need both sides: {tally}"); | ×1 | floor | lower bound
+Sharpy.Compiler.Tests/Lowering/RequiredIrCoverageTests.cs | Assert.True(fixtures.Count > 0, "No fixtures discovered — corpus is empty, guard is vacuous"); | ×1 | floor | lower bound
 Sharpy.Compiler.Tests/Parser/ContextualKeywordPredicateConformanceTests.cs | files.Length.Should().BeGreaterThan(8, "the scan must see the parser partials and the AST files, not an empty directory"); | ×2 | floor | lower bound
 Sharpy.Compiler.Tests/Parser/UnterminatedFinalLineParserTests.cs | module.Body.Should().HaveCount(2, "both functions must survive, not merely the diagnostic disappear"); | ×1 | fixed-input | in-test input of UnterminatedConst_YieldsAWholeTree_NotJustAnAbsentError
 Sharpy.Compiler.Tests/Project/MasterRegistryImmutabilityTests.cs | Assert.Equal(1, symbolFileWrites); | ×1 | fixed-input | in-test input of NoCompilerSourceWritesAParameterElementPastTheFreeze
@@ -146,13 +154,13 @@ Sharpy.Compiler.Tests/Properties/Semantic/TypedGeneratorRosterTests.cs | Assert.
 Sharpy.Compiler.Tests/Properties/Semantic/TypedGeneratorRosterTests.cs | Assert.True(pairsTested > 0, "no spec file names a code — the universe or the pattern is broken"); | ×1 | floor | lower bound
 Sharpy.Compiler.Tests/Properties/Semantic/TypedGeneratorRosterTests.cs | Assert.True(result.RowsTested > 0, "no Y-generated row was checked — the control is vacuous"); | ×1 | floor | lower bound
 Sharpy.Compiler.Tests/Properties/Semantic/TypedGeneratorRosterTests.cs | private const int ExpectedByDesign = 17; | ×1 | spec-file-roster | counts docs/language_specification files and rows
-Sharpy.Compiler.Tests/Properties/Semantic/TypedGeneratorRosterTests.cs | private const int ExpectedKnownRed = 5; | ×1 | spec-file-roster | counts docs/language_specification files and rows
+Sharpy.Compiler.Tests/Properties/Semantic/TypedGeneratorRosterTests.cs | private const int ExpectedKnownRed = 4; | ×1 | spec-file-roster | counts docs/language_specification files and rows
 Sharpy.Compiler.Tests/Properties/Semantic/TypedGeneratorRosterTests.cs | private const int ExpectedN = 181; | ×1 | spec-file-roster | counts docs/language_specification files and rows
 Sharpy.Compiler.Tests/Properties/Semantic/TypedGeneratorRosterTests.cs | private const int ExpectedNoConstruct = 4; | ×1 | spec-file-roster | counts docs/language_specification files and rows
-Sharpy.Compiler.Tests/Properties/Semantic/TypedGeneratorRosterTests.cs | private const int ExpectedRows = 202; | ×1 | spec-file-roster | counts docs/language_specification files and rows
+Sharpy.Compiler.Tests/Properties/Semantic/TypedGeneratorRosterTests.cs | private const int ExpectedRows = 204; | ×1 | spec-file-roster | counts docs/language_specification files and rows
 Sharpy.Compiler.Tests/Properties/Semantic/TypedGeneratorRosterTests.cs | private const int ExpectedSpecFiles = 125; | ×1 | spec-file-roster | counts docs/language_specification files and rows
-Sharpy.Compiler.Tests/Properties/Semantic/TypedGeneratorRosterTests.cs | private const int ExpectedYGenerated = 103; | ×1 | spec-file-roster | counts docs/language_specification files and rows
-Sharpy.Compiler.Tests/Properties/Semantic/TypedGeneratorRosterTests.cs | private const int ExpectedYInjected = 90; | ×1 | spec-file-roster | counts docs/language_specification files and rows
+Sharpy.Compiler.Tests/Properties/Semantic/TypedGeneratorRosterTests.cs | private const int ExpectedYGenerated = 105; | ×1 | spec-file-roster | counts docs/language_specification files and rows
+Sharpy.Compiler.Tests/Properties/Semantic/TypedGeneratorRosterTests.cs | private const int ExpectedYInjected = 93; | ×1 | spec-file-roster | counts docs/language_specification files and rows
 Sharpy.Compiler.Tests/Properties/Semantic/TypedGeneratorRosterTests.cs | private const int RawSamples = 40; | ×1 | tuning-constant | RawSamples
 Sharpy.Lsp.Tests/Analysis/SemanticTokenCoverageTests.cs | Assert.True(spyFiles.Count > 0, "No .spy files found"); | ×1 | floor | lower bound
 Sharpy.Lsp.Tests/Conformance/CodeActionShapeSweepTests.cs | Actions.Length.Should().Be(14); | ×1 | code-site-roster | counts compiler/LSP/Stdlib source or code-site rows
@@ -170,20 +178,49 @@ Sharpy.Lsp.Tests/Conformance/CodeActionShapeSweepTests.cs | regions.Should().Hav
 Sharpy.Lsp.Tests/Conformance/CodeActionShapeSweepTests.cs | s_cells.GetValueOrDefault((spec.Name, twin)).Should().BeGreaterThan(0, $"the sweep judges ≥ 1 {spec.Name} cell on the {twin} twin"); | ×1 | floor | lower bound
 Sharpy.Lsp.Tests/Conformance/CodeActionShapeSweepTests.cs | stringStatement.LineEnd.Should().Be(9, "the parser fact P47 works around (ledgered as #2295)"); | ×1 | fixed-input | in-test input of BuildRequests_HandDocument_CoversEveryKindItAdmits
 Sharpy.Lsp.Tests/Conformance/FormattingRouteParitySweepTests.cs | .Should().HaveCount(7); | ×1 | fixed-input | in-test input of Allowlist_RefusesCliAndFullRowsOnParseableStates_AndMalformedRows
-Sharpy.Lsp.Tests/Conformance/FormattingRouteParitySweepTests.cs | [(RangeBlock, Comment)] = 1, | ×1 | rate-tolerance | one-sided refusal ceiling (R-DK decision-rule instrument; residual for #2458)
-Sharpy.Lsp.Tests/Conformance/FormattingRouteParitySweepTests.cs | [(RangeBlock, Identity)] = 1, | ×1 | rate-tolerance | one-sided refusal ceiling (R-DK decision-rule instrument; residual for #2458)
-Sharpy.Lsp.Tests/Conformance/FormattingRouteParitySweepTests.cs | [(RangeBlock, Wide)] = 32, | ×1 | rate-tolerance | one-sided refusal ceiling (R-DK decision-rule instrument; residual for #2458)
-Sharpy.Lsp.Tests/Conformance/FormattingRouteParitySweepTests.cs | [(RangeLine, Comment)] = 12, | ×1 | rate-tolerance | one-sided refusal ceiling (R-DK decision-rule instrument; residual for #2458)
-Sharpy.Lsp.Tests/Conformance/FormattingRouteParitySweepTests.cs | [(RangeLine, Identity)] = 4, | ×1 | rate-tolerance | one-sided refusal ceiling (R-DK decision-rule instrument; residual for #2458)
-Sharpy.Lsp.Tests/Conformance/FormattingRouteParitySweepTests.cs | [(RangeLine, Wide)] = 54, | ×1 | rate-tolerance | one-sided refusal ceiling (R-DK decision-rule instrument; residual for #2458)
-Sharpy.Lsp.Tests/Conformance/FormattingRouteParitySweepTests.cs | [(RangeStatement, Comment)] = 1, | ×1 | rate-tolerance | one-sided refusal ceiling (R-DK decision-rule instrument; residual for #2458)
-Sharpy.Lsp.Tests/Conformance/FormattingRouteParitySweepTests.cs | [(RangeStatement, Identity)] = 1, | ×1 | rate-tolerance | one-sided refusal ceiling (R-DK decision-rule instrument; residual for #2458)
-Sharpy.Lsp.Tests/Conformance/FormattingRouteParitySweepTests.cs | [(RangeStatement, Wide)] = 6, | ×1 | rate-tolerance | one-sided refusal ceiling (R-DK decision-rule instrument; residual for #2458)
-Sharpy.Lsp.Tests/Conformance/FormattingRouteParitySweepTests.cs | [(RangeWhole, Comment)] = 1, | ×1 | rate-tolerance | one-sided refusal ceiling (R-DK decision-rule instrument; residual for #2458)
-Sharpy.Lsp.Tests/Conformance/FormattingRouteParitySweepTests.cs | [(RangeWhole, Identity)] = 1, | ×1 | rate-tolerance | one-sided refusal ceiling (R-DK decision-rule instrument; residual for #2458)
-Sharpy.Lsp.Tests/Conformance/FormattingRouteParitySweepTests.cs | [(RangeWhole, Wide)] = 1, | ×1 | rate-tolerance | one-sided refusal ceiling (R-DK decision-rule instrument; residual for #2458)
-Sharpy.Lsp.Tests/Conformance/FormattingRouteParitySweepTests.cs | [Comment] = 6, | ×1 | rate-tolerance | one-sided refusal ceiling (R-DK decision-rule instrument; residual for #2458)
-Sharpy.Lsp.Tests/Conformance/FormattingRouteParitySweepTests.cs | [Identity] = 9, | ×1 | rate-tolerance | one-sided refusal ceiling (R-DK decision-rule instrument; residual for #2458)
+Sharpy.Lsp.Tests/Conformance/FormattingRouteParitySweepTests.cs | ParseRefusalExceptions(new[] { "wide range-line a/b 1/1 sampled # #2538 r", "wide range-line a/b 2/2 full # #2538 r" }).Should().HaveCount(2); | ×1 | fixed-input | in-test input of RefusalBound_NamesASpike_PinsAnExceptionsCounts_AndNamesAStaleOne (no corpus enumerator in the member)
+Sharpy.Lsp.Tests/Conformance/FormattingRouteParitySweepTests.cs | [("known-limit-S6k", Comment)] = 2, | ×1 | rate-tolerance | CensusCellsPerThousandStemsCeiling: exemption cells per 1,000 corpus stems (R-MY, #2538); raised by hand with an open-issue cite
+Sharpy.Lsp.Tests/Conformance/FormattingRouteParitySweepTests.cs | [("known-limit-S6k", Cr)] = 2, | ×1 | rate-tolerance | CensusCellsPerThousandStemsCeiling: exemption cells per 1,000 corpus stems (R-MY, #2538); raised by hand with an open-issue cite
+Sharpy.Lsp.Tests/Conformance/FormattingRouteParitySweepTests.cs | [("known-limit-S6k", Crlf)] = 2, | ×1 | rate-tolerance | CensusCellsPerThousandStemsCeiling: exemption cells per 1,000 corpus stems (R-MY, #2538); raised by hand with an open-issue cite
+Sharpy.Lsp.Tests/Conformance/FormattingRouteParitySweepTests.cs | [("known-limit-S6k", Identity)] = 2, | ×1 | rate-tolerance | CensusCellsPerThousandStemsCeiling: exemption cells per 1,000 corpus stems (R-MY, #2538); raised by hand with an open-issue cite
+Sharpy.Lsp.Tests/Conformance/FormattingRouteParitySweepTests.cs | [("known-limit-S6k", Wide)] = 2, | ×1 | rate-tolerance | CensusCellsPerThousandStemsCeiling: exemption cells per 1,000 corpus stems (R-MY, #2538); raised by hand with an open-issue cite
+Sharpy.Lsp.Tests/Conformance/FormattingRouteParitySweepTests.cs | [("known-limit-S6ok", Comment)] = 15, | ×1 | rate-tolerance | CensusCellsPerThousandStemsCeiling: exemption cells per 1,000 corpus stems (R-MY, #2538); raised by hand with an open-issue cite
+Sharpy.Lsp.Tests/Conformance/FormattingRouteParitySweepTests.cs | [("known-limit-S6ok", Cr)] = 53, | ×1 | rate-tolerance | CensusCellsPerThousandStemsCeiling: exemption cells per 1,000 corpus stems (R-MY, #2538); raised by hand with an open-issue cite
+Sharpy.Lsp.Tests/Conformance/FormattingRouteParitySweepTests.cs | [("known-limit-S6ok", Crlf)] = 53, | ×1 | rate-tolerance | CensusCellsPerThousandStemsCeiling: exemption cells per 1,000 corpus stems (R-MY, #2538); raised by hand with an open-issue cite
+Sharpy.Lsp.Tests/Conformance/FormattingRouteParitySweepTests.cs | [("known-limit-S6ok", Identity)] = 53, | ×1 | rate-tolerance | CensusCellsPerThousandStemsCeiling: exemption cells per 1,000 corpus stems (R-MY, #2538); raised by hand with an open-issue cite
+Sharpy.Lsp.Tests/Conformance/FormattingRouteParitySweepTests.cs | [("known-limit-S6ok", Wide)] = 53, | ×1 | rate-tolerance | CensusCellsPerThousandStemsCeiling: exemption cells per 1,000 corpus stems (R-MY, #2538); raised by hand with an open-issue cite
+Sharpy.Lsp.Tests/Conformance/FormattingRouteParitySweepTests.cs | [(ParityExemptMeasure, Comment)] = 2060, | ×1 | rate-tolerance | CensusCellsPerThousandStemsCeiling: exemption cells per 1,000 corpus stems (R-MY, #2538); raised by hand with an open-issue cite
+Sharpy.Lsp.Tests/Conformance/FormattingRouteParitySweepTests.cs | [(ParityExemptMeasure, Cr)] = 603, | ×1 | rate-tolerance | CensusCellsPerThousandStemsCeiling: exemption cells per 1,000 corpus stems (R-MY, #2538); raised by hand with an open-issue cite
+Sharpy.Lsp.Tests/Conformance/FormattingRouteParitySweepTests.cs | [(ParityExemptMeasure, Crlf)] = 603, | ×1 | rate-tolerance | CensusCellsPerThousandStemsCeiling: exemption cells per 1,000 corpus stems (R-MY, #2538); raised by hand with an open-issue cite
+Sharpy.Lsp.Tests/Conformance/FormattingRouteParitySweepTests.cs | [(ParityExemptMeasure, Full, "a/b")] = 1, | ×1 | fixed-input | in-test input of CensusTotals_CountRowsAndCells_AndEveryRangeRoutesWork (no corpus enumerator in the member)
+Sharpy.Lsp.Tests/Conformance/FormattingRouteParitySweepTests.cs | [(ParityExemptMeasure, Identity)] = 603, | ×1 | rate-tolerance | CensusCellsPerThousandStemsCeiling: exemption cells per 1,000 corpus stems (R-MY, #2538); raised by hand with an open-issue cite
+Sharpy.Lsp.Tests/Conformance/FormattingRouteParitySweepTests.cs | [(ParityExemptMeasure, Wide)] = 303, | ×1 | rate-tolerance | CensusCellsPerThousandStemsCeiling: exemption cells per 1,000 corpus stems (R-MY, #2538); raised by hand with an open-issue cite
+Sharpy.Lsp.Tests/Conformance/FormattingRouteParitySweepTests.cs | [(RangeBlock, Comment)] = 3, | ×1 | rate-tolerance | RefusalCorpusCeilingPercent: corpus refusal ratio (R-MY, #2538); raised by hand with an open-issue cite
+Sharpy.Lsp.Tests/Conformance/FormattingRouteParitySweepTests.cs | [(RangeBlock, Identity)] = 3, | ×1 | rate-tolerance | RefusalCorpusCeilingPercent: corpus refusal ratio (R-MY, #2538); raised by hand with an open-issue cite
+Sharpy.Lsp.Tests/Conformance/FormattingRouteParitySweepTests.cs | [(RangeBlock, Wide)] = 42, | ×1 | rate-tolerance | RefusalCorpusCeilingPercent: corpus refusal ratio (R-MY, #2538); raised by hand with an open-issue cite
+Sharpy.Lsp.Tests/Conformance/FormattingRouteParitySweepTests.cs | [(RangeLine, Comment)] = 14, | ×1 | rate-tolerance | RefusalCorpusCeilingPercent: corpus refusal ratio (R-MY, #2538); raised by hand with an open-issue cite
+Sharpy.Lsp.Tests/Conformance/FormattingRouteParitySweepTests.cs | [(RangeLine, Identity)] = 11, | ×1 | rate-tolerance | RefusalCorpusCeilingPercent: corpus refusal ratio (R-MY, #2538); raised by hand with an open-issue cite
+Sharpy.Lsp.Tests/Conformance/FormattingRouteParitySweepTests.cs | [(RangeLine, Wide)] = 65, | ×1 | rate-tolerance | RefusalCorpusCeilingPercent: corpus refusal ratio (R-MY, #2538); raised by hand with an open-issue cite
+Sharpy.Lsp.Tests/Conformance/FormattingRouteParitySweepTests.cs | [(RangeStatement, Comment)] = 2, | ×1 | rate-tolerance | RefusalCorpusCeilingPercent: corpus refusal ratio (R-MY, #2538); raised by hand with an open-issue cite
+Sharpy.Lsp.Tests/Conformance/FormattingRouteParitySweepTests.cs | [(RangeStatement, Identity)] = 3, | ×1 | rate-tolerance | RefusalCorpusCeilingPercent: corpus refusal ratio (R-MY, #2538); raised by hand with an open-issue cite
+Sharpy.Lsp.Tests/Conformance/FormattingRouteParitySweepTests.cs | [(RangeStatement, Wide)] = 16, | ×1 | rate-tolerance | RefusalCorpusCeilingPercent: corpus refusal ratio (R-MY, #2538); raised by hand with an open-issue cite
+Sharpy.Lsp.Tests/Conformance/FormattingRouteParitySweepTests.cs | [(RangeWhole, Comment)] = 2, | ×1 | rate-tolerance | RefusalCorpusCeilingPercent: corpus refusal ratio (R-MY, #2538); raised by hand with an open-issue cite
+Sharpy.Lsp.Tests/Conformance/FormattingRouteParitySweepTests.cs | [(RangeWhole, Identity)] = 2, | ×1 | rate-tolerance | RefusalCorpusCeilingPercent: corpus refusal ratio (R-MY, #2538); raised by hand with an open-issue cite
+Sharpy.Lsp.Tests/Conformance/FormattingRouteParitySweepTests.cs | [(RangeWhole, Wide)] = 3, | ×1 | rate-tolerance | RefusalCorpusCeilingPercent: corpus refusal ratio (R-MY, #2538); raised by hand with an open-issue cite
+Sharpy.Lsp.Tests/Conformance/FormattingRouteParitySweepTests.cs | [(RefusedWorkMeasure, RangeLine, "a/b")] = 3, | ×1 | fixed-input | in-test input of CensusTotals_CountRowsAndCells_AndEveryRangeRoutesWork (no corpus enumerator in the member)
+Sharpy.Lsp.Tests/Conformance/FormattingRouteParitySweepTests.cs | [(RefusedWorkMeasure, RangeLine, "a/c")] = 2, | ×1 | fixed-input | in-test input of CensusTotals_CountRowsAndCells_AndEveryRangeRoutesWork (no corpus enumerator in the member)
+Sharpy.Lsp.Tests/Conformance/FormattingRouteParitySweepTests.cs | [(RangeBlock, Comment)] = 5, | ×1 | rate-tolerance | per-stem refusal-ratio bound (R-MY, #2538): judges each stem alone
+Sharpy.Lsp.Tests/Conformance/FormattingRouteParitySweepTests.cs | [(RangeBlock, Identity)] = 5, | ×1 | rate-tolerance | per-stem refusal-ratio bound (R-MY, #2538): judges each stem alone
+Sharpy.Lsp.Tests/Conformance/FormattingRouteParitySweepTests.cs | [(RangeBlock, Wide)] = 90, | ×1 | rate-tolerance | per-stem refusal-ratio bound (R-MY, #2538): judges each stem alone
+Sharpy.Lsp.Tests/Conformance/FormattingRouteParitySweepTests.cs | [(RangeLine, Comment)] = 5, | ×1 | rate-tolerance | per-stem refusal-ratio bound (R-MY, #2538): judges each stem alone
+Sharpy.Lsp.Tests/Conformance/FormattingRouteParitySweepTests.cs | [(RangeLine, Identity)] = 5, | ×1 | rate-tolerance | per-stem refusal-ratio bound (R-MY, #2538): judges each stem alone
+Sharpy.Lsp.Tests/Conformance/FormattingRouteParitySweepTests.cs | [(RangeLine, Wide)] = 100, | ×1 | rate-tolerance | per-stem refusal-ratio bound at 100%: judges nothing by design (wide range-line refuses by construction); its volume is RefusalCorpusCeilingPercent
+Sharpy.Lsp.Tests/Conformance/FormattingRouteParitySweepTests.cs | [(RangeStatement, Comment)] = 5, | ×1 | rate-tolerance | per-stem refusal-ratio bound (R-MY, #2538): judges each stem alone
+Sharpy.Lsp.Tests/Conformance/FormattingRouteParitySweepTests.cs | [(RangeStatement, Identity)] = 5, | ×1 | rate-tolerance | per-stem refusal-ratio bound (R-MY, #2538): judges each stem alone
+Sharpy.Lsp.Tests/Conformance/FormattingRouteParitySweepTests.cs | [(RangeStatement, Wide)] = 70, | ×1 | rate-tolerance | per-stem refusal-ratio bound (R-MY, #2538): judges each stem alone
+Sharpy.Lsp.Tests/Conformance/FormattingRouteParitySweepTests.cs | [(RangeWhole, Comment)] = 5, | ×1 | rate-tolerance | per-stem refusal-ratio bound (R-MY, #2538): judges each stem alone
+Sharpy.Lsp.Tests/Conformance/FormattingRouteParitySweepTests.cs | [(RangeWhole, Identity)] = 5, | ×1 | rate-tolerance | per-stem refusal-ratio bound (R-MY, #2538): judges each stem alone
+Sharpy.Lsp.Tests/Conformance/FormattingRouteParitySweepTests.cs | [(RangeWhole, Wide)] = 5, | ×1 | rate-tolerance | per-stem refusal-ratio bound (R-MY, #2538): judges each stem alone
 Sharpy.Lsp.Tests/Conformance/FormattingRouteParitySweepTests.cs | [S1] = new[] { Full, RangeWhole, RangeStatement, RangeBlock, OnType }, | ×1 | non-integer | route/bucket/name table row
 Sharpy.Lsp.Tests/Conformance/FormattingRouteParitySweepTests.cs | [S2] = new[] { Cli, Full, RangeWhole, RangeStatement, RangeBlock, RangeLine, OnType }, | ×1 | non-integer | route/bucket/name table row
 Sharpy.Lsp.Tests/Conformance/FormattingRouteParitySweepTests.cs | [S3] = new[] { Full, RangeWhole, RangeLine, OnType }, | ×1 | non-integer | route/bucket/name table row
@@ -197,7 +234,6 @@ Sharpy.Lsp.Tests/Conformance/FormattingRouteParitySweepTests.cs | [S6ok] = new[]
 Sharpy.Lsp.Tests/Conformance/FormattingRouteParitySweepTests.cs | [S6r] = new[] { Full, RangeWhole, RangeLine, OnType }, | ×1 | non-integer | route/bucket/name table row
 Sharpy.Lsp.Tests/Conformance/FormattingRouteParitySweepTests.cs | [S6x] = new[] { Full, RangeWhole, RangeLine, OnType }, | ×1 | non-integer | route/bucket/name table row
 Sharpy.Lsp.Tests/Conformance/FormattingRouteParitySweepTests.cs | [S7] = new[] { Full, RangeWhole, RangeLine, OnType }, | ×1 | non-integer | route/bucket/name table row
-Sharpy.Lsp.Tests/Conformance/FormattingRouteParitySweepTests.cs | [Wide] = 55, | ×1 | rate-tolerance | one-sided refusal ceiling (R-DK decision-rule instrument; residual for #2458)
 Sharpy.Lsp.Tests/Conformance/FormattingRouteParitySweepTests.cs | d.Lines.Should().HaveCount(6); | ×1 | fixed-input | in-test input of PositiveControl_Whole_OnACrDocument_RangeWholeKeepsCr
 Sharpy.Lsp.Tests/Conformance/FormattingRouteParitySweepTests.cs | d1.Hunks.Should().HaveCount(2); | ×1 | fixed-input | in-test input of SelectionRule_D1_MainsBodyDoesNotTakeTheBlankLinesAbove
 Sharpy.Lsp.Tests/Conformance/FormattingRouteParitySweepTests.cs | d1.Hunks.Where(h => Selects(h, 1, 2, n)).Should().ContainSingle().Which.Start.Should().Be(2); | ×1 | fixed-input | in-test input of SelectionRule_D1_MainsBodyDoesNotTakeTheBlankLinesAbove
@@ -218,6 +254,7 @@ Sharpy.Stdlib.Tests/Conformance/NuGetModuleCoverageTests.cs | ["MathNet.Numerics
 Sharpy.Stdlib.Tests/Conformance/NuGetModuleCoverageTests.cs | ["Microsoft.Data.Sqlite"] = new[] { "sqlite3" }, | ×1 | non-integer | route/bucket/name table row
 Sharpy.Stdlib.Tests/Conformance/NuGetModuleCoverageTests.cs | ["Tomlyn"] = new[] { "toml" }, | ×1 | non-integer | route/bucket/name table row
 Sharpy.Stdlib.Tests/Conformance/NuGetModuleCoverageTests.cs | ["YamlDotNet"] = new[] { "yaml" }, | ×1 | non-integer | route/bucket/name table row
+Sharpy.Stdlib.Tests/Conformance/OSErrorPathState/Map2RosterTests.cs | Assert.True(Enum.GetValues<PathRequirement>().Length >= 2, "the requirement enum must be read, not empty"); | ×1 | floor | lower bound
 Sharpy.Stdlib.Tests/Conformance/StdlibClrThrowScanTests.cs | Assert.True(counts.Count > 0 || Directory.Exists(root), "the Stdlib source root was not found"); | ×1 | floor | lower bound
 Sharpy.Stdlib.Tests/Conformance/StdlibFixtureShardTotalityTests.cs | private const int ExpectedShardClasses = 4; | ×1 | fixed-input | reflection over this assembly's Stdlib fixture shard classes (no fixture moves it)
 Sharpy.Stdlib.Tests/Conformance/StdlibModuleGlobalRosterTests.cs | Assert.True(census.Declared.Count >= 5, "control: the synthetic statics are scanned"); | ×1 | floor | lower bound

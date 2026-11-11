@@ -19,4 +19,6 @@ $ARGUMENTS
 EOF
 ```
 
+The oracle is CPython 3.15, the minor in the repo-root `.python-version` (CLAUDE.md rule 6). Run `python3 --version` first; when the host's `python3` is older and a `python3.15` is on `PATH`, use that instead, and state the minor you ran with the output.
+
 After showing the output, note whether Sharpy can match this behavior exactly or if .NET semantics differ (Axiom 1 wins over Axiom 2 when they conflict).

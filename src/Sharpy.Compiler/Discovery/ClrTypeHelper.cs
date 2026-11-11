@@ -1,3 +1,5 @@
+extern alias SharpyRT;
+
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Frozen;
@@ -29,6 +31,15 @@ internal static class ClrTypeHelper
     // Caches (CLR type, CLR generic definition full name) -> that definition within the type's
     // supertype closure, for provenance-scoped assignability (#1260).
     private static readonly ConcurrentDictionary<(Type, string), Type?> _originDefinitionCache = new();
+
+    /// <summary>
+    /// Whether <paramref name="clrType"/> carries Core's <c>[PythonBaseException]</c> marker: a type
+    /// CPython roots at <c>BaseException</c> (<c>SystemExit</c>) that Sharpy roots at
+    /// <see cref="System.Exception"/> (#2363). Matched by the attribute's full name, so a type loaded
+    /// for inspection only answers the same as one loaded for execution.
+    /// </summary>
+    internal static bool IsPythonBaseExceptionType(Type clrType)
+        => clrType.CustomAttributes.Any(a => a.AttributeType.FullName == typeof(SharpyRT::Sharpy.PythonBaseExceptionAttribute).FullName);
 
     /// <summary>
     /// Resolves the original CLR method name on <paramref name="clrType"/> whose reverse-mangled

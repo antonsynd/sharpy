@@ -6,7 +6,13 @@ on:
     paths:
       - 'docs/**'
       - 'mkdocs.yml'
-      - 'build_tools/generate_stdlib_docs.py'
+      # `python -m build_tools stdlib generate` imports most of build_tools/ through cli.py; the
+      # interpreter, and the settings the playground build reads
+      # (build_tools/tests/test_workflow_relevance.py).
+      - 'build_tools/**'
+      - '.python-version'
+      - 'Directory.Build.props'
+      - '.editorconfig'
       - 'src/Sharpy.Playground/**'
       - 'src/Sharpy.Compiler/**'
       - 'src/Sharpy.Core/**'
@@ -64,7 +70,7 @@ jobs:
 
       # Combine into single site
       - name: Copy playground into docs site
-        run: cp -r playground-release/wwwroot site/playground
+        run: cp -r playground-release/wwwroot site/playground && cp playground-release/THIRD-PARTY-NOTICES.txt site/playground/
 
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v5

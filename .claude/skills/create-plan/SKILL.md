@@ -1,17 +1,18 @@
 ---
 name: create-plan
 description: Create an implementation plan from GitHub issues or a description
-argument-hint: "<issue numbers or description> [--light | --full]"
+argument-hint: "<issue numbers or description> [--light | --full] | revise <plan path or id>"
 ---
 
 Read `docs/design/verification-contract.md` before proceeding (§10 file-by-class, §11 one-group-per-plan and §12 the verification tier included); every section below applies it. Read `docs/design/python-fidelity-scope.md` when any input is a Python-parity cell.
 
-Create an implementation plan for an engineer to follow, at the **tier the charter set for the group** (contract §12): a `full` plan carries the task list, phases and commit messages below; a `light` plan is a one-page design-of-record (Scope, Defect Class, Design Decisions with rungs, acceptance bullets with their mutations, Issues to Close with close criteria) and no task list — the implementer sequences the work, and `/verify-plan` grades only its matrix, guards and design predicates. Saves the plan as a **draft** in `.claude/plans/` (repo-local, gitignored); `/verify-plan` copies a passing plan to `docs/process/plans/<plan-id>.md` and commits it, and that committed copy is what `/implement-plan` and `/verify-implementation` read (policy: `docs/process/README.md`).
+Create an implementation plan for an engineer to follow, at the **tier the charter set for the group** (contract §12): a `full` plan carries the phases and task list below; a `light` plan is the one-page design-of-record of the light template. Writes the working copy in `.claude/plans/` and commits it as a **draft** to `docs/process/plans/<plan-id>.md` on the plan's branch (§3.1; `docs/process/README.md` › The stage trail).
 
 **Usage:**
 - `/create-plan 222,223,224,225,226` — read GitHub issues and create a plan at the charter's tier
 - `/create-plan 222,223 --light` / `--full` — force a tier; recorded as `override:` in `## Scope` when it differs from the charter
 - `/create-plan fix the 5 bugs from the audit` — create a plan from a description (no charter row → the tier is derived from the §12 letters and stated)
+- `/create-plan revise docs/process/plans/plan-a1b2c3.md` (or `revise plan-a1b2c3`) — revise that plan: after a NEEDS REVISION pass, or a draft on the owner's instruction (see **Revising a plan**)
 - `/create-plan` — ask the user what to plan
 
 ## Argument Handling
@@ -20,13 +21,27 @@ Parse `$ARGUMENTS`:
 - Strip a trailing `--light` or `--full` and remember it as the requested tier
 - If it looks like comma-separated numbers (e.g., `222,223,224`), treat them as GitHub issue numbers
 - If it looks like a description, use it as the planning goal
-- If empty, ask the user what they want to plan. If they want to extend or re-plan an existing plan, list the three newest drafts and the three newest committed plans and ask which one — never silently pick one:
-  ```bash
-  ls -t .claude/plans/*.md 2>/dev/null | head -3          # drafts (gitignored) — a NEEDS REVISION plan is revised here
-  ls -t docs/process/plans/*.md 2>/dev/null | head -3     # committed, verified plans — this skill does not edit them
-  ```
-  A revision edits the draft in `.claude/plans/`; the committed copy under `docs/process/plans/` changes only when a `/verify-plan` pass stamps the revision PASS or CONVERGED and commits it. Re-planning an already-committed plan starts by copying it back to `.claude/plans/` as the draft.
-- Before revising the plan the user picked, read its stamp (contract §12 Convergence). **`CONVERGED`** → do not revise: say the next step is `/implement-plan <path>` (the `### Deferred findings` rows are its first task) and stop. **`NEEDS REVISION`** → revise only what the Verification Summary names, and write the `## Revision log` line as `@ <sha> — revised after the <n>th pass (NEEDS REVISION, Dimension N): …` so the next verifier can apply the Convergence rule (the stamp is deleted; the log line is the only carrier of the dimension). A finding that asks for a roster is answered by naming the compiler enumeration, the map and its totality assertion with its mutation — never by copying a census count into the plan: the count is the test's literal constant (as `ScopeKindRosterTests` keeps its own) and goes stale at the next commit.
+- If the first word is `revise`, the rest names ONE existing plan: a path under `docs/process/plans/` or `.claude/plans/`, or a bare plan-id (`plan-a1b2c3`, resolved to `docs/process/plans/plan-a1b2c3.md`). Go to **Revising a plan** below; the Scope check, the Tier check and Steps 1–3 as written are for a NEW plan and do not run. `revise` with no plan, or with a name that resolves to no file, lists the newest plans (the two commands below) and asks which — never guess. A `--light` / `--full` flag next to `revise` is a tier change, which is the owner's: ask, and record the answer as `override:` in `## Scope`
+- If empty, ask the user what they want to plan. To re-plan an existing plan, list the three newest (`ls -t docs/process/plans/*.md | head -3`), ask which — never pick silently — and follow **Revising a plan**.
+
+## Revising a plan (`revise <plan path or id>`)
+
+A revision is plan-author work on an existing file of record. It runs in a **fresh context**, never in the session that stamped the plan (`/verify-plan` Output §5), and it changes only what it was asked to change.
+
+1. **Sync and locate.** `git fetch origin` and read the file of record at the tip of the plan's branch (working-copy rules: `docs/process/README.md` › The stage trail). The revision ends by committing it (§3.1).
+2. **Read the first line — it decides what a revision may do** (contract §12 Convergence):
+
+   | First line | What `revise` does |
+   |---|---|
+   | `<!-- DRAFT, not verified …` | Revise as the user directs; there is no pass to answer. |
+   | stamp, result **NEEDS REVISION** | Revise only what the `## Verification Summary` names — every finding of every graded dimension, the design-decision predicates and the Unchecked Claims. |
+   | stamp, result **CONVERGED** | Do not revise: say the next step is `/implement-plan <path>` (the `### Deferred findings` rows are its first task) and stop. |
+   | stamp, result **PASS** / **PASS WITH CORRECTIONS** | A revision discards that verdict. Say so and ask before editing anything. |
+
+3. **Owner-only questions first, in one batch.** An Unchecked Claim that needs the owner's word, a `worked` → refused change (contract §3), a tier or scope change and an unruled door are asked once, each with its options and a recommendation, before the design is rewritten around them. Each answer is recorded in the plan as the owner's words with the date (`## Scope` `override:` for a tier or scope answer; the Defect Class `Owner rulings` row for the rest), lettered at the next `/batch-issues`.
+4. **Answer each finding at its class, by rewriting the text it names.** Replace, never append: no answer paragraph, pass history or superseded decision beside its replacement. Net body growth per revision ≤ +3 KB. Re-measure what the pass measured before building on it (`run`, at a named sha). A finding against a generator's enumeration, map or totality assertion is answered by a new stage-0 commit (contract §11) and the counts the plan cites — never by adding the cell to the plan. A finding the revision declines keeps its reason in the revision-log line, not dropped.
+5. **Reset the record.** Delete the stale stamp lines and the whole `## Verification Summary` (a left-over stamp is read by `/implement-plan` as the current verdict). Append ONE `## Revision log` line: `@ <the pass's sha> — revised after the <n>th pass (NEEDS REVISION, Dimension N): <the decisions changed>`. The stamp and summary are gone, so this line alone carries the dimension the Convergence rule needs and, when the pass drafted the Defect Class, `drafted Defect Class: confirmed` or `drafted Defect Class: replaced`. A revised draft that had no pass writes `@ <sha> — revised before the first pass: …`.
+6. **Check, commit, report.** `check_plan_refs.py`, then §3.1 with the subject `process(plan): <plan-id> (<group>) revised after pass <n>`, then the Report (§4) plus each finding and how it was answered, the body bytes before → after, the owner's answers, what was re-measured, and the next step `/verify-plan <path>` **in a fresh context**.
 
 ## Scope check (before any research)
 
@@ -35,14 +50,52 @@ A plan implements **one non-chore group** of the round charter and lands on **on
 ## Tier check (contract §12, before any research)
 
 Find the group's row in the newest charter (`ls -t docs/process/rounds/remediation-round-*-batching.md | head -1`, §1 table and §3 row) and read its **Tier**. Then:
-- **Charter says `band`** — stop: a chore has no plan; implement it as one commit and say so.
-- **Charter says `light`** and no `--full` was given — write the **light template** (below). The report names `/verify-plan <path>` as the next step; on a light plan it runs its `--adequacy` pass (Dimensions 4-design, 6 and 7 by a fresh reader, nothing else).
-- **Charter says `full`** — write the full template; the report names `/verify-plan` as the next step.
+- **Charter says `band`** (or no charter row and no §12 letter) — stop: it has no plan; implement it as one commit, or as the no-plan lane (`docs/process/README.md`), and say so; either way its PR merges only after the independent review.
+- **Charter says `light`** (and no `--full`) — write the light template (below); **`full`** — the full template (§3).
 - **No charter row** (description input, or an issue batched since the last call) — derive the tier yourself from the §12 letters (a–e), write the letter or "none → light" into `## Scope`, and say in the report that the tier is derived, not ruled.
 - **A flag disagrees with the charter** — obey the flag, write `override: <the user's words>` in `## Scope`, and say so in the report. Never silently promote or demote.
-- **Research moves a light group onto a §12 letter** (an unruled decision surfaces, the seam turns out to be in `Semantic/`·`Lowering/`·`CodeGen/`, the matrix needs a generator) — stop, say which letter, and ask whether to promote; a promotion is written into `## Scope` as `tier: full (<letter>, promoted at /create-plan: <reason>)`.
+- **Research moves a light group onto a §12 letter** (an unruled decision surfaces, the seam turns out to be in `Semantic/`·`Lowering/`·`CodeGen/`, the matrix needs a generator) — stop and say which letter; a generator makes the group `full` outright (§12 (b)), any other letter asks whether to promote; a promotion is written into `## Scope` as `tier: full (<letter>, promoted at /create-plan: <reason>)`.
 
-**Light template** = the full template with these omissions and nothing else: `## Current State` is one measured paragraph, `## Adversarial Review` keeps only the inert-fix and blast-radius lines, `## Implementation` is **replaced** by `## Acceptance` — the class-level acceptance bullets (matrix/sweep that goes green, guard mutation, allowlist drain, execution evidence) with no phases, tasks or commit messages — and `## Testing Strategy` folds into it. Everything else (`## Scope` with `tier: light`, `## Defect Class`, `## Design Decisions` with rungs, `## Issues to Close` with close criteria, `## Class trackers`) is written in full: those are the decisions an implementer must not re-derive. Run `python3 build_tools/check_plan_refs.py <plan>` before reporting — the light `--adequacy` pass corrects nothing inline, so this is the author's reference check, and the report quotes its result.
+**Light template.** One page is the goal (§3's caps apply): the decisions an implementer must not re-derive, and no phases, tasks or testing strategy — the implementer sequences the work. Defect Class and Adversarial Review follow §3's rule for bug inputs. The `--adequacy` pass corrects nothing inline, so §3.1's `check_plan_refs.py` run is the reference check.
+
+```markdown
+# <Plan Title>
+
+## Context
+
+<The issues and the measured state @ <sha>, ≤ 2.5 KB: numbers, no narrative>
+
+## Scope
+
+- **Group:** <P<n> — name> · **Tier:** light — <charter §3.<k> | derived, not ruled | override: <words>> · **Gates:** 1
+
+## Defect Class
+
+- **Violated contract:** <one sentence> · **Meta-class → cure:** <§1 row> · **Known cells:** #NNN …
+- **Matrix:** <the arms of every touched dispatch site, beyond the repro lists> · **Generator:** not required: <why>
+- **Standing harness:** <name, or the A<n> that adds one> · **Lane / reach / fidelity row:** <…> · **Owner rulings:** <links>
+
+## Adversarial Review
+
+- **Inert fix:** <the fallback one call later, and the probe that rules it out>
+- **Blast radius:** <test projects and sweeps reached>
+
+## Design Decisions
+
+- **D<n>.** <decision> — rung <1–4>: <why no lower rung carries it>; predicate: <the claim about the code a reader checks>
+
+## Acceptance
+
+- **A<n>.** <matrix/sweep that goes green, allowlist drain, or execution evidence @ sha> — **M<n>:** <break → red>; positive control for an absence
+
+## Issues to Close
+
+- #NNN — **close criterion:** A<n> @ sha
+
+## Class trackers this plan may post cells to
+
+- #NNN — <class>
+```
 
 ## Steps
 
@@ -72,11 +125,17 @@ Before writing the plan:
 - Find mirrored/parallel sites: if the fix lands in one arm of a switch, dispatch table, or per-position handler, enumerate the other arms — a plan that patches one arm without a completeness scan is not a plan
 - Note which generated artifacts the change reaches (spy-stdlib C#, spy-test C#, stdlib docs, oracle ledger) and which test projects (CLAUDE.md › Testing › Commit gate)
 
-Any `dotnet` command you run while researching goes through `.claude/scripts/dotnet-serialized` with `dangerouslyDisableSandbox: true` (raw `dotnet` is hook-blocked); prefer `/spy-run`, `/spy-emit`, `/quick-check`.
+Research `dotnet` runs go through `.claude/scripts/dotnet-serialized` with `dangerouslyDisableSandbox: true` (raw `dotnet` is hook-blocked); prefer `/spy-run`, `/spy-emit`, `/quick-check`.
+
+### 2.1. Stage 0 (generator groups)
+
+If the matrix has ≥2 axes × ≥3 values or the group is a residue, the group is `full`: cut the plan's branch (§3.1's first command) and land stage 0 now, as contract §11 says; the plan cites its sha and counts.
 
 ### 3. Generate the plan
 
-Write a plan file to `.claude/plans/` with a random name (use `openssl rand -hex 3` for a short hex suffix, e.g., `plan-a1b2c3.md`; the stem is the plan-id, and `/verify-plan` commits the passing plan as `docs/process/plans/plan-a1b2c3.md`). Do not commit the draft.
+Write a plan file to `.claude/plans/` with a random name (use `openssl rand -hex 3` for a short hex suffix, e.g., `plan-a1b2c3.md`; the stem is the plan-id, and the plan's file of record is `docs/process/plans/plan-a1b2c3.md`). §3.1 commits the draft there once it is written.
+
+**Caps (R-LW), at both tiers:** body ≤ 20,480 bytes, ≤ 2 verify passes, checked by `check_plan_refs.py` (§3.1), which also reports the section budgets the templates state.
 
 The plan must follow this structure. `## Defect Class` and `## Adversarial Review` are **mandatory when any input is a bug, ICE, or regression issue**; omit them (with the line "Defect Class: N/A — feature work") only for pure feature work.
 
@@ -85,13 +144,15 @@ The plan must follow this structure. `## Defect Class` and `## Adversarial Revie
 
 ## Context
 
-<What problem this solves, why it matters, links to GitHub issues>
+<The problem and its issues. With Current State ≤ 2.5 KB: numbers at a sha, no narrative>
 
 ## Current State
 
 <What exists today, what's broken or missing — measured @ <sha>>
 
 ## Scope
+
+<With Issues to Close and Class trackers ≤ 2 KB>
 
 - **Group:** <P<n> — name> (one non-chore group; chores riding along: <none | #… — seam-free because …>)
 - **Tier:** <light | full (<letter a–e>: <one clause>)> — <from charter §3.<k> | derived, not ruled | override: <words>> (contract §12)
@@ -105,14 +166,15 @@ The plan must follow this structure. `## Defect Class` and `## Adversarial Revie
 - **Violated contract:** <one sentence — what is supposed to be uniform across which axis>
 - **Meta-class:** <from the standard-cure table, verification-contract.md §1> → **standard cure:** <seam / sweep / harness>
 - **Known member cells:** #NNN … (the issues)
-- **Sibling cells this plan must also cover:** <enumerated matrix — the issue repro list is a symptom report. When the plan IS the generator, this is NOT a cell list: name each axis as the image of a compiler enumeration (an enum, a switch's arms, a roster test's census) under an explicit map, the totality assertion that keeps the map closed (and its mutation), the excluded axes with reasons, and the verdict as a RULE keyed on axis-value classes; hand-measured cells go in one "measured at base" table as the red floor, never as matrix rows — a cell a later reader finds by hand means a roster is open, and the revision closes the roster, never adds the cell>
+- **Sibling cells this plan must also cover:** <enumerated matrix — the issue repro list is a symptom report. With stage 0: none; see Generator>
 - **Lane / reach:** <lane · program|probe>; **fidelity-scope row:** <COMPARED row | promoted by R-xx>
 - **Standing harness that should have caught it:** <name> — or "none; Phase N adds one"
-- **Generator:** <existing differential/generative harness the cells join | REQUIRED FIRST — the matrix has ≥2 axes × ≥3 values or the group is a residue (P11b, P14c): Phase 1 builds the generator and its allowlist ratchet and the fix drains it | not required: <the axis a generator cannot enumerate>>
+- **Generator:** <existing harness the cells join | stage 0 (§2.1) `<Type>` @ <sha>: <n> cases, <k> known-red rows; excluded axes with reasons; rows this plan turns green, by D<n> | not required: <the axis a generator cannot enumerate>>
 - **Owner rulings:** <issue-comment links; authoritative, do not re-ask>
 
 ## Adversarial Review (pre-mortem)
 
+<≤ 1.5 KB>
 - **Alternative root cause:** <what else explains the symptom; the probe that discriminates>
 - **Alternative layer:** <the lower ladder rung that could carry the fact — `.spy` source, dunder-table C#, protocol interface, operator overload — and the reason it cannot, or the plan moves there>
 - **How the fix could be inert:** <fallback path one call later? decision duplicated in a sibling arm?>
@@ -122,11 +184,7 @@ The plan must follow this structure. `## Defect Class` and `## Adversarial Revie
 
 ## Design Decisions
 
-<Key architectural choices with rationale. Reference Sharpy axioms where relevant:
-- Axiom 1 (.NET compatibility) > Axiom 2 (Type safety) > Axiom 3 (Python syntax)
-- Reference docs/language_specification/ where applicable
-- Every fact codegen reads is materialized in semantic analysis (Symbol.CodeGenInfo or a node-keyed SemanticInfo dictionary added to MergeFrom)
-- Every decision names its layer-ladder rung (1 `.spy` / 2 Core C# in dunder spelling / 3 CLR-identity bridge rule / 4 name-keyed semantic rule) and why the lower rungs cannot carry the fact>
+<Key choices with rationale: axiom precedence (.NET > type safety > Python syntax), the spec section, where semantic analysis materializes each fact codegen reads (Symbol.CodeGenInfo, or a SemanticInfo dictionary in MergeFrom), and each decision's layer-ladder rung (1 `.spy` / 2 Core C# in dunder spelling / 3 CLR-identity bridge / 4 name-keyed) with why lower rungs cannot carry the fact>
 
 ## Implementation
 
@@ -142,18 +200,14 @@ The plan must follow this structure. `## Defect Class` and `## Adversarial Revie
 
 #### Tasks
 
-1. **<Task title>** — <file(s) involved>
-   - <Specific change description>
-   - <Acceptance criteria — which bullet above this task satisfies>
-   - Commit: `<conventional commit message>`
-
-2. ...
+- **T<n>. <Task title>** — <file(s) involved>
+  - <Specific change description>
+  - <Acceptance criteria — which bullet above this task satisfies>
 
 ### Phase N+1: ...
 
 ## Testing Strategy
 
-- <Generator first (contract §11): the differential/generative harness over the matrix and its allowlist, or the axis it cannot enumerate and the hand matrix that covers only that axis>
 - <New test fixtures needed (.spy + .expected/.error)> — for every negative fixture, the positive control that must keep passing
 - <Edge cases to cover — cells outside the issues' repro lists; change axis when the spellings you vary all agree>
 - <Outputs that discriminate — an example that prints the same thing with the bug present proves nothing>
@@ -162,7 +216,7 @@ The plan must follow this structure. `## Defect Class` and `## Adversarial Revie
 
 ## Issues to Close
 
-- #NNN — <title> — closed by Phase N, Task M; **close criterion:** <the acceptance bullet and the evidence it needs @ sha>
+- #NNN — <title> — closed by T<m>; **close criterion:** <the acceptance bullet and the evidence it needs @ sha>
 - ...
 
 ## Class trackers this plan may post cells to
@@ -172,24 +226,38 @@ The plan must follow this structure. `## Defect Class` and `## Adversarial Revie
 
 **Plan quality requirements:**
 - Tasks follow the feature implementation order: Lexer -> Parser -> Semantic -> Validation -> Lowering (if an IR shape changes) -> CodeGen -> LSP -> Tests
-- Each task has a specific conventional commit message
-- Enough context and rationale for a junior/senior engineer (or a smaller model) to implement unambiguously
+- Tasks, decisions and mutations are named by id (`T3`, `D2`, `M1`); a plan carries no commit messages
+- Enough rationale for any engineer, or a smaller model, to implement unambiguously
 - Incremental commits — each task is independently committable
 - A plan that fixes one arm of a mirrored/parallel-site structure without a completeness scan is not a plan
 - A plan with a second non-chore group, or an output/layout-changing phase sharing a gate, is not a plan (contract §11) — split it
-- A residue group or a ≥2-axis × ≥3-value matrix without a generator-first phase is not a plan (contract §11) — hand matrices found the next axis six rounds running; and a generator plan whose axes are hand LISTS rather than rosters closed against a compiler enumeration is a hand matrix wearing a generator (eight adequacy passes on plan-ed89b6 each found one more value of one listed axis)
+- A residue group or a ≥2-axis × ≥3-value matrix without its stage 0 (§2.1; a generator needing a product hook is T1 instead) is not a plan; one whose axes are hand lists is a hand matrix wearing a generator
 - The plan names the class trackers it posts cells to and never instructs an implementer to `gh issue create` (contract §10)
 - A design decision that adds a name-keyed (`BuiltinNames.X`, type-name string) rule in `Semantic/` or `CodeGen/` without a rung justification is not a plan (layer ladder, CLAUDE.md › Core & Stdlib Conventions)
 - Every new test/guard/harness comes with the mutation that turns it red (verification-contract.md §2)
 - The plan names which generated artifacts it touches and schedules their regeneration early (§7), and names its blast radius (CLAUDE.md › Testing › Commit gate)
 - GitHub issues referenced and mapped to closing tasks, each with its close criterion
-- No hard-coded model names or commit trailers — implementers use the trailer the harness provides
+- No hard-coded model names or commit trailers
+
+### 3.1. Commit the draft
+
+A draft is committed from the moment it is written: the gitignored working copy does not survive its container. Run `python3 build_tools/check_plan_refs.py .claude/plans/<plan-id>.md` and fix what it flags. The branch is cut once from `origin/dev` and carries every stage (`docs/process/README.md` › The stage trail): `claude/<group>-plan` for a `full` plan, `claude/<group>` for a `light` one.
+
+```bash
+git fetch origin dev && git switch -c <branch> origin/dev   # unless §2.1 cut it; then `git switch <branch>`
+{ echo '<!-- DRAFT, not verified: written by /create-plan on YYYY-MM-DD @ <sha>; no /verify-plan pass has stamped this text. -->'
+  echo; cat .claude/plans/<plan-id>.md; } > docs/process/plans/<plan-id>.md
+git add docs/process/plans/<plan-id>.md           # explicit pathspec; `git diff --cached --stat` shows this one file
+git commit -m "process(plan): <plan-id> (<group>) draft"
+```
+
+Only the committed copy carries the DRAFT marker, so `/verify-plan` can stamp the working copy's first line. A revision writes `revised by /create-plan on YYYY-MM-DD @ <sha> after pass <n>` in the marker. Then `/push`; a `full` plan opens its one pull request into `dev` on the first push (body: group, tier, issues, the `check_plan_refs.py` result, the next step), and a `light` plan opens none — it rides in the implementation's. With stage 0 on it, the plan pull request changes code: README item 4 says who reviews and merges it.
 
 ### 4. Report
 
 Tell the user:
-- The draft's path (`.claude/plans/<plan-id>.md`) — `/verify-plan` commits the passing copy to `docs/process/plans/`
+- The committed path, its commit and branch (and a `full` plan's pull request URL)
 - A brief summary of phases and task count
 - For bug/ICE inputs: the class, the matrix size, and the standing harness named (or the phase that adds one)
 - The scope line: group, **tier with its letter and its source (charter / derived / override)**, alone?, gates, generator (existing / built first / not required), and the trackers named
-- The next step **by tier** (contract §12): `full` → `/verify-plan <path>` (nine dimensions) before `/implement-plan <path>`; `light` → `/verify-plan <path>` (runs `--adequacy`: matrix arms, guard mutations, design predicates — by a fresh reader) before `/implement-plan <path>`, quoting the `check_plan_refs.py` result
+- The next step: `/verify-plan <path>` (nine dimensions at `full`; `--adequacy` at `light`: matrix arms, guard mutations, design predicates, by a fresh reader) before `/implement-plan <path>`, quoting the `check_plan_refs.py` result

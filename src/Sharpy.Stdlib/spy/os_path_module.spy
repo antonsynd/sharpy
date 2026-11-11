@@ -2,6 +2,7 @@
 
 from system.io import Path as IoPath, File, Directory, FileInfo
 from system import Environment
+from sharpy import PathErrors
 
 def join(a: str, b: str) -> str:
     """Join two pathname components, inserting '/' as needed."""
@@ -93,8 +94,10 @@ def realpath(path: str) -> str:
 
 def getsize(path: str) -> long:
     """Return the size of a file, reported by os.stat()."""
-    if not File.exists(path):
-        raise FileNotFoundError("No such file or directory: '" + path + "'")
+    PathErrors.check_needs_any(path)
+    if Directory.exists(path):
+        # os.stat's st_size of a directory, as this stdlib's os.stat reports it.
+        return 0
     info: FileInfo = FileInfo(path)
     return info.Length
 

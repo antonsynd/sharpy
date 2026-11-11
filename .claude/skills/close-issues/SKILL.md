@@ -4,40 +4,23 @@ description: Close GitHub issues that have been implemented, with verification
 argument-hint: "<plan.md or issue numbers: 123,456>"
 ---
 
-Close GitHub issues after verifying their implementation is complete. Accepts either a plan file path (to extract referenced issues) or a comma-separated list of issue numbers.
-
-**Usage:**
-- `/close-issues 208,210` — verify and close specific issues
-- `/close-issues plans/my-plan.md` — find and close issues referenced in a plan
-
-## Argument Handling
-
-Parse `$ARGUMENTS` to determine input mode:
-
-- **Comma-separated numbers** (e.g., `123,456`): treat as explicit issue list
-- **File path** (e.g., `plans/foo.md`): read the file and extract issue numbers from `#NNN` references
-- **Empty**: ask the user which issues to close
+Close GitHub issues after verifying their implementation. `$ARGUMENTS`: comma-separated numbers (`208,210`), a plan file (extract its `#NNN` references), or empty (ask the user).
 
 ## Steps
 
 ### 1. Gather issue list
 
-If a plan file was provided:
-- Read the plan file
-- Extract all `#NNN` issue references (regex: `#(\d+)`)
-- Deduplicate and present the list to the user for confirmation before proceeding
-
-If explicit issue numbers were provided, use them directly.
+From a plan file, deduplicate its `#NNN` references and confirm the list with the user first.
 
 ### 2. Fetch issue details
 
-For each issue, fetch its title and body (**run `gh` with `dangerouslyDisableSandbox: true`** — required due to TLS cert issues in sandbox):
+Run `gh` with `dangerouslyDisableSandbox: true` (sandbox TLS):
 
 ```bash
 gh issue view <number> --json title,body,state,labels
 ```
 
-Skip any issues that are already closed — report them as "already closed" in the final summary.
+Skip issues that are already closed; report them as "already closed".
 
 ### 3. Verify implementation
 
@@ -48,16 +31,15 @@ For each open issue, verify the fix exists in the codebase:
    ```bash
    git log --oneline --all --grep="#<number>"
    ```
+   A fix counts only once it is on `origin/dev` (`git branch -r --contains <sha>` lists `origin/dev`): a commit that exists only on an open lane branch is PARTIAL until its pull request merges.
 3. If no commit references the issue, search by keywords from the issue title:
    ```bash
    git log --oneline -20 --grep="<keyword>"
    ```
 4. Use Grep/Glob to spot-check that the described change actually exists in the codebase (e.g., if the issue says "add validator X", confirm the validator file exists)
+5. A `class-tracker` issue: every row of every cell table (body or comment) needs a `status` of `fixed` plus a sha, backticked test name or `PR #N`; `moved #N` (an open issue; file it first) or `control`. A later comment restating a row's key supersedes it. Fill the column, then `python3 build_tools/check_class_closure.py <number>` must exit 0; on close a workflow re-runs it and comments the gaps. Closing as duplicate or not planned skips the check. File class issues with the `status` column.
 
-Categorize each issue as:
-- **VERIFIED** — implementation found, tests pass
-- **PARTIAL** — some work done but gaps remain
-- **NOT FOUND** — no evidence of implementation
+Categorize: **VERIFIED** (found, tests pass), **PARTIAL** (gaps remain), **NOT FOUND**.
 
 ### 4. Close verified issues
 
@@ -67,29 +49,20 @@ For each VERIFIED issue:
 gh issue close <number> --reason completed --comment "Closed — implemented in $(git log --oneline --all --grep='#<number>' | head -1 | cut -d' ' -f1). Verified in codebase."
 ```
 
-If the commit hash isn't found via `--grep`, reference the branch name instead:
-
-```bash
-gh issue close <number> --reason completed --comment "Closed — implemented on branch $(git branch --show-current)."
-```
+If the commit hash isn't found via `--grep`, cite the merged pull request that carried the change into `dev` instead (`gh api "repos/{owner}/{repo}/commits/<sha>/pulls" --jq '.[0].html_url'`), never a lane branch name — lane branches are restarted after their pull request merges.
 
 ### 5. Handle unverified issues
 
-For PARTIAL issues:
-- Do **not** close the original issue
-- Add a comment noting what was implemented and what remains:
+PARTIAL: do **not** close; comment what landed and what remains:
   ```bash
   gh issue comment <number> --body "Partial implementation found: <description>. Remaining work: <gaps>."
   ```
 
-For NOT FOUND issues:
-- Do **not** close them
-- Report to the user that no implementation was found
+NOT FOUND: do not close; report it.
 
 ### 6. Update plan file (if applicable)
 
-If a plan file was provided:
-- Add a comment at the bottom of the plan noting which issues were closed and when:
+If a plan file was provided, note the closures at its bottom:
   ```markdown
   <!-- Issues closed by /close-issues on YYYY-MM-DD: #123, #456 -->
   ```

@@ -2550,7 +2550,25 @@ internal partial class TypeChecker
                         FunctionType.FromParameters(parentCtor.Parameters, SemanticType.Void, skipLeading: 1),
                         currentType);
                 }
+
+                // A @dataclass declared LATER in this file has not been checked yet, so its synthesized
+                // __init__ is not in Constructors: its shape is unknown here, so keep the refusal below
+                // rather than assume the parameterless constructor.
+                if (currentType.ClrType == null && _moduleDataclassNames.Contains(currentType.Name))
+                    break;
                 currentType = GetBaseType(currentType);
+            }
+
+            // No source class up the chain declares __init__: every one has the implicit
+            // parameterless constructor (Python's object.__init__), which the emitted `: base()`
+            // already chains to (#2508).
+            if (currentType == null)
+            {
+                return new FunctionType
+                {
+                    ParameterTypes = new List<SemanticType>(),
+                    ReturnType = SemanticType.Void
+                };
             }
         }
 
@@ -2684,18 +2702,20 @@ internal partial class TypeChecker
                     code: DiagnosticCodes.Semantic.InvalidSuperUsage,
                     span: memberAccess.Span);
             }
+            // The placement of a chaining call is one rule for super().__init__() and
+            // self.__init__(): SPY0292 (ahead of it, under control flow, repeated, in an expression).
             else if (_controlFlowDepth > 0)
             {
                 AddError("super().__init__() must be the first statement in the constructor, not inside control flow",
                     superExpr.LineStart, superExpr.ColumnStart,
-                    code: DiagnosticCodes.Semantic.InvalidSuperUsage,
+                    code: DiagnosticCodes.Semantic.ConstructorInitializerNotFirst,
                     span: superExpr.Span);
             }
             else if (_superInitCalled)
             {
                 AddError("super().__init__() can only be called once",
                     superExpr.LineStart, superExpr.ColumnStart,
-                    code: DiagnosticCodes.Semantic.InvalidSuperUsage,
+                    code: DiagnosticCodes.Semantic.ConstructorInitializerNotFirst,
                     span: superExpr.Span);
             }
             return;
@@ -2738,6 +2758,36 @@ internal partial class TypeChecker
             superExpr.LineStart, superExpr.ColumnStart,
             code: DiagnosticCodes.Semantic.InvalidSuperUsage,
             span: superExpr.Span);
+    }
+
+    /// <summary>
+    /// A constructor's chaining call — <c>super().__init__(…)</c> or <c>self.__init__(…)</c> — is
+    /// hoisted into the C# constructor initializer (<c>: base(…)</c> / <c>: this(…)</c>), which runs
+    /// before any statement of the body. A statement written ahead of the call would therefore run
+    /// after it, against source order, so it is refused at the call with the steer to move the call
+    /// first. The call is located by the same <see cref="AstHelper.FindConstructorInitializerIndex"/>
+    /// the emitter hoists by. A docstring is not a body statement (the parser lifts it out).
+    /// </summary>
+    private void ValidateConstructorInitializerPosition(FunctionDef constructor)
+    {
+        var index = AstHelper.FindConstructorInitializerIndex(constructor.Body);
+        // A chaining call earlier in the body (nested, so not the hoisted one) already refused this call
+        // as a repeat (SPY0292 "only once") or a conflict (SPY0351): one diagnostic at the call is enough.
+        if (index <= 0 || _hoistedInitializerCallRepeated
+            || !AstHelper.TryGetConstructorInitializerCall(constructor.Body[index], out var call, out var chainsToBase))
+            return;
+
+        var callText = chainsToBase ? "super().__init__(...)" : "self.__init__(...)";
+        var initializer = chainsToBase ? ": base(...)" : ": this(...)";
+        var ahead = index == 1 ? "the statement" : $"the {index} statements";
+        AddError(
+            $"{callText} must be the first statement in the constructor: it runs as the constructor "
+            + $"initializer '{initializer}', before {ahead} written ahead of it; move the call first. If an "
+            + "argument needs a value computed ahead of the call, compute it inside the argument expression "
+            + "(or in a @static helper)",
+            call.LineStart, call.ColumnStart,
+            code: DiagnosticCodes.Semantic.ConstructorInitializerNotFirst,
+            span: call.Span);
     }
 
     /// <summary>

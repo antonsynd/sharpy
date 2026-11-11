@@ -19,9 +19,16 @@ Usage::
 
     python3 build_tools/check_plan_refs.py <plan.md> [--repo <root>] [--issues] [--strict] [--json]
 
+    python3 build_tools/check_plan_refs.py --caps-all [--repo <root>]
+
 Exit code 1 when any path is missing or a ``file:line`` points past end-of-file (with ``--strict``,
-also when any symbol or code is unknown); 0 otherwise. Never edits anything.
+also when any symbol or code is unknown), or when the plan breaks an R-LW cap (body > 20 KB, more
+than 2 verify passes without an owner-ruling line; see ``cap_violations``); 0 otherwise.
+``--caps-all`` checks only the caps, on every ``docs/process/plans/plan-*.md``. Both modes also print a
+NOTE for each section budget (``SECTION_BUDGETS``) a plan that is not grandfathered exceeds; a note
+never changes the exit code. Never edits anything.
 """
+
 from __future__ import annotations
 
 import argparse
@@ -260,9 +267,415 @@ def render(r: dict, *, strict: bool) -> tuple[str, int]:
     return "\n".join(lines), code
 
 
+# --- plan caps (charter ruling R-LW) -----------------------------------------------------------------
+# A plan's BODY is at most BODY_CAP_BYTES: the whole file except
+# * the stamp/marker comment lines on top;
+# * each record section the skills write (RECORD_SECTIONS), from its `## ` heading to the next `## `
+#   heading, its `###` subsections included;
+# * after the first TERMINAL_RECORDS heading (/verify-implementation appends it last), every section
+#   that is not a plan-template section (PLAN_SECTIONS).
+# Every other `#`/`##` section is body wherever it sits, so a record placed mid-plan hides nothing; a
+# heading-like line inside a fenced code block is not a heading, and a fence left open makes the rest
+# of the file body. `## Revision log` is body: under the
+# pass cap it is a few lines, and as a record it would be an uncapped place to answer findings, which a
+# revision does by rewriting the plan's text.
+# A plan records at most PASS_CAP `/verify-plan` passes; each pass beyond needs its own owner-ruling line:
+#     Extra verify pass 3: owner 2026-11-12 "<the owner's words>"
+# The skills state these numbers; build_tools/tests/test_plan_caps.py pins each statement to its constant.
+
+BODY_CAP_BYTES = 20_480
+PASS_CAP = 2
+# Net body growth one revision may add (/create-plan › Revising a plan). Stated, not measured: the file
+# holds only its current text, so one revision's growth is not visible in it.
+REVISION_GROWTH_BYTES = 3_072
+PLAN_GLOB = "docs/process/plans/plan-*.md"
+
+# The `## ` record headings the skills write: /verify-plan's summary, /implement-plan's checklist,
+# /verify-implementation's record and the report it holds. Tests pin the list to the skills.
+RECORD_SECTIONS = (
+    "Verification Summary",
+    "Implementation Checklist",
+    "Implementation Verification Record",
+    "Implementation Verification Report",
+)
+TERMINAL_RECORDS = (
+    "Implementation Verification Record",
+    "Implementation Verification Report",
+)
+
+
+def is_stamp_line(line: str) -> bool:
+    """A blank line, or a line that is one whole HTML comment (a DRAFT marker or a verify stamp).
+
+    String tests, not a regex: this recognises a marker line in a plan file, it filters no HTML.
+    """
+    s = line.strip()
+    return not s or (len(s) >= 7 and s.startswith("<!--") and s.endswith("-->"))
+
+
+VERIFY_STAMP_RE = re.compile(r"^<!-- Verified by /verify-plan\b", re.MULTILINE)
+REVISION_LOG_RE = re.compile(
+    r"^## Revision log\b.*?(?=^## |\Z)", re.MULTILINE | re.DOTALL
+)
+# Sections a verifier writes: `## Verification Summary` (any suffix, e.g. "— round 6").
+SUMMARY_SECTION_RE = re.compile(
+    r"^## Verification Summary\b.*?(?=^## (?!Verification Summary\b)|\Z)",
+    re.MULTILINE | re.DOTALL,
+)
+SUMMARY_ROUND_RE = re.compile(
+    r"^## Verification Summary\W+(?:round|pass) (\d+)\b", re.MULTILINE | re.IGNORECASE
+)
+PASS_HEADING_RE = re.compile(r"^### Pass (\d+)\b", re.MULTILINE)
+RESULT_PASS_RE = re.compile(r"^\*\*Result:\*\*.*?\(pass (\d+)\b", re.MULTILINE)
+STAMP_ROUND_RE = re.compile(
+    r"^<!-- Verified by /verify-plan[^>]*?\((?:round|pass) (\d+)", re.MULTILINE
+)
+# A revision-log entry that records a failed pass, as the revising session writes it
+# (`/verify-plan` skill: "naming the pass's sha, its result and dimension as
+# (NEEDS REVISION, Dimension N)"): a bullet or bold line that opens with an optional date and
+# `@ <sha>`, then the verdict in parentheses with no other parenthesis before it. Spellings in the
+# committed plans: `- @ bb6c693ce — revised after the 1st pass (NEEDS REVISION, Dimension 6): …`,
+# `- 2026-11-07 @ c61599c63, pass 1: \`(NEEDS REVISION, Dimension 6)\` …`,
+# `**2026-11-03 @ 89fba5eec — after verify round 1 (NEEDS REVISION / CELL), by the plan author:**`.
+FAILED_PASS_ENTRY_RE = re.compile(
+    r"^(?:[-*] |\*\*)(?:\d{4}-\d{2}-\d{2} )?@ [0-9a-f]{7,40}\b[^()\n]*?`?\(NEEDS REVISION\b"
+)
+EXTRA_PASS_RE = re.compile(
+    r"^\W*Extra verify pass (\d+):\s*owner,? \d{4}-\d{2}-\d{2},? [\"“].+[\"”]",
+    re.MULTILINE,
+)
+
+# Plans that exceeded a cap when the check landed (@ fd876b842 on origin/dev): name -> (body bytes,
+# verify passes). A grandfathered plan may not grow on either axis. The sizes are re-measured only
+# when the body rule itself changes, a correction of the measure, not growth, listed old -> new in
+# the change that makes it. A plan joins only when such a correction shows that a plan written before
+# the cap was already over it (plan-5c21c8: its plan sections sat below a mid-plan checklist). No plan
+# written under the cap joins.
+GRANDFATHERED: dict[str, tuple[int, int]] = {
+    "plan-05dd79.md": (68488, 1),
+    "plan-0667c5.md": (88262, 1),
+    "plan-0c1382.md": (77212, 1),
+    "plan-0ca7b7.md": (207103, 1),
+    "plan-11eef9.md": (46251, 1),
+    "plan-14853b.md": (70933, 1),
+    "plan-155752.md": (22574, 1),
+    "plan-16cca3.md": (109139, 2),
+    "plan-17ad85.md": (91720, 1),
+    "plan-2003b4.md": (74045, 1),
+    "plan-202526.md": (30583, 1),
+    "plan-21d2f5.md": (22145, 4),
+    "plan-299c1b.md": (53054, 1),
+    "plan-311458.md": (80526, 1),
+    "plan-3eba57.md": (70199, 2),
+    "plan-43f241.md": (77732, 1),
+    "plan-460cbf.md": (50042, 6),
+    "plan-46b871.md": (37076, 1),
+    "plan-499995.md": (83591, 1),
+    "plan-4d6288.md": (67455, 1),
+    "plan-4e3055.md": (31634, 1),
+    "plan-52c6fe.md": (68164, 1),
+    "plan-5379fe.md": (94720, 1),
+    "plan-5c21c8.md": (31395, 1),
+    "plan-638e8b.md": (46717, 3),
+    "plan-683c8b.md": (60387, 1),
+    "plan-6ca898.md": (86622, 1),
+    "plan-6ce1a5.md": (54464, 1),
+    "plan-6e12b5.md": (24608, 1),
+    "plan-757fbb.md": (76731, 1),
+    "plan-78c581.md": (71032, 1),
+    "plan-791d3a.md": (69883, 1),
+    "plan-82187d.md": (67791, 1),
+    "plan-88736c.md": (23088, 5),
+    "plan-92335a.md": (32862, 1),
+    "plan-950124.md": (70014, 1),
+    "plan-96f8e0.md": (73755, 1),
+    "plan-99d863.md": (76475, 1),
+    "plan-9ef825.md": (72295, 1),
+    "plan-a79696.md": (92559, 1),
+    "plan-add686.md": (54854, 1),
+    "plan-be3b1f.md": (50072, 1),
+    "plan-be89c1.md": (51379, 1),
+    "plan-bf0244.md": (110626, 1),
+    "plan-c068ff.md": (83049, 1),
+    "plan-cbdf79.md": (76991, 1),
+    "plan-d31acd.md": (67654, 1),
+    "plan-d35e69.md": (99271, 1),
+    "plan-d923d3.md": (77148, 1),
+    "plan-de9fe3.md": (109209, 1),
+    "plan-e31e76.md": (40362, 1),
+    "plan-e39946.md": (61214, 1),
+    "plan-eaaed2.md": (30960, 3),
+    "plan-ebd58b.md": (48375, 1),
+    "plan-ed89b6.md": (179854, 10),
+    "plan-ee5544.md": (50484, 1),
+    "plan-f164be.md": (61762, 1),
+    "plan-f4fb34.md": (51370, 1),
+    "plan-f8f73c.md": (72602, 1),
+    "plan-f92797.md": (73051, 1),
+    "plan-remediation-round-2026-08-13.md": (52988, 0),
+    "plan-remediation-round-2026-08-18.md": (24955, 0),
+    "plan-remediation-round-2026-08-22.md": (23443, 0),
+    "plan-remediation-round-2026-08-27.md": (70133, 1),
+}
+
+
+# CommonMark: a fence is 3+ backticks or tildes (a backtick fence's info string has no backtick), closed
+# by the same character, at least as many, and nothing else on the line; an ATX heading may be indented
+# up to 3 spaces and its hashes are followed by a space or tab.
+FENCE_LINE_RE = re.compile(r"^ {0,3}(`{3,}|~{3,})(.*)$")
+HEADING_LINE_RE = re.compile(r"^ {0,3}(#{1,2})[ \t]+(.*?)(?:[ \t]+#+)?[ \t]*$")
+
+
+def scan_headings(text: str) -> tuple[list[tuple[int, int, str]], int | None]:
+    """(offset, level, text) of each `#`/`##` heading outside fenced code, and the offset of a fence
+    left open at the end of the file (None when every fence closes)."""
+    out, pos, fence = [], 0, None
+    for line in text.splitlines(keepends=True):
+        bare = line.rstrip("\r\n")
+        m = FENCE_LINE_RE.match(bare)
+        if fence is None:
+            if m and not (m.group(1)[0] == "`" and "`" in m.group(2)):
+                fence = (m.group(1)[0], len(m.group(1)), pos)
+            else:
+                h = HEADING_LINE_RE.match(bare)
+                if h:
+                    out.append((pos, len(h.group(1)), h.group(2).strip()))
+        elif (
+            m
+            and m.group(1)[0] == fence[0]
+            and len(m.group(1)) >= fence[1]
+            and not m.group(2).strip()
+        ):
+            fence = None
+        pos += len(line)
+    return out, (fence[2] if fence else None)
+
+
+def h2_headings(text: str) -> list[tuple[int, str]]:
+    """(offset, heading text) of each `## ` heading outside fenced code blocks."""
+    return [(p, h) for p, level, h in scan_headings(text)[0] if level == 2]
+
+
+# A heading's name is its text before a `(`, `:`, an en or em dash, or a spaced hyphen.
+HEADING_SUFFIX_RE = re.compile(r"\s*[(:]|\s*[—–]|\s+-\s")
+
+
+def heading_name(heading: str) -> str:
+    return HEADING_SUFFIX_RE.split(heading, maxsplit=1)[0].strip().casefold()
+
+
+_RECORD_KEYS = {r.casefold(): r for r in RECORD_SECTIONS}
+
+
+def record_key(heading: str) -> str | None:
+    """The RECORD_SECTIONS name a `## ` heading carries, or None for a plan section."""
+    return _RECORD_KEYS.get(heading_name(heading))
+
+
+def sections(text: str) -> list[tuple[str, str]]:
+    """(heading text, section text to the next `#`/`##` heading) for each `## ` section."""
+    hs = scan_headings(text)[0]
+    return [
+        (h, text[p : hs[i + 1][0] if i + 1 < len(hs) else len(text)])
+        for i, (p, level, h) in enumerate(hs)
+        if level == 2
+    ]
+
+
+def plan_body(text: str) -> str:
+    """The plan without its records (see the comment above BODY_CAP_BYTES)."""
+    hs, unclosed = scan_headings(text)
+    if (
+        unclosed is not None
+    ):  # an unclosed fence hides nothing: the rest of the file is body
+        return plan_body(text[:unclosed]) + text[unclosed:]
+    is_record = [level == 2 and record_key(h) for _, level, h in hs]
+    first = next((i for i, r in enumerate(is_record) if r), None)
+    head = text[: hs[first][0]] if first is not None else text
+    below, terminal = [], False
+    for i in range(first if first is not None else len(hs), len(hs)):
+        start, level, heading = hs[i]
+        terminal = terminal or is_record[i] in TERMINAL_RECORDS
+        # after the terminal record only a plan-template section is body
+        if not is_record[i] and (not terminal or (level == 2 and section_key(heading))):
+            below.append(text[start : hs[i + 1][0] if i + 1 < len(hs) else len(text)])
+    lines = head.split("\n")
+    i = 0
+    while i < len(lines) and is_stamp_line(lines[i]):
+        i += 1
+    return "\n".join(lines[i:]) + "".join(below)
+
+
+def body_bytes(text: str) -> int:
+    return len(plan_body(text).encode("utf-8"))
+
+
+def verify_passes(text: str) -> int:
+    """The number of `/verify-plan` passes the plan records.
+
+    The largest of: a numbered pass a verifier wrote (`### Pass N` inside a `## Verification Summary`
+    section, `## Verification Summary — round N`, `**Result:** … (pass N`, a stamp's `(round N`);
+    the failed-pass entries of the `## Revision log` (`FAILED_PASS_ENTRY_RE`), plus one for the
+    current stamp; one when the plan carries a stamp. Free text that merely mentions a pass, a
+    NEEDS REVISION verdict or a `### Pass N` design heading in the body is not counted.
+    """
+    stamped = 1 if VERIFY_STAMP_RE.search(text) else 0
+    numbered = [int(n) for n in SUMMARY_ROUND_RE.findall(text)]
+    numbered += [int(n) for n in STAMP_ROUND_RE.findall(text)]
+    for section in SUMMARY_SECTION_RE.findall(text):
+        numbered += [int(n) for n in PASS_HEADING_RE.findall(section)]
+        numbered += [int(n) for n in RESULT_PASS_RE.findall(section)]
+    failed = sum(
+        1
+        for log in REVISION_LOG_RE.findall(text)
+        for line in log.split("\n")
+        if FAILED_PASS_ENTRY_RE.match(line)
+    )
+    return max([stamped, failed + stamped] + numbered)
+
+
+# --- section budgets ---------------------------------------------------------------------------------
+# The `## ` headings of the plan templates in `.claude/skills/create-plan/SKILL.md` (full and light),
+# plus the `## Revision log` a revision appends. The one list: tests pin it to the templates.
+PLAN_SECTIONS = (
+    "Context",
+    "Current State",
+    "Scope",
+    "Defect Class",
+    "Adversarial Review",
+    "Design Decisions",
+    "Implementation",
+    "Acceptance",
+    "Testing Strategy",
+    "Issues to Close",
+    "Class trackers this plan may post cells to",
+    "Revision log",
+)
+# Per-section byte budgets for a plan that is not grandfathered: reported, never a failure (the body
+# cap is the one gate). (label, sections, bytes).
+SECTION_BUDGETS = (
+    ("Context + Current State", ("Context", "Current State"), 2_560),
+    ("Adversarial Review", ("Adversarial Review",), 1_536),
+    (
+        "Scope + Issues to Close + Class trackers",
+        ("Scope", "Issues to Close", "Class trackers this plan may post cells to"),
+        2_048,
+    ),
+)
+_SECTION_KEYS = {s.casefold(): s for s in PLAN_SECTIONS}
+
+
+def section_key(heading: str) -> str | None:
+    """The PLAN_SECTIONS name a `## ` heading carries (its text before any suffix), or None."""
+    return _SECTION_KEYS.get(heading_name(heading))
+
+
+def section_bytes(text: str) -> dict[str, int]:
+    """Body bytes per PLAN_SECTIONS name (a name that heads several sections sums them)."""
+    out: dict[str, int] = defaultdict(int)
+    for heading, sec in sections(plan_body(text)):
+        key = section_key(heading)
+        if key:
+            out[key] += len(sec.encode("utf-8"))
+    return dict(out)
+
+
+def budget_report(text: str) -> list[tuple[str, int, int]]:
+    """(label, bytes, budget) for each SECTION_BUDGETS row."""
+    sizes = section_bytes(text)
+    return [
+        (label, sum(sizes.get(s, 0) for s in names), cap)
+        for label, names, cap in SECTION_BUDGETS
+    ]
+
+
+def budget_notes(name: str, text: str) -> list[str]:
+    """A notice per budget the plan exceeds; none for a grandfathered plan."""
+    if name in GRANDFATHERED:
+        return []
+    return [
+        f"{name}: {label} is {size:,} bytes, over its {cap:,}-byte budget "
+        "(a notice; the body cap is the gate)"
+        for label, size, cap in budget_report(text)
+        if size > cap
+    ]
+
+
+def extra_pass_rulings(text: str) -> set[int]:
+    return {int(n) for n in EXTRA_PASS_RE.findall(text)}
+
+
+def cap_violations(name: str, text: str) -> list[str]:
+    """Messages for each R-LW cap the plan breaks; a grandfathered plan is held to its frozen values."""
+    size, passes = body_bytes(text), verify_passes(text)
+    grandfathered = GRANDFATHERED.get(name)
+    ruled, allowed = extra_pass_rulings(text), PASS_CAP
+    while allowed + 1 in ruled:
+        allowed += 1
+    problems = []
+    if grandfathered:
+        g_size, g_passes = grandfathered
+        if size > g_size:
+            problems.append(
+                f"{name}: body is {size:,} bytes, above its grandfathered {g_size:,} "
+                f"(the R-LW cap is {BODY_CAP_BYTES:,}); a grandfathered plan may not grow: condense it, "
+                "or put a kept summary below `## Verification Summary`"
+            )
+        if passes > max(allowed, g_passes):
+            problems.append(
+                f"{name}: records {passes} verify passes, above its grandfathered {g_passes}; "
+                "the open finding goes to the owner, and a further pass needs the line "
+                f'Extra verify pass {passes}: owner YYYY-MM-DD "<the owner\'s words>"'
+            )
+        if size <= BODY_CAP_BYTES and passes <= PASS_CAP:
+            problems.append(
+                f"{name}: is within both caps now ({size:,} bytes, {passes} passes); "
+                "delete its GRANDFATHERED row in build_tools/check_plan_refs.py"
+            )
+        return problems
+    if size > BODY_CAP_BYTES:
+        problems.append(
+            f"{name}: body is {size:,} bytes, above the R-LW cap of {BODY_CAP_BYTES:,} "
+            "(stamp lines and the skills' record sections excluded; every other section counts)"
+        )
+    if passes > allowed:
+        problems.append(
+            f"{name}: records {passes} verify passes; R-LW allows {PASS_CAP} before the open finding "
+            f"goes to the owner. Each pass beyond {PASS_CAP} needs its own line "
+            f'Extra verify pass N: owner YYYY-MM-DD "<the owner\'s words>"'
+        )
+    return problems
+
+
+def check_all_caps(repo: Path) -> list[str]:
+    problems = []
+    plans = sorted(repo.glob(PLAN_GLOB))
+    names = {p.name for p in plans}
+    for p in plans:
+        problems += cap_violations(p.name, p.read_text(encoding="utf-8"))
+    for name in sorted(set(GRANDFATHERED) - names):
+        problems.append(
+            f"{name}: grandfathered but no longer under docs/process/plans/; delete its row"
+        )
+    return problems
+
+
+def budget_notes_all(repo: Path) -> list[str]:
+    return [
+        n
+        for p in sorted(repo.glob(PLAN_GLOB))
+        for n in budget_notes(p.name, p.read_text(encoding="utf-8"))
+    ]
+
+
 def main(argv=None) -> int:
     ap = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
-    ap.add_argument("plan", type=Path)
+    ap.add_argument("plan", type=Path, nargs="?")
+    ap.add_argument(
+        "--caps-all",
+        action="store_true",
+        help="check only the R-LW caps, on every docs/process/plans/plan-*.md",
+    )
     ap.add_argument("--repo", type=Path, default=Path(__file__).resolve().parent.parent)
     ap.add_argument(
         "--issues", action="store_true", help="look up every #NNNN with gh (network)"
@@ -272,10 +685,44 @@ def main(argv=None) -> int:
     )
     ap.add_argument("--json", action="store_true")
     a = ap.parse_args(argv)
-    r = check(a.plan.read_text(), a.repo.resolve(), with_issues=a.issues)
+    if a.caps_all:
+        problems = check_all_caps(a.repo.resolve())
+        for p in problems:
+            print(f"CAP: {p}")
+        for n in budget_notes_all(a.repo.resolve()):
+            print(f"NOTE: {n}")
+        print("RESULT: " + ("FAIL" if problems else "OK"))
+        return 1 if problems else 0
+    if a.plan is None:
+        ap.error("a plan path is required unless --caps-all is given")
+    plan_text = a.plan.read_text()
+    r = check(plan_text, a.repo.resolve(), with_issues=a.issues)
     text, code = render(r, strict=a.strict)
+    caps = cap_violations(a.plan.name, plan_text)
+    r["caps"] = {
+        "body_bytes": body_bytes(plan_text),
+        "verify_passes": verify_passes(plan_text),
+        "violations": caps,
+        "budgets": {
+            label: [size, cap] for label, size, cap in budget_report(plan_text)
+        },
+        "budget_notes": budget_notes(a.plan.name, plan_text),
+    }
+    if not a.json:
+        text += (
+            f"\ncaps (R-LW): body {r['caps']['body_bytes']:,} / {BODY_CAP_BYTES:,} bytes; "
+            f"{r['caps']['verify_passes']} verify passes / {PASS_CAP}"
+        )
+        text += "".join(f"\n  - CAP: {c}" for c in caps)
+        text += "\nsection budgets (a notice, not a gate): " + "; ".join(
+            f"{label} {size:,} / {cap:,}"
+            for label, size, cap in budget_report(plan_text)
+        )
+        text += "".join(f"\n  - NOTE: {n}" for n in r["caps"]["budget_notes"])
+        if caps:
+            text += "\nRESULT: FAIL (caps)"
     print(json.dumps(r, indent=2) if a.json else text)
-    return code
+    return 1 if caps else code
 
 
 if __name__ == "__main__":

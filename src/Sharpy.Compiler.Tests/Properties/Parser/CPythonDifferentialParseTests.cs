@@ -31,7 +31,7 @@ namespace Sharpy.Compiler.Tests.Properties.Parser;
 ///
 /// <para>CPython side: <c>build_tools/differential_parse/compare_ast.py</c>, invoked once per batch
 /// over a JSONL temp file (one <c>python3</c> process serves hundreds of samples). The test is a
-/// no-op skip when a suitable <c>python3</c> is absent; CI pins 3.12.</para>
+/// no-op skip when a suitable <c>python3</c> is absent; CI pins the minor in the repo-root <c>.python-version</c>.</para>
 /// </summary>
 [Trait("Category", "Property")]
 [Trait("Category", "RandomProperty")]

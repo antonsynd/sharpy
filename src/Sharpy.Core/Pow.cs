@@ -17,7 +17,7 @@ namespace Sharpy
         /// </example>
         public static double Pow(double x, double y)
         {
-            return System.Math.Pow(x, y);
+            return FloatPow(x, y);
         }
 
         /// <summary>
@@ -28,7 +28,7 @@ namespace Sharpy
         /// <returns>x raised to the power y</returns>
         public static double Pow(int x, int y)
         {
-            return System.Math.Pow(x, y);
+            return FloatPow(x, y);
         }
 
         /// <summary>
@@ -39,7 +39,7 @@ namespace Sharpy
         /// <returns>x raised to the power y</returns>
         public static double Pow(long x, long y)
         {
-            return System.Math.Pow(x, y);
+            return FloatPow(x, y);
         }
 
         /// <summary>
@@ -50,7 +50,7 @@ namespace Sharpy
         /// <returns>x raised to the power y</returns>
         public static float Pow(float x, float y)
         {
-            return (float)System.Math.Pow(x, y);
+            return (float)FloatPow(x, y);
         }
 
         /// <summary>
@@ -66,6 +66,8 @@ namespace Sharpy
         /// caller (#1228) — see the remarks.</param>
         /// <returns>x raised to the power y.</returns>
         /// <exception cref="OverflowError">The result does not fit in an <see cref="int"/>.</exception>
+        /// <exception cref="ZeroDivisionError">x is zero and y is negative, as in CPython
+        /// (<c>0 ** -1</c>); the same holds for every overload with a signed exponent.</exception>
         /// <remarks>
         /// A negative exponent returns the truncating double-path value, which is the spec's rule
         /// for <c>int ** int</c>: <c>2 ** -1</c> is <c>0</c>, not <c>0.5</c>
@@ -84,6 +86,11 @@ namespace Sharpy
         {
             if (y < 0)
             {
+                if (x == 0)
+                {
+                    throw new ZeroDivisionError("zero to a negative power");
+                }
+
                 return (int)System.Math.Pow(x, y);
             }
 
@@ -133,6 +140,11 @@ namespace Sharpy
         {
             if (y < 0)
             {
+                if (x == 0)
+                {
+                    throw new ZeroDivisionError("zero to a negative power");
+                }
+
                 return (long)System.Math.Pow(x, y);
             }
 
@@ -226,6 +238,11 @@ namespace Sharpy
         {
             if (y < 0)
             {
+                if (x == 0)
+                {
+                    throw new ZeroDivisionError("zero to a negative power");
+                }
+
                 return (ulong)System.Math.Pow(x, y);
             }
 

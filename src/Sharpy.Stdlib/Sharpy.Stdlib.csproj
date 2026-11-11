@@ -13,6 +13,8 @@
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
     <Description>Standard library for the Sharpy programming language. Provides json, os, re, math, and 60+ modules with Pythonic APIs on .NET.</Description>
     <PackageReadmeFile>README.md</PackageReadmeFile>
+    <!-- Ships code ported from CPython (THIRD-PARTY-NOTICES.txt), so the PSF licence joins the expression -->
+    <PackageLicenseExpression>(Apache-2.0 OR MIT) AND PSF-2.0</PackageLicenseExpression>
     <!-- CS1574/CS1580: XML doc cref resolution issues for generic/dunder methods -->
     <!-- CS1591: missing XML docs — suppressed for simple data types -->
     <NoWarn>CS1574;CS1580;CS1591</NoWarn>
@@ -22,6 +24,10 @@
 
   <ItemGroup>
     <None Include="$(MSBuildThisFileDirectory)../../nuget/SharpyLang.Stdlib.README.md" Pack="true" PackagePath="\README.md" />
+    <!-- Licence notices for third-party code compiled into this assembly (CPython, Datetime/DatetimeIso.cs):
+         at the nupkg root, and at the root of every publish output that carries this assembly (the
+         release zips; it flows to sharpyc's publish through the project references). Not in build output. -->
+    <None Include="$(MSBuildThisFileDirectory)../../THIRD-PARTY-NOTICES.txt" Link="THIRD-PARTY-NOTICES.txt" Pack="true" PackagePath="\" CopyToPublishDirectory="PreserveNewest" />
   </ItemGroup>
 
   <ItemGroup>

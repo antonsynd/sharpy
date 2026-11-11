@@ -33,7 +33,9 @@ Hello, World!
 
 ## Getting Started
 
-Requires [.NET 10.0 SDK](https://dotnet.microsoft.com/download).
+Requires [.NET 10.0 SDK](https://dotnet.microsoft.com/download). .NET 11 (released 2026-11-10) is not a
+target yet ([#2548](https://github.com/antonsynd/sharpy/issues/2548)): `sharpyc` and the programs it
+compiles target `net10.0`, so they need the .NET 10 runtime even on a machine that has .NET 11.
 
 ```bash
 dotnet tool install -g sharpyc
@@ -77,3 +79,5 @@ Licensed under either of [Apache License, Version 2.0](LICENSE-APACHE) or [MIT L
 Unless you explicitly state otherwise, any contribution intentionally submitted
 for inclusion in this project shall be dual licensed as above, without any
 additional terms or conditions.
+
+Sharpy is Apache-2.0 OR MIT; portions ported from CPython are under PSF-2.0, see [THIRD-PARTY-NOTICES.txt](THIRD-PARTY-NOTICES.txt).

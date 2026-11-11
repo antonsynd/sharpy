@@ -631,6 +631,24 @@ public static partial class DiagnosticExplanations
             "class Sub(Base):\n    def foo(self):\n        x = super  # not called as a function",
             "Call super() as a function:\nclass Sub(Base):\n    def foo(self):\n        super().foo()");
 
+        Add(dict, DiagnosticCodes.Semantic.ConstructorInitializerNotFirst, "Constructor chaining call is not the first statement", "Semantic",
+            "A constructor's chaining call, super().__init__(...) or self.__init__(...), runs as the C# "
+            + "constructor initializer (': base(...)' / ': this(...)'), before every statement of the body. "
+            + "A statement written ahead of the call would therefore run after it, so the call must be the "
+            + "first statement of the constructor (a docstring may precede it), written once, as a statement of "
+            + "its own: not inside control flow and not inside an expression (a lambda, a conditional "
+            + "expression, an assignment). The rule and the code are the same for super().__init__(...) and "
+            + "self.__init__(...). Moving the call first keeps the program's meaning when the statements ahead "
+            + "of it do not touch what the chained constructor reads or writes; when they do (both write the same "
+            + "field, say), the write that wins changes, so decide which one you mean. If an argument needs a value "
+            + "computed ahead of the call, compute it inside the argument expression (or in a @static helper).",
+            "class Base:\n    size: int\n    def __init__(self, size: int):\n        self.size = size\n\n"
+            + "class Child(Base):\n    label: str\n    def __init__(self, items: list[int], label: str):\n"
+            + "        self.label = label\n        n = len(items)\n        super().__init__(n)  # two statements precede the call",
+            "Move the call first and compute its argument in place:\nclass Child(Base):\n    label: str\n"
+            + "    def __init__(self, items: list[int], label: str):\n        super().__init__(len(items))\n"
+            + "        self.label = label");
+
         Add(dict, DiagnosticCodes.Semantic.CircularInheritance, "Circular inheritance detected", "Semantic",
             "A class or interface inherits from itself through its inheritance chain, creating a cycle. " +
             "For example, class A extends B and class B extends A, or interface IA extends IB and IB extends IA.",

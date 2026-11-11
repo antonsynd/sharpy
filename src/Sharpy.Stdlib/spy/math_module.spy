@@ -22,7 +22,7 @@ def fabs(x: float) -> float:
 
 def copysign(x: float, y: float) -> float:
     """Return a float with the magnitude of x but the sign of y."""
-    sign: float = -1.0 if (y < 0.0 or (y == 0.0 and 1.0 / y < 0.0)) else 1.0
+    sign: float = -1.0 if Double.is_negative(y) else 1.0
     return SysMath.abs(x) * sign
 
 def sqrt(x: float) -> float:

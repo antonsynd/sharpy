@@ -2,7 +2,7 @@
 # PreToolUse(Bash) hook: blocks raw `dotnet` verbs that build, test, or load the solution so
 # parallel agents can't OOM the machine (a whole-solution test run peaks at 18.5 GB tree RSS,
 # CLAUDE.md "Serialized dotnet"). Every such invocation must go through
-# .claude/scripts/dotnet-serialized (exclusive mkdir lock).
+# .claude/scripts/dotnet-serialized (exclusive flock lock).
 #
 # Verbs covered: build, test, run (builds the project first — /spy-run, /spy-emit, /quick-check,
 # /lsp-hover, /benchmark), format (loads the whole solution workspace), pack, publish, msbuild,

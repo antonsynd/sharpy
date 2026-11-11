@@ -24,6 +24,7 @@ Sharpy uses .NET's exception hierarchy directly:
 | `FileNotFoundError` | `OSError` | File not found |
 | `FileExistsError` | `OSError` | File already exists |
 | `IsADirectoryError` | `OSError` | Expected file, got directory |
+| `NotADirectoryError` | `OSError` | Expected directory, got file (also: a path component is a file) |
 | `PermissionError` | `OSError` | Permission denied |
 | `StopIteration` | `Exception` | Iterator exhausted |
 | `UnicodeError` | `ValueError` | Base for Unicode encoding/decoding errors |
@@ -39,15 +40,15 @@ Sharpy uses .NET's exception hierarchy directly:
 
 ### `OSError`
 
-`FileNotFoundError`, `FileExistsError`, `IsADirectoryError` and `PermissionError`
-derive from `OSError`, matching CPython, so `except OSError` catches every one of
-them, whether user code raises it or a file/OS operation (`open()`, `os.mkdir`,
-...) reports it. `IOError` names the same class as `OSError`: `except IOError`
+`FileNotFoundError`, `FileExistsError`, `IsADirectoryError`, `NotADirectoryError`
+and `PermissionError` derive from `OSError`, matching CPython, so `except OSError`
+catches every one of them, whether user code raises it or a file/OS operation
+(`open()`, `os.mkdir`, ...) reports it. `IOError` names the same class as `OSError`: `except IOError`
 and `except OSError` catch exactly the same exceptions, and `type(IOError("x")).__name__`
 is `"OSError"`.
 
 `OSError` derives from .NET's `System.IO.IOException`, so .NET code catching
-`IOException` sees `OSError` and all four subclasses. .NET code catching the more
+`IOException` sees `OSError` and all five subclasses. .NET code catching the more
 specific `System.IO.FileNotFoundException` or `System.UnauthorizedAccessException`
 does not see Sharpy's `FileNotFoundError` or `PermissionError`.
 
@@ -133,6 +134,56 @@ def example() -> int:
 *Implementation:*
 - *try/except/finally: ✅ Native - `try`/`catch`/`finally`*
 - *else clause: 🔄 Lowered - Boolean flag pattern, nested inside the finally-protected region when both clauses are present*
+
+### Handler Order
+
+Handlers are tried in source order and the first one whose type matches runs, as in Python. A
+handler whose every exception type an earlier handler (one without a `when` filter) already catches
+can never run: it is accepted, warned as **SPY0488**, and left out of the compiled program. A type
+of a tuple handler that an earlier handler already catches is left out the same way; the handler's
+other types still catch. So is a tuple element that an earlier element of the same tuple already
+catches (`except (LookupError, KeyError):` catches as `except LookupError:` does), without a warning.
+
+Because there is [no `BaseException`](#no-baseexception), `except Exception:` also catches
+`SystemExit`, which CPython leaves to a later handler. A later handler that names `SystemExit`
+(alone or in a tuple) could never run, though CPython runs it, so it is refused as **SPY0709**.
+A handler naming only `SystemExit` keeps CPython's behaviour when moved before `except Exception:`. A
+tuple that also names other types must not be moved whole (its other types would leave the
+`Exception` handler): handle `SystemExit` in a handler of its own before `except Exception:` and keep
+the rest where it was. A later bare `except:` never runs in
+Sharpy either; it is left out with a SPY0488 warning that says CPython would still run it for
+`SystemExit` (unless an earlier handler already catches `SystemExit`).
+
+<!-- spec-sweep: output -->
+```python
+def main() -> None:
+    try:
+        raise KeyError("k")
+    except LookupError:
+        print("lookup")
+    except KeyError:       # warning SPY0488: LookupError already catches KeyError
+        print("key")
+```
+
+```output
+lookup
+```
+
+A bare `except:` with no filter catches every exception, so it must be the last handler; one that is
+not last is refused as **SPY0151** (Python: `SyntaxError: default 'except:' must be last`).
+
+<!-- spec-sweep: error SPY0151 -->
+```python
+def main() -> None:
+    try:
+        raise KeyError("k")
+    except:                # error SPY0151
+        print("any")
+    except KeyError:
+        print("key")
+```
+
+*Implementation: 🔄 Lowered - the covered `catch` clauses are omitted (C# refuses a catch after one for its base type, CS0160)*
 
 ## Raise Statement
 

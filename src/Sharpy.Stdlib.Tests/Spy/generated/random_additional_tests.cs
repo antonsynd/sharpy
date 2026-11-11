@@ -193,11 +193,11 @@ namespace Sharpy.Stdlib.Tests.Spy.Random.RandomAdditionalTests
             }
 
 #line (91, 5) - (91, 29) 12 "src/Sharpy.Stdlib.Tests/Spy/random/random_additional_tests.spy"
-            double mean = total / n;
+            double mean = global::Sharpy.Builtins.TrueDiv(total, n);
 #line (92, 5) - (92, 52) 12 "src/Sharpy.Stdlib.Tests/Spy/random/random_additional_tests.spy"
-            double variance = (sumSq / n) - (mean * mean);
+            double variance = (global::Sharpy.Builtins.TrueDiv(sumSq, n)) - (mean * mean);
 #line (93, 5) - (93, 37) 12 "src/Sharpy.Stdlib.Tests/Spy/random/random_additional_tests.spy"
-            double stddev = global::System.Math.Pow(variance, 0.5d);
+            double stddev = global::Sharpy.Builtins.FloatPow(variance, 0.5d);
 #line (94, 5) - (94, 33) 12 "src/Sharpy.Stdlib.Tests/Spy/random/random_additional_tests.spy"
             Xunit.Assert.True(global::Sharpy.Builtins.Abs(mean - mu) < 0.1d);
 #line (95, 5) - (95, 38) 12 "src/Sharpy.Stdlib.Tests/Spy/random/random_additional_tests.spy"

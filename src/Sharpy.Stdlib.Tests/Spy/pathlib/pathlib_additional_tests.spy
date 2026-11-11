@@ -211,11 +211,12 @@ def test_glob_no_matches_yields_nothing(tmp_path: str):
 
 
 @test
-def test_glob_nonexistent_dir_throws_file_not_found_error(tmp_path: str):
-    with assert_raises(FileNotFoundError):
-        names: list[str] = []
-        for p in pathlib.Path(tmp_path + "/no_such_glob_dir").glob("*"):
-            names.append(p.name)
+def test_glob_nonexistent_dir_yields_nothing(tmp_path: str):
+    # python3: Path(missing).glob("*") matches nothing and raises nothing (plan-638e8b G1, #2476)
+    names: list[str] = []
+    for p in pathlib.Path(tmp_path + "/no_such_glob_dir").glob("*"):
+        names.append(p.name)
+    assert len(names) == 0
 
 
 # ===== RelativeTo edge cases =====

@@ -1,0 +1,12 @@
+# Exception-escape allowlist (ratchet ledger) for StdlibExceptionEscapeSweepTests.
+#
+# The contract: a Sharpy program catches only Python exceptions, so no CLR exception escapes a Stdlib module,
+# whether the module throws it or a .NET API it calls does. Each row is a leak the sweep measures today on a
+# roster module, citing the OPEN issue that tracks it. An unlisted leak is red; a row the sweep no longer finds
+# is red too (stale: delete it with the fix).
+#
+# Row: `<module>:<Type>.<Member>(<ParamTypes>):<Exception.FullName> # #N <reason>`
+#
+# DO NOT DELETE THIS FILE: the sweep throws if it is missing rather than passing silently.
+
+datetime:DateTime.Strptime(String,String):System.FormatException # #2133 strptime translates the format to .NET ParseExact; a mismatch escapes as FormatException, not ValueError

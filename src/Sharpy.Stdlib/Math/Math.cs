@@ -49,7 +49,7 @@ namespace Sharpy.MathModule
         /// </summary>
         public static double Copysign(double x, double y)
         {
-            double sign = (y < 0.0d || (y == 0.0d && 1.0d / y < 0.0d)) ? -1.0d : 1.0d;
+            double sign = global::System.Double.IsNegative(y) ? -1.0d : 1.0d;
             return global::System.Math.Abs(x) * sign;
         }
 
@@ -194,7 +194,7 @@ namespace Sharpy.MathModule
         /// </summary>
         public static double Degrees(double x)
         {
-            return x * (180.0d / global::Sharpy.MathModule.MathModuleModule.Pi);
+            return x * (global::Sharpy.Builtins.TrueDiv(180.0d, global::Sharpy.MathModule.MathModuleModule.Pi));
         }
 
         /// <summary>

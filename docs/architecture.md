@@ -174,7 +174,7 @@ src/Sharpy.Cli/bin/Debug/net10.0/sharpyc project path/to/project.spyproj [--incr
 - **Builtins**: `partial class Builtins` split across `Print.cs`, `Len.cs`, `Range.cs`, etc.
 - **Core modules**: Operator (comparison helpers) and Copy (shallow/deep copy) stay in Core due to collection type dependencies
 - **Python semantics**: negative indexing, slicing, Python-matching exceptions
-- Multi-targets `net10.0;netstandard2.1` — C# 9.0 on `netstandard2.1` (no global usings, file-scoped namespaces, or record structs), `LangVersion 14` on `net10.0` (`#if NET10_0_OR_GREATER` for net10.0-only paths). `Sharpy.Compiler` and `Sharpy.Cli` target `net10.0` only, with `LangVersion latest`
+- Multi-targets `net10.0;netstandard2.1` — C# 9.0 on `netstandard2.1` (no global usings, file-scoped namespaces, or record structs), `LangVersion 14` on `net10.0` (`#if NET10_0_OR_GREATER` for net10.0-only paths). `Sharpy.Compiler` and `Sharpy.Cli` target `net10.0` only, with `LangVersion latest`. .NET 11 / C# 15 (released 2026-11-10) is not a target yet: #2548
 
 ## Sharpy.Stdlib
 
@@ -255,4 +255,4 @@ Lexer → Parser → Semantic → Validation → CodeGen → LSP → Tests
 
 ## CI/CD
 
-`.github/workflows/`: `dotnet10.yml` (tests on .NET 10), `docs.yml` (mkdocs + playground), `python-build-tools.yml` (pytest for `build_tools/`), `benchmarks.yml`, `cross-language-benchmarks.yml`, `nightly.yml` (property tests on a time budget and the fuzz suite at a higher scale, fresh seeds each night), `vscode-extension.yml`, `auto-tag.yml`, `release.yml`. An `.editorconfig` at the repo root enforces C# formatting and naming conventions.
+`.github/workflows/`: `dotnet10.yml` (tests on .NET 10; every workflow pins `dotnet-version: 10.0.x` until #2548), `docs.yml` (mkdocs + playground), `python-build-tools.yml` (pytest for `build_tools/`), `benchmarks.yml`, `cross-language-benchmarks.yml`, `nightly.yml` (property tests on a time budget and the fuzz suite at a higher scale, fresh seeds each night), `vscode-extension.yml`, `auto-tag.yml`, `release.yml`. An `.editorconfig` at the repo root enforces C# formatting and naming conventions.

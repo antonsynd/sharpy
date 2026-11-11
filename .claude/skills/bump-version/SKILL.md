@@ -6,7 +6,7 @@ argument-hint: "[--apply] [--major|--minor|--patch]"
 
 Analyze commits since the last git tag and suggest (or apply) the appropriate semver bump to `Directory.Build.props`, `editors/vscode/package.json`, and `editors/vscode/CHANGELOG.md`.
 
-Only runs on the `dev` or `mainline` branch. Exits early on other branches.
+Runs on a bump lane cut from `origin/dev` (`claude/bump-X.Y.Z`) and lands through a pull request into `dev`; the release itself is the owner's later merge of `dev` into `mainline` (`docs/process/README.md` › Every other change, and the release).
 
 **Usage:**
 - `/bump-version` — analyze and suggest, do not apply
@@ -21,7 +21,12 @@ Only runs on the `dev` or `mainline` branch. Exits early on other branches.
 git branch --show-current
 ```
 
-If the branch is not `dev` or `mainline`, report that version bumps are only suggested on `dev`/`mainline` and stop.
+- On `dev`: suggest as usual; with `--apply`, first `git fetch origin dev` and `git switch -c claude/bump-<X.Y.Z> origin/dev` (the suggested version), because `dev` refuses direct pushes.
+- On a `claude/bump-*` lane: proceed.
+- On `mainline`: stop — `mainline` receives a bump only by the merge from `dev`, and a bump pushed there directly is a release cut (`/push` › 1.25).
+- On any other lane: stop and report that a bump is its own lane, never a rider on a feature pull request.
+
+After `--apply`, commit the bump alone (`chore: bump version to X.Y.Z`), `/push` the lane, open the pull request into `dev` and merge it on green (`docs/process/README.md` › The stage trail, item 6); the `dev` → `mainline` release merge stays the owner's.
 
 ### 2. Get last tag and current version
 

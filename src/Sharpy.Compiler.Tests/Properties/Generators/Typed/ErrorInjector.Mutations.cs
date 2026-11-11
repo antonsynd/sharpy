@@ -72,6 +72,14 @@ internal static partial class ErrorInjector
     public static InjectionResult? InjectSuperInitArity(Module module) =>
         Lane(MutationLanes.SuperInitArityPlusOne(module), "SPY0224");
 
+    /// <summary>A statement written ahead of a constructor's <c>super().__init__(…)</c> (#2507).</summary>
+    public static InjectionResult? InjectStatementAheadOfChainingCall(Module module) =>
+        Lane(MutationLanes.StatementAheadOfChainingCall(module), "SPY0292");
+
+    /// <summary>A constructor that opens with <c>super().__init__(…)</c> also calls <c>self.__init__(…)</c> (#2507).</summary>
+    public static InjectionResult? InjectBothChainingCalls(Module module) =>
+        Lane(MutationLanes.BothChainingCalls(module), "SPY0351");
+
     /// <summary>A user constructor's argument replaced by a literal its parameter refuses.</summary>
     public static InjectionResult? InjectWrongTypedConstructorArgument(Module module) =>
         Lane(MutationLanes.WrongTypedConstructorArgument(module), "SPY0220");
@@ -262,11 +270,10 @@ internal static partial class ErrorInjector
             : null;
 
     /// <summary>A <c>try</c> whose handlers go subclass → base reordered base → subclass: the subclass
-    /// handler is unreachable, Sharpy accepts it and Roslyn refuses it.</summary>
+    /// handler is unreachable, python never runs it — exactly one SPY0488 warning and no error (#2363).</summary>
     public static InjectionResult? InjectHandlerOrderBaseFirst(Module module) =>
         MutationLanes.HandlerOrderBaseFirst(module) is { } mutated
-            ? new InjectionResult(mutated, null, new KnownRedRefusal("#2363",
-                "analyses clean; run is SPY0908 CS0160 — handler reachability is left to Roslyn"))
+            ? new InjectionResult(mutated, "SPY0488", Severity: CompilerDiagnosticSeverity.Warning)
             : null;
 
     /// <summary>A <c>@dataclass</c> constructed with an argument its field type refuses: the synthesized

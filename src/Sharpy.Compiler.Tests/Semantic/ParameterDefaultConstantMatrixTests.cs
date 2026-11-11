@@ -22,8 +22,9 @@ namespace Sharpy.Compiler.Tests.Semantic;
 ///
 /// <para><b>Axes.</b> Kind: {Literal, NegatedLiteral, ConstReference, EnumMember, NoneLiteral,
 /// NoneCall, SomeIntoOptional, TupleLiteral, ConditionalOfConstants, Folded, ResultOk, ResultErr,
+/// ConstNameDivisor, ConstNameDivisorZero,
 /// NestedTuple, ListLiteral, DictLiteral, Call, Constructor, Lambda} × Host: {Def, Lambda, Init, Method,
-/// Dataclass}. Totality: 28 × 5 = 140 cells (54 admitted, 82 refused — SPY0401, or SPY0400 for the
+/// Dataclass}. Totality: 30 × 5 = 150 cells (59 admitted, 87 refused — SPY0401, or SPY0400 for the
 /// mutable list/dict literals at every non-Dataclass host — and 4 N/A). There is no known-red bucket.
 /// <c>Dataclass×ListLiteral</c>/<c>Dataclass×DictLiteral</c> moved Refused→Admitted under R-A
 /// (<see cref="PerCellAdmittedOutputOverrides" />, #1684): the mutable-collection family is no longer
@@ -52,12 +53,12 @@ public class ParameterDefaultConstantMatrixTests : IntegrationTestBase
     public ParameterDefaultConstantMatrixTests(ITestOutputHelper output) : base(output) { }
 
     // ── Axis sizes, anchored to literals ─────────────────────────────────────────────────────
-    private const int KindCount = 28;
+    private const int KindCount = 30;
     private const int HostCount = 5;
     // R-A (#1684): Dataclass×ListLiteral and Dataclass×DictLiteral moved Refused→Admitted —
     // see PerCellAdmittedOutputOverrides.
-    private const int AdmittedCellCount = 54;
-    private const int RefusedCellCount = 82;
+    private const int AdmittedCellCount = 59;
+    private const int RefusedCellCount = 87;
     private const int NotApplicableCellCount = 4;
 
     // ── Axis 1: default-value kinds ──────────────────────────────────────────────────────────
@@ -111,6 +112,11 @@ public class ParameterDefaultConstantMatrixTests : IntegrationTestBase
             "'%' lowers to FloorMod which is not a C# constant operator"),
         new("FloatFloorDiv", "float", "7.0 // 2.0", "", null,
             "'//' lowers to FloorDiv which is not a C# constant operator"),
+        // `/` over a const divisor (#2517): known non-zero keeps the native C# constant operator; a
+        // const that IS zero routes through the guarded Builtins.TrueDiv, so it is no constant.
+        new("ConstNameDivisor", "float", "1.0 / S", "const S: float = 4.0\n\n", "0.25\n", null),
+        new("ConstNameDivisorZero", "float", "1.0 / Z", "const Z: float = 0.0\n\n", null,
+            "must be a compile-time constant expression"),
         new("FloatPow", "float", "2.0 ** 3.0", "", null,
             "'**' lowers to Math.Pow which is not a C# constant operator"),
         new("StrRepeat", "str", "\"ab\" * 2", "", null,

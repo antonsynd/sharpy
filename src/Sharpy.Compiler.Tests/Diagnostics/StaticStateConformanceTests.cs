@@ -68,6 +68,10 @@ public class StaticStateConformanceTests
                 "[ThreadStatic] re-entrancy guard for recursive interface expansion; lazily " +
                 "created and cleared per traversal, thread-local so it cannot leak across compiles.",
 
+            [("Sharpy.Compiler.Discovery.ReferenceImageCache", "s_fallbackNotice")] =
+                "One-way state of the once-per-process fallback notice: null -> its text -> delivered, moved only " +
+                "by Interlocked.CompareExchange. It decides whether a warning is logged, never a compile output.",
+
             // ---- Init-once lookup tables (populated at declaration / static ctor, then only
             //      read — effectively immutable; listed so any NEW static collection is a
             //      conscious review, per #1036). ----
@@ -200,8 +204,16 @@ public class StaticStateConformanceTests
             [("Sharpy.Compiler.Discovery.ReferenceLoadContext", "s_firstLoadedIdentity")] =
                 "Full path -> the identity (path + length + last-write time) of the file this process first loaded " +
                 "from it. Written once per path and never changed; it answers only whether the file now at the " +
-                "path is the one the runtime's per-path image holds, so a replaced reference loads from a copy " +
-                "named by its own identity (#2114's in-process cell).",
+                "path is the one the runtime's per-path image holds, so a replaced reference loads from a verified " +
+                "copy of its current bytes, held under their SHA-256 in ReferenceImageCache (#2114's in-process " +
+                "cell). A replacement of the same length and write time is not seen here (#2114, open).",
+            [("Sharpy.Compiler.Discovery.ReferenceImageCache", "s_privateImages")] =
+                "Content hash -> the private temporary directory holding this process's fallback copy of those " +
+                "bytes (used only when the per-user cache is refused). The value holds exactly the bytes its key " +
+                "hashes, verified on reuse; deleted at process exit. Append-only.",
+            [("Sharpy.Compiler.Discovery.ReferenceImageCache", "s_heldEntries")] =
+                "Set of cache-entry directories this process published (and so may have loaded): it only keeps " +
+                "this process's prune off them and refreshes their times; it decides no compile output. Append-only.",
 
             // ---- The visibility seam's framework index (#2250, P54 Design Decision 1) ----
             [("Sharpy.Compiler.Discovery.AssemblyVisibility", "s_framework")] =
@@ -336,7 +348,8 @@ public class StaticStateConformanceTests
         // was rostered (+1): 15 ConcurrentDictionary + 3 Lazy = 18.
         // P54 Phase 2 task 2 (measured): + ReferenceLoadContext.s_shared = 19.
         // #2114 in-process cell: + ReferenceLoadContext.s_firstLoadedIdentity = 20.
-        Assert.Equal(20, flaggedCaches.Count);
+        // Reference image cache (PR #2566 review): + ReferenceImageCache.s_privateImages, s_heldEntries = 22.
+        Assert.Equal(22, flaggedCaches.Count);
     }
 
     /// <summary>

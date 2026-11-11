@@ -1,0 +1,89 @@
+# The stems allowed above their route's refusal-ratio bound (FormattingRouteParitySweepTests.RefusalRatioBoundPercent; R-MY, #2538).
+#
+# One row per (twin, route, stem, mode): twin route stem refused/withwork mode # #issue reason. Written BY HAND, never by the
+# regeneration script. A stem whose share of refused selections with work exceeds its route's bound is red, and the script
+# refuses to write, until it is fixed or gets a row here: the decision the bound asks for. A row pins the counts it was
+# granted at, so growth on an excepted stem is red, and so is a repair (re-grant or delete the row by hand). mode is `both`
+# on a route the two modes run alike; range-line rows name `sampled` or `full`, the run that measures them.
+# Volume across stems is bounded separately (RefusalCorpusCeilingPercent).
+identity range-block Formatting/blank_line_placements 3/5 both # #2538 blank lines the formatter re-places (R-ET) sit at the selection's edge, so the hunk crosses it and is declined
+identity range-block classes/abstract_ellipsis_interface 1/4 both # #2538 interface or abstract member declarations without a body: the declined hunk spans them
+identity range-block functions/simple_function_0025 1/6 both # #2538 interface or abstract member declarations without a body: the declined hunk spans them
+identity range-block interface_definition/interface_definition 1/3 both # #2538 interface or abstract member declarations without a body: the declined hunk spans them
+identity range-block interfaces/interface_implementation_0003 1/4 both # #2538 interface or abstract member declarations without a body: the declined hunk spans them
+identity range-block interfaces/interface_implementation_0066 1/7 both # #2538 interface or abstract member declarations without a body: the declined hunk spans them
+identity range-block interfaces/interface_streamlined_0010 1/3 both # #2538 interface or abstract member declarations without a body: the declined hunk spans them
+identity range-line Formatting/blank_line_placements 9/9 full # #2538 blank lines the formatter re-places (R-ET) sit at the selection's edge, so the hunk crosses it and is declined
+identity range-line classes/abstract_ellipsis_interface 4/5 full # #2538 interface or abstract member declarations without a body: the declined hunk spans them
+identity range-line classes/abstract_ellipsis_interface 4/5 sampled # #2538 interface or abstract member declarations without a body: the declined hunk spans them
+identity range-line functions/simple_function_0025 2/6 full # #2538 interface or abstract member declarations without a body: the declined hunk spans them
+identity range-line inheritance/abstract_class_0020 2/2 full # #2538 interface or abstract member declarations without a body: the declined hunk spans them
+identity range-line inheritance/abstract_class_0020 2/2 sampled # #2538 interface or abstract member declarations without a body: the declined hunk spans them
+identity range-line interface_definition/interface_definition 2/2 full # #2538 interface or abstract member declarations without a body: the declined hunk spans them
+identity range-line interface_definition/interface_definition 2/2 sampled # #2538 interface or abstract member declarations without a body: the declined hunk spans them
+identity range-line interfaces/interface_implementation_0003 2/3 full # #2538 interface or abstract member declarations without a body: the declined hunk spans them
+identity range-line interfaces/interface_implementation_0066 2/3 full # #2538 interface or abstract member declarations without a body: the declined hunk spans them
+identity range-line interfaces/interface_streamlined_0010 2/3 full # #2538 interface or abstract member declarations without a body: the declined hunk spans them
+identity range-line interfaces/interface_streamlined_0010 2/3 sampled # #2538 interface or abstract member declarations without a body: the declined hunk spans them
+identity range-line strings/d_string_basic 4/9 full # #2538 a multi-line triple-quoted literal collapses under Format, so the hunk across its delimiter line is declined
+identity range-line strings/triple_quoted_delimiter_lines 5/8 full # #2538 a multi-line triple-quoted literal collapses under Format, so the hunk across its delimiter line is declined
+identity range-line tstrings/t_string_multiline_hole_2022 2/2 full # #2538 a multi-line triple-quoted literal collapses under Format, so the hunk across its delimiter line is declined
+identity range-statement functions/simple_function_0025 1/4 both # #2538 interface or abstract member declarations without a body: the declined hunk spans them
+comment range-block Formatting/inner_comments_verbatim 4/8 both # #2538 comment lines inside a block: the hunk that re-indents them crosses the selection and is declined
+comment range-line Formatting/inner_comments_verbatim 36/61 full # #2538 comment lines inside a block: the hunk that re-indents them crosses the selection and is declined
+comment range-line strings/d_string_basic 4/9 full # #2538 a multi-line triple-quoted literal collapses under Format, so the hunk across its delimiter line is declined
+comment range-line strings/triple_quoted_delimiter_lines 2/8 full # #2538 a multi-line triple-quoted literal collapses under Format, so the hunk across its delimiter line is declined
+wide range-block basics/decimal_mod_zero 16/17 both # #2538 wide twin: blank or comment lines split the block's re-indent into hunks, and a partial re-indent fails the net (P50)
+wide range-block collections/collection_iteration_0020 11/11 both # #2538 wide twin: blank or comment lines split the block's re-indent into hunks, and a partial re-indent fails the net (P50)
+wide range-block collections/collection_methods_0002 1/1 both # #2538 wide twin: blank or comment lines split the block's re-indent into hunks, and a partial re-indent fails the net (P50)
+wide range-block collections/containment_test_0003 1/1 both # #2538 wide twin: blank or comment lines split the block's re-indent into hunks, and a partial re-indent fails the net (P50)
+wide range-block collections/list_comprehension_0029 2/2 both # #2538 wide twin: blank or comment lines split the block's re-indent into hunks, and a partial re-indent fails the net (P50)
+wide range-block collections/list_literal_0005 1/1 both # #2538 wide twin: blank or comment lines split the block's re-indent into hunks, and a partial re-indent fails the net (P50)
+wide range-block exception_handling/keyerror_text 28/30 both # #2538 wide twin: blank or comment lines split the block's re-indent into hunks, and a partial re-indent fails the net (P50)
+wide range-block exception_handling/nested_except_same_variable 5/5 both # #2538 wide twin: blank or comment lines split the block's re-indent into hunks, and a partial re-indent fails the net (P50)
+wide range-block exceptions/except_python_base_class_hierarchy_2124 12/13 both # #2538 wide twin: blank or comment lines split the block's re-indent into hunks, and a partial re-indent fails the net (P50)
+wide range-block exceptions/not_a_directory_error_builtin_2476 15/16 both # #2538 wide twin: blank or comment lines split the block's re-indent into hunks, and a partial re-indent fails the net (P50)
+wide range-block exceptions/oserror_family_2124 27/28 both # #2538 wide twin: blank or comment lines split the block's re-indent into hunks, and a partial re-indent fails the net (P50)
+wide range-block exceptions/try_except_finally_0006 13/14 both # #2538 wide twin: blank or comment lines split the block's re-indent into hunks, and a partial re-indent fails the net (P50)
+wide range-block exceptions/try_except_finally_0007 4/4 both # #2538 wide twin: blank or comment lines split the block's re-indent into hunks, and a partial re-indent fails the net (P50)
+wide range-block float_parse_edge_cases 12/13 both # #2538 wide twin: blank or comment lines split the block's re-indent into hunks, and a partial re-indent fails the net (P50)
+wide range-block fstrings/f_string_basic_0003 1/1 both # #2538 wide twin: blank or comment lines split the block's re-indent into hunks, and a partial re-indent fails the net (P50)
+wide range-block int_parse_edge_cases 12/13 both # #2538 wide twin: blank or comment lines split the block's re-indent into hunks, and a partial re-indent fails the net (P50)
+wide range-block nested_types/nested_control_flow_reentrancy 10/11 both # #2538 wide twin: blank or comment lines split the block's re-indent into hunks, and a partial re-indent fails the net (P50)
+wide range-block optional_result/optional_unwrap_0003 1/1 both # #2538 wide twin: blank or comment lines split the block's re-indent into hunks, and a partial re-indent fails the net (P50)
+wide range-block optional_result/result_unwrap_0032 1/1 both # #2538 wide twin: blank or comment lines split the block's re-indent into hunks, and a partial re-indent fails the net (P50)
+wide range-block strings/str_encode_bytes_decode_errors_2477 24/25 both # #2538 wide twin: blank or comment lines split the block's re-indent into hunks, and a partial re-indent fails the net (P50)
+wide range-block truthiness_binary_receiver_positions_1727 33/34 both # #2538 wide twin: blank or comment lines split the block's re-indent into hunks, and a partial re-indent fails the net (P50)
+wide range-block truthiness_conditional_receiver_kinds_1727 42/44 both # #2538 wide twin: blank or comment lines split the block's re-indent into hunks, and a partial re-indent fails the net (P50)
+wide range-block truthiness_if_non_bool 12/13 both # #2538 wide twin: blank or comment lines split the block's re-indent into hunks, and a partial re-indent fails the net (P50)
+wide range-statement basics/bool_variables_0002 3/3 both # #2538 wide twin: blank or comment lines split the block's re-indent into hunks, and a partial re-indent fails the net (P50)
+wide range-statement builtins/builtin_aggregation_0018 3/4 both # #2538 wide twin: blank or comment lines split the block's re-indent into hunks, and a partial re-indent fails the net (P50)
+wide range-statement builtins/builtin_higher_order_0002 1/1 both # #2538 wide twin: blank or comment lines split the block's re-indent into hunks, and a partial re-indent fails the net (P50)
+wide range-statement classes/dunder_bool_0003 2/2 both # #2538 wide twin: blank or comment lines split the block's re-indent into hunks, and a partial re-indent fails the net (P50)
+wide range-statement collections/collection_iteration_0000 1/1 both # #2538 wide twin: blank or comment lines split the block's re-indent into hunks, and a partial re-indent fails the net (P50)
+wide range-statement collections/collection_iteration_0020 2/2 both # #2538 wide twin: blank or comment lines split the block's re-indent into hunks, and a partial re-indent fails the net (P50)
+wide range-statement collections/collection_methods_0002 1/1 both # #2538 wide twin: blank or comment lines split the block's re-indent into hunks, and a partial re-indent fails the net (P50)
+wide range-statement collections/containment_test_0003 1/1 both # #2538 wide twin: blank or comment lines split the block's re-indent into hunks, and a partial re-indent fails the net (P50)
+wide range-statement collections/list_comprehension_0029 2/2 both # #2538 wide twin: blank or comment lines split the block's re-indent into hunks, and a partial re-indent fails the net (P50)
+wide range-statement collections/list_literal_0005 1/1 both # #2538 wide twin: blank or comment lines split the block's re-indent into hunks, and a partial re-indent fails the net (P50)
+wide range-statement control_flow/for_range_start_end_0014 2/2 both # #2538 wide twin: blank or comment lines split the block's re-indent into hunks, and a partial re-indent fails the net (P50)
+wide range-statement exceptions/try_except_finally_0006 3/3 both # #2538 wide twin: blank or comment lines split the block's re-indent into hunks, and a partial re-indent fails the net (P50)
+wide range-statement exceptions/try_except_finally_0007 1/1 both # #2538 wide twin: blank or comment lines split the block's re-indent into hunks, and a partial re-indent fails the net (P50)
+wide range-statement fstrings/f_string_basic_0003 1/1 both # #2538 wide twin: blank or comment lines split the block's re-indent into hunks, and a partial re-indent fails the net (P50)
+wide range-statement inheritance/abstract_class_0000 3/4 both # #2538 wide twin: blank or comment lines split the block's re-indent into hunks, and a partial re-indent fails the net (P50)
+wide range-statement inheritance/abstract_class_0010 3/4 both # #2538 wide twin: blank or comment lines split the block's re-indent into hunks, and a partial re-indent fails the net (P50)
+wide range-statement inheritance/class_inheritance_0023 3/4 both # #2538 wide twin: blank or comment lines split the block's re-indent into hunks, and a partial re-indent fails the net (P50)
+wide range-statement inheritance/super_init_call_0087 4/5 both # #2538 wide twin: blank or comment lines split the block's re-indent into hunks, and a partial re-indent fails the net (P50)
+wide range-statement inheritance/virtual_override_0014 4/5 both # #2538 wide twin: blank or comment lines split the block's re-indent into hunks, and a partial re-indent fails the net (P50)
+wide range-statement inheritance/virtual_override_0025 3/3 both # #2538 wide twin: blank or comment lines split the block's re-indent into hunks, and a partial re-indent fails the net (P50)
+wide range-statement interfaces/interface_abstract_beside_bodied_2382 5/7 both # #2538 wide twin: blank or comment lines split the block's re-indent into hunks, and a partial re-indent fails the net (P50)
+wide range-statement optional_result/optional_unwrap_0003 1/1 both # #2538 wide twin: blank or comment lines split the block's re-indent into hunks, and a partial re-indent fails the net (P50)
+wide range-statement optional_result/result_unwrap_0032 1/1 both # #2538 wide twin: blank or comment lines split the block's re-indent into hunks, and a partial re-indent fails the net (P50)
+wide range-statement optionals/null_conditional_chaining 3/4 both # #2538 wide twin: blank or comment lines split the block's re-indent into hunks, and a partial re-indent fails the net (P50)
+wide range-statement pattern_matching/match_type_binding_0004 2/2 both # #2538 wide twin: blank or comment lines split the block's re-indent into hunks, and a partial re-indent fails the net (P50)
+wide range-statement properties/property_halves_after_refused_name_2075 6/7 both # #2538 wide twin: blank or comment lines split the block's re-indent into hunks, and a partial re-indent fails the net (P50)
+wide range-statement properties/property_inheritance_0029 3/4 both # #2538 wide twin: blank or comment lines split the block's re-indent into hunks, and a partial re-indent fails the net (P50)
+wide range-statement properties/property_split_auto_halves_2382 9/10 both # #2538 wide twin: blank or comment lines split the block's re-indent into hunks, and a partial re-indent fails the net (P50)
+wide range-statement type_body_member_pair_2360 9/11 both # #2538 wide twin: blank or comment lines split the block's re-indent into hunks, and a partial re-indent fails the net (P50)
+wide range-statement type_system/comparison_chaining_0037 2/2 both # #2538 wide twin: blank or comment lines split the block's re-indent into hunks, and a partial re-indent fails the net (P50)
+wide range-statement type_system/tuple_zero_arity_annotation_1967 4/5 both # #2538 wide twin: blank or comment lines split the block's re-indent into hunks, and a partial re-indent fails the net (P50)

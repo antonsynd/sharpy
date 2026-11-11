@@ -1,6 +1,7 @@
 # Subsystem 2: Hallucination-Resistant Differential Oracle
 
 > **Status:** Draft design — 2026-07-02
+> **Oracle version (2026-11-10):** where this draft says CI pins 3.12, the oracle is now the CPython minor in the repo-root `.python-version` — 3.15 (R-LZ #2497, R-MZ #2537). The `python-version: '3.12'` workflow sample below is refused today by `build_tools/tests/test_python_version_pin.py`.
 > **Priority:** 2 of 6 (directly addresses hallucination risk; leverages the existing 2,185 fixtures)
 > **Index:** [README.md](README.md) · **Proposal:** [../test-harness-hardening-proposal.md](../test-harness-hardening-proposal.md)
 
@@ -270,7 +271,7 @@ For the 520 error fixtures, exact message equality is meaningless. The compariso
 `oracle-baseline.json` — committed, one line per fixture: `{ "fixture": "...", "status": "Verified", "deviationId": null }`. Rules:
 
 - **PR gate:** any fixture moving `Verified|VerifiedWithDeviation → Divergent` fails. New fixtures entering as `Divergent` fail. Movements *into* `Verified` auto-update nothing (nightly owns the baseline).
-- **Nightly:** full run; commits an updated baseline to `dev` as `github-actions[bot]` — same pattern the cross-language benchmark workflow already uses for `history.json`. Trend metrics (verified %, skip %, per-skip-category counts) append to `oracle-history.json`.
+- **Nightly:** full run; publishes an updated baseline as `github-actions[bot]`. Not by a direct push to `dev`: the `dev` ruleset (pull request + required checks, no bypass) rejects it with GH013, which is why the cross-language benchmark workflow moved its `history.json` to the `benchmark-results` branch (`benchmarks/cross-language/publish_results.sh`); use that pattern or a reviewed PR. Trend metrics (verified %, skip %, per-skip-category counts) append to `oracle-history.json`.
 - Target from the proposal: >70% `Verified` among non-interop fixtures; tracked, not gated, in Phase 2.
 
 ## CLI verbs & skill

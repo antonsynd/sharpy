@@ -7,7 +7,7 @@
 # a present slot, and two event `+=` subscriptions then a `-=` (combine, not overwrite). The last
 # two hosts reach the same arm through its other entry routes: a `@suppress`-wrapped statement (a live
 # suppression: `self.k` reads a @static through the instance, SPY0459), and
-# a store ahead of `super().__init__()`. Expected values: python 3.13 on the python-spellable rows,
+# a store after a first-statement `super().__init__()` (a store ahead of it is refused, SPY0292). Expected values: python 3.13 on the python-spellable rows,
 # the nested-block twin and the specs (null_coalescing_assignment.md, events.md) on the rest.
 delegate Ping() -> None
 
@@ -230,8 +230,8 @@ class Derived(Base):
     n: int = 3
 
     def __init__(self) -> None:
-        self.n += 9
         super().__init__()
+        self.n += 9
         print(self.n)
 
 

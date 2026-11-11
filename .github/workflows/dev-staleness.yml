@@ -17,6 +17,7 @@ on:
     paths:
       - 'src/**'
       - 'Directory.Build.props'
+      - '.editorconfig'
       - 'sharpy.sln'
       - 'build_tools/regenerate_spy_stdlib.sh'
       - 'build_tools/regenerate_spy_tests.sh'
@@ -26,6 +27,7 @@ on:
       - 'build_tools/allowlist_issue_state.py'
       - 'docs/language_specification/**'
       - 'build_tools/spec_blocks*'
+      - 'build_tools/check_spec_blocks.sh'
       - '.github/workflows/dev-staleness.yml'
 
 jobs:

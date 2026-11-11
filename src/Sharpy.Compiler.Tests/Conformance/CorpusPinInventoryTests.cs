@@ -185,8 +185,12 @@ public sealed class CorpusPinInventoryTests
     /// <summary>The closed reason set: the checked ones, the two evidence-only ones and <see cref="In"/>.</summary>
     internal static readonly string[] Reasons = CheckedReasons.Concat(new[] { "tuning-constant", "fixed-input", In }).ToArray();
 
-    /// <summary>The symbols a <c>rate-tolerance</c> row may sit in (one-sided ceilings, R-DK's decision-rule instrument; ledgered for #2458).</summary>
-    internal static readonly string[] RateToleranceSymbols = { "RefusalCeilingPercent", "SampledRangeLineCeilingPercent" };
+    /// <summary>
+    /// The symbols a <c>rate-tolerance</c> row may sit in: the formatting route sweep's per-stem refusal-ratio bounds, its
+    /// corpus refusal-ratio ceilings and its census measures' ceilings per corpus stem (R-DK's decision-rule instrument, R-MY):
+    /// ratios, not counts, so an ordinary fixture does not move them.
+    /// </summary>
+    internal static readonly string[] RateToleranceSymbols = { "RefusalRatioBoundPercent", "RefusalCorpusCeilingPercent", "CensusCellsPerThousandStemsCeiling" };
 
     /// <summary>The D3 set files: a per-stem column there is a set row, not a count pin.</summary>
     internal static readonly string[] SetFiles = { "formatting-route-census.txt", "code-action-shape-stems.txt", "generate-expression-uncompilable.txt" };
@@ -609,7 +613,7 @@ public sealed class CorpusPinInventoryTests
         var generatorSweep = Sweep(new[] { ("Sharpy.Compiler.Tests/Probe/GenTests.cs", generator) });
         CheckReason(generatorSweep.Hits.Single(), "generator-roster", "x", generatorSweep).Should().BeNull();
         var rate = string.Join("\n", "namespace Probe;", "public class RateTests", "{", "    static readonly object C = FixtureRoots.All;",
-            "    static readonly Dictionary<string, int> RefusalCeilingPercent = new()", "    {", "        [\"a\"] = " + "4,", "    };", "}");
+            "    static readonly Dictionary<string, int> RefusalRatioBoundPercent = new()", "    {", "        [\"a\"] = " + "4,", "    };", "}");
         var rateSweep = Sweep(new[] { ("Sharpy.Compiler.Tests/Probe/RateTests.cs", rate) });
         CheckReason(rateSweep.Hits.Single(), "rate-tolerance", "x", rateSweep).Should().BeNull();
         var setSweep = Sweep(new[] { ("Sharpy.Lsp.Tests/Conformance/" + SetFiles[0], "s7-parity-exempt identity full a/b 2 # #2279\n") });

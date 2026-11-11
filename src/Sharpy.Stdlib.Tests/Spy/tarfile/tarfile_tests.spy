@@ -178,8 +178,10 @@ def test_is_tarfile_non_tar_returns_false(tmp_path: str):
 
 
 @test
-def test_is_tarfile_non_existent_returns_false(tmp_path: str):
-    assert not tarfile.is_tarfile(tmp_path + "/nonexistent.tar")
+def test_is_tarfile_non_existent_throws_file_not_found_error(tmp_path: str):
+    # python3: is_tarfile opens the file, so a missing path is FileNotFoundError (plan-638e8b G1, #2476)
+    with assert_raises(FileNotFoundError):
+        tarfile.is_tarfile(tmp_path + "/nonexistent.tar")
 
 
 @test
