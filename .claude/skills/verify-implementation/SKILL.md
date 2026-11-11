@@ -13,21 +13,15 @@ Verify that a plan has been fully and correctly implemented. Reads the plan, der
 
 If `$ARGUMENTS` is non-empty, use it as the path to the plan file.
 
-The plan is the file of record at `docs/process/plans/<plan-id>.md` (committed by every stage: `/create-plan`, `/verify-plan`, `/implement-plan`; policy: `docs/process/README.md` › The stage trail); the gitignored working copy in `.claude/plans/` is read only when no committed copy exists, and the close step (§Cleanup and Report) then creates one. If `$ARGUMENTS` is empty, list the three newest in each and **ask** which one — never pick silently:
-```bash
-ls -t docs/process/plans/*.md 2>/dev/null | head -3    # files of record — verify one that carries a stamp and a closed implementation checklist
-ls -t .claude/plans/*.md 2>/dev/null | head -3         # working copies (gitignored) — only when the plan has no committed copy
-```
+The plan is the file of record `docs/process/plans/<plan-id>.md` (`docs/process/README.md` › The stage trail). If `$ARGUMENTS` is empty, list the three newest (`ls -t docs/process/plans/*.md | head -3`) and **ask** which — never pick silently.
 
 Read the plan file completely before proceeding.
 
 ## Operational contract (applies to every command below)
 
-- **Every `dotnet` invocation goes through `.claude/scripts/dotnet-serialized`** (drop-in: same args, output, exit code). Raw `dotnet` is blocked by `.claude/hooks/enforce-dotnet-serialized.sh`. The wrapper must run with `dangerouslyDisableSandbox: true` (sandboxed callers exit 125); `gh` needs the same.
-- **The whole-solution gate is `/ci-gate`** (GitHub CI at the pushed commit, ~20 min). The local wrapper command is its fallback when it exits 3, recorded as such in the report (contract §6). `dotnet` for builds, regeneration, mutations and probes stays local.
-- Each wrapper call tees to its own log and prints `dotnet-serialized: log -> <path>` first; read that path (check the binary timestamp before trusting a log). Read logs instead of re-running (~30 min wall clock for the whole solution, `maxParallelThreads` 2, measured @ af6f30901).
-- **Counts carry their sha:** every number in this skill's outputs is written `passed/failed/skipped @ <sha> (measured)`. A derived number is never written in that format.
-- Commits use the trailer the harness provides for this session; never hard-code a model name.
+- `dotnet` only through `.claude/scripts/dotnet-serialized`, and it and `gh` with `dangerouslyDisableSandbox: true`. Read the log path the wrapper prints (check the binary timestamp before trusting a log) instead of re-running.
+- **The whole-solution gate is `/ci-gate`**; the local wrapper command is its fallback on exit 3, recorded as such (contract §6). Builds, regeneration, mutations and probes stay local.
+- **Counts carry their sha:** `passed/failed/skipped @ <sha> (measured)`; a derived number is never written in that format.
 
 ## Pre-Verification Checklist
 
@@ -54,7 +48,7 @@ The audit range is **the plan's own commit range**, never the branch-vs-`mainlin
 
 - **Base sha** = the parent of the plan's first implementation commit. Read it from the plan's implementation commit table/checklist, or from `git log` on the commit messages that reference the plan. If neither identifies it unambiguously, **ask the user** — do not guess.
 - Record `BASE=<sha>` and `HEAD=<sha>`; every `git diff`/`git log` below uses `$BASE..HEAD`.
-- **Lane branch** (`docs/process/README.md` › The stage trail): `dev` refuses direct pushes, so the remediation commits and the verify record land through a pull request. If the implementation's pull request is still open, stay on its lane: this stage's commits go to that branch, the pull request carries them, and its CI run at `$FINAL` is the gate. If it has merged (HEAD is on `dev`), `git fetch origin dev` and `git switch -c claude/<group>-verify origin/dev` before the first remediation commit or the record commit.
+- **Branch** (`docs/process/README.md` › The stage trail): commit on the implementation's open pull request; its CI run at `$FINAL` is the gate. Only if it has merged, cut `claude/<group>-verify` from `origin/dev` first.
 
 ### 3. Establish the baseline @ HEAD
 
@@ -100,12 +94,7 @@ REFUTE the claim "this plan is done". Report an item DONE only after naming the 
 checked. Completion is derived from the plan's ACCEPTANCE BULLETS and "Issues to Close" rows,
 not from "the code landed".
 
-SHARED TREE: The working tree is shared with other agents. Never run `git checkout`, `git restore`,
-`git clean`, `git stash`, `git reset`, or `rm` on repository paths. REPORT `git status`; do not
-"make it clean". Stage with explicit per-file pathspecs and check `git diff --cached --stat`
-before committing; never `git add -A` or `git add .`. Restore a mutation-test from the copy you
-made (`cp`), never from git. Never run `dotnet` directly — use `.claude/scripts/dotnet-serialized`
-with `dangerouslyDisableSandbox: true`.
+SHARED TREE: <the shared-tree block above, verbatim>
 
 For EVERY item in the completeness checklist:
 1. Glob: the referenced file exists.
@@ -137,12 +126,7 @@ Provide the full completeness checklist and the plan's "Issues to Close" table.
 You are checking for regressions introduced in $BASE..$HEAD. Your job is to REFUTE the claim
 "nothing broke". Every count you report is written `passed/failed/skipped @ <sha> (measured)`.
 
-SHARED TREE: The working tree is shared with other agents. Never run `git checkout`, `git restore`,
-`git clean`, `git stash`, `git reset`, or `rm` on repository paths. REPORT `git status`; do not
-"make it clean". Stage with explicit per-file pathspecs and check `git diff --cached --stat`
-before committing; never `git add -A` or `git add .`. Restore a mutation-test from the copy you
-made (`cp`), never from git. Never run `dotnet` directly — use `.claude/scripts/dotnet-serialized`
-with `dangerouslyDisableSandbox: true`.
+SHARED TREE: <the shared-tree block above, verbatim>
 
 1. Whole-solution gate at HEAD: if the lead's `/ci-gate` already reported a run for $HEAD, read it
    with `.claude/scripts/ci-gate --run <id>` and confirm the sha. Otherwise run `.claude/scripts/ci-gate`
@@ -205,12 +189,7 @@ You are reviewing the changes in $BASE..$HEAD. Your job is to REFUTE the claim "
 the class" — that it landed at the shared seam rather than on one arm, and that its guards are
 load-bearing. Report NOT REFUTED only after naming what you tried.
 
-SHARED TREE: The working tree is shared with other agents. Never run `git checkout`, `git restore`,
-`git clean`, `git stash`, `git reset`, or `rm` on repository paths. REPORT `git status`; do not
-"make it clean". Stage with explicit per-file pathspecs and check `git diff --cached --stat`
-before committing; never `git add -A` or `git add .`. Restore a mutation-test from the copy you
-made (`cp`), never from git. Never run `dotnet` directly — use `.claude/scripts/dotnet-serialized`
-with `dangerouslyDisableSandbox: true`.
+SHARED TREE: <the shared-tree block above, verbatim>
 
 Section A — class cure (do this first)
 
@@ -293,12 +272,7 @@ You are probing the cells of the defect class that the plan in $BASE..$HEAD clai
 job is to REFUTE the claim "the matrix is covered" by finding a cell that still fails. The
 issues' repro lists are a SYMPTOM REPORT, not a test plan — you probe what they do NOT name.
 
-SHARED TREE: The working tree is shared with other agents. Never run `git checkout`, `git restore`,
-`git clean`, `git stash`, `git reset`, or `rm` on repository paths. REPORT `git status`; do not
-"make it clean". Stage with explicit per-file pathspecs and check `git diff --cached --stat`
-before committing; never `git add -A` or `git add .`. Restore a mutation-test from the copy you
-made (`cp`), never from git. Never run `dotnet` directly — use `.claude/scripts/dotnet-serialized`
-with `dangerouslyDisableSandbox: true`.
+SHARED TREE: <the shared-tree block above, verbatim>
 
 1. Take the plan's Defect Class › "Sibling cells this plan must also cover" matrix. If the plan
    has no matrix (or is stamped Adequacy: CELL), BUILD one from the touched dispatch sites: for
@@ -411,7 +385,7 @@ Check the session's tool list; with team tools absent, delegate via background `
 
 Provide each agent with: the specific finding, the relevant plan section (including the Defect Class contract), the file(s) involved, the acceptance criterion, and — for any test — the requirement to report `broken → red / restored → green` in the commit body. Agents stage with explicit pathspecs and report `git status`; the lead re-checks `git diff --stat` after each wave.
 
-Fix agents never run `gh issue create`: anything they see beside the regression they are fixing goes to `<scratchpad>/findings-ledger.md` (cell · program · observed · expected @ sha · lane · reach · candidate class · found-by); the lead de-duplicates against the ledger, the plan's Defect Class table and `gh issue list --label class-tracker --state open`, then files one issue per class with `lane:*` / `reach:*` / `class-tracker` labels (contract §10). Message-text, refusal operand order and other DEVIATION-by-default surfaces (`docs/design/python-fidelity-scope.md`) become tracker comments or `docs/deviations.yaml` rows.
+Fix agents never run `gh issue create`: anything beside their regression goes to `<scratchpad>/findings-ledger.md`, and the lead files it as `/implement-plan` › Gap Discovery says (contract §10).
 
 ## Final Verification
 
@@ -432,8 +406,8 @@ If a step fails, loop back to remediation. Maximum 3 remediation loops — after
 
 1. Remove any worktrees you or the auditors created (`git worktree list`; `git worktree remove <path>`)
 2. If a team was created, shut teammates down (`SendMessage` `shutdown_request`) and delete it; with background agents, confirm each has returned
-3. **Record the close in the committed plan.** Append the report below to `docs/process/plans/<plan-id>.md` as `## Implementation Verification Record` (after the Verification Summary; verbatim, every count `@ sha`), then commit that one file by explicit pathspec — `process(plan): <plan-id> — verify-implementation closed @ $FINAL` — as the round's last commit: the close is the plan's final state of record (`docs/process/README.md`). If the plan was read from `.claude/plans/` (no committed copy), `cp` it to `docs/process/plans/<plan-id>.md` first and commit it in the same commit. Never commit another plan or the charter alongside.
-4. **Open the pull request** (`docs/process/README.md` › The stage trail). `/push` the lane, then open the pull request into `dev` unless the lane already has an open one (the implementation's, still unmerged: the push updates it, and the record commit is its new tip). Title = the record commit's subject; body = the report's header lines, the class-status table, the issues closed with the evidence each close cites, the unresolved items, and the gate `passed/failed/skipped @ $FINAL (measured)` with its CI run id. A round with no remediation commits still opens it: the record is the plan's final state and reaches `dev` only through a pull request. The record commit is the tip, so it never carries `[skip ci]` (contract §6). Merging is the owner's.
+3. **Record the close in the committed plan.** Append the report below to `docs/process/plans/<plan-id>.md` as `## Implementation Verification Record` (verbatim, every count `@ sha`) and commit that one file — `process(plan): <plan-id> — verify-implementation closed @ $FINAL` — as the round's last commit.
+4. `/push`. The implementation's pull request carries the record (on a `-verify` lane, open one with the same body). Add to its body the class-status table, the issues closed with the evidence each close cites, the issues filed, the unresolved items and the gate `@ $FINAL (measured)` with its run id. The tip never carries the skip-ci marker (contract §6).
 5. Present the verification report:
 
 ```markdown
