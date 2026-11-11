@@ -23,3 +23,12 @@ Sharpy.Session.Options(string, Sharpy.Dict<string, string>, Sharpy.Dict<string, 
 Sharpy.Session.Patch(string, Sharpy.Dict<string, string>, Sharpy.Dict<string, string>, object, Sharpy.Dict<string, string>, double?, (string, string)?, Sharpy.Dict<string, string>, bool) # out of contract: #2553 requests files= path read, no python3 oracle
 Sharpy.Session.Post(string, Sharpy.Dict<string, string>, Sharpy.Dict<string, string>, object, Sharpy.Dict<string, string>, double?, (string, string)?, Sharpy.Dict<string, string>, bool) # out of contract: #2553 requests files= path read, no python3 oracle
 Sharpy.Session.Put(string, Sharpy.Dict<string, string>, Sharpy.Dict<string, string>, object, Sharpy.Dict<string, string>, double?, (string, string)?, Sharpy.Dict<string, string>, bool) # out of contract: #2553 requests files= path read, no python3 oracle
+
+# #2266 (P56, subprocess state): plan-638e8b's ledger places subprocess's path-state cells on P56's surface
+# when python's outcome is in the OSError family and G1 finds them red. Measured @ 263de278 (python3 3.13.18,
+# Linux): cwd= Missing/MissingParent/File/ParentIsFile raise plain OSError where python raises
+# FileNotFoundError / NotADirectoryError, on all four entry points (16 cells) — ledger rows for the lead.
+Sharpy.SubprocessModule.Run(Sharpy.List<string>, bool, bool, bool, double?, string, string, Sharpy.Dict<string, string>, bool, int, int, int) # out of contract: #2266 subprocess cwd= path state is P56's surface
+Sharpy.SubprocessModule.CheckCall(Sharpy.List<string>, double?, string, Sharpy.Dict<string, string>, bool) # out of contract: #2266 subprocess cwd= path state is P56's surface
+Sharpy.SubprocessModule.CheckOutput(Sharpy.List<string>, bool, double?, string, string, Sharpy.Dict<string, string>, bool, int) # out of contract: #2266 subprocess cwd= path state is P56's surface
+Sharpy.Popen.Popen(Sharpy.List<string>, int, int, int, bool, string, Sharpy.Dict<string, string>) # out of contract: #2266 subprocess cwd= path state is P56's surface

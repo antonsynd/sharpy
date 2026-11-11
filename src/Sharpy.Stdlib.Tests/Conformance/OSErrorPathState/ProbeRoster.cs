@@ -46,7 +46,6 @@ internal static class ProbeRoster
             ["xml"] = ("import xml", "import xml.etree.ElementTree as xml"),
             ["toml"] = ("import toml", "import tomllib"),
             ["configparser"] = ("import configparser", "import configparser"),
-            ["subprocess"] = ("import subprocess", "import subprocess"),
         };
 
     private static Probe P(string id, string entry, string module, PathRequirement requirement, string[] placeholders, string sharpy, string? python = null)
@@ -150,19 +149,14 @@ internal static class ProbeRoster
 
         // ---- toml (python: tomllib reads; a write is python's open(p, "w")) ----
         P("toml.load_file", "Sharpy.Toml.LoadFile(string)", "toml", PathRequirement.NeedsFileToRead, Path0, "toml.load_file(@0)", "tomllib.load(open(@0, \"rb\"))"),
-        P("toml.dump_file", "Sharpy.Toml.DumpFile(object, string)", "toml", PathRequirement.NeedsFileToWrite, Path0, "toml.dump_file({\"a\": 1}, @0)", "open(@0, \"w\").write(\"a = 1\\n\")"),
-        P("toml.dump_file(sort_keys)", "Sharpy.Toml.DumpFile(object, string, bool)", "toml", PathRequirement.NeedsFileToWrite, Path0, "toml.dump_file({\"a\": 1}, @0, True)", "open(@0, \"w\").write(\"a = 1\\n\")"),
+        P("toml.dump_file", "Sharpy.Toml.DumpFile(object, string)", "toml", PathRequirement.NeedsFileToWrite, Path0, "d: dict[str, object] = {\"a\": 1}\ntoml.dump_file(d, @0)", "open(@0, \"w\").write(\"a = 1\\n\")"),
+        P("toml.dump_file(sort_keys)", "Sharpy.Toml.DumpFile(object, string, bool)", "toml", PathRequirement.NeedsFileToWrite, Path0, "d: dict[str, object] = {\"a\": 1}\ntoml.dump_file(d, @0, True)", "open(@0, \"w\").write(\"a = 1\\n\")"),
 
         // ---- configparser ----
         P("ConfigParser.read", "Sharpy.ConfigParser.Read(string)", "configparser", PathRequirement.NeedsFileToRead, new[] { "filename" }, "configparser.ConfigParser().read(@0)"),
         P("ConfigParser.write_to_file", "Sharpy.ConfigParser.WriteToFile(string, bool)", "configparser", PathRequirement.NeedsFileToWrite, new[] { "filename" },
             "configparser.ConfigParser().write_to_file(@0)", "configparser.ConfigParser().write(open(@0, \"w\"))"),
 
-        // ---- subprocess (cwd= is the path; the argv names /bin/true, never a state path) ----
-        P("subprocess.run", "Sharpy.SubprocessModule.Run(Sharpy.List<string>, bool, bool, bool, double?, string, string, Sharpy.Dict<string, string>, bool, int, int, int)", "subprocess", PathRequirement.NeedsDir, new[] { "cwd" }, "subprocess.run([\"true\"], cwd=@0)"),
-        P("subprocess.check_call", "Sharpy.SubprocessModule.CheckCall(Sharpy.List<string>, double?, string, Sharpy.Dict<string, string>, bool)", "subprocess", PathRequirement.NeedsDir, new[] { "cwd" }, "subprocess.check_call([\"true\"], cwd=@0)"),
-        P("subprocess.check_output", "Sharpy.SubprocessModule.CheckOutput(Sharpy.List<string>, bool, double?, string, string, Sharpy.Dict<string, string>, bool, int)", "subprocess", PathRequirement.NeedsDir, new[] { "cwd" }, "subprocess.check_output([\"true\"], cwd=@0)"),
-        P("subprocess.Popen", "Sharpy.Popen.Popen(Sharpy.List<string>, int, int, int, bool, string, Sharpy.Dict<string, string>)", "subprocess", PathRequirement.NeedsDir, new[] { "cwd" }, "subprocess.Popen([\"true\"], cwd=@0).wait()"),
     };
 
     /// <summary>
@@ -180,7 +174,6 @@ internal static class ProbeRoster
         const string OpenArchive = "not a path: an already-open archive (its path is the constructor's position, probed there)";
         const string Parser = "not a path: an in-memory parser object";
         const string Tree = "not a path: an in-memory element tree";
-        const string Stdin = "not a path: text written to the child's stdin";
         var d = new Dictionary<string, string?>(StringComparer.Ordinal);
         void Path(string entry, params string[] names)
         {
@@ -268,12 +261,6 @@ internal static class ProbeRoster
         Path("Sharpy.ConfigParser.Read(string)", "filename");
         Not("Sharpy.ConfigParser.WriteToFile(string, bool)", PathPositions.Receiver, Parser);
         Path("Sharpy.ConfigParser.WriteToFile(string, bool)", "filename");
-        Path("Sharpy.SubprocessModule.Run(Sharpy.List<string>, bool, bool, bool, double?, string, string, Sharpy.Dict<string, string>, bool, int, int, int)", "cwd");
-        Not("Sharpy.SubprocessModule.Run(Sharpy.List<string>, bool, bool, bool, double?, string, string, Sharpy.Dict<string, string>, bool, int, int, int)", "input", Stdin);
-        Path("Sharpy.SubprocessModule.CheckCall(Sharpy.List<string>, double?, string, Sharpy.Dict<string, string>, bool)", "cwd");
-        Path("Sharpy.SubprocessModule.CheckOutput(Sharpy.List<string>, bool, double?, string, string, Sharpy.Dict<string, string>, bool, int)", "cwd");
-        Not("Sharpy.SubprocessModule.CheckOutput(Sharpy.List<string>, bool, double?, string, string, Sharpy.Dict<string, string>, bool, int)", "input", Stdin);
-        Path("Sharpy.Popen.Popen(Sharpy.List<string>, int, int, int, bool, string, Sharpy.Dict<string, string>)", "cwd");
         return d;
     }
 

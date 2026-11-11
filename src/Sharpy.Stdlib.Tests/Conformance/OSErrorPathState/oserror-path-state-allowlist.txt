@@ -1,0 +1,366 @@
+# G1 filesystem differential allowlist (plan-638e8b A1, class tracker #2476) for PathStateDifferentialTests.
+#
+# The contract (C2's Rule): where python3 (CPython on Linux, D4) raises nothing or a class with OSError in
+# its MRO, Sharpy's outcome class is equal — an OSError-family outcome is never a CLR type, a python
+# success is never a raise. Each row is an in-contract cell that diverges TODAY; it drains (deleted) as
+# D1's PathErrors helper and D2's NotADirectoryError land (W2-E, W3-F) and must reach 0 rows to close #2476.
+# A row the run no longer produces (the cell agrees, or its outcomes changed) is stale and red.
+#
+# Row: `<probe id>[<state per placeholder>] python=<outcome> sharpy=<outcome> # #2476`
+#   outcome: `ok` | `OS <class name>` (caught by `except OSError`) | `X <class 'CLR or Sharpy type'>`
+#   (escaped `except OSError`, e.g. a CLR System.IO.IOException).
+#
+# DO NOT DELETE THIS FILE: the differential throws if it is missing rather than passing silently.
+
+ConfigParser.write_to_file[EmptyDir] python=OS IsADirectoryError sharpy=X <class 'System.UnauthorizedAccessException'> # #2476
+ConfigParser.write_to_file[MissingParent] python=OS FileNotFoundError sharpy=X <class 'System.IO.DirectoryNotFoundException'> # #2476
+ConfigParser.write_to_file[NonEmptyDir] python=OS IsADirectoryError sharpy=X <class 'System.UnauthorizedAccessException'> # #2476
+ConfigParser.write_to_file[ParentIsFile] python=OS NotADirectoryError sharpy=X <class 'System.IO.DirectoryNotFoundException'> # #2476
+Path.glob[File] python=ok sharpy=OS FileNotFoundError # #2476
+Path.glob[MissingParent] python=ok sharpy=OS FileNotFoundError # #2476
+Path.glob[Missing] python=ok sharpy=OS FileNotFoundError # #2476
+Path.glob[ParentIsFile] python=ok sharpy=OS FileNotFoundError # #2476
+Path.iterdir[File] python=OS NotADirectoryError sharpy=OS FileNotFoundError # #2476
+Path.iterdir[ParentIsFile] python=OS NotADirectoryError sharpy=OS FileNotFoundError # #2476
+Path.mkdir[File] python=OS FileExistsError sharpy=X <class 'System.IO.IOException'> # #2476
+Path.mkdir[ParentIsFile] python=OS NotADirectoryError sharpy=OS FileNotFoundError # #2476
+Path.read_bytes[EmptyDir] python=OS IsADirectoryError sharpy=X <class 'System.UnauthorizedAccessException'> # #2476
+Path.read_bytes[MissingParent] python=OS FileNotFoundError sharpy=X <class 'System.IO.DirectoryNotFoundException'> # #2476
+Path.read_bytes[Missing] python=OS FileNotFoundError sharpy=X <class 'System.IO.FileNotFoundException'> # #2476
+Path.read_bytes[NonEmptyDir] python=OS IsADirectoryError sharpy=X <class 'System.UnauthorizedAccessException'> # #2476
+Path.read_bytes[ParentIsFile] python=OS NotADirectoryError sharpy=X <class 'System.IO.DirectoryNotFoundException'> # #2476
+Path.read_text[EmptyDir] python=OS IsADirectoryError sharpy=X <class 'System.UnauthorizedAccessException'> # #2476
+Path.read_text[MissingParent] python=OS FileNotFoundError sharpy=X <class 'System.IO.DirectoryNotFoundException'> # #2476
+Path.read_text[Missing] python=OS FileNotFoundError sharpy=X <class 'System.IO.FileNotFoundException'> # #2476
+Path.read_text[NonEmptyDir] python=OS IsADirectoryError sharpy=X <class 'System.UnauthorizedAccessException'> # #2476
+Path.read_text[ParentIsFile] python=OS NotADirectoryError sharpy=X <class 'System.IO.DirectoryNotFoundException'> # #2476
+Path.rename[EmptyDir,EmptyDir] python=ok sharpy=X <class 'System.IO.IOException'> # #2476
+Path.rename[EmptyDir,File] python=OS NotADirectoryError sharpy=X <class 'System.IO.IOException'> # #2476
+Path.rename[EmptyDir,MissingParent] python=OS FileNotFoundError sharpy=X <class 'System.IO.DirectoryNotFoundException'> # #2476
+Path.rename[EmptyDir,NonEmptyDir] python=OS OSError sharpy=X <class 'System.IO.IOException'> # #2476
+Path.rename[EmptyDir,ParentIsFile] python=OS NotADirectoryError sharpy=X <class 'System.IO.IOException'> # #2476
+Path.rename[File,EmptyDir] python=OS IsADirectoryError sharpy=X <class 'System.IO.IOException'> # #2476
+Path.rename[File,File] python=ok sharpy=X <class 'System.IO.IOException'> # #2476
+Path.rename[File,MissingParent] python=OS FileNotFoundError sharpy=X <class 'System.IO.DirectoryNotFoundException'> # #2476
+Path.rename[File,NonEmptyDir] python=OS IsADirectoryError sharpy=X <class 'System.IO.IOException'> # #2476
+Path.rename[File,ParentIsFile] python=OS NotADirectoryError sharpy=X <class 'System.IO.DirectoryNotFoundException'> # #2476
+Path.rename[Missing,ParentIsFile] python=OS NotADirectoryError sharpy=OS FileNotFoundError # #2476
+Path.rename[NonEmptyDir,EmptyDir] python=ok sharpy=X <class 'System.IO.IOException'> # #2476
+Path.rename[NonEmptyDir,File] python=OS NotADirectoryError sharpy=X <class 'System.IO.IOException'> # #2476
+Path.rename[NonEmptyDir,MissingParent] python=OS FileNotFoundError sharpy=X <class 'System.IO.DirectoryNotFoundException'> # #2476
+Path.rename[NonEmptyDir,NonEmptyDir] python=OS OSError sharpy=X <class 'System.IO.IOException'> # #2476
+Path.rename[NonEmptyDir,ParentIsFile] python=OS NotADirectoryError sharpy=X <class 'System.IO.IOException'> # #2476
+Path.rename[ParentIsFile,EmptyDir] python=OS NotADirectoryError sharpy=OS FileNotFoundError # #2476
+Path.rename[ParentIsFile,File] python=OS NotADirectoryError sharpy=OS FileNotFoundError # #2476
+Path.rename[ParentIsFile,MissingParent] python=OS NotADirectoryError sharpy=OS FileNotFoundError # #2476
+Path.rename[ParentIsFile,Missing] python=OS NotADirectoryError sharpy=OS FileNotFoundError # #2476
+Path.rename[ParentIsFile,NonEmptyDir] python=OS NotADirectoryError sharpy=OS FileNotFoundError # #2476
+Path.rename[ParentIsFile,ParentIsFile] python=OS NotADirectoryError sharpy=OS FileNotFoundError # #2476
+Path.replace[EmptyDir,EmptyDir] python=ok sharpy=X <class 'System.IO.IOException'> # #2476
+Path.replace[EmptyDir,File] python=OS NotADirectoryError sharpy=ok # #2476
+Path.replace[EmptyDir,MissingParent] python=OS FileNotFoundError sharpy=X <class 'System.IO.DirectoryNotFoundException'> # #2476
+Path.replace[EmptyDir,NonEmptyDir] python=OS OSError sharpy=X <class 'System.IO.IOException'> # #2476
+Path.replace[EmptyDir,ParentIsFile] python=OS NotADirectoryError sharpy=X <class 'System.IO.IOException'> # #2476
+Path.replace[File,EmptyDir] python=OS IsADirectoryError sharpy=X <class 'System.IO.IOException'> # #2476
+Path.replace[File,MissingParent] python=OS FileNotFoundError sharpy=X <class 'System.IO.DirectoryNotFoundException'> # #2476
+Path.replace[File,NonEmptyDir] python=OS IsADirectoryError sharpy=X <class 'System.IO.IOException'> # #2476
+Path.replace[File,ParentIsFile] python=OS NotADirectoryError sharpy=X <class 'System.IO.DirectoryNotFoundException'> # #2476
+Path.replace[Missing,ParentIsFile] python=OS NotADirectoryError sharpy=OS FileNotFoundError # #2476
+Path.replace[NonEmptyDir,EmptyDir] python=ok sharpy=X <class 'System.IO.IOException'> # #2476
+Path.replace[NonEmptyDir,File] python=OS NotADirectoryError sharpy=ok # #2476
+Path.replace[NonEmptyDir,MissingParent] python=OS FileNotFoundError sharpy=X <class 'System.IO.DirectoryNotFoundException'> # #2476
+Path.replace[NonEmptyDir,NonEmptyDir] python=OS OSError sharpy=X <class 'System.IO.IOException'> # #2476
+Path.replace[NonEmptyDir,ParentIsFile] python=OS NotADirectoryError sharpy=X <class 'System.IO.IOException'> # #2476
+Path.replace[ParentIsFile,EmptyDir] python=OS NotADirectoryError sharpy=OS FileNotFoundError # #2476
+Path.replace[ParentIsFile,File] python=OS NotADirectoryError sharpy=OS FileNotFoundError # #2476
+Path.replace[ParentIsFile,MissingParent] python=OS NotADirectoryError sharpy=OS FileNotFoundError # #2476
+Path.replace[ParentIsFile,Missing] python=OS NotADirectoryError sharpy=OS FileNotFoundError # #2476
+Path.replace[ParentIsFile,NonEmptyDir] python=OS NotADirectoryError sharpy=OS FileNotFoundError # #2476
+Path.replace[ParentIsFile,ParentIsFile] python=OS NotADirectoryError sharpy=OS FileNotFoundError # #2476
+Path.rglob[File] python=ok sharpy=OS FileNotFoundError # #2476
+Path.rglob[MissingParent] python=ok sharpy=OS FileNotFoundError # #2476
+Path.rglob[Missing] python=ok sharpy=OS FileNotFoundError # #2476
+Path.rglob[ParentIsFile] python=ok sharpy=OS FileNotFoundError # #2476
+Path.rmdir[File] python=OS NotADirectoryError sharpy=OS FileNotFoundError # #2476
+Path.rmdir[NonEmptyDir] python=OS OSError sharpy=X <class 'System.IO.IOException'> # #2476
+Path.rmdir[ParentIsFile] python=OS NotADirectoryError sharpy=OS FileNotFoundError # #2476
+Path.stat[ParentIsFile] python=OS NotADirectoryError sharpy=OS FileNotFoundError # #2476
+Path.touch[EmptyDir] python=ok sharpy=X <class 'System.UnauthorizedAccessException'> # #2476
+Path.touch[NonEmptyDir] python=ok sharpy=X <class 'System.UnauthorizedAccessException'> # #2476
+Path.touch[ParentIsFile] python=OS NotADirectoryError sharpy=OS FileNotFoundError # #2476
+Path.unlink[EmptyDir] python=OS IsADirectoryError sharpy=OS FileNotFoundError # #2476
+Path.unlink[NonEmptyDir] python=OS IsADirectoryError sharpy=OS FileNotFoundError # #2476
+Path.unlink[ParentIsFile] python=OS NotADirectoryError sharpy=OS FileNotFoundError # #2476
+Path.write_bytes[EmptyDir] python=OS IsADirectoryError sharpy=X <class 'System.UnauthorizedAccessException'> # #2476
+Path.write_bytes[MissingParent] python=OS FileNotFoundError sharpy=X <class 'System.IO.DirectoryNotFoundException'> # #2476
+Path.write_bytes[NonEmptyDir] python=OS IsADirectoryError sharpy=X <class 'System.UnauthorizedAccessException'> # #2476
+Path.write_bytes[ParentIsFile] python=OS NotADirectoryError sharpy=X <class 'System.IO.DirectoryNotFoundException'> # #2476
+Path.write_text[EmptyDir] python=OS IsADirectoryError sharpy=X <class 'System.UnauthorizedAccessException'> # #2476
+Path.write_text[MissingParent] python=OS FileNotFoundError sharpy=X <class 'System.IO.DirectoryNotFoundException'> # #2476
+Path.write_text[NonEmptyDir] python=OS IsADirectoryError sharpy=X <class 'System.UnauthorizedAccessException'> # #2476
+Path.write_text[ParentIsFile] python=OS NotADirectoryError sharpy=X <class 'System.IO.DirectoryNotFoundException'> # #2476
+TarFile.add[ParentIsFile] python=OS NotADirectoryError sharpy=OS FileNotFoundError # #2476
+TarFile.extract[File] python=OS NotADirectoryError sharpy=X <class 'System.IO.IOException'> # #2476
+TarFile.extract[ParentIsFile] python=OS NotADirectoryError sharpy=X <class 'System.IO.DirectoryNotFoundException'> # #2476
+TarFile.extractall[File] python=OS NotADirectoryError sharpy=X <class 'System.IO.IOException'> # #2476
+TarFile.extractall[ParentIsFile] python=OS NotADirectoryError sharpy=X <class 'System.IO.DirectoryNotFoundException'> # #2476
+TarFile.extractfile[EmptyDir] python=OS IsADirectoryError sharpy=OS FileNotFoundError # #2476
+TarFile.extractfile[NonEmptyDir] python=OS IsADirectoryError sharpy=OS FileNotFoundError # #2476
+TarFile.extractfile[ParentIsFile] python=OS NotADirectoryError sharpy=OS FileNotFoundError # #2476
+TarFile.getmember[EmptyDir] python=OS IsADirectoryError sharpy=OS FileNotFoundError # #2476
+TarFile.getmember[NonEmptyDir] python=OS IsADirectoryError sharpy=OS FileNotFoundError # #2476
+TarFile.getmember[ParentIsFile] python=OS NotADirectoryError sharpy=OS FileNotFoundError # #2476
+TarFile.getmembers[EmptyDir] python=OS IsADirectoryError sharpy=OS FileNotFoundError # #2476
+TarFile.getmembers[NonEmptyDir] python=OS IsADirectoryError sharpy=OS FileNotFoundError # #2476
+TarFile.getmembers[ParentIsFile] python=OS NotADirectoryError sharpy=OS FileNotFoundError # #2476
+TarFile.getnames[EmptyDir] python=OS IsADirectoryError sharpy=OS FileNotFoundError # #2476
+TarFile.getnames[NonEmptyDir] python=OS IsADirectoryError sharpy=OS FileNotFoundError # #2476
+TarFile.getnames[ParentIsFile] python=OS NotADirectoryError sharpy=OS FileNotFoundError # #2476
+ZipFile.extract[File] python=OS NotADirectoryError sharpy=X <class 'System.IO.IOException'> # #2476
+ZipFile.extract[ParentIsFile] python=OS NotADirectoryError sharpy=X <class 'System.IO.DirectoryNotFoundException'> # #2476
+ZipFile.extractall[File] python=OS NotADirectoryError sharpy=X <class 'System.IO.IOException'> # #2476
+ZipFile.extractall[ParentIsFile] python=OS NotADirectoryError sharpy=X <class 'System.IO.DirectoryNotFoundException'> # #2476
+ZipFile.write[EmptyDir] python=ok sharpy=X <class 'System.UnauthorizedAccessException'> # #2476
+ZipFile.write[MissingParent] python=OS FileNotFoundError sharpy=X <class 'System.IO.DirectoryNotFoundException'> # #2476
+ZipFile.write[Missing] python=OS FileNotFoundError sharpy=X <class 'System.IO.FileNotFoundException'> # #2476
+ZipFile.write[NonEmptyDir] python=ok sharpy=X <class 'System.UnauthorizedAccessException'> # #2476
+ZipFile.write[ParentIsFile] python=OS NotADirectoryError sharpy=X <class 'System.IO.DirectoryNotFoundException'> # #2476
+gzip.GzipFile[EmptyDir] python=OS IsADirectoryError sharpy=X <class 'System.UnauthorizedAccessException'> # #2476
+gzip.GzipFile[MissingParent] python=OS FileNotFoundError sharpy=X <class 'System.IO.DirectoryNotFoundException'> # #2476
+gzip.GzipFile[Missing] python=OS FileNotFoundError sharpy=X <class 'System.IO.FileNotFoundException'> # #2476
+gzip.GzipFile[NonEmptyDir] python=OS IsADirectoryError sharpy=X <class 'System.UnauthorizedAccessException'> # #2476
+gzip.GzipFile[ParentIsFile] python=OS NotADirectoryError sharpy=X <class 'System.IO.DirectoryNotFoundException'> # #2476
+gzip.open(rb)[EmptyDir] python=OS IsADirectoryError sharpy=X <class 'System.UnauthorizedAccessException'> # #2476
+gzip.open(rb)[MissingParent] python=OS FileNotFoundError sharpy=X <class 'System.IO.DirectoryNotFoundException'> # #2476
+gzip.open(rb)[Missing] python=OS FileNotFoundError sharpy=X <class 'System.IO.FileNotFoundException'> # #2476
+gzip.open(rb)[NonEmptyDir] python=OS IsADirectoryError sharpy=X <class 'System.UnauthorizedAccessException'> # #2476
+gzip.open(rb)[ParentIsFile] python=OS NotADirectoryError sharpy=X <class 'System.IO.DirectoryNotFoundException'> # #2476
+gzip.open(wb)[EmptyDir] python=OS IsADirectoryError sharpy=X <class 'System.UnauthorizedAccessException'> # #2476
+gzip.open(wb)[MissingParent] python=OS FileNotFoundError sharpy=X <class 'System.IO.DirectoryNotFoundException'> # #2476
+gzip.open(wb)[NonEmptyDir] python=OS IsADirectoryError sharpy=X <class 'System.UnauthorizedAccessException'> # #2476
+gzip.open(wb)[ParentIsFile] python=OS NotADirectoryError sharpy=X <class 'System.IO.DirectoryNotFoundException'> # #2476
+open(a)[ParentIsFile] python=OS NotADirectoryError sharpy=OS FileNotFoundError # #2476
+open(r)[ParentIsFile] python=OS NotADirectoryError sharpy=OS FileNotFoundError # #2476
+open(r,encoding)[ParentIsFile] python=OS NotADirectoryError sharpy=OS FileNotFoundError # #2476
+open(w)[ParentIsFile] python=OS NotADirectoryError sharpy=OS FileNotFoundError # #2476
+open(x)[EmptyDir] python=OS FileExistsError sharpy=OS IsADirectoryError # #2476
+open(x)[NonEmptyDir] python=OS FileExistsError sharpy=OS IsADirectoryError # #2476
+open(x)[ParentIsFile] python=OS NotADirectoryError sharpy=OS FileNotFoundError # #2476
+os.chdir[File] python=OS NotADirectoryError sharpy=OS FileNotFoundError # #2476
+os.chdir[ParentIsFile] python=OS NotADirectoryError sharpy=OS FileNotFoundError # #2476
+os.listdir[File] python=OS NotADirectoryError sharpy=OS FileNotFoundError # #2476
+os.listdir[ParentIsFile] python=OS NotADirectoryError sharpy=OS FileNotFoundError # #2476
+os.makedirs[File] python=OS FileExistsError sharpy=X <class 'System.IO.IOException'> # #2476
+os.makedirs[ParentIsFile] python=OS NotADirectoryError sharpy=X <class 'System.IO.DirectoryNotFoundException'> # #2476
+os.mkdir[File] python=OS FileExistsError sharpy=X <class 'System.IO.IOException'> # #2476
+os.mkdir[ParentIsFile] python=OS NotADirectoryError sharpy=OS FileNotFoundError # #2476
+os.path.getsize[EmptyDir] python=ok sharpy=OS FileNotFoundError # #2476
+os.path.getsize[NonEmptyDir] python=ok sharpy=OS FileNotFoundError # #2476
+os.path.getsize[ParentIsFile] python=OS NotADirectoryError sharpy=OS FileNotFoundError # #2476
+os.remove[EmptyDir] python=OS IsADirectoryError sharpy=OS FileNotFoundError # #2476
+os.remove[NonEmptyDir] python=OS IsADirectoryError sharpy=OS FileNotFoundError # #2476
+os.remove[ParentIsFile] python=OS NotADirectoryError sharpy=OS FileNotFoundError # #2476
+os.rename[EmptyDir,EmptyDir] python=ok sharpy=X <class 'System.IO.IOException'> # #2476
+os.rename[EmptyDir,File] python=OS NotADirectoryError sharpy=X <class 'System.IO.IOException'> # #2476
+os.rename[EmptyDir,MissingParent] python=OS FileNotFoundError sharpy=X <class 'System.IO.DirectoryNotFoundException'> # #2476
+os.rename[EmptyDir,NonEmptyDir] python=OS OSError sharpy=X <class 'System.IO.IOException'> # #2476
+os.rename[EmptyDir,ParentIsFile] python=OS NotADirectoryError sharpy=X <class 'System.IO.IOException'> # #2476
+os.rename[File,EmptyDir] python=OS IsADirectoryError sharpy=X <class 'System.IO.IOException'> # #2476
+os.rename[File,File] python=ok sharpy=X <class 'System.IO.IOException'> # #2476
+os.rename[File,MissingParent] python=OS FileNotFoundError sharpy=X <class 'System.IO.DirectoryNotFoundException'> # #2476
+os.rename[File,NonEmptyDir] python=OS IsADirectoryError sharpy=X <class 'System.IO.IOException'> # #2476
+os.rename[File,ParentIsFile] python=OS NotADirectoryError sharpy=X <class 'System.IO.DirectoryNotFoundException'> # #2476
+os.rename[Missing,ParentIsFile] python=OS NotADirectoryError sharpy=OS FileNotFoundError # #2476
+os.rename[NonEmptyDir,EmptyDir] python=ok sharpy=X <class 'System.IO.IOException'> # #2476
+os.rename[NonEmptyDir,File] python=OS NotADirectoryError sharpy=X <class 'System.IO.IOException'> # #2476
+os.rename[NonEmptyDir,MissingParent] python=OS FileNotFoundError sharpy=X <class 'System.IO.DirectoryNotFoundException'> # #2476
+os.rename[NonEmptyDir,NonEmptyDir] python=OS OSError sharpy=X <class 'System.IO.IOException'> # #2476
+os.rename[NonEmptyDir,ParentIsFile] python=OS NotADirectoryError sharpy=X <class 'System.IO.IOException'> # #2476
+os.rename[ParentIsFile,EmptyDir] python=OS NotADirectoryError sharpy=OS FileNotFoundError # #2476
+os.rename[ParentIsFile,File] python=OS NotADirectoryError sharpy=OS FileNotFoundError # #2476
+os.rename[ParentIsFile,MissingParent] python=OS NotADirectoryError sharpy=OS FileNotFoundError # #2476
+os.rename[ParentIsFile,Missing] python=OS NotADirectoryError sharpy=OS FileNotFoundError # #2476
+os.rename[ParentIsFile,NonEmptyDir] python=OS NotADirectoryError sharpy=OS FileNotFoundError # #2476
+os.rename[ParentIsFile,ParentIsFile] python=OS NotADirectoryError sharpy=OS FileNotFoundError # #2476
+os.rmdir[File] python=OS NotADirectoryError sharpy=OS FileNotFoundError # #2476
+os.rmdir[ParentIsFile] python=OS NotADirectoryError sharpy=OS FileNotFoundError # #2476
+os.stat[ParentIsFile] python=OS NotADirectoryError sharpy=OS FileNotFoundError # #2476
+shutil.copy2[EmptyDir,EmptyDir] python=OS IsADirectoryError sharpy=OS OSError # #2476
+shutil.copy2[EmptyDir,File] python=OS IsADirectoryError sharpy=OS OSError # #2476
+shutil.copy2[EmptyDir,MissingParent] python=OS IsADirectoryError sharpy=OS OSError # #2476
+shutil.copy2[EmptyDir,Missing] python=OS IsADirectoryError sharpy=OS OSError # #2476
+shutil.copy2[EmptyDir,NonEmptyDir] python=OS IsADirectoryError sharpy=OS OSError # #2476
+shutil.copy2[EmptyDir,ParentIsFile] python=OS IsADirectoryError sharpy=OS OSError # #2476
+shutil.copy2[File,MissingParent] python=OS FileNotFoundError sharpy=OS OSError # #2476
+shutil.copy2[File,ParentIsFile] python=OS NotADirectoryError sharpy=OS OSError # #2476
+shutil.copy2[Missing,EmptyDir] python=OS FileNotFoundError sharpy=OS OSError # #2476
+shutil.copy2[Missing,File] python=OS FileNotFoundError sharpy=OS OSError # #2476
+shutil.copy2[Missing,MissingParent] python=OS FileNotFoundError sharpy=OS OSError # #2476
+shutil.copy2[Missing,Missing] python=OS FileNotFoundError sharpy=OS OSError # #2476
+shutil.copy2[Missing,NonEmptyDir] python=OS FileNotFoundError sharpy=OS OSError # #2476
+shutil.copy2[Missing,ParentIsFile] python=OS FileNotFoundError sharpy=OS OSError # #2476
+shutil.copy2[MissingParent,EmptyDir] python=OS FileNotFoundError sharpy=OS OSError # #2476
+shutil.copy2[MissingParent,File] python=OS FileNotFoundError sharpy=OS OSError # #2476
+shutil.copy2[MissingParent,MissingParent] python=OS FileNotFoundError sharpy=OS OSError # #2476
+shutil.copy2[MissingParent,Missing] python=OS FileNotFoundError sharpy=OS OSError # #2476
+shutil.copy2[MissingParent,NonEmptyDir] python=OS FileNotFoundError sharpy=OS OSError # #2476
+shutil.copy2[MissingParent,ParentIsFile] python=OS FileNotFoundError sharpy=OS OSError # #2476
+shutil.copy2[NonEmptyDir,EmptyDir] python=OS IsADirectoryError sharpy=OS OSError # #2476
+shutil.copy2[NonEmptyDir,File] python=OS IsADirectoryError sharpy=OS OSError # #2476
+shutil.copy2[NonEmptyDir,MissingParent] python=OS IsADirectoryError sharpy=OS OSError # #2476
+shutil.copy2[NonEmptyDir,Missing] python=OS IsADirectoryError sharpy=OS OSError # #2476
+shutil.copy2[NonEmptyDir,NonEmptyDir] python=OS IsADirectoryError sharpy=OS OSError # #2476
+shutil.copy2[NonEmptyDir,ParentIsFile] python=OS IsADirectoryError sharpy=OS OSError # #2476
+shutil.copy2[ParentIsFile,EmptyDir] python=OS NotADirectoryError sharpy=OS OSError # #2476
+shutil.copy2[ParentIsFile,File] python=OS NotADirectoryError sharpy=OS OSError # #2476
+shutil.copy2[ParentIsFile,MissingParent] python=OS NotADirectoryError sharpy=OS OSError # #2476
+shutil.copy2[ParentIsFile,Missing] python=OS NotADirectoryError sharpy=OS OSError # #2476
+shutil.copy2[ParentIsFile,NonEmptyDir] python=OS NotADirectoryError sharpy=OS OSError # #2476
+shutil.copy2[ParentIsFile,ParentIsFile] python=OS NotADirectoryError sharpy=OS OSError # #2476
+shutil.copy[EmptyDir,EmptyDir] python=OS IsADirectoryError sharpy=OS OSError # #2476
+shutil.copy[EmptyDir,File] python=OS IsADirectoryError sharpy=OS OSError # #2476
+shutil.copy[EmptyDir,MissingParent] python=OS IsADirectoryError sharpy=OS OSError # #2476
+shutil.copy[EmptyDir,Missing] python=OS IsADirectoryError sharpy=OS OSError # #2476
+shutil.copy[EmptyDir,NonEmptyDir] python=OS IsADirectoryError sharpy=OS OSError # #2476
+shutil.copy[EmptyDir,ParentIsFile] python=OS IsADirectoryError sharpy=OS OSError # #2476
+shutil.copy[File,MissingParent] python=OS FileNotFoundError sharpy=OS OSError # #2476
+shutil.copy[File,ParentIsFile] python=OS NotADirectoryError sharpy=OS OSError # #2476
+shutil.copy[Missing,EmptyDir] python=OS FileNotFoundError sharpy=OS OSError # #2476
+shutil.copy[Missing,File] python=OS FileNotFoundError sharpy=OS OSError # #2476
+shutil.copy[Missing,MissingParent] python=OS FileNotFoundError sharpy=OS OSError # #2476
+shutil.copy[Missing,Missing] python=OS FileNotFoundError sharpy=OS OSError # #2476
+shutil.copy[Missing,NonEmptyDir] python=OS FileNotFoundError sharpy=OS OSError # #2476
+shutil.copy[Missing,ParentIsFile] python=OS FileNotFoundError sharpy=OS OSError # #2476
+shutil.copy[MissingParent,EmptyDir] python=OS FileNotFoundError sharpy=OS OSError # #2476
+shutil.copy[MissingParent,File] python=OS FileNotFoundError sharpy=OS OSError # #2476
+shutil.copy[MissingParent,MissingParent] python=OS FileNotFoundError sharpy=OS OSError # #2476
+shutil.copy[MissingParent,Missing] python=OS FileNotFoundError sharpy=OS OSError # #2476
+shutil.copy[MissingParent,NonEmptyDir] python=OS FileNotFoundError sharpy=OS OSError # #2476
+shutil.copy[MissingParent,ParentIsFile] python=OS FileNotFoundError sharpy=OS OSError # #2476
+shutil.copy[NonEmptyDir,EmptyDir] python=OS IsADirectoryError sharpy=OS OSError # #2476
+shutil.copy[NonEmptyDir,File] python=OS IsADirectoryError sharpy=OS OSError # #2476
+shutil.copy[NonEmptyDir,MissingParent] python=OS IsADirectoryError sharpy=OS OSError # #2476
+shutil.copy[NonEmptyDir,Missing] python=OS IsADirectoryError sharpy=OS OSError # #2476
+shutil.copy[NonEmptyDir,NonEmptyDir] python=OS IsADirectoryError sharpy=OS OSError # #2476
+shutil.copy[NonEmptyDir,ParentIsFile] python=OS IsADirectoryError sharpy=OS OSError # #2476
+shutil.copy[ParentIsFile,EmptyDir] python=OS NotADirectoryError sharpy=OS OSError # #2476
+shutil.copy[ParentIsFile,File] python=OS NotADirectoryError sharpy=OS OSError # #2476
+shutil.copy[ParentIsFile,MissingParent] python=OS NotADirectoryError sharpy=OS OSError # #2476
+shutil.copy[ParentIsFile,Missing] python=OS NotADirectoryError sharpy=OS OSError # #2476
+shutil.copy[ParentIsFile,NonEmptyDir] python=OS NotADirectoryError sharpy=OS OSError # #2476
+shutil.copy[ParentIsFile,ParentIsFile] python=OS NotADirectoryError sharpy=OS OSError # #2476
+shutil.copytree[EmptyDir,EmptyDir] python=OS FileExistsError sharpy=ok # #2476
+shutil.copytree[EmptyDir,File] python=OS FileExistsError sharpy=OS OSError # #2476
+shutil.copytree[EmptyDir,NonEmptyDir] python=OS FileExistsError sharpy=ok # #2476
+shutil.copytree[EmptyDir,ParentIsFile] python=OS NotADirectoryError sharpy=OS OSError # #2476
+shutil.copytree[File,EmptyDir] python=OS NotADirectoryError sharpy=OS OSError # #2476
+shutil.copytree[File,File] python=OS NotADirectoryError sharpy=OS OSError # #2476
+shutil.copytree[File,MissingParent] python=OS NotADirectoryError sharpy=OS OSError # #2476
+shutil.copytree[File,Missing] python=OS NotADirectoryError sharpy=OS OSError # #2476
+shutil.copytree[File,NonEmptyDir] python=OS NotADirectoryError sharpy=OS OSError # #2476
+shutil.copytree[File,ParentIsFile] python=OS NotADirectoryError sharpy=OS OSError # #2476
+shutil.copytree[Missing,EmptyDir] python=OS FileNotFoundError sharpy=OS OSError # #2476
+shutil.copytree[Missing,File] python=OS FileNotFoundError sharpy=OS OSError # #2476
+shutil.copytree[Missing,MissingParent] python=OS FileNotFoundError sharpy=OS OSError # #2476
+shutil.copytree[Missing,Missing] python=OS FileNotFoundError sharpy=OS OSError # #2476
+shutil.copytree[Missing,NonEmptyDir] python=OS FileNotFoundError sharpy=OS OSError # #2476
+shutil.copytree[Missing,ParentIsFile] python=OS FileNotFoundError sharpy=OS OSError # #2476
+shutil.copytree[MissingParent,EmptyDir] python=OS FileNotFoundError sharpy=OS OSError # #2476
+shutil.copytree[MissingParent,File] python=OS FileNotFoundError sharpy=OS OSError # #2476
+shutil.copytree[MissingParent,MissingParent] python=OS FileNotFoundError sharpy=OS OSError # #2476
+shutil.copytree[MissingParent,Missing] python=OS FileNotFoundError sharpy=OS OSError # #2476
+shutil.copytree[MissingParent,NonEmptyDir] python=OS FileNotFoundError sharpy=OS OSError # #2476
+shutil.copytree[MissingParent,ParentIsFile] python=OS FileNotFoundError sharpy=OS OSError # #2476
+shutil.copytree[NonEmptyDir,EmptyDir] python=OS FileExistsError sharpy=ok # #2476
+shutil.copytree[NonEmptyDir,File] python=OS FileExistsError sharpy=OS OSError # #2476
+shutil.copytree[NonEmptyDir,NonEmptyDir] python=OS FileExistsError sharpy=ok # #2476
+shutil.copytree[NonEmptyDir,ParentIsFile] python=OS NotADirectoryError sharpy=OS OSError # #2476
+shutil.copytree[ParentIsFile,EmptyDir] python=OS NotADirectoryError sharpy=OS OSError # #2476
+shutil.copytree[ParentIsFile,File] python=OS NotADirectoryError sharpy=OS OSError # #2476
+shutil.copytree[ParentIsFile,MissingParent] python=OS NotADirectoryError sharpy=OS OSError # #2476
+shutil.copytree[ParentIsFile,Missing] python=OS NotADirectoryError sharpy=OS OSError # #2476
+shutil.copytree[ParentIsFile,NonEmptyDir] python=OS NotADirectoryError sharpy=OS OSError # #2476
+shutil.copytree[ParentIsFile,ParentIsFile] python=OS NotADirectoryError sharpy=OS OSError # #2476
+shutil.disk_usage[MissingParent] python=OS FileNotFoundError sharpy=X <class 'System.IO.DriveNotFoundException'> # #2476
+shutil.disk_usage[Missing] python=OS FileNotFoundError sharpy=X <class 'System.IO.DriveNotFoundException'> # #2476
+shutil.disk_usage[ParentIsFile] python=OS NotADirectoryError sharpy=X <class 'System.IO.DirectoryNotFoundException'> # #2476
+shutil.move[EmptyDir,EmptyDir] python=ok sharpy=X <class 'System.IO.IOException'> # #2476
+shutil.move[EmptyDir,File] python=OS FileExistsError sharpy=X <class 'System.IO.IOException'> # #2476
+shutil.move[EmptyDir,MissingParent] python=ok sharpy=X <class 'System.IO.DirectoryNotFoundException'> # #2476
+shutil.move[EmptyDir,NonEmptyDir] python=ok sharpy=X <class 'System.IO.IOException'> # #2476
+shutil.move[EmptyDir,ParentIsFile] python=OS NotADirectoryError sharpy=X <class 'System.IO.IOException'> # #2476
+shutil.move[File,MissingParent] python=OS FileNotFoundError sharpy=X <class 'System.IO.DirectoryNotFoundException'> # #2476
+shutil.move[File,ParentIsFile] python=OS NotADirectoryError sharpy=X <class 'System.IO.DirectoryNotFoundException'> # #2476
+shutil.move[Missing,EmptyDir] python=OS FileNotFoundError sharpy=OS OSError # #2476
+shutil.move[Missing,File] python=OS FileNotFoundError sharpy=OS OSError # #2476
+shutil.move[Missing,MissingParent] python=OS FileNotFoundError sharpy=OS OSError # #2476
+shutil.move[Missing,Missing] python=OS FileNotFoundError sharpy=OS OSError # #2476
+shutil.move[Missing,NonEmptyDir] python=OS FileNotFoundError sharpy=OS OSError # #2476
+shutil.move[Missing,ParentIsFile] python=OS FileNotFoundError sharpy=OS OSError # #2476
+shutil.move[MissingParent,EmptyDir] python=OS FileNotFoundError sharpy=OS OSError # #2476
+shutil.move[MissingParent,File] python=OS FileNotFoundError sharpy=OS OSError # #2476
+shutil.move[MissingParent,MissingParent] python=OS FileNotFoundError sharpy=OS OSError # #2476
+shutil.move[MissingParent,Missing] python=OS FileNotFoundError sharpy=OS OSError # #2476
+shutil.move[MissingParent,NonEmptyDir] python=OS FileNotFoundError sharpy=OS OSError # #2476
+shutil.move[MissingParent,ParentIsFile] python=OS FileNotFoundError sharpy=OS OSError # #2476
+shutil.move[NonEmptyDir,EmptyDir] python=ok sharpy=X <class 'System.IO.IOException'> # #2476
+shutil.move[NonEmptyDir,File] python=OS FileExistsError sharpy=X <class 'System.IO.IOException'> # #2476
+shutil.move[NonEmptyDir,MissingParent] python=ok sharpy=X <class 'System.IO.DirectoryNotFoundException'> # #2476
+shutil.move[NonEmptyDir,NonEmptyDir] python=ok sharpy=X <class 'System.IO.IOException'> # #2476
+shutil.move[NonEmptyDir,ParentIsFile] python=OS NotADirectoryError sharpy=X <class 'System.IO.IOException'> # #2476
+shutil.move[ParentIsFile,EmptyDir] python=OS NotADirectoryError sharpy=OS OSError # #2476
+shutil.move[ParentIsFile,File] python=OS NotADirectoryError sharpy=OS OSError # #2476
+shutil.move[ParentIsFile,MissingParent] python=OS NotADirectoryError sharpy=OS OSError # #2476
+shutil.move[ParentIsFile,Missing] python=OS NotADirectoryError sharpy=OS OSError # #2476
+shutil.move[ParentIsFile,NonEmptyDir] python=OS NotADirectoryError sharpy=OS OSError # #2476
+shutil.move[ParentIsFile,ParentIsFile] python=OS NotADirectoryError sharpy=OS OSError # #2476
+shutil.rmtree[File] python=OS NotADirectoryError sharpy=OS OSError # #2476
+shutil.rmtree[MissingParent] python=OS FileNotFoundError sharpy=OS OSError # #2476
+shutil.rmtree[Missing] python=OS FileNotFoundError sharpy=OS OSError # #2476
+shutil.rmtree[ParentIsFile] python=OS NotADirectoryError sharpy=OS OSError # #2476
+tarfile.is_tarfile[EmptyDir] python=OS IsADirectoryError sharpy=ok # #2476
+tarfile.is_tarfile[MissingParent] python=OS FileNotFoundError sharpy=ok # #2476
+tarfile.is_tarfile[Missing] python=OS FileNotFoundError sharpy=ok # #2476
+tarfile.is_tarfile[NonEmptyDir] python=OS IsADirectoryError sharpy=ok # #2476
+tarfile.is_tarfile[ParentIsFile] python=OS NotADirectoryError sharpy=ok # #2476
+tarfile.open(r)[EmptyDir] python=OS IsADirectoryError sharpy=OS FileNotFoundError # #2476
+tarfile.open(r)[NonEmptyDir] python=OS IsADirectoryError sharpy=OS FileNotFoundError # #2476
+tarfile.open(r)[ParentIsFile] python=OS NotADirectoryError sharpy=OS FileNotFoundError # #2476
+tarfile.open(w)[EmptyDir] python=OS IsADirectoryError sharpy=X <class 'System.UnauthorizedAccessException'> # #2476
+tarfile.open(w)[MissingParent] python=OS FileNotFoundError sharpy=X <class 'System.IO.DirectoryNotFoundException'> # #2476
+tarfile.open(w)[NonEmptyDir] python=OS IsADirectoryError sharpy=X <class 'System.UnauthorizedAccessException'> # #2476
+tarfile.open(w)[ParentIsFile] python=OS NotADirectoryError sharpy=X <class 'System.IO.DirectoryNotFoundException'> # #2476
+toml.dump_file(sort_keys)[EmptyDir] python=OS IsADirectoryError sharpy=X <class 'System.UnauthorizedAccessException'> # #2476
+toml.dump_file(sort_keys)[MissingParent] python=OS FileNotFoundError sharpy=X <class 'System.IO.DirectoryNotFoundException'> # #2476
+toml.dump_file(sort_keys)[NonEmptyDir] python=OS IsADirectoryError sharpy=X <class 'System.UnauthorizedAccessException'> # #2476
+toml.dump_file(sort_keys)[ParentIsFile] python=OS NotADirectoryError sharpy=X <class 'System.IO.DirectoryNotFoundException'> # #2476
+toml.dump_file[EmptyDir] python=OS IsADirectoryError sharpy=X <class 'System.UnauthorizedAccessException'> # #2476
+toml.dump_file[MissingParent] python=OS FileNotFoundError sharpy=X <class 'System.IO.DirectoryNotFoundException'> # #2476
+toml.dump_file[NonEmptyDir] python=OS IsADirectoryError sharpy=X <class 'System.UnauthorizedAccessException'> # #2476
+toml.dump_file[ParentIsFile] python=OS NotADirectoryError sharpy=X <class 'System.IO.DirectoryNotFoundException'> # #2476
+toml.load_file[EmptyDir] python=OS IsADirectoryError sharpy=X <class 'System.UnauthorizedAccessException'> # #2476
+toml.load_file[NonEmptyDir] python=OS IsADirectoryError sharpy=X <class 'System.UnauthorizedAccessException'> # #2476
+toml.load_file[ParentIsFile] python=OS NotADirectoryError sharpy=OS FileNotFoundError # #2476
+xml.ElementTree.parse[EmptyDir] python=OS IsADirectoryError sharpy=X <class 'System.UnauthorizedAccessException'> # #2476
+xml.ElementTree.parse[MissingParent] python=OS FileNotFoundError sharpy=X <class 'System.IO.DirectoryNotFoundException'> # #2476
+xml.ElementTree.parse[Missing] python=OS FileNotFoundError sharpy=X <class 'System.IO.FileNotFoundException'> # #2476
+xml.ElementTree.parse[NonEmptyDir] python=OS IsADirectoryError sharpy=X <class 'System.UnauthorizedAccessException'> # #2476
+xml.ElementTree.parse[ParentIsFile] python=OS NotADirectoryError sharpy=X <class 'System.IO.DirectoryNotFoundException'> # #2476
+xml.ElementTree.write[EmptyDir] python=OS IsADirectoryError sharpy=X <class 'System.UnauthorizedAccessException'> # #2476
+xml.ElementTree.write[MissingParent] python=OS FileNotFoundError sharpy=X <class 'System.IO.DirectoryNotFoundException'> # #2476
+xml.ElementTree.write[NonEmptyDir] python=OS IsADirectoryError sharpy=X <class 'System.UnauthorizedAccessException'> # #2476
+xml.ElementTree.write[ParentIsFile] python=OS NotADirectoryError sharpy=X <class 'System.IO.DirectoryNotFoundException'> # #2476
+xml.parse[EmptyDir] python=OS IsADirectoryError sharpy=X <class 'System.UnauthorizedAccessException'> # #2476
+xml.parse[MissingParent] python=OS FileNotFoundError sharpy=X <class 'System.IO.DirectoryNotFoundException'> # #2476
+xml.parse[Missing] python=OS FileNotFoundError sharpy=X <class 'System.IO.FileNotFoundException'> # #2476
+xml.parse[NonEmptyDir] python=OS IsADirectoryError sharpy=X <class 'System.UnauthorizedAccessException'> # #2476
+xml.parse[ParentIsFile] python=OS NotADirectoryError sharpy=X <class 'System.IO.DirectoryNotFoundException'> # #2476
+zipfile.ZipFile(r)[EmptyDir] python=OS IsADirectoryError sharpy=X <class 'System.UnauthorizedAccessException'> # #2476
+zipfile.ZipFile(r)[MissingParent] python=OS FileNotFoundError sharpy=X <class 'System.IO.DirectoryNotFoundException'> # #2476
+zipfile.ZipFile(r)[Missing] python=OS FileNotFoundError sharpy=OS OSError # #2476
+zipfile.ZipFile(r)[NonEmptyDir] python=OS IsADirectoryError sharpy=X <class 'System.UnauthorizedAccessException'> # #2476
+zipfile.ZipFile(r)[ParentIsFile] python=OS NotADirectoryError sharpy=X <class 'System.IO.DirectoryNotFoundException'> # #2476
+zipfile.ZipFile(w)[EmptyDir] python=OS IsADirectoryError sharpy=X <class 'System.UnauthorizedAccessException'> # #2476
+zipfile.ZipFile(w)[MissingParent] python=OS FileNotFoundError sharpy=X <class 'System.IO.DirectoryNotFoundException'> # #2476
+zipfile.ZipFile(w)[NonEmptyDir] python=OS IsADirectoryError sharpy=X <class 'System.UnauthorizedAccessException'> # #2476
+zipfile.ZipFile(w)[ParentIsFile] python=OS NotADirectoryError sharpy=X <class 'System.IO.DirectoryNotFoundException'> # #2476
