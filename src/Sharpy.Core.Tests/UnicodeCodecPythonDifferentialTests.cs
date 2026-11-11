@@ -2,6 +2,7 @@ using System.Globalization;
 using System.Text.Json;
 using Sharpy.TestInfrastructure.Oracles;
 using Xunit;
+using Xunit.Abstractions;
 
 namespace Sharpy.Core.Tests;
 
@@ -11,7 +12,8 @@ namespace Sharpy.Core.Tests;
 /// <c>python3</c> in one batch, never from a hand table.
 /// <para><b>Axes.</b> Codec names: every key of python's own <c>encodings.aliases</c> table whose codec is one
 /// Sharpy supports (or a recorded gap), plus each codec's module name and display name, each in spelling
-/// variants (case, <c>-</c>/<c>_</c>/space, doubled and edge separators) and names python rejects. Inputs
+/// variants (case, <c>-</c>/<c>_</c>/space, doubled and edge separators, non-ASCII characters, which 3.15
+/// deprecates but still reads as separators), names python rejects, and names holding NUL. Inputs
 /// (as UTF-16 code units for encode, bytes for decode): ASCII, Latin-1 range, BMP, astral (surrogate pairs),
 /// lone surrogates, empty; and for decode valid, truncated, invalid lead and continuation, UTF-8/16/32 BOMs
 /// little/big/absent, odd length, out-of-range and surrogate code points. Handlers: python's eight plus an
@@ -24,11 +26,16 @@ namespace Sharpy.Core.Tests;
 /// position in the message) are python's mapped through the input's code units (<see cref="CodePointToUnit"/>),
 /// computed per cell, never listed.</para>
 /// <para><b>Allowlist.</b> <see cref="KnownGaps"/>: one row per class of cell that still differs, each citing
-/// #2495. It ratchets both ways: a differing cell no row covers fails, and a row that covers no differing cell
-/// fails (delete it).</para>
+/// #2495 and pinning Sharpy's exception and message; a handler row covers only cells where python really
+/// reached the handler. It ratchets both ways: a differing cell no row covers fails, and a row that covers no
+/// differing cell fails (delete it).</para>
 /// </summary>
 public class UnicodeCodecPythonDifferentialTests
 {
+    private readonly ITestOutputHelper _output;
+
+    public UnicodeCodecPythonDifferentialTests(ITestOutputHelper output) => _output = output;
+
     private const int MinPythonMinor = 12;
 
     /// <summary>Python codec module names Sharpy implements.</summary>
@@ -52,26 +59,44 @@ public class UnicodeCodecPythonDifferentialTests
         "namereplace", "surrogateescape", "surrogatepass", "bogus",
     };
 
-    /// <summary>Names python rejects too: the resolver must not accept them.</summary>
-    private static readonly string[] RejectedNames =
+    /// <summary>
+    /// Names outside the alias-derived variants, whatever python makes of them: rejected spellings, non-ASCII
+    /// characters (separators in 3.15's <c>normalize_encoding</c>, deprecated but accepted) and NUL (a
+    /// <c>ValueError</c> before any lookup).
+    /// </summary>
+    private static readonly string[] ExtraNames =
     {
         "", "bogus", "utf.8", "utf8sig", "ucs2", "utf-8-bogus", "_", "--",
+        "uséascii", "ußtf8", "utf８", "u\U0001F600tf8", "utf\U0001F6008", "ǅutf8",
+        "latin¹1", "asciié", "éascii", "utf 8", "é", "utféé8",
+        "utf-8\0", "utf\08", "\0utf8", "bogus\0", "\0", "ascii\0",
     };
 
-    private sealed record Gap(string Axis, string Value, string Issue, string Why);
+    /// <summary>
+    /// A class of cells that still differs from python. A cell is covered only when Sharpy's outcome is exactly
+    /// <c>SharpyExc</c> with <c>SharpyMessage</c> (<c>{name}</c> is the cell's encoding name) and, for a handler
+    /// row, python really reached the handler (the same call under <c>strict</c> raises): a clean-input cell
+    /// with a handler Sharpy lacks must match python, never be absorbed.
+    /// </summary>
+    private sealed record Gap(string Axis, string Value, string Issue, string SharpyExc, string SharpyMessage);
 
     /// <summary>Cells that still differ from python, one row per class (see the class comment).</summary>
     private static readonly Gap[] KnownGaps =
     {
-        new("handler", "namereplace", "#2495", "needs the Unicode character name table"),
-        new("handler", "surrogateescape", "#2495", "not implemented: LookupError"),
-        new("handler", "surrogatepass", "#2495", "not implemented: LookupError"),
-        new("codec", "cp1252", "#2495", "code pages need CodePagesEncodingProvider, a package on netstandard2.1"),
+        // namereplace needs the Unicode character name table.
+        new("handler", "namereplace", "#2495", "LookupError", "error handler 'namereplace' is not supported yet (#2495)"),
+        new("handler", "surrogateescape", "#2495", "LookupError", "error handler 'surrogateescape' is not supported yet (#2495)"),
+        new("handler", "surrogatepass", "#2495", "LookupError", "error handler 'surrogatepass' is not supported yet (#2495)"),
+        // Code pages need CodePagesEncodingProvider, a package dependency on netstandard2.1.
+        new("codec", "cp1252", "#2495", "LookupError", "unknown encoding: {name}"),
     };
 
     private const string OracleScript = """
-        import codecs, json, struct, sys
+        import codecs, json, struct, sys, warnings
         import encodings.aliases
+
+        # 3.15 deprecates non-ASCII encoding names; they are measured, not warned about.
+        warnings.simplefilter("ignore")
 
         def units(s):
             b = s.encode("utf-16-le", "surrogatepass")
@@ -83,15 +108,27 @@ public class UnicodeCodecPythonDifferentialTests
         def canon(name):
             try:
                 return codecs.lookup(name).name
-            except LookupError:
+            except (LookupError, ValueError):
                 return None
+
+        def dirty(c):
+            try:
+                if c["op"] == "e":
+                    text(c["in"]).encode(c["enc"], "strict")
+                else:
+                    bytes(c["in"]).decode(c["enc"], "strict")
+            except UnicodeError:
+                return True
+            except Exception:
+                pass
+            return False
 
         for line in sys.stdin:
             c = json.loads(line)
             if c["op"] == "aliases":
                 print(json.dumps({"aliases": sorted([k, v] for k, v in encodings.aliases.aliases.items())}))
                 continue
-            out = {"id": c["id"], "codec": canon(c["enc"])}
+            out = {"id": c["id"], "codec": canon(c["enc"]), "dirty": dirty(c)}
             try:
                 if c["op"] == "e":
                     out["ok"] = list(text(c["in"]).encode(c["enc"], c["err"]))
@@ -103,7 +140,7 @@ public class UnicodeCodecPythonDifferentialTests
             except UnicodeDecodeError as e:
                 out.update(exc="UnicodeDecodeError", msg=str(e), enc=e.encoding, start=e.start, end=e.end,
                            reason=e.reason, obj=list(e.object))
-            except (LookupError, TypeError) as e:
+            except (LookupError, TypeError, ValueError) as e:
                 out.update(exc=type(e).__name__, msg=str(e))
             print(json.dumps(out))
         """;
@@ -194,6 +231,7 @@ public class UnicodeCodecPythonDifferentialTests
             var cells = GenerateCells(aliases, out int nameCount);
             var lines = python.RunBatch(script, cells.Select(ToJson));
             Assert.Equal(cells.Count, lines.Count);
+            _output.WriteLine($"{cells.Count} cells, {nameCount} codec names, oracle {python.Version}");
 
             var failures = new System.Collections.Generic.List<string>();
             var gapHits = KnownGaps.ToDictionary(g => g, _ => 0);
@@ -213,8 +251,10 @@ public class UnicodeCodecPythonDifferentialTests
                 var diff = Diff(expected, actual);
                 if (diff is null)
                     continue;
+                bool dirty = root.GetProperty("dirty").GetBoolean();
                 var gap = KnownGaps.FirstOrDefault(g =>
-                    (g.Axis == "handler" && g.Value == cell.Errors) || (g.Axis == "codec" && g.Value == codec));
+                    actual.Exc == g.SharpyExc && actual.Msg == g.SharpyMessage.Replace("{name}", cell.Encoding)
+                    && ((g.Axis == "handler" && g.Value == cell.Errors && dirty) || (g.Axis == "codec" && g.Value == codec)));
                 if (gap is not null)
                 {
                     gapHits[gap]++;
@@ -226,7 +266,10 @@ public class UnicodeCodecPythonDifferentialTests
             // Positive controls: the generator really reaches every outcome arm, the alias table and the
             // Axiom 1 deviation, so the comparison cannot pass over a truncated matrix.
             Assert.True(nameCount >= 150, $"only {nameCount} codec names generated");
-            foreach (var arm in new[] { "ok", "UnicodeEncodeError", "UnicodeDecodeError", "LookupError", "TypeError" })
+            int nonAscii = cells.Count(c => c.Encoding.Any(ch => ch >= 0x80));
+            int withNul = cells.Count(c => c.Encoding.Contains('\0'));
+            Assert.True(nonAscii >= 200 && withNul >= 10, $"only {nonAscii} non-ASCII-name and {withNul} NUL-name cells");
+            foreach (var arm in new[] { "ok", "UnicodeEncodeError", "UnicodeDecodeError", "LookupError", "TypeError", "ValueError" })
                 Assert.True(kinds.GetValueOrDefault(arm) >= 10, $"only {kinds.GetValueOrDefault(arm)} cells where python gives {arm}");
             Assert.True(deviationCells >= 5, $"only {deviationCells} cells exercised the UTF-16 position deviation");
 
@@ -274,10 +317,10 @@ public class UnicodeCodecPythonDifferentialTests
                     names.Add(variant);
             }
         }
-        foreach (var rejected in RejectedNames)
+        foreach (var extra in ExtraNames)
         {
-            if (seen.Add(rejected))
-                names.Add(rejected);
+            if (seen.Add(extra))
+                names.Add(extra);
         }
         nameCount = names.Count;
 
@@ -310,6 +353,11 @@ public class UnicodeCodecPythonDifferentialTests
         yield return name.Replace("_", "--").Replace("-", "--");
         yield return "-" + name + " ";
         yield return name.Length > 0 ? char.ToUpperInvariant(name[0]) + name.Substring(1) : name;
+        // Non-ASCII characters: separators in python 3.15, wherever they stand.
+        yield return name.Replace('_', '\u00e9').Replace('-', '\u00e9');
+        yield return name.Replace('_', '\u00a0').Replace('-', '\u00a0');
+        yield return name + "\U0001F600";
+        yield return name.Substring(0, name.Length / 2) + "\u00df" + name.Substring(name.Length / 2);
     }
 
     private static int[] Units(string s) => s.Select(c => (int)c).ToArray();

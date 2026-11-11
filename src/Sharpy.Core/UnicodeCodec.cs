@@ -127,6 +127,32 @@ namespace Sharpy
             ["utf8_sig"] = Codec.Utf8Sig,
         };
 
+        /// <summary>
+        /// Common spellings, matched as given before <see cref="Normalize"/> allocates: each resolves exactly as
+        /// the normalised lookup would.
+        /// </summary>
+        private static readonly Dictionary<string, Codec> s_spellings = new Dictionary<string, Codec>(StringComparer.Ordinal)
+        {
+            ["utf-8"] = Codec.Utf8,
+            ["utf8"] = Codec.Utf8,
+            ["UTF-8"] = Codec.Utf8,
+            ["UTF8"] = Codec.Utf8,
+            ["utf_8"] = Codec.Utf8,
+            ["utf-8-sig"] = Codec.Utf8Sig,
+            ["ascii"] = Codec.Ascii,
+            ["ASCII"] = Codec.Ascii,
+            ["us-ascii"] = Codec.Ascii,
+            ["latin-1"] = Codec.Latin1,
+            ["latin1"] = Codec.Latin1,
+            ["iso-8859-1"] = Codec.Latin1,
+            ["utf-16"] = Codec.Utf16,
+            ["utf-16-le"] = Codec.Utf16Le,
+            ["utf-16-be"] = Codec.Utf16Be,
+            ["utf-32"] = Codec.Utf32,
+            ["utf-32-le"] = Codec.Utf32Le,
+            ["utf-32-be"] = Codec.Utf32Be,
+        };
+
         /// <summary>Python: <c>str.encode(encoding, errors)</c>.</summary>
         internal static Bytes Encode(string s, string encoding, string errors)
         {
@@ -134,6 +160,11 @@ namespace Sharpy
             Codec unit = ByteOrder(codec);
             Encoding target = GetEncoding(unit);
             byte[]? bom = EncodeBom(codec);
+            if (!IsStrict(errors))
+            {
+                // A handler other than strict expects errors: walk once instead of throwing and walking.
+                return EncodeWithErrors(s, codec, unit, target, bom, errors);
+            }
             try
             {
                 return Bytes.Wrap(GetBytes(target, bom, s));
@@ -168,6 +199,10 @@ namespace Sharpy
             }
 
             Encoding source = GetEncoding(unit);
+            if (!IsStrict(errors))
+            {
+                return DecodeWithErrors(self, data, start, codec, unit, source, errors);
+            }
             try
             {
                 return source.GetString(data, start, data.Length - start);
@@ -195,7 +230,7 @@ namespace Sharpy
         private static Bytes EncodeWithErrors(string s, Codec codec, Codec unit, Encoding target, byte[]? bom, string errors)
         {
             bool runs = !IsWide(unit);
-            var kept = new StringBuilder(s.Length + 16);
+            StringBuilder? kept = null;
             Handler? handler = null;
             int segment = 0;
             int i = 0;
@@ -220,6 +255,7 @@ namespace Sharpy
                     throw new UnicodeEncodeError(EncodeName(codec), s, i, end, EncodeReason(unit));
                 }
 
+                kept ??= new StringBuilder(s.Length + 16);
                 kept.Append(s, segment, i - segment);
                 for (int k = i; k < end; k += Width(s, k))
                 {
@@ -227,6 +263,10 @@ namespace Sharpy
                 }
                 i = end;
                 segment = end;
+            }
+            if (kept == null)
+            {
+                return Bytes.Wrap(GetBytes(target, bom, s));
             }
             kept.Append(s, segment, s.Length - segment);
             return Bytes.Wrap(GetBytes(target, bom, kept.ToString()));
@@ -266,7 +306,7 @@ namespace Sharpy
         private static string DecodeWithErrors(Bytes self, byte[] data, int start, Codec codec, Codec unit, Encoding source, string errors)
         {
             int origin = codec == Codec.Utf8Sig ? start : 0;
-            var text = new StringBuilder(data.Length);
+            StringBuilder? text = null;
             Handler? handler = null;
             int segment = start;
             int i = start;
@@ -286,6 +326,7 @@ namespace Sharpy
                     throw new UnicodeDecodeError(DecodeName(unit), obj, i - origin, end - origin, reason);
                 }
 
+                text ??= new StringBuilder(data.Length);
                 text.Append(source.GetString(data, segment, i - segment));
                 if (handler == Handler.Replace)
                 {
@@ -300,6 +341,10 @@ namespace Sharpy
                 }
                 i = end;
                 segment = end;
+            }
+            if (text == null)
+            {
+                return source.GetString(data, start, data.Length - start);
             }
             text.Append(source.GetString(data, segment, data.Length - segment));
             return text.ToString();
@@ -670,13 +715,18 @@ namespace Sharpy
         /// </summary>
         private static Codec Resolve(string encoding)
         {
-            if (string.Equals(encoding, "utf-8", StringComparison.Ordinal))
+            if (s_spellings.TryGetValue(encoding, out Codec codec))
             {
-                return Codec.Utf8;
+                return codec;
+            }
+            if (encoding.IndexOf('\0') >= 0)
+            {
+                // Python checks the name is a C string before any lookup.
+                throw new ValueError("embedded null character");
             }
 
             string name = Normalize(encoding);
-            if (s_aliases.TryGetValue(name, out Codec codec))
+            if (s_aliases.TryGetValue(name, out codec))
             {
                 return codec;
             }
@@ -694,56 +744,40 @@ namespace Sharpy
             throw new LookupError("unknown encoding: " + encoding);
         }
 
-        // encodings.normalize_encoding after the registry lowercases the name: every run of characters other
-        // than alphanumerics and '.' becomes one '_' between kept characters; non-ASCII alphanumerics are dropped.
+        // encodings.normalize_encoding (3.15) after the registry lowercases the name: ASCII letters, digits and
+        // '.' are kept; every run of other characters, every non-ASCII character included, becomes one '_'
+        // between kept characters.
         private static string Normalize(string encoding)
         {
             var name = new StringBuilder(encoding.Length);
-            bool punctuation = false;
+            bool separator = false;
             for (int i = 0; i < encoding.Length; i++)
             {
                 char c = encoding[i];
-                if (IsAlphanumeric(c) || c == '.')
+                bool kept = (c >= 'a' && c <= 'z') || (c >= '0' && c <= '9') || c == '.';
+                if (c >= 'A' && c <= 'Z')
                 {
-                    if (punctuation && name.Length > 0)
-                    {
-                        name.Append('_');
-                    }
-                    if (c < 0x80)
-                    {
-                        name.Append(c >= 'A' && c <= 'Z' ? (char)(c + ('a' - 'A')) : c);
-                    }
-                    punctuation = false;
+                    c = (char)(c + ('a' - 'A'));
+                    kept = true;
                 }
-                else
+                if (!kept)
                 {
-                    punctuation = true;
+                    separator = true;
+                    continue;
                 }
+                if (separator && name.Length > 0)
+                {
+                    name.Append('_');
+                }
+                name.Append(c);
+                separator = false;
             }
             return name.ToString();
         }
 
-        // Python's str.isalnum: letters and numbers in every script.
-        private static bool IsAlphanumeric(char c)
+        private static bool IsStrict(string errors)
         {
-            if (c < 0x80)
-            {
-                return (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || (c >= '0' && c <= '9');
-            }
-            switch (CharUnicodeInfo.GetUnicodeCategory(c))
-            {
-                case UnicodeCategory.UppercaseLetter:
-                case UnicodeCategory.LowercaseLetter:
-                case UnicodeCategory.TitlecaseLetter:
-                case UnicodeCategory.ModifierLetter:
-                case UnicodeCategory.OtherLetter:
-                case UnicodeCategory.DecimalDigitNumber:
-                case UnicodeCategory.LetterNumber:
-                case UnicodeCategory.OtherNumber:
-                    return true;
-                default:
-                    return false;
-            }
+            return string.Equals(errors, "strict", StringComparison.Ordinal);
         }
 
         private static Handler ResolveHandler(string errors, bool decoding)
@@ -769,9 +803,18 @@ namespace Sharpy
                     {
                         return Handler.XmlCharRefReplace;
                     }
-                    break;
+                    return NotSupportedYet(errors);
+                case "surrogateescape":
+                case "surrogatepass":
+                    return NotSupportedYet(errors);
             }
             throw new LookupError("unknown error handler name '" + errors + "'");
+        }
+
+        // A handler python has and Sharpy lacks: the name is right, the implementation is missing.
+        private static Handler NotSupportedYet(string errors)
+        {
+            throw new LookupError("error handler '" + errors + "' is not supported yet (#2495)");
         }
     }
 }
