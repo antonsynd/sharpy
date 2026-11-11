@@ -224,13 +224,7 @@ Present a brief summary to the user: result, adequacy verdict, the corrections t
 
 Every pass is committed, whatever its result: a NEEDS REVISION summary left in the gitignored working copy is lost with its container. Copy the working copy over `docs/process/plans/<plan-id>.md` and commit that one file on the plan's branch (`docs/process/README.md` › The stage trail: `claude/<group>-plan` with its pull request for a `full` plan; `claude/<group>`, no pull request yet, for a `light` one), then `/push`. In a fresh container, `git fetch origin && git switch <branch>` first; if a `full` plan's plan PR already merged, cut `claude/<group>-plan` again from `origin/dev` with a new PR; a plan held only as a working copy is committed here for the first time.
 
-**Never commit a pass on `dev`.** `dev` takes changes only by pull request (its ruleset refuses a direct push), so a stamp committed there cannot leave the container. Settle the branch before the first edit, by where the plan is:
-
-- on a plan branch (`git branch -r --contains $(git log -1 --format=%H -- docs/process/plans/<plan-id>.md)` names one besides `origin/dev`): `git switch` to it;
-- already on `origin/dev` (the draft or an earlier pass merged), or the session starts checked out on `dev`: `git switch -c claude/<group>-plan origin/dev` (`claude/<group>` for a `light` plan) and commit there;
-- committed on local `dev` by mistake: `git switch -c <branch>`, then `git branch -f dev origin/dev`; the commit moves, nothing is lost.
-
-Pushing that branch and opening the `full` plan's pull request into `dev` is this stage's own step, whatever branch the session was started on: do it without asking, and say in the summary which branch and pull request hold the stamp. A session whose instructions forbid any other branch or any pull request is the one case to ask, once, before the pass starts, never after the commit exists.
+**Never commit a pass on `dev`**: its ruleset takes pull requests only, so the stamp could not leave the container. Settle the branch before the first edit. A plan already on `origin/dev`, or a session checked out on `dev`: `git switch -c claude/<group>-plan origin/dev` (`claude/<group>` for `light`). A commit already made on local `dev`: `git switch -c <branch>`, then `git branch -f dev origin/dev`. Pushing that branch and opening a `full` plan's pull request is this stage's own step: do it unasked and name both in the summary. If the session's instructions forbid another branch or a pull request, ask once, before the pass starts.
 
 ```bash
 git add docs/process/plans/<plan-id>.md     # explicit pathspec; `git diff --cached --stat` shows this one file
