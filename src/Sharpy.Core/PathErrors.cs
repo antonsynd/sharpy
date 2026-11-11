@@ -174,7 +174,7 @@ namespace Sharpy
         /// parent that is a file (<see cref="Verdict.NotADirectory"/>) answer before it, for every
         /// requirement alike (<see cref="ParentVerdict"/>).
         /// </summary>
-        private static Verdict[] Row(PathRequirement requirement)
+        private static Verdict[] VerdictRow(PathRequirement requirement)
         {
             switch (requirement)
             {
@@ -209,7 +209,7 @@ namespace Sharpy
         /// <summary>python's verdict for <paramref name="requirement"/> on <paramref name="path"/> as it is now.</summary>
         internal static Verdict Classify(string path, PathRequirement requirement)
         {
-            var row = Row(requirement);
+            var row = VerdictRow(requirement);
             var parent = ParentVerdict(path);
             if (parent != Verdict.Ok)
             {
