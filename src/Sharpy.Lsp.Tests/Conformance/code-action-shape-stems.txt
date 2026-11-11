@@ -5,7 +5,13 @@
 # cells of diagnostics stride 8; a FULL run (SHARPY_CODEACTION_SWEEP_FULL=1) must measure the same set as its regular
 # projection. A new failing stem is red until its row lands; a stem that holds is red until its row is deleted; a key whose
 # every stem holds is red until its rows and cite row are drained.
-# Regenerate from a run: .claude/tmp/code-action-sweep/<twin>-actual-stems.txt.
+# GENERATED, HUMAN-REVIEWED: bash build_tools/regenerate_corpus_pins.sh rewrites the rows and the `# total` lines; review
+# the diff (a new stem's rows are its own; a moved row of an existing stem is a finding until explained). A new key's cite row in
+# code-action-shape-allowlist.txt is written by hand (the loader names it), and so is a drained key's deletion.
+# total stems identity keys=14 rows=2055
+# total stems crlf keys=8 rows=274
+# total stems cr keys=8 rows=284
+# total stems comment keys=7 rows=278
 extract-method identity diagnostics Formatting/module_docstring_then_statement # #2294
 extract-method identity diagnostics abstract_class_interface_stubs # #2294
 extract-method identity diagnostics access_modifiers/access_modifiers # #2294
