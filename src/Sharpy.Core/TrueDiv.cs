@@ -14,7 +14,9 @@ namespace Sharpy
         /// (whose left operand the emitter casts to <c>double</c>). The guard is one branch on the
         /// divisor and the method is aggressively inlined, so a constant non-zero divisor folds the
         /// branch away after inlining and a variable divisor costs one predictable compare. The
-        /// throw sits in a separate non-inlined method so this body stays small enough to inline.
+        /// <c>throw</c> stays inline on purpose: the JIT moves a throw block out of the loop, whereas a
+        /// call to a throw-helper method (even <c>[DoesNotReturn]</c>) made it spill the caller's loop
+        /// accumulator around the cold call, doubling a tight division loop (#2517, measured).
         /// Like <see cref="FloorDiv(double, double)"/>, the guard lives in the helper so each
         /// operand is spliced exactly once and a side-effecting divisor runs once.
         /// </remarks>
@@ -27,7 +29,7 @@ namespace Sharpy
         {
             if (y == 0.0)
             {
-                ThrowDivisionByZero();
+                throw new ZeroDivisionError("division by zero");
             }
 
             return x / y;
@@ -46,7 +48,7 @@ namespace Sharpy
         {
             if (y == 0.0f)
             {
-                ThrowDivisionByZero();
+                throw new ZeroDivisionError("division by zero");
             }
 
             return x / y;
@@ -68,22 +70,10 @@ namespace Sharpy
         {
             if (y == 0m)
             {
-                ThrowDivisionByZero();
+                throw new ZeroDivisionError("division by zero");
             }
 
             return x / y;
-        }
-
-        [MethodImpl(MethodImplOptions.NoInlining)]
-        private static void ThrowDivisionByZero()
-        {
-            throw new ZeroDivisionError("division by zero");
-        }
-
-        [MethodImpl(MethodImplOptions.NoInlining)]
-        private static void ThrowZeroToNegativePower()
-        {
-            throw new ZeroDivisionError("zero to a negative power");
         }
 
         /// <summary>
@@ -107,7 +97,7 @@ namespace Sharpy
         {
             if (x == 0.0 && y < 0.0 && !double.IsNegativeInfinity(y))
             {
-                ThrowZeroToNegativePower();
+                throw new ZeroDivisionError("zero to a negative power");
             }
 
             return System.Math.Pow(x, y);

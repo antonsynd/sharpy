@@ -88,7 +88,7 @@ namespace Sharpy
             {
                 if (x == 0)
                 {
-                    ThrowZeroToNegativePower();
+                    throw new ZeroDivisionError("zero to a negative power");
                 }
 
                 return (int)System.Math.Pow(x, y);
@@ -142,7 +142,7 @@ namespace Sharpy
             {
                 if (x == 0)
                 {
-                    ThrowZeroToNegativePower();
+                    throw new ZeroDivisionError("zero to a negative power");
                 }
 
                 return (long)System.Math.Pow(x, y);
@@ -240,7 +240,7 @@ namespace Sharpy
             {
                 if (x == 0)
                 {
-                    ThrowZeroToNegativePower();
+                    throw new ZeroDivisionError("zero to a negative power");
                 }
 
                 return (ulong)System.Math.Pow(x, y);
