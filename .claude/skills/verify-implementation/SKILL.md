@@ -7,7 +7,7 @@ argument-hint: "<path/to/plan.md>"
 Read `docs/design/verification-contract.md` before proceeding (§10 file-by-class, §11 one-group-per-plan and §12 the verification tier included); every audit below applies it.
 **Stance: refute, not confirm** — an auditor reports NOT REFUTED only after naming what it tried.
 
-Verify that a plan has been fully and correctly implemented. Reads the plan, derives completion from its acceptance bullets and "Issues to Close", runs the whole-solution gate plus a **control run at the plan's base sha**, spawns four refuting auditors (completeness, regression, class-cure, sibling-cell prober), fixes **regressions, vacuous guards, missing deliverables and stale artifacts**, files everything else by class, and commits the fixes. A verify round never widens a class: a one-arm or sibling finding is a class issue for the next batching, not a fix lane here — the 2026-09-26 round grew eight fix lanes and thirty worktrees by widening, and its own fixes filed ten more issues.
+Verify that a plan has been fully and correctly implemented. Reads the plan, derives completion from its acceptance bullets and "Issues to Close", runs the whole-solution gate plus a **control run at the plan's base sha**, spawns four refuting auditors (completeness, regression, class-cure, sibling-cell prober), fixes **regressions, vacuous guards, missing deliverables and stale artifacts**, files everything else by class, and commits the fixes. A verify round never widens a class: a one-arm or sibling finding is a class issue for the next batching, not a fix lane here. It does not repeat the diff review (`/implement-plan` › Cleanup and Report step 4); run before merge, its fixes land on the open pull request, not as follow-up issues, and a commit that adds code is a fix round under that step (second review, body line refreshed).
 
 ## Argument Handling
 
@@ -40,7 +40,7 @@ Before spawning any agents, perform these checks yourself:
 
 ### 1b. Read the tier (contract §12)
 
-Read the plan's `## Scope` → **Tier** line. `light` → this round spawns **Agents 2, 3 and 4** and skips Agent 1: the completeness checklist (§4 below) is still built, and the **lead checks every acceptance bullet and every "Issues to Close" criterion itself** during Final Verification — the executing ones by running them, the pinned-text ones by grep (P46's unmet "pinned text" bullet was an Agent 1 catch; the lead now owns it). Agent 3 stays whole: its code-reading (seam-or-arm, oracle drift, exemption-is-subject) produced wrong-result catches in the ten-round review behind §12, so it is not a reading stage a tier may drop. `full`, or no Tier line → all four auditors. Say the tier and the auditor set in the report header. An execution auditor is never skipped at either tier; `override: <words>` in `## Scope` is the only way to add Agent 1 to a light round.
+Read the plan's `## Scope` → **Tier** line. `light` → this round spawns **Agents 2, 3 and 4** and skips Agent 1: the completeness checklist (§4 below) is still built, and the **lead checks every acceptance bullet and every "Issues to Close" criterion itself** during Final Verification — the executing ones by running them, the pinned-text ones by grep. Agent 3 stays whole at both tiers. `full`, or no Tier line → all four auditors. Say the tier and the auditor set in the report header. An execution auditor is never skipped at either tier; `override: <words>` in `## Scope` is the only way to add Agent 1 to a light round.
 
 ### 2. Establish the scope: base sha → HEAD
 
@@ -48,7 +48,7 @@ The audit range is **the plan's own commit range**, never the branch-vs-`mainlin
 
 - **Base sha** = the parent of the plan's first implementation commit. Read it from the plan's implementation commit table/checklist, or from `git log` on the commit messages that reference the plan. If neither identifies it unambiguously, **ask the user** — do not guess.
 - Record `BASE=<sha>` and `HEAD=<sha>`; every `git diff`/`git log` below uses `$BASE..HEAD`.
-- **Branch** (`docs/process/README.md` › The stage trail): commit on the implementation's open pull request; its CI run at `$FINAL` is the gate. Only if it has merged, cut `claude/<group>-verify` from `origin/dev` first and open its own pull request into `dev` (`dev` refuses a direct push). Either pull request is merged on green (`docs/process/README.md` › The stage trail, item 6).
+- **Branch** (`docs/process/README.md` › The stage trail): commit on the implementation's open pull request; its CI run at `$FINAL` is the gate. Only if it has merged, cut `claude/<group>-verify` from `origin/dev` first and open its own pull request into `dev` (`dev` refuses a direct push). Step 5 merges either.
 
 ### 3. Establish the baseline @ HEAD
 
@@ -71,9 +71,9 @@ Build a **completeness checklist** — every deliverable, each with the evidence
 
 ## Team Formation
 
-**Check the session's tool list first.** If `TeamCreate`/`TaskCreate` exist, a team is optional. In the current harness they do not; spawn the four auditors as **background `Agent` calls in one message** (they are independent) and collect their final reports — read-only agents (`code-reviewer`, `verification-expert`) are never teammates (they lack `SendMessage`/task tools in their `.claude/agents/` definitions).
+**Check the session's tool list first.** If `TeamCreate`/`TaskCreate` exist, a team is optional. In the current harness they do not; spawn the four auditors as **background `Agent` calls in one message** (they are independent) and collect their final reports — read-only agents (`code-reviewer`, `verification-expert`) are never teammates (no `SendMessage`/task tools).
 
-**Models.** `verification-expert` and `net-axiom-guardian` are defined with `model: haiku`, which is right for "run this filter and report counts" and wrong for a refutation brief. Spawn **Agents 2, 3, and 4 with `model: "opus"`** explicitly. Agent 1 may run on its definition's default.
+**Models.** `verification-expert` and `net-axiom-guardian` default to `haiku`, which suits "run this filter and report counts", not a refutation brief. Spawn **Agents 2, 3, and 4 with `model: "opus"`** explicitly. Agent 1 may run on its definition's default.
 
 Every agent prompt below **embeds this block verbatim** (contract §9):
 
@@ -242,21 +242,13 @@ Section A — class cure (do this first)
    Rule-2 evidence). Recorded ≠ applied: a recorded fact needs an executing test that asserts on
    output values.
 
-Section B — conventions and anti-patterns (second)
+Section B — conventions (second; the pre-merge review checks CLAUDE.md's Critical Rules and
+Design Anti-Patterns, so only these):
 
 - Feature order respected (Lexer → Parser → Semantic → Validation → Lowering → CodeGen → LSP → Tests)
-- Immutable AST: no mutable state on AST records; annotations in SemanticInfo
-- SyntaxFactory only in CodeGen; no string templating
-- Axiom precedence .NET > Type Safety > Python Syntax
-- C# 9.0 on the netstandard2.1 target of Sharpy.Core/Sharpy.Stdlib and in generated code
-- Spec consistency: docs/language_specification/ does not contradict the change; spec examples
-  the range added were executed (ask for the evidence line)
-- No dead code, debug leftovers, magic values, copy-paste that should be one seam
-- TODO/FIXME/BUG comments reference an issue
+- Spec consistency: docs/language_specification/ does not contradict the change
 - Validators at non-conflicting Order values; symbol lifecycle and materialization boundaries
   respected; CompilerServices additions follow the adapter pattern
-- Anti-patterns: "add X because Python has it", runtime type checks, wrapper types over extension
-  methods, multiple ways to do one thing, magic behavior
 
 Remove your worktree when done. Output: Section A findings first (SEAM/ARM per hunk; per-guard
 mutation record; per-refusal direction; SPY0908 named check; MergeFrom status), then Section B as
@@ -358,30 +350,16 @@ Address every item:
 ### Remediation Rules
 
 1. **Priority**: build failures > regressions > missing implementations > one-arm fixes and sibling cells > vacuous guards > conventions > missing tests > formatting/cleanup
-2. **Never modify `.expected` files** to make tests pass — fix the implementation
-3. **Cell patches AND in-round widenings are findings**: if a fix you are about to write touches only the cell an auditor found, stop and file the class issue (contract §1, §10). If the fix would move a check to a new seam or add a matrix axis, it is a plan, not a remediation — file it. This round fixes regressions, vacuous/inverted/inert guards, missing deliverables, stale artifacts and formatting
-4. **Never widen an allowlist** to absorb a new failure; entries drain on fix and are never added without an issue reference
-5. **Every guard added during remediation gets the mutation step** — break it → red, restore → green, both outcomes in the commit body (contract §2)
-6. **Verify each fix by running**, not by reading: the relevant tests via the wrapper, and the program's output for anything that records a fact codegen consumes (contract §4)
-7. **Regenerate before the final gate**: spy-stdlib C#, spy-test C#, stdlib docs, oracle ledger; commit the regen
-8. **Stage specific files**: explicit per-file pathspecs; check `git diff --cached --stat`; never `git add -A` / `git add .`
-9. **Incremental commits**, e.g. `fix: complete missing implementation for [plan step X]`, `fix: resolve regression in [component]`, `fix: move [check] to the shared seam (class [contract])`, `test: mutation-tested guard for [feature]`. Use the commit trailer the harness provides for this session
-10. **Whole-solution gate after all fixes** (see Final Verification)
+2. **Cell patches AND in-round widenings are findings**: if a fix you are about to write touches only the cell an auditor found, stop and file the class issue (contract §1, §10). If the fix would move a check to a new seam or add a matrix axis, it is a plan, not a remediation — file it. This round fixes regressions, vacuous/inverted/inert guards, missing deliverables, stale artifacts and formatting
+3. **Every guard added during remediation gets the mutation step** — break it → red, restore → green, both outcomes in the commit body (contract §2)
+4. **Verify each fix by running**, not by reading: the relevant tests via the wrapper, and the program's output for anything that records a fact codegen consumes (contract §4)
+5. **Regenerate before the final gate**: spy-stdlib C#, spy-test C#, stdlib docs, oracle ledger; commit the regen
+6. **Incremental commits**, e.g. `fix: complete missing implementation for [plan step X]`, `fix: resolve regression in [component]`, `fix: move [check] to the shared seam (class [contract])`, `test: mutation-tested guard for [feature]`. Use the commit trailer the harness provides for this session
+7. **Whole-solution gate after all fixes** (see Final Verification)
 
 ### Delegating Fixes
 
-Check the session's tool list; with team tools absent, delegate via background `Agent` calls and embed the shared-tree block verbatim in every prompt:
-
-| Area | Agent Type |
-|------|-----------|
-| Parser/Lexer/AST fixes | `parser-expert` |
-| Semantic/TypeChecker fixes | `semantic-expert` |
-| CodeGen/RoslynEmitter/Lowering fixes | `codegen-expert` |
-| Sharpy.Core fixes | `core-library-expert` |
-| Sharpy.Stdlib fixes | `stdlib-expert` |
-| LSP fixes | `lsp-expert` |
-| Test writing (with mutation step) | `test-expert` |
-| General implementation | `implementer` |
+Check the session's tool list; with team tools absent, delegate via background `Agent` calls and embed the shared-tree block verbatim in every prompt. Agent types by area: `/implement-plan` › Choose agents; `implementer` for anything else.
 
 Provide each agent with: the specific finding, the relevant plan section (including the Defect Class contract), the file(s) involved, the acceptance criterion, and — for any test — the requirement to report `broken → red / restored → green` in the commit body. Agents stage with explicit pathspecs and report `git status`; the lead re-checks `git diff --stat` after each wave.
 
@@ -399,6 +377,7 @@ After all fixes are committed (`FINAL=<sha>`):
 6. Every spec example the plan promised executes at `$FINAL` with the documented output
 7. Every guard added by the plan or by remediation has a recorded mutation outcome
 8. `git diff --stat $BASE..$FINAL` — matches the declared scope; no unclaimed working-tree delta (`git status`)
+9. On a pull request that changes code (README item 6; on a `-verify` lane, the one Cleanup step 4 opens, checked once it is open), the body's `Independent review @ <sha>` line (`gh api -X GET repos/<owner>/<repo>/pulls/N --jq .body`) names `$FINAL`, or an ancestor with only non-code commits since, and its verdict is not `do not merge`; absent or stale is a finding; stale after a code fix: run `/implement-plan` › Cleanup and Report step 4 on `$FINAL`, then re-check (not a remediation loop).
 
 If a step fails, loop back to remediation. Maximum 3 remediation loops — after that, report the residue as unresolved with its evidence. A failing step invalidates its dependents, not its siblings: complete every independent step and label suspect readings.
 
@@ -407,8 +386,8 @@ If a step fails, loop back to remediation. Maximum 3 remediation loops — after
 1. Remove any worktrees you or the auditors created (`git worktree list`; `git worktree remove <path>`)
 2. If a team was created, shut teammates down (`SendMessage` `shutdown_request`) and delete it; with background agents, confirm each has returned
 3. **Record the close in the committed plan.** Append the report below to `docs/process/plans/<plan-id>.md` as `## Implementation Verification Record` (verbatim, every count `@ sha`) and commit that one file — `process(plan): <plan-id> — verify-implementation closed @ $FINAL` — as the round's last commit.
-4. `/push`. The implementation's pull request carries the record (on a `-verify` lane, open one with the same body). Add to its body the class-status table, the issues closed with the evidence each close cites, the issues filed, the unresolved items and the gate `@ $FINAL (measured)` with its run id. The tip never carries the skip-ci marker (contract §6).
-5. **Merge on green** (`docs/process/README.md` › The stage trail, item 6): when every check at the record commit's tip is green, merge the pull request (a merge commit, expected head = that tip), `git pull origin dev`, then close the plan's "Issues to Close" rows that are CLOSEABLE with `/close-issues` — each close cites its evidence `@ sha` and the merged pull request. A red at the tip is fixed first (a flake with an open issue: one re-run of its job decides); it is never merged over.
+4. `/push`. The implementation's pull request carries the record (on a `-verify` lane, open one with the same body minus the review line; a code fix there needs its own review). Add to its body the class-status table, the issues closed with the evidence each close cites, the issues filed, the unresolved items and the gate `@ $FINAL (measured)` with its run id. The tip never carries the skip-ci marker (contract §6).
+5. **Merge on green** (README item 6): when every check at the record commit's tip is green and Final Verification 9 holds, merge the pull request (a merge commit, expected head = that tip), `git pull origin dev`, then close the plan's "Issues to Close" rows that are CLOSEABLE with `/close-issues` — each close cites its evidence `@ sha` and the merged pull request. A red at the tip is fixed first (a flake with an open issue: one re-run of its job decides); it is never merged over.
 6. Present the verification report:
 
 ```markdown
