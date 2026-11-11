@@ -857,7 +857,15 @@ namespace Sharpy.SocketModule
         /// </summary>
         public Socket(int family = 2, int sockType = 1, int proto = 0)
         {
-            this._Socket = new global::System.Net.Sockets.Socket((global::System.Net.Sockets.AddressFamily)family, (global::System.Net.Sockets.SocketType)sockType, (global::System.Net.Sockets.ProtocolType)proto);
+            try
+            {
+                this._Socket = new global::System.Net.Sockets.Socket((global::System.Net.Sockets.AddressFamily)family, (global::System.Net.Sockets.SocketType)sockType, (global::System.Net.Sockets.ProtocolType)proto);
+            }
+            catch (global::System.Net.Sockets.SocketException ex)
+            {
+                throw global::Sharpy.SocketModule.Error.FromSocketException(ex);
+            }
+
             this._Timeout = null;
             double? @default = null;
             {

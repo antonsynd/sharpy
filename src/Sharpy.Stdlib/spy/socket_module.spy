@@ -140,7 +140,10 @@ class socket(IDisposable):
 
     def __init__(self, family: int = 2, sock_type: int = 1, proto: int = 0):
         """Create a new socket with the given address family, type, and protocol."""
-        self._socket = NetSocket(family as! AddressFamily, sock_type as! SocketType, proto as! ProtocolType)
+        try:
+            self._socket = NetSocket(family as! AddressFamily, sock_type as! SocketType, proto as! ProtocolType)
+        except SocketException as ex:
+            raise error.from_socket_exception(ex)
         self._timeout = None
         default: float | None = None
         with _lock:
