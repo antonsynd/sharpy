@@ -5,13 +5,13 @@ These benchmarks compare equivalent programs across Sharpy, C#, CPython and [Boo
 
 ## Latest Results
 
-See **[`benchmarks/cross-language/results/latest.md`](https://github.com/antonsynd/sharpy/blob/dev/benchmarks/cross-language/results/latest.md)** for execution times, compilation times (cold/warm/server), and Spy/Py, Spy/C# and Spy/Boo ratios. Updated weekly by CI.
+See **[`latest.md`](https://github.com/antonsynd/sharpy/blob/benchmark-results/latest.md)** on the `benchmark-results` branch for execution times, compilation times (cold/warm/server), and Spy/Py, Spy/C# and Spy/Boo ratios. Updated weekly by CI, which commits each run's results to that branch (one commit per run) and also attaches them to the workflow run as an artifact.
 
-Full history (17 weekly data points): [`history.json`](https://github.com/antonsynd/sharpy/blob/dev/benchmarks/cross-language/results/history.json).
+Full history (the last 52 weekly data points): [`history.json`](https://github.com/antonsynd/sharpy/blob/benchmark-results/history.json). The copy under `benchmarks/cross-language/results/` on `dev` is a frozen snapshot (2026-11-02) that seeded the branch.
 
 ## Performance Trend
 
-![Spy/Py, Spy/C# and Spy/Boo ratios over time](https://raw.githubusercontent.com/antonsynd/sharpy/dev/benchmarks/cross-language/results/trend.svg)
+![Spy/Py, Spy/C# and Spy/Boo ratios over time](https://raw.githubusercontent.com/antonsynd/sharpy/benchmark-results/trend.svg)
 
 ## Methodology
 

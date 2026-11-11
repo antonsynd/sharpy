@@ -7,7 +7,8 @@
 > ([#1057](https://github.com/antonsynd/sharpy/issues/1057)) — all landed.
 > **Roadmap:** [roadmap-2026-07.md](roadmap-2026-07.md) (Workstream E, §4.4).
 > **Measurements:** `benchmarks/BASELINE.md` (D2 server compile, D3 round-trip,
-> E3 pass deltas) and `benchmarks/cross-language/results/latest.md` (repo files, outside the docs site).
+> E3 pass deltas) and `benchmarks/cross-language/results/latest.md` (repo files, outside the docs site;
+> CI now publishes the weekly results to the `benchmark-results` branch).
 > This page is the **written go/no-go** the E4 done-when requires ("a written go/no-go decision with
 > measurements attached"). It is a decision, not code; it is reviewed before merge, per the E1 precedent.
 

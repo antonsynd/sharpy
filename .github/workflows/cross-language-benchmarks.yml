@@ -3,6 +3,12 @@
 # cache), then Python/Sharpy/Boo benchmarks run after building the Sharpy CLI
 # (the harness builds booc from a pinned boo-lang/boo commit). Results are
 # merged into a single report.
+#
+# Publishing: the results are committed to the `benchmark-results` branch (its tree is exactly
+# benchmarks/cross-language/results/), never to `dev`, whose ruleset requires a pull request and
+# status checks (GH013 rejected the direct push on 2026-11-09, discarding that week's numbers).
+# Every run also uploads the results as an artifact and writes the report to the job summary
+# before publishing, so a failed publish never loses the numbers. See publish_results.sh.
 
 name: Cross-Language Benchmarks
 
@@ -10,6 +16,11 @@ on:
   schedule:
     - cron: '0 6 * * 1'  # Every Monday at 06:00 UTC
   workflow_dispatch:  # Allow manual trigger
+
+# One publisher at a time: publish_results.sh pushes the results branch without rebasing.
+concurrency:
+  group: cross-language-benchmarks
+  cancel-in-progress: false
 
 jobs:
   # Job 1: Run C# benchmarks in a clean environment before any Sharpy build
@@ -77,11 +88,15 @@ jobs:
     - name: Build Sharpy CLI (Release)
       run: dotnet build src/Sharpy.Cli -c Release --nologo -v q
 
+    - name: Seed history from the results branch
+      run: bash benchmarks/cross-language/publish_results.sh seed benchmarks/cross-language/results
+
     - name: Run Python + Sharpy + Boo benchmarks and merge
       run: |
         python3 benchmarks/cross-language/run_benchmarks.py --languages Python,Sharpy,Boo --merge csharp-results.json --json > benchmarks/cross-language/results/latest.json
 
     - name: Generate markdown report
+      id: report
       run: |
         python3 - <<'SCRIPT'
         import json
@@ -253,11 +268,14 @@ jobs:
 
         # Append to history
         history_file = "benchmarks/cross-language/results/history.json"
+        # A missing history starts empty; a malformed one fails the step (never silently reset).
         try:
             with open(history_file) as f:
                 history = json.load(f)
-        except (FileNotFoundError, json.JSONDecodeError):
+        except FileNotFoundError:
             history = []
+        if not isinstance(history, list):
+            raise SystemExit(f"{history_file} is not a JSON list")
 
         history.append({"date": now, "results": results})
 
@@ -275,20 +293,25 @@ jobs:
         python3 benchmarks/cross-language/generate_chart.py --months 6
 
     - name: Post to job summary
+      if: ${{ !cancelled() && steps.report.outcome == 'success' }}
       run: |
-        echo "## Cross-Language Benchmark Results" >> $GITHUB_STEP_SUMMARY
-        echo "" >> $GITHUB_STEP_SUMMARY
-        cat benchmarks/cross-language/results/latest.md >> $GITHUB_STEP_SUMMARY
+        {
+          echo "## Cross-Language Benchmark Results"
+          echo ""
+          cat benchmarks/cross-language/results/latest.md
+        } >> "$GITHUB_STEP_SUMMARY"
 
-    - name: Commit results
-      run: |
-        git config user.name "github-actions[bot]"
-        git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-        git add benchmarks/cross-language/results/
-        if git diff --cached --quiet; then
-          echo "No changes to commit"
-        else
-          git commit -m "bench: weekly cross-language benchmark results $(date -u +%Y-%m-%d)"
-          git pull --rebase origin dev || true
-          git push
-        fi
+    # Before publishing, so a publish failure never discards a successful run's numbers.
+    - name: Upload results artifact
+      if: ${{ !cancelled() }}
+      uses: actions/upload-artifact@v7
+      with:
+        name: cross-language-results
+        path: |
+          benchmarks/cross-language/results/
+          csharp-results.json
+        if-no-files-found: warn
+        retention-days: 90
+
+    - name: Publish results to the benchmark-results branch
+      run: bash benchmarks/cross-language/publish_results.sh publish benchmarks/cross-language/results
