@@ -2428,6 +2428,9 @@ store/builtin/Walrus/global/max FalseRefusal # #2424 false-refusal
 store/lambda-walrus/outer=EnclosingLocal SilentWrong # #2424 missing-refusal
 store/lambda-walrus/outer=ModuleVar SilentWrong # #2424 missing-refusal
 store/walrus-in-comprehension/dict-spread-comprehension/IfClause/Condition/outer=ModuleVar SilentWrong # #2425 missing-refusal
+store/walrus-in-comprehension/dict-spread-comprehension/IfClause/Spread/outer=ModuleVar SilentWrong # #2425 missing-refusal
+store/walrus-in-comprehension/dict-spread-comprehension/OneFor/Spread/outer=ModuleVar SilentWrong # #2425 missing-refusal
+store/walrus-in-comprehension/dict-spread-comprehension/SecondFor/Spread/outer=ModuleVar SilentWrong # #2425 missing-refusal
 typemember/class/constructor/alias/argument/after Ice # #1925 ice
 typemember/class/constructor/alias/argument/before Ice # #1925 ice
 typemember/class/constructor/alias/chained/after Ice # #1925 ice
