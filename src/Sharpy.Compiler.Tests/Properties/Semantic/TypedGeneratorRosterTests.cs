@@ -153,7 +153,9 @@ public class TypedGeneratorRosterTests
             new YInjected("ErrorInjector.InjectWrongTypedArithmeticOperand", "SPY0222", CompilerDiagnosticSeverity.Error)),
         new("arithmetic_operators.md", "Division Operator `/`", "true division /",
             new KnownRedRow("#2287", "no typed generator emits /"),
-            new KnownRedRow("#2287", "not generated, so no injection can break it")),
+            new KnownRedRow("#2287", "not generated, so no injection can break it; the file's SPY0401 (a parameter default "
+                + "whose divisor is a known-zero constant, #2517) is pinned outside the typed generators, by "
+                + "ZeroDivisionDifferentialTests and ParameterDefaultConstantMatrixTests' ConstNameDivisorZero kind")),
         new("arithmetic_operators.md", "Floor Division Operator `//`", "floor division //",
             new KnownRedRow("#2287", "no typed generator emits //"),
             new KnownRedRow("#2287", "not generated, so no injection can break it")),
