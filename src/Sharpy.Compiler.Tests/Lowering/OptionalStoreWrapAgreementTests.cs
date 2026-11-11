@@ -242,12 +242,24 @@ public class OptionalStoreWrapAgreementTests
         {
             switch (cell)
             {
-                case Plain when wrapped: PlainWrap++; break;
-                case Plain: PlainNoWrap++; break;
-                case Element when wrapped: ElementWrap++; break;
-                case Element: ElementNoWrap++; break;
-                case Walrus when wrapped: WalrusWrap++; break;
-                case Walrus: WalrusNoWrap++; break;
+                case Plain when wrapped:
+                    PlainWrap++;
+                    break;
+                case Plain:
+                    PlainNoWrap++;
+                    break;
+                case Element when wrapped:
+                    ElementWrap++;
+                    break;
+                case Element:
+                    ElementNoWrap++;
+                    break;
+                case Walrus when wrapped:
+                    WalrusWrap++;
+                    break;
+                case Walrus:
+                    WalrusNoWrap++;
+                    break;
             }
         }
 
