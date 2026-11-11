@@ -5,7 +5,7 @@
 - **Charter:** [`remediation-round-2026-09-20-batching.md`](remediation-round-2026-09-20-batching.md) (`docs/process/rounds/remediation-round-2026-09-20-batching.md`)
 - **Call:** 42 (2026-11-11) @ 587c1415 — the newest §7 history row (charter line 1670)
 - **Census:** 330 open = 16 parked (§3.last) + 314 batched (charter line 9)
-- **Release:** 0.24.0 on dev (bump b4dfa88e5, PR #2535); last release v0.23.0 — `/bump-version` done at call 41's base; tag + release pending — `/bump-version` before any further release-destined push
+- **Release:** 0.24.0 on dev (bump b4dfa88e5, PR #2535); last release v0.24.0 (tag cd830450, `git ls-remote` at call 42) — `/bump-version` before any further release-destined push
 - **Reading:** one row per §1 execution position. Issues: **FIRST** marked; struck ones as the charter left them (closed, done, or → the group they moved to). Rulings: those cited on the §1 row, its §3 heading and its `**Tier:**` line; a superseded one is shown as `R-xx → R-yy` (its chain to the end), one superseded in part as `R-xx (in part → R-yy)`.
 
 ## Execution order (§1)
