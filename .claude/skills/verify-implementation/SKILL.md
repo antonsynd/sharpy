@@ -7,7 +7,7 @@ argument-hint: "<path/to/plan.md>"
 Read `docs/design/verification-contract.md` before proceeding (§10 file-by-class, §11 one-group-per-plan and §12 the verification tier included); every audit below applies it.
 **Stance: refute, not confirm** — an auditor reports NOT REFUTED only after naming what it tried.
 
-Verify that a plan has been fully and correctly implemented. Reads the plan, derives completion from its acceptance bullets and "Issues to Close", runs the whole-solution gate plus a **control run at the plan's base sha**, spawns four refuting auditors (completeness, regression, class-cure, sibling-cell prober), fixes **regressions, vacuous guards, missing deliverables and stale artifacts**, files everything else by class, and commits the fixes. A verify round never widens a class: a one-arm or sibling finding is a class issue for the next batching, not a fix lane here. It does not repeat the diff review (`/implement-plan` › Cleanup and Report step 4); run before merge, its fixes land on the open pull request, not as follow-up issues.
+Verify that a plan has been fully and correctly implemented. Reads the plan, derives completion from its acceptance bullets and "Issues to Close", runs the whole-solution gate plus a **control run at the plan's base sha**, spawns four refuting auditors (completeness, regression, class-cure, sibling-cell prober), fixes **regressions, vacuous guards, missing deliverables and stale artifacts**, files everything else by class, and commits the fixes. A verify round never widens a class: a one-arm or sibling finding is a class issue for the next batching, not a fix lane here. It does not repeat the diff review (`/implement-plan` › Cleanup and Report step 4); run before merge, its fixes land on the open pull request, not as follow-up issues, and a commit that adds code is a fix round under that step (second review, body line refreshed).
 
 ## Argument Handling
 
@@ -242,8 +242,8 @@ Section A — class cure (do this first)
    Rule-2 evidence). Recorded ≠ applied: a recorded fact needs an executing test that asserts on
    output values.
 
-Section B — conventions (second; the pre-merge review covers CLAUDE.md's Critical Rules and
-anti-patterns, so only these, plus a FINDING if the PR body has no `Independent review:` line):
+Section B — conventions (second; the pre-merge review checks CLAUDE.md's Critical Rules and
+Design Anti-Patterns, so only these):
 
 - Feature order respected (Lexer → Parser → Semantic → Validation → Lowering → CodeGen → LSP → Tests)
 - Spec consistency: docs/language_specification/ does not contradict the change
@@ -359,18 +359,7 @@ Address every item:
 
 ### Delegating Fixes
 
-Check the session's tool list; with team tools absent, delegate via background `Agent` calls and embed the shared-tree block verbatim in every prompt:
-
-| Area | Agent Type |
-|------|-----------|
-| Parser/Lexer/AST fixes | `parser-expert` |
-| Semantic/TypeChecker fixes | `semantic-expert` |
-| CodeGen/RoslynEmitter/Lowering fixes | `codegen-expert` |
-| Sharpy.Core fixes | `core-library-expert` |
-| Sharpy.Stdlib fixes | `stdlib-expert` |
-| LSP fixes | `lsp-expert` |
-| Test writing (with mutation step) | `test-expert` |
-| General implementation | `implementer` |
+Check the session's tool list; with team tools absent, delegate via background `Agent` calls and embed the shared-tree block verbatim in every prompt. Agent types by area: `/implement-plan` › Choose agents; `implementer` for anything else.
 
 Provide each agent with: the specific finding, the relevant plan section (including the Defect Class contract), the file(s) involved, the acceptance criterion, and — for any test — the requirement to report `broken → red / restored → green` in the commit body. Agents stage with explicit pathspecs and report `git status`; the lead re-checks `git diff --stat` after each wave.
 
@@ -388,6 +377,7 @@ After all fixes are committed (`FINAL=<sha>`):
 6. Every spec example the plan promised executes at `$FINAL` with the documented output
 7. Every guard added by the plan or by remediation has a recorded mutation outcome
 8. `git diff --stat $BASE..$FINAL` — matches the declared scope; no unclaimed working-tree delta (`git status`)
+9. The PR body's `Independent review @ <sha>` line (`gh api -X GET repos/<owner>/<repo>/pulls/N --jq .body`) names `$FINAL`, or an ancestor with only non-code commits since; absent or stale is a finding (nothing enforces it mechanically)
 
 If a step fails, loop back to remediation. Maximum 3 remediation loops — after that, report the residue as unresolved with its evidence. A failing step invalidates its dependents, not its siblings: complete every independent step and label suspect readings.
 
@@ -396,7 +386,7 @@ If a step fails, loop back to remediation. Maximum 3 remediation loops — after
 1. Remove any worktrees you or the auditors created (`git worktree list`; `git worktree remove <path>`)
 2. If a team was created, shut teammates down (`SendMessage` `shutdown_request`) and delete it; with background agents, confirm each has returned
 3. **Record the close in the committed plan.** Append the report below to `docs/process/plans/<plan-id>.md` as `## Implementation Verification Record` (verbatim, every count `@ sha`) and commit that one file — `process(plan): <plan-id> — verify-implementation closed @ $FINAL` — as the round's last commit.
-4. `/push`. The implementation's pull request carries the record (on a `-verify` lane, open one with the same body). Add to its body the class-status table, the issues closed with the evidence each close cites, the issues filed, the unresolved items and the gate `@ $FINAL (measured)` with its run id. The tip never carries the skip-ci marker (contract §6).
+4. `/push`. The implementation's pull request carries the record (on a `-verify` lane, open one with the same body; a code fix there gets its own independent review and line). Add to its body the class-status table, the issues closed with the evidence each close cites, the issues filed, the unresolved items and the gate `@ $FINAL (measured)` with its run id. The tip never carries the skip-ci marker (contract §6).
 5. Present the verification report:
 
 ```markdown

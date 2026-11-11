@@ -42,7 +42,7 @@ The shared rules for `/create-plan`, `/verify-plan`, `/implement-plan` and `/ver
    `create_pull_request` tool or `gh api -X POST repos/<owner>/<repo>/pulls`). An implementation
    pull request's body names the plan, the gate `passed/failed/skipped @ sha (measured)`, **the issues
    it closes and the issues its work filed**; it merges only after its independent review
-   (`/implement-plan` › Cleanup and Report). A cell found outside the plan's scope is filed as contract
+   (`/implement-plan` › Cleanup and Report step 4). A cell found outside the plan's scope is filed as contract
    §10 says: a comment on its open class tracker; a new issue only when none exists and the cell is
    `reach:program` in a silent-wrong, ice, refusal or runtime-throw lane. The tip never carries the skip-ci marker (contract §6). Merging is the owner's.
 

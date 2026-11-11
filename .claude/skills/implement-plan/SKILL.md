@@ -82,14 +82,13 @@ Spawn teammates with `run_in_background`; give each its task text, the relevant 
 
 Break the plan into commit-sized tasks (via `TaskCreate` or the plan-file checklist). Rules:
 
-1. **Ordering**: feature implementation order: Lexer → Parser → Semantic → Validation → Lowering → CodeGen → LSP → Tests
-2. **Dependencies**: block Parser on Lexer, Semantic on Parser, etc. (`addBlockedBy` or the checklist's `blocked by`)
-3. **Granularity**: one logical commit per task (e.g., "Add TokenType.FormatString to Lexer", "Add FormatStringExpression AST node", "Handle FormatStringExpression in TypeChecker")
-4. **Test tasks**: alongside or immediately after each implementation task, never all at the end; each test task includes its **mutation step** (§Guard Delivery Rule)
-5. **Class tasks** — if the plan has a **Defect Class** section: create the **matrix/sweep task** (the sibling cells the plan enumerated go green, or the standing harness gains the cells) and the **allowlist-drain task** (every entry the fix drains is deleted, stale entries fail), both blocked by the fix tasks. A bug-fix plan with a Defect Class section but no matrix task is incomplete — add it.
-6. **Regen task** — immediately after the **first** task that touches `Semantic/`, `Lowering/`, or `CodeGen/`, not at the end: regenerate spy-stdlib C# (`build_tools/regenerate_spy_stdlib.sh`), spy-test C#, stdlib docs (`build_tools stdlib generate --force`), and the oracle ledger (`/regenerate-snapshots` covers the C# snapshots). Read the regen diff as **findings**: a newly red regenerated test is a live regression until disproven.
-7. **Excluded sections**: skip any sections listed in `--exclude`
-8. **Final tasks**: a "Run final verification" task (lead + standalone `verification-expert`) and a "Run dotnet format whitespace" task, both blocked by all implementation tasks
+1. **Ordering**: Lexer → Parser → Semantic → Validation → Lowering → CodeGen → LSP → Tests, each blocked by the one before (`addBlockedBy` or the checklist's `blocked by`)
+2. **Granularity**: one logical commit per task (e.g., "Add TokenType.FormatString to Lexer", "Add FormatStringExpression AST node", "Handle FormatStringExpression in TypeChecker")
+3. **Test tasks**: alongside or immediately after each implementation task, never all at the end; each test task includes its **mutation step** (§Guard Delivery Rule)
+4. **Class tasks** — if the plan has a **Defect Class** section: create the **matrix/sweep task** (the sibling cells the plan enumerated go green, or the standing harness gains the cells) and the **allowlist-drain task** (every entry the fix drains is deleted, stale entries fail), both blocked by the fix tasks. A bug-fix plan with a Defect Class section but no matrix task is incomplete — add it.
+5. **Regen task** — immediately after the **first** task that touches `Semantic/`, `Lowering/`, or `CodeGen/`, not at the end: regenerate spy-stdlib C# (`build_tools/regenerate_spy_stdlib.sh`), spy-test C#, stdlib docs (`build_tools stdlib generate --force`), and the oracle ledger (`/regenerate-snapshots` covers the C# snapshots). Read the regen diff as **findings**: a newly red regenerated test is a live regression until disproven.
+6. **Excluded sections**: skip any sections listed in `--exclude`
+7. **Final tasks**: a "Run final verification" task (lead + standalone `verification-expert`) and a "Run dotnet format whitespace" task, both blocked by all implementation tasks
 
 ## Implementation Workflow
 
@@ -103,7 +102,7 @@ Each agent receives these instructions along with its specific task:
 You are implementing part of a plan. Your task is described below along with the relevant plan section.
 
 CRITICAL RULES:
-- CLAUDE.md's Critical Rules bind you (your session loads it); spec examples you add are executed before commit
+- CLAUDE.md's Critical Rules bind you (your session loads it); generated code is C# 9.0 too; spec examples you add are executed before commit
 - Fix the class, not the cell — and never spot-fix a sibling silently. A cell INSIDE the plan's contract goes into the Defect Class table and is fixed at the seam in this plan. A cell OUTSIDE it is appended to the round's findings ledger (`<scratchpad>/findings-ledger.md`: cell · program · observed · expected @ sha · lane · reach · candidate class · found-by); you never run `gh issue create` — the lead files by class once per wave (contract §10). A `python3` divergence on a DEVIATION-by-default surface (`docs/design/python-fidelity-scope.md`) is a deviation-ledger row, not a finding
 - Language before compiler (layer ladder, CLAUDE.md › Core & Stdlib Conventions): if a task's Semantic/CodeGen change is expressible at a lower rung — `.spy` source, Core/Stdlib C# in the dunder table's spelling (operator overloads, `ISized`/`IBoolConvertible`/`IReverseEnumerable<T>`, `Contains(T)`, `IEnumerable<T>`) discovered by reflection, or a CLR-identity bridge rule — STOP and report before coding; never land a name-keyed (`BuiltinNames.X`) rule silently
 
@@ -115,11 +114,8 @@ before committing; never `git add -A` or `git add .`. Restore a mutation-test fr
 made (`cp`), never from git. Never run `dotnet` directly — use `.claude/scripts/dotnet-serialized`
 with `dangerouslyDisableSandbox: true`.
 
-SERIALIZED DOTNET:
-The wrapper takes an exclusive lock so only one dotnet process runs at a time; concurrent test runs
-consume 5–10 GB RAM EACH. It is a drop-in replacement (same args, output, exit code) and tees each
-run to its own log, printing `dotnet-serialized: log -> <path>` first. A whole-solution run is
-~30 min; read that log before re-running:  grep -i "FAIL\|error" <path>
+SERIALIZED DOTNET: CLAUDE.md › Operational Contracts. A whole-solution run is ~30 min; grep the
+log the wrapper printed before re-running.
 
 WORKFLOW:
 1. Read the plan section for your task
@@ -169,14 +165,16 @@ After each task is completed by an agent:
 
 After all implementation tasks are complete, the lead runs the gate and spawns `verification-expert` standalone (pass `model` explicitly; it refutes, it does not confirm):
 
-1. `.claude/scripts/dotnet-serialized build sharpy.sln` — must succeed; before pushing, run the whole `FullyQualifiedName~Sharpy.Compiler.Tests.Infrastructure` namespace: the repo-wide conformance scans live there and workers' filtered runs miss them
+1. `.claude/scripts/dotnet-serialized build sharpy.sln` — must succeed. Before every push (workers' filtered runs miss these):
+   - tests filtered `FullyQualifiedName~Sharpy.Compiler.Tests.Infrastructure|FullyQualifiedName~Sharpy.Compiler.Tests.Conformance`;
+   - `/push`'s whitespace gate (`--verify-no-changes`; fix with `/format`);
+   - `bash build_tools/check_commit_subjects.sh <upstream>..HEAD`: a long subject cannot be fixed after a push without rewriting history.
 2. **Whole-solution gate** in the background: push the branch and run `/ci-gate` (the local fallback on exit 3) — compare against the baseline `@ <sha> (measured)`; every new red gets a **control run** at the plan's base sha (`/ci-gate` › Control runs) before it is attributed. No do-not-merge PR
 3. **Blast-radius sweeps** the plan named: `FrontEndParityTests` (LSP parity), and the GapDiscovery sweeps CI runs as separate steps — `--filter "Category=GapDiscovery&FullyQualifiedName~InteropConformance"`, `~MetamorphicCorpus`, `~DifferentialExecution` — for any change under `Semantic/`, `Lowering/`, or `CodeGen/`
 4. **Staleness gates**: run `/push`'s generated-artifact gates (spy-stdlib C#, spy-test C#, stdlib docs, oracle ledger) — a diff here is a finding, not noise
 5. **Spec examples**: execute every example the plan promised in `docs/language_specification/` or `DiagnosticExplanations` (`/spy-run`); outputs must discriminate
 6. **Allowlists**: every entry the plan's fixes drain is gone; no entry was added without an issue reference
-7. `.claude/scripts/dotnet-serialized format whitespace sharpy.sln --verify-no-changes` — clean
-8. `git diff --stat` and `git status --short` re-check after the last agent wave — every delta is claimed by a commit or an agent report
+7. `git diff --stat` and `git status --short` re-check after the last agent wave — every delta is claimed by a commit or an agent report
 
 ## Cleanup and Report
 
@@ -185,14 +183,14 @@ After final verification:
 1. If a team exists: shut down teammates via `SendMessage` (`type: "shutdown_request"`) and delete the team via `TeamDelete`; otherwise confirm every background agent has reported
 2. Mark the plan's Implementation Checklist complete (or list what was deferred and why) and commit the plan file by explicit pathspec (`process(plan): <plan-id> — implementation checklist closed @ <sha>`); `/verify-implementation` appends its verify record to this same committed file
 3. **Open the pull request** after Final Verification, when every red at the tip is attributed by a control run (never to reach CI: `/ci-gate` dispatches at the pushed commit). `/push`, then open it into `dev`. **Title:** `<type>(<area>): <group> — <what the plan cures>`, ≤ 72 characters. **Body:** the plan path and stamp line; the issues it closes, with their close criteria (`Refs #N`, never `Closes #N`: `/verify-implementation` closes on evidence, contract §8); **the issues this work filed** and the tracker comments it posted; the gate `passed/failed/skipped @ <sha> (measured)` with its run id; the guards' mutation outcomes; what was deferred; the independent review line (step 4). A tip with an unattributed red gets no pull request yet: the pushed branch is the trail. A session that stops before Final Verification still pushes the branch: it is the only copy that survives the container. Merging is the owner's, and never before step 4.
-4. **Independent review, before merge** (the no-plan lane takes this step too). Spawn ONE reviewer that wrote none of the code: a general-purpose `Agent` (`code-reviewer` has no Skill tool), `model: "opus"` for anything touching the compiler, Core or Stdlib. Give it the diff and the oracle, never the plan (plan auditors inherit its exclusions): the PR number, head and base branches, CLAUDE.md's Critical Rules, and "establish Python behaviour with `python3.15` before judging". Its brief:
+4. **Independent review, before merge** (the no-plan lane takes this step too). Spawn ONE reviewer that wrote none of the code: a general-purpose `Agent` (`code-reviewer` has no Skill tool), `model: "opus"` for anything touching the compiler, Core or Stdlib. Give it the diff and the oracle, never the plan (plan auditors inherit its exclusions): the PR number, head and base branches, the sha the shared `sharpyc` was built from (a stale binary fakes verified-by-running), CLAUDE.md's Critical Rules, and "establish Python behaviour with `python3.15` before judging". Its brief:
    - run the `code-review` skill on the PR;
    - hunt a case the PR's own tests do not cover where behaviour is wrong, in the direction you name for this change (silent-wrong, a crash on valid code, a leak the contract forbids) — a bare `code-review` finds less than one told what to hunt;
-   - check that no expected value changed to pass and that each new guard can fail;
+   - check the diff against CLAUDE.md's Critical Rules and Design Anti-Patterns (no expected value changed to pass; each new guard can fail) and for dead code or debug leftovers;
    - read the PR's own CI run on its head and say which failures are the PR's (local green is not evidence about CI);
    - return merge / merge after fixes / do not merge, findings ranked by severity, each with file:line, a concrete scenario, the smallest fix, and verified-by-running, verified-by-reading or inferred.
 
-   Put these constraints in its prompt AND in the `code-review` arguments (in the outer prompt alone they were ignored twice): read-only; no checkout, switch, worktree, restore, clean, stash or reset; no dotnet or build unless you say the lock is free; no `--comment`, no `--fix`; nothing posted on GitHub. Apply each finding or decline it with a reason; a fix round that adds substantial code (a new abstraction or guard, a changed public surface) gets a second review of that round. When the last round is settled, fill in the body line `Independent review: <verdict>; <n> findings applied, <m> declined (reasons below)`; until then the PR does not merge. Nothing enforces this mechanically: the line makes a missing review visible.
+   Put these constraints in its prompt AND in the `code-review` arguments (in the outer prompt alone they were ignored twice): read-only; no checkout, switch, worktree, restore, clean, stash or reset; no dotnet or build unless this prompt states the dotnet lock is free; no `--comment`, no `--fix`; nothing posted on GitHub. Apply each finding or decline it with a reason; declined findings go to the owner, and a `do not merge` verdict stands until a second review clears it. A fix round that adds substantial code (a new abstraction or guard, a changed public surface) gets a second review, as does any `/verify-implementation` remediation commit that adds code. When the last round is settled, fill in the body line `Independent review @ <reviewed head sha>: <verdict>; <n> applied, <m> declined (reasons below)`; until then the PR does not merge. A sha that is not the PR's head, or an ancestor with only non-code commits since, marks the review stale. Nothing enforces this mechanically: the line makes a missing or stale review visible.
 5. Present a summary report to the user:
 
 ```markdown
