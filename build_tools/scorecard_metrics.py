@@ -10,9 +10,10 @@ Usage::
     python3 build_tools/scorecard_metrics.py --check [--baseline <json>] [--repo <root>]
     python3 build_tools/scorecard_metrics.py --lower [--baseline <json>] [--repo <root>]
 
-``--check`` exits 1 when a ratcheted value differs from ``build_tools/scorecard-baseline.json`` in
-either direction: above it is a regression; below it means the baseline must be lowered in the same
-change (``--lower`` writes the lower values and never raises one).
+``--check`` exits 1 when a ratcheted value is above ``build_tools/scorecard-baseline.json`` (a
+regression). Below it, procedure and CLAUDE.md bytes also fail until the baseline is lowered in the
+same change, so it cannot go stale; allowlist rows below baseline only print a notice, because a
+fix that drains rows is routine. ``--lower`` writes the lower values and never raises one.
 """
 
 from __future__ import annotations
@@ -54,13 +55,19 @@ DICT_FIELD_RE = re.compile(r"^\s*private readonly (Concurrent)?Dictionary<")
 PIN_RE = re.compile(r"MaximumSideTableFieldCount = ([0-9]+)")
 CITE_RE = re.compile(r"#[0-9]+")
 
-# Rows that must not rise, in report order: key -> label.
+# Rows that must not rise, in report order: key -> label. The SemanticInfo field count is reported,
+# not ratcheted here: the C# pin `MaximumSideTableFieldCount` already holds it.
 RATCHETED = {
     "procedure_bytes": "Procedure bytes per light group (CLAUDE.md + seven skills)",
     "claude_md_bytes": "CLAUDE.md bytes",
     "allowlist_rows_outside_seed": "Allowlist rows outside seed-plan harnesses",
-    "semanticinfo_dictionaries": "SemanticInfo dictionary fields (counted)",
 }
+# Ratcheted rows whose fall below baseline is a notice, not a failure.
+NOTICE_WHEN_BELOW = frozenset({"allowlist_rows_outside_seed"})
+
+
+class MeasureError(Exception):
+    """The checkout cannot be measured (e.g. a tracked file is missing from the working tree)."""
 
 
 @dataclass
@@ -106,6 +113,11 @@ def measure(repo: Path) -> Metrics:
     total = seeded = nonempty = 0
     cites: set[str] = set()
     for rel in files:
+        if not (repo / rel).is_file():
+            raise MeasureError(
+                f"tracked allowlist {rel} is missing from the working tree; restore it or "
+                "`git rm` it, then measure again"
+            )
         rows = [line for line in _lines(repo / rel) if _is_row(line)]
         total += len(rows)
         if rows:
@@ -185,16 +197,17 @@ def render_row(name: str, m: Metrics) -> str:
 def load_baseline(path: Path) -> dict[str, int]:
     data = json.loads(path.read_text())
     missing = [k for k in RATCHETED if k not in data]
-    if missing:
-        raise ValueError(f"{path}: missing keys {missing}")
+    extra = [k for k in data if k not in RATCHETED]
+    if missing or extra:
+        raise ValueError(f"{path}: missing keys {missing}, unknown keys {extra}")
     return {k: int(data[k]) for k in RATCHETED}
 
 
 def compare(
     current: Metrics, baseline: dict[str, int], baseline_path: str
-) -> list[str]:
-    """One failure message per ratcheted value that differs from its baseline."""
-    problems = []
+) -> tuple[list[str], list[str]]:
+    """(failures, notices): one message per ratcheted value that differs from its baseline."""
+    problems, notices = [], []
     for key, label in RATCHETED.items():
         now, base = getattr(current, key), baseline[key]
         if now > base:
@@ -204,12 +217,15 @@ def compare(
                 f"decision: state it, with the owner's words, in the PR body."
             )
         elif now < base:
-            problems.append(
+            msg = (
                 f"{label} ({key}) is {now}, below its baseline {base} in {baseline_path} by {base - now}. "
-                f"Lower the baseline to {now} in this PR "
-                f"(python3 build_tools/scorecard_metrics.py --lower) so it cannot go stale."
+                f"Lower the baseline to {now} (python3 build_tools/scorecard_metrics.py --lower)"
             )
-    return problems
+            if key in NOTICE_WHEN_BELOW:
+                notices.append(msg + " when convenient.")
+            else:
+                problems.append(msg + " in this PR so it cannot go stale.")
+    return problems, notices
 
 
 def lower(current: Metrics, path: Path) -> list[str]:
@@ -236,7 +252,11 @@ def main(argv=None) -> int:
     ap.add_argument("--repo", type=Path, default=REPO_ROOT)
     ap.add_argument("--baseline", type=Path, default=DEFAULT_BASELINE)
     a = ap.parse_args(argv)
-    m = measure(a.repo.resolve())
+    try:
+        m = measure(a.repo.resolve())
+    except MeasureError as e:
+        print(f"scorecard_metrics: FAIL: {e}", file=sys.stderr)
+        return 1
     if a.row:
         print(render_row(a.row, m))
         return 0
@@ -247,9 +267,11 @@ def main(argv=None) -> int:
         for line in lower(m, a.baseline) or ["nothing to lower"]:
             print(line)
         return 0
-    problems = compare(m, load_baseline(a.baseline), str(a.baseline))
+    problems, notices = compare(m, load_baseline(a.baseline), str(a.baseline))
     for key in RATCHETED:
         print(f"{key}: {getattr(m, key)}")
+    for n in notices:
+        print(f"NOTICE: {n}")
     for p in problems:
         print(f"FAIL: {p}")
     print("RESULT: " + ("FAIL" if problems else "OK"))
