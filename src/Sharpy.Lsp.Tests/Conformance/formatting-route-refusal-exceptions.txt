@@ -4,6 +4,7 @@
 # a stem whose share of refused selections with work exceeds its route's bound is red (and the script refuses to write)
 # until it is fixed or gets a row here, which is the decision the bound asks for. A row whose stem holds the bound again
 # (or left the corpus) is red until it is deleted. The rows below are the stems above the bound when it was derived.
+# A range-line row is judged stale only by a FULL run (SHARPY_ROUTE_SWEEP_FULL=1), which runs every cell of the route.
 identity range-block Formatting/blank_line_placements # #2168 Format Selection declines a cross-line hunk of this stem; above the bound when it was derived
 identity range-block classes/abstract_ellipsis_interface # #2168 Format Selection declines a cross-line hunk of this stem; above the bound when it was derived
 identity range-block functions/simple_function_0025 # #2168 Format Selection declines a cross-line hunk of this stem; above the bound when it was derived
@@ -11,12 +12,22 @@ identity range-block interface_definition/interface_definition # #2168 Format Se
 identity range-block interfaces/interface_implementation_0003 # #2168 Format Selection declines a cross-line hunk of this stem; above the bound when it was derived
 identity range-block interfaces/interface_implementation_0066 # #2168 Format Selection declines a cross-line hunk of this stem; above the bound when it was derived
 identity range-block interfaces/interface_streamlined_0010 # #2168 Format Selection declines a cross-line hunk of this stem; above the bound when it was derived
+identity range-line Formatting/blank_line_placements # #2168 range-line cells outside the sample (a FULL run judges them); above the bound when it was derived
 identity range-line classes/abstract_ellipsis_interface # #2168 Format Selection declines a cross-line hunk of this stem; above the bound when it was derived
+identity range-line functions/simple_function_0025 # #2168 range-line cells outside the sample (a FULL run judges them); above the bound when it was derived
 identity range-line inheritance/abstract_class_0020 # #2168 Format Selection declines a cross-line hunk of this stem; above the bound when it was derived
 identity range-line interface_definition/interface_definition # #2168 Format Selection declines a cross-line hunk of this stem; above the bound when it was derived
+identity range-line interfaces/interface_implementation_0003 # #2168 range-line cells outside the sample (a FULL run judges them); above the bound when it was derived
+identity range-line interfaces/interface_implementation_0066 # #2168 range-line cells outside the sample (a FULL run judges them); above the bound when it was derived
 identity range-line interfaces/interface_streamlined_0010 # #2168 Format Selection declines a cross-line hunk of this stem; above the bound when it was derived
+identity range-line strings/d_string_basic # #2168 range-line cells outside the sample (a FULL run judges them); above the bound when it was derived
+identity range-line strings/triple_quoted_delimiter_lines # #2168 range-line cells outside the sample (a FULL run judges them); above the bound when it was derived
+identity range-line tstrings/t_string_multiline_hole_2022 # #2168 range-line cells outside the sample (a FULL run judges them); above the bound when it was derived
 identity range-statement functions/simple_function_0025 # #2168 Format Selection declines a cross-line hunk of this stem; above the bound when it was derived
 comment range-block Formatting/inner_comments_verbatim # #2168 Format Selection declines a cross-line hunk of this stem; above the bound when it was derived
+comment range-line Formatting/inner_comments_verbatim # #2168 range-line cells outside the sample (a FULL run judges them); above the bound when it was derived
+comment range-line strings/d_string_basic # #2168 range-line cells outside the sample (a FULL run judges them); above the bound when it was derived
+comment range-line strings/triple_quoted_delimiter_lines # #2168 range-line cells outside the sample (a FULL run judges them); above the bound when it was derived
 wide range-block basics/decimal_mod_zero # #2168 wide twin: a blank or comment line splits a re-indent into hunks, refused by construction (P50)
 wide range-block collections/collection_iteration_0020 # #2168 wide twin: a blank or comment line splits a re-indent into hunks, refused by construction (P50)
 wide range-block collections/collection_methods_0002 # #2168 wide twin: a blank or comment line splits a re-indent into hunks, refused by construction (P50)
