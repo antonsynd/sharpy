@@ -258,6 +258,7 @@ public class OptionalStoreWrapAgreementTests
 
     private static IEnumerable<string> SourcesOf(TestFixtureInfo fixture) => fixture.IsMultiFile
         ? Directory.GetFiles(fixture.SpyFilePath, "*.spy", SearchOption.AllDirectories)
+            .Where(f => !CrashBundleWriter.IsNonSourceSegment(Path.GetRelativePath(fixture.SpyFilePath, f)))
         : new[] { fixture.SpyFilePath };
 
     /// <summary>
