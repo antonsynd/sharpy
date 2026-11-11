@@ -36,7 +36,7 @@ CI's `Commit Subjects` workflow fails a PR whose non-merge, non-revert subjects 
 bash build_tools/check_commit_subjects.sh "$(git rev-parse --abbrev-ref --symbolic-full-name @{upstream} 2>/dev/null || echo origin/dev)..HEAD"
 ```
 
-A red means reword your own unpushed commits before pushing.
+A red means reword before pushing: `git commit --amend` for the tip, a non-interactive `git rebase` for older ones, your own unpushed commits only.
 
 ### 1.25. Version bump check (bump lanes and mainline only)
 
@@ -53,7 +53,7 @@ If the current `SharpyVersion` in `Directory.Build.props` equals the last tag ve
 
 This is advisory — the push is not blocked. Skip silently if the version already exceeds the last tag.
 
-A bump reaching `mainline` **is** the release cut: `auto-tag.yml` tags `v<version>` on the bump commit and dispatches `release.yml` (NuGet packages, GitHub Release). Never `git tag` by hand (it races the workflow and can point the release at the wrong tree), and have the bump commit green (`/ci-gate`, §1.5) before it reaches `mainline`: a later fix does not move the tag.
+A bump reaching `mainline` **is** the release cut: `auto-tag.yml` tags `v<version>` on the bump commit and dispatches `release.yml` (NuGet packages, GitHub Release). Never `git tag` by hand (it races the workflow and can point the release at the wrong tree), and have the bump commit green (`/ci-gate`, §1.5) before it reaches `mainline`: a later fix does not move the tag. A second `release.yml` run failing on a duplicate release is benign; do not re-tag.
 
 ### 1.5. Generated-artifact staleness gate
 

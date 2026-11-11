@@ -42,15 +42,17 @@ The shared rules for `/create-plan`, `/verify-plan`, `/implement-plan` and `/ver
 5. **Pull request.** `/push`, then `gh pr create --base dev` (in a cloud session, the GitHub MCP
    `create_pull_request` tool or `gh api -X POST repos/<owner>/<repo>/pulls`). An implementation
    pull request's body names the plan, the gate `passed/failed/skipped @ sha (measured)`, **the issues
-   it closes and the issues its work filed**. A cell found outside the plan's scope is a comment on
-   its existing class tracker; a new issue is filed only for a silent-wrong class or when no tracker
-   exists. The tip never carries the skip-ci marker (contract §6). Merging is the owner's.
+   it closes and the issues its work filed**. A cell found outside the plan's scope is filed as contract
+   §10 says: a comment on its open class tracker; a new issue only when none exists and the cell is
+   `reach:program` in a silent-wrong, ice, refusal or runtime-throw lane. The tip never carries the skip-ci marker (contract §6). Merging is the owner's.
 
 ### No-plan lane
 
-A bug whose behaviour has an owner ruling (or needs none) and whose fix is contained goes straight to
-a pull request with a generated or differential test: no plan file, no verify stage, the body as in
-item 5. Not for a charter group whose tier is `full`: Rule 13's tier is never lowered.
+An issue whose charter tier is `band`, or that has no charter row and earns no §12 letter (a)–(e),
+whose behaviour has an owner ruling (or needs none) and whose fix is contained, goes straight to a
+pull request with a generated or differential test and its mutation record (Rule 12): no plan file,
+no verify stage, the body as in item 5 with `Refs #N`. A `light` or `full` group takes the plan path
+(contract §12: no tier is lowered). After the merge, `/close-issues` closes the issue on evidence.
 
 ### Every other change, and the release
 

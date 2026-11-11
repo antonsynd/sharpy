@@ -37,7 +37,7 @@ Every PR runs both workflows when its diff reaches their paths. Pass the `.NET 1
 ## Avoiding wasted runs
 
 - A push to a PR cancels that PR's run in progress, so a superseded commit costs little. Dispatched and `mainline` runs are never cancelled.
-- A plan or docs commit still re-runs the PR's full suite (the path filter reads the whole PR diff). **Never put the skip-ci marker on a PR's tip:** it also suppresses the required `Commit Subjects` check, and the `dev` ruleset then refuses the merge (#2520). Never quote the marker literally in any commit message: GitHub matches it anywhere in the message.
+- A plan or docs commit still re-runs the PR's full suite (the path filter reads the whole PR diff). **Never put the skip-ci marker on a PR's tip:** it also suppresses the required `Commit Subjects` check, and the `dev` ruleset then refuses the merge (#2520). The gate cites the last code commit's run. Never quote the marker literally in any commit message: GitHub matches it anywhere in the message.
 
 ## Control runs
 
