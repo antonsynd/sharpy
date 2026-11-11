@@ -128,7 +128,6 @@ type System.Environment :: System.Environment.SetEnvironmentVariable(string, str
 type System.Exception :: System.Exception.Exception(string)
 type System.Exception :: System.Exception.Exception(string, System.Exception)
 type System.Formats.Tar.PaxTarEntry :: System.Formats.Tar.PaxTarEntry.PaxTarEntry(System.Formats.Tar.TarEntryType, string)
-type System.Formats.Tar.TarWriter :: System.Formats.Tar.TarWriter.WriteEntry(string, string)
 type System.GC :: System.GC.SuppressFinalize(object)
 type System.Guid :: System.Guid.ToString(string)
 type System.Guid :: System.Guid.TryParse(string, out System.Guid)

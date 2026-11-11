@@ -177,7 +177,7 @@ internal static class DoorRoster
         .NotADoor("System.Formats.Tar.PaxTarEntry", "an in-memory tar entry; a string parameter is the member name")
         .NotADoor("System.Formats.Tar.TarEntryType", EnumOnly)
         .NotADoor("System.Formats.Tar.TarReader", StreamOnly)
-        .NotADoor("System.Formats.Tar.TarWriter", StreamOnly)
+        .Door("System.Formats.Tar.TarWriter", "WriteEntry(string fileName, string? entryName) opens fileName to read the member it archives")
 
         // ---- System.Xml / System.Xml.Linq ----
         .Door("System.Xml.Linq.XDocument", "Load opens a path or URI")
@@ -319,6 +319,10 @@ internal static class DoorRoster
         .NoPath("System.Formats.Tar.TarEntry.Mode", "an entry header field")
         .NoPath("System.Formats.Tar.TarEntry.ModificationTime", "an entry header field")
         .NoPath("System.Formats.Tar.TarEntry.Name", "the member name inside the archive")
+        .NoPath("System.Formats.Tar.TarWriter.TarWriter(System.IO.Stream, bool)", "wraps an already-open archive stream")
+        .NoPath("System.Formats.Tar.TarWriter.Dispose()", "closes the archive stream")
+        .NoPath("System.Formats.Tar.TarWriter.WriteEntry(System.Formats.Tar.TarEntry)", "writes an in-memory entry (its data stream is already open)")
+        .Path("System.Formats.Tar.TarWriter.WriteEntry(string, string)", "fileName")
         .Path("System.Xml.Linq.XDocument.Load(string)", "uri")
         .NoPath("System.Xml.Linq.XDocument.Parse(string)", "parses XML text")
         .NoPath("System.Xml.Linq.XDocument.Root", "an in-memory node")
