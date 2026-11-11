@@ -1,0 +1,29 @@
+# When a class-tracker issue closes, check that its cell table accounted for every cell
+# (build_tools/check_class_closure.py: each row `fixed <evidence>`, `moved #N` or `control`).
+# On a failure the script posts one comment on the issue listing the unaccounted rows, then
+# the run fails. Exit 2 (tracker unreadable) fails the run without a comment. Closures as
+# duplicate or not_planned are skipped by the script. The issue number reaches the script
+# through env only; no issue text is interpolated into the shell.
+name: Class Closure Check
+
+on:
+  issues:
+    types: [closed]
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  class-closure:
+    if: contains(github.event.issue.labels.*.name, 'class-tracker')
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    steps:
+    - uses: actions/checkout@v7
+    - name: Check the closed class issue accounted for every cell
+      env:
+        GH_TOKEN: ${{ github.token }}
+        ISSUE_NUMBER: ${{ github.event.issue.number }}
+      run: python3 build_tools/check_class_closure.py --comment-on-failure "$ISSUE_NUMBER"

@@ -17,14 +17,23 @@
 # Job count: the account runs at most 20 jobs at once, and `windows` plus CodeQL's csharp analysis
 # are still running when `build` finishes, so the fan-out under `build` is kept at 18. At 22
 # (run 38983789798) four jobs queued 31-86 s, and the last-started LSP shard set the wall clock.
-#   windows (no needs)                       debug-info guard + README hello world on win-x64
-#   ci-summary (needs all, always runs)      the single check to require: fails unless every job
-#                                            succeeded and every expected trx reports tests.
+#   windows (needs changes)                  debug-info guard + README hello world on win-x64
+#   ci-summary (needs all, always runs)      fails unless every job succeeded and every expected
+#                                            trx reports tests; skipped when nothing relevant changed.
+#   gate (needs all, always runs)            "Gate (.NET 10)", the check to require: red when any
+#                                            job failed or was cancelled, or when ci-summary did not
+#                                            succeed on a relevant change; green when nothing ran.
 #
-# A README.md-only change (README is a trigger path because the windows job runs its hello world)
-# skips `format`, `build` and everything under it: `changes` decides, `windows` still runs, and
-# ci-summary then expects only the windows trx.
-#
+# Every PR starts this workflow (no path filter on pull_request, so `gate` always reports). The
+# `changes` job decides from the PR's changed files, against RELEVANT_PATHS:
+#   - nothing in RELEVANT_PATHS changed: every other job is skipped and `gate` passes;
+#   - README.md is the only relevant change (README is listed because the windows job runs its
+#     hello world): `format`, `build` and everything under it are skipped, `windows` still runs,
+#     and ci-summary then expects only the windows trx;
+#   - otherwise the full suite runs.
+# build_tools/tests/test_workflow_relevance.py fails when a file this workflow reads is not in
+# RELEVANT_PATHS, or when `gate` stops needing every job.
+
 # Hang limits (#2458, W0.4): every job has a `timeout-minutes` at least 2x its slowest duration
 # over the 20 mainline push runs before it (42372810738 back to 40623113848; for `compiler`, 2x
 # the ~11 min projected for the class-split shard 6), never under 5, in place of the 6-hour
@@ -46,23 +55,36 @@ name: .NET 10
 on:
   push:
     branches: [ "mainline" ]
+    # The `changes` job's RELEVANT_PATHS, entry for entry (build_tools/tests/test_workflow_relevance.py).
     paths:
       - 'src/**'
       - 'Directory.Build.props'
       - 'sharpy.sln'
+      - '.editorconfig'
       - '.github/workflows/dotnet10.yml'
+      - '.github/actions/relevant-changes/**'
       - 'build_tools/smoke_hello.sh'
+      - 'build_tools/coverage_reduce.py'
+      - 'build_tools/coverage.runsettings'
+      - 'build_tools/check_spy_staleness.sh'
+      - 'build_tools/check_spy_tests_staleness.sh'
+      - 'build_tools/regenerate_spy_stdlib.sh'
+      - 'build_tools/regenerate_spy_tests.sh'
+      - 'build_tools/differential_exec/**'
+      - 'build_tools/differential_parse/**'
+      - 'build_tools/differential_lex/**'
+      - 'docs/language_specification/**'
+      - 'docs/deviations.yaml'
+      - 'docs/stdlib/**'
+      - 'docs/tooling/formatter.md'
+      - '.python-version'
       - 'README.md'
   # Every PR, whatever its base: restricting this to `mainline` is what made a do-not-merge PR the
   # only way to gate a PR into `dev`. A pull_request run tests the merge into the base, not the head.
+  # No path filter: a filtered workflow never starts on a PR outside its paths, so it never reports
+  # and cannot be a required check. `changes` makes the path decision instead, and `gate` always
+  # reports.
   pull_request:
-    paths:
-      - 'src/**'
-      - 'Directory.Build.props'
-      - 'sharpy.sln'
-      - '.github/workflows/dotnet10.yml'
-      - 'build_tools/smoke_hello.sh'
-      - 'README.md'
   # The gate at an exact commit, with no PR: `.claude/scripts/ci-gate`. Path filters don't apply, and
   # `changes` treats the unknown range as a code change, so a dispatch always runs the full suite.
   workflow_dispatch:
@@ -202,43 +224,62 @@ env:
 
 jobs:
   changes:
-    name: Detect a README-only change
+    name: Detect relevant changes
     runs-on: ubuntu-latest
     timeout-minutes: 5
+    env:
+      # Every path whose change can change this workflow's result. The push trigger's `paths` is the
+      # same list; build_tools/tests/test_workflow_relevance.py keeps the two equal and fails when a
+      # file a step reads by path (a script, a settings file, `python-version-file`) is missing.
+      RELEVANT_PATHS: |
+        src/**
+        # Every build reads these; warnings are errors, so .editorconfig can fail one.
+        Directory.Build.props
+        sharpy.sln
+        .editorconfig
+        .github/workflows/dotnet10.yml
+        .github/actions/relevant-changes/**
+        build_tools/smoke_hello.sh
+        build_tools/coverage_reduce.py
+        build_tools/coverage.runsettings
+        # The staleness checks exec these.
+        build_tools/check_spy_staleness.sh
+        build_tools/check_spy_tests_staleness.sh
+        build_tools/regenerate_spy_stdlib.sh
+        build_tools/regenerate_spy_tests.sh
+        # Read by the Compiler tests' python oracles at run time.
+        build_tools/differential_exec/**
+        build_tools/differential_parse/**
+        build_tools/differential_lex/**
+        # Read by the .NET tests at run time (test_workflow_relevance.py RUNTIME_READS).
+        docs/language_specification/**
+        docs/deviations.yaml
+        docs/stdlib/**
+        docs/tooling/formatter.md
+        # The oracle minor every setup-python step here reads.
+        .python-version
+        README.md
     outputs:
-      code: ${{ steps.diff.outputs.code }}
+      # 'true' when anything in RELEVANT_PATHS changed: windows, ci-summary.
+      relevant: ${{ steps.relevant.outputs.relevant }}
+      # 'true' when anything in RELEVANT_PATHS but README.md changed: format, build and every job
+      # under build.
+      code: ${{ steps.relevant.outputs.relevant-excluding }}
 
     steps:
     - uses: actions/checkout@v7
       with:
-        # A pull_request checkout is the merge commit: its first parent is the base, so HEAD^1..HEAD
-        # is exactly the PR's diff. A push compares against the event's `before` (fetched below).
+        # The action diffs HEAD^1..HEAD on a pull_request (the merge commit's first parent is the
+        # base) and fetches the event's `before` on a push.
         fetch-depth: 2
-    - name: Is anything besides README.md changed?
-      id: diff
-      env:
-        EVENT: ${{ github.event_name }}
-        BEFORE: ${{ github.event.before }}
-      # Fails safe: an unknown range (a new branch's all-zero `before`, a force-push whose `before`
-      # is gone) or an empty file list counts as a code change, so the full suite runs. Only a
-      # range that provably touches README.md alone skips it.
-      run: |
-        set -uo pipefail
-        base=""
-        if [ "$EVENT" = "pull_request" ]; then
-          base=$(git rev-parse -q --verify HEAD^1 || true)
-        elif [ -n "$BEFORE" ] && [ "$BEFORE" != "0000000000000000000000000000000000000000" ]; then
-          git fetch --no-tags --depth=1 origin "$BEFORE" && base="$BEFORE"
-        fi
-        files=""
-        [ -n "$base" ] && files=$(git diff --name-only "$base" HEAD || true)
-        printf 'changed files (%s..HEAD):\n%s\n' "${base:-?}" "${files:-<unknown>}"
-        if [ -n "$files" ] && ! printf '%s\n' "$files" | grep -qvx 'README.md'; then
-          echo "code=false" >> "$GITHUB_OUTPUT"
-          echo "README.md-only change: the build and test jobs are skipped; windows runs its hello world"
-        else
-          echo "code=true" >> "$GITHUB_OUTPUT"
-        fi
+    - name: Is anything in RELEVANT_PATHS changed, and anything besides README.md?
+      # Both answers fail safe: an unknown range counts as a code change, so the full suite runs.
+      # Only a range that provably touches README.md alone (of RELEVANT_PATHS) skips the build.
+      id: relevant
+      uses: ./.github/actions/relevant-changes
+      with:
+        paths: ${{ env.RELEVANT_PATHS }}
+        exclude: README.md
 
   format:
     name: Generated C# is whitespace-clean
@@ -922,6 +963,8 @@ jobs:
     # self-contained win-x64 publish the release ships. Builds from source: the ubuntu
     # build-output tarball is not a Windows build.
     name: Windows (debug-info guard + published hello world)
+    needs: changes
+    if: ${{ needs.changes.outputs.relevant == 'true' }}
     runs-on: windows-latest
     timeout-minutes: 20
 
@@ -960,7 +1003,9 @@ jobs:
 
   ci-summary:
     name: CI summary
-    if: ${{ always() }}
+    # Skipped only when `changes` proved nothing relevant changed; a failed `changes` leaves the
+    # output empty, so this still runs (and fails on the missing trx).
+    if: ${{ always() && needs.changes.outputs.relevant != 'false' }}
     needs: [changes, format, build, test-fast, lsp, compiler, sweep, sweeps-quick, stdlib-spy-gates, shard-partition, windows]
     runs-on: ubuntu-latest
     timeout-minutes: 10
@@ -1090,3 +1135,39 @@ jobs:
         if [ "$CODE" = "false" ]; then ok='["success", "skipped"]'; fi
         bad=$(echo "$NEEDS" | jq --argjson ok "$ok" '[to_entries[] | select(.value.result as $r | $ok | index($r) | not)] | length')
         if [ "$bad" -ne 0 ]; then echo "::error::$bad needed job(s) did not succeed"; exit 1; fi
+
+  # The one check to require in the `dev` ruleset. It always reports, on every PR, because the
+  # workflow always starts (no path filter on pull_request) and this job runs `always()`. Each needed
+  # job's result is read from `needs` one by one, so a skipped job can never stand in for a failed
+  # one above it: `failure` or `cancelled` anywhere is red, `success` and `skipped` pass. When
+  # `changes` did not prove the change irrelevant, the jobs in MUST_SUCCEED must also have
+  # succeeded, so a relevant change whose tests were all skipped is red too.
+  # build_tools/tests/test_workflow_relevance.py pins the name, `if:` and that `needs` lists every
+  # other job.
+  gate:
+    name: Gate (.NET 10)
+    if: ${{ always() }}
+    needs: [changes, format, build, test-fast, lsp, compiler, sweep, sweeps-quick, stdlib-spy-gates, shard-partition, windows, ci-summary]
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    env:
+      NEEDS: ${{ toJSON(needs) }}
+      RELEVANT: ${{ needs.changes.outputs.relevant }}
+      # ci-summary itself fails unless every job it needs succeeded (or, README.md-only, skipped).
+      MUST_SUCCEED: ci-summary
+    steps:
+    - name: Fail on any failed or cancelled job
+      run: |
+        set -euo pipefail
+        echo "$NEEDS" | jq -r 'to_entries[] | "\(.key): \(.value.result)"'
+        echo "relevant: ${RELEVANT:-<unset>}"
+        if [ "$(echo "$NEEDS" | jq 'length')" -eq 0 ]; then echo "::error::no needed job was read"; exit 1; fi
+        bad=$(echo "$NEEDS" | jq -r '[to_entries[] | select(.value.result != "success" and .value.result != "skipped") | "\(.key)=\(.value.result)"] | join(" ")')
+        if [ -n "$bad" ]; then echo "::error::needed job(s) failed or were cancelled: $bad"; exit 1; fi
+        if [ "$RELEVANT" != "false" ]; then
+          for job in $MUST_SUCCEED; do
+            result=$(echo "$NEEDS" | jq -r --arg j "$job" '.[$j].result // "missing"')
+            if [ "$result" != "success" ]; then echo "::error::relevant change, but $job is $result"; exit 1; fi
+          done
+        fi
+        echo "gate passed"

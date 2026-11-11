@@ -20,8 +20,9 @@ Exit codes, which decide what the caller does next:
        run id does not exist
     3  CI gave no verdict: not started in time, cancelled, unreachable, or no counts.
        Run the local gate instead (contract section 6).
-    4  nothing to gate: CI skipped the build and tests by design (a README-only PR run). Neither a
-       green nor a reason to run locally.
+    4  nothing to gate: CI skipped the build and tests by design (a README-only PR run, or a PR run
+       touching nothing dotnet10.yml tests, where ci-summary is skipped and its Gate job is green).
+       Neither a green nor a reason to run locally.
 
 It needs `gh` and the network, so in Claude Code run it with `dangerouslyDisableSandbox: true`. It
 never pushes: pushing stays an explicit step for the caller. The counts come from the GATE-COUNTS
@@ -46,6 +47,7 @@ DOTNET_WORKFLOW = "dotnet10.yml"
 PYTHON_WORKFLOW = "python-build-tools.yml"
 WORKFLOWS = (DOTNET_WORKFLOW, PYTHON_WORKFLOW)
 SUMMARY_JOB = "CI summary"
+GATE_JOB = "Gate (.NET 10)"
 
 # Knobs exist so the tests take seconds. Each production default is the reason it exists:
 POLL_SECONDS = float(os.environ.get("CI_GATE_POLL_SECONDS", "30"))
@@ -205,12 +207,17 @@ def wait(run_ids: Iterable[int]) -> Dict[int, str]:
     return conclusions
 
 
-def read_summary(run_id: int) -> Tuple[Optional[Tuple[int, int, int]], List[str], bool]:
-    """The counts, the failed test names and the README-only fact from the run's CI summary job."""
+def read_summary(run_id: int) -> Tuple[Optional[Tuple[int, int, int]], List[str], str]:
+    """The counts, the failed test names and the scope ("readme-only", "irrelevant" or "") from the
+    run's CI summary job. "irrelevant": ci-summary was skipped because `changes` found nothing the
+    workflow tests, and the Gate job, which then requires nothing to have run, is green."""
     jobs = view_or_die(run_id, "jobs")["jobs"]
     job = next((j for j in jobs if j["name"] == SUMMARY_JOB), None)
     if job is None:
-        return None, [], False
+        return None, [], ""
+    if job.get("conclusion") == "skipped":
+        gate = next((j for j in jobs if j["name"] == GATE_JOB), None)
+        return None, [], "irrelevant" if gate and gate.get("conclusion") == "success" else ""
     log = require("gh", "run", "view", str(run_id), "--log", "--job", str(job["databaseId"]))
     counts: Optional[Tuple[int, int, int]] = None
     failed: List[str] = []
@@ -225,12 +232,12 @@ def read_summary(run_id: int) -> Tuple[Optional[Tuple[int, int, int]], List[str]
             failed.append(match.group(1).strip())
             continue
         readme_only = readme_only or bool(README_ONLY.search(line))
-    return counts, failed, readme_only
+    return counts, failed, "readme-only" if readme_only else ""
 
 
 def verdict(dotnet_run: int, label: str, conclusions: Dict[int, str]) -> int:
     """Prints the report. A green needs a success AND counts, so a run that selected nothing is no gate."""
-    counts, failed, readme_only = read_summary(dotnet_run)
+    counts, failed, scope = read_summary(dotnet_run)
     for run_id, conclusion in conclusions.items():
         if run_id != dotnet_run:
             print(f"run {run_id}: {conclusion}")
@@ -245,8 +252,12 @@ def verdict(dotnet_run: int, label: str, conclusions: Dict[int, str]) -> int:
         for name in failed:
             print(f"FAILED {name}")
         return RED
+    if scope == "irrelevant":
+        print(f"CI GATE NOTHING TO GATE: run {dotnet_run} changed nothing dotnet10.yml tests, so CI ran "
+              f"no build or tests and {GATE_JOB} passed")
+        return NOTHING_TO_GATE
     # Only ci-summary's own statement counts: zero tests without it is a run that selected nothing.
-    if readme_only and counts is not None and sum(counts) == 0:
+    if scope == "readme-only" and counts is not None and sum(counts) == 0:
         print(f"CI GATE NOTHING TO GATE: run {dotnet_run} is a README-only change, so CI ran no build or tests")
         return NOTHING_TO_GATE
     if counts is None or sum(counts) == 0:
@@ -277,7 +288,7 @@ def main() -> int:
         if companion is not None:
             runs.append(companion)
         else:
-            print(f"no {PYTHON_WORKFLOW} run for this commit and event: its path filter did not match")
+            print(f"no {PYTHON_WORKFLOW} run for this commit and event")
         return verdict(args.run, label, wait(runs))
 
     ref, sha = resolve_ref(args.ref)

@@ -50,7 +50,7 @@ A plan implements **one non-chore group** of the round charter and lands on **on
 ## Tier check (contract §12, before any research)
 
 Find the group's row in the newest charter (`ls -t docs/process/rounds/remediation-round-*-batching.md | head -1`, §1 table and §3 row) and read its **Tier**. Then:
-- **Charter says `band`** (or no charter row and no §12 letter) — stop: it has no plan; implement it as one commit, or as the no-plan lane (`docs/process/README.md`), and say so.
+- **Charter says `band`** (or no charter row and no §12 letter) — stop: it has no plan; implement it as one commit, or as the no-plan lane (`docs/process/README.md`), and say so; either way its PR merges only after the independent review.
 - **Charter says `light`** and no `--full` was given — write the **light template** (below). The report names `/verify-plan <path>` as the next step; on a light plan it runs its `--adequacy` pass (Dimensions 4-design, 6 and 7 by a fresh reader, nothing else).
 - **Charter says `full`** — write the full template; the report names `/verify-plan` as the next step.
 - **No charter row** (description input, or an issue batched since the last call) — derive the tier yourself from the §12 letters (a–e), write the letter or "none → light" into `## Scope`, and say in the report that the tier is derived, not ruled.
@@ -192,7 +192,7 @@ The plan must follow this structure. `## Defect Class` and `## Adversarial Revie
 - Incremental commits — each task is independently committable
 - A plan that fixes one arm of a mirrored/parallel-site structure without a completeness scan is not a plan
 - A plan with a second non-chore group, or an output/layout-changing phase sharing a gate, is not a plan (contract §11) — split it
-- A residue group or a ≥2-axis × ≥3-value matrix without a generator-first phase is not a plan (contract §11) — hand matrices found the next axis six rounds running; and a generator plan whose axes are hand LISTS rather than rosters closed against a compiler enumeration is a hand matrix wearing a generator (eight adequacy passes on plan-ed89b6 each found one more value of one listed axis)
+- A residue group or a ≥2-axis × ≥3-value matrix without a generator-first phase is not a plan (contract §11); and a generator plan whose axes are hand LISTS rather than rosters closed against a compiler enumeration is a hand matrix wearing a generator
 - The plan names the class trackers it posts cells to and never instructs an implementer to `gh issue create` (contract §10)
 - A design decision that adds a name-keyed (`BuiltinNames.X`, type-name string) rule in `Semantic/` or `CodeGen/` without a rung justification is not a plan (layer ladder, CLAUDE.md › Core & Stdlib Conventions)
 - Every new test/guard/harness comes with the mutation that turns it red (verification-contract.md §2)
