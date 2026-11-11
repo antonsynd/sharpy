@@ -48,7 +48,7 @@ The audit range is **the plan's own commit range**, never the branch-vs-`mainlin
 
 - **Base sha** = the parent of the plan's first implementation commit. Read it from the plan's implementation commit table/checklist, or from `git log` on the commit messages that reference the plan. If neither identifies it unambiguously, **ask the user** — do not guess.
 - Record `BASE=<sha>` and `HEAD=<sha>`; every `git diff`/`git log` below uses `$BASE..HEAD`.
-- **Branch** (`docs/process/README.md` › The stage trail): commit on the implementation's open pull request; its CI run at `$FINAL` is the gate. Only if it has merged, cut `claude/<group>-verify` from `origin/dev` first.
+- **Branch** (`docs/process/README.md` › The stage trail): commit on the implementation's open pull request; its CI run at `$FINAL` is the gate. Only if it has merged, cut `claude/<group>-verify` from `origin/dev` first and open its own pull request into `dev` (`dev` refuses a direct push). Either pull request is merged on green (`docs/process/README.md` › The stage trail, item 6).
 
 ### 3. Establish the baseline @ HEAD
 
@@ -73,7 +73,7 @@ Build a **completeness checklist** — every deliverable, each with the evidence
 
 **Check the session's tool list first.** If `TeamCreate`/`TaskCreate` exist, a team is optional. In the current harness they do not; spawn the four auditors as **background `Agent` calls in one message** (they are independent) and collect their final reports — read-only agents (`code-reviewer`, `verification-expert`) are never teammates (no `SendMessage`/task tools).
 
-**Models.** `verification-expert` and `net-axiom-guardian` are defined with `model: haiku`, which is right for "run this filter and report counts" and wrong for a refutation brief. Spawn **Agents 2, 3, and 4 with `model: "opus"`** explicitly. Agent 1 may run on its definition's default.
+**Models.** `verification-expert` and `net-axiom-guardian` default to `haiku`, which suits "run this filter and report counts", not a refutation brief. Spawn **Agents 2, 3, and 4 with `model: "opus"`** explicitly. Agent 1 may run on its definition's default.
 
 Every agent prompt below **embeds this block verbatim** (contract §9):
 
@@ -377,7 +377,7 @@ After all fixes are committed (`FINAL=<sha>`):
 6. Every spec example the plan promised executes at `$FINAL` with the documented output
 7. Every guard added by the plan or by remediation has a recorded mutation outcome
 8. `git diff --stat $BASE..$FINAL` — matches the declared scope; no unclaimed working-tree delta (`git status`)
-9. The PR body's `Independent review @ <sha>` line (`gh api -X GET repos/<owner>/<repo>/pulls/N --jq .body`) names `$FINAL`, or an ancestor with only non-code commits since; absent or stale is a finding; stale after a code fix: run `/implement-plan` › Cleanup and Report step 4 on `$FINAL`, then re-check (not a remediation loop).
+9. On a pull request that changes code (README item 6), the body's `Independent review @ <sha>` line (`gh api -X GET repos/<owner>/<repo>/pulls/N --jq .body`) names `$FINAL`, or an ancestor with only non-code commits since; absent or stale is a finding; stale after a code fix: run `/implement-plan` › Cleanup and Report step 4 on `$FINAL`, then re-check (not a remediation loop).
 
 If a step fails, loop back to remediation. Maximum 3 remediation loops — after that, report the residue as unresolved with its evidence. A failing step invalidates its dependents, not its siblings: complete every independent step and label suspect readings.
 
@@ -386,8 +386,9 @@ If a step fails, loop back to remediation. Maximum 3 remediation loops — after
 1. Remove any worktrees you or the auditors created (`git worktree list`; `git worktree remove <path>`)
 2. If a team was created, shut teammates down (`SendMessage` `shutdown_request`) and delete it; with background agents, confirm each has returned
 3. **Record the close in the committed plan.** Append the report below to `docs/process/plans/<plan-id>.md` as `## Implementation Verification Record` (verbatim, every count `@ sha`) and commit that one file — `process(plan): <plan-id> — verify-implementation closed @ $FINAL` — as the round's last commit.
-4. `/push`. The implementation's pull request carries the record (on a `-verify` lane, open one with the same body; a code fix there gets its own independent review and line). Add to its body the class-status table, the issues closed with the evidence each close cites, the issues filed, the unresolved items and the gate `@ $FINAL (measured)` with its run id. The tip never carries the skip-ci marker (contract §6).
-5. Present the verification report:
+4. `/push`. The implementation's pull request carries the record (on a `-verify` lane, open one with the same body minus the review line; a code fix there needs its own review). Add to its body the class-status table, the issues closed with the evidence each close cites, the issues filed, the unresolved items and the gate `@ $FINAL (measured)` with its run id. The tip never carries the skip-ci marker (contract §6).
+5. **Merge on green** (`docs/process/README.md` › The stage trail, item 6): when every check at the record commit's tip is green and Final Verification 9 holds, merge the pull request (a merge commit, expected head = that tip), `git pull origin dev`, then close the plan's "Issues to Close" rows that are CLOSEABLE with `/close-issues` — each close cites its evidence `@ sha` and the merged pull request. A red at the tip is fixed first (a flake with an open issue: one re-run of its job decides); it is never merged over.
+6. Present the verification report:
 
 ```markdown
 ## Implementation Verification Report

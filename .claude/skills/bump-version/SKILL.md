@@ -26,7 +26,7 @@ git branch --show-current
 - On `mainline`: stop — `mainline` receives a bump only by the merge from `dev`, and a bump pushed there directly is a release cut (`/push` › 1.25).
 - On any other lane: stop and report that a bump is its own lane, never a rider on a feature pull request.
 
-After `--apply`, commit the bump alone (`chore: bump version to X.Y.Z`), `/push` the lane and open the pull request into `dev`; merging is the owner's.
+After `--apply`, commit the bump alone (`chore: bump version to X.Y.Z`), `/push` the lane, open the pull request into `dev` and merge it on green (`docs/process/README.md` › The stage trail, item 6); the `dev` → `mainline` release merge stays the owner's.
 
 ### 2. Get last tag and current version
 
