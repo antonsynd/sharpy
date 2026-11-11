@@ -2447,7 +2447,7 @@ Whole-number values get a trailing `.0`.
     
     The digits come from .NET's shortest-round-trip formatter (`"R"`), which is
     correct, but the positional-vs-exponential layout is Sharpy's own decision,
-    ported from CPython's `format_float_short`: writing a value as
+    following the rule of CPython's `format_float_short` (the thresholds, not its code): writing a value as
     `0.d1…dn × 10^decpt`, render positionally when `-4 < decpt <= 16`
     and exponentially otherwise. .NET stays positional one decade longer
     (`decpt <= 17`), which is the `[1e16, 1e17)` divergence band of #1204.
