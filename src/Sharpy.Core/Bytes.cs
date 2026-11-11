@@ -173,10 +173,13 @@ namespace Sharpy
         }
 
         /// <summary>
-        /// Decode the bytes to a string using the specified encoding. An undecodable byte run raises
+        /// Decode the bytes to a string using the specified encoding, named as python names it (aliases,
+        /// any case, <c>-</c>/<c>_</c>/space alike). <c>utf-16</c>/<c>utf-32</c> read and drop a leading
+        /// byte-order mark, as does <c>utf-8-sig</c>. An undecodable byte run raises
         /// <see cref="UnicodeDecodeError"/> under <c>errors="strict"</c>, becomes U+FFFD under
-        /// <c>"replace"</c> and is dropped under <c>"ignore"</c>; any other handler name raises
-        /// <see cref="LookupError"/> when an error occurs (#2477).
+        /// <c>"replace"</c>, is dropped under <c>"ignore"</c> and becomes <c>\xNN</c> escapes under
+        /// <c>"backslashreplace"</c>; an unknown handler name raises <see cref="LookupError"/> when an
+        /// error occurs (#2477, #2495).
         /// Python: <c>bytes.decode(encoding='utf-8', errors='strict')</c>
         /// </summary>
         public string Decode(string encoding = "utf-8", string errors = "strict")
