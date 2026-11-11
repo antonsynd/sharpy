@@ -24,7 +24,7 @@ namespace Sharpy.Stdlib.Tests.Conformance;
 public class DatetimeValueDifferentialTests
 {
     private const string OracleScript = """
-        import json, sys
+        import json, struct, sys
         from datetime import date, datetime, timedelta, timezone
 
         # Sharpy's timedelta is a TimeSpan: |ticks| <= 2**63 - 1, at microsecond resolution.
@@ -35,6 +35,19 @@ public class DatetimeValueDifferentialTests
 
         def tdattrs(t):
             return "|".join([str(t.days), str(t.seconds), str(t.microseconds), str(t), repr(t), repr(t.total_seconds())])
+
+        def text(units):
+            # UTF-16 code units, so a lone surrogate survives the trip (JSON text would replace it).
+            return struct.pack("<%dH" % len(units), *units).decode("utf-16-le", "surrogatepass")
+
+        def iso(units):
+            return datetime.fromisoformat(text(units))
+
+        def typeerror(f):
+            try:
+                return f()
+            except TypeError:
+                return "!TypeError"
 
         def big(v):
             return isinstance(v, timedelta) and abs(v) > LIMIT
@@ -69,9 +82,22 @@ public class DatetimeValueDifferentialTests
                 elif k == "td_abs":
                     v = abs(td(c["t"])); r = tdattrs(v)
                 elif k == "date_iso":
-                    r = repr(date.fromisoformat(c["s"]))
+                    r = repr(date.fromisoformat(text(c["u"])))
                 elif k == "dt_iso":
-                    r = repr(datetime.fromisoformat(c["s"]))
+                    r = repr(datetime.fromisoformat(text(c["u"])))
+                elif k == "dt_diff":
+                    r = tdattrs(datetime(*c["a"]) - datetime(*c["b"]))
+                elif k == "aw_pair":
+                    a = iso(c["a"]); b = iso(c["b"])
+                    r = "|".join([typeerror(lambda: tdattrs(a - b)), str(a == b), str(a != b),
+                                  typeerror(lambda: str(a < b)), typeerror(lambda: str(a >= b)),
+                                  str(hash(a) == hash(b)), typeerror(lambda: repr(sorted([a, b])))])
+                elif k == "aw_op":
+                    a = iso(c["a"]); t = td(c["t"])
+                    r = repr(a + t if c["op"] == "+" else a - t)
+                elif k == "aw_attrs":
+                    a = iso(c["a"])
+                    r = "|".join([repr(a.timestamp()), str(a.utcoffset())])
                 else:
                     raise SystemExit("unknown case kind " + k)
             except (ArithmeticError, ValueError, TypeError) as e:
@@ -127,6 +153,8 @@ public class DatetimeValueDifferentialTests
         "", "a", "not-a-date", "January 2, 2020", "1/2/2020", "2020-01-02 3pm", "12:30:45", "２０２０-01-01",
         "2020-01-02T03:04:05+02:00", "20200101xx", "2020-01-01T12:00z", "2020-01-01T12:00Z+01:00", "2020-01-01T-01:00",
         "2020-W011", "2020W01-1", "2020-0101", "20-01-01", "2020-01", "2020-01-01T", "  2020-01-01",
+        "2020-01-01\uD83D\uDE0012:00", "2020-01-01\uD80012:00", "2020-01-01\uD800", "2020-01-01T12:00\u0000",
+        "2020-01-01T12\u0000:00", "2020-01-01T12:00+05:30:15.1234567", "2020-01-01T12:00:00.1234567-01:00",
     };
 
     private readonly ITestOutputHelper _output;
@@ -139,7 +167,8 @@ public class DatetimeValueDifferentialTests
     public void DatetimeValues_MatchPython()
     {
         var cases = Cases();
-        var python = PythonInterpreter.RequireOrSkip();
+        // 3.15's grammar: 3.12 and 3.13 refuse `24:00` and accept `12:30:45.Z`, so an older oracle skips.
+        var python = PythonInterpreter.RequireOrSkip(15);
         var script = SysPath.Combine(SysPath.GetTempPath(), $"sharpy-datetime-values-{Guid.NewGuid():N}.py");
         File.WriteAllText(script, OracleScript);
         SCG.List<string> lines;
@@ -187,6 +216,29 @@ public class DatetimeValueDifferentialTests
         catch (Exception e) when (e is ArithmeticError or ValueError or TypeError)
         {
             return "!" + e.GetType().Name;
+        }
+    }
+
+    /// <summary>Aware and naive instants: equal instants at different offsets, and the calendar's edges.</summary>
+    private static readonly string[] Instants =
+    {
+        "2020-01-01T12:00+05:00", "2020-01-01T12:00Z", "2020-01-01T07:00+00:00", "2020-01-01T12:00",
+        "2019-12-31T23:00-01:00", "2020-01-01T07:00", "0001-01-01T00:00+01:00", "9999-12-31T23:59-02:00",
+    };
+
+    private static int[] Units(string s) => s.Select(c => (int)c).ToArray();
+
+    private static string Bool(bool b) => b ? "True" : "False";
+
+    private static string TypeErrorOr(Func<string> f)
+    {
+        try
+        {
+            return f();
+        }
+        catch (TypeError)
+        {
+            return "!TypeError";
         }
     }
 
@@ -262,8 +314,52 @@ public class DatetimeValueDifferentialTests
         }
         foreach (var s in isoStrings.Distinct(StringComparer.Ordinal))
         {
-            Add(new() { ["k"] = "date_iso", ["s"] = s }, () => Repr(Date.Fromisoformat(s)));
-            Add(new() { ["k"] = "dt_iso", ["s"] = s }, () => Repr(DateTime.Fromisoformat(s)));
+            Add(new() { ["k"] = "date_iso", ["u"] = Units(s) }, () => Repr(Date.Fromisoformat(s)));
+            Add(new() { ["k"] = "dt_iso", ["u"] = Units(s) }, () => Repr(DateTime.Fromisoformat(s)));
+        }
+
+        foreach (var a in DateTimes)
+        {
+            foreach (var b in DateTimes)
+            {
+                Add(new() { ["k"] = "dt_diff", ["a"] = a, ["b"] = b }, () =>
+                    Attrs(new DateTime(a[0], a[1], a[2], a[3], a[4], a[5], a[6]) - new DateTime(b[0], b[1], b[2], b[3], b[4], b[5], b[6])));
+            }
+        }
+
+        // timestamp() of a naive value reads the host time zone, so the attributes are compared for aware values only.
+        foreach (var a in Instants.Where(i => i.EndsWith('Z') || (i.Length > 16 && (i[16] == '+' || i[16] == '-'))))
+        {
+            Add(new() { ["k"] = "aw_attrs", ["a"] = Units(a) }, () =>
+            {
+                var dt = DateTime.Fromisoformat(a);
+                return Repr(dt.Timestamp()) + "|" + dt.Tzinfo!.Utcoffset(dt);
+            });
+        }
+        foreach (var a in Instants)
+        {
+            foreach (var b in Instants)
+            {
+                Add(new() { ["k"] = "aw_pair", ["a"] = Units(a), ["b"] = Units(b) }, () =>
+                {
+                    var x = DateTime.Fromisoformat(a);
+                    var y = DateTime.Fromisoformat(b);
+                    return string.Join("|", TypeErrorOr(() => Attrs(x - y)), Bool(x == y), Bool(x != y),
+                        TypeErrorOr(() => Bool(x < y)), TypeErrorOr(() => Bool(x >= y)), Bool(x.GetHashCode() == y.GetHashCode()),
+                        TypeErrorOr(() => Repr(Sorted(new List<DateTime> { x, y }))));
+                });
+            }
+            foreach (var t in new[] { Deltas[3], Deltas[4], Deltas[9], Deltas[17] })
+            {
+                foreach (var op in new[] { "+", "-" })
+                {
+                    Add(new() { ["k"] = "aw_op", ["a"] = Units(a), ["t"] = t, ["op"] = op }, () =>
+                    {
+                        var dt = DateTime.Fromisoformat(a);
+                        return Repr(op == "+" ? dt + Td(t) : dt - Td(t));
+                    });
+                }
+            }
         }
         return cases;
     }

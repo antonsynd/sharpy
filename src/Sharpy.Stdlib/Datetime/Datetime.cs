@@ -560,25 +560,48 @@ namespace Sharpy
         /// <summary>Return the difference between two datetimes as a timedelta.</summary>
         public static Timedelta operator -(DateTime left, DateTime right)
         {
-            return new Timedelta(left._dateTime.Subtract(right._dateTime));
+            if ((left._tzinfo is null) != (right._tzinfo is null))
+                throw new TypeError("can't subtract offset-naive and offset-aware datetimes");
+            if (SameClock(left, right))
+                return new Timedelta(left._dateTime.Subtract(right._dateTime));
+            return new Timedelta(new TimeSpan(left.UtcTicks - right.UtcTicks));
         }
 
         // --- Comparison ---
 
-        /// <summary>Compare this datetime to another.</summary>
+        /// <summary>
+        /// Python's rule: two naive datetimes, or two sharing one tzinfo object, compare their fields; two aware ones
+        /// with different tzinfo compare their UTC instants.
+        /// </summary>
+        private static bool SameClock(DateTime left, DateTime right)
+            => left._tzinfo is null || ReferenceEquals(left._tzinfo, right._tzinfo);
+
+        private const int AwareHashSalt = 0x5BD1E995;
+
+        /// <summary>The UTC instant of an aware datetime, in ticks (may lie outside year 1..9999).</summary>
+        private long UtcTicks => _dateTime.Ticks - _tzinfo!.Utcoffset(this).InternalTimeSpan.Ticks;
+
+        /// <summary>
+        /// Compare this datetime to another: python's <c>&lt;</c>. A naive and an aware datetime do not order
+        /// (<see cref="TypeError"/>).
+        /// </summary>
         public int CompareTo(DateTime? other)
         {
             if (other is null)
                 return 1;
-            return _dateTime.CompareTo(other._dateTime);
+            if ((_tzinfo is null) != (other._tzinfo is null))
+                throw new TypeError("can't compare offset-naive and offset-aware datetimes");
+            return SameClock(this, other) ? _dateTime.CompareTo(other._dateTime) : UtcTicks.CompareTo(other.UtcTicks);
         }
 
-        /// <summary>Return whether this datetime equals another.</summary>
+        /// <summary>Return whether this datetime equals another: a naive one never equals an aware one.</summary>
         public bool Equals(DateTime? other)
         {
             if (other is null)
                 return false;
-            return _dateTime == other._dateTime;
+            if ((_tzinfo is null) != (other._tzinfo is null))
+                return false;
+            return SameClock(this, other) ? _dateTime == other._dateTime : UtcTicks == other.UtcTicks;
         }
 
         /// <summary>Return whether this datetime equals the given object.</summary>
@@ -587,10 +610,11 @@ namespace Sharpy
             return Equals(obj as DateTime);
         }
 
-        /// <summary>Return a hash code for this datetime.</summary>
+        /// <summary>Return a hash code for this datetime: an aware one hashes its UTC instant, as python does.</summary>
         public override int GetHashCode()
         {
-            return _dateTime.GetHashCode();
+            // An aware value never equals a naive one, so it hashes apart from the naive value of the same ticks.
+            return _tzinfo is null ? _dateTime.GetHashCode() : UtcTicks.GetHashCode() ^ AwareHashSalt;
         }
 
         /// <summary>Return whether two datetimes are equal.</summary>

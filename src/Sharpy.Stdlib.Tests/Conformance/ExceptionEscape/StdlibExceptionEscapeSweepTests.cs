@@ -130,6 +130,48 @@ public class StdlibExceptionEscapeSweepTests
         }
     }
 
+    /// <summary>
+    /// The module's type roster cannot shrink unseen: every public Stdlib type a roster module's public signatures name
+    /// is itself one of the module's swept types, and every swept type contributed members to the enumeration.
+    /// </summary>
+    [Fact]
+    public void EveryRosterModulesTypeSetIsClosedAndEnumerated()
+    {
+        var stdlib = typeof(Date).Assembly;
+        foreach (var (module, result) in Results.Value)
+        {
+            var types = EscapeSweep.ModuleTypes(stdlib, module);
+            var names = new HashSet<string>(types.Select(t => t.Name), StringComparer.Ordinal);
+            var enumeratedTypes = result.Enumerated.Select(k => k[(module.Length + 1)..].Split('.')[0]).ToHashSet(StringComparer.Ordinal);
+            foreach (var type in types.Where(t => !t.IsInterface))
+                Assert.True(enumeratedTypes.Contains(type.Name), $"{module}: type {type.Name} contributed no member to the sweep");
+
+            const System.Reflection.BindingFlags Public = System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Instance
+                | System.Reflection.BindingFlags.Static | System.Reflection.BindingFlags.DeclaredOnly;
+            var named = types.SelectMany(t => t.GetMethods(Public).Cast<System.Reflection.MethodBase>().Concat(t.GetConstructors(Public)))
+                .SelectMany(m => m.GetParameters().Select(p => p.ParameterType)
+                    .Concat(m is System.Reflection.MethodInfo mi ? new[] { mi.ReturnType } : Array.Empty<Type>()))
+                .Select(t => Nullable.GetUnderlyingType(t) ?? t)
+                .Where(t => t.Assembly == stdlib && t.IsPublic)
+                .Select(t => t.Name)
+                .Distinct(StringComparer.Ordinal)
+                .ToList();
+            Assert.NotEmpty(named);
+            Assert.All(named, n => Assert.True(names.Contains(n) || UnattributedTypes.Contains(n),
+                $"{module}: its signatures name {n}, which is not one of its swept types"));
+            Assert.All(UnattributedTypes, n => Assert.True(!names.Contains(n), $"{n} is now a {module} type: delete it from UnattributedTypes"));
+        }
+    }
+
+    /// <summary>
+    /// Public Stdlib types a roster module's signatures name that carry no <c>[SharpyModuleType]</c>, so the module's
+    /// reflected roster misses them: #2053 (they leak as builtins). Delete a row when its type is stamped.
+    /// </summary>
+    private static readonly HashSet<string> UnattributedTypes = new(StringComparer.Ordinal)
+    {
+        "ITzinfo", // #2053
+    };
+
     /// <summary>The members the known leaks lived on were called (the skip path is not what ran).</summary>
     [Fact]
     public void Datetime_TheLeakProneMembersWereCalled()
