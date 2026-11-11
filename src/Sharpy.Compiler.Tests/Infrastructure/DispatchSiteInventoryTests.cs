@@ -257,6 +257,9 @@ public class DispatchSiteInventoryTests
         ["Lowering/LoweringPass.cs::LoweringPass.MarkWrappedTupleElements"] = "refusal-net:FileBasedIntegrationTests",
         // __qualname__ scopes (#2057): only class/struct/interface/enum/function statements open one.
         ["Lowering/LoweringPass.cs::LoweringPass.LowerStatement"] = "documented-by-design:Lowering/LoweringPass.cs:LowerStatement",
+        // #2443: decorators are not child nodes; the switch names every decorated statement type so
+        // their arguments lower (the emitter's required IR reads reach bracket-attribute arguments).
+        ["Lowering/LoweringPass.cs::LoweringPass.DecoratorsOf"] = "guarded-by:DecoratorCoverageTests",
         ["Lowering/Passes/ConstFoldPass.cs::ConstFoldPass.TryFoldExpression"] = "refusal-net:FileBasedIntegrationTests",
         // Parser internals
         ["Parser/Parser.cs::Parser.DelSteerFor"] = "refusal-net:FileBasedIntegrationTests",

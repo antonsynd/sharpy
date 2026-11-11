@@ -10,8 +10,8 @@ namespace Sharpy.Compiler.Lowering;
 /// an <see cref="IrLoweredLoop"/> that carries the imperative-loop <b>decisions</b> the emitter used
 /// to compute inline — the single-<c>for</c> detection and the D4 sized-source capacity decision.
 /// The stateful C# emission stays in <c>RoslynEmitter.Expressions.Comprehensions.cs</c>; the decision
-/// helpers here are the single source of truth, called both by this pass and (for null-IR codegen
-/// paths such as the REPL and the source-generator sub-pipeline) by the emitter's fallback.
+/// helpers here are the single source of truth, called both by this pass and (for a direct-emitter
+/// unit context over <c>IrCompilation.Empty</c>) by the emitter's fallback.
 /// </summary>
 internal sealed partial class LoweringPass
 {

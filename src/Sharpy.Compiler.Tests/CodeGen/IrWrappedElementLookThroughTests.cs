@@ -57,7 +57,7 @@ public class IrWrappedElementLookThroughTests
 
         var directory = EmitterBannedTokenScanTests.FindCodeGenSourceDirectory();
         var read = Directory.GetFiles(directory, "*.cs", SearchOption.AllDirectories)
-            .SelectMany(f => Regex.Matches(File.ReadAllText(f), @"\bIrNodeFor<(\w+)>").Select(m => m.Groups[1].Value))
+            .SelectMany(f => Regex.Matches(File.ReadAllText(f), @"\b(?:Required)?IrNodeFor<(\w+)>").Select(m => m.Groups[1].Value))
             .ToHashSet(StringComparer.Ordinal);
         read.Should().Contain("IrIndexAccess", "the census sees the emitter's by-key reads");
 
