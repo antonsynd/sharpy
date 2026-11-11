@@ -63,7 +63,7 @@ namespace Sharpy.Stdlib.Tests.Spy.Os.OsModuleAdditionalTests
         }
 
         [Xunit.FactAttribute]
-        public void TestRemoveOnDirectoryPathThrowsFileNotFoundError()
+        public void TestRemoveOnDirectoryPathThrowsIsADirectoryError()
         {
             string tmpPath = _tmpPathFixture.Value;
 #line (42, 5) - (42, 35) 12 "src/Sharpy.Stdlib.Tests/Spy/os/os_module_additional_tests.spy"
@@ -79,13 +79,13 @@ namespace Sharpy.Stdlib.Tests.Spy.Os.OsModuleAdditionalTests
                 os.Remove(d);
 #line hidden
             }
-            catch (FileNotFoundError)
+            catch (IsADirectoryError)
             {
                 __raised_1 = true;
             }
 
             if (!__raised_1)
-                throw new global::Sharpy.AssertionError("Expected FileNotFoundError to be raised, but no exception was raised");
+                throw new global::Sharpy.AssertionError("Expected IsADirectoryError to be raised, but no exception was raised");
         }
 
         [Xunit.FactAttribute]

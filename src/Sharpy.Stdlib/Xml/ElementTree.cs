@@ -52,6 +52,9 @@ namespace Sharpy
                 throw new TypeError("expected str, got NoneType");
             }
 
+            // python opens the file (`open(source, "rb")`): a path, never a URI; its refusal is the
+            // classifier's (plan-638e8b D1).
+            PathErrors.CheckNeedsFileToRead(source);
             try
             {
                 XDocument doc = XDocument.Load(source);
@@ -60,6 +63,10 @@ namespace Sharpy
             catch (XmlException ex)
             {
                 throw ParseError.FromXmlException(ex);
+            }
+            catch (Exception ex) when (ex is IOException || ex is UnauthorizedAccessException)
+            {
+                throw PathErrors.TranslateNeedsFileToRead(ex, source);
             }
         }
 
@@ -192,9 +199,18 @@ namespace Sharpy
                 Encoding = enc
             };
 
-            using (XmlWriter writer = XmlWriter.Create(filePath, settings))
+            // python: open(file, "w"); its refusal is the classifier's (plan-638e8b D1).
+            PathErrors.CheckNeedsFileToWrite(filePath);
+            try
             {
-                _document.Save(writer);
+                using (XmlWriter writer = XmlWriter.Create(filePath, settings))
+                {
+                    _document.Save(writer);
+                }
+            }
+            catch (Exception ex) when (ex is IOException || ex is UnauthorizedAccessException)
+            {
+                throw PathErrors.TranslateNeedsFileToWrite(ex, filePath);
             }
         }
 

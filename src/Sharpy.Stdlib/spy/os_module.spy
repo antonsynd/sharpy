@@ -1,7 +1,8 @@
 """Miscellaneous operating system interfaces."""
 
 from system.io import Path as IoPath, File, Directory, FileInfo, DirectoryInfo
-from system import Environment, UnauthorizedAccessException, DateTimeOffset, Convert
+from system import Environment, DateTimeOffset, Convert
+from sharpy import PathErrors
 from system.collections import DictionaryEntry
 
 class StatResult:
@@ -38,58 +39,58 @@ altsep: str = "" if IoPath.AltDirectorySeparatorChar == IoPath.DirectorySeparato
 
 def remove(path: str) -> None:
     """Remove a file (same as unlink)."""
-    if not File.exists(path):
-        raise FileNotFoundError("No such file or directory: '" + path + "'")
-    if Directory.exists(path):
-        raise IsADirectoryError("Is a directory: '" + path + "'")
+    PathErrors.check_removes_file(path)
     try:
         File.delete(path)
-    except UnauthorizedAccessException:
-        raise PermissionError("Permission denied: '" + path + "'")
+    except Exception as e:
+        raise PathErrors.translate_removes_file(e, path)
 
 def rename(src: str, dst: str) -> None:
     """Rename a file or directory."""
-    if File.exists(src):
-        File.move(src, dst)
-    elif Directory.exists(src):
-        Directory.move(src, dst)
-    else:
-        raise FileNotFoundError("No such file or directory: '" + src + "'")
+    PathErrors.rename(src, dst)
 
 def mkdir(path: str) -> None:
     """Create a directory."""
-    if Directory.exists(path):
-        raise FileExistsError("File exists: '" + path + "'")
-    parent = IoPath.get_directory_name(path)
-    if parent is not None:
-        if len(parent) > 0 and not Directory.exists(parent):
-            raise FileNotFoundError("No such file or directory: '" + path + "'")
-    Directory.create_directory(path)
+    PathErrors.check_creates_dir(path)
+    try:
+        Directory.create_directory(path)
+    except Exception as e:
+        raise PathErrors.translate_creates_dir(e, path)
 
 def makedirs(path: str, exist_ok: bool = False) -> None:
     """Super-mkdir; create a leaf directory and all intermediate ones."""
-    if Directory.exists(path):
-        if not exist_ok:
-            raise FileExistsError("File exists: '" + path + "'")
+    # CPython's steps: create a missing parent chain first, then mkdir the leaf, and with exist_ok
+    # accept only an existing DIRECTORY (an existing file is still FileExistsError).
+    name: str = _strip_trailing_separators(path)
+    head: str | None = IoPath.get_directory_name(name)
+    if head is not None:
+        if len(head) > 0 and not path_exists(head):
+            makedirs(head, exist_ok)
+            if IoPath.get_file_name(name) == ".":
+                return
+    if exist_ok and Directory.exists(name):
         return
-    Directory.create_directory(path)
+    mkdir(name)
 
 def rmdir(path: str) -> None:
     """Remove a directory."""
-    if not Directory.exists(path):
-        raise FileNotFoundError("No such file or directory: '" + path + "'")
+    PathErrors.check_removes_dir(path)
     try:
         Directory.delete(path, False)
-    except Exception:
-        raise OSError("Directory not empty: '" + path + "'")
+    except Exception as e:
+        raise PathErrors.translate_removes_dir(e, path)
 
 def listdir(path: str = ".") -> list[str]:
     """Return a list containing the names of the entries in the directory."""
-    if not Directory.exists(path):
-        raise FileNotFoundError("No such file or directory: '" + path + "'")
+    entries: list[str] = []
+    try:
+        for entry in Directory.get_file_system_entries(path):
+            entries.append(entry)
+    except Exception as e:
+        raise PathErrors.translate_needs_dir(e, path)
     result: list[str] = []
-    for entry in Directory.get_file_system_entries(path):
-        result.append(IoPath.get_file_name(entry))
+    for full in entries:
+        result.append(IoPath.get_file_name(full))
     return result
 
 def getcwd() -> str:
@@ -98,9 +99,10 @@ def getcwd() -> str:
 
 def chdir(path: str) -> None:
     """Change the current working directory to the specified path."""
-    if not Directory.exists(path):
-        raise FileNotFoundError("No such file or directory: '" + path + "'")
-    Directory.set_current_directory(path)
+    try:
+        Directory.set_current_directory(path)
+    except Exception as e:
+        raise PathErrors.translate_needs_dir(e, path)
 
 def getenv(key: str) -> str | None:
     """Get an environment variable, return None if it doesn't exist."""
@@ -139,21 +141,27 @@ def path_exists(path: str) -> bool:
     """Test whether a path exists."""
     return File.exists(path) or Directory.exists(path)
 
+def _strip_trailing_separators(path: str) -> str:
+    """The path without trailing separators (python's path.split skips an empty tail); a root stays itself."""
+    stripped: str = path.trim_end(IoPath.DirectorySeparatorChar, IoPath.AltDirectorySeparatorChar)
+    if len(stripped) == 0:
+        return path
+    return stripped
+
 def stat(path: str) -> StatResult:
     """Perform the equivalent of a stat() system call on the given path."""
+    PathErrors.check_needs_any(path)
     if File.exists(path):
         finfo: FileInfo = FileInfo(path)
         fw: DateTimeOffset = DateTimeOffset(finfo.LastWriteTimeUtc)
         fc: DateTimeOffset = DateTimeOffset(finfo.CreationTimeUtc)
         fa: DateTimeOffset = DateTimeOffset(finfo.LastAccessTimeUtc)
         return StatResult(finfo.Length, fw.to_unix_time_seconds() + fw.Millisecond / 1000.0, fc.to_unix_time_seconds() + fc.Millisecond / 1000.0, fa.to_unix_time_seconds() + fa.Millisecond / 1000.0, Convert.to_int32(finfo.Attributes))
-    if Directory.exists(path):
-        dinfo: DirectoryInfo = DirectoryInfo(path)
-        dw: DateTimeOffset = DateTimeOffset(dinfo.LastWriteTimeUtc)
-        dc: DateTimeOffset = DateTimeOffset(dinfo.CreationTimeUtc)
-        da: DateTimeOffset = DateTimeOffset(dinfo.LastAccessTimeUtc)
-        return StatResult(0, dw.to_unix_time_seconds() + dw.Millisecond / 1000.0, dc.to_unix_time_seconds() + dc.Millisecond / 1000.0, da.to_unix_time_seconds() + da.Millisecond / 1000.0, Convert.to_int32(dinfo.Attributes))
-    raise FileNotFoundError("No such file or directory: '" + path + "'")
+    dinfo: DirectoryInfo = DirectoryInfo(path)
+    dw: DateTimeOffset = DateTimeOffset(dinfo.LastWriteTimeUtc)
+    dc: DateTimeOffset = DateTimeOffset(dinfo.CreationTimeUtc)
+    da: DateTimeOffset = DateTimeOffset(dinfo.LastAccessTimeUtc)
+    return StatResult(0, dw.to_unix_time_seconds() + dw.Millisecond / 1000.0, dc.to_unix_time_seconds() + dc.Millisecond / 1000.0, da.to_unix_time_seconds() + da.Millisecond / 1000.0, Convert.to_int32(dinfo.Attributes))
 
 # The enumerator body for walk(), which returns Iterator[...] rather than being a generator
 # directly: binding a generator's IEnumerable<T> to a variable materializes it (#1354), so
