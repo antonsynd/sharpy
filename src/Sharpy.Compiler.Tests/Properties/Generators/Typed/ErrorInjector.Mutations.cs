@@ -72,6 +72,14 @@ internal static partial class ErrorInjector
     public static InjectionResult? InjectSuperInitArity(Module module) =>
         Lane(MutationLanes.SuperInitArityPlusOne(module), "SPY0224");
 
+    /// <summary>A statement written ahead of a constructor's <c>super().__init__(…)</c> (#2507).</summary>
+    public static InjectionResult? InjectStatementAheadOfChainingCall(Module module) =>
+        Lane(MutationLanes.StatementAheadOfChainingCall(module), "SPY0292");
+
+    /// <summary>A constructor that opens with <c>super().__init__(…)</c> also calls <c>self.__init__(…)</c> (#2507).</summary>
+    public static InjectionResult? InjectBothChainingCalls(Module module) =>
+        Lane(MutationLanes.BothChainingCalls(module), "SPY0351");
+
     /// <summary>A user constructor's argument replaced by a literal its parameter refuses.</summary>
     public static InjectionResult? InjectWrongTypedConstructorArgument(Module module) =>
         Lane(MutationLanes.WrongTypedConstructorArgument(module), "SPY0220");

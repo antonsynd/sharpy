@@ -1816,6 +1816,33 @@ deviations:
             def __init__(self) -> None:
                 super().__init__()   # OK
 
+  - id: constructor-chaining-call-first
+    code: SPY0292
+    category: semantics
+    audience: python
+    severity: error
+    python_behavior: "`super().__init__(...)` (and a call to another `__init__`) is an ordinary call: statements written ahead of it run first, in source order, and it may sit under control flow or inside an expression."
+    sharpy_behavior: "A chaining call (`super().__init__(...)` or `self.__init__(...)`) runs as the C# constructor initializer (`: base(...)` / `: this(...)`), before the body, so it must be the constructor's first statement (a docstring may precede it), written once, as a statement of its own. Any statement ahead of it is refused, including `pass`, `...`, a bare annotation and a nested `def`. So is a call under control flow, a repeated call, or one inside an expression. All of these are SPY0292 (R-ML, #2507; owner ruling 2026-11-11: stay strict). Using both chaining calls is SPY0351. A value an argument needs is computed inside the argument expression or in a `@static` helper. Statements after the call run in source order as in Python."
+    spec_ref: docs/language_specification/constructors.md
+    existing_diagnostic: SPY0292
+    planned_diagnostic: null
+    example:
+      python: |
+        class Base:
+            def __init__(self, value: int):
+                self.value = value
+        class Child(Base):
+            def __init__(self, value: int, extra: int):
+                self.extra = extra
+                super().__init__(value)
+        c = Child(10, 20)
+        print(c.value, c.extra)   # 10 20
+      sharpy: |
+        class Child(Base):
+            def __init__(self, value: int, extra: int):
+                self.extra = extra
+                super().__init__(value)   # ERROR SPY0292: move the call first
+
   - id: pow-returns-float
     code: null
     category: stdlib
