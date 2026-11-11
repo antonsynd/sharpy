@@ -1,0 +1,1 @@
+This except handler is unreachable: an earlier handler catches 'NotFound', which covers 'NotFound'

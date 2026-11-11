@@ -524,10 +524,9 @@ public class ErrorCompletenessPropertyTests
         RunInjectionTest(ErrorInjector.InjectConditionalExpressionStatement, "conditional expression statement", MutationBases.TypedStatements());
 
     /// <summary>P63b (#2324): a <c>try</c> whose handlers go subclass → base, reordered base first: the
-    /// subclass handler is dead, Sharpy accepts it and Roslyn refuses it (SPY0908 CS0160) — a KnownRed pin
-    /// on #2363.</summary>
+    /// subclass handler is dead, as in python — exactly one SPY0488 warning and no error (#2363).</summary>
     [Fact]
-    public void HandlerOrderBaseFirst_IsPinned() =>
+    public void HandlerOrderBaseFirst_IsWarned() =>
         RunInjectionTest(ErrorInjector.InjectHandlerOrderBaseFirst, "handler order base first", GenExceptions.ModuleWithExceptionHierarchy());
 
     /// <summary>P63b (#2324): <c>def main(arg: int)</c>: Sharpy accepts it and Roslyn refuses it (SPY0908 CS1558) — a KnownRed pin on #2335 that fails the first time the program is refused.</summary>

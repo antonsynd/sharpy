@@ -1666,7 +1666,7 @@ internal partial class RoslynEmitter
         }
 
         var tryBlock = GenerateSuiteBlock(tryStmt.Body);
-        var catchClauses = GenerateCatchClauses(tryStmt.Handlers);
+        var catchClauses = GenerateCatchClauses(tryStmt);
         var finallyClause = GenerateFinallyClause(tryStmt.FinallyBody);
 
         return TryStatement(tryBlock, List(catchClauses), finallyClause);
@@ -1691,7 +1691,7 @@ internal partial class RoslynEmitter
                 IdentifierName(flagName),
                 LiteralExpression(SyntaxKind.TrueLiteralExpression))));
         var tryBlock = Block(tryBodyStatements);
-        var catchClauses = GenerateCatchClauses(tryStmt.Handlers);
+        var catchClauses = GenerateCatchClauses(tryStmt);
         var finallyClause = GenerateFinallyClause(tryStmt.FinallyBody);
 
         var elseBlock = GenerateSuiteBlock(tryStmt.ElseBody);
@@ -1733,18 +1733,30 @@ internal partial class RoslynEmitter
         return Block(allStatements);
     }
 
-    private List<CatchClauseSyntax> GenerateCatchClauses(ImmutableArray<ExceptHandler> handlers)
+    private List<CatchClauseSyntax> GenerateCatchClauses(TryStatement tryStmt)
     {
+        var handlers = tryStmt.Handlers;
+
         // Check if any handlers are except* (PEP 654)
         if (handlers.Length > 0 && handlers[0].IsExceptStar)
         {
             return GenerateExceptStarCatchClauses(handlers);
         }
 
+        // The catches an earlier handler already covers are left out (#2363): python never runs
+        // them, and C# refuses a catch after one for its base (CS0160). The lowering decided which.
+        var pruned = IrNodeFor<IrPrunedTry>(tryStmt);
+
         var result = new List<CatchClauseSyntax>();
 
-        foreach (var handler in handlers)
+        for (var handlerIndex = 0; handlerIndex < handlers.Length; handlerIndex++)
         {
+            var handler = handlers[handlerIndex];
+            var plan = pruned?.Handlers[handlerIndex];
+            if (plan is { Emitted: false })
+                continue;
+            bool TypeEmitted(int typeIndex) => plan == null || plan.EmittedTypes[typeIndex];
+
             var filterClause = GenerateCatchFilterClause(handler);
 
             if (handler.ExceptionType != null)
@@ -1755,8 +1767,11 @@ internal partial class RoslynEmitter
                     && handler.ExceptionType.TypeArguments.Length > 0
                     && handler.Name == null)
                 {
-                    foreach (var typeArg in handler.ExceptionType.TypeArguments)
+                    for (var typeIndex = 0; typeIndex < handler.ExceptionType.TypeArguments.Length; typeIndex++)
                     {
+                        if (!TypeEmitted(typeIndex))
+                            continue;
+                        var typeArg = handler.ExceptionType.TypeArguments[typeIndex];
                         var catchBlock = GenerateSuiteBlock(handler.Body);
                         var declaration = CatchDeclaration(MapClassifiedTypeOperand(typeArg));
                         result.Add(CatchClause(declaration, filterClause, catchBlock));
@@ -1774,7 +1789,8 @@ internal partial class RoslynEmitter
                     alternation
                     && handler.Name != null)
                 {
-                    result.Add(GenerateAlternationCatchClause(handler, alternation, alternatives, filterClause));
+                    var emittedAlternatives = alternatives.Where((_, typeIndex) => TypeEmitted(typeIndex)).ToList();
+                    result.Add(GenerateAlternationCatchClause(handler, alternation, emittedAlternatives, filterClause));
                     continue;
                 }
 

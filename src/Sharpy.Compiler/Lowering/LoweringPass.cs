@@ -180,6 +180,18 @@ internal sealed partial class LoweringPass
         if (scopeName != null)
             state.QualifiedNamePrefix.RemoveAt(state.QualifiedNamePrefix.Count - 1);
 
+        // A `try` whose handlers (or tuple-handler types) an earlier handler already covers carries
+        // which catches to emit (#2363): the classifier the SPY0488 warning reads.
+        if (statement is TryStatement tryStatement
+            && ExceptHandlerReachability.Classify(tryStatement, semanticInfo) is var verdicts
+            && verdicts.Any(v => v.PrunesAnything))
+        {
+            var plans = verdicts.Select(v => new IrHandlerPlan(!v.IsUnreachable, v.TypeReachable)).ToImmutableArray();
+            var pruned = new IrPrunedTry(plans, SpanOf(tryStatement), children);
+            state.Index[tryStatement] = pruned;
+            return pruned;
+        }
+
         var ir = new IrOpaqueStatement(statement, SpanOf(statement), children);
         state.Index[statement] = ir;
         return ir;

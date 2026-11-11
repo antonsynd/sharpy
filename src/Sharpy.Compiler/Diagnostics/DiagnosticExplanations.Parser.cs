@@ -269,5 +269,10 @@ public static partial class DiagnosticExplanations
             "A ';' appeared where a statement ends or begins. Python accepts ';' between simple statements on one line ('a = 1; b = 2'); Sharpy does not: every statement goes on its own line, so there is one layout for the formatter and for readers. The refusal is recorded in docs/deviations.yaml (semicolon-statement-separator).",
             "a = 1; b = 2",
             "Put each statement on its own line:\n  a = 1\n  b = 2");
+
+        Add(dict, DiagnosticCodes.Parser.BareExceptMustBeLast, "A bare 'except:' must be the last handler", "Parser",
+            "A bare 'except:' (no exception type and no 'when' filter) catches every exception, so any handler after it could never run. CPython refuses this shape with \"SyntaxError: default 'except:' must be last\", and Sharpy refuses it in the parser for the same reason.",
+            "try:\n    load()\nexcept:\n    print(\"failed\")\nexcept ValueError:\n    print(\"bad value\")",
+            "Move the bare 'except:' after every typed handler:\n  try:\n      load()\n  except ValueError:\n      print(\"bad value\")\n  except:\n      print(\"failed\")");
     }
 }

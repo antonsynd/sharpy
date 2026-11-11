@@ -39,7 +39,7 @@ namespace Sharpy.Compiler.Tests.Properties.Semantic;
 /// were generated, had a refusal and had no injection cited #2324 until P63b's mutation lanes
 /// (<c>ErrorInjector.Mutations.cs</c> over <c>Generators/Typed/Mutations/</c>) drained them by measurement
 /// (2026-10-24) — to <see cref="YInjected"/>, to a compiler pin, or to <see cref="ByDesign"/> with its spec line
-/// and census control; compiler cells pinned by an injection cite their tracker (#2143, #2335, #2021, #2363). A construct with no refusal surface is <c>ByDesign("no typing surface")</c>; same-scope
+/// and census control; compiler cells pinned by an injection cite their tracker (#2143, #2335, #2021). A construct with no refusal surface is <c>ByDesign("no typing surface")</c>; same-scope
 /// re-<c>let</c> is <see cref="ByDesign"/> by <c>variable_scoping.md</c> §Variable Shadowing.</item>
 /// <item><b>NoConstruct exemption</b> — allowed only for a file with NO fenced Sharpy block
 /// (<c>```python</c>/<c>spy</c>/<c>sharpy</c>, the fences <c>build_tools/spec_blocks.py</c> reads), whatever
@@ -419,7 +419,7 @@ public class TypedGeneratorRosterTests
         new("exception_handling.md", "Exception Type Hierarchy", "subclass handler before its base",
             new Y("GenExceptions.ModuleWithExceptionHierarchy", () => GenExceptions.ModuleWithExceptionHierarchy(), n => n is TryStatement { Handlers.Length: >= 2 }),
             // declaration shape — a hand lane (DeclarationShapes), the axis the site enumerator cannot list
-            new KnownRedRow("#2363", "analyses clean; run is SPY0908 CS0160 — handler reachability is left to Roslyn (ErrorInjector.InjectHandlerOrderBaseFirst)")),
+            new YInjected("ErrorInjector.InjectHandlerOrderBaseFirst", "SPY0488", CompilerDiagnosticSeverity.Warning)),
         new("exception_handling.md", "Exception Filters (`when`)", "except ... when",
             new KnownRedRow("#2287", "no typed generator emits an exception filter"),
             new KnownRedRow("#2287", "not generated, so no injection can break it")),
@@ -1666,6 +1666,8 @@ public class TypedGeneratorRosterTests
         new KnownRedSpecCode("#2287", "events.md", "SPY0496"),
         new KnownRedSpecCode("#2287", "events.md", "SPY0708"),
         new KnownRedSpecCode("#2324", "exception_handling.md", "SPY0138"),
+        new KnownRedSpecCode("#2287", "exception_handling.md", "SPY0151"),
+        new KnownRedSpecCode("#2287", "exception_handling.md", "SPY0709"),
         new KnownRedSpecCode("#2324", "exception_handling.md", "SPY0272"),
         new KnownRedSpecCode("#2324", "exception_handling.md", "SPY0702"),
         new KnownRedSpecCode("#2287", "feature_roadmap.md", "SPY0130"),
@@ -2020,9 +2022,9 @@ public class TypedGeneratorRosterTests
     private const int ExpectedSpecFiles = 125;
     private const int ExpectedRows = 203;
     private const int ExpectedYGenerated = 104;
-    private const int ExpectedYInjected = 91;
+    private const int ExpectedYInjected = 92;
     private const int ExpectedN = 181;
-    private const int ExpectedKnownRed = 5;
+    private const int ExpectedKnownRed = 4;
     private const int ExpectedByDesign = 17;
     private const int ExpectedNoConstruct = 4;
 
