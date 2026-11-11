@@ -67,7 +67,7 @@ These are the project's existing rules, restated because each has been violated 
 - **Models.** The lead is Fable; workers are Opus (`model: "opus"`). A worker may spawn its own Opus sub-workers for refutation or measurement. Never Sonnet or Haiku for compiler work.
 - **Worker preamble.** Paste this block into every worker prompt, unchanged:
 
-  > The working tree is SHARED with other agents. Never run `git checkout` / `git restore` / `git clean` / `git stash` / `git reset` / `rm` on repo paths; the gitignored `.claude/tmp/` scratch files the skills clear are the only exception. Build once with `.claude/scripts/dotnet-serialized build sharpy.sln` before probing, then probe with `src/Sharpy.Cli/bin/Debug/net10.0/sharpyc` (a binary older than HEAD reproduces fixed bugs). Run dotnet only through `.claude/scripts/dotnet-serialized`; any local test run carries `--logger "console;verbosity=normal"`. Never run a whole-solution test: the lead runs `/ci-gate`. Append findings to the ledger path the lead gives you; never file issues. Put the cruft trailer (§5.2) in every commit body.
+  > The working tree is SHARED with other agents. Never run `git checkout` / `git restore` / `git clean` / `git stash` / `git reset` / `rm` on repo paths; the gitignored `.claude/tmp/` scratch files the skills clear are the only exception. Build once with `.claude/scripts/dotnet-serialized build sharpy.sln` before probing, then probe with `src/Sharpy.Cli/bin/Debug/net10.0/sharpyc` (a binary older than HEAD reproduces fixed bugs). Run dotnet only through `.claude/scripts/dotnet-serialized`; any local test run carries `--logger "console;verbosity=normal"`. Never run a whole-solution test: the lead runs `/ci-gate`. Append findings to the ledger path the lead gives you; never file issues.
 
   Commit lead work in small slices and re-check `git diff --stat` after each worker wave.
 - **The gate.** `/ci-gate` on the pushed branch tip (CLAUDE.md "Commit gate"; contract §6). The local fallback is `.claude/scripts/dotnet-serialized test --filter "Category!=Benchmark" --logger "console;verbosity=normal"`, only when `/ci-gate` exits 3 or for what CI does not cover. **One gate** = one `passed/failed/skipped @ sha` line cited in a commit body or recap, by CI run id or local log. Automatic PR runs are evidence but are not counted as gates spent.
@@ -188,6 +188,8 @@ It prints every row below with the HEAD sha and how it was measured. Baseline is
 
 ### 5.2 The cruft test (every change, before commit)
 
+**Retired 2026-11-11** (owner): the `Cruft:` trailer is no longer written; the procedure-bytes ratchet that lands with PR #2562 replaces it.
+
 A change passes when every answer is yes, or the "no" is written in the commit body with the reason. The record is one trailer line in the commit body:
 
 ```
@@ -215,7 +217,7 @@ Stop the wave, write the recap, and hand the decision to the owner when any of t
 ### 5.4 Checkpoints
 
 - **Start of wave:** re-check §2; run the scorecard; file the tooling class issue (Wave 0) or claim on the item's issue; post the scorecard there.
-- **Per item:** done-when met; guard mutation recorded; cruft trailer in the commit body; owning test project green locally; findings ledger appended.
+- **Per item:** done-when met; guard mutation recorded; owning test project green locally; findings ledger appended.
 - **End of wave:** one shared `/ci-gate` where the wave allows it; scorecard; recap (§6) posted on the tooling issue for Wave 0, on the class issues for Wave 1, on #2443 for Wave 2; §7 refreshed; the ledger flushed to issues; the proposed charter diff attached for the next `/batch-issues`.
 - **Retrospective, three questions, in the recap:** What did this wave delete? What did it add that a future session has to read? Which stop rule came closest to firing?
 
@@ -300,7 +302,7 @@ Paste this to start:
 ```
 Read docs/process/handoff-2026-11-06-remediation.md in full (skip §10). Then read the comments on issue #2443 (gh api -X GET repos/antonsynd/sharpy/issues/2443/comments) and the R-LK row of the charter (grep -n '^| R-LK' docs/process/rounds/remediation-round-2026-09-20-batching.md). Do not read the audit or the rest of the charter unless an item sends you there.
 
-Then: (1) run the §2 re-check and report what has landed since 18a11bbb7; (2) build once with the serialized wrapper, run .claude/scripts/scorecard --since <today> --base <origin/dev at session start>, and keep the output for the recap; (3) run the P77b close-out in §4 yourself, and stop if its first check fails; (4) file the Wave-0 tooling class issue (§4, Wave 0 header) and post the scorecard on it; (5) run W0.3 then W0.2 with one Opus worker each, and W0.4 in parallel, every prompt carrying the §3 worker preamble verbatim; (6) put the §5.2 cruft trailer in every commit; (7) stop on any §5.3 rule and write the §6 recap instead of continuing.
+Then: (1) run the §2 re-check and report what has landed since 18a11bbb7; (2) build once with the serialized wrapper, run .claude/scripts/scorecard --since <today> --base <origin/dev at session start>, and keep the output for the recap; (3) run the P77b close-out in §4 yourself, and stop if its first check fails; (4) file the Wave-0 tooling class issue (§4, Wave 0 header) and post the scorecard on it; (5) run W0.3 then W0.2 with one Opus worker each, and W0.4 in parallel, every prompt carrying the §3 worker preamble verbatim; ~~(6) put the §5.2 cruft trailer in every commit~~ (retired 2026-11-11); (7) stop on any §5.3 rule and write the §6 recap instead of continuing.
 
 Landing: work on one branch cut from origin/dev and open one PR into dev when Wave 0 is ready. Do not merge it, and do not push Wave 0 work to dev or mainline; the owner merges. The close-out's plan tick is the one exception: commit it on that branch too, so it lands with the PR.
 

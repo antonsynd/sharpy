@@ -37,18 +37,20 @@ namespace Sharpy.TempfileModule
         /// </summary>
         public static string Mkdtemp(string prefix = "tmp")
         {
+            string randomPart = global::Sharpy.StringExtensions.Replace(global::System.IO.Path.GetRandomFileName(), ".", "");
+            string dirName = prefix + randomPart;
+            string fullPath = global::System.IO.Path.Combine(global::System.IO.Path.GetTempPath(), dirName);
+            global::Sharpy.PathErrors.CheckCreatesDir(fullPath);
             try
             {
-                string randomPart = global::Sharpy.StringExtensions.Replace(global::System.IO.Path.GetRandomFileName(), ".", "");
-                string dirName = prefix + randomPart;
-                string fullPath = global::System.IO.Path.Combine(global::System.IO.Path.GetTempPath(), dirName);
                 global::System.IO.Directory.CreateDirectory(fullPath);
-                return fullPath;
             }
-            catch (global::System.Exception ex)
+            catch (global::System.Exception e)
             {
-                throw new global::Sharpy.OSError("Failed to create temporary directory: " + global::Sharpy.Builtins.Str(ex));
+                throw global::Sharpy.PathErrors.TranslateCreatesDir(e, fullPath);
             }
+
+            return fullPath;
         }
 
         /// <summary>
@@ -56,17 +58,26 @@ namespace Sharpy.TempfileModule
         /// </summary>
         public static global::System.ValueTuple<int, string> Mkstemp(string prefix = "tmp", string suffix = "")
         {
+            string randomPart = global::Sharpy.StringExtensions.Replace(global::System.IO.Path.GetRandomFileName(), ".", "");
+            string fileName = prefix + randomPart + suffix;
+            string fullPath = global::System.IO.Path.Combine(global::System.IO.Path.GetTempPath(), fileName);
+            global::Sharpy.TempfileModule.TempfileModuleModule._CreateEmptyFile(fullPath);
+            return (0, fullPath);
+        }
+
+        /// <summary>
+        /// CPython's os.open(path, O_CREAT | O_EXCL): a new empty file; prefix/suffix may name a subdirectory.
+        /// </summary>
+        internal static void _CreateEmptyFile(string path)
+        {
+            global::Sharpy.PathErrors.CheckCreatesExclusively(path);
             try
             {
-                string randomPart = global::Sharpy.StringExtensions.Replace(global::System.IO.Path.GetRandomFileName(), ".", "");
-                string fileName = prefix + randomPart + suffix;
-                string fullPath = global::System.IO.Path.Combine(global::System.IO.Path.GetTempPath(), fileName);
-                global::System.IO.File.WriteAllText(fullPath, "");
-                return (0, fullPath);
+                global::System.IO.File.WriteAllText(path, "");
             }
-            catch (global::System.Exception ex)
+            catch (global::System.Exception e)
             {
-                throw new global::Sharpy.OSError("Failed to create temporary file: " + global::Sharpy.Builtins.Str(ex));
+                throw global::Sharpy.PathErrors.TranslateCreatesExclusively(e, path);
             }
         }
     }
@@ -135,7 +146,7 @@ namespace Sharpy.TempfileModule
         {
             string randomPart = global::Sharpy.StringExtensions.Replace(global::System.IO.Path.GetRandomFileName(), ".", "");
             this.Name = global::System.IO.Path.Combine(global::System.IO.Path.GetTempPath(), prefix + randomPart + suffix);
-            global::System.IO.File.WriteAllText(this.Name, "");
+            global::Sharpy.TempfileModule.TempfileModuleModule._CreateEmptyFile(this.Name);
             this.Mode = mode;
             this.Delete = delete;
             this._Closed = false;
@@ -177,7 +188,15 @@ namespace Sharpy.TempfileModule
         {
             string randomPart = global::Sharpy.StringExtensions.Replace(global::System.IO.Path.GetRandomFileName(), ".", "");
             this.Name = global::System.IO.Path.Combine(global::System.IO.Path.GetTempPath(), prefix + randomPart + suffix);
-            global::System.IO.Directory.CreateDirectory(this.Name);
+            global::Sharpy.PathErrors.CheckCreatesDir(this.Name);
+            try
+            {
+                global::System.IO.Directory.CreateDirectory(this.Name);
+            }
+            catch (global::System.Exception e)
+            {
+                throw global::Sharpy.PathErrors.TranslateCreatesDir(e, this.Name);
+            }
         }
     }
 
