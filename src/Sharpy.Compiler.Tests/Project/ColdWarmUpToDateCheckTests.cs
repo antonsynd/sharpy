@@ -525,10 +525,17 @@ def main() -> None:
         return config;
     }
 
-    /// <summary>A reference-image cache root inside this test's own directory (never the user's).</summary>
+    /// <summary>
+    /// A reference-image cache root inside this test's own directory (never the user's), whose directory
+    /// is owner-writable only (the cache refuses a group-writable ancestor, as under umask 002).
+    /// </summary>
     private IDisposable IsolatedImageCache()
-        => Sharpy.Compiler.Discovery.ReferenceImageCache.OverrideRootForTests(
+    {
+        if (!OperatingSystem.IsWindows())
+            File.SetUnixFileMode(_tempDir, (UnixFileMode)Convert.ToInt32("755", 8));
+        return Sharpy.Compiler.Discovery.ReferenceImageCache.OverrideRootForTests(
             Path.Combine(_tempDir, "image-data", "sharpy", "reference-images"));
+    }
 
     /// <summary>
     /// (b) The hole a size-and-write-time identity leaves: a reference replaced by other bytes of the

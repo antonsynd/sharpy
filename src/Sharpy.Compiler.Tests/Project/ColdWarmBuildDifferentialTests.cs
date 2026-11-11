@@ -1836,7 +1836,10 @@ def main() -> None:
     [Fact]
     public void ALibraryReplacedByRename_IsReboundByTheNextColdCompileInTheSameProcess()
     {
-        // The replaced library's copy goes to this test's own image cache, never the user's.
+        // The replaced library's copy goes to this test's own image cache, never the user's. Its directory
+        // is owner-writable only (the cache refuses a group-writable ancestor, as under umask 002).
+        if (!OperatingSystem.IsWindows())
+            File.SetUnixFileMode(_tempDir, (UnixFileMode)Convert.ToInt32("755", 8));
         using var images = Sharpy.Compiler.Discovery.ReferenceImageCache.OverrideRootForTests(
             Path.Combine(_tempDir, "image-data", "sharpy", "reference-images"));
         const string area = "rebuilt_reference";

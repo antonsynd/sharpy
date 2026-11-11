@@ -66,6 +66,9 @@ public class ReferenceImageCacheTests : IDisposable
         return path;
     }
 
+    /// <summary>A publish as an unprivileged user, whatever the test host runs as.</summary>
+    private static string Publish(string source, string root) => ReferenceImageCache.Publish(source, root, privileged: false);
+
     private string Source(string name, string who) => EmitMarkerAssembly(Path.Combine(_tempDir, "src_" + name), name, who);
 
     /// <summary>What the assembly at <paramref name="path"/> says, loaded as the compiler loads a copy.</summary>
@@ -107,7 +110,7 @@ public class ReferenceImageCacheTests : IDisposable
         var planted = Path.Combine(entry, Path.GetFileName(genuine));
         File.Copy(impostor, planted);
 
-        var published = ReferenceImageCache.Publish(genuine, Root);
+        var published = Publish(genuine, Root);
 
         published.Should().Be(planted, "the entry is where the content hash says, under the reference's own name");
         File.ReadAllBytes(published).Should().Equal(File.ReadAllBytes(genuine),
@@ -125,9 +128,9 @@ public class ReferenceImageCacheTests : IDisposable
         var v1 = EmitMarkerAssembly(Path.Combine(_tempDir, "v1"), "ContentProbe", "one");
         var v2 = EmitMarkerAssembly(Path.Combine(_tempDir, "v2"), "ContentProbe", "two");
 
-        var first = ReferenceImageCache.Publish(v1, Root);
-        var again = ReferenceImageCache.Publish(v1, Root);
-        var other = ReferenceImageCache.Publish(v2, Root);
+        var first = Publish(v1, Root);
+        var again = Publish(v1, Root);
+        var other = Publish(v2, Root);
 
         IsUnder(first, Root).Should().BeTrue("non-vacuity: the trusted root is used, not the fallback");
         again.Should().Be(first);
@@ -148,7 +151,7 @@ public class ReferenceImageCacheTests : IDisposable
         if (OperatingSystem.IsWindows())
             return;
 
-        var published = ReferenceImageCache.Publish(Source("ModeProbe", "mode"), Root);
+        var published = Publish(Source("ModeProbe", "mode"), Root);
 
         IsUnder(published, Root).Should().BeTrue("non-vacuity: the root was used");
         File.GetUnixFileMode(Root).Should().Be(OwnerOnly);
@@ -218,7 +221,7 @@ public class ReferenceImageCacheTests : IDisposable
         var modeBefore = Directory.Exists(Root) ? File.GetUnixFileMode(Root) : (UnixFileMode?)null;
         ReferenceImageCache.TrustRefusal(Root).Should().NotBeNull($"[{arrangement}] the root is refused");
 
-        var published = ReferenceImageCache.Publish(Source("Untrusted" + arrangement.Replace("_", ""), arrangement), Root);
+        var published = Publish(Source("Untrusted" + arrangement.Replace("_", ""), arrangement), Root);
 
         IsUnder(published, Root).Should().BeFalse($"[{arrangement}] nothing is published under a refused root");
         Path.GetFileName(Path.GetDirectoryName(published)!).Should().StartWith("sharpy-reference-image-");
@@ -228,13 +231,11 @@ public class ReferenceImageCacheTests : IDisposable
     }
 
     /// <summary>
-    /// What is refused is only what can be abused: a dotfile in the root (<c>.DS_Store</c>, an editor's
-    /// swap file) and a data directory only the user's group can write (a 775 <c>~/.local/share</c> under
-    /// umask 002 on private-group distributions) do not refuse the cache. Positive controls: the
-    /// untrusted-root theory above (a visible foreign file, a data directory every user can write).
+    /// A dotfile in the root (<c>.DS_Store</c>, an editor's swap file) does not refuse the cache and is
+    /// never pruned. Positive control: a visible foreign file does refuse it (the untrusted-root theory).
     /// </summary>
     [SkippableFact]
-    public void ADotfileInTheRoot_AndAGroupWritableDataHome_AreNotRefused()
+    public void ADotfileInTheRoot_IsNotRefused()
     {
         Skip.If(OperatingSystem.IsWindows(), "Unix modes; Windows relies on the per-user profile ACL");
         if (OperatingSystem.IsWindows())
@@ -245,11 +246,74 @@ public class ReferenceImageCacheTests : IDisposable
         Directory.CreateDirectory(Root, OwnerOnly);
         File.WriteAllText(Path.Combine(Root, ".DS_Store"), "finder");
         File.WriteAllText(Path.Combine(Root, ".swp"), "editor");
-        File.SetUnixFileMode(_tempDir, (UnixFileMode)Convert.ToInt32("775", 8));
 
         ReferenceImageCache.TrustRefusal(Root).Should().BeNull();
-        IsUnder(ReferenceImageCache.Publish(Source("TolerantProbe", "tolerant"), Root), Root).Should().BeTrue();
+        IsUnder(Publish(Source("TolerantProbe", "tolerant"), Root), Root).Should().BeTrue();
         File.Exists(Path.Combine(Root, ".DS_Store")).Should().BeTrue("a dotfile is neither judged nor pruned");
+    }
+
+    public static IEnumerable<object[]> AncestorModes => new[]
+    {
+        new object[] { "2775", true },
+        new object[] { "0775", true },
+        new object[] { "0757", true },
+        new object[] { "1777", false },
+        new object[] { "0755", false },
+    };
+
+    /// <summary>
+    /// Every directory above the cache must be writable by its owner alone unless it is sticky (ssh's
+    /// StrictModes rule): a group member who can write the data directory can rename our 700
+    /// <c>sharpy/</c> out of it and put their own in its place, then swap a verified copy before it is
+    /// loaded. Such an ancestor is refused, by name, with its repair; a sticky one (<c>/tmp</c>, 1777)
+    /// and an owner-only chain are not. Each refused arrangement still yields the genuine bytes, privately.
+    /// </summary>
+    [SkippableTheory]
+    [MemberData(nameof(AncestorModes))]
+    public void AWritableAncestor_IsRefusedUnlessSticky(string octal, bool refused)
+    {
+        Skip.If(OperatingSystem.IsWindows(), "Unix modes; Windows relies on the per-user profile ACL");
+        if (OperatingSystem.IsWindows())
+            return;
+
+        var ancestor = Path.Combine(_tempDir, "home");
+        var root = Path.Combine(ancestor, "data", "sharpy", "reference-images");
+        Directory.CreateDirectory(ancestor);
+        File.SetUnixFileMode(ancestor, (UnixFileMode)Convert.ToInt32(octal, 8));
+
+        var refusal = ReferenceImageCache.TrustRefusal(root);
+        var published = Publish(Source("Ancestor" + octal, "ancestor"), root);
+
+        if (refused)
+        {
+            refusal.Should().NotBeNull().And.Contain($"'{ancestor}'").And.Contain("chmod go-w");
+            IsUnder(published, root).Should().BeFalse($"[{octal}] the copy is private, not in the cache");
+        }
+        else
+        {
+            refusal.Should().BeNull($"[{octal}] a sticky or owner-only ancestor is safe");
+            IsUnder(published, root).Should().BeTrue($"[{octal}] the cache is used");
+        }
+        LoadedMarker(published).Should().Be("ancestor");
+    }
+
+    /// <summary>
+    /// A privileged process never uses the shared cache (it could write into a directory another user
+    /// planted): the copy is private even under a trusted root. Control: the same root, unprivileged,
+    /// is used. The privilege is injected, so the test means the same under root and not.
+    /// </summary>
+    [Fact]
+    public void APrivilegedProcess_AlwaysUsesAPrivateCopy()
+    {
+        var source = Source("PrivilegedProbe", "privileged");
+
+        var unprivileged = ReferenceImageCache.Publish(source, Root, privileged: false);
+        var privileged = ReferenceImageCache.Publish(source, Root, privileged: true);
+
+        IsUnder(unprivileged, Root).Should().BeTrue("control: the root is trusted");
+        IsUnder(privileged, Root).Should().BeFalse("a privileged process keeps no shared cache");
+        Path.GetFileName(Path.GetDirectoryName(privileged)!).Should().StartWith("sharpy-reference-image-");
+        LoadedMarker(privileged).Should().Be("privileged");
     }
 
     /// <summary>
@@ -264,8 +328,8 @@ public class ReferenceImageCacheTests : IDisposable
         File.WriteAllText(unusable, "occupied");
         var source = Source("FallbackProbe", "fallback");
 
-        var first = ReferenceImageCache.Publish(source, unusable);
-        var again = ReferenceImageCache.Publish(source, unusable);
+        var first = Publish(source, unusable);
+        var again = Publish(source, unusable);
 
         first.Should().NotStartWith(unusable);
         again.Should().Be(first, "the same content reuses its private copy");
@@ -281,11 +345,12 @@ public class ReferenceImageCacheTests : IDisposable
     }
 
     /// <summary>
-    /// Concurrent fallback publishes of one content all get the same complete copy: the file is renamed
-    /// into place, so no thread hashes or loads a half-written one.
+    /// Smoke test: concurrent fallback publishes of one content agree on one path holding the source's
+    /// bytes. It does not show how the copy is written (an in-place write passes it too); that is
+    /// <see cref="AFallbackCopy_IsReplacedByRename_NeverRewrittenInPlace"/>.
     /// </summary>
     [Fact]
-    public void ConcurrentFallbackPublishes_AllSeeOneCompleteCopy()
+    public void ConcurrentFallbackPublishes_AgreeOnOneCopy()
     {
         var unusable = Path.Combine(_tempDir, "not-a-directory");
         File.WriteAllText(unusable, "occupied");
@@ -293,10 +358,43 @@ public class ReferenceImageCacheTests : IDisposable
         var expected = File.ReadAllBytes(source);
 
         var paths = Enumerable.Range(0, 16).AsParallel().WithDegreeOfParallelism(8)
-            .Select(_ => ReferenceImageCache.Publish(source, unusable)).ToList();
+            .Select(_ => Publish(source, unusable)).ToList();
 
         paths.Distinct().Should().ContainSingle();
         File.ReadAllBytes(paths[0]).Should().Equal(expected);
+    }
+
+    /// <summary>
+    /// A fallback copy is replaced by renaming a new file into place, never rewritten in place: a reader
+    /// that opened it (a mapped image, another thread hashing it) keeps whole bytes. Shown with a hard
+    /// link: corrupt the copy's bytes through the link, publish again; the published path holds whole
+    /// bytes in a NEW file, and the link still holds the corrupt ones. An in-place write would have
+    /// repaired them through the link too.
+    /// </summary>
+    [SkippableFact]
+    public void AFallbackCopy_IsReplacedByRename_NeverRewrittenInPlace()
+    {
+        Skip.If(OperatingSystem.IsWindows(), "hard links are made with ln, which Windows does not have");
+
+        var source = Source("RenameProbe", "rename");
+        var expected = File.ReadAllBytes(source);
+        var copy = ReferenceImageCache.Publish(source, Root, privileged: true);
+        var link = Path.Combine(_tempDir, "hard-link.dll");
+        using (var ln = System.Diagnostics.Process.Start("ln", new[] { copy, link })!)
+        {
+            ln.WaitForExit();
+            Skip.If(ln.ExitCode != 0, "this file system does not offer hard links here");
+        }
+
+        using (var stream = new FileStream(link, FileMode.Open, FileAccess.Write))
+            stream.Write(new byte[64], 0, 64);
+        File.ReadAllBytes(copy).Should().NotEqual(expected, "precondition: the link shares the copy's bytes");
+
+        ReferenceImageCache.Publish(source, Root, privileged: true).Should().Be(copy);
+
+        File.ReadAllBytes(copy).Should().Equal(expected, "the published copy is whole again");
+        File.ReadAllBytes(link).Should().NotEqual(expected,
+            "the old file was replaced by a new one, not rewritten under its readers");
     }
 
     /// <summary>
@@ -313,7 +411,7 @@ public class ReferenceImageCacheTests : IDisposable
         var old = now.AddDays(-(ReferenceImageCache.StaleAfterDays + 1));
 
         // Published first: publishing prunes too, and the arranged entries must meet only the prune below.
-        var held = ReferenceImageCache.Publish(Source("HeldProbe", "held"), Root);
+        var held = Publish(Source("HeldProbe", "held"), Root);
         var heldEntry = Path.GetDirectoryName(held)!;
         IsUnder(held, Root).Should().BeTrue("non-vacuity: the trusted root is used");
         Directory.SetLastWriteTimeUtc(heldEntry, old);

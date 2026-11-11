@@ -14,19 +14,23 @@ namespace Sharpy.Compiler.Discovery;
 /// (<c>$XDG_DATA_HOME</c> or <c>~/.local/share</c> on Linux, <c>~/Library/Application Support</c> on
 /// macOS, <c>%LOCALAPPDATA%</c> on Windows). Never a shared, predictable path such as
 /// <c>/tmp/&lt;name&gt;</c>, where another local user could create the directory first and plant the
-/// file the compiler then loads. On Unix the root and its <c>sharpy/</c> parent are refused when either
-/// is a symbolic link or a pre-existing one grants any access to group or others (refused, not
-/// narrowed: running as root, a chmod would succeed on another user's directory and adopt it); the data
-/// directory above them is refused when others (not the group: private-group distributions leave a 775
-/// <c>~/.local/share</c>) can write it; a pre-existing root is refused when it holds a visible file or
-/// directory that is not a cache entry (dotfiles such as <c>.DS_Store</c> or an editor's swap file are
-/// ignored). A directory created here is created owner-only (700). .NET offers no owner check without
-/// platform interop, so a pre-existing 700 <c>sharpy/</c> owned by ANOTHER user who can write the data
-/// directory (a group member, or a root process pointed at another user's data home) is not refused;
-/// for a non-root compiler such a directory is unwritable and falls back. A refused or unusable root
-/// sends the copy to a private temporary directory (<see cref="Directory.CreateTempSubdirectory"/>: an
-/// unpredictable name, mode 700 on Unix), one per content per process, written by rename, deleted at
-/// process exit, and announced once per process (<see cref="TakeFallbackNotice"/>) with what was
+/// file the compiler then loads. A privileged process (<see cref="Environment.IsPrivilegedProcess"/>)
+/// never uses it: it could write into a directory another user planted. On Unix the root and its
+/// <c>sharpy/</c> parent are refused when either is a symbolic link or a pre-existing one grants any
+/// access to group or others (refused, not narrowed: a chmod by a privileged process would adopt another
+/// user's directory); every existing directory above them, up to <c>/</c>, is refused when group or
+/// others can write it and it is not sticky (ssh's StrictModes rule: whoever can write a directory can
+/// rename our 700 directory out of it and put their own in its place); a pre-existing root is refused
+/// when it holds a visible file or directory that is not a cache entry (dotfiles such as
+/// <c>.DS_Store</c> or an editor's swap file are ignored). A directory created here is created
+/// owner-only (700). .NET offers no owner check without platform interop, so what remains is a
+/// pre-existing 700 <c>sharpy/</c> or root owned by ANOTHER user inside an ancestor chain only they and
+/// we can write (in practice: another user's own data directory pointed at by our
+/// <c>XDG_DATA_HOME</c>); a non-privileged compiler cannot write such a directory and falls back. A
+/// refused or unusable root sends the copy to a private temporary directory
+/// (<see cref="Directory.CreateTempSubdirectory"/>: an unpredictable name, mode 700 on Unix), one per
+/// content per process, written by rename, deleted at process exit, and announced once per process
+/// (<see cref="TakeFallbackNotice"/>, logged by whichever registry loads a reference next) with what was
 /// refused and how to repair it.</para>
 ///
 /// <para><b>What.</b> An entry is <c>&lt;root&gt;/&lt;sha256 of the content&gt;/&lt;file name&gt;</c>:
@@ -96,6 +100,9 @@ internal static class ReferenceImageCache
     /// <summary>A root used in place of the per-user one by the current async flow (tests only).</summary>
     private static readonly AsyncLocal<string?> s_rootOverride = new();
 
+    /// <summary>Whether the current async flow counts as privileged (tests only; null: ask the OS).</summary>
+    private static readonly AsyncLocal<bool?> s_privilegedOverride = new();
+
     static ReferenceImageCache()
     {
         AppDomain.CurrentDomain.ProcessExit += (_, _) => DeletePrivateImages();
@@ -106,16 +113,21 @@ internal static class ReferenceImageCache
     /// — for tests, which must not write into the user's own cache. Not reachable from outside the
     /// compiler, so no user setting can point the cache at a hostile path.
     /// </summary>
-    internal static IDisposable OverrideRootForTests(string root)
+    internal static IDisposable OverrideRootForTests(string root, bool privileged = false)
     {
-        var previous = s_rootOverride.Value;
+        var previous = (s_rootOverride.Value, s_privilegedOverride.Value);
         s_rootOverride.Value = root;
+        s_privilegedOverride.Value = privileged;
         return new RootOverrideScope(previous);
     }
 
-    private sealed class RootOverrideScope(string? previous) : IDisposable
+    private sealed class RootOverrideScope((string? Root, bool? Privileged) previous) : IDisposable
     {
-        public void Dispose() => s_rootOverride.Value = previous;
+        public void Dispose()
+        {
+            s_rootOverride.Value = previous.Root;
+            s_privilegedOverride.Value = previous.Privileged;
+        }
     }
 
     /// <summary>
@@ -136,11 +148,17 @@ internal static class ReferenceImageCache
     /// Falls back to a private temporary directory when the root cannot be used; the first fallback of
     /// the process raises the notice <see cref="TakeFallbackNotice"/> hands out.
     /// </summary>
-    internal static string Publish(string sourcePath, string? root = null)
+    internal static string Publish(string sourcePath, string? root = null, bool? privileged = null)
     {
         root ??= s_rootOverride.Value ?? DefaultRoot();
         string? refusal = "no per-user data directory";
-        if (root != null)
+        if (privileged ?? s_privilegedOverride.Value ?? Environment.IsPrivilegedProcess)
+        {
+            // A privileged process can write a directory another user owns and planted, so it never
+            // shares a cache: every copy is private to the process.
+            refusal = "the compiler runs as a privileged process, which keeps no shared cache";
+        }
+        else if (root != null)
         {
             try
             {
@@ -318,8 +336,18 @@ internal static class ReferenceImageCache
         if (parent == null || dataHome == null)
             return $"'{full}' has no parent directory";
 
-        if (Directory.Exists(dataHome) && (File.GetUnixFileMode(dataHome) & UnixFileMode.OtherWrite) != 0)
-            return $"'{dataHome}' is writable by every user (repair: chmod o-w '{dataHome}')";
+        // Every existing directory above the cache, up to the file-system root, must be writable by its
+        // owner alone unless it is sticky (ssh's StrictModes rule): whoever else can write a directory
+        // can rename what is in it, our 700 directory included, and put their own in its place.
+        for (var ancestor = dataHome; ancestor != null; ancestor = Path.GetDirectoryName(ancestor))
+        {
+            if (!Directory.Exists(ancestor))
+                continue;
+            var mode = File.GetUnixFileMode(ancestor);
+            if ((mode & (UnixFileMode.GroupWrite | UnixFileMode.OtherWrite)) != 0 && (mode & UnixFileMode.StickyBit) == 0)
+                return $"'{ancestor}' is writable by group or others and not sticky, so they could replace the cache "
+                       + $"(repair, if it is yours: chmod go-w '{ancestor}')";
+        }
 
         foreach (var directory in new[] { parent, full })
         {
@@ -353,7 +381,21 @@ internal static class ReferenceImageCache
         return null;
     }
 
+    /// <summary>
+    /// Creates <paramref name="directory"/> and every missing directory above it owner-only, top down
+    /// (<c>Directory.CreateDirectory(path, mode)</c> gives the mode to the last level only; the others
+    /// would get the umask's, which under umask 002 is group-writable and so refused on the next run).
+    /// </summary>
     private static void CreateOwnerOnly(string directory)
+    {
+        var missing = new Stack<string>();
+        for (var level = Path.GetFullPath(directory); level != null && !Directory.Exists(level); level = Path.GetDirectoryName(level))
+            missing.Push(level);
+        while (missing.Count > 0)
+            CreateOwnerOnlyLevel(missing.Pop());
+    }
+
+    private static void CreateOwnerOnlyLevel(string directory)
     {
         if (OperatingSystem.IsWindows())
             Directory.CreateDirectory(directory);
