@@ -547,9 +547,9 @@ def lock_generation(repo_root: str) -> Optional[int]:
     without --acquire-lock, exit 125 in a sandboxed shell, a crash between arms). It also cannot
     see contamination from anything that bypasses the wrapper entirely, so a quiet generation is
     not proof of a quiet machine. Note that the stale-lock steal which used to make this fire in
-    practice was fixed alongside it: the lock now survives an orphaned child and a pidless
-    directory, which removes the one mechanism by which a wrapper-using peer could jump a held
-    lock.
+    practice was fixed alongside it: the lock is now a kernel flock that also waits out an
+    orphaned child (#2458), which removes the one mechanism by which a wrapper-using peer could
+    jump a held lock.
     """
     wrapper = _wrapper_path(repo_root)
     if wrapper is None:
@@ -592,8 +592,8 @@ def _run(
     into the lock this process is already holding BEFORE it is waited on (#1508). Without that,
     a held lock names only bench_ab's pid, and a SIGKILLed bench_ab leaves a 5-10 GB benchmark
     orphaned behind a lock that reads stale — so a peer is admitted beside it and the machine
-    OOMs. The pin is what makes ``is_lock_stale`` fail closed on the process that actually
-    holds the memory.
+    OOMs. The pin is what makes the next holder wait (``wait_out_previous_holder``) on the
+    process that actually holds the memory.
 
     RESIDUAL (accepted, replacing the KNOWN-UNFIXED that used to sit on ``acquire_round_lock``):
     the window between ``Popen`` returning and ``--record-child`` completing is unprotected. It
