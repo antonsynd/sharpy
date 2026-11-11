@@ -50,7 +50,7 @@ A plan implements **one non-chore group** of the round charter and lands on **on
 ## Tier check (contract §12, before any research)
 
 Find the group's row in the newest charter (`ls -t docs/process/rounds/remediation-round-*-batching.md | head -1`, §1 table and §3 row) and read its **Tier**. Then:
-- **Charter says `band`** (or no charter row and no §12 letter) — stop: it has no plan; implement it as one commit, or as the no-plan lane (`docs/process/README.md`), and say so.
+- **Charter says `band`**, or the input qualifies for the no-plan lane (`docs/process/README.md`) — stop: it has no plan; say so.
 - **Charter says `light`** and no `--full` was given — write the **light template** (below). The report names `/verify-plan <path>` as the next step; on a light plan it runs its `--adequacy` pass (Dimensions 4-design, 6 and 7 by a fresh reader, nothing else).
 - **Charter says `full`** — write the full template; the report names `/verify-plan` as the next step.
 - **No charter row** (description input, or an issue batched since the last call) — derive the tier yourself from the §12 letters (a–e), write the letter or "none → light" into `## Scope`, and say in the report that the tier is derived, not ruled.

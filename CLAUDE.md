@@ -50,7 +50,7 @@ src/Sharpy.Cli/bin/Debug/net10.0/sharpyc project x.spyproj
 11. **Fix the class, not the cell**: name the contract and its cell matrix; a repro list is a symptom report (contract §1).
 12. **Guards are falsifiable**: mutation-test every new guard (break -> red, restore -> green, both in the commit body); the exemption is never the subject; absences need a positive control; refusals are verified by direction with `run` (contract §2–§3).
 13. **One group per plan, one gate**: chores only when seam-free; output/layout changes land alone; a residue group or ≥2-axis × ≥3-value matrix builds a generator first; the tier (`band`/`light`/`full`) is a charter fact, never lowered (contract §11–§12).
-14. **File by class, label at creation** (`lane:*` + `reach:*`): a cell is a comment on its open class tracker, a new issue (cell table) only where contract §10 allows; agents append to the ledger, the lead files per wave; a DEVIATION-by-default divergence is a `docs/deviations.yaml` row ( [fidelity scope](docs/design/python-fidelity-scope.md)).
+14. **File by class, label at creation** (`lane:*` + `reach:*`): a cell is a comment on its class tracker; a new issue (cell table) only for a silent-wrong class or with no tracker; agents append to the ledger, the lead files per wave; a DEVIATION-by-default divergence is a `docs/deviations.yaml` row (contract §10, [fidelity scope](docs/design/python-fidelity-scope.md)).
 
 ## Axioms
 
@@ -65,11 +65,11 @@ Satisfy all three when free. Axiom 1 governs the implementation, not the Pythoni
 
 ## Design Anti-Patterns
 
-Avoid "add X because Python has it"; runtime type checking; wrapper types (use extension methods); multiple ways to do the same thing; magic behavior; raw .NET collections in public APIs; `Optional<T>` returns on Stdlib C# APIs for .NET consumers (nullable `T?` there; Core protocol returns are Sharpy `T?`, i.e. `Optional<T>`); throwing for expected failures.
+Avoid "add X because Python has it"; runtime type checking; wrapper types (use extension methods); multiple ways to do the same thing; magic behavior; raw .NET collections in public APIs; `Optional<T>` returns on Stdlib C# APIs for .NET consumers (nullable `T?` there); throwing for expected failures.
 
 ## Implementing Features
 
-Work in pipeline order, then LSP, then tests. Experimental features are default-off: `FeatureFlags.KnownFeatures`, `FeatureGateChecker` (SPY0331), [lifecycle](docs/design/feature-lifecycle.md).
+Work in pipeline order, then LSP, then tests. Experimental features are default-off: `FeatureFlags.KnownFeatures`, `FeatureGateChecker` (SPY0331), [lifecycle](docs/design/feature-lifecycle.md). TypeChecker vs. validators, LSP positions: architecture.
 
 **Diagnostics** (`DiagnosticCodes.cs`, errors unless noted): Lexer 0001-0099; Parser 0100-0199; Semantic 0200-0399, 0600-0699; Validation 0400-0449, 0490-0499, 0700-0799 (also warnings), warnings 0450-0489; CodeGen 0500-0599; Infra 0900-0999; Info 1000-1099.
 
@@ -94,8 +94,8 @@ Work in pipeline order, then LSP, then tests. Experimental features are default-
 .claude/scripts/dotnet-serialized test --filter "Category!=Benchmark" --logger "console;verbosity=normal"
 ```
 
-Report `passed/failed/skipped @ sha (measured)`; a red needs a control run at the base.
+Report `passed/failed/skipped @ sha (measured)`; a red needs a control run at the base. Timings, blast radius: contract §5–§6.
 
 ## Git & Release
 
-Work on `claude/<lane>` cut from `origin/dev`; land it by a PR into `dev`. Plan stages are commits of `docs/process/plans/<id>.md`: a `full` plan's stages share one plan PR and its implementation has its own; a `light` plan's stages ride in its implementation PR. A ruled `band` bug (or no charter row, no §12 letter) with a contained fix needs no plan: a PR with a generated or differential test and its mutation record. Implementation PRs list issues closed and filed. `mainline` is reached only by the owner's merge of `dev` after the bump lane. [Process](docs/process/README.md).
+Work on `claude/<lane>` cut from `origin/dev`; land it by a PR into `dev`. **One PR per plan**: its stages are commits of `docs/process/plans/<id>.md`; a `light` plan rides in its implementation PR. A bug with an owner ruling (or needing none) and a contained fix skips the plan: a PR with a generated or differential test, never for a `full` group. An implementation PR lists the issues it closes and those it filed. `mainline` is reached only by the owner's merge of `dev` after the bump lane (`/bump-version`). [Process](docs/process/README.md).

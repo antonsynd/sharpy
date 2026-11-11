@@ -385,7 +385,7 @@ Check the session's tool list; with team tools absent, delegate via background `
 
 Provide each agent with: the specific finding, the relevant plan section (including the Defect Class contract), the file(s) involved, the acceptance criterion, and — for any test — the requirement to report `broken → red / restored → green` in the commit body. Agents stage with explicit pathspecs and report `git status`; the lead re-checks `git diff --stat` after each wave.
 
-Fix agents never run `gh issue create`: anything beside their regression goes to `<scratchpad>/findings-ledger.md`, and the lead files it as `/implement-plan` › Gap Discovery says (contract §10).
+Fix agents never run `gh issue create`: anything beside their regression goes to `<scratchpad>/findings-ledger.md`, and the lead files it as `/implement-plan` › Gap Discovery says (a comment on the class tracker; a new issue only for a silent-wrong class or with no tracker).
 
 ## Final Verification
 

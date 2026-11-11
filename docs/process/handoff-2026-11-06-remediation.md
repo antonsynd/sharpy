@@ -188,7 +188,7 @@ It prints every row below with the HEAD sha and how it was measured. Baseline is
 
 ### 5.2 The cruft test (every change, before commit)
 
-**Retired 2026-11-11** (owner): the `Cruft:` trailer is no longer written; the procedure-bytes ratchet that lands with PR #2562 replaces it.
+**Retired 2026-11-11** (owner): the `Cruft:` trailer is no longer written; the procedure-bytes ratchet replaces it.
 
 A change passes when every answer is yes, or the "no" is written in the commit body with the reason. The record is one trailer line in the commit body:
 
@@ -302,7 +302,7 @@ Paste this to start:
 ```
 Read docs/process/handoff-2026-11-06-remediation.md in full (skip §10). Then read the comments on issue #2443 (gh api -X GET repos/antonsynd/sharpy/issues/2443/comments) and the R-LK row of the charter (grep -n '^| R-LK' docs/process/rounds/remediation-round-2026-09-20-batching.md). Do not read the audit or the rest of the charter unless an item sends you there.
 
-Then: (1) run the §2 re-check and report what has landed since 18a11bbb7; (2) build once with the serialized wrapper, run .claude/scripts/scorecard --since <today> --base <origin/dev at session start>, and keep the output for the recap; (3) run the P77b close-out in §4 yourself, and stop if its first check fails; (4) file the Wave-0 tooling class issue (§4, Wave 0 header) and post the scorecard on it; (5) run W0.3 then W0.2 with one Opus worker each, and W0.4 in parallel, every prompt carrying the §3 worker preamble verbatim; ~~(6) put the §5.2 cruft trailer in every commit~~ (retired 2026-11-11); (7) stop on any §5.3 rule and write the §6 recap instead of continuing.
+Then: (1) run the §2 re-check and report what has landed since 18a11bbb7; (2) build once with the serialized wrapper, run .claude/scripts/scorecard --since <today> --base <origin/dev at session start>, and keep the output for the recap; (3) run the P77b close-out in §4 yourself, and stop if its first check fails; (4) file the Wave-0 tooling class issue (§4, Wave 0 header) and post the scorecard on it; (5) run W0.3 then W0.2 with one Opus worker each, and W0.4 in parallel, every prompt carrying the §3 worker preamble verbatim; (6) put the §5.2 cruft trailer in every commit; (7) stop on any §5.3 rule and write the §6 recap instead of continuing.
 
 Landing: work on one branch cut from origin/dev and open one PR into dev when Wave 0 is ready. Do not merge it, and do not push Wave 0 work to dev or mainline; the owner merges. The close-out's plan tick is the one exception: commit it on that branch too, so it lands with the PR.
 

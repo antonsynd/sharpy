@@ -227,7 +227,7 @@ Present a brief summary to the user: result, adequacy verdict, the corrections t
 
 ### 4. Commit the stamped plan
 
-Every pass is committed, whatever its result: a NEEDS REVISION summary left in the gitignored working copy is lost with its container. Copy the working copy over `docs/process/plans/<plan-id>.md` and commit that one file on the plan's branch (`docs/process/README.md` › The stage trail: `claude/<group>-plan` with its pull request for a `full` plan; `claude/<group>`, no pull request yet, for a `light` one), then `/push`. In a fresh container, `git fetch origin && git switch <branch>` first; if a `full` plan's plan PR already merged, cut `claude/<group>-plan` again from `origin/dev` with a new PR; a plan held only as a working copy is committed here for the first time.
+Every pass is committed, whatever its result: a NEEDS REVISION summary left in the gitignored working copy is lost with its container. Copy the working copy over `docs/process/plans/<plan-id>.md` and commit that one file on the plan's branch (`docs/process/README.md` › The stage trail: `claude/<group>-plan` with its pull request for a `full` plan; `claude/<group>`, no pull request yet, for a `light` one), then `/push`:
 
 ```bash
 git add docs/process/plans/<plan-id>.md     # explicit pathspec; `git diff --cached --stat` shows this one file

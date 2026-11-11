@@ -21,7 +21,7 @@ Header (every comment):
 ## Closure comments (`gh issue close N --reason <r> --comment "…"`)
 
 - Duplicate (`--reason "not planned"`): `**Closed as a duplicate of #<home>** (batching <date> @ <sha>): identical cell (<one line>). <What carried over>; placement and ruling: the charter.`
-- Fold (`--reason "not planned"`): `**Folded into #<home>** (batching <date> @ <sha>): <which cell of which class>.`
+- Fold (`--reason "not planned"`): `**Folded into #<home>** (batching <date> @ <sha>): <which cell of which class>. Root cause recorded there: <seam>.`
 - Multi-cell split (`--reason "not planned"`): `**Folded into #<a> and #<b>**: cell 1 (<…>) is posted on #<a> under <ruling>; cell 2 (<…>) on #<b>. Closed so the class has one issue per cell.`
 - Resolved design note (`--reason completed`): `**Closed as resolved** (batching <date> @ <sha>): <where the ruling and the verified behaviour are recorded>. <Optional cleanup> is not required; file it when wanted. Adjacent open cell: #<n> (<group>).`
 
