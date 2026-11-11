@@ -182,6 +182,10 @@ internal class ModuleRegistry
             var context = ReferenceLoadContext.GetOrLoad(
                 fullPath, Visibility.OwnAssemblies, GetModulePaths().ToList());
             _loadContexts.Add(context);
+
+            // The image cache's one notice per process (its per-user root was refused), if pending.
+            if (ReferenceImageCache.TakeFallbackNotice() is { } notice)
+                _logger.LogWarning(notice, 0, 0);
             return context.Reference;
         }
     }
