@@ -534,7 +534,7 @@ public partial class NameResolutionDifferentialTests
                 ("block-scoping-while", 14, 14),
                 ("block-scoping-with", 10, 7),
                 ("loop-variable-fresh-per-iteration", 0, 80),
-                ("walrus-in-comprehension-scope", 44, 0),
+                ("walrus-in-comprehension-scope", 50, 0),
             },
             required);
 

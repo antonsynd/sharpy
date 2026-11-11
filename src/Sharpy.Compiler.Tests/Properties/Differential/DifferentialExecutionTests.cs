@@ -55,7 +55,7 @@ namespace Sharpy.Compiler.Tests.Properties.Differential;
 /// JSON report under <c>.claude/tmp/</c>, ratcheted against a reviewed allowlist. Drain-on-fix is
 /// enforced on full-pool runs (mirroring the metamorphic sweep): an allowlisted cell that no longer
 /// diverges fails the run until its entry is deleted. The test skips (no-op) when a suitable
-/// <c>python3</c> is absent; CI pins 3.12.</para>
+/// <c>python3</c> is absent; CI pins the minor in the repo-root <c>.python-version</c>.</para>
 ///
 /// <para>Classification is deliberately stderr-blind for Sharpy-ok/CPython-fail cases beyond the
 /// missing-name heuristic: every attributable Sharpy-only form is excluded up front at the AST level

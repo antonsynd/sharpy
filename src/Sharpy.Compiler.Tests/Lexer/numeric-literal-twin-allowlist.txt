@@ -1,6 +1,6 @@
 # NumericLiteralTwinTests allowlist (#2300, P68 Phase 1 — row C1).
 #
-# One row per numeric-literal spelling on which CPython 3.12 and the Sharpy lexer disagree at the
+# One row per numeric-literal spelling on which the CPython oracle (the `.python-version` minor) and the Sharpy lexer disagree at the
 # program altitude ("one numeric constant with the same value, or refused"). Format:
 #
 #   <spelling> => <Sharpy's verdict today: int:<n> | float:<IEEE bits> | refused> # #NNNN <reason>
