@@ -119,7 +119,12 @@ use_private_uv() {
   if [[ "$UV" != "$PRIVATE_UV_DIR/uv" ]]; then
     log "using a current uv in $PRIVATE_UV_DIR ($("$UV" --version | cut -d' ' -f2) is too old)"
     mkdir -p "$PRIVATE_UV_DIR"
-    curl -LsSf https://astral.sh/uv/install.sh | env UV_INSTALL_DIR="$PRIVATE_UV_DIR" UV_NO_MODIFY_PATH=1 sh >/dev/null
+    # The installer comes from astral.sh and the binary from releases.astral.sh (or GitHub
+    # releases); a network allowlist that names only the first fails here.
+    local installer; installer="$(mktemp)"
+    curl -LsSf --retry 3 --max-time 60 -o "$installer" https://astral.sh/uv/install.sh \
+      && env UV_INSTALL_DIR="$PRIVATE_UV_DIR" UV_NO_MODIFY_PATH=1 sh "$installer" >/dev/null \
+      && [[ -x "$PRIVATE_UV_DIR/uv" ]] || return 1
     UV="$PRIVATE_UV_DIR/uv"
   fi
   "$PRIVATE_UV_DIR/uv" self update >/dev/null 2>&1 || true
@@ -132,6 +137,7 @@ find_python() { (cd / && VIRTUAL_ENV='' uv_quiet python find --managed-python "$
 is_final() { [[ "$2" =~ [a-z] ]] || "$1" -c 'import sys; sys.exit(sys.version_info.releaselevel != "final")'; }
 
 pythons=("$PYTHON_VERSION"); [[ -n "$ORACLE_VERSION" && "$ORACLE_VERSION" != "$PYTHON_VERSION" ]] && pythons+=("$ORACLE_VERSION")
+PRERELEASE_NOTE=""
 for attempt in 1 2; do
   log "installing CPython ${pythons[*]} with uv $("$UV" --version | cut -d' ' -f2)"
   ok=1
@@ -143,7 +149,16 @@ for attempt in 1 2; do
   fi
   ((ok)) && break
   ((attempt == 1)) || die "uv cannot install a final CPython ${pythons[*]}; pass --python with an exact version"
-  use_private_uv
+  if ! use_private_uv; then
+    # No current uv to be had (offline, or the host is not allowed). Carry on with what the
+    # old uv installed, if it installed anything, rather than leave no environment at all.
+    for spec in "${pythons[@]}"; do
+      find_python "$spec" >/dev/null || die "cannot download a current uv (astral.sh, releases.astral.sh) and uv $("$UV" --version | cut -d' ' -f2) cannot install CPython $spec"
+    done
+    PRERELEASE_NOTE="cannot download a current uv (astral.sh, releases.astral.sh); CPython ${pythons[*]} may be a pre-release, which is not the oracle. Allow those hosts and re-run."
+    log "warning: $PRERELEASE_NOTE"
+    break
+  fi
 done
 PYTHON="$(find_python "$PYTHON_VERSION")"
 PYTHON_FULL="$("$PYTHON" -c 'import platform; print(platform.python_version())')"
@@ -206,4 +221,5 @@ log "done: .NET SDK $sdks, venv $("$VENV/bin/python" --version | cut -d' ' -f2)"
 if [[ -n "$ORACLE_VERSION" && "$ORACLE_VERSION" != "$PYTHON_VERSION" ]]; then
   log "note: CI's CPython oracle is $ORACLE_VERSION (.python-version); python$ORACLE_VERSION is installed too"
 fi
+[[ -z "$PRERELEASE_NOTE" ]] || log "warning: $PRERELEASE_NOTE"
 log "run: source .venv/sharpy-env.sh"
