@@ -146,14 +146,10 @@ internal partial class RoslynEmitter
                 }
 
             case BinaryOperator.Divide:
-                if (_context.SemanticInfo?.GetOperatorLowering(binOp)?.Kind
-                    == OperatorLoweringKind.TrueDivisionCastLeft)
-                {
-                    return Binary(SyntaxKind.DivideExpression,
-                        CastExpression(PredefinedType(Token(SyntaxKind.DoubleKeyword)), ParenthesizedExpression(left)),
-                        right);
-                }
-                return Binary(SyntaxKind.DivideExpression, left, right);
+                // x / y → Builtins.TrueDiv (zero-guarded, #2517) for numeric operands, native `/`
+                // for user/CLR operator types — read from the recorded tag inside the routing
+                // wrapper this site shares with the augmented `/=` site.
+                return GenerateTrueDivideValue(left, right, binOp);
 
             case BinaryOperator.FloorDivide:
                 // x // y → floor division with Python semantics (toward negative infinity).

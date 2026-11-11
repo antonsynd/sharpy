@@ -22,7 +22,7 @@ namespace Exponentiation0001
 #line (5, 5) - (5, 13) 12 "exponentiation_0001.spy"
             global::Sharpy.Builtins.Print(y);
 #line (6, 5) - (6, 27) 12 "exponentiation_0001.spy"
-            double z = global::System.Math.Pow(2.0d, 3.0d);
+            double z = global::Sharpy.Builtins.FloatPow(2.0d, 3.0d);
 #line (7, 5) - (7, 13) 12 "exponentiation_0001.spy"
             global::Sharpy.Builtins.Print(z);
 #line hidden

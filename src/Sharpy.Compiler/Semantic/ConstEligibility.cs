@@ -664,7 +664,8 @@ internal sealed class ConstEligibility
     /// a literal, an enum member, a reference to another exported const that is itself compile-time,
     /// and folds/conditionals over those using operators that are native regardless of operand type.
     /// <c>*</c> (str repeat), ordering comparisons (ordinal string compare), <c>//</c>, <c>%</c> and
-    /// <c>**</c> are excluded because their lowering depends on operand types this route cannot see;
+    /// <c>**</c> are excluded because their lowering depends on operand types this route cannot see,
+    /// and <c>/</c> is admitted only over a non-zero literal divisor (any other divisor is guarded, #2517);
     /// an integer const answers from its folded value instead, which is exact.
     /// </summary>
     internal static bool IsExportedConstCompileTime(
@@ -690,8 +691,11 @@ internal sealed class ConstEligibility
 
     private static bool IsOperandTypeIndependentNativeOperator(Expression node) => node switch
     {
-        BinaryOp binary => binary.Operator is BinaryOperator.Add or BinaryOperator.Subtract
-            or BinaryOperator.Divide
+        // `/` is native only over a non-zero literal divisor — the checker's rule, read from the same
+        // predicate (#2517); any other divisor routes through the guarded Builtins.TrueDiv.
+        BinaryOp binary => binary.Operator == BinaryOperator.Divide
+            ? TrueDivisionRules.IsNonZeroLiteralDivisor(binary.Right)
+            : binary.Operator is BinaryOperator.Add or BinaryOperator.Subtract
             or BinaryOperator.Equal or BinaryOperator.NotEqual
             or BinaryOperator.And or BinaryOperator.Or
             or BinaryOperator.BitwiseAnd or BinaryOperator.BitwiseOr or BinaryOperator.BitwiseXor

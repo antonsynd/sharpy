@@ -334,7 +334,7 @@ namespace Sharpy.Stdlib.Tests.Spy.Random.RandomAdditional2Tests
             }
 
 #line (153, 5) - (153, 40) 12 "src/Sharpy.Stdlib.Tests/Spy/random/random_additional2_tests.spy"
-            Xunit.Assert.True(global::Sharpy.Builtins.Abs(total / n - 0.5d) < 0.05d);
+            Xunit.Assert.True(global::Sharpy.Builtins.Abs(global::Sharpy.Builtins.TrueDiv(total, n) - 0.5d) < 0.05d);
 #line hidden
         }
 

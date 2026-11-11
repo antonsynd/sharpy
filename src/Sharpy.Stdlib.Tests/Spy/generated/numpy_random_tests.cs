@@ -86,7 +86,7 @@ namespace Sharpy.Stdlib.Tests.Spy.Numpy.NumpyRandomTests
 #line (55, 5) - (55, 24) 12 "src/Sharpy.Stdlib.Tests/Spy/numpy/numpy_random_tests.spy"
             var total = np.Sum(arr);
 #line (56, 5) - (56, 28) 12 "src/Sharpy.Stdlib.Tests/Spy/numpy/numpy_random_tests.spy"
-            var mean = total / arr.Size;
+            var mean = global::Sharpy.Builtins.TrueDiv(total, arr.Size);
 #line (57, 5) - (57, 29) 12 "src/Sharpy.Stdlib.Tests/Spy/numpy/numpy_random_tests.spy"
             Xunit.Assert.True(global::Sharpy.Builtins.Abs(mean) < 0.05d);
 #line hidden
@@ -139,7 +139,7 @@ namespace Sharpy.Stdlib.Tests.Spy.Numpy.NumpyRandomTests
 #line (80, 5) - (80, 24) 12 "src/Sharpy.Stdlib.Tests/Spy/numpy/numpy_random_tests.spy"
             var total = np.Sum(arr);
 #line (81, 5) - (81, 28) 12 "src/Sharpy.Stdlib.Tests/Spy/numpy/numpy_random_tests.spy"
-            var mean = total / arr.Size;
+            var mean = global::Sharpy.Builtins.TrueDiv(total, arr.Size);
 #line (82, 5) - (82, 35) 12 "src/Sharpy.Stdlib.Tests/Spy/numpy/numpy_random_tests.spy"
             Xunit.Assert.True(global::Sharpy.Builtins.Abs(mean - 10.0d) < 0.2d);
 #line hidden

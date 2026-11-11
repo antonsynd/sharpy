@@ -508,6 +508,82 @@ def main() -> None:
         info.GetOperatorLowering(assignment)!.Kind.Should().Be(expected);
     }
 
+    // `/` (#2517): the operand-type axis × the divisor-spelling axis, crossed in code. A divisor that is a
+    // non-zero literal cannot trap and keeps the native operator (TrueDivisionCastLeft for integers, no record
+    // otherwise); every other divisor — a name, a zero literal, a negative zero — is the guarded TrueDiv.
+    private static readonly (string Decl, string Name, bool Integer, string One, string Zero)[] DivisionOperands =
+    {
+        ("a: int = 7", "a", true, "2", "0"),
+        ("a: long = 7", "a", true, "2L", "0L"),
+        ("a: float = 7.0", "a", false, "2.0", "0.0"),
+        ("a: float32 = 7.0f", "a", false, "2.0f", "0.0f"),
+        ("a: decimal = 7m", "a", false, "2m", "0m"),
+    };
+
+    public static IEnumerable<object?[]> DivisionCells()
+    {
+        foreach (var (decl, name, integer, one, zero) in DivisionOperands)
+        {
+            var guarded = integer ? OperatorLoweringKind.GuardedTrueDivisionCastLeft : OperatorLoweringKind.GuardedTrueDivision;
+            OperatorLoweringKind? literal = integer ? OperatorLoweringKind.TrueDivisionCastLeft : null;
+            yield return new object?[] { decl, name + " / " + name, guarded };
+            yield return new object?[] { decl, name + " / " + zero, guarded };
+            yield return new object?[] { decl, name + " / -" + zero, guarded };
+            yield return new object?[] { decl, name + " / (" + zero + ")", guarded };
+            yield return new object?[] { decl, name + " / " + one, literal };
+            yield return new object?[] { decl, name + " / -" + one, literal };
+            yield return new object?[] { decl, one + " / " + name, guarded };
+        }
+        // Mixed integer / float: the float operand makes it the guarded float division, or native over a literal.
+        yield return new object?[] { "a: int = 7\n    f: float = 2.0", "a / f", OperatorLoweringKind.GuardedTrueDivision };
+        yield return new object?[] { "a: int = 7", "a / 2.0", null };
+    }
+
+    [Theory]
+    [MemberData(nameof(DivisionCells))]
+    public void TrueDivide_RecordsItsFamilyFromOperandTypesAndDivisor(string decls, string expr, OperatorLoweringKind? expected)
+    {
+        var (module, info, errors) = Analyze($@"
+def main() -> None:
+    {decls}
+    r = {expr}
+");
+        errors.Should().BeEmpty();
+        OperatorLoweringKind? recorded = info.GetOperatorLowering(SingleBinaryOp(module, BinaryOperator.Divide))?.Kind;
+        recorded.Should().Be(expected, "the recorded division family (null = no record, native `/`)");
+    }
+
+    [Theory]
+    [InlineData("f: float = 7.5", "f /= g", OperatorLoweringKind.GuardedTrueDivision)]
+    [InlineData("f: float = 7.5", "f /= 0", OperatorLoweringKind.GuardedTrueDivision)]
+    [InlineData("s: float32 = 7.5f", "s /= 0.0f", OperatorLoweringKind.GuardedTrueDivision)]
+    [InlineData("d: decimal = 7m", "d /= 0m", OperatorLoweringKind.GuardedTrueDivision)]
+    public void AugmentedTrueDivide_RecordsTheSameFamilyAsTheBinaryForm(string decls, string statement, OperatorLoweringKind expected)
+    {
+        var (module, info, errors) = Analyze($@"
+def main() -> None:
+    g: int = 2
+    {decls}
+    {statement}
+");
+        errors.Should().BeEmpty();
+        var assignment = Find<Assignment>(module).Single(a => a.Operator == AssignmentOperator.SlashAssign);
+        info.GetOperatorLowering(assignment)!.Kind.Should().Be(expected);
+    }
+
+    [Fact]
+    public void AugmentedTrueDivide_NonZeroLiteral_RecordsNothing()
+    {
+        var (module, info, errors) = Analyze(@"
+def main() -> None:
+    f: float = 7.5
+    f /= 2
+");
+        errors.Should().BeEmpty();
+        var assignment = Find<Assignment>(module).Single(a => a.Operator == AssignmentOperator.SlashAssign);
+        info.GetOperatorLowering(assignment).Should().BeNull();
+    }
+
     [Fact]
     public void AugmentedModulo_NarrowClrInteger_RecordsFlooredModulo()
     {

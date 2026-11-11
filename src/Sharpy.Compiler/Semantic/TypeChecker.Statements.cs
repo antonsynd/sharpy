@@ -505,14 +505,9 @@ internal partial class TypeChecker
 
             // Record operator lowering for augmented assignments (#1623).
             if (assignment.Operator == AssignmentOperator.SlashAssign
-                && resultType == SemanticType.Double
-                && !PrimitiveCatalog.IsDecimal(targetType) && !PrimitiveCatalog.IsDecimal(valueType)
-                && !PrimitiveCatalog.IsFloatingPoint(targetType) && !PrimitiveCatalog.IsFloatingPoint(valueType)
-                && targetType is not UserDefinedType and not GenericType
-                && valueType is not UserDefinedType and not GenericType)
+                && ClassifyTrueDivision(targetType, valueType, resultType, assignment.Value) is { } divisionKind)
             {
-                _semanticInfo.SetOperatorLowering(assignment,
-                    new OperatorLowering(OperatorLoweringKind.TrueDivisionCastLeft));
+                _semanticInfo.SetOperatorLowering(assignment, new OperatorLowering(divisionKind));
             }
 
             if (assignment.Operator is AssignmentOperator.LeftShiftAssign or AssignmentOperator.RightShiftAssign
