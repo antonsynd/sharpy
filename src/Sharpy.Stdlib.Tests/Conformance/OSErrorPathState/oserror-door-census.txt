@@ -99,6 +99,7 @@ type System.ArgumentException :: System.ArgumentException.ArgumentException(stri
 type System.ArgumentNullException :: System.ArgumentNullException.ArgumentNullException(string)
 type System.ArgumentNullException :: System.ArgumentNullException.ArgumentNullException(string, string)
 type System.ArgumentOutOfRangeException :: System.ArgumentOutOfRangeException.ArgumentOutOfRangeException(string)
+type System.ArgumentOutOfRangeException :: System.ArgumentOutOfRangeException.ArgumentOutOfRangeException(string, object, string)
 type System.Byte :: byte.ToString(string)
 type System.Char :: char.IsSurrogatePair(string, int)
 type System.Console :: System.Console.Write(string)

@@ -28,6 +28,26 @@ internal static class ProbeRoster
     private const string Os = "Sharpy.OsModule.OsModuleModule.";
     private const string OsPath = "Sharpy.OsPathModule.OsPathModuleModule.";
     private const string Shutil = "Sharpy.ShutilModule.ShutilModuleModule.";
+    private const string PathErrors = "Sharpy.PathErrors.";
+
+    /// <summary>
+    /// D1's doors, one row per (requirement, door shape): the requirement's python operation is the
+    /// twin. A <i>check</i> door raises python's class or nothing (python's operation fails or
+    /// succeeds); a <i>translate</i> door, handed a CLR <c>IOException</c> the table cannot classify,
+    /// returns python's class where python's operation fails and plain <c>OSError</c> where it
+    /// succeeds (the twin performs the operation, then raises <c>OSError</c>).
+    /// </summary>
+    private static readonly (PathRequirement Requirement, string Door, string Snake, string Python)[] SinglePathDoors =
+    {
+        (PathRequirement.NeedsFileToRead, "NeedsFileToRead", "needs_file_to_read", "open(@0).close()"),
+        (PathRequirement.NeedsFileToWrite, "NeedsFileToWrite", "needs_file_to_write", "open(@0, \"w\").close()"),
+        (PathRequirement.CreatesExclusively, "CreatesExclusively", "creates_exclusively", "open(@0, \"x\").close()"),
+        (PathRequirement.RemovesFile, "RemovesFile", "removes_file", "os.remove(@0)"),
+        (PathRequirement.CreatesDir, "CreatesDir", "creates_dir", "os.mkdir(@0)"),
+        (PathRequirement.RemovesDir, "RemovesDir", "removes_dir", "os.rmdir(@0)"),
+        (PathRequirement.NeedsDir, "NeedsDir", "needs_dir", "os.listdir(@0)"),
+        (PathRequirement.NeedsAny, "NeedsAny", "needs_any", "os.stat(@0)"),
+    };
 
     /// <summary>The import header of each module's two programs (Sharpy, python).</summary>
     public static readonly IReadOnlyDictionary<string, (string Sharpy, string Python)> Headers =
@@ -46,6 +66,7 @@ internal static class ProbeRoster
             ["xml"] = ("import xml", "import xml.etree.ElementTree as xml"),
             ["toml"] = ("import toml", "import tomllib"),
             ["configparser"] = ("import configparser", "import configparser"),
+            ["PathErrors"] = ("from sharpy import PathErrors\nfrom system.io import IOException", "import os"),
         };
 
     private static Probe P(string id, string entry, string module, PathRequirement requirement, string[] placeholders, string sharpy, string? python = null)
@@ -56,6 +77,10 @@ internal static class ProbeRoster
 
     public static readonly IReadOnlyList<Probe> Probes = new[]
     {
+        // ---- PathErrors (Core, D1): the classifier's own doors against python's operations ----
+        P("PathErrors.rename", PathErrors + "Rename(string, string)", "PathErrors", PathRequirement.Rename, new[] { "src", "dst" },
+            "PathErrors.rename(@0, @1)", "os.rename(@0, @1)"),
+
         // ---- builtins (Core) ----
         P("open(r)", Open1, "builtins", PathRequirement.NeedsFileToRead, Path0, "open(@0).close()"),
         P("open(w)", Open2, "builtins", PathRequirement.NeedsFileToWrite, Path0, "open(@0, \"w\").close()"),
@@ -157,7 +182,13 @@ internal static class ProbeRoster
         P("ConfigParser.write_to_file", "Sharpy.ConfigParser.WriteToFile(string, bool)", "configparser", PathRequirement.NeedsFileToWrite, new[] { "filename" },
             "configparser.ConfigParser().write_to_file(@0)", "configparser.ConfigParser().write(open(@0, \"w\"))"),
 
-    };
+    }.Concat(SinglePathDoors.SelectMany(d => new[]
+    {
+        P("PathErrors.check_" + d.Snake, PathErrors + "Check" + d.Door + "(string)", "PathErrors", d.Requirement, Path0,
+            "PathErrors.check_" + d.Snake + "(@0)", d.Python),
+        P("PathErrors.translate_" + d.Snake, PathErrors + "Translate" + d.Door + "(System.Exception, string)", "PathErrors", d.Requirement, Path0,
+            "raise PathErrors.translate_" + d.Snake + "(IOException(\"probe\"), @0)", d.Python + "\nraise OSError(\"probe\")"),
+    })).ToArray();
 
     /// <summary>
     /// Path positions (axis 2): <c>entry :: parameter</c> → null for <c>path</c> (a placeholder of ≥ 1 probe
@@ -191,6 +222,12 @@ internal static class ProbeRoster
         foreach (var m in new[] { "Remove(string)", "Mkdir(string)", "Makedirs(string, bool)", "Rmdir(string)", "Listdir(string)", "Chdir(string)", "Stat(string)", "PathExists(string)" })
             Path(Os + m, "path");
         Path(Os + "Rename(string, string)", "src", "dst");
+        Path(PathErrors + "Rename(string, string)", "src", "dst");
+        foreach (var door in SinglePathDoors)
+        {
+            Path(PathErrors + "Check" + door.Door + "(string)", "path");
+            Path(PathErrors + "Translate" + door.Door + "(System.Exception, string)", "path");
+        }
         Path(Os + "Walk(string)", "top");
         foreach (var m in new[] { "Exists(string)", "Isfile(string)", "Isdir(string)", "Getsize(string)" })
             Path(OsPath + m, "path");
