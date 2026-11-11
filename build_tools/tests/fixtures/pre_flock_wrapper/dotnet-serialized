@@ -1,0 +1,537 @@
+#!/usr/bin/env bash
+# Serialized dotnet wrapper — ensures only one dotnet build/test runs at a time.
+# Uses mkdir-based locking (atomic on all platforms) so concurrent agents queue
+# instead of OOM-ing the system.
+#
+# Drop-in replacement for `dotnet`: same arguments, same stdout/stderr, same exit code, except
+# that concurrent calls block until the lock is free and stdout starts with one extra line:
+#   dotnet-serialized: log -> <abs>/.claude/tmp/dotnet-serialized-<yyyymmdd-HHMMSS>-<pid>.log
+# printed before queueing. That file is THIS invocation's own tee of stdout+stderr. The path is
+# also written to .claude/tmp/dotnet-serialized-latest.path, which names the NEWEST invocation and
+# so may be a peer's: parse your own line when you can. Read the log instead of re-running a suite.
+# A fixed slot name let two concurrent runs share a log (#2458, audit §5); do not bring one back.
+# Logs older than 7 days in that directory, and only there, are deleted at each start.
+#
+# WHY ONE AT A TIME (moved from CLAUDE.md "Serialized dotnet"). A whole-solution test run peaks at
+# 18.5 GB tree RSS on an otherwise idle machine (16.1 GB in the Compiler testhost, most of it outside
+# its 5 GB managed-heap limit) and at 8.9 GB under the usual load -- the GC grows into free memory
+# (measured 2026-10-06 @ a823001a6 / 8a15ce512, swap flat both times, #2256); two in parallel will
+# swap the machine. Enforced for agents by the PreToolUse hook .claude/hooks/enforce-dotnet-serialized.sh.
+# In Claude Code, every dotnet call (this wrapper included) hangs in the default sandbox, and gh fails
+# TLS certificate verification there: run both with dangerouslyDisableSandbox: true.
+#
+# Usage:  .claude/scripts/dotnet-serialized build sharpy.sln --nologo -v q
+#         .claude/scripts/dotnet-serialized test --filter "FullyQualifiedName~Lexer"
+#
+# GATE ON A PROJECT, NOT ON sharpy.sln (#1384).
+#
+# `dotnet test sharpy.sln` runs all five test projects in ONE invocation and prints one summary
+# line PER ASSEMBLY, in COMPLETION order, with each assembly's events interleaved in the log —
+# Sharpy.Compiler.Tests finishes last (~27 min @ af6f30901) while the others report in the first ~4. Reading
+# the wrong line, or reading before the slow one lands, attributes a small project's tally to the
+# big one. That is what #1384 recorded as a ~9,400-cell undercount; measured at 43c7dd07c, both
+# invocations discover the SAME 13,422 Compiler.Tests cells (identical name sets) and both execute
+# 13,434 including all 3 skips, so nothing is being dropped.
+#
+# The real reason to prefer per-project is cross-project interference, which the same measurement
+# found: Sharpy.Cli.Tests' E2E tests compile and RUN programs that load Sharpy.Stdlib.dll, and under
+# a solution-level run — with Sharpy.Stdlib.Tests executing concurrently — one of them failed with
+# "Could not load file or assembly 'Sharpy.Stdlib'". It passes 6/6 in isolation. A solution-level
+# red can therefore be someone else's concurrency, and a solution-level green is only as trustworthy
+# as the line you happened to read.
+
+# shellcheck source=dotnet-lock-env.sh
+source "$(dirname "$0")/dotnet-lock-env.sh"
+# A queued run must outlast whatever holds the lock, or it exits 124 for a structural reason, not
+# a hung peer (#1273: a 15-minute timeout behind an ~18-minute suite). The ceiling is one whole-
+# solution gate plus one more Compiler.Tests run, measured (#2179): Compiler.Tests is 1641 s at
+# the committed maxParallelThreads 2 and 2042 s at 1 (trx span @ af6f30901; 5325 s at 1 before
+# P41 @ 116c6e29d), and the other four projects add ~210 s (P0 control @ 116c6e29d) — so one gate
+# (~1850 s) plus one N=1 Compiler.Tests run (an N=1 matrix cell, 2042 s) is ~3900 s. 4500 s keeps
+# ~15% over that; the old 2700 s was already short of the pre-P41 suite (two queued runs exited
+# 124 behind one on 2026-10-05).
+#
+# The knobs below are env-overridable with their production values as defaults, purely so the
+# regression harness (build_tools/tests/test_dotnet_serialized_lock.py) can exercise the lock
+# protocol in seconds instead of the production timeouts. Nothing in normal use sets them, so
+# default behavior is unchanged; a test that had to wait out the real timeouts would never be
+# written, and this protocol has now been fixed three times without one (#1508).
+TIMEOUT="${DOTNET_SERIALIZED_TIMEOUT:-4500}"  # 75 minutes
+
+# Stall watchdog (#1481). A holder whose child is ALIVE but has stopped producing output is
+# wedged, not working, and the lock's own correctness keeps it that way: is_lock_stale fails
+# closed on a live child, so nobody can reclaim. On 2026-08-12 one such holder held this lock
+# 2h26m and every queued agent died at the waiter timeout above.
+#
+# Progress is judged by the tee log's MTIME, not by wall clock: a wall-clock cap tight enough to
+# catch a hang would kill honest 17-minute runs, and the log is a progress signal the holder
+# already produces.
+#
+# 1728 = 3 x 576, floored at 600, where "max quiet gap 576s @ f20e180dc (measured)" comes from
+# sampling the log's mtime every 10s across a full Sharpy.Compiler.Tests run to completion
+# INCLUDING the teardown tail. The measurement is the load-bearing part, because a GREEN dotnet
+# test is very nearly silent: that run (13,722 passed, 14m40s) wrote 863 bytes total in FOUR
+# writes — the header, two SKIP notices at t+577s, and the summary at t+883s. Any threshold
+# under ~10 minutes kills healthy suites. Do NOT tighten this without re-measuring; the gap is a
+# property of how little dotnet says when nothing is wrong, not of how fast the machine is.
+#
+# Re-measured after P41 (#2257), whole solution @ 8a15ce512, 2026-10-06: at DEFAULT verbosity the
+# longest silence of a green gate is 1566 s (from t+249 s, inside Compiler.Tests; wall 1815 s),
+# so a default-verbosity gate clears 1728 by only 162 s. The 3x rule would put the window at
+# 4698 s, past the waiters' 4500 s TIMEOUT, so the cure is the documented gate command instead:
+# it carries --logger "console;verbosity=normal", which prints a line per test, and its longest
+# silence is 78 s (the #2256 harness run @ a823001a6, 3 s sampling) -- 22x inside 1728. A test run
+# without a console logger is outside the documented command and can trip this window.
+STALL_SECONDS="${DOTNET_SERIALIZED_STALL_SECONDS:-1728}"
+WATCHDOG_POLL="${DOTNET_SERIALIZED_WATCHDOG_POLL:-30}"
+WATCHDOG_GRACE="${DOTNET_SERIALIZED_WATCHDOG_GRACE:-10}"
+
+SCRIPT_DIR="$(cd "$(dirname "$0")/.." && pwd)"
+LOG_DIR="${DOTNET_SERIALIZED_LOG_DIR:-${SCRIPT_DIR}/tmp}"
+LOG_POINTER_FILE="${LOG_DIR}/dotnet-serialized-latest.path"
+LOG_RETENTION_MINUTES=10080  # 7 days
+
+cleanup() {
+    rm -rf "$LOCK_DIR" 2>/dev/null
+}
+
+bump_generation() {
+    local gen
+    gen=$(cat "$GENERATION_FILE" 2>/dev/null)
+    case "$gen" in ''|*[!0-9]*) gen=0 ;; esac
+    echo $((gen + 1)) > "$GENERATION_FILE"
+}
+
+# A lock is stale only when NOTHING it protects is still running, and the owner SHELL is a
+# poor proxy for that: kill an agent — or let it hit a usage limit — and its dotnet/testhost
+# children are reparented to init and keep consuming their 5-10 GB while the shell that
+# started them is gone. Judging staleness by the shell alone therefore FAILS OPEN in exactly
+# the case the lock exists for: the next wrapper read "owner PID gone", removed the lock, and
+# admitted a SECOND concurrent run. Reproduced 2026-08-12 in an isolated harness (fake HOME,
+# fake dotnet), with 13 orphaned dotnet processes (PPID 1) on the machine at the time. So the
+# dotnet process records its own PID below, and a live child keeps the lock alive.
+#
+# KNOWN-UNFIXED: PID reuse — a recycled owner or child PID reads as live and wedges peers for
+# the full TIMEOUT. Bounded by that timeout rather than by correctness.
+#
+# The probability is UNMEASURED, and deliberately so: measuring it means forcing PID wraparound
+# on a shared development machine, which would disrupt every other agent's live run to quantify
+# a hazard whose mitigation (the TIMEOUT bound above) is already in place and does not depend on
+# the number. Declined by the 2026-08-13 INFRA batch (#1481) — recorded here rather than left as
+# an unattributed "unmeasured", so the next reader knows a person decided this and why, instead
+# of assuming nobody looked.
+is_lock_stale() {
+    local child_file="$LOCK_CHILD_FILE"
+    if [ -f "$child_file" ]; then
+        local child_pid
+        child_pid=$(cat "$child_file" 2>/dev/null)
+        if [ -n "$child_pid" ] && kill -0 "$child_pid" 2>/dev/null; then
+            return 1
+        fi
+    fi
+
+    local pid_file="$LOCK_PID_FILE"
+    if [ ! -f "$pid_file" ]; then
+        # A lock directory with no pid file is usually one taken MICROSECONDS ago, not an
+        # abandoned one: mkdir is the atomic acquire and the owner writes its pid immediately
+        # after. Treating that as stale is a thundering-herd bug, because every peer that just
+        # lost the mkdir race checks at exactly the moment the winner has not written yet —
+        # they are synchronised on it. Measured 2026-08-12 with 8 concurrent wrappers: FOUR ran
+        # at once. Re-check after a beat; the window is microseconds wide, so a directory still
+        # pidless a second later really is abandoned.
+        sleep 1
+        [ -f "$pid_file" ] && return 1
+        return 0
+    fi
+    local lock_pid
+    lock_pid=$(cat "$pid_file" 2>/dev/null)
+    if [ -z "$lock_pid" ]; then
+        return 0
+    fi
+    if ! kill -0 "$lock_pid" 2>/dev/null; then
+        return 0
+    fi
+    return 1
+}
+
+acquire_lock() {
+    # The pid recorded in the lock is the pid of whatever will HOLD it — this wrapper normally,
+    # but bench_ab under --acquire-lock. Recording the short-lived wrapper's pid for a held lock
+    # would leave one whose owner is already gone, which is the fail-open this file just fixed.
+    #
+    # That is only the OWNER pid. The dotnet child is recorded separately: by the `bash -c` line
+    # below for this wrapper's own runs, and by the --record-child verb above for a caller that
+    # holds the lock and invokes dotnet itself. is_lock_stale consults the child first, so a
+    # holder that records neither is protected only for as long as its own process lives.
+    local owner_pid="${1:-$$}"
+    local waited=0
+    local nodir_failures=0
+    while ! mkdir "$LOCK_DIR" 2>/dev/null; do
+        if [ ! -d "$LOCK_DIR" ]; then
+            # mkdir failed yet nothing holds the lock: this shell cannot write the
+            # lock path at all (sandboxed caller). Spinning would loop forever —
+            # fail fast instead. Allow a couple of retries for the race where the
+            # owner released between our mkdir and this check.
+            nodir_failures=$((nodir_failures + 1))
+            if [ "$nodir_failures" -ge 3 ]; then
+                echo "ERROR: cannot create $LOCK_DIR though no one holds it." >&2
+                echo "This shell cannot write the lock path — it is sandboxed." >&2
+                echo "Re-run this exact command with the sandbox disabled" >&2
+                echo "(dangerouslyDisableSandbox: true). Do NOT fall back to raw" >&2
+                echo "dotnet build/test: unserialized concurrent runs OOM the machine." >&2
+                exit 125
+            fi
+            sleep 1
+            continue
+        fi
+        nodir_failures=0
+        reap_orphan
+        if is_lock_stale; then
+            echo "WARNING: Removing stale dotnet lock (owner PID gone)." >&2
+            rm -rf "$LOCK_DIR" 2>/dev/null
+            if [ -d "$LOCK_DIR" ]; then
+                # Could not remove it. A sandboxed shell can neither signal-probe
+                # (kill -0 is denied, so a LIVE owner reads as gone) nor remove the
+                # lock — treat it as live and wait politely instead of hot-spinning.
+                sleep 2
+                waited=$((waited + 2))
+            fi
+            continue
+        fi
+        if [ "$waited" -ge "$TIMEOUT" ]; then
+            echo "ERROR: Timed out waiting for dotnet lock after $((TIMEOUT/60)) minutes." >&2
+            echo "Lock owner PID: $(cat "$LOCK_PID_FILE" 2>/dev/null || echo unknown)" >&2
+            echo "Run: .claude/scripts/dotnet-serialized --holder-status" >&2
+            echo "Then REPORT to the lead. Do not kill a holder you did not start." >&2
+            exit 124
+        fi
+        sleep 2
+        waited=$((waited + 2))
+    done
+    echo "$owner_pid" > "$LOCK_PID_FILE"
+    pwd -P > "$LOCK_CWD_FILE"
+    date +%s > "$LOCK_STARTED_FILE"
+    bump_generation
+    if [ "$owner_pid" = "$$" ]; then
+        trap cleanup EXIT
+    fi
+}
+
+WATCHDOG_MARKER="$LOCK_DIR/watchdog-killed"
+
+# Signal a process AND everything descended from it, children first.
+#
+# Signalling the recorded child alone is not enough, and the failure is silent rather than
+# obvious: dotnet spawns testhost children that INHERIT the pipe to `tee`, so tee keeps waiting
+# for EOF that never comes and the wrapper hangs exactly as long as the grandchildren live —
+# the wedge the watchdog exists to end. (Measured with a stub whose `sleep` grandchild held the
+# pipe for the full 120s after its parent was killed.) They also keep their share of the 5-10 GB.
+kill_tree() {
+    local pid="$1" sig="$2" kid
+    case "$pid" in ''|*[!0-9]*) return 0 ;; esac
+    for kid in $(ps -A -o pid=,ppid= 2>/dev/null | awk -v p="$pid" '$2 == p { print $1 }'); do
+        kill_tree "$kid" "$sig"
+    done
+    kill "$sig" "$pid" 2>/dev/null
+}
+
+file_mtime() {
+    # There is no portable spelling: GNU/Linux wants -c %Y, BSD/macOS wants -f %m — and the GNU
+    # spelling MUST come first. BSD stat rejects -c (illegal option, non-zero) and falls through,
+    # but GNU stat does NOT reject -f: it reads -f as "filesystem status" and prints a multi-line
+    # block with exit 0, so a -f-first order never falls through on Linux, and the caller's
+    # [!0-9] guard then reads that block as "no progress" every poll — the watchdog never fires
+    # on Linux (measured red on CI 2026-08-15: the four kill cells timed out because of this).
+    stat -c %Y "$1" 2>/dev/null || stat -f %m "$1" 2>/dev/null
+}
+
+file_size() {
+    stat -c %s "$1" 2>/dev/null || stat -f %z "$1"
+}
+
+# Holder-side monitor: only the holder knows both its own log file and its own child.
+#
+# It does NOT release the lock. Killing the child ends the tee pipeline, the main path resumes,
+# reads the marker, forces the exit code and releases through the existing cleanup — one release
+# site, no double-release race with a monitor that might also be mid-decision.
+#
+# It writes nothing to stdout/stderr (it is started with both redirected to /dev/null): a
+# backgrounded job inherits the caller's pipes, and its stray `sleep` would then hold the
+# wrapper's stdout open for up to one poll interval AFTER the wrapper exits, hanging any caller
+# that reads to EOF. The marker file carries everything the main path needs to report.
+#
+# It guards exactly the run it was started for and dies with its wrapper (#2076). The main path
+# kills it only when the pipeline returns, so a wrapper killed mid-run (a caller's timeout, an
+# agent killed at a usage limit) used to leave it running, reparented to init — and because it
+# re-read the GLOBAL $LOCK_CHILD_FILE every poll, a LATER holder's child kept it alive forever,
+# and it then judged that holder's healthy run by its own dead run's log mtime and killed it
+# (reported as exit 4). With no holder at all it looped too: once the lock dir is gone the empty
+# read hits `continue`, forever. Hence both halves below: exit once the wrapper ($1) is gone, and
+# record the child pid ONCE, while the lock still names this wrapper, and never follow the pointer.
+watchdog() {
+    # A subshell must never fire the holder's cleanup trap.
+    trap - EXIT
+    local wrapper_pid="$1" child_pid="" recorded last now quiet
+    while :; do
+        sleep "$WATCHDOG_POLL"
+        # The wrapper is gone: nobody is left to report a kill, and the lock may already
+        # belong to someone else.
+        kill -0 "$wrapper_pid" 2>/dev/null || return 0
+        if [ -z "$child_pid" ]; then
+            # The child writes its own pid just after this monitor starts (see the `bash -c`
+            # line below), so the first poll normally finds it. Accept it only while the lock is
+            # still this wrapper's: after that the pointer names someone else's run.
+            [ "$(cat "$LOCK_PID_FILE" 2>/dev/null)" = "$wrapper_pid" ] || return 0
+            recorded=$(cat "$LOCK_CHILD_FILE" 2>/dev/null)
+            case "$recorded" in ''|*[!0-9]*) continue ;; esac
+            child_pid="$recorded"
+        fi
+        # Child finished on its own: nothing left to watch, and staying alive would only risk
+        # signalling a recycled pid.
+        kill -0 "$child_pid" 2>/dev/null || return 0
+        [ -f "$LOG_FILE" ] || continue
+        last=$(file_mtime "$LOG_FILE")
+        case "$last" in ''|*[!0-9]*) continue ;; esac
+        now=$(date +%s)
+        quiet=$((now - last))
+        if [ "$quiet" -gt "$STALL_SECONDS" ]; then
+            echo "$child_pid $quiet" > "$WATCHDOG_MARKER"
+            kill_tree "$child_pid" -TERM
+            sleep "$WATCHDOG_GRACE"
+            kill_tree "$child_pid" -KILL
+            return 0
+        fi
+    done
+}
+
+watchdog_report() {
+    echo ""
+    echo "ERROR: watchdog killed PID $1 after $2s of log silence (threshold ${STALL_SECONDS}s)."
+    echo "This run DID NOT complete and must not be treated as a pass."
+    echo "dotnet test HANDLES SIGTERM AND EXITS 0 — measured on the 2026-08-12 incident at 181"
+    echo "failures with EXIT=0 — so the killed process's own exit code is meaningless here."
+    echo "This wrapper reports 4 unconditionally instead."
+    echo "Partial output: $LOG_FILE"
+}
+
+# Orphan reaper (#2458). A holder killed mid-run (a caller's timeout, a usage limit) leaves its
+# dotnet child reparented to init, and its watchdog exits with it (#2076), so nothing judges that
+# child again: is_lock_stale keeps the lock on the live child and every waiter sat out TIMEOUT.
+# A waiter therefore applies the watchdog's own test on the dead holder's behalf, and kills the
+# child only when ALL hold: the child is alive and is a dotnet process (a recycled pid is not),
+# the holder pid is dead (a live holder's own watchdog judges its run), and the holder's
+# published log exists and has been silent past STALL_SECONDS (a lock-only holder publishes
+# none, so is never reaped). Returns 0 when it killed; the caller then re-judges staleness.
+reap_orphan() {
+    local child owner log last quiet
+    child=$(cat "$LOCK_CHILD_FILE" 2>/dev/null)
+    case "$child" in ''|*[!0-9]*) return 1 ;; esac
+    kill -0 "$child" 2>/dev/null || return 1
+    ps -o command= -p "$child" 2>/dev/null | grep -q dotnet || return 1
+    owner=$(cat "$LOCK_PID_FILE" 2>/dev/null)
+    case "$owner" in ''|*[!0-9]*) return 1 ;; esac
+    kill -0 "$owner" 2>/dev/null && return 1
+    log=$(cat "$LOCK_LOG_FILE" 2>/dev/null)
+    [ -n "$log" ] && [ -f "$log" ] || return 1
+    last=$(file_mtime "$log")
+    case "$last" in ''|*[!0-9]*) return 1 ;; esac
+    quiet=$(( $(date +%s) - last ))
+    [ "$quiet" -gt "$STALL_SECONDS" ] || return 1
+    echo "WARNING: reaping orphaned dotnet PID $child: holder $owner is dead and its log $log" \
+         "has been silent ${quiet}s (threshold ${STALL_SECONDS}s)." >&2
+    kill_tree "$child" -TERM
+    sleep "$WATCHDOG_GRACE"
+    kill_tree "$child" -KILL
+    return 0
+}
+
+# Kill runaway csharp-ls processes (>80% CPU, >2 min) before acquiring the lock.
+# csharp-ls often spins after builds due to file-watcher re-indexing on this large solution.
+while IFS= read -r line; do
+    pid=$(echo "$line" | awk '{print $2}')
+    cpu=$(echo "$line" | awk '{print $3}')
+    time_str=$(echo "$line" | awk '{print $10}')
+    minutes=0
+    if [[ "$time_str" =~ ^([0-9]+):([0-9]+):([0-9]+) ]]; then
+        minutes=$(( ${BASH_REMATCH[1]} * 60 + ${BASH_REMATCH[2]} ))
+    elif [[ "$time_str" =~ ^([0-9]+):([0-9]+) ]]; then
+        minutes=${BASH_REMATCH[1]}
+    fi
+    cpu_int=${cpu%.*}
+    if (( cpu_int >= 80 && minutes >= 2 )); then
+        kill "$pid" 2>/dev/null && echo "Killed runaway csharp-ls PID $pid (CPU: ${cpu}%, time: ${time_str})" >&2
+    fi
+done < <(ps aux | grep '[c]sharp-ls' 2>/dev/null || true)
+
+mkdir -p "${HOME}/.claude/locks"
+
+# Lock-only modes (#1420). bench_ab compares two arms per round, and with one lock per
+# INVOCATION the mutex is free between them — a queued peer's 15-minute suite can land in the
+# gap, so the two arms end up measured in different machine states, which is the artifact the
+# orchestrator exists to cancel. These let a caller hold the lock across the pair and invoke
+# dotnet itself.
+case "${1:-}" in
+    --acquire-lock)
+        holder="${2:-}"
+        if [ -z "$holder" ] || ! kill -0 "$holder" 2>/dev/null; then
+            echo "ERROR: --acquire-lock needs the LIVE pid of the process that will hold the" >&2
+            echo "lock (e.g. os.getpid()). A dead or missing holder would wedge every peer." >&2
+            exit 2
+        fi
+        acquire_lock "$holder"
+        exit 0
+        ;;
+    --release-lock)
+        holder="${2:-}"
+        current=$(cat "$LOCK_PID_FILE" 2>/dev/null)
+        if [ -n "$current" ] && [ -n "$holder" ] && [ "$current" != "$holder" ]; then
+            echo "ERROR: refusing to release a lock owned by $current (asked by $holder)." >&2
+            exit 2
+        fi
+        cleanup
+        exit 0
+        ;;
+    --record-child)
+        # A holder that invokes dotnet ITSELF (bench_ab under --acquire-lock) still has to put
+        # its child where is_lock_stale looks, or the hold is only as good as the holder's own
+        # pid — and SIGKILL bench_ab mid-arm and the orphaned benchmark keeps its 5-10 GB while
+        # the lock reads stale and a peer is admitted beside it (#1508). This verb rather than
+        # letting callers write $LOCK_CHILD_FILE themselves: the lock-dir layout stays knowledge
+        # of this one file, and the ownership check below cannot then be skipped by a caller.
+        holder="${2:-}"
+        child="${3:-}"
+        if [ -z "$holder" ] || [ -z "$child" ]; then
+            echo "ERROR: --record-child needs HOLDER_PID and CHILD_PID." >&2
+            exit 2
+        fi
+        current=$(cat "$LOCK_PID_FILE" 2>/dev/null)
+        if [ -z "$current" ] || [ "$current" != "$holder" ]; then
+            echo "ERROR: refusing to record a child against a lock owned by ${current:-nobody}" >&2
+            echo "(asked by $holder). Only the holder may point the lock at its own child." >&2
+            exit 2
+        fi
+        if ! kill -0 "$child" 2>/dev/null; then
+            echo "ERROR: --record-child needs a LIVE child pid; $child is not running." >&2
+            echo "Recording a dead child is worse than recording none: is_lock_stale consults" >&2
+            echo "the child FIRST, so a dead pointer can only ever read 'stale'." >&2
+            exit 2
+        fi
+        echo "$child" > "$LOCK_CHILD_FILE"
+        exit 0
+        ;;
+    --lock-generation)
+        # Bumped under the lock on every acquisition. A caller that reads it before and after
+        # its own work can tell whether anyone else acquired in between.
+        cat "$GENERATION_FILE" 2>/dev/null || echo 0
+        exit 0
+        ;;
+    --holder-status)
+        if [ ! -d "$LOCK_DIR" ]; then
+            echo "No lock held."
+            exit 0
+        fi
+        echo "pid:     $(cat "$LOCK_PID_FILE" 2>/dev/null || echo '(none)')"
+        echo "child:   $(cat "$LOCK_CHILD_FILE" 2>/dev/null || echo '(none)')"
+        echo "cwd:     $(cat "$LOCK_CWD_FILE" 2>/dev/null || echo '(none)')"
+        _started=$(cat "$LOCK_STARTED_FILE" 2>/dev/null)
+        if [ -n "$_started" ]; then
+            _now=$(date +%s)
+            _age=$((_now - _started))
+            echo "started: ${_started} (${_age}s ago)"
+        else
+            echo "started: (none)"
+        fi
+        _holder_log=$(cat "$LOCK_LOG_FILE" 2>/dev/null)
+        if [ -z "$_holder_log" ]; then
+            echo "log:     no log published (lock-only holder)"
+            exit 0
+        fi
+        echo "log:     $_holder_log"
+        if [ ! -f "$_holder_log" ]; then
+            echo "log file does not exist yet."
+            exit 0
+        fi
+        _probe_seconds="${DOTNET_SERIALIZED_PROBE_SECONDS:-20}"
+        _size1=$(file_size "$_holder_log")
+        echo "Probing log growth for ${_probe_seconds}s..."
+        sleep "$_probe_seconds"
+        _size2=$(file_size "$_holder_log")
+        _growth=$((_size2 - _size1))
+        if [ "$_growth" -gt 0 ]; then
+            echo "LIVE (log grew by $_growth bytes in ${_probe_seconds}s)"
+        else
+            echo "NO GROWTH in ${_probe_seconds}s -- report to the lead, do not kill (scope: measured good under --logger console;verbosity=normal; unestablished for a quieter logger)"
+        fi
+        exit 0
+        ;;
+esac
+
+mkdir -p "$LOG_DIR"
+find "$LOG_DIR" -maxdepth 1 -name 'dotnet-serialized-*' ! -name "${LOG_POINTER_FILE##*/}" \
+    \( -type f -o -type l \) -mmin +"$LOG_RETENTION_MINUTES" -delete 2>/dev/null
+LOG_FILE="${LOG_DIR}/dotnet-serialized-$(date +%Y%m%d-%H%M%S)-$$.log"
+: > "$LOG_FILE"
+echo "$LOG_FILE" > "${LOG_POINTER_FILE}.$$" && mv -f "${LOG_POINTER_FILE}.$$" "$LOG_POINTER_FILE"
+echo "dotnet-serialized: log -> $LOG_FILE"
+
+acquire_lock
+
+# Re-stamp after the queue wait: the watchdog judges progress by this file's mtime.
+: > "$LOG_FILE"
+echo "$LOG_FILE" > "$LOCK_LOG_FILE"
+
+# Record the dotnet process's OWN pid where is_lock_stale can find it (see there): `bash -c`
+# starts a shell whose $$ is its own, and `exec` then replaces that shell with dotnet, keeping
+# the pid. Written by the child rather than the parent because /bin/bash here is 3.2, which has
+# no $BASHPID. ${PIPESTATUS[0]} is still dotnet's own exit code — the exec'd shell IS dotnet.
+watchdog "$$" >/dev/null 2>&1 &
+WATCHDOG_PID=$!
+
+bash -c 'echo $$ > "$1"; shift; exec dotnet "$@"' _ "$LOCK_CHILD_FILE" "$@" 2>&1 | tee "$LOG_FILE"
+EXIT_CODE=${PIPESTATUS[0]}
+
+kill "$WATCHDOG_PID" 2>/dev/null
+wait "$WATCHDOG_PID" 2>/dev/null
+
+# Read the marker BEFORE cleanup, which rm -rf's the directory it lives in.
+WATCHDOG_KILL_INFO=""
+if [ -f "$WATCHDOG_MARKER" ]; then
+    WATCHDOG_KILL_INFO=$(cat "$WATCHDOG_MARKER" 2>/dev/null)
+fi
+
+# A `test` run that produced NO results but exited 0 is the worst false green available
+# here (#1273): `test --no-build` against absent or stale binaries finds no test assemblies,
+# reports nothing, and succeeds. It reads as a pass. So does a --filter that matches nothing.
+# Every real run prints a summary line per assembly — "Total:" with the default logger,
+# "Total tests: N" when a custom console logger verbosity is passed; if neither appeared,
+# fail loudly rather than letting zero verified tests be mistaken for a green suite.
+# --list-tests (and -t) enumerates without running, so "no results" is its correct output.
+case " $* " in
+    *" --list-tests "*|*" -t "*) LIST_ONLY=1 ;;
+    *) LIST_ONLY=0 ;;
+esac
+if [ "$1" = "test" ] && [ "$LIST_ONLY" -eq 0 ] && [ "$EXIT_CODE" -eq 0 ] && ! grep -qE "Total( tests)?:" "$LOG_FILE"; then
+    echo "ERROR: 'dotnet test' exited 0 but produced NO test results." >&2
+    echo "Zero tests ran. This is not a pass. Common causes:" >&2
+    echo "  * --no-build against binaries that were never built (a prior build failed)" >&2
+    echo "  * a --filter that matches nothing" >&2
+    echo "Full output: $LOG_FILE" >&2
+    EXIT_CODE=3
+fi
+
+# LAST, so it overrides every other verdict — deliberately including the zero-results guard
+# directly above. A watchdog-killed `test` run matches that guard's shape too (it exits 0 via
+# the SIGTERM handler and never printed a summary line), and reporting it as "zero tests ran"
+# would send the reader hunting a build problem that does not exist. The kill is the finding.
+if [ -n "$WATCHDOG_KILL_INFO" ]; then
+    killed_pid=${WATCHDOG_KILL_INFO%% *}
+    killed_quiet=${WATCHDOG_KILL_INFO##* }
+    watchdog_report "$killed_pid" "$killed_quiet" >&2
+    # tee has exited with the pipeline, so appending here cannot race its write offset.
+    watchdog_report "$killed_pid" "$killed_quiet" >> "$LOG_FILE"
+    EXIT_CODE=4
+fi
+
+cleanup
+trap - EXIT
+exit $EXIT_CODE

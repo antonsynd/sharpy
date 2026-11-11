@@ -102,6 +102,29 @@ def test_classify_absent_param_and_uninspectable_are_skips():
     assert classify(_cell(param="x"), 42).status == "skip"
 
 
+def test_classify_c_alias_reads_canonical_clinic_signature():
+    """`re.Pattern.match` is a C alias of `prefixmatch` where that exists (CPython 3.15+).
+
+    The alias's docstring header names `prefixmatch`, so it exposes no signature of its own;
+    the audit must still read CPython's `endpos=sys.maxsize` rather than skip the cell.
+    """
+    import inspect
+    import re
+
+    if hasattr(re.Pattern, "prefixmatch"):
+        # The fallback is load-bearing here: plain introspection of the alias fails.
+        try:
+            inspect.signature(re.Pattern.match)
+        except ValueError:
+            pass
+        else:
+            raise AssertionError(
+                "re.Pattern.match became inspectable; alias path unused"
+            )
+    v = classify(_cell("re", "Pattern", "match", "endpos"), re.Pattern.match)
+    assert (v.status, v.cpython) == ("finding", repr(sys.maxsize))
+
+
 def test_resolve_maps_spy_class_names_and_constructors():
     import csv
     import re
