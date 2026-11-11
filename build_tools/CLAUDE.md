@@ -32,6 +32,7 @@ python -m build_tools build run --max-tasks 5      # Auto-builder
 | `generate_stdlib_docs.py` | Stdlib docs generator — `docs/stdlib` is generated, never hand-edit |
 | `regenerate_spy_stdlib.sh` / `check_spy_staleness.sh` | Regenerate C# for spy-sourced stdlib modules (`MODULES` mapping) / CI staleness gate — never hand-edit the generated C# |
 | `regenerate_spy_tests.sh` / `check_spy_tests_staleness.sh` | Same pair for the ported spy-test C# |
+| `regenerate_corpus_pins.sh` | Regenerate the LSP sweeps' per-stem set files after a fixture change (`SHARPY_REGENERATE_CORPUS_PINS=1`) |
 | `generate_code_walkthroughs.py` | AI-powered C# documentation generator |
 | `cli.py` / `__main__.py` | Unified CLI entry point |
 
