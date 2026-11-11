@@ -302,21 +302,19 @@ axes with three or more values each, or whose group is a **residue** of an earli
 suffix: P11b, P14c), is `full` (§12 (b)) and builds a **generative or differential harness** over the
 matrix first, as **stage 0**:
 
-- **What.** One or more commits on the plan's branch, all before the stamp that passes the plan,
-  touching only test projects (`src/*.Tests/`) and one `SEED_PLAN_FILES` line in
-  `build_tools/scorecard_metrics.py`: the case enumeration (each axis the image of a compiler
-  enumeration, or a closed literal set), the map from case to expected result, and the totality
-  assertion. A generator that needs a product hook is not stage 0: hook and generator are the plan's
-  first task.
+- **What.** Commits on the plan's branch, before the stamp that passes the plan, touching only test
+  projects (`src/*.Tests/`) and one `SEED_PLAN_FILES` line in `build_tools/scorecard_metrics.py`:
+  the case enumeration (each axis the image of a compiler enumeration, or a closed literal set), the
+  case → expected map, and the totality assertion. A generator that needs a product hook is not
+  stage 0: hook and generator are the plan's first task.
 - **Green.** Every case passes at the base or is a known-red row in `<Test>-allowlist.txt`, which the
   test reads; each row cites an open issue (`allowlist_issue_state.py` checks it). The file's
   basename joins `SEED_PLAN_FILES`, so its rows count as seeded, outside the ratcheted
   `allowlist_rows_outside_seed`. A row whose case passes fails the test until the row is deleted.
-- **Who.** The plan author writes it, builds, runs the test filtered to its type
-  (`.claude/scripts/dotnet-serialized test <project> --filter "FullyQualifiedName~<Type>"`), and
-  records two mutations in the commit body (§2): the totality assertion broken, and a passing case
-  added as a known-red row; each broken → red, restored → green. CI on the plan's pull request is
-  the gate.
+- **Who.** The plan author writes it, runs it (`.claude/scripts/dotnet-serialized test <project>
+  --filter "FullyQualifiedName~<Type>"`) and records two mutations in the commit body (§2), each
+  broken → red, restored → green: the totality assertion broken, and a passing case listed as
+  known-red. CI on the plan's pull request is the gate.
 - **The plan** cites the test type and its counts at the stage-0 sha (cases, known-red rows) and
   states only decisions: which rows it turns green, and how. It never restates the matrix.
 - **Checks.** `/verify-plan` runs `git diff --name-only <base>..<stage-0 tip> -- ':!docs/process/plans/'`
