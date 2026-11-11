@@ -98,9 +98,11 @@ LOG_RETENTION_MINUTES=10080  # 7 days
 # NAME: two waiters could each judge a lock abandoned and each delete-and-recreate it, and two
 # runs were admitted 0.06-2.8 ms apart on CI (three times in two days).
 #
-# The files in $LOCK_DIR (pid, child, log, cwd, started) are diagnostics, written only while
-# holding the flock. They outlive a holder that dies, which is how the next holder learns about
-# an orphaned dotnet child (see wait_out_previous_holder).
+# The files in $LOCK_DIR (pid, child, log, cwd, started) are written only while holding the
+# flock. For a wrapper run they are diagnostics, plus one duty: they outlive a holder that dies,
+# which is how the next holder learns about an orphaned dotnet child. A --acquire-lock holder
+# outlives the wrapper that took the flock for it, so its hold IS its live pid file (see
+# wait_out_previous_holder).
 #
 # fd 9 is closed for every process the wrapper starts: dotnet, tee and the watchdog. dotnet
 # leaves build servers (MSBuild nodes, VBCSCompiler) running for minutes after a build, and any
@@ -188,8 +190,9 @@ lock_timeout() {
 # belong to a holder that is gone without releasing: killed (a caller's timeout, a usage limit).
 # Its shell is dead, but its dotnet/testhost children are reparented to init and keep their
 # 5-10 GB, so the lock is still owed to them: wait while the recorded child lives (#1508,
-# 58c82ffa5), reaping it only by the stall rule in reap_orphan. A recorded owner that is alive
-# yet does not hold the flock is a wrapper from before the flock (rollout), so wait on it too.
+# 58c82ffa5), reaping it only by the stall rule in reap_orphan. Wait too while the recorded
+# owner lives: a --acquire-lock holder (bench_ab) holds the lock through its pid file across the
+# two arms of a round, and a wrapper from before the flock (rollout) through its directory.
 #
 # KNOWN-UNFIXED: PID reuse — a recycled owner or child PID reads as live and wedges peers for
 # the full TIMEOUT. Bounded by that timeout rather than by correctness. The probability is
@@ -259,10 +262,14 @@ acquire_lock() {
     bump_generation
 }
 
-# Remove the diagnostics if they are OWNER's; the caller still holds the flock (a release closes
-# fd 9 after this). Files naming someone else are left alone.
+# Remove the files if they are OWNER's; files naming someone else are left alone. Renamed away
+# first, so they vanish in one step: --release-lock runs WITHOUT the flock (the next wrapper may
+# be holding it while it waits for this holder), and a half-deleted directory read as "released"
+# would let that wrapper write its own files while this rm was still deleting.
 clear_diagnostics() {
-    [ "$(cat "$LOCK_PID_FILE" 2>/dev/null)" = "$1" ] && rm -rf "$LOCK_DIR"
+    local trash="${LOCK_DIR}.released.$$"
+    [ "$(cat "$LOCK_PID_FILE" 2>/dev/null)" = "$1" ] || return 0
+    mv "$LOCK_DIR" "$trash" 2>/dev/null && rm -rf "$trash"
     return 0
 }
 
@@ -435,15 +442,10 @@ case "${1:-}" in
             exit 2
         fi
         acquire_lock "$holder"
-        # This wrapper exits now, so a keeper process inherits fd 9 and holds the flock for
-        # HOLDER: until --release-lock stops it, or within a second of HOLDER dying. Its sleep
-        # must not inherit fd 9, or a keeper killed mid-sleep would leave the lock held.
-        (
-            while kill -0 "$holder" 2>/dev/null; do
-                sleep 1 9>&-
-            done
-        ) </dev/null >/dev/null 2>&1 &
-        echo $! > "$LOCK_DIR/keeper"
+        # This wrapper exits now and the flock goes with it. The hold is the pid file naming a
+        # LIVE holder: the next wrapper takes the flock and then waits while HOLDER lives (see
+        # wait_out_previous_holder), so peers stay serialized behind it until --release-lock
+        # removes the files or HOLDER dies.
         exit 0
         ;;
     --release-lock)
@@ -457,18 +459,7 @@ case "${1:-}" in
             echo "ERROR: refusing to release a lock owned by $current (asked by $holder)." >&2
             exit 2
         fi
-        [ -n "$current" ] || exit 0  # already released
-        keeper=$(cat "$LOCK_DIR/keeper" 2>/dev/null)
-        # Diagnostics first, while the keeper still holds the flock: nobody else can have
-        # written them yet. Then end the keeper and wait for its fd to close.
-        rm -rf "$LOCK_DIR"
-        case "$keeper" in
-            ''|*[!0-9]*) ;;
-            *)
-                kill "$keeper" 2>/dev/null
-                while kill -0 "$keeper" 2>/dev/null; do sleep 0.05; done
-                ;;
-        esac
+        clear_diagnostics "$holder"
         exit 0
         ;;
     --record-child)
