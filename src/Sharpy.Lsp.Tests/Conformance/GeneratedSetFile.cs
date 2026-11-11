@@ -6,20 +6,40 @@ namespace Sharpy.Lsp.Tests.Conformance;
 
 /// <summary>
 /// The sweeps' per-stem set files (<c>formatting-route-census.txt</c>, <c>code-action-shape-stems.txt</c>) are generated:
-/// a run with <see cref="Variable"/><c>=true</c> (what <see cref="Command"/> sets) rewrites each twin's rows from what
+/// a run with <see cref="Variable"/><c>=1</c> (what <see cref="Command"/> sets) rewrites each twin's rows from what
 /// the twin measured, instead of comparing. A file is its leading comment block, then one row per line in twin blocks
 /// (the sweep's twin order), each block sorted by the sweep, so two changes that add different fixtures add rows at
 /// different lines. The twin is a row's second field.
 /// </summary>
 internal static class GeneratedSetFile
 {
-    /// <summary>The snapshot tests' regeneration switch, shared so one flag regenerates every generated test file.</summary>
-    internal const string Variable = "UPDATE_SNAPSHOTS";
+    /// <summary>
+    /// The regeneration switch. Only <see cref="Command"/> sets it, so a shell that still exports another regeneration flag
+    /// (the snapshot tests' <c>UPDATE_SNAPSHOTS</c>) never rewrites these files.
+    /// </summary>
+    internal const string Variable = "SHARPY_REGENERATE_CORPUS_PINS";
 
     /// <summary>The one command that regenerates the set files (it runs both sweeps with <see cref="Variable"/> set).</summary>
     internal const string Command = "bash build_tools/regenerate_corpus_pins.sh";
 
-    internal static bool Regenerating => Environment.GetEnvironmentVariable(Variable) == "true";
+    /// <summary>What a red comparison tells the contributor to do.</summary>
+    internal const string Remedy = "merge the base branch (a fixture that landed there has no rows here yet), then run `" + Command
+        + "` and review the row diff";
+
+    internal static bool Regenerating => IsRegenerating(Environment.GetEnvironmentVariable);
+
+    /// <summary>
+    /// Whether <see cref="Variable"/> is <c>1</c>. On CI (<c>CI=true</c> or <c>GITHUB_ACTIONS</c> set) it throws instead:
+    /// a test there must compare against its committed rows, never rewrite them.
+    /// </summary>
+    internal static bool IsRegenerating(Func<string, string?> environment)
+    {
+        if (environment(Variable) != "1")
+            return false;
+        if (string.Equals(environment("CI"), "true", StringComparison.OrdinalIgnoreCase) || !string.IsNullOrEmpty(environment("GITHUB_ACTIONS")))
+            throw new InvalidOperationException($"{Variable}=1 on CI: a test may not rewrite its own expected rows there; run `{Command}` locally.");
+        return true;
+    }
 
     internal static string PathOf(string fileName)
         => Path.Combine(FixtureRoots.RepositoryRoot, "src", "Sharpy.Lsp.Tests", "Conformance", fileName);

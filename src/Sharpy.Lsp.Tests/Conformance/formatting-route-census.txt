@@ -9,7 +9,9 @@
 # Each twin's census asserts its rows exactly when its theory ran over every stem (SHARPY_ROUTE_SWEEP_PINS_REQUIRED=1 in CI):
 # a missing row is a repair (or a gone stem), an extra one a new fact, a changed n a moved cell.
 # GENERATED: bash build_tools/regenerate_corpus_pins.sh rewrites the rows; review the diff. A new fixture adds its own rows;
-# a changed or missing row of an existing stem is a finding until explained (say which on the cited tracker).
+# a changed or missing row of an existing stem is a finding until explained (say which on the cited tracker). A red run
+# after merging the base branch means a fixture landed there: run the same command. A stem above its route's refusal-ratio
+# bound fails the run instead (formatting-route-refusal-exceptions.txt, hand-written).
 known-limit-S6k identity ontype Formatting/byte_multiline_string 1 # #2274
 known-limit-S6k identity ontype Formatting/raw_multiline_string 1 # #2274
 known-limit-S6k identity range-line Formatting/byte_multiline_string 1 # #2274
@@ -9257,11 +9259,14 @@ refused-work wide range-block exception_handling/nested_except_same_variable 5 #
 refused-work wide range-block exception_handling/user_exception_message_still_resolves_1515 1 # #2168
 refused-work wide range-block exceptions/except_python_base_class_hierarchy_2124 12 # #2168
 refused-work wide range-block exceptions/exception_inherited_ctor_1367 6 # #2168
+refused-work wide range-block exceptions/not_a_directory_error_builtin_2476 15 # #2168
+refused-work wide range-block exceptions/not_a_directory_error_escaped_user_class_2476 5 # #2168
 refused-work wide range-block exceptions/oserror_family_2124 27 # #2168
 refused-work wide range-block exceptions/try_except_finally_0006 13 # #2168
 refused-work wide range-block exceptions/try_except_finally_0007 4 # #2168
 refused-work wide range-block exceptions/try_except_finally_0016 6 # #2168
 refused-work wide range-block exceptions/try_except_finally_0057 7 # #2168
+refused-work wide range-block exceptions/user_types_named_like_core_internals_2476 1 # #2168
 refused-work wide range-block experimental/init_augmented_matmul_2439 5 # #2168
 refused-work wide range-block experimental/init_augmented_matmul_ungated_2439 5 # #2168
 refused-work wide range-block experimental/let_in_defer_block 3 # #2168
@@ -9952,6 +9957,7 @@ refused-work wide range-line errors/star_leaf_class_attribute 4 # #2168
 refused-work wide range-line events/event_abstract_stub_paren_ellipsis_0001 22 # #2168
 refused-work wide range-line events/event_with_lambda_subscribe_0059 9 # #2168
 refused-work wide range-line exceptions/try_except_finally_0057 25 # #2168
+refused-work wide range-line exceptions/user_types_named_like_core_internals_2476 3 # #2168
 refused-work wide range-line experimental/let_in_defer_block 6 # #2168
 refused-work wide range-line experimental/property_observer_in_def_gated 4 # #2168
 refused-work wide range-line expressions/numeric_promotion_mixed_signedness 13 # #2168

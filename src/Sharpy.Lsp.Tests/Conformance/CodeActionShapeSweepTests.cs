@@ -1945,9 +1945,6 @@ public sealed class CodeActionShapeSweepTests : IDisposable
         foreach (var (key, set) in actualFull)
             s_failingStems[(twin, key)] = set.Count;
 
-        var committed = Pins.Value.Stems.Where(r => r.Twin == twin)
-            .GroupBy(r => new PinKey(r.Action, r.Bucket, r.Cite))
-            .ToDictionary(g => g.Key, g => new SortedSet<string>(g.Select(r => r.Stem), StringComparer.Ordinal));
         var dumpDir = Path.Combine(FixtureRoots.RepositoryRoot, ".claude", "tmp", "code-action-sweep");
         Directory.CreateDirectory(dumpDir);
         var actualPath = Path.Combine(dumpDir, $"{twin}-actual-stems.txt");
@@ -1961,12 +1958,20 @@ public sealed class CodeActionShapeSweepTests : IDisposable
 
         if (GeneratedSetFile.Regenerating)
         {
-            // The stem rows are generated; a key's cite row (its reason) is written by hand, and the loader names a key
-            // that has stems but no cite row, or a cite row whose key drained, on the next run.
+            // The stem rows are generated; a key's cite row (its reason) is written by hand. The committed pins are read only
+            // after the rewrite, so a cite row edited first never blocks it; a key of this twin that has stems but no cite
+            // row, or a cite row whose key drained, is named now from the rewritten files.
             GeneratedSetFile.Rewrite(StemsFileName, twin, Twins, actualRows);
             _output.WriteLine($"CODEACTION-TWIN {twin} regenerated: {actualRows.Count} rows written to Conformance/{StemsFileName}");
+            var mismatch = TotalityProblem(ReadPins);
+            if (mismatch is not null && mismatch.Contains($" {twin} ", StringComparison.Ordinal))
+                Assert.Fail($"{twin} twin regenerated, but the cite rows do not match the stems: {mismatch}");
             return;
         }
+
+        var committed = Pins.Value.Stems.Where(r => r.Twin == twin)
+            .GroupBy(r => new PinKey(r.Action, r.Bucket, r.Cite))
+            .ToDictionary(g => g.Key, g => new SortedSet<string>(g.Select(r => r.Stem), StringComparer.Ordinal));
 
         var problems = CompareStems(twin, actualRegular, committed);
         _output.WriteLine($"CODEACTION-TWIN {twin} mode={(full ? "full" : "regular")} stems={stems.Length} requests={requests} "
@@ -1975,7 +1980,7 @@ public sealed class CodeActionShapeSweepTests : IDisposable
         {
             Assert.Fail($"{twin} twin: every code action must keep the source shape; the failing stems regular mode judges"
                 + (full ? " (this FULL run's regular projection)" : "") + $" must equal the rows of Conformance/{StemsFileName}, a generated "
-                + $"file: run `{GeneratedSetFile.Command}` and review the row diff. Actual rows: {actualPath}. {problems.Count} problem(s):\n  " + string.Join("\n  ", problems.Take(60))
+                + $"file: {GeneratedSetFile.Remedy}. Actual rows: {actualPath}. {problems.Count} problem(s):\n  " + string.Join("\n  ", problems.Take(60))
                 + (problems.Count > 60 ? "\n  …" : ""));
         }
     }
@@ -2251,6 +2256,20 @@ public sealed class CodeActionShapeSweepTests : IDisposable
         }
 
         return new PinSet(cites, stems);
+    }
+
+    /// <summary>The loader's refusal of the two files read by <paramref name="read"/>, or null when they are total.</summary>
+    internal static string? TotalityProblem(Func<PinSet> read)
+    {
+        try
+        {
+            read();
+            return null;
+        }
+        catch (InvalidOperationException ex)
+        {
+            return ex.Message;
+        }
     }
 
     private static PinSet ReadPins()

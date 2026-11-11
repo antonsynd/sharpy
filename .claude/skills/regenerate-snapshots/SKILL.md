@@ -14,7 +14,7 @@ Regenerate all generated artifacts after intentional codegen changes:
 - Builds the solution
 - Regenerates spy stdlib C# via `build_tools/regenerate_spy_stdlib.sh`
 - Regenerates spy-test C# via `build_tools/regenerate_spy_tests.sh` (codegen changes alter the generated test C# even when no `.spy` file changed — CI gate `check_spy_tests_staleness.sh`)
-- Sets `UPDATE_SNAPSHOTS=true` and runs file-based integration tests and the LSP corpus sweeps
+- Runs file-based integration tests with `UPDATE_SNAPSHOTS=true`, then `build_tools/regenerate_corpus_pins.sh`
 - Shows a summary, or the last 80 lines and the log path
 
 **Warning:** This modifies generated files. Review `git diff` — a regenerated diff is a finding until each hunk is explained.

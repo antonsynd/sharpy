@@ -5,29 +5,36 @@
 # Run it after adding or changing a fixture under src/Sharpy.Compiler.Tests/Integration/TestFixtures/ when those
 # sweeps name the file. Each twin's rows are rewritten in place (sorted, one per line); review `git diff`: a new
 # fixture adds its own rows, and a changed or missing row of an existing stem is a finding until explained.
+# A stem whose Format Selection refusal ratio exceeds its route's bound fails the run instead of being written
+# (formatting-route-refusal-bounds.txt); the run never writes on CI.
 #
 # Usage:
 #   bash build_tools/regenerate_corpus_pins.sh             # build Sharpy.Lsp.Tests, then regenerate
 #   bash build_tools/regenerate_corpus_pins.sh --no-build  # reuse the last build
 #
 # Runs through .claude/scripts/dotnet-serialized (the serialized dotnet lock); its log path is the first line printed.
+# Plain bash 3.2 (macOS): no arrays expanded empty under set -u.
 
 set -euo pipefail
 
 REPO_ROOT="$(git rev-parse --show-toplevel)"
 cd "$REPO_ROOT"
 
-build=()
+build=""
 case "${1:-}" in
     "") ;;
-    --no-build) build=(--no-build) ;;
+    --no-build) build="--no-build" ;;
     *) echo "usage: $0 [--no-build]" >&2; exit 2 ;;
 esac
 
 CONF="Sharpy.Lsp.Tests.Conformance"
-UPDATE_SNAPSHOTS=true .claude/scripts/dotnet-serialized test src/Sharpy.Lsp.Tests/Sharpy.Lsp.Tests.csproj "${build[@]}" \
-    --filter "FullyQualifiedName~$CONF.FormattingRouteParitySweepTests.|FullyQualifiedName~$CONF.CodeActionShapeSweepTests." \
-    --logger "console;verbosity=minimal"
+# The formatting sweep first: a refusal spike stops the script there, before the code-action rows are written too.
+for class in FormattingRouteParitySweepTests CodeActionShapeSweepTests; do
+    # shellcheck disable=SC2086  # $build is empty or one word
+    SHARPY_REGENERATE_CORPUS_PINS=1 .claude/scripts/dotnet-serialized test src/Sharpy.Lsp.Tests/Sharpy.Lsp.Tests.csproj $build \
+        --filter "FullyQualifiedName~$CONF.$class." --logger "console;verbosity=minimal"
+    build="--no-build"
+done
 
 git --no-pager diff --stat -- src/Sharpy.Lsp.Tests/Conformance/formatting-route-census.txt \
     src/Sharpy.Lsp.Tests/Conformance/code-action-shape-stems.txt

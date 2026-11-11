@@ -7,7 +7,7 @@
 #              zero-guard (an assertion against 0), drained-empty (an equality assertion against 0), non-integer (no
 #              integer literal on the line), code-site-roster / spec-file-roster (every member reading it reaches a
 #              src/ or docs/language_specification/ root and no corpus enumerator), generator-roster (its file group
-#              reads no corpus enumerator), rate-tolerance (a RefusalCeilingPercent/SampledRangeLineCeilingPercent row),
+#              reads no corpus enumerator), rate-tolerance (a RefusalRatioBoundPercent row: a per-stem bound),
 #              set-file (a plan-88736c D3 set file). Evidence only, reviewed by the lead in this file's diff at each
 #              gate: tuning-constant (evidence: the identifier), fixed-input (evidence: the named stems, or the member
 #              that reads no corpus). in: a count a new fixture can move, which plan-88736c D3 converted to a set file: none may remain.
@@ -170,6 +170,18 @@ Sharpy.Lsp.Tests/Conformance/CodeActionShapeSweepTests.cs | regions.Should().Hav
 Sharpy.Lsp.Tests/Conformance/CodeActionShapeSweepTests.cs | s_cells.GetValueOrDefault((spec.Name, twin)).Should().BeGreaterThan(0, $"the sweep judges ≥ 1 {spec.Name} cell on the {twin} twin"); | ×1 | floor | lower bound
 Sharpy.Lsp.Tests/Conformance/CodeActionShapeSweepTests.cs | stringStatement.LineEnd.Should().Be(9, "the parser fact P47 works around (ledgered as #2295)"); | ×1 | fixed-input | in-test input of BuildRequests_HandDocument_CoversEveryKindItAdmits
 Sharpy.Lsp.Tests/Conformance/FormattingRouteParitySweepTests.cs | .Should().HaveCount(7); | ×1 | fixed-input | in-test input of Allowlist_RefusesCliAndFullRowsOnParseableStates_AndMalformedRows
+Sharpy.Lsp.Tests/Conformance/FormattingRouteParitySweepTests.cs | [(RangeBlock, Comment)] = 5, | ×1 | rate-tolerance | per-stem refusal-ratio bound (R-MY, #2538): judges each stem alone
+Sharpy.Lsp.Tests/Conformance/FormattingRouteParitySweepTests.cs | [(RangeBlock, Identity)] = 5, | ×1 | rate-tolerance | per-stem refusal-ratio bound (R-MY, #2538): judges each stem alone
+Sharpy.Lsp.Tests/Conformance/FormattingRouteParitySweepTests.cs | [(RangeBlock, Wide)] = 90, | ×1 | rate-tolerance | per-stem refusal-ratio bound (R-MY, #2538): judges each stem alone
+Sharpy.Lsp.Tests/Conformance/FormattingRouteParitySweepTests.cs | [(RangeLine, Comment)] = 5, | ×1 | rate-tolerance | per-stem refusal-ratio bound (R-MY, #2538): judges each stem alone
+Sharpy.Lsp.Tests/Conformance/FormattingRouteParitySweepTests.cs | [(RangeLine, Identity)] = 5, | ×1 | rate-tolerance | per-stem refusal-ratio bound (R-MY, #2538): judges each stem alone
+Sharpy.Lsp.Tests/Conformance/FormattingRouteParitySweepTests.cs | [(RangeLine, Wide)] = 100, | ×1 | rate-tolerance | per-stem refusal-ratio bound (R-MY, #2538): judges each stem alone
+Sharpy.Lsp.Tests/Conformance/FormattingRouteParitySweepTests.cs | [(RangeStatement, Comment)] = 5, | ×1 | rate-tolerance | per-stem refusal-ratio bound (R-MY, #2538): judges each stem alone
+Sharpy.Lsp.Tests/Conformance/FormattingRouteParitySweepTests.cs | [(RangeStatement, Identity)] = 5, | ×1 | rate-tolerance | per-stem refusal-ratio bound (R-MY, #2538): judges each stem alone
+Sharpy.Lsp.Tests/Conformance/FormattingRouteParitySweepTests.cs | [(RangeStatement, Wide)] = 70, | ×1 | rate-tolerance | per-stem refusal-ratio bound (R-MY, #2538): judges each stem alone
+Sharpy.Lsp.Tests/Conformance/FormattingRouteParitySweepTests.cs | [(RangeWhole, Comment)] = 5, | ×1 | rate-tolerance | per-stem refusal-ratio bound (R-MY, #2538): judges each stem alone
+Sharpy.Lsp.Tests/Conformance/FormattingRouteParitySweepTests.cs | [(RangeWhole, Identity)] = 5, | ×1 | rate-tolerance | per-stem refusal-ratio bound (R-MY, #2538): judges each stem alone
+Sharpy.Lsp.Tests/Conformance/FormattingRouteParitySweepTests.cs | [(RangeWhole, Wide)] = 5, | ×1 | rate-tolerance | per-stem refusal-ratio bound (R-MY, #2538): judges each stem alone
 Sharpy.Lsp.Tests/Conformance/FormattingRouteParitySweepTests.cs | [S1] = new[] { Full, RangeWhole, RangeStatement, RangeBlock, OnType }, | ×1 | non-integer | route/bucket/name table row
 Sharpy.Lsp.Tests/Conformance/FormattingRouteParitySweepTests.cs | [S2] = new[] { Cli, Full, RangeWhole, RangeStatement, RangeBlock, RangeLine, OnType }, | ×1 | non-integer | route/bucket/name table row
 Sharpy.Lsp.Tests/Conformance/FormattingRouteParitySweepTests.cs | [S3] = new[] { Full, RangeWhole, RangeLine, OnType }, | ×1 | non-integer | route/bucket/name table row

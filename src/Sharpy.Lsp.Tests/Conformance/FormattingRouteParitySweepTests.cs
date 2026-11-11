@@ -195,6 +195,9 @@ public sealed class FormattingRouteParitySweepTests : IDisposable
     /// <summary>Whether a cell of <paramref name="route"/> in <paramref name="state"/> is sampled: the line-proportional routes on a parseable document. S3–S6 cells always run.</summary>
     internal static bool IsSampledCell(string route, string state) => SampledRoutes.Contains(route) && state is S1 or S2;
 
+    /// <summary>Whether a (route, state) cell runs on a stem that is (<paramref name="sampledIn"/>) or is not in the sample.</summary>
+    internal static bool RunsIn(string route, string state, bool sampledIn) => sampledIn || !IsSampledCell(route, state);
+
     /// <summary>
     /// The state label of an S6-family document — chosen HERE only, so each label is one class with one
     /// allowlist cite (<see cref="StateIssue"/>):
@@ -1405,6 +1408,9 @@ public sealed class FormattingRouteParitySweepTests : IDisposable
     /// <summary>The per-stem census facts (<see cref="CensusFileName"/>): cells per (measure, twin, route, stem).</summary>
     private static readonly ConcurrentDictionary<(string Measure, string Twin, string Route, string Stem), int> s_census = new();
 
+    /// <summary>Per (judged twin, range route, stem), over every cell this mode ran: the selections with work and those refused.</summary>
+    private static readonly ConcurrentDictionary<(string Twin, string Route, string Stem), (int WithWork, int Refused)> s_stemSelections = new();
+
     /// <summary>Census tallies (<see cref="Tallies"/>): cells per (unparseable state, literal kind) and <c>ontype</c> cells per continuation shape.</summary>
     private static readonly ConcurrentDictionary<string, int> s_tallies = new(StringComparer.Ordinal);
     private static long s_sweepTicks;
@@ -1441,6 +1447,12 @@ public sealed class FormattingRouteParitySweepTests : IDisposable
 
             if (group.RefusedWork > 0 && IsRefusalJudged(twin) && RunsInSampledMode(stem, route, state))
                 s_census.AddOrUpdate((RefusedWorkMeasure, twin, route, stem), group.RefusedWork, (_, n) => n + group.RefusedWork);
+            if (group.WithWork > 0 && IsRefusalJudged(twin) && RangeRoutes.Contains(route))
+            {
+                s_stemSelections.AddOrUpdate((twin, route, stem), (group.WithWork, group.RefusedWork),
+                    (_, s) => (s.WithWork + group.WithWork, s.Refused + group.RefusedWork));
+            }
+
             foreach (var (measure, n) in RangeMeasures(group))
             {
                 if (n > 0)
@@ -1484,7 +1496,7 @@ public sealed class FormattingRouteParitySweepTests : IDisposable
             {
                 foreach (var tally in Tallies(doc, request))
                     tallies[tally] = tallies.GetValueOrDefault(tally) + 1;
-                if (IsSampledCell(request.Route, doc.State) && !sampledIn)
+                if (!RunsIn(request.Route, doc.State, sampledIn))
                     continue;
                 var key = (request.Route, doc.State);
                 if (!groups.TryGetValue(key, out var group))
@@ -1641,7 +1653,7 @@ public sealed class FormattingRouteParitySweepTests : IDisposable
 
     /// <summary>Whether the default mode runs this (route, state) cell group of the stem — what a FULL run adds is not counted.</summary>
     internal static bool RunsInSampledMode(string stem, string route, string state)
-        => !IsSampledCell(route, state) || IsSampledIn(stem, SampledStride);
+        => RunsIn(route, state, IsSampledIn(stem, SampledStride));
 
     /// <summary>The bucket each known-limit state counts as a census row (<see cref="CensusFileName"/>) instead of failing it.</summary>
     internal static readonly SCG.IReadOnlyDictionary<string, string> KnownLimitBucket = new SCG.Dictionary<string, string>(StringComparer.Ordinal)
@@ -1744,12 +1756,13 @@ public sealed class FormattingRouteParitySweepTests : IDisposable
         {
             var row = $"{key.Measure} {twin} {key.Route} {key.Stem}";
             var refusal = key.Measure == RefusedWorkMeasure;
+            var say = $"; unless the stem is new, say which on the {CensusCites[key.Measure]} tracker";
             if (!actual.TryGetValue(key, out var n))
-                problems.Add($"missing: `{row} {rows[key]}` has no fact now — a repair (or the stem is gone)");
+                problems.Add($"missing: `{row} {rows[key]}` has no fact now — a repair (or the stem is gone){say}");
             else if (!rows.TryGetValue(key, out var pinned))
-                problems.Add($"extra: `{row} {n}` has no row — a new {key.Measure} fact" + (refusal ? " (Format Selection refuses on this stem: a new fixture's long body, or a regression)" : ""));
+                problems.Add($"extra: `{row} {n}` has no row — a new {key.Measure} fact" + (refusal ? " (Format Selection refuses on this stem: a new fixture's long body, or a regression)" : "") + say);
             else if (pinned != n)
-                problems.Add($"changed: `{row}` reads n={pinned}, the run counts {n} — a cell moved" + (refusal && n > pinned ? " (MORE refusals on an existing stem: a Format Selection regression unless the fixture changed)" : ""));
+                problems.Add($"changed: `{row}` reads n={pinned}, the run counts {n} — a cell moved" + (refusal && n > pinned ? " (MORE refusals on an existing stem: a Format Selection regression unless the fixture changed)" : "") + say);
         }
 
         return problems;
@@ -1782,7 +1795,7 @@ public sealed class FormattingRouteParitySweepTests : IDisposable
                 if (!group.Failures.ContainsKey(bucket))
                     problems.Add($"{route} {state} {bucket} holds now on all {group.Cells} cells — {cite} is fixed for this cell group: {drain}");
             }
-            else if (!(IsSampledCell(route, state) && !sampledIn))
+            else if (RunsIn(route, state, sampledIn))
             {
                 problems.Add($"{route} {state} has no cell on this stem and twin — {drain}");
             }
@@ -2537,6 +2550,68 @@ public sealed class FormattingRouteParitySweepTests : IDisposable
     }
 
     [Fact]
+    public void RefusalBound_NamesASpike_HonoursACitedException_AndNamesAStaleOne()
+    {
+        var corpusStems = new SCG.HashSet<string>(StringComparer.Ordinal) { "a/spike", "a/ok", "a/excepted", "a/healed" };
+        var selections = new SCG.Dictionary<(string, string), (int WithWork, int Refused)>
+        {
+            [(RangeBlock, "a/spike")] = (WithWork: 10, Refused: 10),
+            [(RangeBlock, "a/ok")] = (WithWork: 10, Refused: 9),
+            [(RangeBlock, "a/excepted")] = (WithWork: 10, Refused: 10),
+            [(RangeBlock, "a/healed")] = (WithWork: 10, Refused: 1),
+            [(RangeLine, "a/ok")] = (WithWork: 10, Refused: 10),
+        };
+        var exceptions = ParseRefusalExceptions(new[]
+        {
+            "wide range-block a/excepted # #2168 by construction",
+            "wide range-block a/healed # #2168 by construction",
+            "wide range-block a/gone # #2168 by construction",
+        });
+        var problems = RefusalBoundProblems(Wide, selections, exceptions, corpusStems, fullMode: false);
+        problems.Should().Equal(
+            $"spike: wide range-block a/spike refuses 10/10 selections with work, above the {RefusalRatioBoundPercent[(RangeBlock, Wide)]}% bound — "
+                + $"fix the regression, or add `wide range-block a/spike # #issue reason` to Conformance/{RefusalExceptionsFileName}",
+            $"stale: wide range-block a/gone is not a corpus stem — delete its row `wide range-block a/gone` from Conformance/{RefusalExceptionsFileName}",
+            $"stale: wide range-block a/healed holds the {RefusalRatioBoundPercent[(RangeBlock, Wide)]}% bound now — delete its row `wide range-block a/healed` from Conformance/{RefusalExceptionsFileName}");
+
+        // The same ratio on the identity twin is a spike at its bound; a rate exactly at the bound holds.
+        RefusalBoundProblems(Identity, new SCG.Dictionary<(string, string), (int WithWork, int Refused)> { [(RangeBlock, "a/ok")] = (WithWork: 20, Refused: 1) },
+            Array.Empty<RefusalException>(), corpusStems, fullMode: false).Should().BeEmpty("1/20 is exactly 5%");
+        RefusalBoundProblems(Identity, new SCG.Dictionary<(string, string), (int WithWork, int Refused)> { [(RangeBlock, "a/ok")] = (WithWork: 19, Refused: 1) },
+            Array.Empty<RefusalException>(), corpusStems, fullMode: false).Should().ContainSingle().Which.Should().StartWith("spike: identity range-block a/ok");
+
+        foreach (var bad in new[]
+                 {
+                     "crlf range-block a/b # #2168 r",   // a twin that is printed, not judged
+                     "wide ontype a/b # #2168 r",        // not a range route
+                     "wide range-block a/b # #2168",     // no reason
+                     "wide range-block a/b",             // no cite
+                 })
+        {
+            FluentActions.Invoking(() => ParseRefusalExceptions(new[] { bad })).Should().Throw<InvalidOperationException>(bad);
+        }
+
+        FluentActions.Invoking(() => ParseRefusalExceptions(new[] { "wide range-block a/b # #2168 r", "wide range-block a/b # #2168 r" }))
+            .Should().Throw<InvalidOperationException>();
+    }
+
+    [Fact]
+    public void GeneratedSetFile_Regenerates_OnlyOnItsOwnVariable_AndNeverOnCi()
+    {
+        static Func<string, string?> Env(params (string Name, string Value)[] vars)
+            => name => vars.FirstOrDefault(v => v.Name == name).Value;
+
+        GeneratedSetFile.IsRegenerating(Env()).Should().BeFalse();
+        GeneratedSetFile.IsRegenerating(Env(("UPDATE_SNAPSHOTS", "true"))).Should().BeFalse("the snapshot tests' flag does not reach these files");
+        GeneratedSetFile.IsRegenerating(Env((GeneratedSetFile.Variable, "1"))).Should().BeTrue();
+        FluentActions.Invoking(() => GeneratedSetFile.IsRegenerating(Env((GeneratedSetFile.Variable, "1"), ("CI", "true"))))
+            .Should().Throw<InvalidOperationException>();
+        FluentActions.Invoking(() => GeneratedSetFile.IsRegenerating(Env((GeneratedSetFile.Variable, "1"), ("GITHUB_ACTIONS", "true"))))
+            .Should().Throw<InvalidOperationException>();
+        GeneratedSetFile.IsRegenerating(Env(("CI", "true"))).Should().BeFalse("CI without the variable compares, as always");
+    }
+
+    [Fact]
     public void GeneratedSetFile_ReplacesOneTwinsRows_KeepsTheHeaderAndTheOtherTwinsInOrder()
     {
         var lines = new[] { "# header", "#", "m identity r a/x 1 # #1", "m wide r a/y 1 # #1", "m cr r a/z 1 # #1" };
@@ -2758,6 +2833,11 @@ public sealed class FormattingRouteParitySweepTests : IDisposable
 
     internal static bool PinsRequired => Environment.GetEnvironmentVariable(PinsRequiredVariable) == "1";
 
+    /// <summary>The refusal bound's verdicts on <paramref name="twin"/> over what its theory ran (<see cref="RefusalBoundProblems"/>).</summary>
+    private static SCG.List<string> SpikesOf(string twin)
+        => RefusalBoundProblems(twin, s_stemSelections.Where(p => p.Key.Twin == twin).ToDictionary(p => (p.Key.Route, p.Key.Stem), p => p.Value),
+            RefusalExceptions.Value, Corpus.Value.Corpus.Keys.ToHashSet(StringComparer.Ordinal), FullMode);
+
     private static bool RanOverEveryStem(string twin, int corpusCount) => s_stemsRun.GetValueOrDefault(twin) == corpusCount;
 
     private void AssertTwinCensus(string twin)
@@ -2790,21 +2870,143 @@ public sealed class FormattingRouteParitySweepTests : IDisposable
         Directory.CreateDirectory(dumpDir);
         var dump = Path.Combine(dumpDir, $"{twin}-actual.txt");
         PrintRefusalRates(twin);
+        File.WriteAllLines(Path.Combine(dumpDir, $"{twin}-refusal-ratios.txt"), s_stemSelections.Where(p => p.Key.Twin == twin)
+            .OrderBy(p => $"{p.Key.Route} {p.Key.Stem}", StringComparer.Ordinal)
+            .Select(p => $"{p.Key.Route} {p.Key.Stem} {p.Value.Refused}/{p.Value.WithWork}"));
 
         var rows = actual.OrderBy(p => $"{p.Key.Measure} {p.Key.Route} {p.Key.Stem}", StringComparer.Ordinal)
             .Select(p => $"{p.Key.Measure} {twin} {p.Key.Route} {p.Key.Stem} {p.Value} # {CensusCites[p.Key.Measure]}").ToList();
         File.WriteAllLines(dump, rows);
+
+        // R-MY's one-sided bound: no stem's refusal ratio on a range route exceeds the route's bound unless the stem is a
+        // cited exception. Checked BEFORE a regeneration writes, so the script cannot accept a refusal spike.
+        var spikes = SpikesOf(twin);
+        var spikeMessage = $"the {twin} twin's per-stem Format Selection refusal ratios must stay within RefusalRatioBoundPercent unless the stem "
+            + $"is a cited row of Conformance/{RefusalExceptionsFileName} (written by hand: a new row is a decision, not a regeneration)";
         if (GeneratedSetFile.Regenerating)
         {
+            // Every twin's theory ran before any census (RouteParitySweepOrderer), so a spike on ANY judged twin that ran over
+            // every stem refuses every twin's rewrite: none of the spike stem's rows is written.
+            var everySpike = Twins.Where(t => IsRefusalJudged(t) && RanOverEveryStem(t, corpus.Corpus.Count)).SelectMany(SpikesOf).ToList();
+            if (everySpike.Count > 0)
+                Assert.Fail($"regeneration refused: a stem's Format Selection refusal ratio is above its route's RefusalRatioBoundPercent and "
+                    + $"no cited row of Conformance/{RefusalExceptionsFileName} allows it (written by hand: a new row is a decision, not a "
+                    + "regeneration):\n  " + string.Join("\n  ", everySpike));
             GeneratedSetFile.Rewrite(CensusFileName, twin, Twins, rows);
             _output.WriteLine($"FMTROUTE-CENSUS {twin} regenerated: {rows.Count} rows written to Conformance/{CensusFileName}");
             return;
         }
 
+        spikes.Should().BeEmpty(spikeMessage);
         var problems = CompareCensus(twin, actual, Census.Value);
         problems.Should().BeEmpty($"the {twin} twin's census facts (known limits, S7 parity exemptions, Format Selection refusals) must "
-            + $"equal its rows in Conformance/{CensusFileName}, a generated file: run `{GeneratedSetFile.Command}` and review the row diff "
+            + $"equal its rows in Conformance/{CensusFileName}, a generated file: {GeneratedSetFile.Remedy} "
             + $"(actual rows: {dump})");
+    }
+
+    /// <summary>
+    /// R-MY's per-stem refusal bound (#2538): on a judged twin, a stem's refusal ratio on a range route — the selections with
+    /// work that Format Selection declines over the selections with work, over every cell the mode runs (so a FULL run judges
+    /// the range-line cells of the stems outside the sample too) — must not exceed the route's bound unless the stem is a cited
+    /// row of <see cref="RefusalExceptionsFileName"/>. A per-stem measure: a fixture cannot move it for another stem, and the
+    /// exact census rows cannot launder a spike, because a regeneration that meets one fails before it writes.
+    /// Derivation (sampled mode, the corpus @ 2e3d3d152): the 99th percentile of the route's per-stem ratios, rounded UP to
+    /// the next multiple of 5%; the stems above it are the exceptions file's rows. Identity and comment refuse almost never
+    /// (p99 = 0%), so their bound is 5% on every route. Wide: range-statement p99 66.7% → 70%; range-block p99 85.7% → 90%;
+    /// range-whole has no refusal (5%). Wide range-line is 100%, i.e. unbounded: a single line inside a long body is refused
+    /// by construction on that twin (p95 is already 100%, 57 of its 434 stems above 90%), so a ratio there cannot tell a spike
+    /// from the twin's shape; its spikes are judged on range-statement and range-block, and its existing stems by the exact rows.
+    /// </summary>
+    internal static readonly SCG.IReadOnlyDictionary<(string Route, string Twin), int> RefusalRatioBoundPercent =
+        new SCG.Dictionary<(string Route, string Twin), int>
+        {
+            [(RangeWhole, Identity)] = 5,
+            [(RangeStatement, Identity)] = 5,
+            [(RangeBlock, Identity)] = 5,
+            [(RangeLine, Identity)] = 5,
+            [(RangeWhole, Comment)] = 5,
+            [(RangeStatement, Comment)] = 5,
+            [(RangeBlock, Comment)] = 5,
+            [(RangeLine, Comment)] = 5,
+            [(RangeWhole, Wide)] = 5,
+            [(RangeStatement, Wide)] = 70,
+            [(RangeBlock, Wide)] = 90,
+            [(RangeLine, Wide)] = 100,
+        };
+
+    internal const string RefusalExceptionsFileName = "formatting-route-refusal-exceptions.txt";
+
+    /// <summary>One exception row: a stem allowed above its route's <see cref="RefusalRatioBoundPercent"/>, with its cite and reason.</summary>
+    internal sealed record RefusalException(string Twin, string Route, string Stem, string Cite, string Reason);
+
+    private static readonly Lazy<IReadOnlyList<RefusalException>> RefusalExceptions = new(() =>
+    {
+        var path = GeneratedSetFile.PathOf(RefusalExceptionsFileName);
+        if (!File.Exists(path))
+            throw new InvalidOperationException($"Conformance/{RefusalExceptionsFileName} is missing. Its presence is what arms the refusal bound.");
+        return ParseRefusalExceptions(File.ReadAllLines(path));
+    });
+
+    /// <summary><c>twin route stem # #issue reason</c>: a judged twin, a range route, a cite and a reason; no duplicate.</summary>
+    internal static IReadOnlyList<RefusalException> ParseRefusalExceptions(IEnumerable<string> lines)
+    {
+        var rows = new SCG.List<RefusalException>();
+        var keys = new SCG.HashSet<(string, string, string)>();
+        foreach (var raw in lines)
+        {
+            var line = raw.Trim();
+            if (line.Length == 0 || line.StartsWith('#'))
+                continue;
+            var split = line.IndexOf(" #", StringComparison.Ordinal);
+            var fields = (split < 0 ? line : line[..split]).Split(' ', StringSplitOptions.RemoveEmptyEntries);
+            var tail = split < 0 ? "" : line[(split + 2)..].Trim();
+            var cite = Regex.Match(tail, @"^(#\d+)\s+(\S.*)$");
+            if (fields.Length != 3 || !IsRefusalJudged(fields[0]) || !RangeRoutes.Contains(fields[1]) || !cite.Success)
+            {
+                throw new InvalidOperationException($"Conformance/{RefusalExceptionsFileName}: '{line}' — must read `twin route stem # #issue reason` "
+                    + "with a judged twin (identity, comment, wide), a range route and a reason.");
+            }
+
+            if (!keys.Add((fields[0], fields[1], fields[2])))
+                throw new InvalidOperationException($"Conformance/{RefusalExceptionsFileName}: '{line}' — is listed twice.");
+            rows.Add(new RefusalException(fields[0], fields[1], fields[2], cite.Groups[1].Value, cite.Groups[2].Value));
+        }
+
+        return rows;
+    }
+
+    /// <summary>
+    /// The bound's verdicts for one twin: every stem above its route's bound without an exception row (a spike), and every
+    /// exception row that no longer applies — its stem left the corpus, or (on a route whose cells are the same in both modes)
+    /// it holds the bound now. A range-line exception is judged stale only by a FULL run, which covers all its cells.
+    /// </summary>
+    internal static SCG.List<string> RefusalBoundProblems(string twin,
+        SCG.IReadOnlyDictionary<(string Route, string Stem), (int WithWork, int Refused)> selections,
+        IEnumerable<RefusalException> exceptions, IReadOnlySet<string> corpusStems, bool fullMode)
+    {
+        static bool Above((int WithWork, int Refused) s, int bound) => s.Refused * 100L > (long)bound * s.WithWork;
+        var problems = new SCG.List<string>();
+        var excepted = exceptions.Where(e => e.Twin == twin).ToDictionary(e => (e.Route, e.Stem));
+        foreach (var ((route, stem), s) in selections.OrderBy(p => $"{p.Key.Route} {p.Key.Stem}", StringComparer.Ordinal))
+        {
+            var bound = RefusalRatioBoundPercent[(route, twin)];
+            if (Above(s, bound) && !excepted.ContainsKey((route, stem)))
+            {
+                problems.Add($"spike: {twin} {route} {stem} refuses {s.Refused}/{s.WithWork} selections with work, above the {bound}% bound — "
+                    + $"fix the regression, or add `{twin} {route} {stem} # #issue reason` to Conformance/{RefusalExceptionsFileName}");
+            }
+        }
+
+        foreach (var ((route, stem), _) in excepted.OrderBy(p => $"{p.Key.Route} {p.Key.Stem}", StringComparer.Ordinal))
+        {
+            var drain = $"delete its row `{twin} {route} {stem}` from Conformance/{RefusalExceptionsFileName}";
+            if (!corpusStems.Contains(stem))
+                problems.Add($"stale: {twin} {route} {stem} is not a corpus stem — {drain}");
+            else if ((route != RangeLine || fullMode) && !Above(selections.GetValueOrDefault((route, stem)), RefusalRatioBoundPercent[(route, twin)]))
+                problems.Add($"stale: {twin} {route} {stem} holds the {RefusalRatioBoundPercent[(route, twin)]}% bound now — {drain}");
+        }
+
+        return problems;
     }
 
     /// <summary>
@@ -2847,7 +3049,7 @@ public sealed class FormattingRouteParitySweepTests : IDisposable
                     {
                         foreach (var key in Tallies(doc, request))
                             tallies.AddOrUpdate(key, 1, (_, n) => n + 1);
-                        if (IsSampledCell(request.Route, doc.State) && !sampledIn)
+                        if (!RunsIn(request.Route, doc.State, sampledIn))
                             continue;
                         counts.AddOrUpdate((request.Route, doc.State, twin), 1, (_, n) => n + 1);
                     }
