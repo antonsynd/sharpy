@@ -6,7 +6,7 @@ argument-hint: "<issue numbers or description> [--light | --full] | revise <plan
 
 Read `docs/design/verification-contract.md` before proceeding (§10 file-by-class, §11 one-group-per-plan and §12 the verification tier included); every section below applies it. Read `docs/design/python-fidelity-scope.md` when any input is a Python-parity cell.
 
-Create an implementation plan for an engineer to follow, at the **tier the charter set for the group** (contract §12): a `full` plan carries the phases and task list below; a `light` plan is the one-page design-of-record of the light template, and `/verify-plan` grades only its matrix, guards and design predicates. Writes the working copy in `.claude/plans/` and commits it as a **draft** to `docs/process/plans/<plan-id>.md` on the plan's branch (§3.1; `docs/process/README.md` › The stage trail).
+Create an implementation plan for an engineer to follow, at the **tier the charter set for the group** (contract §12): a `full` plan carries the phases and task list below; a `light` plan is the one-page design-of-record of the light template. Writes the working copy in `.claude/plans/` and commits it as a **draft** to `docs/process/plans/<plan-id>.md` on the plan's branch (§3.1; `docs/process/README.md` › The stage trail).
 
 **Usage:**
 - `/create-plan 222,223,224,225,226` — read GitHub issues and create a plan at the charter's tier
@@ -40,7 +40,7 @@ A revision is plan-author work on an existing file of record. It runs in a **fre
 
 3. **Owner-only questions first, in one batch.** An Unchecked Claim that needs the owner's word, a `worked` → refused change (contract §3), a tier or scope change and an unruled door are asked once, each with its options and a recommendation, before the design is rewritten around them. Each answer is recorded in the plan as the owner's words with the date (`## Scope` `override:` for a tier or scope answer; the Defect Class `Owner rulings` row for the rest), lettered at the next `/batch-issues`.
 4. **Answer each finding at its class, by rewriting the text it names.** Replace, never append: no answer paragraph, pass history or superseded decision beside its replacement. Net body growth per revision ≤ +3 KB. Re-measure what the pass measured before building on it (`run`, at a named sha). A finding against a generator's enumeration, map or totality assertion is answered by a new stage-0 commit (contract §11) and the counts the plan cites — never by adding the cell to the plan. A finding the revision declines keeps its reason in the revision-log line, not dropped.
-5. **Reset the record.** Delete the stale stamp lines and the whole `## Verification Summary` (a left-over stamp is read by `/implement-plan` as the current verdict). Append ONE `## Revision log` line: `@ <the pass's sha> — revised after the <n>th pass (NEEDS REVISION, Dimension N): <the decisions changed>`. The stamp and summary are gone, so this line alone carries the dimension the Convergence rule needs and, when the pass drafted the Defect Class, `drafted Defect Class confirmed` or `replaced`. A revised draft that had no pass writes `@ <sha> — revised before the first pass: …`.
+5. **Reset the record.** Delete the stale stamp lines and the whole `## Verification Summary` (a left-over stamp is read by `/implement-plan` as the current verdict). Append ONE `## Revision log` line: `@ <the pass's sha> — revised after the <n>th pass (NEEDS REVISION, Dimension N): <the decisions changed>`. The stamp and summary are gone, so this line alone carries the dimension the Convergence rule needs and, when the pass drafted the Defect Class, `drafted Defect Class: confirmed` or `drafted Defect Class: replaced`. A revised draft that had no pass writes `@ <sha> — revised before the first pass: …`.
 6. **Check, commit, report.** `check_plan_refs.py`, then §3.1 with the subject `process(plan): <plan-id> (<group>) revised after pass <n>`, then the Report (§4) plus each finding and how it was answered, the body bytes before → after, the owner's answers, what was re-measured, and the next step `/verify-plan <path>` **in a fresh context**.
 
 ## Scope check (before any research)
@@ -54,9 +54,9 @@ Find the group's row in the newest charter (`ls -t docs/process/rounds/remediati
 - **Charter says `light`** (and no `--full`) — write the light template (below); **`full`** — the full template (§3).
 - **No charter row** (description input, or an issue batched since the last call) — derive the tier yourself from the §12 letters (a–e), write the letter or "none → light" into `## Scope`, and say in the report that the tier is derived, not ruled.
 - **A flag disagrees with the charter** — obey the flag, write `override: <the user's words>` in `## Scope`, and say so in the report. Never silently promote or demote.
-- **Research moves a light group onto a §12 letter** (an unruled decision surfaces, the seam turns out to be in `Semantic/`·`Lowering/`·`CodeGen/`, the matrix needs a generator) — stop, say which letter, and ask whether to promote; a promotion is written into `## Scope` as `tier: full (<letter>, promoted at /create-plan: <reason>)`.
+- **Research moves a light group onto a §12 letter** (an unruled decision surfaces, the seam turns out to be in `Semantic/`·`Lowering/`·`CodeGen/`, the matrix needs a generator) — stop and say which letter; a generator makes the group `full` outright (§12 (b)), any other letter asks whether to promote; a promotion is written into `## Scope` as `tier: full (<letter>, promoted at /create-plan: <reason>)`.
 
-**Light template.** One page is the goal (§3's caps apply): the decisions an implementer must not re-derive, and no phases, tasks or testing strategy — the implementer sequences the work. Defect Class and Adversarial Review follow §3's rule for bug inputs. Run `python3 build_tools/check_plan_refs.py <plan>` before reporting: the `--adequacy` pass corrects nothing inline, so this is the author's reference check, and the report quotes its result.
+**Light template.** One page is the goal (§3's caps apply): the decisions an implementer must not re-derive, and no phases, tasks or testing strategy — the implementer sequences the work. Defect Class and Adversarial Review follow §3's rule for bug inputs. The `--adequacy` pass corrects nothing inline, so §3.1's `check_plan_refs.py` run is the reference check.
 
 ```markdown
 # <Plan Title>
@@ -184,11 +184,7 @@ The plan must follow this structure. `## Defect Class` and `## Adversarial Revie
 
 ## Design Decisions
 
-<Key architectural choices with rationale. Reference Sharpy axioms where relevant:
-- Axiom 1 (.NET compatibility) > Axiom 2 (Type safety) > Axiom 3 (Python syntax)
-- Reference docs/language_specification/ where applicable
-- Every fact codegen reads is materialized in semantic analysis (Symbol.CodeGenInfo or a node-keyed SemanticInfo dictionary added to MergeFrom)
-- Every decision names its layer-ladder rung (1 `.spy` / 2 Core C# in dunder spelling / 3 CLR-identity bridge rule / 4 name-keyed semantic rule) and why the lower rungs cannot carry the fact>
+<Key choices with rationale: axiom precedence (.NET > type safety > Python syntax), the spec section, where semantic analysis materializes each fact codegen reads (Symbol.CodeGenInfo, or a SemanticInfo dictionary in MergeFrom), and each decision's layer-ladder rung (1 `.spy` / 2 Core C# in dunder spelling / 3 CLR-identity bridge / 4 name-keyed) with why lower rungs cannot carry the fact>
 
 ## Implementation
 
@@ -248,14 +244,14 @@ The plan must follow this structure. `## Defect Class` and `## Adversarial Revie
 A draft is committed from the moment it is written: the gitignored working copy does not survive its container. Run `python3 build_tools/check_plan_refs.py .claude/plans/<plan-id>.md` and fix what it flags. The branch is cut once from `origin/dev` and carries every stage (`docs/process/README.md` › The stage trail): `claude/<group>-plan` for a `full` plan, `claude/<group>` for a `light` one.
 
 ```bash
-git fetch origin dev && git switch -c <branch> origin/dev   # first stage only; later stages `git switch <branch>`
+git fetch origin dev && git switch -c <branch> origin/dev   # unless §2.1 cut it; then `git switch <branch>`
 { echo '<!-- DRAFT, not verified: written by /create-plan on YYYY-MM-DD @ <sha>; no /verify-plan pass has stamped this text. -->'
   echo; cat .claude/plans/<plan-id>.md; } > docs/process/plans/<plan-id>.md
 git add docs/process/plans/<plan-id>.md           # explicit pathspec; `git diff --cached --stat` shows this one file
 git commit -m "process(plan): <plan-id> (<group>) draft"
 ```
 
-Only the committed copy carries the DRAFT marker, so `/verify-plan` can stamp the working copy's first line. A revision writes `revised by /create-plan on YYYY-MM-DD @ <sha> after pass <n>` in the marker. Then `/push`; a `full` plan opens its one pull request into `dev` on the first push (body: group, tier, issues, the `check_plan_refs.py` result, the next step), and a `light` plan opens none — it rides in the implementation's.
+Only the committed copy carries the DRAFT marker, so `/verify-plan` can stamp the working copy's first line. A revision writes `revised by /create-plan on YYYY-MM-DD @ <sha> after pass <n>` in the marker. Then `/push`; a `full` plan opens its one pull request into `dev` on the first push (body: group, tier, issues, the `check_plan_refs.py` result, the next step), and a `light` plan opens none — it rides in the implementation's. With stage 0 on it, the plan pull request changes code: README item 4 says who reviews and merges it.
 
 ### 4. Report
 
