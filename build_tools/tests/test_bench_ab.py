@@ -471,8 +471,8 @@ class TestBenchmarkChildRecording:
     ):
         """
         The ordering is the whole point: recording after ``wait()`` would pin a dead pid, and
-        ``is_lock_stale`` consults the child FIRST, so a dead pointer reads as stale — the very
-        steal this is meant to prevent, with extra steps.
+        the next holder waits only on a LIVE recorded child, so a dead pointer lets a peer in
+        beside the still-running benchmark — the very steal this is meant to prevent.
         """
         log = tmp_path / "calls.txt"
         repo = self._stub_repo(tmp_path, log)
