@@ -1,0 +1,130 @@
+{
+ "_source": "Trimmed from antonsynd/sharpy issues #2477, #2461, #2124, #2438, #2457 and PR #2464 as fetched 2026-11-11 (table lines kept, prose dropped).",
+ "issues": {
+  "2477": {
+   "number": 2477,
+   "title": "core: str.encode never raises UnicodeEncodeError — 'café'.encode('ascii') returns b'caf?'",
+   "state": "closed",
+   "closed_at": "2026-11-08T03:39:00Z",
+   "labels": [
+    {
+     "name": "lane:silent-wrong"
+    },
+    {
+     "name": "reach:program"
+    },
+    {
+     "name": "class-tracker"
+    },
+    {
+     "name": "core"
+    }
+   ],
+   "body": "| # | cell | python | Sharpy @ 3f103e098 |\n|---|---|---|---|\n| 1 | `'café'.encode('ascii')` | raises `UnicodeEncodeError` | `b'caf?'` |\n| 2 | `'café'.encode('ascii', 'replace')` | `b'caf?'` | expected `b'caf?'` (unmeasured: does the `errors` parameter exist?) |\n| 3 | `'café'.encode('ascii', 'ignore')` | `b'caf'` | unmeasured |\n| 4 | `'\\udc80'.encode('utf-8')` (lone surrogate) | raises `UnicodeEncodeError` | unmeasured |\n| 5 | `b'\\xff'.decode('utf-8')` | raises `UnicodeDecodeError` | unmeasured; no `UnicodeDecodeError` type exists in Core |\n| 6 | control: `except UnicodeError` / `except ValueError` catch cell 1 | caught | n/a until cell 1 raises |"
+  },
+  "2461": {
+   "number": 2461,
+   "title": "stdlib: CLR exceptions where Python raises ValueError (date/time/datetime constructors, numpy broadcast and reshape, np.clip asserting a throw numpy does not make)",
+   "state": "closed",
+   "closed_at": "2026-11-07T17:37:09Z",
+   "labels": [
+    {
+     "name": "lane:runtime-throw"
+    },
+    {
+     "name": "reach:program"
+    },
+    {
+     "name": "class-tracker"
+    }
+   ],
+   "body": "**Cells measured @ 47c5b90c1 against python3 3.13.18 (numpy text from numpy's own message):**\n| # | cell | python | sharpy | where |\n|---|---|---|---|---|\n| 1 | `date(2023, 2, 29)` | `ValueError: day is out of range for month` | `System.ArgumentOutOfRangeException` out of `System.DateTime..ctor`, uncaught by `except ValueError` | `Datetime.cs:14-17` |\n| 2 | `datetime(2023, 2, 29)` | `ValueError` | same route | `Datetime.cs:345-349` |\n| 3 | `time(25, 0)` | `ValueError: hour must be in 0..23` | `TimeSpan(0, 25, 0, 0)` does not throw: to measure (probe stopped at cell 1) | `Datetime.cs:203-207` |\n| 4 | `np.array([1.,2.,3.]) + np.array([1.,2.])` | `ValueError: operands could not be broadcast together with shapes (3,) (2,)` | `ArgumentException` (`Broadcasting.cs:58`); end-to-end to measure | numpy |\n| 5 | `np.clip(a, 5.0, 2.0)` | numpy returns an array of the max; no throw | `ArgumentException(\"min must not exceed max\")` and `numpy_manipulation_tests.spy:247-250` asserts that throw | `Numpy.Manipulation.cs:397` |\n| 6 | spy tests asserting a CLR exception type | — | 17: numpy 15 (`ArgumentException` 11, `InvalidOperationException` 3, `ArgumentOutOfRangeException` 1), datetime 2 (`ArgumentOutOfRangeException`, `datetime_date_tests.spy:142`, `datetime_tests.spy:66`); argparse's `ArgumentError` is Python's own and is not in this class | `src/Sharpy.Stdlib.Tests/Spy/**` |\n| 7 | source scan `throw new (Argument\\|InvalidOperation\\|NotSupported\\|ArgumentOutOfRange)Exception` over `src/Sharpy.Stdlib/**/*.cs` | — | 57 sites: Numpy 47, Requests 5, Yaml 3, Toml 1, TypedLoadContract 1 (`ArgumentNullException` null guards excluded: those are bug guards) | scan |"
+  },
+  "2124": {
+   "number": 2124,
+   "title": "core: except LookupError does not catch KeyError or IndexError — neither derives from LookupError",
+   "state": "closed",
+   "closed_at": "2026-11-07T19:52:22Z",
+   "labels": [
+    {
+     "name": "lane:silent-wrong"
+    },
+    {
+     "name": "reach:program"
+    },
+    {
+     "name": "class-tracker"
+    }
+   ],
+   "body": "`try: {}['k'] except LookupError: print('caught')` → the KeyError escapes (same for `[][0]` / IndexError). python3: `caught` for both — `KeyError` and `IndexError` are subclasses of `LookupError`. The Core exception hierarchy must mirror python's (`LookupError` → `KeyError`, `IndexError`; check the rest of the builtin exception tree against `python3 -c 'import inspect; …'` in one table-driven test).\n\n---\nFound by `/verify-implementation plan-0ca7b7` core fix lane (after d6a7aef05)."
+  },
+  "2438": {
+   "number": 2438,
+   "title": "test: a passing Compiler test run can read Failed with 0 failed: vstest's result send runs out of memory",
+   "state": "closed",
+   "closed_at": "2026-11-07T12:58:04Z",
+   "labels": [
+    {
+     "name": "lane:tooling"
+    },
+    {
+     "name": "reach:probe"
+    },
+    {
+     "name": "class-tracker"
+    }
+   ],
+   "body": ""
+  },
+  "2457": {
+   "number": 2457,
+   "title": "test: the name-resolution harness's residue after P77b, and the result-output ceiling's reach (class tracker from #2433 and #2438)",
+   "state": "open",
+   "closed_at": null,
+   "labels": [
+    {
+     "name": "lane:tooling"
+    },
+    {
+     "name": "reach:probe"
+    },
+    {
+     "name": "class-tracker"
+    }
+   ],
+   "body": ""
+  },
+  "2464": {
+   "number": 2464,
+   "title": "PR #2464",
+   "state": "closed",
+   "closed_at": "2026-11-07T16:53:00Z",
+   "labels": [],
+   "body": "",
+   "pull_request": {
+    "url": "https://api.github.com/repos/antonsynd/sharpy/pulls/2464"
+   }
+  }
+ },
+ "comments": {
+  "2477": [
+   {
+    "created_at": "2026-11-08T03:38:57Z",
+    "body": "**Cells, before (sharpyc @ ef6039e33) and after (@ 80b6b9f69 = python3 3.13.18; CI's oracle 3.12 agrees in the fixture run):**\n| # | cell | before | after |\n|---|---|---|---|\n| 1 | `'café'.encode('ascii')` | `b'caf?'` | raises `UnicodeEncodeError: 'ascii' codec can't encode character '\\xe9' in position 3: ordinal not in range(128)` (fields `ascii`, `'café'`, 3, 4) |\n| 2 | `'café'.encode('ascii', 'replace')` | SPY0354 (no 2-arg overload) | `b'caf?'` |\n| 3 | `'café'.encode('ascii', 'ignore')` | SPY0354 | `b'caf'` |\n| 4 | `'\\udc80'.encode('utf-8')` | `b'\\xef\\xbf\\xbd'` | raises `… '\\udc80' in position 0: surrogates not allowed` |\n| 5 | `b'\\xff'.decode('utf-8')` | `�`; `UnicodeDecodeError` did not exist (SPY0202) | raises `UnicodeDecodeError: 'utf-8' codec can't decode byte 0xff in position 0: invalid start byte` |\n| 6 | `except UnicodeError` / `except ValueError` catch cells 1 and 5 | n/a | both catch both |"
+   }
+  ],
+  "2461": [
+   {
+    "created_at": "2026-11-07T16:25:24Z",
+    "body": "| item | tracker | cell | lane | reach |\n|---|---|---|---|---|\n| W1.4 | none | `print(ndarray)` prints repr-ish `array([2, 2, 2])` where numpy prints `[2. 2. 2.]` (str, float spelling): `np.clip(np.array([1.,3.,7.]),5.,2.)` printed by sharpyc @ 75465d3ee vs python3 3.13.18 + numpy 2.5.3. | python-fidelity | probe |\n| W1.4 | #2461 | numpy reshape: numpy 2.5.3 treats ANY negative dim as the unknown (`np.zeros(6).reshape((2,-3))` -> (2,3)); Sharpy raises `ValueError(\"negative dimensions not allowed\")` for a negative other than -1 (`NdArray.Reshape.cs` ResolveShape). Also numpy's reshape text drops a LEADING unknown (`(-1,4)` -> \"into shape (4)\") while Sharpy spells it `(newaxis,4)`. Measured with python3 -c. | python-fidelity | probe |\n| W1.4 | #2461 | numpy boolean-mask assignment: Sharpy raises only when values are too FEW; numpy also raises ValueError when values outnumber the true mask cells, and broadcasts a scalar/non-1-D value (Sharpy: ValueError \"values must be 1-D\"). `NdArray.BooleanIndexing.cs` SetMask; read @ 75465d3ee, not run. | python-fidelity | probe |\n| W1.4 | none | requests divergence: real requests' `iter_content`/`iter_lines` on a non-stream or already-read response iterate the cached body (no error) and a consumed stream raises `StreamConsumedError`; Sharpy raises RuntimeError (was InvalidOperationException) for all three. `Session.max_redirects = 0` is legal in requests (any redirect -> TooManyRedirects); Sharpy raises ValueError (HttpClientHandler needs >= 1). `Requests/Response.cs` EnsureStreamable, `Requests/Session.cs` MaxRedirects; read, not run (hermetic tests cannot drive Send). | python-fidelity | probe |\n| W1.4 | #2461 | The issue's cell-7 census (57 sites) missed `throw new System.NotSupportedException` (qualified spelling): 13 more sites in `Unittest/__Init__.cs` (compiler-lowered markers, allowlisted as bug guards). The scan also parses only the net10.0 view, so a CLR throw in an `#else` (netstandard2.1-only) branch is not scanned. Measured by StdlibClrThrowScanTests' first red run. | tooling | probe |"
+   },
+   {
+    "created_at": "2026-11-07T16:59:55Z",
+    "body": "| # | Decision | Default while waiting | Door |\n|---|---|---|---|\n| D13 | The 20 bug-guard rows in `stdlib-clr-throw-allowlist.txt` are permanent by design (unreachable CLR guards, each with its reason) and cite #2461, so `check_allowlist_issue_state.sh` keeps the class issue open after its fix landed. Re-cite standing rows to one permanent tracker issue, or let the scan accept a `bug-guard` marker in place of a cite? | #2461 stays open as the cite; no scan change | two-way |"
+   }
+  ],
+  "2124": [],
+  "2438": [],
+  "2457": []
+ }
+}
