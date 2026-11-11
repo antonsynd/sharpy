@@ -6,7 +6,7 @@ argument-hint: "<issue numbers or description> [--light | --full] | revise <plan
 
 Read `docs/design/verification-contract.md` before proceeding (§10 file-by-class, §11 one-group-per-plan and §12 the verification tier included); every section below applies it. Read `docs/design/python-fidelity-scope.md` when any input is a Python-parity cell.
 
-Create an implementation plan for an engineer to follow, at the **tier the charter set for the group** (contract §12): a `full` plan carries the task list, phases and commit messages below; a `light` plan is a one-page design-of-record (Scope, Defect Class, Design Decisions with rungs, acceptance bullets with their mutations, Issues to Close with close criteria) and no task list — the implementer sequences the work, and `/verify-plan` grades only its matrix, guards and design predicates. Writes the working copy in `.claude/plans/` and commits it as a **draft** to `docs/process/plans/<plan-id>.md` on the plan's branch (§3.1; `docs/process/README.md` › The stage trail).
+Create an implementation plan for an engineer to follow, at the **tier the charter set for the group** (contract §12): a `full` plan carries the phases and task list below; a `light` plan is a one-page design-of-record (Scope, Defect Class, Design Decisions with rungs, acceptance bullets with their mutations, Issues to Close with close criteria) and no task list — the implementer sequences the work, and `/verify-plan` grades only its matrix, guards and design predicates. Writes the working copy in `.claude/plans/` and commits it as a **draft** to `docs/process/plans/<plan-id>.md` on the plan's branch (§3.1; `docs/process/README.md` › The stage trail).
 
 **Usage:**
 - `/create-plan 222,223,224,225,226` — read GitHub issues and create a plan at the charter's tier
@@ -157,12 +157,9 @@ The plan must follow this structure. `## Defect Class` and `## Adversarial Revie
 
 #### Tasks
 
-1. **<Task title>** — <file(s) involved>
-   - <Specific change description>
-   - <Acceptance criteria — which bullet above this task satisfies>
-   - Commit: `<conventional commit message>`
-
-2. ...
+- **T<n>. <Task title>** — <file(s) involved>
+  - <Specific change description>
+  - <Acceptance criteria — which bullet above this task satisfies>
 
 ### Phase N+1: ...
 
@@ -177,7 +174,7 @@ The plan must follow this structure. `## Defect Class` and `## Adversarial Revie
 
 ## Issues to Close
 
-- #NNN — <title> — closed by Phase N, Task M; **close criterion:** <the acceptance bullet and the evidence it needs @ sha>
+- #NNN — <title> — closed by T<m>; **close criterion:** <the acceptance bullet and the evidence it needs @ sha>
 - ...
 
 ## Class trackers this plan may post cells to
@@ -187,7 +184,7 @@ The plan must follow this structure. `## Defect Class` and `## Adversarial Revie
 
 **Plan quality requirements:**
 - Tasks follow the feature implementation order: Lexer -> Parser -> Semantic -> Validation -> Lowering (if an IR shape changes) -> CodeGen -> LSP -> Tests
-- Each task has a specific conventional commit message
+- Tasks, decisions and mutations are named by id (`T3`, `D2`, `M1`); a plan carries no commit messages
 - Enough context and rationale for a junior/senior engineer (or a smaller model) to implement unambiguously
 - Incremental commits — each task is independently committable
 - A plan that fixes one arm of a mirrored/parallel-site structure without a completeness scan is not a plan

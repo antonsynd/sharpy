@@ -157,7 +157,7 @@ Agent Instructions step 6 is the rule. A guard that stays green when broken is a
 
 After each task is completed by an agent:
 1. Verify the agent staged only relevant files (`git show --stat HEAD`)
-2. The commit message references the plan section, e.g. `feat: Add FormatStringExpression AST node (plan step 2)`, and — for guard commits — carries the mutation outcomes
+2. The commit message names the plan's task id (`T3`, `Phase 2`) and — for guard commits — carries the mutation outcomes
 3. Use the commit trailer(s) the harness provides for the session; never hard-code a model name
 4. Update the checklist (or the task board) and re-check `git diff --stat` against the wave's scope
 
