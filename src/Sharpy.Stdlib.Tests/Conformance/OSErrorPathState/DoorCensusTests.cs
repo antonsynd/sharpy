@@ -162,7 +162,7 @@ public class DoorCensusTests
     {
         var entries = Census.EntryPoints;
         foreach (var (key, entry) in entries)
-            _output.WriteLine($"{key}\n    via {entry.Witness}");
+            _output.WriteLine($"{key}\n    positions [{string.Join(", ", PathPositions.Of(entry.Symbol))}] {(entry.Symbol is IMethodSymbol m ? m.ToDisplayString() : "")}\n    via {entry.Witness}");
         _output.WriteLine($"{entries.Count} entry point(s); census {Census.CensusLines().Count} line(s); "
                           + $"Core reaching {Census.Core.Reaching.Count}, Stdlib reaching {Census.Stdlib.Reaching.Count}");
         Assert.True(entries.Count > 20, $"only {entries.Count} entry point(s): the reach is degraded");
