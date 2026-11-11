@@ -103,6 +103,14 @@ Sharpy.Compiler.Tests/Lowering/IrTotalityTests.cs | Assert.Equal(3, lambdas.Coun
 Sharpy.Compiler.Tests/Lowering/IrTotalityTests.cs | Assert.Equal(4, CollectNodes<IrOptionalWrappedElement>(ir).Count); | ×1 | fixed-input | in-test input of OptionalWalrusStore_LowersAtItsOwnSite_NestedUnderAnUnpackingElement
 Sharpy.Compiler.Tests/Lowering/IrTotalityTests.cs | Assert.Equal(5, CollectNodes<IrOptionalWalrusStore>(ir).Count); | ×1 | fixed-input | in-test input of OptionalWalrusStore_LowersAtItsOwnSite_NestedUnderAnUnpackingElement
 Sharpy.Compiler.Tests/Lowering/IrTotalityTests.cs | Assert.Equal(5, walruses.Count); | ×1 | fixed-input | in-test input of OptionalWalrusStore_LowersAtItsOwnSite_NestedUnderAnUnpackingElement
+Sharpy.Compiler.Tests/Lowering/OptionalStoreWrapAgreementTests.cs | Assert.Equal(0, emptyIrContexts); | ×1 | zero-guard | no emitter unit over IrCompilation.Empty
+Sharpy.Compiler.Tests/Lowering/OptionalStoreWrapAgreementTests.cs | Assert.True(fixtures.Count > 0, "No fixtures discovered — corpus is empty, guard is vacuous"); | ×1 | floor | lower bound
+Sharpy.Compiler.Tests/Lowering/OptionalStoreWrapAgreementTests.cs | Assert.True(fixturesExamined > 0, "no fixture declares an Optional slot — the prefilter selects nothing"); | ×1 | floor | lower bound
+Sharpy.Compiler.Tests/Lowering/OptionalStoreWrapAgreementTests.cs | Assert.True(tally.Augmented > 0, $"no augmented store under an Optional slot was checked: {tally}"); | ×1 | floor | lower bound
+Sharpy.Compiler.Tests/Lowering/OptionalStoreWrapAgreementTests.cs | Assert.True(tally.ElementWrap > 0 && tally.ElementNoWrap > 0, $"unpacking elements need both sides: {tally}"); | ×1 | floor | lower bound
+Sharpy.Compiler.Tests/Lowering/OptionalStoreWrapAgreementTests.cs | Assert.True(tally.PlainWrap > 0 && tally.PlainNoWrap > 0, $"plain stores need both sides: {tally}"); | ×1 | floor | lower bound
+Sharpy.Compiler.Tests/Lowering/OptionalStoreWrapAgreementTests.cs | Assert.True(tally.WalrusWrap > 0 && tally.WalrusNoWrap > 0, $"walrus stores need both sides: {tally}"); | ×1 | floor | lower bound
+Sharpy.Compiler.Tests/Lowering/RequiredIrCoverageTests.cs | Assert.True(fixtures.Count > 0, "No fixtures discovered — corpus is empty, guard is vacuous"); | ×1 | floor | lower bound
 Sharpy.Compiler.Tests/Parser/ContextualKeywordPredicateConformanceTests.cs | files.Length.Should().BeGreaterThan(8, "the scan must see the parser partials and the AST files, not an empty directory"); | ×2 | floor | lower bound
 Sharpy.Compiler.Tests/Parser/UnterminatedFinalLineParserTests.cs | module.Body.Should().HaveCount(2, "both functions must survive, not merely the diagnostic disappear"); | ×1 | fixed-input | in-test input of UnterminatedConst_YieldsAWholeTree_NotJustAnAbsentError
 Sharpy.Compiler.Tests/Project/MasterRegistryImmutabilityTests.cs | Assert.Equal(1, symbolFileWrites); | ×1 | fixed-input | in-test input of NoCompilerSourceWritesAParameterElementPastTheFreeze
