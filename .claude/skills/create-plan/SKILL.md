@@ -125,7 +125,7 @@ Before writing the plan:
 - Find mirrored/parallel sites: if the fix lands in one arm of a switch, dispatch table, or per-position handler, enumerate the other arms — a plan that patches one arm without a completeness scan is not a plan
 - Note which generated artifacts the change reaches (spy-stdlib C#, spy-test C#, stdlib docs, oracle ledger) and which test projects (CLAUDE.md › Testing › Commit gate)
 
-Any `dotnet` command you run while researching goes through `.claude/scripts/dotnet-serialized` with `dangerouslyDisableSandbox: true` (raw `dotnet` is hook-blocked); prefer `/spy-run`, `/spy-emit`, `/quick-check`.
+Research `dotnet` runs go through `.claude/scripts/dotnet-serialized` (CLAUDE.md › Operational Contracts); prefer `/spy-run`, `/spy-emit`, `/quick-check`.
 
 ### 3. Generate the plan
 
@@ -228,11 +228,11 @@ The plan must follow this structure. `## Defect Class` and `## Adversarial Revie
 **Plan quality requirements:**
 - Tasks follow the feature implementation order: Lexer -> Parser -> Semantic -> Validation -> Lowering (if an IR shape changes) -> CodeGen -> LSP -> Tests
 - Tasks, decisions and mutations are named by id (`T3`, `D2`, `M1`); a plan carries no commit messages
-- Enough context and rationale for a junior/senior engineer (or a smaller model) to implement unambiguously
+- Enough rationale for any engineer, or a smaller model, to implement unambiguously
 - Incremental commits — each task is independently committable
 - A plan that fixes one arm of a mirrored/parallel-site structure without a completeness scan is not a plan
 - A plan with a second non-chore group, or an output/layout-changing phase sharing a gate, is not a plan (contract §11) — split it
-- A residue group or a ≥2-axis × ≥3-value matrix without its stage-0 commit is not a plan (contract §11): before the first verify pass, commit on the plan's branch only the test machinery (cases enumerated from compiler enumerations, never hand lists; case → expected map; totality assertion with its mutation), green, with the known-red list and its issue cites inside the test file. The plan cites it and never restates the matrix
+- A residue group or a ≥2-axis × ≥3-value matrix without its stage-0 commit before the first verify pass is not a plan (contract §11: test machinery only, axes closed against compiler enumerations, never hand lists; green, the known-red list and its issue cites inside the test file); the plan cites the test and never restates the matrix
 - The plan names the class trackers it posts cells to and never instructs an implementer to `gh issue create` (contract §10)
 - A design decision that adds a name-keyed (`BuiltinNames.X`, type-name string) rule in `Semantic/` or `CodeGen/` without a rung justification is not a plan (layer ladder, CLAUDE.md › Core & Stdlib Conventions)
 - Every new test/guard/harness comes with the mutation that turns it red (verification-contract.md §2)
