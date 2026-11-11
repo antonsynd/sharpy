@@ -139,13 +139,6 @@ gzip.open(wb)[EmptyDir] python=OS IsADirectoryError sharpy=X <class 'System.Unau
 gzip.open(wb)[MissingParent] python=OS FileNotFoundError sharpy=X <class 'System.IO.DirectoryNotFoundException'> # #2476
 gzip.open(wb)[NonEmptyDir] python=OS IsADirectoryError sharpy=X <class 'System.UnauthorizedAccessException'> # #2476
 gzip.open(wb)[ParentIsFile] python=OS NotADirectoryError sharpy=X <class 'System.IO.DirectoryNotFoundException'> # #2476
-open(a)[ParentIsFile] python=OS NotADirectoryError sharpy=OS FileNotFoundError # #2476
-open(r)[ParentIsFile] python=OS NotADirectoryError sharpy=OS FileNotFoundError # #2476
-open(r,encoding)[ParentIsFile] python=OS NotADirectoryError sharpy=OS FileNotFoundError # #2476
-open(w)[ParentIsFile] python=OS NotADirectoryError sharpy=OS FileNotFoundError # #2476
-open(x)[EmptyDir] python=OS FileExistsError sharpy=OS IsADirectoryError # #2476
-open(x)[NonEmptyDir] python=OS FileExistsError sharpy=OS IsADirectoryError # #2476
-open(x)[ParentIsFile] python=OS NotADirectoryError sharpy=OS FileNotFoundError # #2476
 os.chdir[File] python=OS NotADirectoryError sharpy=OS FileNotFoundError # #2476
 os.chdir[ParentIsFile] python=OS NotADirectoryError sharpy=OS FileNotFoundError # #2476
 os.listdir[File] python=OS NotADirectoryError sharpy=OS FileNotFoundError # #2476
