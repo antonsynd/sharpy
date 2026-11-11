@@ -26,17 +26,17 @@ Run in parallel:
 
 If the branch is `main` or `mainline`, **warn the user** that they're about to push directly to the main branch and confirm before proceeding.
 
-If the branch is `dev`, **stop**: `dev` accepts only pull requests (the branch ruleset applied 2026-11-08 under W3.4 / D5 refuses direct pushes and requires the `subjects` check). Promotion to `dev` is a PR: push the lane branch (`claude/<lane>`), open a PR into `dev`, run `/ci-gate` on its run, and merge on green. Local `dev` is advanced with `git pull origin dev` after the merge, never by a push.
+If the branch is `dev`, **stop**: `dev` accepts only pull requests (ruleset, 2026-11-08, requiring the `subjects` check). Push a `claude/<lane>` branch and open a PR into `dev`; local `dev` advances only by `git pull origin dev`.
 
 ### 1.1. Commit-subject length gate
 
-CI's `Commit Subjects` workflow (W3.4 / D5) fails a PR or a `dev`/`mainline` push whose non-merge, non-revert commit subjects exceed 72 characters. Run the same check on the outgoing commits before pushing:
+CI's `Commit Subjects` workflow fails a PR whose non-merge, non-revert subjects exceed 72 characters. Run it on the outgoing commits:
 
 ```bash
 bash build_tools/check_commit_subjects.sh "$(git rev-parse --abbrev-ref --symbolic-full-name @{upstream} 2>/dev/null || echo origin/dev)..HEAD"
 ```
 
-A red here means amend or reword (`git commit --amend` for the tip; `git rebase` for older ones, on your own unpushed commits only) before pushing — CI will say the same thing after the push.
+A red means reword your own unpushed commits before pushing.
 
 ### 1.25. Version bump check (bump lanes and mainline only)
 
@@ -53,24 +53,7 @@ If the current `SharpyVersion` in `Directory.Build.props` equals the last tag ve
 
 This is advisory — the push is not blocked. Skip silently if the version already exceeds the last tag.
 
-> **Pushing a version bump to `mainline` auto-tags and releases — do NOT `git tag` by hand.**
-> The `.github/workflows/auto-tag.yml` workflow triggers on any push to `mainline` that touches
-> `Directory.Build.props`. It reads `<SharpyVersion>`, and if `v<version>` does not already exist it
-> creates and pushes that tag, then dispatches `release.yml` (which packs sharpyc for all RIDs, pushes
-> the NuGet packages, and creates the GitHub Release). So a bump commit reaching `mainline` **is** the
-> release cut. Consequences to respect:
-> - **Never `git tag v<version>` + `git push` the tag yourself.** CI already does it; a manual tag
->   races the workflow (you will see a terse `Everything up-to-date` when your local tag happens to
->   match the CI-created one) and, if it lands first on a different commit, points the release at the
->   wrong tree. Let the push to `mainline` create the tag.
-> - The tag lands on the **bump commit**. Make sure that commit is green *before* it reaches
->   `mainline` — run `/ci-gate` on its branch and the whitespace check (§1.5) first — because the tag
->   (and the published NuGet/GitHub release) freeze on it. A follow-up fix pushed afterward does not
->   move the already-created tag; re-pointing a published release tag is disruptive and can re-trigger
->   `release.yml` into a duplicate-NuGet-push failure. Prefer to push a clean bump commit once.
-> - Two pushes delivering the same bump (e.g. two merges into `mainline`, or a peer also pushing) fire
->   `auto-tag` per push event; the second `release.yml` run failing at "Create GitHub Release" with a
->   duplicate-release conflict is benign (the first run already published).
+A bump reaching `mainline` **is** the release cut: `auto-tag.yml` tags `v<version>` on the bump commit and dispatches `release.yml` (NuGet packages, GitHub Release). Never `git tag` by hand (it races the workflow and can point the release at the wrong tree), and have the bump commit green (`/ci-gate`, §1.5) before it reaches `mainline`: a later fix does not move the tag.
 
 ### 1.5. Generated-artifact staleness gate
 
@@ -89,7 +72,7 @@ Then run the matching regeneration checks (use `dangerouslyDisableSandbox` — t
 | `src/Sharpy.Stdlib/spy/` or `src/Sharpy.Compiler/` or `src/Sharpy.Core/` | `bash build_tools/check_spy_staleness.sh` |
 | `src/Sharpy.Stdlib.Tests/Spy/` or `src/Sharpy.Compiler/` or `src/Sharpy.Core/` | `bash build_tools/check_spy_tests_staleness.sh` |
 | `src/Sharpy.Core/` or `src/Sharpy.Stdlib/` (public API / doc comments) | `python3 -m build_tools stdlib generate --force` then `git status --short -- docs/stdlib` |
-| **any `.cs` file** (hand-written OR generated) | `.claude/scripts/dotnet-serialized format whitespace sharpy.sln --verify-no-changes` (CI step "Verify generated C# is whitespace-clean (#1641)" — despite the name, this gate runs `dotnet format whitespace sharpy.sln --verify-no-changes` over the **whole solution**, so a stray indented blank line or brace mis-indent in ANY source file fails it, not just generated C#). If it reports files, fix them: for hand-written C# run `dotnet format whitespace sharpy.sln` (it edits in place) and commit; for generated C# fix the emitter and regenerate — never hand-format generated files. A per-agent format that each touched only its own files is NOT sufficient — a file no single agent formatted (e.g. one created by a peer) slips through; the pre-push check is whole-solution for this reason. |
+| **any `.cs` file** (hand-written OR generated) | `.claude/scripts/dotnet-serialized format whitespace sharpy.sln --verify-no-changes` — the CI step "Verify generated C# is whitespace-clean (#1641)" runs this over the **whole solution**, so a file no agent formatted (a peer's) fails it too. Fix hand-written C# with `/format` and commit; for generated C# fix the emitter and regenerate, never hand-format. |
 | `docs/deviations.yaml` or `src/Sharpy.Stdlib.Tests/Spy/cpython/` | `python3 -m build_tools.cpython_oracle ledger --write` then `git status --short -- build_tools/cpython_oracle/ledger.yaml` (commit if dirty — the pytest gate `test_committed_ledger_is_up_to_date` and the dual-execute-oracle CI job both fail on a stale ledger) |
 | `src/**/Conformance/*-allowlist.txt` or any `*.Tests/**/*.cs` | `bash build_tools/check_allowlist_issue_state.sh` (exit 1 = a row or Skip cites a CLOSED issue; drain it) |
 | `docs/language_specification/**` or `build_tools/spec_blocks*` | `bash build_tools/check_spec_blocks.sh` (exit 1 = an unmarked failing block or a stale allowlist entry) |

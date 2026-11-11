@@ -67,7 +67,7 @@ These are the project's existing rules, restated because each has been violated 
 - **Models.** The lead is Fable; workers are Opus (`model: "opus"`). A worker may spawn its own Opus sub-workers for refutation or measurement. Never Sonnet or Haiku for compiler work.
 - **Worker preamble.** Paste this block into every worker prompt, unchanged:
 
-  > The working tree is SHARED with other agents. Never run `git checkout` / `git restore` / `git clean` / `git stash` / `git reset` / `rm` on repo paths; the gitignored `.claude/tmp/` scratch files the skills clear are the only exception. Build once with `.claude/scripts/dotnet-serialized build sharpy.sln` before probing, then probe with `src/Sharpy.Cli/bin/Debug/net10.0/sharpyc` (a binary older than HEAD reproduces fixed bugs). Run dotnet only through `.claude/scripts/dotnet-serialized`; any local test run carries `--logger "console;verbosity=normal"`. Never run a whole-solution test: the lead runs `/ci-gate`. Append findings to the ledger path the lead gives you; never file issues. Put the cruft trailer (§5.2) in every commit body.
+  > The working tree is SHARED with other agents. Never run `git checkout` / `git restore` / `git clean` / `git stash` / `git reset` / `rm` on repo paths; the gitignored `.claude/tmp/` scratch files the skills clear are the only exception. Build once with `.claude/scripts/dotnet-serialized build sharpy.sln` before probing, then probe with `src/Sharpy.Cli/bin/Debug/net10.0/sharpyc` (a binary older than HEAD reproduces fixed bugs). Run dotnet only through `.claude/scripts/dotnet-serialized`; any local test run carries `--logger "console;verbosity=normal"`. Never run a whole-solution test: the lead runs `/ci-gate`. Append findings to the ledger path the lead gives you; never file issues.
 
   Commit lead work in small slices and re-check `git diff --stat` after each worker wave.
 - **The gate.** `/ci-gate` on the pushed branch tip (CLAUDE.md "Commit gate"; contract §6). The local fallback is `.claude/scripts/dotnet-serialized test --filter "Category!=Benchmark" --logger "console;verbosity=normal"`, only when `/ci-gate` exits 3 or for what CI does not cover. **One gate** = one `passed/failed/skipped @ sha` line cited in a commit body or recap, by CI run id or local log. Automatic PR runs are evidence but are not counted as gates spent.
@@ -188,6 +188,8 @@ It prints every row below with the HEAD sha and how it was measured. Baseline is
 
 ### 5.2 The cruft test (every change, before commit)
 
+**Retired 2026-11-11** (owner): the `Cruft:` trailer is no longer written; the procedure-bytes ratchet replaces it.
+
 A change passes when every answer is yes, or the "no" is written in the commit body with the reason. The record is one trailer line in the commit body:
 
 ```
@@ -215,7 +217,7 @@ Stop the wave, write the recap, and hand the decision to the owner when any of t
 ### 5.4 Checkpoints
 
 - **Start of wave:** re-check §2; run the scorecard; file the tooling class issue (Wave 0) or claim on the item's issue; post the scorecard there.
-- **Per item:** done-when met; guard mutation recorded; cruft trailer in the commit body; owning test project green locally; findings ledger appended.
+- **Per item:** done-when met; guard mutation recorded; owning test project green locally; findings ledger appended.
 - **End of wave:** one shared `/ci-gate` where the wave allows it; scorecard; recap (§6) posted on the tooling issue for Wave 0, on the class issues for Wave 1, on #2443 for Wave 2; §7 refreshed; the ledger flushed to issues; the proposed charter diff attached for the next `/batch-issues`.
 - **Retrospective, three questions, in the recap:** What did this wave delete? What did it add that a future session has to read? Which stop rule came closest to firing?
 

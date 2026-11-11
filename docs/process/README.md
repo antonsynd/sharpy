@@ -9,12 +9,11 @@ Policy (owner, 2026-11-06):
 
 - `rounds/<charter>.md` is the live charter for a remediation round. It is edited in place at every
   batching call and committed with that call; git history replaces the per-call backup files the
-  charter used to name. A condensation is a commit.
-- A plan is committed at every stage, and every stage ends in a pull request into `dev` (owner,
-  2026-11-10; see "The stage trail" below). This replaces the 2026-11-06 rule that only a passing
-  `/verify-plan` and a closed `/verify-implementation` commit: a draft or a NEEDS REVISION pass that
-  lived only in the gitignored `.claude/plans/` directory was lost with its container, and the next
-  session had nothing to revise.
+  charter used to name. A condensation is a commit. The charter and `rounds/index.md` are the record
+  of placements and rulings; neither is posted as an issue comment (owner, 2026-11-11).
+- A plan is committed at every stage, on one branch with one pull request (owner, 2026-11-11; "The
+  stage trail" below): a draft or a NEEDS REVISION pass that lived only in the gitignored
+  `.claude/plans/` directory was lost with its container.
 - A generated one-page index per batching call (group → issues → tier → execution position → current
   rulings with supersession chains resolved) is `rounds/index.md`, written by
   `python3 -m build_tools.process_index --write` and committed with the charter (CI runs `--check`);
@@ -22,35 +21,36 @@ Policy (owner, 2026-11-06):
 
 ## The stage trail
 
-`/create-plan`, `/verify-plan`, `/implement-plan` and `/verify-implementation` each leave a commit, a
-pushed lane branch and a pull request into `dev`. The skills carry the stage-specific step; the shared
-rules are here.
+The shared rules for `/create-plan`, `/verify-plan`, `/implement-plan` and `/verify-implementation`
+(owner, 2026-11-11):
 
-1. **File of record.** `docs/process/plans/<plan-id>.md`, from the first draft on. Its first line says
-   what state it is in: the `<!-- DRAFT, not verified … -->` marker `/create-plan` writes, or a
-   `/verify-plan` stamp. Presence here is not a verdict: `/implement-plan` reads the stamp and refuses a
-   DRAFT or a NEEDS REVISION.
-2. **Working copy.** `.claude/plans/<plan-id>.md` (gitignored) is where a stage edits the plan inside
-   one session; the stage copies it over the file of record when it commits. A stage that finds no
-   working copy (a new container) copies the file of record back first and drops the DRAFT marker. If
-   both exist and differ beyond that marker, stop and ask which is current.
-3. **Lane branch.** `dev` refuses direct pushes. Each stage works on `claude/<group>-<stage>`, cut from
-   the tip of `origin/dev`: `-plan` for `/create-plan` and `/verify-plan`, the group or slice name for
-   `/implement-plan`, `-verify` for `/verify-implementation`. While a lane's pull request is open, the
-   next stage of the same lane pushes to that branch and the pull request carries it. Once it has
-   merged, restart the branch from `origin/dev` (`git switch -C <branch> origin/dev`) and open a new
-   pull request; never stack on merged history.
-4. **Commit.** Explicit pathspecs, `git diff --cached --stat` before committing, a subject of at most
-   72 characters (the `subjects` check), the trailer the harness provides. A plan-only commit stages
-   the one plan file and nothing else.
-5. **Pull request.** Push with `/push`, then open the pull request into `dev` unless the branch already
-   has an open one: `gh pr create --base dev --head <branch> --title "<the stage commit's subject>"
-   --body-file <file>`; where `gh pr` is refused (a cloud session), the GitHub MCP `create_pull_request`
-   tool or `gh api -X POST repos/<owner>/<repo>/pulls`. The body names the plan, the stage and its
-   result, what the next stage is, and for a code stage the gate `passed/failed/skipped @ sha
-   (measured)`. The tip commit never carries `[skip ci]` (contract §6). The stage reports the pull
-   request's URL; merging is the owner's, and a stage does not merge its own pull request unless the
-   owner said so in the session.
+1. **File of record.** `docs/process/plans/<plan-id>.md`, from the first draft on. Line 1 is the
+   `<!-- DRAFT, not verified … -->` marker or a `/verify-plan` stamp; `/implement-plan` reads it and
+   refuses a DRAFT or a NEEDS REVISION.
+2. **Working copy.** `.claude/plans/<plan-id>.md` (gitignored) is edited inside one session and copied
+   over the file of record at each commit. With no working copy (a new container), copy the file of
+   record back and drop the DRAFT marker; if both exist and differ beyond it, ask which is current.
+3. **One branch, one pull request per plan.** Each stage (the draft, each verify pass, each revision)
+   is a commit on the plan's branch, cut once from `origin/dev`, pushed after every commit. A `full`
+   plan's stages share `claude/<group>-plan` and one pull request into `dev`; the implementation then
+   lands on `claude/<group>` with its own. A `light` plan has no plan pull request: its stages are
+   commits on `claude/<group>` and ride in the implementation's pull request. `/verify-implementation`
+   commits onto the open implementation pull request; only when that has merged does its record go on
+   a fresh `claude/<group>-verify` lane. Never stack on merged history.
+4. **Commit.** Explicit pathspecs, `git diff --cached --stat` first, a subject of at most 72
+   characters, the trailer the harness provides. A plan-stage commit stages the one plan file.
+5. **Pull request.** `/push`, then `gh pr create --base dev` (in a cloud session, the GitHub MCP
+   `create_pull_request` tool or `gh api -X POST repos/<owner>/<repo>/pulls`). An implementation
+   pull request's body names the plan, the gate `passed/failed/skipped @ sha (measured)`, **the issues
+   it closes and the issues its work filed**. A cell found outside the plan's scope is a comment on
+   its existing class tracker; a new issue is filed only for a silent-wrong class or when no tracker
+   exists. The tip never carries the skip-ci marker (contract §6). Merging is the owner's.
+
+### No-plan lane
+
+A bug whose behaviour has an owner ruling (or needs none) and whose fix is contained goes straight to
+a pull request with a generated or differential test: no plan file, no verify stage, the body as in
+item 5. Not for a charter group whose tier is `full`: Rule 13's tier is never lowered.
 
 ### Every other change, and the release
 

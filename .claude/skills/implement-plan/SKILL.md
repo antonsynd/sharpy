@@ -14,11 +14,7 @@ Parse `$ARGUMENTS` for:
 1. **Plan path** — the first argument (a file path ending in `.md`)
 2. **--exclude flag** — optional, comma-separated list of section names to skip
 
-The plan to implement is the file of record `docs/process/plans/<plan-id>.md` (policy: `docs/process/README.md` › The stage trail). Every stage commits there, so presence is not a verdict: the file's first line is a `/verify-plan` stamp or the `<!-- DRAFT, not verified` marker `/create-plan` writes, and Pre-Implementation §2 reads it. The gitignored working copy in `.claude/plans/` is read only when no committed copy exists, and §2 then commits it first. If `$ARGUMENTS` is empty, do **not** pick silently — list the three newest in each and ask which to implement:
-```bash
-ls -t docs/process/plans/*.md 2>/dev/null | head -3    # files of record — implement one whose line 1 is a PASS / CONVERGED stamp
-ls -t .claude/plans/*.md 2>/dev/null | head -3         # working copies (gitignored) — only when the plan has no committed copy
-```
+The plan is the file of record `docs/process/plans/<plan-id>.md` (`docs/process/README.md` › The stage trail); presence is not a verdict — Pre-Implementation §2 reads line 1. If `$ARGUMENTS` is empty, list the three newest (`ls -t docs/process/plans/*.md | head -3`) and ask which — never pick silently.
 
 ## Pre-Implementation Checklist
 
@@ -41,9 +37,9 @@ Note its **Defect Class** and **Adversarial Review** sections (if any), its **Is
   - Stamp without an Adequacy line (verified before 2026-08-26) → treat as `N/A` for feature plans, and as `CELL` for bug-fix plans unless the plan already has a Defect Class section.
 - Read the `<!-- Scope:` stamp line and the plan's `## Scope` block (contract §11). `MULTI-GROUP` without `override: <owner's words>`, an output/layout-changing phase sharing a gate, or a residue group whose generator is not Phase 1 → **refuse**: "This plan bundles more than one group (or skips its generator). Split it per the charter, or say `override` to implement it knowingly." Record an override in the plan file. Plans stamped before 2026-09-27 have no Scope line: derive it from the plan's groups and apply the same rule. A light plan's `Adequacy-only` stamp carries the same `Adequacy:` and `Scope:` lines, so this step is identical at both tiers.
 
-- **Committed copy** — implement from `docs/process/plans/<plan-id>.md`. If the stamped plan exists only as a working copy in `.claude/plans/` (a `/verify-plan` that ran before 2026-11-06, or one that skipped its commit step), `cp` it there and commit it by explicit pathspec (`process(plan): <plan-id> — verified <result> @ <sha>`) on the lane below before any other step, and use that path everywhere below. The committed plan is tracked, so every edit this skill makes to it — the `## Implementation Checklist`, an override record, a `## Revision log` line — is committed in the lead's own slices; an uncommitted plan edit is an unclaimed working-tree delta at the next wave check.
+- **Committed copy** — every edit this skill makes to the plan (the `## Implementation Checklist`, an override record, a `## Revision log` line) is committed in the lead's own slices.
 
-- **Lane branch** — `dev` refuses direct pushes, so the implementation lands through a pull request (`docs/process/README.md` › The stage trail). Before the first commit, `git fetch origin dev` and `git switch -c claude/<group> origin/dev` (a slice name when the plan lands in tranches: `claude/p82-tranche2`). A lane that already exists with an open pull request → `git switch` to it and continue; one whose pull request has merged → `git switch -C claude/<group> origin/dev`, never new commits on merged history. If the stamped plan is not on `origin/dev` yet (its `claude/<group>-plan` pull request is still open), cut the lane from that branch's tip instead and say so in the report: the implementation's pull request then carries the plan commit too.
+- **Branch** (`docs/process/README.md` › The stage trail) — a `light` plan continues on `claude/<group>`, where its stages already are; a `full` plan cuts `claude/<group>` (or a tranche name, `claude/p82-tranche2`) from `origin/dev` once its plan pull request has merged, or from that branch's tip while it is open (say so: the implementation's pull request then carries the plan commits too).
 
 ### 3. Report git status
 - Run `git status --short`. If there are uncommitted changes, REPORT them to the user and ask whether to proceed — do **not** stash, restore, or clean; the tree may hold a peer's work.
@@ -160,7 +156,7 @@ WORKFLOW:
 
 Agents never run `gh issue create`. Everything they find outside their task goes to the round's **findings ledger** (`<scratchpad>/findings-ledger.md`, one line per cell: cell · program · observed · expected @ sha · lane · reach · candidate class · found-by). After each wave the lead:
 1. De-duplicates the ledger against itself, the plan's Defect Class table, the plan's "Class trackers" list and `gh issue list --label class-tracker --state open` (parallel lanes filed the same cell three times within 48 hours in the 2026-09 rounds).
-2. Files **one issue per class** with a cell table (tracking-issue body in `.claude/skills/batch-issues/comment-templates.md`), labeled `lane:<lane>` `reach:<reach>` `class-tracker` — or posts the cell on the existing tracker (cell comment template). Lane `message`/`tooling`, `reach:probe`, and DEVIATION-by-default surfaces (`docs/design/python-fidelity-scope.md`) are tracker comments or `docs/deviations.yaml` rows, never new issues. Tech debt and missing features follow the same path (one issue per class of debt, not per site).
+2. Posts each cell on its existing class tracker (cell comment template in `.claude/skills/batch-issues/comment-templates.md`). A NEW issue (tracking-issue body there, labeled `lane:<lane>` `reach:<reach>` `class-tracker`) only for a silent-wrong class or a class with no tracker. DEVIATION-by-default surfaces (`docs/design/python-fidelity-scope.md`) are `docs/deviations.yaml` rows. Tech debt follows the same path.
 3. Hands the issue numbers back so `// BUG(#NNN)` / `// TODO(#NNN)` comments can be written where a workaround remains — every TODO/FIXME/BUG comment MUST reference an issue number.
 4. Records the ledger totals in the final report: cells recorded → issues filed (per class) → tracker comments → ledger rows.
 
@@ -195,11 +191,7 @@ After final verification:
 
 1. If a team exists: shut down teammates via `SendMessage` (`type: "shutdown_request"`) and delete the team via `TeamDelete`; otherwise confirm every background agent has reported
 2. Mark the plan's Implementation Checklist complete (or list what was deferred and why) and commit the plan file by explicit pathspec (`process(plan): <plan-id> — implementation checklist closed @ <sha>`); `/verify-implementation` appends its verify record to this same committed file
-3. **Open the pull request** (`docs/process/README.md` › The stage trail). `/push` the lane, then open the pull request into `dev` unless the lane already has an open one (the push updates it):
-   - **Title:** `<type>(<area>): <group> — <what the plan cures>`, at most 72 characters.
-   - **Body:** the plan path and its stamp line; the Issues to Close rows with their close criteria, written `Refs #N` and never `Closes #N` (`/verify-implementation` closes issues, on evidence — contract §8); the gate `passed/failed/skipped @ <sha> (measured)` with its CI run id against the baseline; the guards' mutation outcomes; what was deferred; the next step `/verify-implementation docs/process/plans/<plan-id>.md`.
-   - **Only on a read gate.** The pull request is opened after Final Verification, when every red at the tip is attributed by a control run. It is never a way to reach CI (contract §6: `/ci-gate` dispatches at the pushed commit, and a do-not-merge pull request has been merged by accident before). A tip with an unattributed red gets no pull request: the pushed lane is the trail, and the report names the red that blocks it.
-   - Merging is the owner's. A session that stops before Final Verification still pushes the lane, so the commits outlive the container.
+3. **Open the pull request** after Final Verification, when every red at the tip is attributed by a control run (never to reach CI: `/ci-gate` dispatches at the pushed commit). `/push`, then open it into `dev`. **Title:** `<type>(<area>): <group> — <what the plan cures>`, ≤ 72 characters. **Body:** the plan path and stamp line; the issues it closes, with their close criteria (`Refs #N`, never `Closes #N`: `/verify-implementation` closes on evidence, contract §8); **the issues this work filed** and the tracker comments it posted; the gate `passed/failed/skipped @ <sha> (measured)` with its run id; the guards' mutation outcomes; what was deferred. A tip with an unattributed red gets no pull request yet: the pushed branch is the trail. Merging is the owner's.
 4. Present a summary report to the user:
 
 ```markdown
