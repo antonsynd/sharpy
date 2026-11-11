@@ -1,6 +1,7 @@
 # Subsystem 2: Hallucination-Resistant Differential Oracle
 
 > **Status:** Draft design — 2026-07-02
+> **Oracle version (2026-11-10):** where this draft says CI pins 3.12, the oracle is now the CPython minor in the repo-root `.python-version` — 3.15 (R-LZ #2497, R-MZ #2537). The `python-version: '3.12'` workflow sample below is refused today by `build_tools/tests/test_python_version_pin.py`.
 > **Priority:** 2 of 6 (directly addresses hallucination risk; leverages the existing 2,185 fixtures)
 > **Index:** [README.md](README.md) · **Proposal:** [../test-harness-hardening-proposal.md](../test-harness-hardening-proposal.md)
 

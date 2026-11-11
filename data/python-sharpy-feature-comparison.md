@@ -215,7 +215,9 @@
 | `map(strict=...)` | — | ✅ | Multi-iterable `map(f, a, b[, c], strict=True)` raises `ValueError` on length mismatch (#990); element-type inference in unannotated nested calls tracked by #999 |
 | Keyword error message improvements | — | ⚡ | Sharpy has "did you mean?" suggestions |
 
-### Python 3.15 (Beta)
+### Python 3.15 (released October 2026)
+
+*Rows compiled during the 3.15 beta (2026-06-27) and not re-checked against the final release.*
 
 | Feature | PEP | Sharpy | Notes |
 |---------|-----|--------|-------|
@@ -248,7 +250,7 @@
 | Python 3.9–3.10 (syntax sugar) | 5 | 3 | 1 | 3 | 0 |
 | Python 3.11–3.12 (type system) | 8 | 2 | 1 | 4 | 2 |
 | Python 3.13–3.14 (maturity) | 2 | 1 | 1 | 2 | 6 |
-| Python 3.15 (beta) | 2 | 1 | 1 | 6 | 3 |
+| Python 3.15 | 2 | 1 | 1 | 6 | 3 |
 | **Total** | **~61** | **~11** | **~12** | **~29** | **~12** |
 
 **Coverage of applicable Python features: ~72% fully supported, ~82% including partial/different approach.**

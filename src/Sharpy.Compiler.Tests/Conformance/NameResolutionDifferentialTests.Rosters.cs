@@ -1147,8 +1147,6 @@ internal static class NameResolutionRosters
 
     internal const string WalrusTargetRefusal = "SyntaxError: cannot assign to named expression";
 
-    internal const string DictSpreadRefusal = "SyntaxError: dict unpacking cannot be used in dict comprehension";
-
     /// <summary>Axis 1's walrus STORE cell at each slot × nesting (deferred row 2): generated, or out because python refuses the
     /// program outright and a must-refuse over its SyntaxError would judge nothing about a name.</summary>
     internal static readonly IReadOnlyDictionary<string, AxisMembership> ComprehensionWalrus = Roster.Map(
@@ -1157,14 +1155,15 @@ internal static class NameResolutionRosters
         (WalrusKey(ComprehensionSlot.Value, ComprehensionNesting.FunctionBody), AxisMembership.Everywhere),
         (WalrusKey(ComprehensionSlot.Condition, ComprehensionNesting.FunctionBody), AxisMembership.Everywhere),
         (WalrusKey(ComprehensionSlot.Iterable, ComprehensionNesting.FunctionBody), AxisMembership.Out(ExcludedAxis.NotAKind, WalrusIterableRefusal)),
-        (WalrusKey(ComprehensionSlot.Spread, ComprehensionNesting.FunctionBody), AxisMembership.Out(ExcludedAxis.NotAKind, DictSpreadRefusal)),
+        // CPython 3.15 (PEP 798) accepts a dict unpacking in a comprehension, so this cell is generated (#2537).
+        (WalrusKey(ComprehensionSlot.Spread, ComprehensionNesting.FunctionBody), AxisMembership.Everywhere),
         (WalrusKey(ComprehensionSlot.Target, ComprehensionNesting.FunctionBody), AxisMembership.Out(ExcludedAxis.NotAKind, WalrusTargetRefusal)),
         (WalrusKey(ComprehensionSlot.Element, ComprehensionNesting.StaticInitializer), AxisMembership.Out(ExcludedAxis.NotAKind, WalrusClassBodyRefusal)),
         (WalrusKey(ComprehensionSlot.Key, ComprehensionNesting.StaticInitializer), AxisMembership.Out(ExcludedAxis.NotAKind, WalrusClassBodyRefusal)),
         (WalrusKey(ComprehensionSlot.Value, ComprehensionNesting.StaticInitializer), AxisMembership.Out(ExcludedAxis.NotAKind, WalrusClassBodyRefusal)),
         (WalrusKey(ComprehensionSlot.Condition, ComprehensionNesting.StaticInitializer), AxisMembership.Out(ExcludedAxis.NotAKind, WalrusClassBodyRefusal)),
         (WalrusKey(ComprehensionSlot.Iterable, ComprehensionNesting.StaticInitializer), AxisMembership.Out(ExcludedAxis.NotAKind, WalrusIterableRefusal)),
-        (WalrusKey(ComprehensionSlot.Spread, ComprehensionNesting.StaticInitializer), AxisMembership.Out(ExcludedAxis.NotAKind, DictSpreadRefusal)),
+        (WalrusKey(ComprehensionSlot.Spread, ComprehensionNesting.StaticInitializer), AxisMembership.Out(ExcludedAxis.NotAKind, WalrusClassBodyRefusal)),
         (WalrusKey(ComprehensionSlot.Target, ComprehensionNesting.StaticInitializer), AxisMembership.Out(ExcludedAxis.NotAKind, WalrusTargetRefusal)));
 
     private const string NoInitializerToCycle = "no initializer of its own: a callable or a type declares no value a read could wait on";
@@ -2857,7 +2856,6 @@ public partial class NameResolutionDifferentialTests
             (Line: NameResolutionRosters.WalrusIterableRefusal, Source: "def f():\n    r = [v for v in [(y := 1)]]\n"),
             (Line: NameResolutionRosters.WalrusClassBodyRefusal, Source: "class C:\n    r = [(y := v) for v in [1]]\n"),
             (Line: NameResolutionRosters.WalrusTargetRefusal, Source: "def f():\n    r = [v for (y := v) in [1]]\n"),
-            (Line: NameResolutionRosters.DictSpreadRefusal, Source: "def f():\n    r = {**d for d in [{}]}\n"),
         };
 
         // The generated row with the same read runs: the control that the probe's shape is not refused for another reason.

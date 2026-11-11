@@ -43,8 +43,8 @@ public partial class NameResolutionDifferentialTests
         _ => throw new ArgumentOutOfRangeException(nameof(family), family, "not a comprehension family"),
     };
 
-    /// <summary>The comprehension's text. Python refuses a dict unpacking in a comprehension (<see cref="NameResolutionRosters.DictSpreadRefusal"/>),
-    /// so the twin of <c>{**{k: v} for …}</c> is the <c>{k: v for …}</c> it means.</summary>
+    /// <summary>The comprehension's text. CPython before 3.15 refuses a dict unpacking in a comprehension (PEP 798 admits it), so the
+    /// twin of <c>{**{k: v} for …}</c> stays the <c>{k: v for …}</c> it means and runs on every minor the oracle locator admits.</summary>
     private static string ComprehensionText(string family, string element, string key, string value, string clauses, bool twin = false) => family switch
     {
         "list-comprehension" => $"[{element} {clauses}]",
@@ -221,8 +221,9 @@ public partial class NameResolutionDifferentialTests
             _ => throw new ArgumentOutOfRangeException(nameof(shape)),
         };
         var element = slot == ComprehensionSlot.Element ? Walrus : "v0";
-        var key = slot == ComprehensionSlot.Key ? Walrus : slot == ComprehensionSlot.Value ? "1" : "v0";
-        var value = slot == ComprehensionSlot.Value ? Walrus : slot == ComprehensionSlot.Key ? "1" : "v0";
+        var valueSlot = slot is ComprehensionSlot.Value or ComprehensionSlot.Spread;
+        var key = slot == ComprehensionSlot.Key ? Walrus : valueSlot ? "1" : "v0";
+        var value = valueSlot ? Walrus : slot == ComprehensionSlot.Key ? "1" : "v0";
 
         string Program(bool twin)
         {
