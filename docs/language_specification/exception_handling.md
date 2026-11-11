@@ -135,6 +135,56 @@ def example() -> int:
 - *try/except/finally: ✅ Native - `try`/`catch`/`finally`*
 - *else clause: 🔄 Lowered - Boolean flag pattern, nested inside the finally-protected region when both clauses are present*
 
+### Handler Order
+
+Handlers are tried in source order and the first one whose type matches runs, as in Python. A
+handler whose every exception type an earlier handler (one without a `when` filter) already catches
+can never run: it is accepted, warned as **SPY0488**, and left out of the compiled program. A type
+of a tuple handler that an earlier handler already catches is left out the same way; the handler's
+other types still catch. So is a tuple element that an earlier element of the same tuple already
+catches (`except (LookupError, KeyError):` catches as `except LookupError:` does), without a warning.
+
+Because there is [no `BaseException`](#no-baseexception), `except Exception:` also catches
+`SystemExit`, which CPython leaves to a later handler. A later handler that names `SystemExit`
+(alone or in a tuple) could never run, though CPython runs it, so it is refused as **SPY0709**.
+A handler naming only `SystemExit` keeps CPython's behaviour when moved before `except Exception:`. A
+tuple that also names other types must not be moved whole (its other types would leave the
+`Exception` handler): handle `SystemExit` in a handler of its own before `except Exception:` and keep
+the rest where it was. A later bare `except:` never runs in
+Sharpy either; it is left out with a SPY0488 warning that says CPython would still run it for
+`SystemExit` (unless an earlier handler already catches `SystemExit`).
+
+<!-- spec-sweep: output -->
+```python
+def main() -> None:
+    try:
+        raise KeyError("k")
+    except LookupError:
+        print("lookup")
+    except KeyError:       # warning SPY0488: LookupError already catches KeyError
+        print("key")
+```
+
+```output
+lookup
+```
+
+A bare `except:` with no filter catches every exception, so it must be the last handler; one that is
+not last is refused as **SPY0151** (Python: `SyntaxError: default 'except:' must be last`).
+
+<!-- spec-sweep: error SPY0151 -->
+```python
+def main() -> None:
+    try:
+        raise KeyError("k")
+    except:                # error SPY0151
+        print("any")
+    except KeyError:
+        print("key")
+```
+
+*Implementation: 🔄 Lowered - the covered `catch` clauses are omitted (C# refuses a catch after one for its base type, CS0160)*
+
 ## Raise Statement
 
 <!-- spec-sweep: fragment -->

@@ -261,6 +261,14 @@ deviations:
   spec_ref: docs/language_specification/enums.md
   existing_diagnostic: SPY0253
   planned_diagnostic: null
+- id: except-exception-catches-systemexit
+  category: semantics
+  audience: python
+  severity: error
+  code: SPY0709
+  spec_ref: docs/language_specification/exception_handling.md
+  existing_diagnostic: SPY0709
+  planned_diagnostic: null
 - id: exception-group-aggregate-exception-bridge
   category: types
   audience: python

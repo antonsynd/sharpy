@@ -829,6 +829,25 @@ public partial class Parser
                     span: firstMixed.Span
                 );
             }
+
+            // A bare `except:` with no filter catches everything, so a handler after it could never
+            // run. CPython refuses the shape ("SyntaxError: default 'except:' must be last"), and C#
+            // refuses the emitted `catch { } catch (...)` (CS1017), so it is refused here.
+            for (var i = 0; i < handlers.Count - 1; i++)
+            {
+                var handler = handlers[i];
+                if (handler.ExceptionType != null || handler.Filter != null || handler.IsExceptStar)
+                    continue;
+
+                throw ReportError(
+                    "a bare 'except:' must be the last handler: every handler after it is unreachable "
+                        + "(python3: default 'except:' must be last)",
+                    handler.LineStart,
+                    handler.ColumnStart,
+                    DiagnosticCodes.Parser.BareExceptMustBeLast,
+                    span: handler.Span
+                );
+            }
         }
 
         // else clause (runs if no exception raised in try block)
