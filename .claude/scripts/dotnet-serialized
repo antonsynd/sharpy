@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Serialized dotnet wrapper — ensures only one dotnet build/test runs at a time.
-# Uses mkdir-based locking (atomic on all platforms) so concurrent agents queue
-# instead of OOM-ing the system.
+# Uses one kernel flock(2) (see THE LOCK below) so concurrent agents queue instead of
+# OOM-ing the system.
 #
 # Drop-in replacement for `dotnet`: same arguments, same stdout/stderr, same exit code, except
 # that concurrent calls block until the lock is free and stdout starts with one extra line:
@@ -206,6 +206,7 @@ wait_out_previous_holder() {
         case "$child" in ''|*[!0-9]*) child="" ;; esac
         case "$owner" in ''|*[!0-9]*) owner="" ;; esac
         if [ -n "$child" ] && kill -0 "$child" 2>/dev/null; then
+            [ "$(date +%s)" -lt "$deadline" ] || lock_timeout
             reap_orphan && continue
         elif [ -n "$owner" ] && [ "$owner" != "$$" ] && kill -0 "$owner" 2>/dev/null; then
             :
