@@ -125,7 +125,7 @@ Before writing the plan:
 - Find mirrored/parallel sites: if the fix lands in one arm of a switch, dispatch table, or per-position handler, enumerate the other arms — a plan that patches one arm without a completeness scan is not a plan
 - Note which generated artifacts the change reaches (spy-stdlib C#, spy-test C#, stdlib docs, oracle ledger) and which test projects (CLAUDE.md › Testing › Commit gate)
 
-Research `dotnet` runs go through `.claude/scripts/dotnet-serialized` (CLAUDE.md › Operational Contracts); prefer `/spy-run`, `/spy-emit`, `/quick-check`.
+Research `dotnet` runs go through `.claude/scripts/dotnet-serialized` with `dangerouslyDisableSandbox: true` (raw `dotnet` is hook-blocked); prefer `/spy-run`, `/spy-emit`, `/quick-check`.
 
 ### 2.1. Stage 0 (generator groups)
 

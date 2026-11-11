@@ -390,7 +390,8 @@ enumeration Y", which is a decision. `/implement-plan` reads CONVERGED as PASS, 
 findings its first task, resolved in code where the proof named on each row checks them, and still
 asks the owner once when the `Adequacy:` line reads CELL on a bug-fix plan — the class-not-cell
 door stays with the owner (CLAUDE.md rule 11). The plan's design sections are not revised after a
-CONVERGED stamp; the implementation checklist and override records are not design sections. A
+CONVERGED stamp, except the Scope Tier line a promotion in flight replaces; the implementation
+checklist and override records are not design sections. A
 roster whose source is a compiler enumeration read by reflection (`Enum.GetValues`, a subclass or
 property scan, a call-site census) is graded by the existence of its totality assertion and that
 assertion's mutation, never by re-counting the source; a count the plan carries is a measurement
