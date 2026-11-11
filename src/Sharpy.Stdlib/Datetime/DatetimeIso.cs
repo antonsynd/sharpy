@@ -1,3 +1,15 @@
+// Portions of this file are a C# port of CPython's Modules/_datetimemodule.c (CPython 3.15):
+// the entry points date_fromisoformat and datetime_fromisoformat (the length check, the multi-byte
+// separator skip, the 24:00 rollover and its message), _sanitize_isoformat_str (the separator-surrogate
+// replacement), _find_isoformat_datetime_separator, parse_isoformat_date, parse_isoformat_time,
+// parse_hh_mm_ss_ff and iso_to_ymd, and the helpers parse_digits and days_in_month (ymd_to_ord's
+// result is reproduced with System.DateTime).
+// Copyright (c) 2001 Python Software Foundation; All Rights Reserved
+// Licensed under the PSF License Version 2; see THIRD-PARTY-NOTICES.txt at the repository root.
+// Changes: translated from C to C#; parses a byte array holding the string's UTF-8 encoding (a position
+// past the end reads as NUL, standing in for the C terminator), raises Sharpy's ValueError, and builds
+// Sharpy's date, datetime and timezone objects.
+
 using System;
 using System.Globalization;
 
