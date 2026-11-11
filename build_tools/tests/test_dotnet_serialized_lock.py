@@ -176,7 +176,11 @@ class Rig:
     def latest_log(self) -> Optional[Path]:
         """The log the pointer file names: the NEWEST invocation's (#2458)."""
         pointer = self.logs / "dotnet-serialized-latest.path"
-        return Path(pointer.read_text(encoding="utf-8").strip()) if pointer.exists() else None
+        return (
+            Path(pointer.read_text(encoding="utf-8").strip())
+            if pointer.exists()
+            else None
+        )
 
 
 LOG_LINE = re.compile(r"^dotnet-serialized: log -> (.+)$", re.MULTILINE)
@@ -185,7 +189,9 @@ LOG_LINE = re.compile(r"^dotnet-serialized: log -> (.+)$", re.MULTILINE)
 def log_of(stdout: str) -> Path:
     """The log path a wrapper invocation printed for ITSELF; fails if it printed none."""
     found = LOG_LINE.findall(stdout)
-    assert len(found) == 1, f"expected exactly one log line, got {found!r} in {stdout!r}"
+    assert len(found) == 1, (
+        f"expected exactly one log line, got {found!r} in {stdout!r}"
+    )
     return Path(found[0])
 
 
@@ -376,9 +382,9 @@ class TestMutualExclusion:
 
         _, stderr = proc.communicate(timeout=60)
 
-        assert (
-            proc.returncode == 124
-        ), f"lock was stolen from a live peer (exit {proc.returncode})"
+        assert proc.returncode == 124, (
+            f"lock was stolen from a live peer (exit {proc.returncode})"
+        )
         assert "Timed out waiting for dotnet lock" in stderr
 
 
@@ -452,7 +458,9 @@ class TestOrphanReaper:
         DOTNET_SERIALIZED_WATCHDOG_GRACE="1",
     )
 
-    def _orphan(self, rig: Rig, body: str, kill_holder: bool = True) -> tuple[int, subprocess.Popen]:
+    def _orphan(
+        self, rig: Rig, body: str, kill_holder: bool = True
+    ) -> tuple[int, subprocess.Popen]:
         started = rig.root / "child_started"
         rig.fake_dotnet(
             f'case " $* " in *" --hang "*) : > "{started}"; {body} ;; esac\n'
@@ -466,7 +474,9 @@ class TestOrphanReaper:
             holder.kill()
             holder.wait(timeout=30)
             wait_for(lambda: not _alive(holder.pid), what="the holder shell to die")
-            assert rig.lock_pid() == holder.pid, "the dead holder must still own the lock"
+            assert rig.lock_pid() == holder.pid, (
+                "the dead holder must still own the lock"
+            )
         return child, holder
 
     def test_a_dead_holders_silent_child_is_reaped(self, rig: Rig):
@@ -477,9 +487,13 @@ class TestOrphanReaper:
         child, _ = self._orphan(rig, "sleep 120")
         time.sleep(3)  # the holder's log is now silent past STALL_SECONDS
 
-        peer = rig.run("test", timeout=60, DOTNET_SERIALIZED_TIMEOUT="20", **self.REAPER_KNOBS)
+        peer = rig.run(
+            "test", timeout=60, DOTNET_SERIALIZED_TIMEOUT="20", **self.REAPER_KNOBS
+        )
 
-        assert peer.returncode == 0, f"orphan not reaped (exit {peer.returncode}); stderr={peer.stderr!r}"
+        assert peer.returncode == 0, (
+            f"orphan not reaped (exit {peer.returncode}); stderr={peer.stderr!r}"
+        )
         assert "reaping orphaned dotnet PID %d" % child in peer.stderr
         wait_for(lambda: not _alive(child), what="the reaped child to be gone")
         assert "Total: 1" in log_of(peer.stdout).read_text(encoding="utf-8")
@@ -488,18 +502,26 @@ class TestOrphanReaper:
         child, holder = self._orphan(rig, "sleep 120", kill_holder=False)
         time.sleep(3)
 
-        peer = rig.run("test", timeout=60, DOTNET_SERIALIZED_TIMEOUT="4", **self.REAPER_KNOBS)
+        peer = rig.run(
+            "test", timeout=60, DOTNET_SERIALIZED_TIMEOUT="4", **self.REAPER_KNOBS
+        )
 
-        assert peer.returncode == 124, f"a live holder's run was taken (exit {peer.returncode})"
+        assert peer.returncode == 124, (
+            f"a live holder's run was taken (exit {peer.returncode})"
+        )
         assert _alive(child) and _alive(holder.pid)
         assert "reaping" not in peer.stderr
 
     def test_a_dead_holders_child_whose_log_moves_is_never_reaped(self, rig: Rig):
         child, _ = self._orphan(rig, "while :; do echo tick; sleep 0.3; done")
 
-        peer = rig.run("test", timeout=60, DOTNET_SERIALIZED_TIMEOUT="6", **self.REAPER_KNOBS)
+        peer = rig.run(
+            "test", timeout=60, DOTNET_SERIALIZED_TIMEOUT="6", **self.REAPER_KNOBS
+        )
 
-        assert peer.returncode == 124, f"a child with a moving log was killed (exit {peer.returncode})"
+        assert peer.returncode == 124, (
+            f"a child with a moving log was killed (exit {peer.returncode})"
+        )
         assert _alive(child)
         assert "reaping" not in peer.stderr
 
@@ -719,12 +741,14 @@ class TestLogging:
 
         assert result.returncode == 0
         log = log_of(result.stdout)
-        assert rig.latest_log() == log, "the pointer file names the newest invocation's log"
+        assert rig.latest_log() == log, (
+            "the pointer file names the newest invocation's log"
+        )
         text = log.read_text(encoding="utf-8")
         assert "Total: 1" in text
-        assert (
-            "to stderr" in text
-        ), "stderr is merged into the log (2>&1) so failures are in it"
+        assert "to stderr" in text, (
+            "stderr is merged into the log (2>&1) so failures are in it"
+        )
 
     def test_two_concurrent_runs_do_not_clobber_each_others_log(self, rig: Rig):
         """
@@ -749,8 +773,12 @@ class TestLogging:
         inode_a = pointer.stat().st_ino
         b = rig.spawn("test", "B")
         # B replaces the pointer (write + rename, so a new inode) before it queues.
-        wait_for(lambda: pointer.stat().st_ino != inode_a, what="B to publish its log path")
-        assert rig.lock_pid() == a.pid, "B must be queued behind A, not running beside it"
+        wait_for(
+            lambda: pointer.stat().st_ino != inode_a, what="B to publish its log path"
+        )
+        assert rig.lock_pid() == a.pid, (
+            "B must be queued behind A, not running beside it"
+        )
         release.touch()
         out_a, _ = a.communicate(timeout=60)
         out_b, _ = b.communicate(timeout=60)
@@ -859,9 +887,9 @@ class TestStallWatchdog:
 
         result = rig.run("test", timeout=45, **self.WATCHDOG_KNOBS)
 
-        assert (
-            result.returncode == 4
-        ), f"got {result.returncode} (3 = zero-results guard won)"
+        assert result.returncode == 4, (
+            f"got {result.returncode} (3 = zero-results guard won)"
+        )
 
     def test_an_honest_slow_run_is_never_killed(self, rig: Rig):
         """
@@ -883,9 +911,9 @@ class TestStallWatchdog:
             DOTNET_SERIALIZED_WATCHDOG_GRACE="1",
         )
 
-        assert (
-            result.returncode == 0
-        ), f"an honest run was killed: stderr={result.stderr!r}"
+        assert result.returncode == 0, (
+            f"an honest run was killed: stderr={result.stderr!r}"
+        )
         assert "progress 7" in result.stdout
 
     def test_a_fast_run_is_not_delayed_by_the_monitor(self, rig: Rig):
@@ -914,9 +942,9 @@ class TestStallWatchdog:
 
         assert rig.run("test", timeout=45, **self.WATCHDOG_KNOBS).returncode == 4
 
-        assert (
-            not rig.lock_dir.exists()
-        ), "a watchdog kill must not leak the lock it was fixing"
+        assert not rig.lock_dir.exists(), (
+            "a watchdog kill must not leak the lock it was fixing"
+        )
 
     def test_the_stall_default_carries_its_measurement(self):
         """
@@ -1022,9 +1050,9 @@ class TestWatchdogScope:
 
             holder.kill()
             holder.wait(timeout=30)
-            assert _alive(
-                child
-            ), "the fake dotnet should have been orphaned, not reaped"
+            assert _alive(child), (
+                "the fake dotnet should have been orphaned, not reaped"
+            )
 
             wait_for(
                 lambda: not _alive(watchdog),
@@ -1073,13 +1101,13 @@ class TestWatchdogScope:
 
             _, err = holder.communicate(timeout=30)
 
-            assert (
-                holder.returncode == 4
-            ), f"the stalled run was not killed (exit {holder.returncode}); stderr={err!r}"
+            assert holder.returncode == 4, (
+                f"the stalled run was not killed (exit {holder.returncode}); stderr={err!r}"
+            )
             assert f"killed PID {child} " in err, f"the wrong pid was reported: {err!r}"
-            assert (
-                decoy.poll() is None
-            ), "the watchdog signalled a pid it was not started for"
+            assert decoy.poll() is None, (
+                "the watchdog signalled a pid it was not started for"
+            )
         finally:
             if holder.poll() is None:
                 holder.kill()
@@ -1155,9 +1183,9 @@ class TestWatchdogScope:
             # Past the orphan's 2 s threshold on its own (dead) run's log, so a pre-#2076
             # orphan would fire on its very next poll.
             time.sleep(max(0.0, first_child_died + 3.0 - time.time()))
-            assert _alive(
-                watchdog
-            ), "positive control: the orphan must still exist to be thawed"
+            assert _alive(watchdog), (
+                "positive control: the orphan must still exist to be thawed"
+            )
             os.kill(watchdog, signal.SIGCONT)
 
             out, err = second.communicate(timeout=60)
@@ -1251,23 +1279,23 @@ class TestHolderIdentity:
             assert log_file.exists(), "log file not published"
 
             cwd_val = cwd_file.read_text(encoding="utf-8").strip()
-            assert cwd_val == str(
-                rig.root.resolve()
-            ), f"cwd mismatch: got {cwd_val!r}, expected {str(rig.root.resolve())!r}"
+            assert cwd_val == str(rig.root.resolve()), (
+                f"cwd mismatch: got {cwd_val!r}, expected {str(rig.root.resolve())!r}"
+            )
 
             started_val = int(started_file.read_text(encoding="utf-8").strip())
             now = int(time.time())
-            assert (
-                abs(now - started_val) <= 5
-            ), f"started timestamp {started_val} is not within 5s of now ({now})"
+            assert abs(now - started_val) <= 5, (
+                f"started timestamp {started_val} is not within 5s of now ({now})"
+            )
 
             log_val = log_file.read_text(encoding="utf-8").strip()
-            assert log_val.endswith(
-                ".log"
-            ), f"log pointer doesn't end with .log: {log_val!r}"
-            assert os.path.isabs(log_val) or log_val.startswith(
-                str(rig.logs)
-            ), f"log pointer doesn't look like a slot path: {log_val!r}"
+            assert log_val.endswith(".log"), (
+                f"log pointer doesn't end with .log: {log_val!r}"
+            )
+            assert os.path.isabs(log_val) or log_val.startswith(str(rig.logs)), (
+                f"log pointer doesn't look like a slot path: {log_val!r}"
+            )
         finally:
             holder.terminate()
             holder.wait(timeout=30)
@@ -1294,12 +1322,12 @@ class TestHolderIdentity:
             )
 
             assert result.returncode == 0, f"--holder-status failed: {result.stderr}"
-            assert (
-                "LIVE" in result.stdout
-            ), f"expected LIVE in output, got: {result.stdout!r}"
-            assert (
-                "grew by" in result.stdout
-            ), f"expected 'grew by' in output, got: {result.stdout!r}"
+            assert "LIVE" in result.stdout, (
+                f"expected LIVE in output, got: {result.stdout!r}"
+            )
+            assert "grew by" in result.stdout, (
+                f"expected 'grew by' in output, got: {result.stdout!r}"
+            )
         finally:
             holder.terminate()
             holder.wait(timeout=30)
@@ -1307,9 +1335,7 @@ class TestHolderIdentity:
     def test_holder_status_no_growth(self, rig: Rig):
         """A holder producing no output is reported NO GROWTH."""
         started_sentinel = rig.root / "child_started"
-        rig.fake_dotnet(
-            f'echo "Total: 1"\n' f': > "{started_sentinel}"\n' f"sleep 30\n"
-        )
+        rig.fake_dotnet(f'echo "Total: 1"\n: > "{started_sentinel}"\nsleep 30\n')
 
         holder = rig.spawn("test", DOTNET_SERIALIZED_STALL_SECONDS="600")
         try:
@@ -1323,9 +1349,9 @@ class TestHolderIdentity:
             )
 
             assert result.returncode == 0, f"--holder-status failed: {result.stderr}"
-            assert (
-                "NO GROWTH" in result.stdout
-            ), f"expected NO GROWTH in output, got: {result.stdout!r}"
+            assert "NO GROWTH" in result.stdout, (
+                f"expected NO GROWTH in output, got: {result.stdout!r}"
+            )
         finally:
             holder.terminate()
             holder.wait(timeout=30)
@@ -1339,9 +1365,9 @@ class TestHolderIdentity:
             result = rig.run("--holder-status")
 
             assert result.returncode == 0, f"--holder-status failed: {result.stderr}"
-            assert (
-                "no log published (lock-only holder)" in result.stdout
-            ), f"expected 'no log published' message, got: {result.stdout!r}"
+            assert "no log published (lock-only holder)" in result.stdout, (
+                f"expected 'no log published' message, got: {result.stdout!r}"
+            )
         finally:
             rig.run("--release-lock", str(os.getpid()))
 
@@ -1352,6 +1378,6 @@ class TestHolderIdentity:
         result = rig.run("test")
 
         assert result.returncode == 0, f"run failed: {result.stderr}"
-        assert (
-            not rig.lock_dir.exists()
-        ), "lock dir should be gone after release (cleanup rm -rf's it)"
+        assert not rig.lock_dir.exists(), (
+            "lock dir should be gone after release (cleanup rm -rf's it)"
+        )
