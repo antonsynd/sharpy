@@ -12,3 +12,7 @@ export LOCK_STARTED_FILE="${LOCK_DIR}/started"
 #: Monotonic count of lock acquisitions, kept OUTSIDE $LOCK_DIR on purpose: cleanup() rm -rf's
 #: that directory on every release, so a counter inside it resets and can never be monotonic.
 export GENERATION_FILE="${HOME}/.claude/locks/dotnet.generation"
+
+#: flock(2) target serializing the removal of an abandoned $LOCK_DIR (dotnet-serialized
+#: reclaim_stale_lock). A plain file that is never deleted: the kernel holds the lock, not the file.
+export RECLAIM_LOCK_FILE="${HOME}/.claude/locks/dotnet.reclaim"

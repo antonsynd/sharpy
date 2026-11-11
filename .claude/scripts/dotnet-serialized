@@ -91,8 +91,25 @@ LOG_DIR="${DOTNET_SERIALIZED_LOG_DIR:-${SCRIPT_DIR}/tmp}"
 LOG_POINTER_FILE="${LOG_DIR}/dotnet-serialized-latest.path"
 LOG_RETENTION_MINUTES=10080  # 7 days
 
+# A pidless (or empty-pid) lock directory older than this is abandoned: its owner died between
+# the mkdir and the pid write, which takes microseconds. Judged by the directory's own mtime, so
+# the verdict belongs to THAT directory; a one-second re-check let a peer that looked at one
+# directory delete the next owner's (#2458).
+PIDLESS_GRACE_SECONDS=5
+
+# Remove the lock only while it is OWNER's, and make it vanish in one step. `rm -rf` on the
+# live path deletes the pid file before the directory, and a waiter that looked in between read
+# the half-deleted lock as abandoned (#2458); renaming it away first leaves no such state.
+release_lock() {
+    local owner="$1" trash
+    [ "$(cat "$LOCK_PID_FILE" 2>/dev/null)" = "$owner" ] || return 0
+    trash="${LOCK_DIR}.released.$$.${RANDOM}"
+    mv "$LOCK_DIR" "$trash" 2>/dev/null || return 0
+    rm -rf "$trash" 2>/dev/null
+}
+
 cleanup() {
-    rm -rf "$LOCK_DIR" 2>/dev/null
+    release_lock "$$"
 }
 
 bump_generation() {
@@ -130,28 +147,70 @@ is_lock_stale() {
         fi
     fi
 
-    local pid_file="$LOCK_PID_FILE"
-    if [ ! -f "$pid_file" ]; then
-        # A lock directory with no pid file is usually one taken MICROSECONDS ago, not an
-        # abandoned one: mkdir is the atomic acquire and the owner writes its pid immediately
-        # after. Treating that as stale is a thundering-herd bug, because every peer that just
-        # lost the mkdir race checks at exactly the moment the winner has not written yet —
-        # they are synchronised on it. Measured 2026-08-12 with 8 concurrent wrappers: FOUR ran
-        # at once. Re-check after a beat; the window is microseconds wide, so a directory still
-        # pidless a second later really is abandoned.
-        sleep 1
-        [ -f "$pid_file" ] && return 1
-        return 0
-    fi
     local lock_pid
-    lock_pid=$(cat "$pid_file" 2>/dev/null)
+    lock_pid=$(cat "$LOCK_PID_FILE" 2>/dev/null)
     if [ -z "$lock_pid" ]; then
-        return 0
+        # A lock directory with no pid (or, from an older wrapper's `echo >`, an empty one) is
+        # usually one taken MICROSECONDS ago, not an abandoned one: mkdir is the atomic acquire
+        # and the owner writes its pid immediately after. Treating that as stale is a
+        # thundering-herd bug, because every peer that just lost the mkdir race checks at
+        # exactly the moment the winner has not written yet. Measured 2026-08-12 with 8
+        # concurrent wrappers: FOUR ran at once. So it is abandoned only once THIS directory has
+        # gone unchanged for PIDLESS_GRACE_SECONDS. (Its absence reads as live: the caller's
+        # mkdir retries.)
+        local made
+        made=$(file_mtime "$LOCK_DIR")
+        case "$made" in ''|*[!0-9]*) return 1 ;; esac
+        [ $(( $(date +%s) - made )) -ge "$PIDLESS_GRACE_SECONDS" ] && return 0
+        return 1
     fi
     if ! kill -0 "$lock_pid" 2>/dev/null; then
         return 0
     fi
     return 1
+}
+
+# Take an exclusive flock(2) on fd 9. The kernel drops it when the last fd on the open file goes,
+# including when its holder dies, so unlike a mkdir lock it can never be left stale. flock(1) is
+# util-linux; macOS has none, so fall back to an interpreter locking the INHERITED fd: the lock
+# belongs to the shared open file and outlives the helper process until this shell closes fd 9.
+lock_fd9() {
+    if command -v flock >/dev/null 2>&1; then
+        flock -x 9
+    elif command -v python3 >/dev/null 2>&1; then
+        python3 -c 'import fcntl; fcntl.flock(9, fcntl.LOCK_EX)'
+    elif command -v perl >/dev/null 2>&1; then
+        perl -MFcntl=:flock -e 'open(my $f, ">&=", 9) or exit 1; flock($f, LOCK_EX) or exit 1'
+    else
+        return 1
+    fi
+}
+
+# Remove a lock judged abandoned. Every waiter judges, so removal must be serialized and must hit
+# the directory that was judged: two waiters that both read "owner dead" used to both `rm -rf`
+# and `mkdir`, and the second rm deleted the first one's NEW lock, admitting both (#2458). Under
+# the reclaim mutex the verdict is re-read and the lock renamed away before deletion; no other
+# path removes a lock its caller does not own, so between that verdict and the rename nothing
+# else can replace the directory. Returns 0 removed, 1 not stale (or already gone), 2 cannot
+# (no mutex, or the path is not writable from a sandboxed shell).
+reclaim_stale_lock() {
+    local rc=1 trash
+    { exec 9>>"$RECLAIM_LOCK_FILE"; } 2>/dev/null || return 2
+    if ! lock_fd9; then
+        exec 9>&-
+        return 2
+    fi
+    if [ -d "$LOCK_DIR" ] && is_lock_stale; then
+        trash="${LOCK_DIR}.reclaimed.$$.${RANDOM}"
+        if mv "$LOCK_DIR" "$trash" 2>/dev/null; then
+            rm -rf "$trash" 2>/dev/null
+            rc=0
+        elif [ -d "$LOCK_DIR" ]; then
+            rc=2
+        fi
+    fi
+    exec 9>&-
+    return $rc
 }
 
 acquire_lock() {
@@ -187,16 +246,22 @@ acquire_lock() {
         nodir_failures=0
         reap_orphan
         if is_lock_stale; then
-            echo "WARNING: Removing stale dotnet lock (owner PID gone)." >&2
-            rm -rf "$LOCK_DIR" 2>/dev/null
-            if [ -d "$LOCK_DIR" ]; then
-                # Could not remove it. A sandboxed shell can neither signal-probe
-                # (kill -0 is denied, so a LIVE owner reads as gone) nor remove the
-                # lock — treat it as live and wait politely instead of hot-spinning.
-                sleep 2
-                waited=$((waited + 2))
-            fi
-            continue
+            reclaim_stale_lock
+            case $? in
+                0)
+                    echo "WARNING: Removed stale dotnet lock (owner PID gone)." >&2
+                    continue
+                    ;;
+                2)
+                    # Could not remove it. A sandboxed shell can neither signal-probe
+                    # (kill -0 is denied, so a LIVE owner reads as gone) nor remove the
+                    # lock — treat it as live and wait politely instead of hot-spinning.
+                    sleep 2
+                    waited=$((waited + 2))
+                    continue
+                    ;;
+            esac
+            # 1: a peer reclaimed it first, or it came back live; wait like any waiter.
         fi
         if [ "$waited" -ge "$TIMEOUT" ]; then
             echo "ERROR: Timed out waiting for dotnet lock after $((TIMEOUT/60)) minutes." >&2
@@ -208,7 +273,8 @@ acquire_lock() {
         sleep 2
         waited=$((waited + 2))
     done
-    echo "$owner_pid" > "$LOCK_PID_FILE"
+    # Written aside and renamed in, so a reader never sees the pid file present but empty.
+    echo "$owner_pid" > "$LOCK_DIR/pid.$$" && mv -f "$LOCK_DIR/pid.$$" "$LOCK_PID_FILE"
     pwd -P > "$LOCK_CWD_FILE"
     date +%s > "$LOCK_STARTED_FILE"
     bump_generation
@@ -388,7 +454,7 @@ case "${1:-}" in
             echo "ERROR: refusing to release a lock owned by $current (asked by $holder)." >&2
             exit 2
         fi
-        cleanup
+        release_lock "${holder:-$current}"
         exit 0
         ;;
     --record-child)

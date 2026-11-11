@@ -165,6 +165,10 @@ class Rig:
             text=True,
         )
 
+    def spawn_sleeper(self) -> subprocess.Popen:
+        """A live process to stand in for a lock owner; reaped with the rig's groups."""
+        return self.popen(["sleep", "120"])
+
     # -- lock introspection -----------------------------------------------------------
 
     def lock_pid(self) -> Optional[int]:
@@ -300,14 +304,13 @@ class TestMutualExclusion:
         was four wide rather than one unlucky peer. Each concurrent ``dotnet test`` costs 5-10 GB,
         so four is an OOM.
 
-        Mutation-tested, and the result is worth recording honestly: deleting the ``sleep 1``
-        re-check from ``is_lock_stale``'s pidless branch does NOT reliably red this probe — it
-        stayed green through the mutation, because reproducing the herd needs eight peers to
-        collide inside a microseconds-wide window and an unloaded machine rarely obliges. The
-        deterministic pin for that fix is
-        :meth:`test_a_pidless_dir_that_gains_a_live_pid_within_the_beat_is_not_stolen`, which
-        opens the window by hand. This probe is kept as the incident-SHAPED cell: it is the only
-        one that would catch a mutual-exclusion break the narrow probes do not model.
+        This probe needs peers to collide inside a microseconds-wide window, so it reds only
+        rarely: it went red three times on CI in 2026-11 (#2458), when a release's ``rm -rf``
+        exposed a half-deleted lock and the waiters that saw it removed the next lock by name. The
+        deterministic pins are the pidless/empty-pid probes and
+        :meth:`test_a_dead_owners_lock_is_reclaimed_by_exactly_one_of_many_waiters`. This probe
+        is kept as the incident-SHAPED cell: it is the only one that would catch a
+        mutual-exclusion break the narrow probes do not model.
         """
         events = rig.root / "events.txt"
         rig.fake_dotnet(
@@ -364,9 +367,9 @@ class TestMutualExclusion:
         LIVE pid before the re-check is a peer mid-acquisition, not an abandoned lock. Without
         the re-check this reads as stale and a second dotnet is admitted.
 
-        Mutation-tested: removing the ``sleep 1`` / re-read makes this probe RED — the wrapper
-        reclaims the directory immediately and runs, exiting 0 instead of timing out at 124.
-        Reverted.
+        Mutation-tested: removing the pidless grace (the ``sleep 1`` re-read before #2458; the
+        directory's age since) makes this probe RED — the wrapper reclaims the directory
+        immediately and runs, exiting 0 instead of timing out at 124. Reverted.
         """
         rig.lock_dir.mkdir(parents=True)
         rig.fake_dotnet('echo "Total: 1"')
@@ -386,6 +389,82 @@ class TestMutualExclusion:
             f"lock was stolen from a live peer (exit {proc.returncode})"
         )
         assert "Timed out waiting for dotnet lock" in stderr
+
+    def test_an_empty_pid_file_in_a_fresh_dir_is_not_stolen(self, rig: Rig):
+        """
+        A peer mid-acquisition can show a pid file that exists but is still empty (an
+        ``echo pid > file`` between its truncate and its write). Reading that as "abandoned"
+        skipped the pidless re-check altogether and reclaimed a live peer's lock at once (#2458).
+        """
+        rig.lock_dir.mkdir(parents=True)
+        (rig.lock_dir / "pid").write_text("", encoding="utf-8")
+        rig.fake_dotnet('echo "Total: 1"')
+
+        proc = rig.spawn("test", DOTNET_SERIALIZED_TIMEOUT="4")
+        time.sleep(0.5)
+        rig.lock_dir.mkdir(parents=True, exist_ok=True)
+        (rig.lock_dir / "pid").write_text(f"{os.getpid()}\n", encoding="utf-8")
+
+        _, stderr = proc.communicate(timeout=60)
+
+        assert proc.returncode == 124, (
+            f"lock was stolen from a live peer (exit {proc.returncode})"
+        )
+        assert "Timed out waiting for dotnet lock" in stderr
+
+    def test_a_dead_owners_lock_is_reclaimed_by_exactly_one_of_many_waiters(
+        self, rig: Rig
+    ):
+        """
+        The takeover herd (#2458): eight waiters that all find the same dead-owner lock all
+        judge it stale at once. When each removed it by name and then ``mkdir``-ed, a late
+        ``rm -rf`` deleted an early winner's NEW lock and both ran. Removal is serialized and
+        renames the judged directory away, so exactly one reclaims and the rest queue.
+        """
+        rig.lock_dir.mkdir(parents=True)
+        (rig.lock_dir / "pid").write_text(f"{dead_pid()}\n", encoding="utf-8")
+        events = rig.root / "events.txt"
+        rig.fake_dotnet(
+            f'start=$(python3 -c "import time;print(repr(time.time()))")\n'
+            f"sleep 0.3\n"
+            f'stop=$(python3 -c "import time;print(repr(time.time()))")\n'
+            f'echo "RAN $start $stop" >> "{events}"\n'
+            f'echo "Total: 1"\n'
+        )
+
+        procs = [
+            rig.spawn("test", f"--peer{i}", DOTNET_SERIALIZED_TIMEOUT="120")
+            for i in range(8)
+        ]
+        stderrs = [proc.communicate(timeout=180)[1] for proc in procs]
+
+        assert all(p.returncode == 0 for p in procs), [p.returncode for p in procs]
+        intervals = sorted(
+            (float(start), float(stop))
+            for _, start, stop in (
+                line.split() for line in events.read_text(encoding="utf-8").splitlines()
+            )
+        )
+        assert len(intervals) == 8, f"expected 8 runs, saw {len(intervals)}"
+        overlaps = [(a, b) for a, b in zip(intervals, intervals[1:]) if b[0] < a[1]]
+        assert not overlaps, f"concurrent dotnet runs admitted: {overlaps}"
+        # Positive control: the stale-lock path is what ran, and only once.
+        assert sum("stale dotnet lock" in err for err in stderrs) == 1, stderrs
+
+    def test_a_holder_never_releases_a_lock_it_no_longer_owns(self, rig: Rig):
+        """
+        Release removes the lock only while its pid is still this wrapper's. An unconditional
+        ``rm -rf`` on exit deleted whatever lock sat at the path, a later owner's included.
+        """
+        other = rig.spawn_sleeper()
+        rig.fake_dotnet(
+            f'echo "{other.pid}" > "{rig.lock_dir / "pid"}"\necho "Total: 1"\n'
+        )
+
+        result = rig.run("test")
+
+        assert result.returncode == 0, result.stderr
+        assert rig.lock_pid() == other.pid, "the wrapper released a lock it did not own"
 
 
 class TestOrphanedChild:
