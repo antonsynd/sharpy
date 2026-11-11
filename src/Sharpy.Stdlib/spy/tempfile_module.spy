@@ -1,6 +1,7 @@
 """Generate temporary files and directories."""
 
 from system.io import Path as IoPath, File, Directory
+from sharpy import PathErrors
 
 def gettempdir() -> str:
     """Return the name of the directory used for temporary files."""
@@ -13,25 +14,31 @@ def gettempprefix() -> str:
 
 def mkdtemp(prefix: str = "tmp") -> str:
     """Create and return a unique temporary directory."""
+    random_part: str = IoPath.get_random_file_name().replace(".", "")
+    dir_name: str = prefix + random_part
+    full_path: str = IoPath.combine(IoPath.get_temp_path(), dir_name)
+    PathErrors.check_creates_dir(full_path)
     try:
-        random_part: str = IoPath.get_random_file_name().replace(".", "")
-        dir_name: str = prefix + random_part
-        full_path: str = IoPath.combine(IoPath.get_temp_path(), dir_name)
         Directory.create_directory(full_path)
-        return full_path
-    except Exception as ex:
-        raise OSError("Failed to create temporary directory: " + str(ex))
+    except Exception as e:
+        raise PathErrors.translate_creates_dir(e, full_path)
+    return full_path
 
 def mkstemp(prefix: str = "tmp", suffix: str = "") -> tuple[int, str]:
     """Create and return a unique temporary file."""
+    random_part: str = IoPath.get_random_file_name().replace(".", "")
+    file_name: str = prefix + random_part + suffix
+    full_path: str = IoPath.combine(IoPath.get_temp_path(), file_name)
+    _create_empty_file(full_path)
+    return (0, full_path)
+
+def _create_empty_file(path: str) -> None:
+    """CPython's os.open(path, O_CREAT | O_EXCL): a new empty file; prefix/suffix may name a subdirectory."""
+    PathErrors.check_creates_exclusively(path)
     try:
-        random_part: str = IoPath.get_random_file_name().replace(".", "")
-        file_name: str = prefix + random_part + suffix
-        full_path: str = IoPath.combine(IoPath.get_temp_path(), file_name)
-        File.write_all_text(full_path, "")
-        return (0, full_path)
-    except Exception as ex:
-        raise OSError("Failed to create temporary file: " + str(ex))
+        File.write_all_text(path, "")
+    except Exception as e:
+        raise PathErrors.translate_creates_exclusively(e, path)
 
 class NamedTemporaryFile:
     """A temporary file with a visible name, deleted on close by default."""
@@ -44,7 +51,7 @@ class NamedTemporaryFile:
         """Create a named temporary file in the default temporary directory."""
         random_part: str = IoPath.get_random_file_name().replace(".", "")
         self.name = IoPath.combine(IoPath.get_temp_path(), prefix + random_part + suffix)
-        File.write_all_text(self.name, "")
+        _create_empty_file(self.name)
         self.mode = mode
         self.delete = delete
         self._closed = False
@@ -81,7 +88,11 @@ class TemporaryDirectory:
         """Create a temporary directory in the default temporary directory."""
         random_part: str = IoPath.get_random_file_name().replace(".", "")
         self.name = IoPath.combine(IoPath.get_temp_path(), prefix + random_part + suffix)
-        Directory.create_directory(self.name)
+        PathErrors.check_creates_dir(self.name)
+        try:
+            Directory.create_directory(self.name)
+        except Exception as e:
+            raise PathErrors.translate_creates_dir(e, self.name)
 
     def cleanup(self) -> None:
         """Recursively delete the temporary directory and its contents."""

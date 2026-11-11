@@ -125,6 +125,33 @@ Class-level; the implementer sequences the work. Order constraint only: G1 lands
 - Ledger cells found while planning, for the lead to file or place (no implementer runs `gh issue create`): `import os` alone then `os.path.join(a, b)` is refused SPY0224 "expects 4 arguments but got 2" @ 2c803eb32, while `import os.path` runs it (false-refusal · program; python accepts both); `from os import path` is SPY0301; `EnvironmentError` is SPY0200 (probe); the `ConnectionError` family and `TimeoutError` are absent from Core (D2); a compiled library exports no module-level `type` alias (D3's removal path). Added by the revision, read not run: `xml`'s `ParseError` derives from `Exception` (`src/Sharpy.Stdlib/Xml/ParseError.cs:11`; python: `SyntaxError`) and `threading.BrokenBarrierError` from `Exception` (`src/Sharpy.Stdlib/Threading/Barrier.cs:8`; python: `RuntimeError`) — Stdlib exception bases outside C3's `OSError` rule; the macOS `unlink`-on-a-directory verdict (D4); path-state cells of `subprocess` are P56's surface (#2266) when python's outcome is in the `OSError` family and G1 finds them red. Added by the second revision, run @ e63084630: `shutil.Error` and `shutil.SameFileError` are absent from Stdlib, and the two measured cells of the excluded relation axis diverge (`shutil.copy(f, f)` → plain `OSError`; `shutil.move(d, d/x)` leaks `System.IO.IOException` past `except OSError`); `except statistics.StatisticsError` is SPY0202 while the bare `StatisticsError` catches (the type carries no `[SharpyModuleType]`); the python oracle was not required for `ExceptionHierarchyPythonMroTests` in CI — A7 drains it, recorded so the lead does not file it.
 
 
+## Implementation Checklist
+
+Tier: light (override "Keep light") · Adequacy: CLASS (converged) · base sha `a6691fe2` (dev tip at implementation start; the plan was verified @ 09367ede and no `src/` change landed between). Lane branch `claude/p33-oserror` (a first push as `claude/p33` carried three subjects over 72 chars; it was reworded @ 42fcad55 with trees unchanged and pushed under this name, since the lane had no pull request — shas quoted inside earlier commit bodies are the pre-reword ids: 286bc58b→fb7d452c, dd399b3b→dc0fda90, b5854143→c76df807, 5f57dba5→39ca2f07, 263de278→a8ddabf1, 00c3f3e1→e34243d6). Baseline: .NET 10 83941/0/9 @ a6691fe2 (measured, CI run 42928822481); Python Build Tools 1 failed / 1343 passed, the `dotnet-serialized` lock race already on #2458 (commented). Lead re-ran per wave: G1 allowlist row `os.remove[EmptyDir]` deleted → 1 failed, restored → 41/0/0; socket `Error` back on `System.Exception` → 4 failed, restored → 55/0/0; A7 floor (Stdlib step renamed) → 2 failed, restored → 39/0/0. G1 at landing: 111 entry points (69 probed by 74 rows, 24 `unreachable with a user path`, 18 `out of contract` — 14 #2553, 4 #2266), 654 cells (642 in contract, 12 exempt), 9 exemption rows, 352 allowlist rows, census 232 lines. Names fixed by the lead for D1: public static class `PathErrors` (Core), internal enum `PathRequirement`, internal stamp `PathRequirementAttribute`.
+
+- [x] W1-A (dc0fda90) — A7 widened + D4 `test-fast` edit (resolves deferred finding 1) — test-expert — blocked by none
+- [x] W1-B (fb7d452c, 2d1b21c1) — D2 `NotADirectoryError` + spec row/prose + A4 + A6 (D2 by direction) — core-library-expert — blocked by none
+- [x] W1-C (c76df807) — D3 socket bases + regen + A3 C3 theory (resolves deferred finding 2) + fixture + deviation row + socket docs — stdlib-expert — blocked by none
+- [x] W1-D (39ca2f07, a8ddabf1, e34243d6; A7 floor 42fcad55) — G1 RED with its allowlist (T1–T5, R1, scan theory (g), exemption roster, oracle) + `PathRequirement` declaration + A6 D1.4 fixture + Stdlib.Tests in A7's floor — test-expert — blocked by none
+- [x] W2-E (c960e97b, 0d7be764, 94cfc5dc; lead re-ran NotFound arm → plain OSError: 2 failed, restored 42/0/0) — D1 `PathErrors` (check / translate / pair door) + R0 + Core.Tests translate theory + `open()` as first caller — core-library-expert — blocked by W1-D
+- [x] W3-F1 (cba6ef5a, 00c94119, 47f8f7bc) — spy-sourced os, os.path, shutil, tempfile call the helper; regen; 172 G1 rows drained; (e) os.remove precheck → 3 cells red, shutil.copy precheck → 30; (f) os.chdir emptied catch → 4 cells red — stdlib-expert
+- [x] W3-F2 (54351e8b, c6c2c01a, 74e7def6) — handwritten pathlib, tarfile, zipfile, gzip, xml, toml, configparser call the helper; 173 G1 rows drained (allowlist 352 → 0); (e) tarfile precheck → 18 cells red; (f) on a check-preceded site (Path.rmdir) leaves G1 GREEN — only A2 sees it, stated — stdlib-expert. Lead 2ef25d05: PathErrors' private `Row` renamed (it changed docs/stdlib/sqlite3.md through the generator's member index; #2458 comment)
+- [x] W3-G (5c5732ff, 18dce903, 917f4d17, 3ff077b1) — A2 bound scan (7 plain-OSError rows, 8 swallow rows over 10 sites; synthetic control 42 rows; (h) blind arm: A2 green, A1 red on 3 cells), TarWriter re-judged a door (T2 had shown it; the negative judgment was wrong), R2 (82 probes: 56 single, 9 with `Also`, 17 ask-no-door; 4 pair exclusions; R2 mutation: delete `open(x)` → red naming the pair) — test-expert. Lead re-ran: a planted `FileNotFoundError` in Toml.cs → A2 red (1 failed), restored 88/0/0
+- [x] FINAL — refuting audit (verification-expert, opus): claims 1–3, 5, 6 NOT REFUTED; claim 4 REFUTED — `PathErrors.Rename` deleted the source on `os.rename(d, d)` and `sub` on `os.rename(ne, ne/sub)` (a regression in kind vs base, relation axis) → fixed e77bf59e with `PathErrorsRenameRelationTests` (mutation: pre-fix door → 6 red, restored 33/0/0); TarFile extract pair exclusion refuted on a temporal axis (#2556). Staleness gates (spy stdlib, spy tests, stdlib docs, oracle ledger) and `format whitespace --verify-no-changes` clean @ 3ff077b1. Issue repros under `run` @ 3ff077b1 match python3 (socket.error caught by OSError; os.remove(dir) IsADirectoryError; os.mkdir(file) FileExistsError; ZipFile(missing) FileNotFoundError). Gate: see Implementation Summary — lead
+
+### Implementation Summary
+
+**Tier:** light (override "Keep light") · **Adequacy:** CLASS (converged) · **Branch:** `claude/p33-oserror` · **Scope:** a6691fe2..e77bf59e (31 commits with this record; 80 files, +6649 −653)
+
+- **Deferred findings:** 1 resolved in dc0fda90 (A7 judges per test project; Compiler.Tests keeps its IL rule; `sweep`/`windows` select no oracle class); 2 resolved in c76df807 (A3's resolver order asserted over an injected importability predicate — red on any host under the reordering mutation).
+- **Acceptance:** A1 G1 landed RED with 352 rows (e34243d6) and drained to 0 (W2-E 7, W3-F1 172, W3-F2 173); T1–T5, R0, R1, R2 green; 786+ cells, oracle required. A2 green with 7 plain-`OSError` and 8 swallow roster rows. A3 green (55 rows). A4 30/0/0 with the new row. A5 spec row + prose (fb7d452c), deviation row `socket-error-timeout-distinct-classes` (c76df807). A6 both directions (fb7d452c, 39ca2f07). A7 green, `test-fast` requires the pinned python (dc0fda90, 42fcad55).
+- **Gate:** .NET 10 **84181/0/9 @ e77bf59e (measured, run 42947413361)**; baseline 83941/0/9 @ a6691fe2 (run 42928822481). G1 reported Passed (not Skipped) in `test-fast` ("Test CLI, Core, Stdlib") with `SHARPY_REQUIRE_PYTHON_ORACLE: 1`, CPython 3.14.10 from `.python-version`. Python Build Tools red at both shas on one test only, `test_dotnet_serialized_lock.py::test_eight_concurrent_wrappers_never_overlap` (the #2458 lock race: red at the base dispatch, re-run once at 3ff077b1 and red again; no file of this range touches `.claude/scripts/` or that test).
+- **Wave-1 gate red, attributed and fixed:** 84093/8/9 @ fc7a100b — the new fixtures entered three ratcheted censuses (formatting route #2279, code-action shape #2294, corpus pins); rows added in a914e805.
+- **Regression found by the refuting audit and fixed:** `PathErrors.Rename` deleted the source on a same-entry rename and an inner directory on `os.rename(ne, ne/sub)` (relation axis, G1 cannot see it) — e77bf59e, guarded by `PathErrorsRenameRelationTests`.
+- **Issue repros (`run` @ 3ff077b1, python3 3.13.18 agrees):** `raise socket.error` caught by `except OSError`; `os.remove(dir)` → `IsADirectoryError`; `os.mkdir(file)` → `FileExistsError`; `zipfile.ZipFile(missing)` → `FileNotFoundError`.
+- **Findings ledger (contract §10):** 9 wave-1 cells + 12 planning cells + later waves' cells → 8 issues filed (#2553 requests, #2554 Core OSError family gaps, #2555 exception bases outside OSError, #2556 the excluded-axis residue class, #2557 toml dict literal, #2559 zipfile mode refusals, #2565 `open()` modes; each `lane:*` `reach:program` `class-tracker`), tracker comments on #2266, #2053, #2122, #2279, #2294, #2458 (×4), #2556 (×4). Round ratio: filed 8 / issues this plan closes at verify 2 (#2087, #2476).
+- **Not done here:** the `/verify-implementation` stage (light: Agents 2–4).
+
 ## Revision log
 
 - @ 2c803eb32 — revised before the first `/verify-plan` pass on two owner rulings of 2026-11-09: the generator is confirmed as required first with the tier kept light; #2130 is split out (its `CodeGen/` seam is §12 c), removing the `except*` contract, its design decision, its generator and its acceptance bullet. Decisions and acceptance bullets renumbered.
@@ -176,3 +203,98 @@ Mode: `--adequacy` (tier light by `override: "Keep light"`, third pass, fresh co
 - **macOS verdicts** — unmeasured (no host), as the plan says.
 - **The Core compilation** binding error-free from sources, and Roslyn reading an internal stamp attribute through a metadata reference — not tried; the first run of T1 and R0 is the catcher.
 - **The size of T2's committed census.** "Path-capable" is any external member with a `string` or `object` parameter under a negative row, which is most of the BCL surface Stdlib calls; the file's size, and how often an unrelated Stdlib change must regenerate it, are unmeasured until G1 runs.
+
+## Implementation Verification Record
+
+**Plan:** `docs/process/plans/plan-638e8b.md` (stamp: CONVERGED; Adequacy: CLASS)
+**Tier:** light (override "Keep light") — Agents 2, 3, 4 (opus); completeness and the deferred findings checked by the lead (contract §12)
+**Branch:** `claude/p33-verify` (the implementation pull request #2567 had merged; `dev` refuses a direct push) · **Pull request:** https://github.com/antonsynd/sharpy/pull/2579
+**Scope:** `a6691fe2..047cb8ef` audited (31 implementation commits; landed on `dev` as 82cccf3a with unrelated dev merges, no `src/Sharpy.Core`/`src/Sharpy.Stdlib` drift between them); remediation `c505c00e` on top of `dev` @ 8d12c781; 1 remediation commit + this record
+**Verified on:** 2026-11-11
+
+### Completeness (lead, light tier)
+
+| Status | Count |
+|--------|-------|
+| DONE (evidence cited) | 9 — A1–A7, deferred findings 1 (dc0fda90) and 2 (c76df807) |
+| Was PARTIAL (now fixed) | 0 |
+| Was MISSING (now fixed) | 0 |
+| DIVERGED (acceptable, why) | 0 |
+| Unresolved | 0 |
+
+Evidence: A1 allowlist at 0 rows (header only), T1–T5/R0–R2 green — Stdlib.Tests `OSErrorPathState|StdlibExceptionBase|StdlibClrThrowScan` 147/0/0 @ 82cccf3a (measured, oracle required, 3.13.18) and G1 + C3 143/0/0 on 3.15.0b4 (816 cells over 96 probes, 804 in contract, 12 exempt); mutations (a)–(j) recorded in the commit bodies (grep of `a6691fe2..047cb8ef`). A2/A3/A4/A6/A7 green with Agent 3's mutations below. A5: spec row and prose (fb7d452c), deviation row `socket-error-timeout-distinct-classes` whose examples run as written @ 82cccf3a.
+
+Issues to Close:
+- #2087 — A3 green; `raise socket.error` caught by `except OSError` under `run` @ 82cccf3a (python 3.13.18 and 3.15.0b4 agree); deviation row committed → **CLOSEABLE** after #2579 merges. New in this round: D3 adds socket members to #2363's handler-reachability class (below) — that class, not this issue, carries them.
+- #2476 — A1 at 0 rows with T1–T5 and R0–R2 green, A2 and A7 green; the three issue cells under `run` @ 82cccf3a equal python; G1 Passed (not Skipped) in `test-fast` of the gate run below → **CLOSEABLE** after #2579 merges. Cells G1 cannot reach (hand-written negative roster judgments) are filed as their own class, #2581, and do not hold it open (the 2026-11-10 ruling A precedent).
+
+### Regressions (Agent 2)
+
+- **Baseline:** 84181/0/9 @ e77bf59e (measured, run 42947413361 — the plan's own gate; the 82cccf3a dispatch 42953669455 sat queued under Actions throttling and was cancelled once `dev` moved)
+- **Post-remediation @ FINAL:** the `.NET 10` pull-request run of #2579 at this record's tip (code = c505c00e; the record adds this file only) — its `passed/failed/skipped @ sha (measured)` line and run id are in #2579's body, and #2579 merges only on that run green (`docs/process/README.md` › The stage trail, item 6)
+- **Regressions found (red @ HEAD, green @ BASE):** 0 test reds; 5 behaviour regressions in kind on G1's excluded axes, all in `PathErrors.Rename` — base refused and left both entries, HEAD removed or replaced one: `os.rename(emptydir, link→emptydir)`, `os.rename(link→dir, emptydir)`, `Path(link→dir).rename(emptydir)`, `os.rename(nonempty_dir, <other fs>/emptydir)` (deleted the destination, then raised), `os.rename(file, <other fs>/existing_file)` (overwrote). **5 fixed** in c505c00e. Remediation's own generator re-run found a sixth cell its first draft broke (hard links to one file lost a name) — fixed before commit, guarded.
+- **Pre-existing reds (red at both):** `DifferentialExecution fixture::basics/divmod_zero_division` under python 3.13 only (its message text; not red under CI's pinned 3.15) — 4/1/0 @ 82cccf3a and @ a6691fe2; `Spy.Socket TestSocketIpv6CanCreate` on this host (no IPv6; #2556's socket row); Python Build Tools `test_dotnet_serialized_lock.py::test_eight_concurrent_wrappers_never_overlap` (#2458) and `test_spy_none_default_audit` on 3.15 (from the 3.15 pin #2547; fixed on `dev` by #2571) — run 42953673768 @ 82cccf3a, neither file in this range.
+- **Expectation changes in range:** 1 `.expected` (`stdlib_socket_qualified_error_types`, 9 appended lines, as A3 allows; python 3.13.18 and 3.15.0b4 print it), 0 `.skip`; 3 spy-test assertions changed, each python's behaviour on 3.11–3.15.
+
+### Attribution (control run)
+
+- **Control @ BASE:** 83941/0/9 @ a6691fe2 (measured, run 42928822481); local controls by Agent 2 in a6691fe2 worktrees for every local red above.
+- Generated artifacts regenerated @ 82cccf3a in a clean worktree (spy stdlib, spy tests, stdlib docs, oracle ledger): no diff.
+
+### Class contract status (Agents 3 + 4)
+
+- **Violated contract:** the exception TYPE a handler observes at a Stdlib boundary is python3's (from the plan).
+- **Standing harness:** G1 — green @ 82cccf3a and on 3.15.0b4 (added by this plan); A2, A3, A7 green.
+- **Allowlist delta:** −352 (G1 drained to 0); +18 out-of-contract rows (#2553, #2266, both open); census +18 (#2279, the file's convention), +3 (#2294), +1 pin; 0 stale.
+- **Cells probed / passed / failed:** Agent 4 560 / 411 / 135 (+14 outside the contract; matrix built from the plan's two Falsifiability observations plus 2 axis changes); Agent 2 40 / 35 / 5 (fixed); Agent 3 60 / 60 / 0.
+- **Seam-or-arm verdicts:** SEAM — `PathErrors` for 13 modules and `open()`. ARM — `subprocess`: a missing executable is plain `OSError` (python `FileNotFoundError`), hidden by the `Popen.cs:106` A2 roster row and G1's #2266 exclusion → cell posted on #2266.
+- **Refusals by direction:** `class NotADirectoryError(Exception)` worked → SPY0212 (owner-ruled, "Add it"); `except (OSError, socket.timeout):` **worked → ICE** (SPY0908 CS0160) and three `except OSError/IOError:` then `except socket.*:` chains wrong → ICE — D3's consequence in #2363's class (ruled R-IV, placed P13b; a CodeGen seam outside this tier), posted there as #2124's re-rooting cells were. Not reverted: reverting D3 reopens #2087.
+
+### Guards mutation-tested (Agent 3, lead)
+
+- **Red when broken:** 22 — Agent 3's 17 (A1(d) IsADirectory arm 2 failed; translate default arm; idempotency; Rename relation ×2; A1(e) precheck; R2 wrong door; R0 stamp; inert-fix revert of `XmlFunctions.cs`; A2 synthetic; DoorScan property writes; A3 socket base; A7 ×3; (j) oracle missing; A6 public enum) and the lead's 5 on `PathErrorsRenameEntryTests` (pre-fix door 5 failed; files moved aside 1; no rename-back on refusal 1; no rename-back on same file 1; links followed 2; restored 44/0/0).
+- **Vacuous / inverted / inert:** 0. Translate idempotency and R2's wrong door are seen only by their unit/R2 guards (G1 stays green), as designed.
+- **Absence assertions given a positive control:** G1's positive control (load-bearing under A1(d)); A2's standing synthetic control.
+
+### Architectural Review (Agent 3, Section B)
+
+- **Critical:** 1 — the handler-tuple ICE above (filed on #2363, not fixed here).
+- **Warnings:** 4 — subprocess arm (#2266); `Rename` removes before a move that can refuse (**fixed**, c505c00e); case-insensitive `SameEntry` off Linux (#2556); the deviation row does not mention the CS0160 handler shapes (#2363 carries them).
+- **Suggestions:** 3, unresolved — `TempWhy`'s exclusion reason is false (#2581); `PathErrors` is reachable from user programs and undocumented; `throw PathErrors.Translate…(ex)` rethrows a non-I/O exception without its original stack.
+
+### Generated artifacts
+
+- Regenerated at 82cccf3a: no diff. At c505c00e (Core-only change): stdlib docs regenerate with no diff; `format whitespace --verify-no-changes` clean.
+
+### Fixes Applied
+
+| Commit | Description | Category |
+|--------|-------------|----------|
+| c505c00e | `PathErrors.Rename` reads the final entries as `lstat`, renames through `rename(2)` only, never removes before a move that can refuse; `PathErrorsRenameEntryTests` | regression |
+
+### Issues Created (one per class — contract §10)
+
+| Issue | Class (contract) | Cells | Lane | Reach | Tracker existed? |
+|-------|------------------|-------|------|-------|------------------|
+| #2581 | C2 cells behind hand-written negative roster judgments (glob pattern, deferred doors, cwd) | 32 | lane:silent-wrong | reach:program | new |
+| #2582 | positional argument binds to a different parameter than CPython's | 1 | lane:silent-wrong | reach:program | new |
+| #2583 | builtin exception type as a value argument is SPY0908 CS0119 | 2 | lane:ice | reach:program | new |
+| #2584 | comprehension over a Stdlib generator method is SPY0908 CS0266 | 2 | lane:ice | reach:program | new |
+| #2585 | `with` on a Stdlib spy class with `__enter__`/`__exit__` is SPY0324 | 1 | lane:false-refusal | reach:program | new |
+| — | handler reachability (socket shapes) | 4 | lane:ice | reach:program | posted on #2363 |
+| — | subprocess path state | 1 | lane:silent-wrong | reach:program | posted on #2266 |
+| — | excluded axes (relation, symlink, spelling, content, non-Linux) | 11 | lane:silent-wrong | reach:program | posted on #2556 |
+| — | a mode or argument python accepts is refused before the path | 91 | lane:false-refusal | reach:program | posted on #2565 |
+
+- Ledger: cells recorded 145 → issues filed 5 → tracker comments 4 → deviation rows 0
+- **Round ratio:** filed 5 / closed 2 (#2087, #2476, on merge)
+
+### Unresolved Items
+
+- `except (OSError, socket.timeout):` and the `except OSError:`-then-`except socket.*:` chains are SPY0908 since D3 (#2363, P13b).
+- `subprocess` missing executable is plain `OSError` (#2266).
+- Agent 3's three suggestions (above).
+
+### Files Changed
+
+`git diff --stat 8d12c781..c505c00e`: `src/Sharpy.Core/PathErrors.cs` (+156 −29), `src/Sharpy.Core.Tests/PathErrorsRenameEntryTests.cs` (+213, new); plus this record. The audited range `a6691fe2..047cb8ef`: 80 files, +6662 −653.

@@ -55,6 +55,9 @@ namespace Sharpy
                 throw new TypeError("expected str, got NoneType");
             }
 
+            // python opens the file (`open(source, "rb")`): a path, never a URI; its refusal is the
+            // classifier's (plan-638e8b D1).
+            PathErrors.CheckNeedsFileToRead(source);
             try
             {
                 XDocument doc = XDocument.Load(source);
@@ -63,6 +66,10 @@ namespace Sharpy
             catch (XmlException ex)
             {
                 throw ParseError.FromXmlException(ex);
+            }
+            catch (Exception ex) when (ex is IOException || ex is UnauthorizedAccessException)
+            {
+                throw PathErrors.TranslateNeedsFileToRead(ex, source);
             }
         }
 

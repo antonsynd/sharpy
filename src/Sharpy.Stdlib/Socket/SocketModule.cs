@@ -231,10 +231,13 @@ namespace Sharpy.SocketModule
 
     /// <summary>
     /// Base exception for socket-related errors. Corresponds to Python's socket.error.
+    /// Derives from OSError, so `except OSError` catches every socket exception. Python's
+    /// socket.error IS OSError; here it is a subclass of its own (docs/deviations.yaml,
+    /// socket-error-timeout-distinct-classes).
     /// </summary>
     [global::Sharpy.SharpyModuleType("socket", "error")]
     [global::Sharpy.SharpyName("error")]
-    public class Error : global::System.Exception
+    public class Error : global::Sharpy.OSError
     {
         public int Errno;
         /// <summary>

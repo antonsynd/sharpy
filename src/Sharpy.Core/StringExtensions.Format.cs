@@ -694,10 +694,13 @@ namespace Sharpy
         }
 
         /// <summary>
-        /// Encode the string using the specified encoding and return as bytes. An unencodable
-        /// character raises <see cref="UnicodeEncodeError"/> under <c>errors="strict"</c>, becomes
-        /// <c>?</c> under <c>"replace"</c> and is dropped under <c>"ignore"</c>; any other handler name
-        /// raises <see cref="LookupError"/> when an error occurs (#2477).
+        /// Encode the string using the specified encoding and return as bytes. The encoding is named as
+        /// python names it (aliases, any case, <c>-</c>/<c>_</c>/space alike); <c>utf-16</c>,
+        /// <c>utf-32</c> and <c>utf-8-sig</c> write a byte-order mark first. An unencodable character
+        /// raises <see cref="UnicodeEncodeError"/> under <c>errors="strict"</c>, becomes <c>?</c> under
+        /// <c>"replace"</c>, is dropped under <c>"ignore"</c>, and is escaped under
+        /// <c>"backslashreplace"</c> and <c>"xmlcharrefreplace"</c>; an unknown handler name raises
+        /// <see cref="LookupError"/> when an error occurs (#2477, #2495).
         /// Python: <c>str.encode(encoding='utf-8', errors='strict')</c>
         /// </summary>
         public static Bytes Encode(this string s, string encoding = "utf-8", string errors = "strict")
