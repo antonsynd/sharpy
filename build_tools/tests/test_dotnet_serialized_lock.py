@@ -205,10 +205,17 @@ def rig(tmp_path: Path):
     made = Rig(tmp_path)
     yield made
     # Kill anything a probe deliberately orphaned, so a failure cannot leak a live process.
+    # Only a pid in a process group this rig started: a lock file can name anything (a test
+    # writes "-1" into one, and kill(-1) signals every process the user may signal).
     for pidfile in ("child", "pid"):
         pid = _read_pid(made.lock_dir / pidfile)
         if pid is not None and pid != os.getpid() and _alive(pid):
-            _kill_tree(pid)
+            try:
+                in_rig = os.getpgid(pid) in made.groups
+            except OSError:
+                in_rig = False
+            if in_rig:
+                _kill_tree(pid)
     # ...and every process group the rig started, which is what catches the rest: a watchdog
     # subshell, tee, a stub's grandchild. None of them is named by a pidfile.
     for pgid in made.groups:
@@ -224,13 +231,17 @@ def rig(tmp_path: Path):
 
 
 def _read_pid(path: Path) -> Optional[int]:
+    """A positive pid above 1, or None: 0, -1 and negatives address groups or everyone."""
     try:
-        return int(path.read_text(encoding="utf-8").strip())
+        pid = int(path.read_text(encoding="utf-8").strip())
     except (OSError, ValueError):
         return None
+    return pid if pid > 1 else None
 
 
 def _alive(pid: int) -> bool:
+    if pid <= 1:
+        return False
     try:
         os.kill(pid, 0)
     except (OSError, ProcessLookupError):
@@ -240,6 +251,8 @@ def _alive(pid: int) -> bool:
 
 def _kill_tree(pid: int) -> None:
     """SIGKILL *pid*; best-effort, a probe's cleanup must never fail the probe."""
+    if pid <= 1:  # never a process group, pid 1, or every process (-1)
+        return
     try:
         os.kill(pid, signal.SIGKILL)
     except OSError:
@@ -297,9 +310,10 @@ LOCKERS = ["flock", "python3", "perl"]
 
 
 def _overlaps(events: Path) -> list:
+    """(start, stop, tag) per recorded run, sorted, and the consecutive pairs that overlap."""
     intervals = sorted(
-        (float(start), float(stop))
-        for _, start, stop in (
+        (float(fields[1]), float(fields[2]), " ".join(fields[3:]))
+        for fields in (
             line.split() for line in events.read_text(encoding="utf-8").splitlines()
         )
     )
@@ -311,7 +325,7 @@ def _timing_stub(rig: Rig, events: Path, seconds: str) -> None:
         f'start=$(python3 -c "import time;print(repr(time.time()))")\n'
         f"sleep {seconds}\n"
         f'stop=$(python3 -c "import time;print(repr(time.time()))")\n'
-        f'echo "RAN $start $stop" >> "{events}"\n'
+        f'echo "RAN $start $stop $2" >> "{events}"\n'
         f'echo "Total: 1"\n'
     )
 
@@ -513,11 +527,40 @@ class TestMixedFleet:
     one beat to gain its pid (an old wrapper between its ``mkdir`` and its pid write).
     """
 
+    def _syscall_mkdir_dir(self, rig: Rig) -> Path:
+        """
+        A PATH directory whose ``mkdir DIR`` is the mkdir(2) syscall. The old wrapper's lock is
+        ``while ! mkdir``; on the ubuntu-26.04 runner that binary (uutils) lets two simultaneous
+        callers both succeed, so two OLD wrappers could overlap there: a fault this PR cannot fix
+        and this sweep must not report. Only plain ``mkdir DIR`` is replaced; ``-p`` forms pass
+        through to the real binary.
+        """
+        shim_dir = rig.root / "syscall-mkdir"
+        shim = shim_dir / "mkdir"
+        # Written once: rewriting it under a running old wrapper fails with ETXTBSY.
+        if shim.exists():
+            return shim_dir
+        shim_dir.mkdir(exist_ok=True)
+        real = shutil.which("mkdir")
+        shim.write_text(
+            "#!/bin/sh\n"
+            'if [ "$#" -eq 1 ] && [ "${1#-}" = "$1" ]; then\n'
+            "  exec python3 -c 'import os, sys; os.mkdir(sys.argv[1])' \"$1\" 2>/dev/null\n"
+            "fi\n"
+            f'exec "{real}" "$@"\n',
+            encoding="utf-8",
+        )
+        shim.chmod(0o755)
+        return shim_dir
+
     def _spawn(self, rig: Rig, old: bool, tag: str) -> subprocess.Popen:
         wrapper = PRE_FLOCK_WRAPPER if old else WRAPPER
+        env = rig.env(DOTNET_SERIALIZED_TIMEOUT="120")
+        if old:
+            env["PATH"] = f"{self._syscall_mkdir_dir(rig)}{os.pathsep}{env['PATH']}"
         return rig.popen(
             [str(wrapper), "test", tag],
-            env=rig.env(DOTNET_SERIALIZED_TIMEOUT="120"),
+            env=env,
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
             text=True,
@@ -627,6 +670,39 @@ class TestMixedFleet:
 
         assert result.returncode == 2
         assert rig.lock_dir.exists()
+
+
+class TestPidFileContent:
+    @pytest.mark.parametrize("content", ["abc", "-1"])
+    def test_a_garbage_pid_file_does_not_wedge_the_lock(self, rig: Rig, content: str):
+        """
+        A pid file that is not a pid names no live owner: the directory is abandoned. Comparing
+        the parsed verdict with the raw content of the directory moved aside never matched, and
+        every new wrapper waited out its TIMEOUT.
+        """
+        rig.lock_dir.mkdir(parents=True)
+        (rig.lock_dir / "pid").write_text(f"{content}\n", encoding="utf-8")
+        rig.fake_dotnet('echo "Total: 1"')
+
+        result = rig.run("test", DOTNET_SERIALIZED_TIMEOUT="20")
+
+        assert result.returncode == 0, result.stderr
+        assert "Total: 1" in result.stdout
+
+    def test_a_closed_stdin_still_runs_dotnet(self, rig: Rig):
+        """A caller that closed fd 0 must not stop dotnet from starting."""
+        rig.fake_dotnet('echo "Total: 1"')
+        proc = rig.popen(
+            ["sh", "-c", 'exec 0<&-; exec "$0" test', str(WRAPPER)],
+            env=rig.env(),
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True,
+        )
+        out, err = proc.communicate(timeout=60)
+
+        assert proc.returncode == 0, err
+        assert "Total: 1" in out
 
 
 class TestSignalledHolder:

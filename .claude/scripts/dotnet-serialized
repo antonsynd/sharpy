@@ -93,8 +93,9 @@ LOG_RETENTION_MINUTES=10080  # 7 days
 
 # THE LOCK (#2458). One flock(2) on $LOCK_FILE, taken on fd 9 and held for the wrapper's whole
 # run. The kernel grants it to one process at a time and drops it when the holder exits or dies,
-# so there is no stale lock to judge, no takeover path, and no window between "acquired" and
-# "recorded". It replaced `while ! mkdir $LOCK_DIR`, which admitted two runs at once on CI: on
+# so the flock itself is never stale and never taken over. (What is judged under it is what the
+# flock cannot see: an orphaned dotnet child, a --acquire-lock holder's pid, and the directory
+# that wrappers from before the flock use as their lock.) It replaced `while ! mkdir $LOCK_DIR`, which admitted two runs at once on CI: on
 # the ubuntu-26.04 runner the mkdir BINARY (uutils coreutils 0.10.0) reports success to several
 # processes creating one directory together (build_tools/tests/test_lock_platform_assumptions.py).
 #
@@ -216,18 +217,20 @@ lock_timeout() {
 #   * Nothing alive. A directory with NO pid may be an old wrapper between its `mkdir` and its pid
 #     write, so it is judged again after a one-second beat; still pidless then, it is abandoned.
 #
-# Returns with JUDGED_OWNER set to the pid file's content at the verdict (empty if none), which
-# take_lock_dir uses to check that it moved aside the directory it judged.
+# Returns with JUDGED_RAW set to the pid file's content at the verdict (unparsed: a garbage pid
+# must still match itself) and JUDGED_OWNER to it as a pid (empty if none). take_lock_dir uses
+# JUDGED_RAW to check that it moved aside the directory it judged.
 #
 # KNOWN-UNFIXED: PID reuse — a recycled owner or child PID reads as live and wedges peers for
 # the full TIMEOUT. Bounded by that timeout rather than by correctness. The probability is
 # UNMEASURED, and deliberately so: measuring it means forcing PID wraparound on a shared
 # development machine. Declined by the 2026-08-13 INFRA batch (#1481).
 wait_out_previous_holder() {
-    local deadline="$1" child owner announced=0 pidless_seen=0
+    local deadline="$1" child owner raw announced=0 pidless_seen=0
     while :; do
         child=$(cat "$LOCK_CHILD_FILE" 2>/dev/null)
-        owner=$(cat "$LOCK_PID_FILE" 2>/dev/null)
+        raw=$(cat "$LOCK_PID_FILE" 2>/dev/null)
+        owner="$raw"
         case "$child" in ''|*[!0-9]*) child="" ;; esac
         case "$owner" in ''|*[!0-9]*) owner="" ;; esac
         [ "$(date +%s)" -lt "$deadline" ] || lock_timeout
@@ -241,6 +244,7 @@ wait_out_previous_holder() {
             continue
         else
             JUDGED_OWNER="$owner"
+            JUDGED_RAW="$raw"
             return 0
         fi
         pidless_seen=0
@@ -285,7 +289,7 @@ take_lock_dir() {
     if [ -d "$LOCK_DIR" ]; then
         mv "$LOCK_DIR" "$aside" 2>/dev/null || return 1
         moved=$(cat "$aside/pid" 2>/dev/null)
-        if [ "$moved" != "$JUDGED_OWNER" ]; then
+        if [ "$moved" != "$JUDGED_RAW" ]; then
             # An old wrapper replaced the judged directory between the verdict and the rename.
             # Put its directory back (rename(2) refuses a non-empty target) and wait again.
             python3 -c 'import os, sys; os.rename(sys.argv[1], sys.argv[2])' "$aside" "$LOCK_DIR" 2>/dev/null \
@@ -704,7 +708,7 @@ trap 'on_signal 143' TERM
 trap 'on_signal 130' INT
 trap 'on_signal 129' HUP
 # A background command's stdin defaults to /dev/null; keep the caller's.
-exec 3<&0
+exec 3<&0 2>/dev/null || exec 3</dev/null  # a caller may have closed stdin
 bash -c 'echo $$ > "$1"; shift; exec dotnet "$@"' _ "$LOCK_CHILD_FILE" "$@" \
     > "$FIFO" 2>&1 <&3 3<&- 9>&- &
 DOTNET_PID=$!
