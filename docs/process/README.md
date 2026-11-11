@@ -46,14 +46,15 @@ The shared rules for `/create-plan`, `/verify-plan`, `/implement-plan` and `/ver
    as contract §10 says: a comment on its open class tracker; a new issue only when none exists and the cell is
    `reach:program` in a silent-wrong, ice, refusal or runtime-throw lane. The tip never carries the skip-ci marker (contract §6).
 6. **Merge on green** (owner, 2026-11-11). The session that opened a pull request into `dev` merges
-   it once every check at its tip has completed green and, if it changes code (an implementation,
-   no-plan or code-fixing `-verify` pull request, a script or a build tool), its `Independent review
-   @ <sha>` line is current (`/implement-plan` › Cleanup and Report step 4). A plan-stage, charter,
-   docs, skill or version-bump pull request needs green alone; green never stands in for a required
-   review. Merge with a merge commit, the head sha the gate measured as the expected head, so a later
-   push cannot ride in unmeasured. A red or a pending check is never merged over: the red is fixed,
-   or — a flake with an open issue — its job is re-run once and the re-run decides. After the merge,
-   `git pull origin dev`. `mainline` stays the owner's.
+   it once every check at its tip has completed green (where path filters start no gate, the subject
+   check alone) and, if it changes code, its `Independent review @ <sha>` line is current and its
+   verdict is not `do not merge` (`/implement-plan` › Cleanup and Report step 4). It changes code when
+   its diff touches `src/`, `build_tools/`, `.claude/scripts/`, `.claude/hooks/`, `.github/` or
+   `docs/language_specification/`; any other pull request needs green alone. Green never stands in
+   for a required review. Merge with a merge commit, the head sha the gate measured as the expected
+   head, so a later push cannot ride in unmeasured. A red or a pending check is never merged over:
+   the red is fixed, or — a flake with an open issue — its job is re-run once and the re-run decides.
+   After the merge, `git pull origin dev`. `mainline` stays the owner's.
 
 ### No-plan lane
 
@@ -68,7 +69,7 @@ no verify stage, the body and the independent review as in item 5, with `Refs #N
 The same lane shape holds for every change that is not a plan stage — a `/batch-issues` charter
 call, a chore or band commit, a skill or doc edit, a version bump (owner, 2026-11-11): cut
 `claude/<lane>` from `origin/dev`, commit there, `/push`, open a pull request into `dev`, and merge it
-on green (item 6). `dev`
+as item 6 says (a band commit that changes code waits for its review). `dev`
 is the integration branch; nothing is pushed to it directly, and local `dev` advances only by
 `git pull origin dev` after a merge.
 
