@@ -223,3 +223,134 @@ def test_main_fails_on_the_p85_merge():
 
 def test_main_exit_2_on_an_unresolvable_base():
     assert mod.main(["--base", "no-such-ref-xyz"]) == 2
+
+
+# ── Rulings waive only when new in this change ─────────────────────────────────
+
+
+def _ruling(target: str, rid: str = "D1") -> str:
+    return f"# owner-ruling {rid} {target}"
+
+
+def test_a_ruling_already_at_base_does_not_waive_a_new_worsening():
+    base = _file(_ruling("k"), _row("k", "Ice"))
+    head = _file(_ruling("k"), _row("k", "SilentWrong"))
+    assert [f.key for f in mod.compare(NAME_RES, base, head)] == ["k"]
+
+
+def test_a_ruling_already_at_base_is_inert():
+    """Present at both refs, it fails nothing: not with its row unchanged, not with the row gone."""
+    unchanged = _file(_ruling("k"), _row("k", "SilentWrong"))
+    assert mod.compare(NAME_RES, unchanged, unchanged) == []
+    assert mod.compare(NAME_RES, unchanged, _file(_ruling("k"))) == []
+
+
+def test_a_new_exact_ruling_on_an_unflagged_row_passes():
+    """Documenting a past decision on a row that is already on the base."""
+    base = _file(_row("k", "SilentWrong"))
+    head = _file(_ruling("k", "D18"), _row("k", "SilentWrong"))
+    assert mod.compare(NAME_RES, base, head) == []
+
+
+def test_the_failure_message_says_regeneration_drops_rulings():
+    findings = mod.compare(NAME_RES, _file(), _file(_row("k", "SilentWrong")))
+    assert mod.REGENERATION_NOTE in findings[0].message
+
+
+# ── Prefix rulings ─────────────────────────────────────────────────────────────
+
+
+def test_a_prefix_ruling_covers_new_and_worsened_rows_under_it():
+    base = _file(_row("a/x", "Ice"), _row("b/x", "Ice"))
+    head = _file(
+        _ruling("a/*", "R-KU"),
+        _row("a/x", "SilentWrong"),  # worsened, covered
+        _row("a/y", "SilentWrong"),  # new, covered
+        _row("b/x", "SilentWrong"),  # worsened, not covered
+        _row("b/y", "SilentWrong"),  # new, not covered
+    )
+    assert sorted(f.key for f in mod.compare(NAME_RES, base, head)) == ["b/x", "b/y"]
+
+
+def test_a_prefix_ruling_matching_no_flagged_row_is_red():
+    base = _file(_row("a/x", "SilentWrong"))
+    head = _file(_ruling("a/*"), _row("a/x", "SilentWrong"), _row("b/y", "Ice"))
+    findings = mod.compare(NAME_RES, base, head)
+    assert [f.key for f in findings] == ["a/*"]
+    assert "matches no flagged row" in findings[0].message
+
+
+def test_a_prefix_ruling_already_at_base_is_inert():
+    base = _file(_ruling("a/*"), _row("a/x", "Ice"))
+    head = _file(_ruling("a/*"), _row("a/x", "SilentWrong"), _row("a/y", "SilentWrong"))
+    assert sorted(f.key for f in mod.compare(NAME_RES, base, head)) == ["a/x", "a/y"]
+
+
+@pytest.mark.parametrize("target", ["*", "a*b", "a/**", "*a"])
+def test_glob_syntax_other_than_one_trailing_star_is_red(target):
+    findings = mod.compare(
+        NAME_RES, _file(), _file(_ruling(target), _row("a/x", "SilentWrong"))
+    )
+    assert len(findings) == 1 and "malformed owner-ruling" in findings[0].message
+
+
+# ── A base that cannot be read ─────────────────────────────────────────────────
+
+
+def test_an_unparsable_base_is_red_and_names_the_ref():
+    base = _file("k Silent # #1 lane", _row("j", "Ice"))
+    head = _file(_row("j", "SilentWrong"))
+    findings = mod.compare(NAME_RES, base, head, base_ref="abc123")
+    assert len(findings) == 1
+    assert "abc123" in findings[0].message and "does not parse" in findings[0].message
+    assert findings[0].path == NAME_RES.path
+
+
+# ── The range: base == HEAD judges the first parent; no range is exit 2 ─────────
+
+
+def _tmp_repo(tmp_path, *versions: str) -> str:
+    repo = str(tmp_path / "repo")
+    os.makedirs(os.path.join(repo, os.path.dirname(NAME_RES.path)))
+
+    def git(*args):
+        subprocess.run(
+            [
+                "git",
+                "-c",
+                "user.name=t",
+                "-c",
+                "user.email=t@t",
+                "-c",
+                "commit.gpgsign=false",
+                *args,
+            ],
+            cwd=repo,
+            capture_output=True,
+            text=True,
+            check=True,
+        )
+
+    git("init", "-q")
+    for i, text in enumerate(versions):
+        with open(os.path.join(repo, NAME_RES.path), "w", encoding="utf-8") as f:
+            f.write(text)
+        git("add", "-A")
+        git("commit", "-q", "-m", f"v{i}")
+    return repo
+
+
+def test_base_equal_to_head_judges_the_first_parent(tmp_path, monkeypatch, capsys):
+    repo = _tmp_repo(tmp_path, _file(_row("k", "Ice")), _file(_row("k", "SilentWrong")))
+    monkeypatch.setattr(mod, "REPO_ROOT", repo)
+    assert mod.main(["--target", "HEAD"]) == 1  # merge-base(HEAD, HEAD) is HEAD
+    out = capsys.readouterr().out
+    assert "judging first parent" in out and "k: Ice (ice) -> SilentWrong" in out
+    assert mod.main(["--base", "HEAD"]) == 1
+
+
+def test_base_equal_to_head_without_a_parent_is_exit_2(tmp_path, monkeypatch, capsys):
+    repo = _tmp_repo(tmp_path, _file(_row("k", "Ice")))
+    monkeypatch.setattr(mod, "REPO_ROOT", repo)
+    assert mod.main(["--target", "HEAD"]) == 2
+    assert "no range to judge" in capsys.readouterr().err

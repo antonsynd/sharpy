@@ -19,28 +19,37 @@ at a base ref and at HEAD, row by row (by the row's key), and fails on:
   * a NEW row (a key absent at base) whose class is the worst one (silent-wrong);
   * a covered file that is missing at HEAD, or holds a row that does not parse (a changed format
     must be taught here, never skipped);
+  * a covered file whose BASE version does not parse (a base that cannot be read cannot prove the
+    change is safe);
 
-unless the row at HEAD carries an owner-ruling token (see below). Rows that improve, stay or
-disappear pass.
+unless a NEW owner-ruling token covers the row (see below). Rows that improve, stay or disappear
+pass.
 
 Covered files are named explicitly in COVERED. An allowlist without a per-row status is out of scope.
 
 Owner-ruling token. The name-resolution differential's only free text after the class is its cite,
 and NameResolutionDifferentialTests pins that cite to the route's ProposedCite exactly, so a token
-there would turn the C# suite red. The token is therefore a comment line, which the C# loader skips,
-naming the ruling and the row key:
+there would turn the C# suite red. The token is therefore a comment line, which the C# loader skips:
 
     # owner-ruling D18 store/attribute/SelfDot/StaticField/Augmented/InitBody
+    # owner-ruling R-KU store/attribute/augmented/*
 
-A ruling id is `D<n>` or `R-<LETTERS>` (the owner's ruling vocabulary). The token exempts that key in
-that file from both failure kinds.
+A ruling id is `D<n>` or `R-<LETTERS>` (the owner's ruling vocabulary). The target is one row key,
+or a key prefix ending in a single trailing `*` (no other glob syntax). A ruling waives a finding
+only when the ruling line is NEW in this change (at HEAD, not at base): a ruling already at base is
+inert, so it documents a past decision without waiving any later worsening of the same row. A new
+exact ruling naming no row at HEAD fails; a new prefix ruling matching no flagged row fails.
+
+NameResolutionDifferentialTests.WriteProposedAllowlist regenerates the file WITHOUT comment lines,
+so regenerating the allowlist drops every ruling line; re-add them by hand after a regeneration.
 
 Usage:
     python3 build_tools/check_allowlist_severity.py [--base <ref>] [--head <ref>] [--target <ref>]
 
 --base defaults to `git merge-base <target> <head>`; --target defaults to origin/$GITHUB_BASE_REF
-when set (a pull_request run), else origin/dev. Exit 0 if clean, 1 on any finding, 2 if git
-cannot resolve the refs.
+when set (a pull_request run), else origin/dev. When the base resolves to HEAD itself (a push to the
+target branch), the base is HEAD's first parent; with no first parent there is no range to judge.
+Exit 0 if clean, 1 on any finding, 2 if git cannot resolve a range to compare.
 """
 
 from __future__ import annotations
@@ -71,7 +80,8 @@ SEVERITY_NAMES = {
 }
 WORST = SILENT_WRONG
 
-RULING_RE = re.compile(r"^#\s*owner-ruling\s+(D\d+|R-[A-Z]+)\s+(\S+)\s*$")
+RULING_RE = re.compile(r"^#\s*owner-ruling\s+(D\d+|R-[A-Z]+)\s+([^\s*]+\*?)\s*$")
+REGENERATION_NOTE = "ruling lines are dropped by regeneration; re-add them"
 
 
 class FormatError(Exception):
@@ -81,7 +91,11 @@ class FormatError(Exception):
 @dataclass(frozen=True)
 class Parsed:
     rows: dict[str, str]  # key -> status, as spelled in the file
-    rulings: dict[str, str]  # key -> ruling id
+    rulings: frozenset[tuple[str, str]]  # (ruling id, key or `prefix*`)
+
+
+def _covers(target: str, key: str) -> bool:
+    return key.startswith(target[:-1]) if target.endswith("*") else key == target
 
 
 @dataclass(frozen=True)
@@ -95,7 +109,7 @@ def _parse_name_resolution(text: str) -> Parsed:
     """`<cell-id> <Ice|FalseRefusal|SilentWrong|RuntimeThrow> # #<issue> <lane>` — the shape
     NameResolutionDifferentialTests.LoadAllowlist reads (the class is the last token before ` #`)."""
     rows: dict[str, str] = {}
-    rulings: dict[str, str] = {}
+    rulings: set[tuple[str, str]] = set()
     for n, raw in enumerate(text.splitlines(), 1):
         line = raw.strip()
         if not line:
@@ -103,7 +117,7 @@ def _parse_name_resolution(text: str) -> Parsed:
         if line.startswith("#"):
             m = RULING_RE.match(line)
             if m:
-                rulings[m.group(2)] = m.group(1)
+                rulings.add((m.group(1), m.group(2)))
             elif line.startswith(("# owner-ruling", "#owner-ruling")):
                 raise FormatError(f"line {n}: malformed owner-ruling token '{line}'")
             continue
@@ -122,7 +136,7 @@ def _parse_name_resolution(text: str) -> Parsed:
         if key in rows:
             raise FormatError(f"line {n}: '{key}' is listed twice")
         rows[key] = parts[1]
-    return Parsed(rows, rulings)
+    return Parsed(rows, frozenset(rulings))
 
 
 # VerdictClass in NameResolutionDifferentialTests.cs; RuntimeThrow is an uncaught CLR exception where the
@@ -158,7 +172,10 @@ class Finding:
 
 
 def compare(
-    cov: Covered, base_text: str | None, head_text: str | None
+    cov: Covered,
+    base_text: str | None,
+    head_text: str | None,
+    base_ref: str = "base",
 ) -> list[Finding]:
     """Compare one covered file's base and head contents. None means the file is absent at that ref."""
     if head_text is None:
@@ -173,47 +190,70 @@ def compare(
         head = cov.parse(head_text)
     except FormatError as e:
         return [Finding(cov.path, "", f"format changed at HEAD: {e}")]
-    base = Parsed({}, {})
+    base = Parsed({}, frozenset())
     if base_text is not None:
         try:
             base = cov.parse(base_text)
-        except FormatError:
-            # A base this parser cannot read gives no row to compare against; every head row is new.
-            base = Parsed({}, {})
+        except FormatError as e:
+            return [
+                Finding(
+                    cov.path,
+                    "",
+                    f"the base version at {base_ref} does not parse ({e}); a base that cannot be "
+                    "read cannot prove the change is safe",
+                )
+            ]
 
-    findings: list[Finding] = []
+    # Only a ruling line this change adds waives anything; one already at base is inert.
+    new_rulings = head.rulings - base.rulings
+    flagged: list[tuple[str, str]] = []
     for key, status in head.rows.items():
         now = cov.severity[status]
-        if key in head.rulings:
-            continue
         if key in base.rows:
             was_status = base.rows[key]
             was = cov.severity[was_status]
             if now < was:
-                findings.append(
-                    Finding(
-                        cov.path,
+                flagged.append(
+                    (
                         key,
-                        (
-                            f"{was_status} ({SEVERITY_NAMES[was]}) -> {status} ({SEVERITY_NAMES[now]}): worse; "
-                            f"needs '# owner-ruling <id> {key}'"
-                        ),
+                        f"{was_status} ({SEVERITY_NAMES[was]}) -> {status} ({SEVERITY_NAMES[now]}): worse",
                     )
                 )
         elif now == WORST:
-            findings.append(
-                Finding(
-                    cov.path,
+            flagged.append(
+                (
                     key,
-                    (
-                        f"new row is {status} ({SEVERITY_NAMES[now]}), the worst class; "
-                        f"needs '# owner-ruling <id> {key}'"
-                    ),
+                    f"new row is {status} ({SEVERITY_NAMES[now]}), the worst class",
                 )
             )
-    for key in head.rulings:
-        if key not in head.rows:
-            findings.append(Finding(cov.path, key, "owner-ruling token names no row"))
+
+    findings: list[Finding] = []
+    used: set[tuple[str, str]] = set()
+    for key, message in flagged:
+        waivers = {r for r in new_rulings if _covers(r[1], key)}
+        if waivers:
+            used |= waivers
+            continue
+        findings.append(
+            Finding(
+                cov.path,
+                key,
+                f"{message}; needs a new '# owner-ruling <id> {key}' line ({REGENERATION_NOTE})",
+            )
+        )
+    for ruling in sorted(new_rulings):
+        target = ruling[1]
+        if target.endswith("*"):
+            if ruling not in used:
+                findings.append(
+                    Finding(
+                        cov.path, target, "owner-ruling prefix matches no flagged row"
+                    )
+                )
+        elif target not in head.rows:
+            findings.append(
+                Finding(cov.path, target, "owner-ruling token names no row")
+            )
     return findings
 
 
@@ -246,12 +286,16 @@ def merge_base(target: str, head: str) -> str | None:
 def check(base: str, head: str) -> list[Finding]:
     findings: list[Finding] = []
     for cov in COVERED:
-        findings.extend(compare(cov, show(base, cov.path), show(head, cov.path)))
+        findings.extend(
+            compare(cov, show(base, cov.path), show(head, cov.path), base_ref=base)
+        )
     return findings
 
 
 def main(argv: list[str] | None = None) -> int:
-    ap = argparse.ArgumentParser(description=__doc__.split("\n", 1)[0])
+    ap = argparse.ArgumentParser(
+        description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter
+    )
     ap.add_argument(
         "--base", help="base ref (default: merge base of --target and --head)"
     )
@@ -281,6 +325,20 @@ def main(argv: list[str] | None = None) -> int:
                 file=sys.stderr,
             )
             return 2
+    if base == head:
+        # A push to the target branch: merge-base(target, HEAD) is HEAD and would compare nothing.
+        # Judge the change HEAD made on its first parent instead.
+        parent = resolve(f"{head}^1")
+        if parent is None:
+            print(
+                f"::error::base resolves to HEAD ({head[:9]}) and HEAD has no first parent: no range to judge",
+                file=sys.stderr,
+            )
+            return 2
+        print(
+            f"allowlist severity: base is HEAD; judging first parent {parent[:9]}..{head[:9]}"
+        )
+        base = parent
 
     findings = check(base, head)
     covered = ", ".join(c.path for c in COVERED)
