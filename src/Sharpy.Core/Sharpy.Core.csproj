@@ -24,6 +24,10 @@
 
   <ItemGroup>
     <None Include="$(MSBuildThisFileDirectory)../../nuget/SharpyLang.Core.README.md" Pack="true" PackagePath="\README.md" />
+    <!-- Licence notices for third-party code compiled into this assembly (CPython, PyFormat.cs):
+         at the nupkg root, and at the root of every publish output that carries this assembly.
+         Not in build output. -->
+    <None Include="$(MSBuildThisFileDirectory)../../THIRD-PARTY-NOTICES.txt" Link="THIRD-PARTY-NOTICES.txt" Pack="true" PackagePath="\" CopyToPublishDirectory="PreserveNewest" />
   </ItemGroup>
 
   <ItemGroup>

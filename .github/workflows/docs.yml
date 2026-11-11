@@ -70,7 +70,7 @@ jobs:
 
       # Combine into single site
       - name: Copy playground into docs site
-        run: cp -r playground-release/wwwroot site/playground
+        run: cp -r playground-release/wwwroot site/playground && cp playground-release/THIRD-PARTY-NOTICES.txt site/playground/
 
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v5
