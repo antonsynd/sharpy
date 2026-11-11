@@ -166,6 +166,21 @@ internal static class DeclarationShapes
             });
     }
 
+    /// <summary>
+    /// A <c>pass</c> written ahead of the first constructor's chaining call (<c>super().__init__(…)</c> /
+    /// <c>self.__init__(…)</c>): the call runs as the C# constructor initializer, so a statement ahead of it
+    /// is refused (SPY0292, #2507). <c>pass</c> keeps the position the one broken fact — no value, no name.
+    /// </summary>
+    public static Module? StatementAheadOfChainingCall(ProgramFacts facts)
+    {
+        var constructor = AstRewriter.Descendants(facts.Module).OfType<ClassDef>()
+            .SelectMany(c => c.Body.OfType<FunctionDef>())
+            .FirstOrDefault(f => f.Name == "__init__" && Sharpy.Compiler.Shared.AstHelper.FindConstructorInitializerIndex(f.Body) == 0);
+        return constructor is null
+            ? null
+            : AstRewriter.Replace(facts.Module, constructor, constructor with { Body = constructor.Body.Insert(0, new PassStatement()) });
+    }
+
     /// <summary>The by-design control for an expression statement: <c>main</c> gains <c>42</c> as a statement.</summary>
     public static Module? ExpressionStatementOfAnyValue(ProgramFacts facts) =>
         MainOf(facts) is { } main

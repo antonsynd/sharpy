@@ -271,6 +271,10 @@ public class TypedGeneratorRosterTests
         new("constructors.md", "Constructors", "__init__ with typed parameters assigning fields",
             new Y("GenClasses.ModuleWithClasses", () => Classes(), n => n is FunctionDef { Name: "__init__", Parameters.Length: > 1 }),
             new YInjected("ErrorInjector.InjectWrongConstructorArgs", "SPY0224", CompilerDiagnosticSeverity.Error)),
+        new("constructors.md", "Constructor Chaining", "super().__init__(...) as the constructor's first statement",
+            new Y("GenClasses.ModuleWithClasses", () => Classes(), n => n is FunctionDef { Name: "__init__" } f
+                && Sharpy.Compiler.Shared.AstHelper.FindConstructorInitializerIndex(f.Body) == 0),
+            new YInjected("ErrorInjector.InjectStatementAheadOfChainingCall", "SPY0292", CompilerDiagnosticSeverity.Error)),
         new("constructors.md", "Constructor Overloading", "overloaded __init__",
             new KnownRedRow("#2287", "no typed generator emits an overloaded constructor"),
             new KnownRedRow("#2287", "not generated, so no injection can break it")),
@@ -2014,9 +2018,9 @@ public class TypedGeneratorRosterTests
     // generator tracker (#2287 P62; #2324's 62 rows drained by P63b, 2026-10-24); KnownRed = lanes pinning a
     // compiler cell to its tracker; ByDesign and the Y counts are lanes; NoConstruct counts rows.
     private const int ExpectedSpecFiles = 125;
-    private const int ExpectedRows = 202;
-    private const int ExpectedYGenerated = 103;
-    private const int ExpectedYInjected = 90;
+    private const int ExpectedRows = 203;
+    private const int ExpectedYGenerated = 104;
+    private const int ExpectedYInjected = 91;
     private const int ExpectedN = 181;
     private const int ExpectedKnownRed = 5;
     private const int ExpectedByDesign = 17;

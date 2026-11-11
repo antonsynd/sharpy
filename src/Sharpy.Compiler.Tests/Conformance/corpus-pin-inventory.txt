@@ -149,10 +149,10 @@ Sharpy.Compiler.Tests/Properties/Semantic/TypedGeneratorRosterTests.cs | private
 Sharpy.Compiler.Tests/Properties/Semantic/TypedGeneratorRosterTests.cs | private const int ExpectedKnownRed = 5; | ×1 | spec-file-roster | counts docs/language_specification files and rows
 Sharpy.Compiler.Tests/Properties/Semantic/TypedGeneratorRosterTests.cs | private const int ExpectedN = 181; | ×1 | spec-file-roster | counts docs/language_specification files and rows
 Sharpy.Compiler.Tests/Properties/Semantic/TypedGeneratorRosterTests.cs | private const int ExpectedNoConstruct = 4; | ×1 | spec-file-roster | counts docs/language_specification files and rows
-Sharpy.Compiler.Tests/Properties/Semantic/TypedGeneratorRosterTests.cs | private const int ExpectedRows = 202; | ×1 | spec-file-roster | counts docs/language_specification files and rows
+Sharpy.Compiler.Tests/Properties/Semantic/TypedGeneratorRosterTests.cs | private const int ExpectedRows = 203; | ×1 | spec-file-roster | counts docs/language_specification files and rows
 Sharpy.Compiler.Tests/Properties/Semantic/TypedGeneratorRosterTests.cs | private const int ExpectedSpecFiles = 125; | ×1 | spec-file-roster | counts docs/language_specification files and rows
-Sharpy.Compiler.Tests/Properties/Semantic/TypedGeneratorRosterTests.cs | private const int ExpectedYGenerated = 103; | ×1 | spec-file-roster | counts docs/language_specification files and rows
-Sharpy.Compiler.Tests/Properties/Semantic/TypedGeneratorRosterTests.cs | private const int ExpectedYInjected = 90; | ×1 | spec-file-roster | counts docs/language_specification files and rows
+Sharpy.Compiler.Tests/Properties/Semantic/TypedGeneratorRosterTests.cs | private const int ExpectedYGenerated = 104; | ×1 | spec-file-roster | counts docs/language_specification files and rows
+Sharpy.Compiler.Tests/Properties/Semantic/TypedGeneratorRosterTests.cs | private const int ExpectedYInjected = 91; | ×1 | spec-file-roster | counts docs/language_specification files and rows
 Sharpy.Compiler.Tests/Properties/Semantic/TypedGeneratorRosterTests.cs | private const int RawSamples = 40; | ×1 | tuning-constant | RawSamples
 Sharpy.Lsp.Tests/Analysis/SemanticTokenCoverageTests.cs | Assert.True(spyFiles.Count > 0, "No .spy files found"); | ×1 | floor | lower bound
 Sharpy.Lsp.Tests/Conformance/CodeActionShapeSweepTests.cs | Actions.Length.Should().Be(14); | ×1 | code-site-roster | counts compiler/LSP/Stdlib source or code-site rows
