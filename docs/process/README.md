@@ -52,6 +52,22 @@ rules are here.
    request's URL; merging is the owner's, and a stage does not merge its own pull request unless the
    owner said so in the session.
 
+### Every other change, and the release
+
+The same lane shape holds for every change that is not a plan stage — a `/batch-issues` charter
+call, a chore or band commit, a skill or doc edit, a version bump (owner, 2026-11-11): cut
+`claude/<lane>` from `origin/dev`, commit there, `/push`, and open a pull request into `dev`. `dev`
+is the integration branch; nothing is pushed to it directly, and local `dev` advances only by
+`git pull origin dev` after a merge.
+
+`mainline` is the release branch and is reached from `dev` only, never from a lane: the owner merges
+`dev` into `mainline` (`Merge dev into mainline — release X.Y.Z`, or a pull request with base
+`mainline` and head `dev`) once the version bump has merged into `dev` through its own lane
+(`claude/bump-X.Y.Z`, `/bump-version`). A bump reaching `mainline` is the release cut: `auto-tag.yml`
+tags it and dispatches `release.yml` (`/push` › 1.25). A sync in the other direction
+(`Merge mainline into dev`) is also a pull request into `dev`. A session never merges into
+`mainline` unless the owner said so in that session.
+
 The predecessor charter (`rounds/remediation-round-2026-08-30-batching.md`, rulings R-A…R-AV) and the
 plans that predate this policy were committed as they stood on the owner's machine (owner, 2026-11-07,
 handoff D9 option B). Those plans carry no commit stamp and may include drafts, so a plan's own

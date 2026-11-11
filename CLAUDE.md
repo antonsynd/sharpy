@@ -100,4 +100,4 @@ Report `passed/failed/skipped @ sha (measured)`; a red needs a control run at th
 
 ## Git & Release
 
-`/commit`, `/push` (runs CI's staleness gates); `/bump-version` before release-destined pushes.
+Work on a lane branch cut from `origin/dev` (`claude/<lane>`) and land it through a pull request into `dev` — `dev` refuses direct pushes. `mainline` is reached only by the owner's merge of `dev` after the version bump has merged (`/bump-version` on its own `claude/bump-X.Y.Z` lane). `/commit`, `/push` (runs CI's staleness gates). Details: [docs/process/README.md](docs/process/README.md) › The stage trail.

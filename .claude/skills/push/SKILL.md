@@ -38,9 +38,9 @@ bash build_tools/check_commit_subjects.sh "$(git rev-parse --abbrev-ref --symbol
 
 A red here means amend or reword (`git commit --amend` for the tip; `git rebase` for older ones, on your own unpushed commits only) before pushing — CI will say the same thing after the push.
 
-### 1.25. Version bump check (dev/mainline only)
+### 1.25. Version bump check (bump lanes and mainline only)
 
-If the current branch is `dev` or `mainline`, check whether a version bump is needed before pushing:
+If the current branch is a `claude/bump-*` lane or `mainline`, check whether a version bump is needed before pushing (`dev` is never pushed, §1; a release reaches `mainline` by the owner's merge from `dev`):
 
 ```bash
 git describe --tags --abbrev=0 2>/dev/null || echo "none"
@@ -68,7 +68,7 @@ This is advisory — the push is not blocked. Skip silently if the version alrea
 >   (and the published NuGet/GitHub release) freeze on it. A follow-up fix pushed afterward does not
 >   move the already-created tag; re-pointing a published release tag is disruptive and can re-trigger
 >   `release.yml` into a duplicate-NuGet-push failure. Prefer to push a clean bump commit once.
-> - Two pushes delivering the same bump (e.g. `dev` then `mainline`, or a peer also pushing) fire
+> - Two pushes delivering the same bump (e.g. two merges into `mainline`, or a peer also pushing) fire
 >   `auto-tag` per push event; the second `release.yml` run failing at "Create GitHub Release" with a
 >   duplicate-release conflict is benign (the first run already published).
 
