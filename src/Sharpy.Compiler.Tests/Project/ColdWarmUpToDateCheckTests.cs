@@ -4,6 +4,7 @@ using FluentAssertions;
 using Sharpy.Compiler.Logging;
 using Sharpy.Compiler.Project;
 using Sharpy.Compiler.Services;
+using Sharpy.Compiler.Utilities;
 using Xunit;
 using Xunit.Abstractions;
 
@@ -473,6 +474,215 @@ def main() -> None:
     }
 
     // -----------------------------------------------------------------------
+    // Content identity of file inputs
+    // -----------------------------------------------------------------------
+
+    private const string SameSizeLibModule = "coldwarm_samesize_lib";
+
+    /// <summary>
+    /// Two builds of one library that differ only in a constant: other bytes (another MVID, another
+    /// literal), the same size (the PE is padded to its file alignment). Returned as (v1, v2) paths.
+    /// </summary>
+    private (string V1, string V2) BuildSameSizeLibraries(string area)
+    {
+        string BuildLib(string version, string value)
+        {
+            var libDir = Path.Combine(Dir(area), "lib_" + version);
+            var file = Write(Path.Combine(area, "lib_" + version), SameSizeLibModule + ".spy",
+                $"def f() -> int:\n    return {value}\n");
+            var built = new Compiler(new CompilerOptions { Incremental = false }, NullLogger.Instance)
+                .CompileProject(new ProjectConfig
+                {
+                    ProjectFilePath = Path.Combine(libDir, "lib.spyproj"),
+                    ProjectDirectory = libDir,
+                    RootNamespace = "ColdWarmSameSizeLib",
+                    AssemblyName = "ColdWarmSameSizeLib",
+                    OutputType = "library",
+                    SourceFiles = new List<string> { file },
+                    Configuration = "Debug",
+                });
+            built.Success.Should().BeTrue($"library {version} builds. Diagnostics:\n" + Diagnostics(built));
+            return built.OutputAssemblyPath!;
+        }
+
+        var v1 = BuildLib("v1", "1");
+        var v2 = BuildLib("v2", "2");
+        new FileInfo(v2).Length.Should().Be(new FileInfo(v1).Length,
+            "precondition: the two builds are the same size, so only content can tell them apart");
+        File.ReadAllBytes(v2).Should().NotEqual(File.ReadAllBytes(v1), "precondition: their bytes differ");
+        return (v1, v2);
+    }
+
+    private ProjectConfig SameSizeConsumer(string area, string reference)
+    {
+        var main = Write(Path.Combine(area, "app"), "main.spy",
+            $"from {SameSizeLibModule} import f\n\n\ndef main() -> None:\n    print(f())\n");
+        var config = Config(Path.Combine(area, "app"), new[] { main });
+        config.References.Add(reference);
+        return config;
+    }
+
+    /// <summary>
+    /// (b) The hole a size-and-write-time identity leaves: a reference replaced by other bytes of the
+    /// SAME size with the SAME write time (<c>cp -p</c>, <c>rsync -t</c>, a restored build cache) is a
+    /// changed input, so the next build is not up to date and Phase 7 runs again. Controls: the unchanged
+    /// twin IS up to date (F2), and the replacement is invisible to the disk identity
+    /// (<see cref="Sharpy.Compiler.Discovery.ReferenceLoadContext.FileIdentity"/>), so only content
+    /// can catch it.
+    /// </summary>
+    [Fact]
+    public void AReferenceReplacedBySameSizeSameTimeBytes_IsNotUpToDate()
+    {
+        const string area = "same_size_reference";
+        var (v1, v2) = BuildSameSizeLibraries(area);
+        var reference = Path.Combine(Dir(area), "ref", Path.GetFileName(v1));
+        Directory.CreateDirectory(Path.GetDirectoryName(reference)!);
+        File.Copy(v1, reference);
+        var writeTime = File.GetLastWriteTimeUtc(reference);
+        var config = SameSizeConsumer(area, reference);
+
+        var first = Build(config);
+        first.Success.Should().BeTrue("the consumer builds against v1. Diagnostics:\n" + Diagnostics(first));
+        UpToDate(Build(config)).Should().BeTrue("F2 control: the unchanged twin is up to date");
+
+        var diskIdentity = Sharpy.Compiler.Discovery.ReferenceLoadContext.FileIdentity(reference);
+        var staged = reference + ".staged";
+        File.Copy(v2, staged);
+        File.SetLastWriteTimeUtc(staged, writeTime);
+        File.Move(staged, reference, overwrite: true);
+        Sharpy.Compiler.Discovery.ReferenceLoadContext.FileIdentity(reference).Should().Be(diskIdentity,
+            "control: path, size and write time cannot see the replacement");
+
+        var log = new InfoCapturingLogger();
+        var after = Build(config, logger: log);
+        UpToDate(after).Should().BeFalse("the reference's bytes changed, so the build is not up to date");
+        log.InfoMessages.Should().NotContain(m => m.StartsWith(UpToDateLogPrefix, StringComparison.Ordinal));
+        log.InfoMessages.Should().NotContain(EmissionSkipped,
+            "the facts moved, so the recorded assembly is not reused either");
+        after.Success.Should().BeTrue("Diagnostics:\n" + Diagnostics(after));
+        UpToDate(Build(config)).Should().BeTrue("the rebuild is recorded: the next unchanged build is up to date");
+    }
+
+    /// <summary>
+    /// A reference reached through a symbolic link that is retargeted to other bytes of the same size
+    /// with the same write time is not up to date. Measured: the disk identity alone already moves here
+    /// (re-creating the link gives it new metadata; this row stays green with the content hash removed),
+    /// so it is a coverage row for the retarget, not the content guard — the content hash, which reads
+    /// what the link resolves to, is what holds when the link's own metadata is kept too.
+    /// </summary>
+    [SkippableFact]
+    public void AReferenceSymlinkRetargetedToSameSizeSameTimeBytes_IsNotUpToDate()
+    {
+        Skip.If(OperatingSystem.IsWindows(), "creating symbolic links needs a privilege on Windows");
+
+        const string area = "symlink_reference";
+        var (v1, v2) = BuildSameSizeLibraries(area);
+        File.SetLastWriteTimeUtc(v2, File.GetLastWriteTimeUtc(v1));
+        var link = Path.Combine(Dir(area), "ref", Path.GetFileName(v1));
+        Directory.CreateDirectory(Path.GetDirectoryName(link)!);
+        File.CreateSymbolicLink(link, v1);
+        var config = SameSizeConsumer(area, link);
+
+        Build(config).Success.Should().BeTrue();
+        UpToDate(Build(config)).Should().BeTrue("F2 control: the unchanged twin is up to date");
+
+        var diskIdentity = Sharpy.Compiler.Discovery.ReferenceLoadContext.FileIdentity(link);
+        File.Delete(link);
+        File.CreateSymbolicLink(link, v2);
+        _output.WriteLine($"disk identity before: {diskIdentity}\nafter: "
+            + Sharpy.Compiler.Discovery.ReferenceLoadContext.FileIdentity(link));
+
+        UpToDate(Build(config)).Should().BeFalse("the link now resolves to other bytes");
+    }
+
+    /// <summary>The key lines whose value names a file, and how each identifies it.</summary>
+    private enum FileIdentityKind
+    {
+        /// <summary>Path, size, write time and the SHA-256 of the content.</summary>
+        Content,
+
+        /// <summary>
+        /// Path, size and write time only: the running runtime's own file, whose bytes the
+        /// <c>runtime=</c> line's exact version fixes.
+        /// </summary>
+        RuntimeVersioned,
+
+        /// <summary>Where the build writes, by path alone; <c>outputs</c> identifies what is there.</summary>
+        Location,
+    }
+
+    private static readonly IReadOnlyDictionary<string, FileIdentityKind> FileKeyIdentity =
+        new Dictionary<string, FileIdentityKind>(StringComparer.Ordinal)
+        {
+            ["key:output-path"] = FileIdentityKind.Location,
+            ["key:reference"] = FileIdentityKind.Content,
+            ["key:module-path-assembly"] = FileIdentityKind.Content,
+            ["key:package-assembly"] = FileIdentityKind.Content,
+            ["key:sharpy-core"] = FileIdentityKind.Content,
+            ["key:corlib"] = FileIdentityKind.RuntimeVersioned,
+            ["outputs"] = FileIdentityKind.Content,
+        };
+
+    /// <summary>
+    /// (d) The census of file inputs: every key line whose value is an existing file, and every output
+    /// the check compares, is identified by its content — the value carries the SHA-256 of the bytes
+    /// now on disk — except the corlib, which the runtime version identifies. Generated from the key
+    /// lines themselves: a new file-valued key without a row here fails, and every row must name a key
+    /// that carries a file (the positive control).
+    /// </summary>
+    [Fact]
+    public void Census_FileInputsAreIdentifiedByContent()
+    {
+        var config = CensusConfig("census");
+        Directory.CreateDirectory(Path.GetDirectoryName(config.OutputAssemblyPath)!);
+        File.WriteAllText(config.OutputAssemblyPath, "an assembly");
+        File.WriteAllText(Path.ChangeExtension(config.OutputAssemblyPath, ".pdb"), "its symbols");
+
+        var lines = KeyLineValues(config).ToList();
+        lines.AddRange(IncrementalCompilationCache.OutputIdentityOf(config).Split('\n')
+            .Where(l => !l.EndsWith(":absent", StringComparison.Ordinal))
+            .Select(l => ("outputs", l)));
+
+        var fileValued = lines.Where(l => FileOf(l.Value) != null).ToList();
+        fileValued.Select(l => l.Key).Distinct().Should().BeEquivalentTo(FileKeyIdentity.Keys,
+            "every key whose value names a file has an identity row, and every row names such a key");
+        fileValued.Count(l => l.Key == "outputs").Should().Be(2, "non-vacuity: both written outputs are compared");
+
+        foreach (var (key, value) in fileValued)
+        {
+            var file = FileOf(value)!;
+            switch (FileKeyIdentity[key])
+            {
+                case FileIdentityKind.Content:
+                    value.Should().EndWith(":sha256=" + IncrementalCompilationCache.ComputeFileHash(file),
+                        $"{key} identifies {file} by its content");
+                    break;
+                case FileIdentityKind.RuntimeVersioned:
+                    value.Should().Be(Sharpy.Compiler.Discovery.ReferenceLoadContext.FileIdentity(file),
+                        $"{key} is the runtime's own file, identified by the runtime version");
+                    lines.Should().Contain(l => l.Key == "key:runtime" && l.Value == Environment.Version.ToString(),
+                        "the runtime's exact version is in the key beside it");
+                    break;
+                case FileIdentityKind.Location:
+                    value.Should().Be(PathNormalizer.Normalize(file),
+                        $"{key} names where the build writes; the outputs entry identifies what is there");
+                    break;
+            }
+        }
+    }
+
+    /// <summary>The existing file a key line's value names (its longest prefix that is one), or null.</summary>
+    private static string? FileOf(string value)
+    {
+        var ends = new List<int> { value.Length };
+        for (var i = value.IndexOf(':', StringComparison.Ordinal); i >= 0; i = value.IndexOf(':', i + 1))
+            ends.Add(i);
+        return ends.OrderByDescending(end => end)
+            .Select(end => value[..end])
+            .FirstOrDefault(candidate => Path.IsPathRooted(candidate) && File.Exists(candidate));
+    }
+
+    // -----------------------------------------------------------------------
     // Totality census
     // -----------------------------------------------------------------------
 
@@ -649,8 +859,28 @@ def main() -> None:
     /// holding an assembly and a restored package, and <c>EmissionKeyOf</c>, plus the output identity.
     /// </summary>
     private IEnumerable<string> KeyLines()
+        => KeyLineValues(CensusConfig("census")).Select(l => l.Key)
+            .Append("outputs")
+            .Distinct(StringComparer.Ordinal);
+
+    /// <summary>Every key line of the specimen's facts and emission key, as (<c>key:name</c>, value).</summary>
+    private static IEnumerable<(string Key, string Value)> KeyLineValues(ProjectConfig config)
     {
-        var area = "census";
+        static IEnumerable<(string, string)> Split(string lines)
+            => lines.Split('\n', StringSplitOptions.RemoveEmptyEntries)
+                .Select(l => l.Split('=', 2))
+                .Select(parts => ("key:" + parts[0], parts.Length > 1 ? parts[1] : string.Empty));
+
+        return Split(IncrementalCompilationCache.ProjectFactsOf(config))
+            .Concat(Split(IncrementalCompilationCache.EmissionKeyOf(
+                config, new Dictionary<string, string> { ["app.cs"] = "class C {}" }, "Census.App")));
+    }
+
+    /// <summary>
+    /// The census specimen: a reference, a module path holding an assembly, and a restored package.
+    /// </summary>
+    private ProjectConfig CensusConfig(string area)
+    {
         var reference = Write(area, "Dep.dll", "v1");
         var moduleDir = Path.Combine(Dir(area), "modules");
         Write(Path.Combine(area, "modules"), "Mod.dll", "v1");
@@ -674,15 +904,7 @@ def main() -> None:
             ModulePaths = new List<string> { moduleDir },
             PackageReferences = new List<PackageRef> { package },
         };
-
-        static IEnumerable<string> Keys(string lines)
-            => lines.Split('\n', StringSplitOptions.RemoveEmptyEntries).Select(l => "key:" + l.Split('=', 2)[0]);
-
-        return Keys(IncrementalCompilationCache.ProjectFactsOf(config))
-            .Concat(Keys(IncrementalCompilationCache.EmissionKeyOf(
-                config, new Dictionary<string, string> { ["app.cs"] = "class C {}" }, "Census.App")))
-            .Append("outputs")
-            .Distinct(StringComparer.Ordinal);
+        return config;
     }
 
     /// <summary>

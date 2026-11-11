@@ -272,7 +272,8 @@ internal class IncrementalCompilationCache
     ///   framework, the configuration, the test-host bit and <c>#line</c> emission, all of which reach
     ///   code generation.</item>
     ///   <item>The reference closure (#2114): each <c>-r</c> assembly, each module search path's
-    ///   assemblies and each package's resolved assemblies, by path, size and write time. A changed
+    ///   assemblies and each package's resolved assemblies, by path, size, write time and content
+    ///   (<see cref="FileIdentity"/>). A changed
     ///   assembly changes what the cached units' symbols bind to, so serving them was SPY0908 where
     ///   a cold build reports SPY0301.</item>
     /// </list>
@@ -327,11 +328,34 @@ internal class IncrementalCompilationCache
     }
 
     /// <summary>
-    /// A file's identity for the facts fingerprint — the reference load context's definition, so a
-    /// reference that appears, disappears or is rebuilt in place moves the fingerprint. A path the
-    /// file system refuses to describe is fingerprinted as unreadable rather than failing the build.
+    /// A file's identity for the up-to-date keys (the facts, the environment and the outputs): the
+    /// reference load context's disk identity — path, size and write time — plus the SHA-256 of its
+    /// content. Size and write time alone are not identity: a file rebuilt to the same size whose write
+    /// time is preserved (<c>cp -p</c>, <c>rsync -t</c>, a restored build cache, a store that pins every
+    /// write time) would replay the old build. The disk part stays, so a touched file still rebuilds. A
+    /// path the file system refuses to describe is fingerprinted as unreadable rather than failing the
+    /// build.
     /// </summary>
-    private static string FileIdentity(string path)
+    internal static string FileIdentity(string path)
+    {
+        try
+        {
+            var identity = Discovery.ReferenceLoadContext.FileIdentity(path);
+            return File.Exists(path) ? identity + ":sha256=" + ComputeFileHash(path) : identity;
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or ArgumentException
+            or NotSupportedException)
+        {
+            return path + ":unreadable";
+        }
+    }
+
+    /// <summary>
+    /// The corlib's identity: its disk identity alone, not its content. It is the running runtime's own
+    /// file, and the <c>runtime=</c> line beside it names that runtime's exact version, which fixes the
+    /// corlib's bytes; hashing its ~15 MB on every warm build would buy nothing.
+    /// </summary>
+    private static string RuntimeFileIdentity(string path)
     {
         try
         {
@@ -401,7 +425,7 @@ internal class IncrementalCompilationCache
             "assembly-name=" + (config.AssemblyName ?? config.RootNamespace),
             "output-path=" + PathNormalizer.Normalize(Path.GetFullPath(config.OutputAssemblyPath)),
             "runtime=" + Environment.Version,
-            "corlib=" + FileIdentity(typeof(object).Assembly.Location),
+            "corlib=" + RuntimeFileIdentity(typeof(object).Assembly.Location),
             "sharpy-core=" + FileIdentity(typeof(SharpyRT::Sharpy.Builtins).Assembly.Location));
 
     /// <summary>
@@ -412,8 +436,10 @@ internal class IncrementalCompilationCache
 
     /// <summary>
     /// The identity of every file Phase 7 writes beside the assembly — the assembly, its pdb, its
-    /// runtime config, its deps file and a test project's scaffold — present or absent. A skip leaves
-    /// these files as they are, so it is only sound while they are the ones the recorded build wrote.
+    /// runtime config, its deps file and a test project's scaffold — present or absent, and by content
+    /// (<see cref="FileIdentity"/>). A skip leaves these files as they are, so it is only sound while they
+    /// hold the bytes the recorded build wrote; another build's output copied over them with its write
+    /// time preserved is not that.
     /// </summary>
     internal static string OutputIdentityOf(ProjectConfig config)
     {
