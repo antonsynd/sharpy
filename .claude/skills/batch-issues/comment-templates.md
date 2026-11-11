@@ -12,10 +12,13 @@ Header (every comment):
 <header> **#<other> cell <k> folded in:** <the cell, its measured verdict @ sha, why it belongs to this class>.
 ```
 
-## Cell comment (a cell posted on its class tracker; the cell issue, if any, closes as folded)
+## Cell comment (a cell posted on its tracker; a cell issue closes as folded)
 
 ```
-<header> **Cell:** <axis values> — <program, ≤5 lines> → observed `<…>` @ <sha>; expected `<…>` (<python3 | spec §>). Lane <lane>, reach <program|probe>. Found by <round / lane / prober>.
+<header>
+
+<Cells header + separator, below>
+| <axis values> | <program, ≤5 lines> | `<…>` @ <sha> | `<…>` (<python3 \| spec §>) | <lane> | <program\|probe> | <round / lane / prober> | |
 ```
 
 ## Closure comments (`gh issue close N --reason <r> --comment "…"`)
@@ -35,8 +38,8 @@ Header (every comment):
 <chosen mechanism>. Rejected: <alternatives>.
 
 ## Cells
-| axis values | program | observed @ sha | expected | lane | reach | found by |
-|---|---|---|---|---|---|---|
+| axis values | program | observed @ sha | expected | lane | reach | found by | status |
+|---|---|---|---|---|---|---|---|
 
 ## Acceptance
 - <guard / matrix / mutation record>
