@@ -87,6 +87,9 @@ Iterate over the directory entries.
 
 Glob for matching paths relative to this directory.
 
+!!! note
+    A path that is not a directory matches nothing; no error is raised.
+
 ### `rename(target: str) -> Path`
 
 Rename the file or directory.
@@ -150,6 +153,9 @@ Whether the path is a symbolic link.
 ### `rglob(pattern: str) -> IEnumerable[Path]`
 
 Recursively glob for matching paths relative to this directory.
+
+!!! note
+    A path that is not a directory matches nothing; no error is raised.
 
 ### `match(pattern: str) -> bool`
 

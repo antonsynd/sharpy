@@ -1,12 +1,12 @@
 # CLAUDE.md
 
-Architecture: [docs/architecture.md](docs/architecture.md). "Contract §N": [verification-contract.md](docs/design/verification-contract.md).
+[Architecture](docs/architecture.md). "Contract §N": [verification-contract.md](docs/design/verification-contract.md).
 
 **GitHub:** `antonsynd/sharpy` · **Pipeline:** `.spy → Lexer → Parser (AST) → Semantic → ValidationPipeline → Lowering (IR) → RoslynEmitter → C# → .NET IL`
 
 ## Commands
 
-Needs .NET 10, Python 3.9+. .NET 11 / C# 15 shipped 2026-11-10; every project still targets `net10.0` until #2548 adds `net11.0`, so the 10.0 runtime is required (the 11 SDK builds the solution, an 11-only runtime starts nothing). Prefer skills: `/build`, `/run-tests`, `/spy-run`, `/spy-emit`, `/quick-check`, `/ci-gate`, `/commit`, `/push`.
+Needs the .NET 10 runtime (projects target `net10.0` until #2548), Python 3.9+. Prefer skills: `/build`, `/run-tests`, `/spy-run`, `/spy-emit`, `/quick-check`, `/ci-gate`, `/commit`, `/push`.
 
 ```bash
 .claude/scripts/dotnet-serialized build sharpy.sln
@@ -22,7 +22,6 @@ src/Sharpy.Cli/bin/Debug/net10.0/sharpyc project x.spyproj
 3. One fixture: the `DisplayName~` line above.
 4. The owning test project, filtered (`FullyQualifiedName~X`).
 5. `/ci-gate` at phase close.
-6. Read the log the wrapper printed; do not re-run.
 
 **Cloud session:**
 - No `dotnet`: `dotnet-install.sh --channel 10.0 --install-dir /root/.dotnet`; `export DOTNET_ROOT=/root/.dotnet`.
@@ -34,8 +33,7 @@ src/Sharpy.Cli/bin/Debug/net10.0/sharpyc project x.spyproj
 
 - **Serialized dotnet:** never call `dotnet build`/`test`/`run` directly; use `.claude/scripts/dotnet-serialized` (same args, output, exit code), enforced by a PreToolUse hook.
 - **Parallel agents share one working tree.** Tell agents *never run `git checkout` / `restore` / `clean` / `stash` / `reset` / `rm` on repo paths*. Commit in small slices; re-check `git diff --stat` after each wave.
-- **Test logs:** every `.claude/scripts/dotnet-serialized` call tees stdout+stderr to its own `.claude/tmp/dotnet-serialized-<yyyymmdd-HHMMSS>-<pid>.log` and prints `dotnet-serialized: log -> <path>` as its first stdout line, before it queues. `.claude/tmp/dotnet-serialized-latest.path` names the newest invocation's log, which may be a peer's. Read your own printed path, and grep it instead of re-running a suite. Logs older than 7 days are deleted. A waiter reaps a dead holder's dotnet child once that child's log has been silent past the stall window. Timings and lock facts: the wrapper's header.
-- **Plans**: every stage commits `docs/process/plans/<id>.md` and opens a PR into `dev`; `.claude/plans/` is a session's working copy ([process](docs/process/README.md)).
+- **Test logs:** each wrapper call tees to its own `.claude/tmp/dotnet-serialized-<yyyymmdd-HHMMSS>-<pid>.log` and first prints `dotnet-serialized: log -> <path>`. Grep your own printed path (`-latest.path` may be a peer's) instead of re-running.
 
 ## Critical Rules
 
@@ -44,7 +42,7 @@ src/Sharpy.Cli/bin/Debug/net10.0/sharpyc project x.spyproj
 3. **Immutable AST**: annotations go in `SemanticInfo`.
 4. **Axiom precedence**: .NET > Type Safety > Python Syntax.
 5. **C# 9.0 minimum for Sharpy.Core**: Core/Stdlib also target `netstandard2.1` (no global usings, file-scoped namespaces, record structs); net10.0-only code goes under `#if NET10_0_OR_GREATER`.
-6. **Verify Python behavior first** (`python3 -c` or `/verify-python`). The oracle is CPython 3.15 (released 2026-10; the `.python-version` pin, #2537): run 3.15 where the host has it, never an older minor by choice, and say which minor you ran.
+6. **Verify Python behavior first** (`python3 -c` or `/verify-python`). The oracle is CPython 3.15 (`.python-version`, #2537): never an older minor by choice; say which you ran.
 7. **The spec is authoritative**: read `docs/language_specification/` first; change the implementation, never the spec.
 8. **TODO/BUG/FIXME need an issue**, created first: `// TODO(#123): ...`.
 9. **Warnings are errors** (`Directory.Build.props`).
@@ -52,7 +50,7 @@ src/Sharpy.Cli/bin/Debug/net10.0/sharpyc project x.spyproj
 11. **Fix the class, not the cell**: name the contract and its cell matrix; a repro list is a symptom report (contract §1).
 12. **Guards are falsifiable**: mutation-test every new guard (break -> red, restore -> green, both in the commit body); the exemption is never the subject; absences need a positive control; refusals are verified by direction with `run` (contract §2–§3).
 13. **One group per plan, one gate**: chores only when seam-free; output/layout changes land alone; a residue group or ≥2-axis × ≥3-value matrix builds a generator first; the tier (`band`/`light`/`full`) is a charter fact, never lowered (contract §11–§12).
-14. **File by class, label at creation** (`lane:*` + `reach:*`): one class issue (cell table) or a tracker comment; lane agents append to the ledger; the lead files per wave; sibling-cell probing gets the matrix plus two axis changes; a DEVIATION-by-default divergence is a `docs/deviations.yaml` row (contract §10, [fidelity scope](docs/design/python-fidelity-scope.md)).
+14. **File by class, label at creation** (`lane:*` + `reach:*`): a cell is a comment on its open class tracker, a new issue (cell table) only where contract §10 allows; agents append to the ledger, the lead files per wave; a DEVIATION-by-default divergence is a `docs/deviations.yaml` row ( [fidelity scope](docs/design/python-fidelity-scope.md)).
 
 ## Axioms
 
@@ -71,7 +69,7 @@ Avoid "add X because Python has it"; runtime type checking; wrapper types (use e
 
 ## Implementing Features
 
-Work in pipeline order, then LSP, then tests. Experimental features are default-off: `FeatureFlags.KnownFeatures`, `FeatureGateChecker` (SPY0331), [lifecycle](docs/design/feature-lifecycle.md). TypeChecker vs. validators, LSP positions: architecture.
+Work in pipeline order, then LSP, then tests. Experimental features are default-off: `FeatureFlags.KnownFeatures`, `FeatureGateChecker` (SPY0331), [lifecycle](docs/design/feature-lifecycle.md).
 
 **Diagnostics** (`DiagnosticCodes.cs`, errors unless noted): Lexer 0001-0099; Parser 0100-0199; Semantic 0200-0399, 0600-0699; Validation 0400-0449, 0490-0499, 0700-0799 (also warnings), warnings 0450-0489; CodeGen 0500-0599; Infra 0900-0999; Info 1000-1099.
 
@@ -96,8 +94,8 @@ Work in pipeline order, then LSP, then tests. Experimental features are default-
 .claude/scripts/dotnet-serialized test --filter "Category!=Benchmark" --logger "console;verbosity=normal"
 ```
 
-Report `passed/failed/skipped @ sha (measured)`; a red needs a control run at the base. Timings, blast radius: contract §5–§6.
+Report `passed/failed/skipped @ sha (measured)`; a red needs a control run at the base.
 
 ## Git & Release
 
-Work on a lane branch cut from `origin/dev` (`claude/<lane>`) and land it through a pull request into `dev` — `dev` refuses direct pushes. `mainline` is reached only by the owner's merge of `dev` after the version bump has merged (`/bump-version` on its own `claude/bump-X.Y.Z` lane). `/commit`, `/push` (runs CI's staleness gates). Details: [docs/process/README.md](docs/process/README.md) › The stage trail.
+Work on `claude/<lane>` cut from `origin/dev`; land it by a PR into `dev`. Plan stages are commits of `docs/process/plans/<id>.md`: a `full` plan's stages share one plan PR and its implementation has its own; a `light` plan's stages ride in its implementation PR. A ruled `band` bug (or no charter row, no §12 letter) with a contained fix needs no plan: a PR with a generated or differential test and its mutation record. Implementation PRs list issues closed and filed. `mainline` is reached only by the owner's merge of `dev` after the bump lane. [Process](docs/process/README.md).
