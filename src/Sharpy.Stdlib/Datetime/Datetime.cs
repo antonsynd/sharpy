@@ -1,5 +1,6 @@
 using System;
 using System.Globalization;
+using System.Numerics;
 namespace Sharpy
 {
     /// <summary>
@@ -94,8 +95,9 @@ namespace Sharpy
         /// <summary>Parse a date from ISO 8601 format string.</summary>
         public static Date Fromisoformat(string date_string)
         {
-            var dt = System.DateTime.ParseExact(date_string, "yyyy-MM-dd", CultureInfo.InvariantCulture);
-            return new Date(dt);
+            if (!DatetimeArgs.TryParseIsoDate(date_string, out int year, out int month, out int day))
+                throw new ValueError("Invalid isoformat string: " + Builtins.Repr(date_string));
+            return new Date(year, month, day);
         }
 
         /// <summary>Format the date using Python strftime format codes.</summary>
@@ -109,13 +111,13 @@ namespace Sharpy
         /// <summary>Add a timedelta to the date.</summary>
         public static Date operator +(Date date, Timedelta delta)
         {
-            return new Date(date._date.AddTicks(delta.InternalTimeSpan.Ticks).Date);
+            return new Date(DatetimeArgs.Shift(date._date, delta.InternalTimeSpan.Ticks).Date);
         }
 
         /// <summary>Subtract a timedelta from the date.</summary>
         public static Date operator -(Date date, Timedelta delta)
         {
-            return new Date(date._date.AddTicks(-delta.InternalTimeSpan.Ticks).Date);
+            return new Date(DatetimeArgs.Shift(date._date, -delta.InternalTimeSpan.Ticks).Date);
         }
 
         /// <summary>Return the timedelta between two dates.</summary>
@@ -482,22 +484,29 @@ namespace Sharpy
         public double Timestamp()
         {
             var epoch = new System.DateTime(1970, 1, 1, 0, 0, 0, DateTimeKind.Utc);
-            System.DateTime utcTime;
             if (_tzinfo is not null)
             {
-                utcTime = _dateTime.AddTicks(-_tzinfo.Utcoffset(this).InternalTimeSpan.Ticks);
+                // Tick arithmetic, not a System.DateTime: an aware datetime.min east of UTC has a timestamp
+                // although its UTC instant is before year 1.
+                long utcTicks = _dateTime.Ticks - _tzinfo.Utcoffset(this).InternalTimeSpan.Ticks;
+                return (utcTicks - epoch.Ticks) / (double)TimeSpan.TicksPerSecond;
             }
-            else
-            {
-                utcTime = System.DateTime.SpecifyKind(_dateTime, DateTimeKind.Local).ToUniversalTime();
-            }
+            var utcTime = System.DateTime.SpecifyKind(_dateTime, DateTimeKind.Local).ToUniversalTime();
             return (utcTime - epoch).TotalSeconds;
         }
 
         /// <summary>Parse a datetime from ISO 8601 format string.</summary>
         public static DateTime Fromisoformat(string date_string)
         {
-            var dt = System.DateTime.Parse(date_string, CultureInfo.InvariantCulture, DateTimeStyles.RoundtripKind);
+            System.DateTime dt;
+            try
+            {
+                dt = System.DateTime.Parse(date_string, CultureInfo.InvariantCulture, DateTimeStyles.RoundtripKind);
+            }
+            catch (FormatException)
+            {
+                throw new ValueError("Invalid isoformat string: " + Builtins.Repr(date_string));
+            }
             return new DateTime(dt);
         }
 
@@ -521,7 +530,7 @@ namespace Sharpy
             System.DateTime utcTime;
             if (_tzinfo is not null)
             {
-                utcTime = _dateTime.AddTicks(-_tzinfo.Utcoffset(this).InternalTimeSpan.Ticks);
+                utcTime = DatetimeArgs.Shift(_dateTime, -_tzinfo.Utcoffset(this).InternalTimeSpan.Ticks);
             }
             else
             {
@@ -529,7 +538,7 @@ namespace Sharpy
             }
             var utcDt = new DateTime(utcTime, Timezone.Utc);
             var targetOffset = tz.Utcoffset(utcDt);
-            var targetTime = utcTime.AddTicks(targetOffset.InternalTimeSpan.Ticks);
+            var targetTime = DatetimeArgs.Shift(utcTime, targetOffset.InternalTimeSpan.Ticks);
             return new DateTime(targetTime, tz);
         }
 
@@ -538,13 +547,13 @@ namespace Sharpy
         /// <summary>Add a timedelta to a datetime.</summary>
         public static DateTime operator +(DateTime dt, Timedelta delta)
         {
-            return new DateTime(dt._dateTime.AddTicks(delta.InternalTimeSpan.Ticks), dt._tzinfo);
+            return new DateTime(DatetimeArgs.Shift(dt._dateTime, delta.InternalTimeSpan.Ticks), dt._tzinfo);
         }
 
         /// <summary>Subtract a timedelta from a datetime.</summary>
         public static DateTime operator -(DateTime dt, Timedelta delta)
         {
-            return new DateTime(dt._dateTime.AddTicks(-delta.InternalTimeSpan.Ticks), dt._tzinfo);
+            return new DateTime(DatetimeArgs.Shift(dt._dateTime, -delta.InternalTimeSpan.Ticks), dt._tzinfo);
         }
 
         /// <summary>Return the difference between two datetimes as a timedelta.</summary>
@@ -633,19 +642,14 @@ namespace Sharpy
         /// <summary>Create a timedelta from the given time components.</summary>
         public Timedelta(int days = 0, int seconds = 0, int microseconds = 0, int milliseconds = 0, int minutes = 0, int hours = 0, int weeks = 0)
         {
-            // Build TimeSpan from ticks for proper microsecond precision
-            long ticks = 0;
-            checked
-            {
-                ticks += (days + weeks * 7L) * TimeSpan.TicksPerDay;
-                ticks += hours * TimeSpan.TicksPerHour;
-                ticks += minutes * TimeSpan.TicksPerMinute;
-                ticks += seconds * TimeSpan.TicksPerSecond;
-                ticks += milliseconds * TimeSpan.TicksPerMillisecond;
-                ticks += microseconds * 10L; // 10 ticks = 1 microsecond
-            }
-
-            _timeSpan = new TimeSpan(ticks);
+            // Summed exactly, then range-checked once: python raises OverflowError past its range (#2109).
+            var ticks = ((BigInteger)days + (BigInteger)weeks * 7) * TimeSpan.TicksPerDay
+                + (BigInteger)hours * TimeSpan.TicksPerHour
+                + (BigInteger)minutes * TimeSpan.TicksPerMinute
+                + (BigInteger)seconds * TimeSpan.TicksPerSecond
+                + (BigInteger)milliseconds * TimeSpan.TicksPerMillisecond
+                + (BigInteger)microseconds * 10; // 10 ticks = 1 microsecond
+            _timeSpan = DatetimeArgs.TimedeltaSpan(ticks);
         }
 
         internal Timedelta(TimeSpan timeSpan)
@@ -727,7 +731,7 @@ namespace Sharpy
         /// <summary>Return the absolute value of the timedelta.</summary>
         public Timedelta Abs()
         {
-            return new Timedelta(_timeSpan.Duration());
+            return new Timedelta(DatetimeArgs.TimedeltaSpan(BigInteger.Abs(_timeSpan.Ticks)));
         }
 
         // --- Arithmetic ---
@@ -735,37 +739,39 @@ namespace Sharpy
         /// <summary>Add two timedeltas.</summary>
         public static Timedelta operator +(Timedelta left, Timedelta right)
         {
-            return new Timedelta(left._timeSpan + right._timeSpan);
+            return new Timedelta(DatetimeArgs.TimedeltaSpan((BigInteger)left._timeSpan.Ticks + right._timeSpan.Ticks));
         }
 
         /// <summary>Subtract one timedelta from another.</summary>
         public static Timedelta operator -(Timedelta left, Timedelta right)
         {
-            return new Timedelta(left._timeSpan - right._timeSpan);
+            return new Timedelta(DatetimeArgs.TimedeltaSpan((BigInteger)left._timeSpan.Ticks - right._timeSpan.Ticks));
         }
 
         /// <summary>Negate a timedelta.</summary>
         public static Timedelta operator -(Timedelta td)
         {
-            return new Timedelta(-td._timeSpan);
+            return new Timedelta(DatetimeArgs.TimedeltaSpan(-(BigInteger)td._timeSpan.Ticks));
         }
 
         /// <summary>Multiply a timedelta by an integer.</summary>
         public static Timedelta operator *(Timedelta td, int n)
         {
-            return new Timedelta(new TimeSpan(td._timeSpan.Ticks * n));
+            return new Timedelta(DatetimeArgs.TimedeltaSpan((BigInteger)td._timeSpan.Ticks * n));
         }
 
         /// <summary>Multiply an integer by a timedelta.</summary>
         public static Timedelta operator *(int n, Timedelta td)
         {
-            return new Timedelta(new TimeSpan(n * td._timeSpan.Ticks));
+            return new Timedelta(DatetimeArgs.TimedeltaSpan(n * (BigInteger)td._timeSpan.Ticks));
         }
 
         /// <summary>Divide a timedelta by an integer.</summary>
         public static Timedelta operator /(Timedelta td, int n)
         {
-            return new Timedelta(new TimeSpan(td._timeSpan.Ticks / n));
+            if (n == 0)
+                throw new ZeroDivisionError("division by zero");
+            return new Timedelta(DatetimeArgs.TimedeltaSpan((BigInteger)td._timeSpan.Ticks / n));
         }
 
         // --- Comparison ---
@@ -852,6 +858,11 @@ namespace Sharpy
         /// <summary>Create a timezone with the given UTC offset and optional name.</summary>
         public Timezone(Timedelta offset, string? name = null)
         {
+            if (Math.Abs(offset.InternalTimeSpan.Ticks) >= TimeSpan.TicksPerDay)
+            {
+                throw new ValueError("offset must be a timedelta strictly between -timedelta(hours=24) and "
+                    + "timedelta(hours=24), not " + Builtins.Repr(offset));
+            }
             _offset = offset;
             _name = name;
         }
@@ -1014,6 +1025,64 @@ namespace Sharpy
                 throw new ValueError("second must be in 0..59");
             if (microsecond < 0 || microsecond > 999999)
                 throw new ValueError("microsecond must be in 0..999999");
+        }
+
+        /// <summary>
+        /// <paramref name="value"/> moved by <paramref name="ticks"/>; python's <see cref="OverflowError"/>
+        /// <c>date value out of range</c> when the result leaves year 1..9999, where <c>System.DateTime</c>
+        /// would throw <c>ArgumentOutOfRangeException</c>.
+        /// </summary>
+        internal static System.DateTime Shift(System.DateTime value, long ticks)
+        {
+            var result = (BigInteger)value.Ticks + ticks;
+            if (result < 0 || result > System.DateTime.MaxValue.Ticks)
+                throw new OverflowError("date value out of range");
+            return new System.DateTime((long)result, value.Kind);
+        }
+
+        /// <summary>
+        /// A timedelta of <paramref name="ticks"/>, or python's <see cref="OverflowError"/>
+        /// <c>days=N; must have magnitude &lt;= 999999999</c>. A <c>TimeSpan</c> stops at 10675199 days, short
+        /// of python's 999999999 (#2109): between the two, the message names the representable bound.
+        /// </summary>
+        internal static TimeSpan TimedeltaSpan(BigInteger ticks)
+        {
+            if (BigInteger.Abs(ticks) <= TimeSpan.MaxValue.Ticks)
+                return new TimeSpan((long)ticks);
+            var days = BigInteger.DivRem(ticks, TimeSpan.TicksPerDay, out var rem);
+            if (rem.Sign < 0)
+                days -= 1;
+            var bound = BigInteger.Abs(days) > 999_999_999
+                ? "999999999"
+                : TimeSpan.MaxValue.Days.ToString(CultureInfo.InvariantCulture);
+            throw new OverflowError("days=" + days.ToString(CultureInfo.InvariantCulture) + "; must have magnitude <= " + bound);
+        }
+
+        /// <summary>
+        /// The date forms of python's <c>date.fromisoformat</c> this module reads: <c>YYYY-MM-DD</c> and
+        /// <c>YYYYMMDD</c>, ASCII digits only. The caller's constructor range-checks the fields.
+        /// </summary>
+        internal static bool TryParseIsoDate(string text, out int year, out int month, out int day)
+        {
+            year = month = day = 0;
+            if (text.Length == 10 && text[4] == '-' && text[7] == '-')
+                return Digits(text, 0, 4, out year) && Digits(text, 5, 2, out month) && Digits(text, 8, 2, out day);
+            if (text.Length == 8)
+                return Digits(text, 0, 4, out year) && Digits(text, 4, 2, out month) && Digits(text, 6, 2, out day);
+            return false;
+        }
+
+        private static bool Digits(string text, int start, int count, out int value)
+        {
+            value = 0;
+            for (int i = start; i < start + count; i++)
+            {
+                char c = text[i];
+                if (c < '0' || c > '9')
+                    return false;
+                value = value * 10 + (c - '0');
+            }
+            return true;
         }
 
         internal static void CheckOrdinal(int ordinal)
