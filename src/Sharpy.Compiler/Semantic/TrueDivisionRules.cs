@@ -99,6 +99,13 @@ internal static class TrueDivisionRules
                         : leftPrecision == Precision.Float32 || rightPrecision == Precision.Float32
                             ? Precision.Float32
                             : Precision.Float64;
+                    if (precision == Precision.Float32)
+                    {
+                        // C# converts an integer operand to float BEFORE the operation (`int - float`
+                        // is `(float)int - float`): 16777217 becomes 16777216f, so round each operand.
+                        left = (float)left;
+                        right = (float)right;
+                    }
                     var result = binary.Operator switch
                     {
                         BinaryOperator.Add => left + right,

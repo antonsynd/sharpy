@@ -446,6 +446,30 @@ public class ZeroDivisionDifferentialTests : IntegrationTestBase
     }
 
     /// <summary>
+    /// An integer operand in a float32 step is converted to float32 BEFORE the operation, as the emitted C#
+    /// does: <c>16777217 - P</c> with <c>P = 16777216.0f</c> is <c>16777216f - 16777216f = 0f</c>, so the division
+    /// raises and the default is refused; <c>16777218 - P</c> is exactly 2 and stays a constant.
+    /// </summary>
+    [Fact]
+    public void Float32StepWithIntegerOperand_ConvertsTheIntegerFirst()
+    {
+        const string consts = "const P: float32 = 16777216.0f\n\n";
+        var refused = CompileAndExecute(consts
+            + "def f(x: float32 = 1.0f / (16777217 - P)) -> float32:\n    return x\n\ndef main():\n    print(f())\n",
+            "zero_division_f32_int_refused.spy");
+        Assert.Contains(refused.RawDiagnostics, d => d.IsError && d.Code == "SPY0401");
+
+        var source = consts
+            + "def g(x: float32 = 1.0f / (16777218 - P)) -> float32:\n    return x\n\n"
+            + "def main():\n    print(g())\n"
+            + "    try:\n        print(1.0f / (16777217 - P))\n    except ZeroDivisionError as e:\n        print(\"ZeroDivisionError\", e)\n";
+        var run = CompileAndExecute(source, "zero_division_f32_int.spy");
+        Assert.True(RanToCompletion(run), JudgeRun(run, source, "float32 step with an integer operand") ?? "timed out");
+        Assert.Equal("0.5\nZeroDivisionError division by zero",
+            run.StandardOutput.Replace("\r", "", StringComparison.Ordinal).Trim());
+    }
+
+    /// <summary>
     /// Positive control for the const rule: a parameter default dividing by a const that IS zero is not a
     /// constant expression (CPython raises at definition time), so it is refused, never folded to inf.
     /// </summary>
