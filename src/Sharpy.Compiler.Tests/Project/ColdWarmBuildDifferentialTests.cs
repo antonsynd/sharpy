@@ -1840,7 +1840,7 @@ def main() -> None:
         using var images = Sharpy.Compiler.Discovery.ReferenceImageCache.OverrideRootForTests(
             Path.Combine(_tempDir, "image-data", "sharpy", "reference-images"));
         const string area = "rebuilt_reference";
-        const string v1 ="def f() -> int:\n    return 1\n\n\ndef h() -> int:\n    return 2\n";
+        const string v1 = "def f() -> int:\n    return 1\n\n\ndef h() -> int:\n    return 2\n";
         const string v2 = "def h() -> str:\n    return \"two\"\n";
 
         string BuildLib(string version, string source)
