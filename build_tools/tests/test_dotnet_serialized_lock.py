@@ -645,12 +645,13 @@ class TestSignalledHolder:
             'case " $* " in\n'
             '  *" --first "*)\n'
             f"    start=$({now})\n"
-            f'    trap \'sleep 1; echo "RAN $start $({now})" >> "{events}"; exit 0\' TERM\n'
+            # One record, on exit however it ends: signalled (after a 1 s wind-down) or not
+            # (after 5 s, so an overlap stays visible).
+            f'    trap \'echo "RAN $start $({now})" >> "{events}"\' EXIT\n'
+            "    trap 'sleep 1; exit 0' TERM\n"
             f'    : > "{started}"\n'
-            # Unsignalled, it runs 5 s and still records itself, so an overlap stays visible.
             "    sleep 5 &\n"
             "    wait\n"
-            f'    echo "RAN $start $({now})" >> "{events}"\n'
             "    ;;\n"
             "  *)\n"
             f"    start=$({now}); sleep 0.2\n"
