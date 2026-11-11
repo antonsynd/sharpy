@@ -1,16 +1,9 @@
 using System.Text.RegularExpressions;
-using Microsoft.CodeAnalysis.CSharp.Syntax;
 using Sharpy.Compiler.CodeGen;
-using Sharpy.Compiler.Diagnostics;
-using Sharpy.Compiler.Logging;
 using Sharpy.Compiler.Lowering;
 using Sharpy.Compiler.Parser.Ast;
-using Sharpy.Compiler.Project;
 using Sharpy.Compiler.Semantic;
-using Sharpy.Compiler.Semantic.Registry;
-using Sharpy.Compiler.Services;
 using Sharpy.Compiler.Shared;
-using Sharpy.TestInfrastructure;
 using Sharpy.TestInfrastructure.Integration;
 using Xunit;
 using Xunit.Abstractions;
@@ -27,25 +20,36 @@ namespace Sharpy.Compiler.Tests.Lowering;
 /// slot <c>S</c> by reading the recorded type of the store's TARGET (a plain store and an unpacking
 /// element: <c>type(t)</c> is not Optional/Unknown; a walrus: <c>type(walrus)</c> is not
 /// Optional/Unknown). The emitted store is right only if that agrees with the recorded type of the
-/// stored VALUE, an independent checker fact. Over every front-end-clean fixture, for every store into
-/// an identifier whose declared slot is an <c>OptionalType</c>:
+/// stored VALUE, an independent checker fact. Over every fixture with an Optional-typed slot, and
+/// the generated probes below, for every store into an identifier whose declared slot is an
+/// <c>OptionalType</c>:
 /// <list type="bullet">
 /// <item>plain <c>t = v</c>, a tuple-literal unpacking element, and a walrus <c>(t := v)</c>: the
 /// lowering wraps (<see cref="IrOptionalStoreWrap"/> / <see cref="IrOptionalWrappedElement"/> /
 /// <see cref="IrOptionalWalrusStore"/>, <c>WrapAs == S</c>) <b>iff</b> <c>type(v)</c> is neither
 /// <c>OptionalType</c> nor <c>None</c> (<c>VoidType</c>). A wrap over an Optional value would
 /// double-wrap; a missing wrap over a payload value would leave a bare <c>T</c> in an
-/// <c>Optional&lt;T&gt;</c> slot (CS0029 or the #1720 implicit operator).</item>
+/// <c>Optional&lt;T&gt;</c> slot (CS0029 or the #1720 implicit operator). Both sides of the iff are
+/// floored for each of the three.</item>
 /// <item>an augmented store <c>t op= v</c> that is not a collection mutation: the lowering wraps
 /// unconditionally, which is right only because the checker refuses an un-narrowed Optional target
-/// (SPY0222), so <c>type(t)</c> is never <c>OptionalType</c> there.</item>
+/// (SPY0222), so <c>type(t)</c> is never <c>OptionalType</c> there. One-sided by construction.</item>
 /// </list>
 /// <c>??=</c> (D1 (d)) is not checked: its derivation already reads <c>type(v)</c> directly, so the
 /// property would restate the code.</para>
 ///
-/// <para>Categorised <c>GapDiscovery</c>: it compiles every fixture whose source can declare an
-/// Optional slot, a standing sweep rather than an edit-loop test (the #1720 executing-corpus arm is
-/// the precedent).</para>
+/// <para><b>What is independent.</b> The slot <c>S</c> is read the way
+/// <c>LoweringPass.DeclaredSlotOf</c> reads it (root binding's <c>SemanticBinding</c> type, else the
+/// symbol's own type) — that half mirrors the derivation. The independent half is <c>type(v)</c>, the
+/// value's recorded type, which the derivation never reads.</para>
+///
+/// <para><b>No silent skips.</b> A fixture whose compile reports an internal compiler error
+/// (SPY0909) or throws FAILS the sweep, naming it: a regression in <c>Splice</c>,
+/// <c>AssertMarksConsumed</c> or a required IR read must not shrink the count instead. Fixtures
+/// with ordinary front-end errors (error fixtures) are not examined.</para>
+///
+/// <para>Categorised <c>GapDiscovery</c>: a standing corpus sweep rather than an edit-loop test (the
+/// #1720 executing-corpus arm is the precedent).</para>
 /// </summary>
 [Trait("Category", "GapDiscovery")]
 public class OptionalStoreWrapAgreementTests
@@ -54,8 +58,64 @@ public class OptionalStoreWrapAgreementTests
 
     public OptionalStoreWrapAgreementTests(ITestOutputHelper output) => _output = output;
 
-    /// <summary>A fixture can declare an Optional slot only by spelling one of these.</summary>
-    private static readonly Regex MayDeclareOptional = new(@"\?|None|Optional", RegexOptions.CultureInvariant);
+    /// <summary>
+    /// A fixture declares an Optional-typed slot only by spelling a <c>T?</c> annotation (a name or
+    /// closing bracket followed by <c>?</c>, not <c>??</c> or <c>?.</c>), <c>Optional[</c>, or
+    /// <c>| None</c>.
+    /// </summary>
+    private static readonly Regex HasOptionalSlot = new(
+        @"[\w\]]\?(?![?.])|Optional\[|\|\s*None\b", RegexOptions.CultureInvariant);
+
+    /// <summary>
+    /// Generated probes for the sides the corpus leaves thin: each derivation's wrap and no-wrap
+    /// side, a value that is already Optional (no wrap) and a payload (wrap).
+    /// </summary>
+    private static readonly (string Name, string Source)[] Probes =
+    {
+        ("walrus-optional-value", """
+            def opt_of(n: int) -> int?:
+                if n > 0:
+                    return Some(n)
+                return None()
+
+            def main() -> None:
+                x: int? = Some(1)
+                print((x := opt_of(3)) is not None)
+            """),
+        ("walrus-payload-value", """
+            def main() -> None:
+                x: int? = Some(1)
+                if x is not None:
+                    print((x := 4) + 1)
+            """),
+        ("element-optional-and-payload", """
+            def opt_of(n: int) -> int?:
+                if n > 0:
+                    return Some(n)
+                return None()
+
+            def main() -> None:
+                a: int? = Some(1)
+                b: int? = Some(2)
+                if a is not None and b is not None:
+                    a, b = (opt_of(0), 5)
+                    print(a is None, b)
+            """),
+        ("plain-optional-and-payload", """
+            def opt_of(n: int) -> int?:
+                if n > 0:
+                    return Some(n)
+                return None()
+
+            def main() -> None:
+                x: int? = Some(1)
+                if x is not None:
+                    x = 5
+                    print(x)
+                x = opt_of(2)
+                print(x is not None)
+            """),
+    };
 
     [Fact]
     public void FixtureCorpus_DerivedWrapsAgreeWithTheStoredValueType()
@@ -68,30 +128,44 @@ public class OptionalStoreWrapAgreementTests
 
         var tally = new Tally();
         var disagreements = new List<string>();
-        int compiled = 0, units = 0, emptyIrContexts = 0;
+        var internalErrors = new List<string>();
+        int examined = 0, compiled = 0, units = 0, emptyIrContexts = 0;
 
-        foreach (var fixture in fixtures)
+        var refusedProbes = new List<string>();
+
+        void Examine(string name, Func<LoweredCompilationCapture.Result> compile, bool isProbe = false)
         {
-            if (!SourcesOf(fixture).Any(s => MayDeclareOptional.IsMatch(File.ReadAllText(s))))
-                continue;
-
-            List<(CodeGenContext Context, Module Module)> captured;
+            examined++;
+            LoweredCompilationCapture.Result result;
             try
             {
-                var (clean, contexts) = CompileCapturing(fixture);
-                if (!clean)
-                    continue;
-                captured = contexts;
+                result = compile();
             }
             catch (Exception ex)
             {
-                // A fixture whose compile throws is FileBasedIntegrationTests' failure to report.
-                _output.WriteLine($"skipped {fixture.TestName}: compile threw {ex.GetType().Name}");
-                continue;
+                internalErrors.Add($"{name}: compile threw {ex.GetType().Name}: {ex.Message}");
+                return;
+            }
+
+            if (result.InternalCompilerErrors.Count > 0)
+            {
+                internalErrors.Add($"{name}: {string.Join(" | ", result.InternalCompilerErrors)}");
+                return;
+            }
+
+            if (!result.FrontEndClean)
+            {
+                if (isProbe)
+                {
+                    refusedProbes.Add($"{name}: " + string.Join(" | ",
+                        result.Diagnostics.GetErrors().Select(d => $"[{d.Code}] {d.Message}")));
+                }
+
+                return;
             }
 
             compiled++;
-            foreach (var (context, module) in captured)
+            foreach (var (context, module) in result.Units)
             {
                 units++;
                 if (ReferenceEquals(context.Ir, IrCompilation.Empty))
@@ -100,21 +174,41 @@ public class OptionalStoreWrapAgreementTests
                     continue;
                 }
 
-                CheckModule(fixture.TestName, module, context, tally, disagreements);
+                CheckModule(name, module, context, tally, disagreements);
             }
         }
 
-        _output.WriteLine($"compiled {compiled} fixture(s), {units} emitter unit(s); {tally}");
+        foreach (var fixture in fixtures)
+        {
+            if (LoweredCompilationCapture.SourcesOf(fixture).Any(s => HasOptionalSlot.IsMatch(File.ReadAllText(s))))
+                Examine(fixture.TestName, () => LoweredCompilationCapture.Compile(fixture));
+        }
+
+        var fixturesExamined = examined;
+        foreach (var (name, source) in Probes)
+            Examine("probe:" + name, () => LoweredCompilationCapture.CompileProgram(source), isProbe: true);
+
+        _output.WriteLine(
+            $"examined {fixturesExamined} fixture(s) + {Probes.Length} probe(s), compiled clean {compiled}, "
+            + $"{units} emitter unit(s); {tally}");
+
+        Assert.True(internalErrors.Count == 0,
+            $"{internalErrors.Count} program(s) hit an internal compiler error (a lowering invariant or a "
+            + "required IR read, #2443); the sweep does not skip them:\n" + string.Join("\n", internalErrors.Take(25)));
+
+        Assert.True(refusedProbes.Count == 0,
+            "every generated probe is a valid program, so a refused one checks nothing:\n" + string.Join("\n", refusedProbes));
 
         // The emitter's required IR reads (RequiredIrNodeFor) skip only over IrCompilation.Empty; no
         // pipeline context may be one, or that skip path is what ran.
         Assert.Equal(0, emptyIrContexts);
 
-        // Non-vacuity: both sides of the iff were exercised, for every derivation checked.
-        Assert.True(tally.PlainWrap > 0 && tally.PlainNoWrap > 0,
-            $"plain stores must exercise both a wrap and a non-wrap under an Optional slot: {tally}");
-        Assert.True(tally.ElementWrap > 0, $"no unpacking element wrap was checked: {tally}");
-        Assert.True(tally.WalrusWrap > 0, $"no walrus wrap was checked: {tally}");
+        // Non-vacuity: the prefilter still selects a corpus, and both sides of the iff were
+        // exercised for each of the three derivations it covers.
+        Assert.True(fixturesExamined > 0, "no fixture declares an Optional slot — the prefilter selects nothing");
+        Assert.True(tally.PlainWrap > 0 && tally.PlainNoWrap > 0, $"plain stores need both sides: {tally}");
+        Assert.True(tally.ElementWrap > 0 && tally.ElementNoWrap > 0, $"unpacking elements need both sides: {tally}");
+        Assert.True(tally.WalrusWrap > 0 && tally.WalrusNoWrap > 0, $"walrus stores need both sides: {tally}");
         Assert.True(tally.Augmented > 0, $"no augmented store under an Optional slot was checked: {tally}");
 
         Assert.True(disagreements.Count == 0,
@@ -266,104 +360,5 @@ public class OptionalStoreWrapAgreementTests
         public override string ToString() =>
             $"plain wrap/no-wrap {PlainWrap}/{PlainNoWrap}, element {ElementWrap}/{ElementNoWrap}, "
             + $"walrus {WalrusWrap}/{WalrusNoWrap}, augmented {Augmented}";
-    }
-
-    private static IEnumerable<string> SourcesOf(TestFixtureInfo fixture) => fixture.IsMultiFile
-        ? Directory.GetFiles(fixture.SpyFilePath, "*.spy", SearchOption.AllDirectories)
-            .Where(f => !CrashBundleWriter.IsNonSourceSegment(Path.GetRelativePath(fixture.SpyFilePath, f)))
-        : new[] { fixture.SpyFilePath };
-
-    /// <summary>
-    /// Compiles one fixture through the production pipeline (the shape of
-    /// <c>EmittedOptionalConstructionConformanceTests.CompileFixtureCapturing</c>), capturing each
-    /// emitter's <see cref="CodeGenContext"/> and module. Clean = no Sharpy front-end error.
-    /// </summary>
-    private static (bool Clean, List<(CodeGenContext, Module)> Captured) CompileCapturing(TestFixtureInfo fixture)
-    {
-        var factory = new CapturingEmitterFactory();
-        var features = fixture.Features.Count == 0
-            ? FeatureFlags.None
-            : FeatureFlags.None.Enable(fixture.Features);
-
-        DiagnosticBag diagnostics;
-        if (fixture.IsMultiFile)
-        {
-            var projectDir = fixture.SpyFilePath;
-            var sourceFiles = Directory.GetFiles(projectDir, "*.spy", SearchOption.AllDirectories)
-                .Where(f => !CrashBundleWriter.IsNonSourceSegment(Path.GetRelativePath(projectDir, f)))
-                .OrderBy(f => f, StringComparer.Ordinal)
-                .ToList();
-            var entry = File.Exists(Path.Combine(projectDir, "main.spy")) ? "main.spy"
-                : File.Exists(Path.Combine(projectDir, Path.GetFileName(projectDir) + ".spy"))
-                    ? Path.GetFileName(projectDir) + ".spy"
-                    : Path.GetFileName(sourceFiles[0]);
-
-            var config = new ProjectConfig
-            {
-                ProjectDirectory = projectDir,
-                ProjectFilePath = Path.Combine(projectDir, "test.spyproj"),
-                RootNamespace = "Sharpy.Test",
-                OutputType = "exe",
-                EntryPoint = entry,
-                SourceFiles = sourceFiles,
-                Configuration = "Debug",
-                TargetFramework = "net10.0"
-            };
-
-            var moduleRegistry = new ModuleRegistry(NullLogger.Instance);
-            moduleRegistry.LoadReference(SharpyCoreReference.Location);
-            diagnostics = new ProjectCompiler(
-                    NullLogger.Instance, moduleRegistry,
-                    ProjectCompilerOptions.Default with { Features = features }, factory)
-                .Compile(config, CancellationToken.None, emitAssembly: false).Diagnostics;
-        }
-        else
-        {
-            var options = new CompilerOptions
-            {
-                References = new[] { SharpyCoreReference.Location },
-                OutputType = "exe",
-                WarningsAsErrors = false,
-                Features = features
-            };
-            diagnostics = new Compiler(options, NullLogger.Instance, factory)
-                .Compile(File.ReadAllText(fixture.SpyFilePath), fixture.SpyFilePath).Diagnostics;
-        }
-
-        var clean = !diagnostics.GetErrors().Any(d =>
-            d.Code is not (DiagnosticCodes.Infrastructure.GeneratedCodeCompilationError
-                or DiagnosticCodes.CodeGen.InternalGeneratedCSharpParseError
-                or DiagnosticCodes.CodeGen.EmittedTreePrecedenceInversion));
-        return (clean, factory.Captured);
-    }
-
-    private sealed class CapturingEmitterFactory : ICodeEmitterFactory
-    {
-        private readonly RoslynEmitterFactory _inner = new();
-
-        public List<(CodeGenContext, Module)> Captured { get; } = new();
-
-        public ICodeEmitter Create(CodeGenContext context, CancellationToken cancellationToken = default) =>
-            new CapturingEmitter(_inner.Create(context, cancellationToken), context, Captured);
-
-        private sealed class CapturingEmitter : ICodeEmitter
-        {
-            private readonly ICodeEmitter _inner;
-            private readonly CodeGenContext _context;
-            private readonly List<(CodeGenContext, Module)> _sink;
-
-            public CapturingEmitter(ICodeEmitter inner, CodeGenContext context, List<(CodeGenContext, Module)> sink)
-            {
-                _inner = inner;
-                _context = context;
-                _sink = sink;
-            }
-
-            public CompilationUnitSyntax GenerateCompilationUnit(Module module)
-            {
-                _sink.Add((_context, module));
-                return _inner.GenerateCompilationUnit(module);
-            }
-        }
     }
 }
