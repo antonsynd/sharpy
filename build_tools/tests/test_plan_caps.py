@@ -247,8 +247,7 @@ def _template_keys() -> set[str]:
 
 
 def test_plan_sections_are_the_template_headings():
-    # `## Acceptance` replaces `## Implementation` in a light plan (create-plan › Tier check)
-    assert _template_keys() | {"Revision log", "Acceptance"} == set(cpr.PLAN_SECTIONS)
+    assert _template_keys() | {"Revision log"} == set(cpr.PLAN_SECTIONS)
 
 
 def test_section_key_matches_heading_variants_only():

@@ -6,7 +6,7 @@ argument-hint: "<issue numbers or description> [--light | --full] | revise <plan
 
 Read `docs/design/verification-contract.md` before proceeding (§10 file-by-class, §11 one-group-per-plan and §12 the verification tier included); every section below applies it. Read `docs/design/python-fidelity-scope.md` when any input is a Python-parity cell.
 
-Create an implementation plan for an engineer to follow, at the **tier the charter set for the group** (contract §12): a `full` plan carries the phases and task list below; a `light` plan is a one-page design-of-record (Scope, Defect Class, Design Decisions with rungs, acceptance bullets with their mutations, Issues to Close with close criteria) and no task list — the implementer sequences the work, and `/verify-plan` grades only its matrix, guards and design predicates. Writes the working copy in `.claude/plans/` and commits it as a **draft** to `docs/process/plans/<plan-id>.md` on the plan's branch (§3.1; `docs/process/README.md` › The stage trail).
+Create an implementation plan for an engineer to follow, at the **tier the charter set for the group** (contract §12): a `full` plan carries the phases and task list below; a `light` plan is the one-page design-of-record of the light template, and `/verify-plan` grades only its matrix, guards and design predicates. Writes the working copy in `.claude/plans/` and commits it as a **draft** to `docs/process/plans/<plan-id>.md` on the plan's branch (§3.1; `docs/process/README.md` › The stage trail).
 
 **Usage:**
 - `/create-plan 222,223,224,225,226` — read GitHub issues and create a plan at the charter's tier
@@ -51,13 +51,51 @@ A plan implements **one non-chore group** of the round charter and lands on **on
 
 Find the group's row in the newest charter (`ls -t docs/process/rounds/remediation-round-*-batching.md | head -1`, §1 table and §3 row) and read its **Tier**. Then:
 - **Charter says `band`** (or no charter row and no §12 letter) — stop: it has no plan; implement it as one commit, or as the no-plan lane (`docs/process/README.md`), and say so; either way its PR merges only after the independent review.
-- **Charter says `light`** and no `--full` was given — write the **light template** (below). The report names `/verify-plan <path>` as the next step; on a light plan it runs its `--adequacy` pass (Dimensions 4-design, 6 and 7 by a fresh reader, nothing else).
-- **Charter says `full`** — write the full template; the report names `/verify-plan` as the next step.
+- **Charter says `light`** (and no `--full`) — write the light template (below); **`full`** — the full template (§3).
 - **No charter row** (description input, or an issue batched since the last call) — derive the tier yourself from the §12 letters (a–e), write the letter or "none → light" into `## Scope`, and say in the report that the tier is derived, not ruled.
 - **A flag disagrees with the charter** — obey the flag, write `override: <the user's words>` in `## Scope`, and say so in the report. Never silently promote or demote.
 - **Research moves a light group onto a §12 letter** (an unruled decision surfaces, the seam turns out to be in `Semantic/`·`Lowering/`·`CodeGen/`, the matrix needs a generator) — stop, say which letter, and ask whether to promote; a promotion is written into `## Scope` as `tier: full (<letter>, promoted at /create-plan: <reason>)`.
 
-**Light template** = the full template with these omissions and nothing else: `## Current State` is one measured paragraph, `## Adversarial Review` keeps only the inert-fix and blast-radius lines, `## Implementation` is **replaced** by `## Acceptance` — the class-level acceptance bullets (matrix/sweep that goes green, guard mutation, allowlist drain, execution evidence) with no phases, tasks or commit messages — and `## Testing Strategy` folds into it. Everything else (`## Scope` with `tier: light`, `## Defect Class`, `## Design Decisions` with rungs, `## Issues to Close` with close criteria, `## Class trackers`) is written in full: those are the decisions an implementer must not re-derive. Run `python3 build_tools/check_plan_refs.py <plan>` before reporting — the light `--adequacy` pass corrects nothing inline, so this is the author's reference check, and the report quotes its result.
+**Light template.** One page is the goal (no cap below the body's): the decisions an implementer must not re-derive, and no phases, tasks or testing strategy — the implementer sequences the work. Defect Class and Adversarial Review follow §3's rule for bug inputs. Run `python3 build_tools/check_plan_refs.py <plan>` before reporting: the `--adequacy` pass corrects nothing inline, so this is the author's reference check, and the report quotes its result.
+
+```markdown
+# <Plan Title>
+
+## Context
+
+<The issues and the measured state @ <sha>, ≤ 2.5 KB: numbers, no narrative>
+
+## Scope
+
+- **Group:** <P<n> — name> · **Tier:** light — <charter §3.<k> | derived, not ruled | override: <words>> · **Gates:** 1
+
+## Defect Class
+
+- **Violated contract:** <one sentence> · **Meta-class → cure:** <§1 row> · **Known cells:** #NNN …
+- **Matrix:** <the arms of every touched dispatch site, beyond the repro lists>
+- **Standing harness:** <name, or the A<n> that adds one> · **Lane / reach / fidelity row:** <…> · **Owner rulings:** <links>
+
+## Adversarial Review
+
+- **Inert fix:** <the fallback one call later, and the probe that rules it out>
+- **Blast radius:** <test projects and sweeps reached>
+
+## Design Decisions
+
+- **D<n>.** <decision> — rung <1–4>: <why no lower rung carries it>; predicate: <the claim about the code a reader checks>
+
+## Acceptance
+
+- **A<n>.** <matrix/sweep that goes green, allowlist drain, or execution evidence @ sha> — **M<n>:** <break → red>; positive control for an absence
+
+## Issues to Close
+
+- #NNN — **close criterion:** A<n> @ sha
+
+## Class trackers this plan may post cells to
+
+- #NNN — <class>
+```
 
 ## Steps
 
@@ -198,7 +236,7 @@ The plan must follow this structure. `## Defect Class` and `## Adversarial Revie
 - Every new test/guard/harness comes with the mutation that turns it red (verification-contract.md §2)
 - The plan names which generated artifacts it touches and schedules their regeneration early (§7), and names its blast radius (CLAUDE.md › Testing › Commit gate)
 - GitHub issues referenced and mapped to closing tasks, each with its close criterion
-- No hard-coded model names or commit trailers — implementers use the trailer the harness provides
+- No hard-coded model names or commit trailers
 
 ### 3.1. Commit the draft
 
@@ -221,4 +259,4 @@ Tell the user:
 - A brief summary of phases and task count
 - For bug/ICE inputs: the class, the matrix size, and the standing harness named (or the phase that adds one)
 - The scope line: group, **tier with its letter and its source (charter / derived / override)**, alone?, gates, generator (existing / built first / not required), and the trackers named
-- The next step **by tier** (contract §12): `full` → `/verify-plan <path>` (nine dimensions) before `/implement-plan <path>`; `light` → `/verify-plan <path>` (runs `--adequacy`: matrix arms, guard mutations, design predicates — by a fresh reader) before `/implement-plan <path>`, quoting the `check_plan_refs.py` result
+- The next step: `/verify-plan <path>` (nine dimensions at `full`; `--adequacy` at `light`: matrix arms, guard mutations, design predicates, by a fresh reader) before `/implement-plan <path>`, quoting the `check_plan_refs.py` result
