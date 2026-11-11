@@ -8,8 +8,8 @@
 # GENERATED, HUMAN-REVIEWED: bash build_tools/regenerate_corpus_pins.sh rewrites the rows and the `# total` lines; review
 # the diff (a new stem's rows are its own; a moved row of an existing stem is a finding until explained). A new key's cite row in
 # code-action-shape-allowlist.txt is written by hand (the loader names it), and so is a drained key's deletion.
-# total stems identity keys=14 rows=2055
-# total stems crlf keys=8 rows=274
+# total stems identity keys=14 rows=2056
+# total stems crlf keys=8 rows=275
 # total stems cr keys=8 rows=284
 # total stems comment keys=7 rows=278
 extract-method identity diagnostics Formatting/module_docstring_then_statement # #2294
