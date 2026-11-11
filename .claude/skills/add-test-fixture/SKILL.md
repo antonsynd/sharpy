@@ -26,3 +26,4 @@ ls -d src/Sharpy.Compiler.Tests/Integration/TestFixtures/*/  | xargs -I{} basena
 2. Write the `.spy` file testing one feature, kept minimal
 3. Write the `.expected` or `.error` file
 4. Run: `.claude/scripts/dotnet-serialized test src/Sharpy.Compiler.Tests --filter "DisplayName~test_name"` to verify (raw `dotnet test` is hook-blocked)
+5. Run `bash build_tools/regenerate_corpus_pins.sh` (the LSP sweeps' per-stem rows); commit only the rows it adds for the new stem
