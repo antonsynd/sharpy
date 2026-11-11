@@ -2,8 +2,6 @@ using System.Collections.Concurrent;
 using System.Globalization;
 using System.Reflection;
 using System.Runtime.Loader;
-using System.Security.Cryptography;
-using System.Text;
 using Sharpy.Compiler.Shared;
 
 namespace Sharpy.Compiler.Discovery;
@@ -48,7 +46,8 @@ namespace Sharpy.Compiler.Discovery;
 /// v1's exports in every later compile of the process (#2114's in-process cell, SPY0908 CS0117 where a
 /// fresh process reports SPY0301), and the overload index built from that image was filed under v2's
 /// content hash. <see cref="LoadCurrent"/> loads a path whose identity moved since this process first
-/// loaded it from a copy named by the new identity, which no live context can hold an image of.</para>
+/// loaded it from a copy of its current bytes, which no live context can hold an image of; the copies live
+/// in a per-user, content-addressed, verified and pruned cache (<see cref="ReferenceImageCache"/>).</para>
 /// </summary>
 [ThreadSafe]
 internal sealed class ReferenceLoadContext : AssemblyLoadContext
@@ -129,9 +128,10 @@ internal sealed class ReferenceLoadContext : AssemblyLoadContext
 
     /// <summary>
     /// A file's disk identity — full path, length and last write time, or the bare path when it does
-    /// not exist. Shared with the incremental cache's facts fingerprint
-    /// (<see cref="Project.IncrementalCompilationCache.ProjectFactsOf"/>), so a reference this context
-    /// would load afresh is also one that invalidates the cache.
+    /// not exist. The incremental cache's file identity extends it with the content's hash
+    /// (<see cref="Project.IncrementalCompilationCache.FileIdentity"/>), so a reference this context
+    /// would load afresh also invalidates the cache, and so does one replaced by other bytes of the same
+    /// size and write time.
     /// </summary>
     internal static string FileIdentity(string path)
     {
@@ -144,8 +144,9 @@ internal sealed class ReferenceLoadContext : AssemblyLoadContext
 
     /// <summary>
     /// Loads the file now at <paramref name="fullPath"/>. The path itself while its identity is the one
-    /// this process first loaded from it; otherwise an immutable copy keyed by the current identity,
-    /// because the runtime would answer the path with the image it already mapped (see the summary).
+    /// this process first loaded from it; otherwise a verified copy of its current bytes
+    /// (<see cref="ReferenceImageCache.Publish"/>), because the runtime would answer the path with the
+    /// image it already mapped (see the summary).
     /// </summary>
     private Assembly LoadCurrent(string fullPath)
     {
@@ -153,35 +154,7 @@ internal sealed class ReferenceLoadContext : AssemblyLoadContext
         var first = s_firstLoadedIdentity.GetOrAdd(fullPath, identity);
         return LoadFromAssemblyPath(string.Equals(first, identity, StringComparison.Ordinal)
             ? fullPath
-            : CopyNamedByIdentity(fullPath, identity));
-    }
-
-    /// <summary>
-    /// <paramref name="fullPath"/>'s content under a directory named by <paramref name="identity"/>, with
-    /// the same file name (so the copy keeps the simple name dependency probing looks for). Written once
-    /// per identity through a temporary file, so a concurrent writer never exposes a partial copy.
-    /// </summary>
-    private static string CopyNamedByIdentity(string fullPath, string identity)
-    {
-        var key = Convert.ToHexStringLower(SHA256.HashData(Encoding.UTF8.GetBytes(identity)))[..16];
-        var directory = Path.Combine(Path.GetTempPath(), "sharpy-reference-images", key);
-        var copy = Path.Combine(directory, Path.GetFileName(fullPath));
-        if (File.Exists(copy))
-            return copy;
-
-        Directory.CreateDirectory(directory);
-        var staging = copy + "." + Guid.NewGuid().ToString("N") + ".tmp";
-        File.Copy(fullPath, staging);
-        try
-        {
-            File.Move(staging, copy);
-        }
-        catch (IOException) when (File.Exists(copy))
-        {
-            // Another loader published the same identity's copy first; it is the same bytes.
-            File.Delete(staging);
-        }
-        return copy;
+            : ReferenceImageCache.Publish(fullPath));
     }
 
     /// <summary>
