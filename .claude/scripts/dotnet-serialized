@@ -708,7 +708,9 @@ trap 'on_signal 143' TERM
 trap 'on_signal 130' INT
 trap 'on_signal 129' HUP
 # A background command's stdin defaults to /dev/null; keep the caller's.
-exec 3<&0 2>/dev/null || exec 3</dev/null  # a caller may have closed stdin
+# A caller may have closed stdin. The braces matter: `exec 3<&0 2>/dev/null` would also send
+# the WRAPPER's own stderr to /dev/null for the rest of the run.
+{ exec 3<&0; } 2>/dev/null || exec 3</dev/null
 bash -c 'echo $$ > "$1"; shift; exec dotnet "$@"' _ "$LOCK_CHILD_FILE" "$@" \
     > "$FIFO" 2>&1 <&3 3<&- 9>&- &
 DOTNET_PID=$!
