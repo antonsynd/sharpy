@@ -16,8 +16,8 @@ namespace Sharpy.Compiler.Tests.Properties.Differential;
 /// <c>True</c> for <c>not in</c>, and <c>TypeError</c> at run time where CPython raises (a <c>str</c> or
 /// <c>bytes</c> container) — owner rulings 2026-11-12, which cover the literal <c>None</c> needle too. Never
 /// SPY0222, SPY0908 or a CLR exception.
-/// <para><b>Generated, never listed.</b> The full product of five axes, minus one named exclusion
-/// (<see cref="NoneLiteralChainExclusion"/>); the count is asserted from the axis sizes, not the generator:</para>
+/// <para><b>Generated, never listed.</b> The full product of five axes, with no exclusion; the count is asserted
+/// from the axis sizes, not the generator:</para>
 /// <list type="bullet">
 /// <item><b>payload</b> — the image of <see cref="PrimitiveCatalog.GetAllPrimitives"/> (one canonical name per
 /// CLR type) minus <see cref="ExcludedPrimitives"/>, each excluded with its reason, plus two composite kinds a
@@ -138,8 +138,8 @@ public class OptionalMembershipDifferentialTests : IntegrationTestBase
         return payloads;
     }
 
-    /// <summary>The full product of the axes. The one combination left out is <see cref="NoneLiteralChainExclusion"/>;
-    /// a needle the container's slot cannot hold is a CELL (its expectation is the spec's refusal), never a skip.</summary>
+    /// <summary>The full product of the axes, with no exclusion: a needle the container's slot cannot hold is a CELL
+    /// (its expectation is the spec's refusal), never a skip.</summary>
     private static List<Cell> GenerateCells(IReadOnlyList<Payload> payloads)
     {
         var cells = new List<Cell>();
@@ -149,19 +149,10 @@ public class OptionalMembershipDifferentialTests : IntegrationTestBase
                 foreach (var form in Enum.GetValues<Form>())
                     foreach (var op in Operators)
                         foreach (var position in Enum.GetValues<Position>())
-                        {
-                            if (form == Form.NoneLiteral && position == Position.ChainLink)
-                                continue;
                             cells.Add(new Cell(cells.Count, payload, container, form, op, position));
-                        }
             }
         return cells;
     }
-
-    /// <summary>The one combination the product leaves out: a chain link reads its needle twice (`x == x in c`), and
-    /// the literal None has no `==` in Sharpy (SPY0222, steered to `is None`), so the cell would test `==`.</summary>
-    private const string NoneLiteralChainExclusion =
-        "NoneLiteral x ChainLink: `None == None in c` tests `== None` (SPY0222), not membership";
 
     private static string ContainerSource(Cell cell) => cell.Container switch
     {
@@ -238,7 +229,11 @@ public class OptionalMembershipDifferentialTests : IntegrationTestBase
                     Add($"    return len([0 for _ in [0] if {test}]) == 1", cell.Id);
                     break;
                 case Position.ChainLink:
-                    Add($"    return x == x {op} {ContainerSource(cell)}", cell.Id);
+                    // The first link reads the needle twice; the literal None's spelling is `None is None` (Sharpy has
+                    // no `None == None`), so the cell tests the chain arm's needle decision, not `==`.
+                    Add(cell.Form == Form.NoneLiteral
+                        ? $"    return None is None {op} {ContainerSource(cell)}"
+                        : $"    return x == x {op} {ContainerSource(cell)}", cell.Id);
                     break;
             }
             Add("");
@@ -435,20 +430,19 @@ public class OptionalMembershipDifferentialTests : IntegrationTestBase
         var cells = GenerateCells(payloads);
 
         // Totality: the cell count is the product of the axis sizes, each from its own source (the catalog minus its
-        // named exclusions plus the two composites; the spec table's containers; the enums), minus the one named
-        // exclusion. Never from the generator, so a cell the generator drops (or invents) is red.
+        // named exclusions plus the two composites; the spec table's containers; the enums). Never from the generator,
+        // so a cell the generator drops (or invents) is red.
         var payloadCount = CanonicalPrimitives().Count - ExcludedPrimitives.Count + 2;
         var containerCount = SpecRowMap.Sum(m => m.Generated.Length);
         var formCount = Enum.GetValues<Form>().Length;
         var positionCount = Enum.GetValues<Position>().Length;
-        const int excludedPerOperator = 1; // NoneLiteralChainExclusion
-        var expectedCount = payloadCount * containerCount * Operators.Length * (formCount * positionCount - excludedPerOperator);
+        var expectedCount = payloadCount * containerCount * Operators.Length * formCount * positionCount;
         Assert.Equal(2, Operators.Length);
         Assert.Equal(payloadCount, payloads.Count);
         Assert.True(expectedCount == cells.Count,
             $"the generator made {cells.Count} cells; the axes give {expectedCount} ({payloadCount} payloads x "
-            + $"{containerCount} containers x {Operators.Length} operators x ({formCount} forms x {positionCount} positions"
-            + $" - {excludedPerOperator}: {NoneLiteralChainExclusion})): a cell was dropped or invented");
+            + $"{containerCount} containers x {Operators.Length} operators x {formCount} forms x {positionCount} positions): "
+            + "a cell was dropped or invented");
 
         // CPython: one program per payload, one batch.
         var programs = payloads.Select(p => ProgramFor(p, cells.Where(c => c.Payload == p).ToList())).ToList();
@@ -549,12 +543,15 @@ public class OptionalMembershipDifferentialTests : IntegrationTestBase
         Assert.Contains(cells, c => c.Form == Form.Optional && sharpyById[c.Id].Values is { } v
             && v.Contains("False") && v.SequenceEqual(pythonById[c.Id]) && divergences.All(d => d.Cell != c));
 
+        // Written on every run, header included, so copying it over the allowlist is a byte-identical round trip
+        // when nothing moved and a reviewable diff when something did.
+        var proposedPath = Path.Combine(reportDir, "optional-membership-differential-proposed-allowlist.txt");
+        File.WriteAllText(proposedPath, string.Join("\n", ProposedAllowlist(actualByRow, allowlist)) + "\n");
+
         if (problems.Count > 0)
         {
             var problemPath = Path.Combine(reportDir, "optional-membership-differential-pin-problems.txt");
             File.WriteAllLines(problemPath, problems);
-            var proposedPath = Path.Combine(reportDir, "optional-membership-differential-proposed-allowlist.txt");
-            File.WriteAllLines(proposedPath, ProposedAllowlist(actualByRow, allowlist));
             Assert.Fail($"{problems.Count} pin problem line(s) against {AllowlistFileName}: every line is in {problemPath}; "
                 + $"a regenerated allowlist (rows' citations kept) is in {proposedPath}. First lines:\n"
                 + string.Join("\n", problems.Take(30)));
@@ -569,12 +566,29 @@ public class OptionalMembershipDifferentialTests : IntegrationTestBase
         return Convert.ToHexString(hash, 0, 8).ToLowerInvariant();
     }
 
+    /// <summary>The allowlist's header, emitted verbatim by <see cref="ProposedAllowlist"/>.</summary>
+    private static readonly string[] AllowlistHeader =
+    {
+        "# Optional-needle membership differential allowlist (OptionalMembershipDifferentialTests).",
+        "#",
+        "# A row is '<container>/<needle>  cells=N  pin=HEX  # citation', needle = Plain | NoneNeedle (a T | None needle and",
+        "# the literal None share a row). The '#= <cell> -> <observed Sharpy verdict>' lines under a row pin its EXACT",
+        "# divergent cells: a pinned cell that starts passing, a cell of the row that starts diverging, or a pinned verdict",
+        "# that changes fails the test, and the row's cells= and pin= (a SHA-256 prefix over its sorted pin lines) must match",
+        "# them. On a failure the test writes every problem and a regenerated allowlist under .claude/tmp/; every",
+        "# divergence (cell, CPython's answer, Sharpy's, the expectation) is written there on every run. Delete a row when",
+        "# its last cell passes. Pin lines are comments, so scorecard_metrics.py counts one row per container/needle.",
+    };
+
     private static IEnumerable<string> ProposedAllowlist(
         IReadOnlyDictionary<string, Dictionary<string, string>> actualByRow, IReadOnlyDictionary<string, PinnedRow> allowlist)
     {
+        foreach (var line in AllowlistHeader)
+            yield return line;
         foreach (var (row, cellsInRow) in actualByRow.OrderBy(r => r.Key, StringComparer.Ordinal))
         {
             var cite = allowlist.TryGetValue(row, out var old) ? old.Citation : "# see #<open issue>";
+            yield return "";
             yield return $"{row}  cells={cellsInRow.Count}  pin={Digest(cellsInRow)}  {cite}";
             foreach (var (key, verdict) in cellsInRow.OrderBy(c => c.Key, StringComparer.Ordinal))
                 yield return $"#= {key} -> {verdict}";
@@ -667,8 +681,9 @@ public class OptionalMembershipDifferentialTests : IntegrationTestBase
             var parts = line.Split(' ', StringSplitOptions.RemoveEmptyEntries);
             var count = parts.FirstOrDefault(t => t.StartsWith("cells=", StringComparison.Ordinal));
             var pin = parts.FirstOrDefault(t => t.StartsWith("pin=", StringComparison.Ordinal));
-            Assert.True(count != null && pin != null && citation.Length > 0,
-                $"{AllowlistFileName}: a row needs 'cells=N pin=HEX # see #NNN': {raw}");
+            Assert.True(count != null && pin != null
+                && System.Text.RegularExpressions.Regex.IsMatch(citation, @"#[0-9]+"),
+                $"{AllowlistFileName}: a row needs 'cells=N pin=HEX # see #NNN' (an issue number): {raw}");
             current = new PinnedRow(int.Parse(count!["cells=".Length..], CultureInfo.InvariantCulture), pin!["pin=".Length..],
                 citation, new Dictionary<string, string>(StringComparer.Ordinal));
             rows.Add(parts[0], current);
