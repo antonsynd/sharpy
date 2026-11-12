@@ -1,0 +1,28 @@
+# Optional-needle membership differential allowlist (OptionalMembershipDifferentialTests).
+#
+# Each non-comment line is a row key '<container>/<form>' (container = the test's Container enum, form =
+# Plain | Optional | NoneLiteral) whose cells are a KNOWN divergence from the test's expected map. Every row
+# cites the open class issue in a trailing comment and is DELETED by the fix that turns its last cell
+# green (drain-on-fix: a row with no divergent cell fails the test). The failing cells, with CPython's and
+# Sharpy's verdicts, are in the test output.
+#
+# Stage 0 of the optional-membership plan, measured at the plan branch's base on origin/dev.
+
+# A value-typed T | None needle is refused (SPY0222) where CPython answers False for None.
+Tuple/Optional  # see #2635
+List/Optional  # see #2635
+Set/Optional  # see #2635
+FrozenSet/Optional  # see #2635
+Dict/Optional  # see #2635
+DictKeys/Optional  # see #2635
+DictValues/Optional  # see #2635
+ContainsDunder/Optional  # see #2635
+Range/Optional  # see #2635
+
+# CPython raises TypeError for a None needle: a reference str | None needle throws a CLR exception instead.
+Str/Optional  # see #2635
+
+# A bytes container decides no needle slot: None, T | None and an int64-wide needle reach Roslyn (SPY0908).
+Bytes/Optional  # see #2635
+Bytes/NoneLiteral  # see #2635
+Bytes/Plain  # see #2635
