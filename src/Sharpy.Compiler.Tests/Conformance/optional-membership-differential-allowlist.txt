@@ -1170,7 +1170,7 @@ Counter/NoneNeedle  cells=136  pin=b061b5b47b955bad  # see #2635 (value payloads
 #= uint8/Counter/Optional/not in/Expression -> sharpy refused SPY0222 | expected python False True True
 #= uint8/Counter/Optional/not in/IfCondition -> sharpy refused SPY0222 | expected python False True True
 
-CounterOfOptional/NoneNeedle  cells=216  pin=b87a1c540ec1b3ff  # UNFILED, outside this contract (the lead files it and replaces this citation; #2635 is only the plan of record): Counter[T | None] with a None element throws ArgumentNullException at construction
+CounterOfOptional/NoneNeedle  cells=216  pin=b87a1c540ec1b3ff  # #2651 (outside plan-4e2867's contract): Counter[T | None] with a None element throws ArgumentNullException at construction
 #= IPv4Address/CounterOfOptional/NoneLiteral/in/ComprehensionFilter -> sharpy values other | expected python True
 #= IPv4Address/CounterOfOptional/NoneLiteral/in/Expression -> sharpy values other | expected python True
 #= IPv4Address/CounterOfOptional/NoneLiteral/in/IfCondition -> sharpy values other | expected python True
@@ -1388,7 +1388,7 @@ CounterOfOptional/NoneNeedle  cells=216  pin=b87a1c540ec1b3ff  # UNFILED, outsid
 #= uint8/CounterOfOptional/Optional/not in/Expression -> sharpy values other other other | expected python False True False
 #= uint8/CounterOfOptional/Optional/not in/IfCondition -> sharpy values other other other | expected python False True False
 
-CounterOfOptional/Plain  cells=108  pin=0c39b5891616da89  # UNFILED, outside this contract (the lead files it and replaces this citation; #2635 is only the plan of record): Counter[T | None] with a None element throws ArgumentNullException at construction
+CounterOfOptional/Plain  cells=108  pin=0c39b5891616da89  # #2651 (outside plan-4e2867's contract): Counter[T | None] with a None element throws ArgumentNullException at construction
 #= IPv4Address/CounterOfOptional/Plain/in/ComprehensionFilter -> sharpy values other other | expected python True False
 #= IPv4Address/CounterOfOptional/Plain/in/Expression -> sharpy values other other | expected python True False
 #= IPv4Address/CounterOfOptional/Plain/in/IfCondition -> sharpy values other other | expected python True False
