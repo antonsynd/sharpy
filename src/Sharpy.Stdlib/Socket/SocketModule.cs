@@ -242,10 +242,21 @@ namespace Sharpy.SocketModule
         public int Errno;
         /// <summary>
         /// Create a socket error from a .NET SocketException.
+        /// errno is the platform's own code, `SocketException.NativeErrorCode`: the POSIX errno on
+        /// Unix and the WinSock code on Windows, which is what CPython reports on each. A name
+        /// resolution failure (`HostNotFound`, `TryAgain`, `NoRecovery`, `NoData`) keeps the
+        /// `SocketError` value: there .NET's NativeErrorCode on Unix is an internal value, not an
+        /// `EAI_*` code (docs/deviations.yaml, socket-errno-is-dotnet-socket-error).
         /// </summary>
         public static global::Sharpy.SocketModule.Error FromSocketException(global::System.Net.Sockets.SocketException ex)
         {
-            return new global::Sharpy.SocketModule.Error(ex.Message, ex, ((int)ex.SocketErrorCode));
+            global::System.Net.Sockets.SocketError code = ex.SocketErrorCode;
+            if (code == global::System.Net.Sockets.SocketError.HostNotFound || code == global::System.Net.Sockets.SocketError.TryAgain || code == global::System.Net.Sockets.SocketError.NoRecovery || code == global::System.Net.Sockets.SocketError.NoData)
+            {
+                return new global::Sharpy.SocketModule.Error(ex.Message, ex, ((int)code));
+            }
+
+            return new global::Sharpy.SocketModule.Error(ex.Message, ex, ex.NativeErrorCode);
         }
 
         /// <summary>
