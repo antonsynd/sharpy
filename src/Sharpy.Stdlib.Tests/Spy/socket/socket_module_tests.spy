@@ -37,6 +37,7 @@
 from unittest import assert_raises
 
 import socket
+from system.net.sockets import Socket as NetSocket
 import time
 
 # ---- Constants ----
@@ -300,14 +301,31 @@ def test_inet_pton_ntop_ipv6_round_trips():
 
 @test
 def test_socket_ipv6_can_create():
-    s: socket.socket
-    try:
-        s = socket.socket(socket.AF_INET6, socket.SOCK_STREAM)
-    except socket.error:
-        # Hosts without an IPv6 stack (some CI runners) raise OSError, as CPython does.
+    if not NetSocket.os_supports_i_pv6:
+        # A host without an IPv6 stack (some containers) refuses the family: socket.error,
+        # as CPython raises OSError (EAFNOSUPPORT). Only such a host takes this branch.
+        caught: bool = False
+        try:
+            socket.socket(socket.AF_INET6, socket.SOCK_STREAM)
+        except Exception as e:
+            caught = isinstance(e, socket.error)
+        assert caught
         return
+    s = socket.socket(socket.AF_INET6, socket.SOCK_STREAM)
     assert s.Family == socket.AF_INET6
     s.close()
+
+@test
+def test_socket_unsupported_family_raises_socket_error():
+    # No host supports address family 999, so this runs everywhere. CPython 3.15 raises
+    # OSError (errno 97, EAFNOSUPPORT); the errno is not asserted here, since Sharpy's
+    # socket.error carries .NET's SocketError code. The CLR SocketException must not escape.
+    caught: bool = False
+    try:
+        socket.socket(999, socket.SOCK_STREAM)
+    except Exception as e:
+        caught = isinstance(e, socket.error)
+    assert caught
 
 # ---- Error handling ----
 

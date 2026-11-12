@@ -22,7 +22,7 @@
 #   --no-dotnet11         skip the .NET 11 SDK.
 #   --with-docs           also install mkdocs-material (docs site).
 #   --no-auto-builder     skip sharpy_auto_builder (LangGraph); most build_tools tests then fail to import.
-#   --profile             append `source .venv/sharpy-env.sh` to ~/.bashrc (or ~/.zshrc).
+#   --profile             source .venv/sharpy-env.sh from the first line of ~/.bashrc (and ~/.zshrc under zsh).
 #   --build               build sharpy.sln and run the README hello-world smoke test.
 #
 # Afterwards: `source .venv/sharpy-env.sh`
@@ -54,6 +54,13 @@ done
 
 log() { printf '\033[1;34m[setup-env]\033[0m %s\n' "$*" >&2; }
 die() { printf '\033[1;31m[setup-env]\033[0m %s\n' "$*" >&2; exit 1; }
+
+# --profile writes "$ROOT/.venv/sharpy-env.sh" inside double quotes in a file every shell sources:
+# refuse, before anything is installed, a checkout path that would end the quote, expand there or
+# split the line.
+if ((PROFILE)) && [[ "$ROOT" == *[\"\$\`\\]* || "$ROOT" == *$'\n'* ]]; then
+  die "--profile: the checkout path contains a quote, \$, backtick, backslash or newline: $ROOT"
+fi
 
 command -v curl >/dev/null 2>&1 || die "curl is required (e.g. apt-get install -y curl)"
 abspath() { mkdir -p "$1" && (cd "$1" && pwd); }
@@ -182,33 +189,62 @@ uv_quiet pip install --python "$VENV/bin/python" "${pkgs[@]}"
 
 # 6. env file --------------------------------------------------------------------------
 ENV_FILE="$VENV/sharpy-env.sh"
+# The paths below are written into a file every shell sources, so each goes through %q: a
+# checkout or --dotnet-dir path holding a quote, \$ or a backtick is then a literal there, not the
+# end of a string or a command to run.
+q() { printf '%q' "$1"; }
 cat > "$ENV_FILE" <<SH
 # Sharpy dev environment (written by build_tools/setup_env.sh); source it.
-export DOTNET_ROOT="$DOTNET_DIR"
+export DOTNET_ROOT=$(q "$DOTNET_DIR")
 export DOTNET_CLI_TELEMETRY_OPTOUT=1
 export DOTNET_NOLOGO=1
-export PATH="$DOTNET_DIR:\$HOME/.dotnet/tools:\$HOME/.local/bin:\$PATH"
+export PATH=$(q "$DOTNET_DIR"):"\$HOME/.dotnet/tools:\$HOME/.local/bin:\$PATH"
 SH
 if ((DOTNET11)); then
   cat >> "$ENV_FILE" <<SH
 # .NET 11 SDK, off PATH until Sharpy supports it (#2548): \`dotnet11 --info\`
-export DOTNET11_ROOT="$DOTNET11_DIR"
+export DOTNET11_ROOT=$(q "$DOTNET11_DIR")
 dotnet11() { DOTNET_ROOT="\$DOTNET11_ROOT" "\$DOTNET11_ROOT/dotnet" "\$@"; }
 SH
 fi
 cat >> "$ENV_FILE" <<SH
 # build_tools.shared.* imports need the repo root (build_tools/CLAUDE.md).
-export PYTHONPATH="$ROOT\${PYTHONPATH:+:\$PYTHONPATH}"
-. "$VENV/bin/activate"
+export PYTHONPATH=$(q "$ROOT")"\${PYTHONPATH:+:\$PYTHONPATH}"
+. $(q "$VENV/bin/activate")
 SH
 if ((PROFILE)); then
-  rc="$HOME/.bashrc"; [[ "${SHELL:-}" == */zsh ]] && rc="$HOME/.zshrc"
-  if grep -qF "$ENV_FILE" "$rc" 2>/dev/null; then
-    log "$rc already sources $ENV_FILE"
-  else
-    printf '\n[ -f "%s" ] && . "%s"  # Sharpy\n' "$ENV_FILE" "$ENV_FILE" >> "$rc"
-    log "added $ENV_FILE to $rc"
-  fi
+  # FIRST line of ~/.bashrc, not appended: a stock ~/.bashrc returns at `[ -z "$PS1" ] && return`
+  # (or `case $- in *i*) ;; *) return;; esac`), so an appended line never runs in the
+  # non-interactive bash that agents, cloud sessions and `bash -lc` use; they then get the system
+  # python3 with no pytest and no dotnet on PATH. ~/.bashrc is written whatever $SHELL is, because
+  # those shells are bash; a zsh user also gets ~/.zshrc (read by interactive zsh only).
+  line="[ -f \"$ENV_FILE\" ] && . \"$ENV_FILE\"  # Sharpy"
+  # This line for any checkout (the last one set up wins), CRLF copies included; anchored, so a
+  # user's own line that merely mentions the file is kept.
+  ours='^\[ -f ".*sharpy-env\.sh" \] && \. ".*sharpy-env\.sh"  # Sharpy.?$'
+  rcs=("$HOME/.bashrc"); [[ "${SHELL:-}" == */zsh ]] && rcs+=("$HOME/.zshrc")
+  for rc in "${rcs[@]}"; do
+    [[ ! -e "$rc" || -r "$rc" ]] || die "$rc exists but is not readable; not rewriting it"
+    if [[ "$(head -n 1 "$rc" 2>/dev/null)" == "$line" ]] && (( $(LC_ALL=C grep -acE "$ours" "$rc") == 1 )); then
+      log "$rc already sources $ENV_FILE"
+      continue
+    fi
+    # Build the new file beside the old one, then copy it over: a failed read or a full disk leaves
+    # the rc as it was, and `cat >` keeps a symlinked rc and its mode. -a: without it grep treats
+    # an rc with a NUL or a non-UTF-8 byte as binary and prints none of its lines. LC_ALL=C: `.*`
+    # must also span a path holding a byte that is not valid UTF-8.
+    tmp="$rc.sharpy.$$"
+    printf '%s\n' "$line" > "$tmp" || { rm -f "$tmp"; die "could not write $tmp"; }
+    if [[ -e "$rc" ]]; then
+      LC_ALL=C grep -avE "$ours" "$rc" >> "$tmp" \
+        || { [[ $? -eq 1 ]] || { rm -f "$tmp"; die "could not read $rc; left unchanged"; }; }
+    fi
+    # A copy that fails part-way has already truncated the rc: the temp file is then the only
+    # complete copy, so it stays.
+    cat "$tmp" > "$rc" || die "could not write $rc; its intended contents are in $tmp"
+    rm -f "$tmp"
+    log "added $ENV_FILE as the first line of $rc"
+  done
 fi
 
 # 7. optional build + smoke --------------------------------------------------------------
