@@ -95,6 +95,10 @@ Sharpy.Compiler.Tests/Lexer/LiteralLossScannerDifferentialTests.cs | clean.Shoul
 Sharpy.Compiler.Tests/Lexer/LiteralStateTests.cs | clean.Should().BeGreaterThan(100, "the corpus is the compiler's fixture tree"); | ×1 | floor | lower bound
 Sharpy.Compiler.Tests/Lexer/LiteralStateTests.cs | directionControls.Should().BeGreaterThan(100, "most fixtures hold no literal spanning lines"); | ×1 | floor | lower bound
 Sharpy.Compiler.Tests/Lexer/LiteralStateTests.cs | limitTailsArmed.Should().BeGreaterThan(0, "the limit tails must reach arm (b) after a triple closer"); | ×1 | floor | lower bound
+Sharpy.Compiler.Tests/Lowering/OperatorLoweringCorpusCensusTests.cs | Assert.True(compiled > 0, "no fixture compiled clean: the census read nothing"); | ×1 | floor | lower bound
+Sharpy.Compiler.Tests/Lowering/OperatorLoweringCorpusCensusTests.cs | Assert.True(fixtures.Count > 0, "no fixture with an .expected file was discovered: the census is vacuous"); | ×1 | floor | lower bound
+Sharpy.Compiler.Tests/Lowering/OperatorLoweringCorpusCensusTests.cs | Assert.True(narrowToByKeyKind.GetValueOrDefault(keyKind) > 0, | ×1 | floor | lower bound
+Sharpy.Compiler.Tests/Lowering/OperatorLoweringCorpusCensusTests.cs | Assert.True(sites > 0, "no SetOperatorLowering call site found under Semantic/: the scan reads nothing"); | ×1 | floor | lower bound
 Sharpy.Compiler.Tests/Lowering/IrTotalityTests.cs | Assert.Equal(13, augmented.Count); | ×1 | fixed-input | in-test input of AugmentedCollectionMutation_LowersToIrCollectionMutation_AndStaysTotal
 Sharpy.Compiler.Tests/Lowering/IrTotalityTests.cs | Assert.Equal(2, CollectNodes<IrElidedNoneBody>(ir).Count); | ×1 | fixed-input | in-test input of NoneBodiedVoidLambda_LowersBodyToIrElidedNoneBody_AndStaysTotal
 Sharpy.Compiler.Tests/Lowering/IrTotalityTests.cs | Assert.Equal(2, CollectNodes<IrOptionalWrappedElement>(ir).Count); | ×1 | fixed-input | in-test input of OptionalStoreWrap_LowersToStoreWrapAndWrappedElement_AndStaysTotal
