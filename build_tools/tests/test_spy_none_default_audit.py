@@ -206,6 +206,20 @@ def test_observe_inspectable_callable_uses_the_signature_and_row_is_stale():
     assert any("STALE observed" in e for e in errs)
 
 
+def test_observed_and_skips_overlap_is_an_error():
+    v = Verdict(_cell(param="errno"), "pass", "None (observed)", "observed")
+    errs = violations([v], {}, {"m::f::errno": "reason"}, {"m::f::errno": (("x",), "r")})
+    assert any("OVERLAP" in e for e in errs)
+
+
+def test_unobservable_observed_cell_is_red_even_with_a_skip_row():
+    v = Verdict(_cell(param="errno"), "skip", "unobservable: TypeError()", "observed")
+    for skips in ({}, {"m::f::errno": "reason"}):
+        errs = violations([v], {}, skips, {"m::f::errno": (("x",), "r")})
+        assert any("UNOBSERVABLE" in e for e in errs), errs
+        assert not any("SKIPS entry" in e for e in errs), errs
+
+
 def test_observed_row_naming_no_cell_is_stale():
     errs = violations([], {}, {}, {"m::f::p": ((), "reason")})
     assert any("STALE observed" in e for e in errs)

@@ -440,7 +440,13 @@ def violations(
                 f"({v.cell.spy_file}:{v.cell.line}) -- cure with an overload without "
                 f"the parameter (R-EV), or allowlist it citing an issue"
             )
-        if v.status == "skip" and k not in skips:
+        if v.status == "skip" and v.how == "observed":
+            # An OBSERVED cell that could not be observed is never excused by a SKIPS row.
+            errors.append(
+                f"UNOBSERVABLE {k}: {v.cpython} ({v.cell.spy_file}:{v.cell.line}) -- "
+                f"fix the OBSERVED row's call arguments, or delete the row"
+            )
+        elif v.status == "skip" and k not in skips:
             errors.append(
                 f"UNCLASSIFIED {k}: {v.cpython} ({v.cell.spy_file}:{v.cell.line}) -- "
                 f"add a reasoned SKIPS entry or fix the CLASS_MAP"
@@ -456,6 +462,11 @@ def violations(
         if k not in by_key or by_key[k].status != "skip":
             errors.append(f"STALE skip {k}: no longer a skip-status cell -- delete it")
     for k in observed or {}:
+        if k in skips:
+            errors.append(
+                f"OVERLAP {k}: both an OBSERVED and a SKIPS row -- a cell is observed "
+                f"or skipped, never both; delete one"
+            )
         if k not in by_key or by_key[k].how != "observed":
             errors.append(
                 f"STALE observed {k}: the cell is gone or now has an inspectable "
