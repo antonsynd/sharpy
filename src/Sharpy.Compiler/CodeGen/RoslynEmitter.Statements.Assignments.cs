@@ -885,7 +885,7 @@ internal partial class RoslynEmitter
         };
 
         if (assignNode != null
-            && _context.SemanticInfo?.GetOperatorLowering(assignNode)?.NarrowTo is { } narrowTo)
+            && OperatorLoweringOf(assignNode).NarrowTo is { } narrowTo)
         {
             result = CastExpression(
                 _typeMapper.MapSemanticType(narrowTo),
@@ -908,7 +908,7 @@ internal partial class RoslynEmitter
 
         if (assignNode != null)
         {
-            var augLowering = _context.SemanticInfo?.GetOperatorLowering(assignNode)?.Kind;
+            var augLowering = OperatorLoweringOf(assignNode).Kind;
             if (augLowering == OperatorLoweringKind.StringRepeatStrLeft)
                 return GenerateStringRepeat(left, right);
             if (augLowering == OperatorLoweringKind.StringRepeatStrRight)
@@ -916,7 +916,7 @@ internal partial class RoslynEmitter
         }
 
         if (assignNode != null
-            && _context.SemanticInfo?.GetOperatorLowering(assignNode)?.Kind
+            && OperatorLoweringOf(assignNode).Kind
                 == OperatorLoweringKind.ShiftCountCastToInt)
         {
             right = CastExpression(
@@ -946,7 +946,7 @@ internal partial class RoslynEmitter
     private ExpressionSyntax GenerateNullCoalesceValue(ExpressionSyntax left, ExpressionSyntax right, Assignment? assignNode)
     {
         if (assignNode != null
-            && _context.SemanticInfo?.GetOperatorLowering(assignNode)?.Kind
+            && OperatorLoweringOf(assignNode).Kind
                 == OperatorLoweringKind.OptionalCoalesceBothOptional)
         {
             // A payload RHS into an Optional slot wraps: x ??= 42 → x.IsSome ? x : Optional<int>.Some(42).
@@ -993,7 +993,7 @@ internal partial class RoslynEmitter
         ExpressionSyntax value,
         List<StatementSyntax> valueEvals)
     {
-        if (_context.SemanticInfo?.GetOperatorLowering(assign)?.Kind
+        if (OperatorLoweringOf(assign).Kind
             == OperatorLoweringKind.OptionalCoalesceBothOptional)
         {
             // A payload RHS into an Optional slot wraps: x ??= 42 → Some(42).

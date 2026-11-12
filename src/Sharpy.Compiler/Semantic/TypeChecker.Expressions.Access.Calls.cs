@@ -805,7 +805,7 @@ internal partial class TypeChecker
             return;
         }
 
-        _semanticInfo.SetTypeTestLowering(operandNode, new TypeTestLowering(TypeTestLoweringKind.ClosedType, tupleType));
+        _semanticInfo.SetTypeTestType(operandNode, tupleType);
     }
 
     /// <summary>
@@ -864,7 +864,7 @@ internal partial class TypeChecker
             return;
         }
 
-        _semanticInfo.SetTypeTestLowering(operandNode, new TypeTestLowering(TypeTestLoweringKind.ClosedType, resolved));
+        _semanticInfo.SetTypeTestType(operandNode, resolved);
     }
 
     /// <summary>
@@ -884,7 +884,7 @@ internal partial class TypeChecker
         // symbol, bare never binds an escape-declared one, quoting a bare-declared import stands.
         if (!typeId.IsNameBacktickEscaped && ResolveBuiltinPrimitiveTypeName(typeId.Name) is { } primitive)
         {
-            _semanticInfo.SetTypeTestLowering(operandNode, new TypeTestLowering(TypeTestLoweringKind.ClosedType, primitive));
+            _semanticInfo.SetTypeTestType(operandNode, primitive);
             return;
         }
 

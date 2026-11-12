@@ -29,6 +29,11 @@ class Denied(AppError):
         super().__init__(msg)
 
 
+class Other(AppError):
+    def __init__(self, msg: str):
+        super().__init__(msg)
+
+
 def raise_it(which: int) -> None:
     if which == 0:
         raise NotFound("nf")
@@ -68,3 +73,14 @@ def main() -> None:
             print("unreachable")
     except ValueError:
         print("fell through")
+
+    # A sibling under the common base is not one of the alternatives: it falls past the
+    # tuple handler. Only the `when (e is NotFound || e is Denied)` filter tells this
+    # apart from a bare catch at the base (#2443, plan-92249e T1).
+    try:
+        try:
+            raise Other("o")
+        except (NotFound, Denied) as e:
+            print("wrongly caught")
+    except AppError as e:
+        print("sibling fell through", type(e).__name__, e.code)

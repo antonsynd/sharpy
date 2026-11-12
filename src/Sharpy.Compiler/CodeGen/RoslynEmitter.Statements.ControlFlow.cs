@@ -284,7 +284,7 @@ internal partial class RoslynEmitter
         if (test is BinaryOp { Operator: BinaryOperator.Is or BinaryOperator.IsNot } noneTest
             && (noneTest.Right is NoneLiteral || noneTest.Left is NoneLiteral))
         {
-            if (_context.SemanticInfo?.GetOperatorLowering(noneTest)?.Kind == OperatorLoweringKind.OptionalNoneTest)
+            if (OperatorLoweringOf(noneTest).Kind == OperatorLoweringKind.OptionalNoneTest)
             {
                 var optionalArgs = new List<ArgumentSyntax> { Argument(GenerateExpression(noneTest)) };
                 if (assert.Message != null)
@@ -1744,15 +1744,16 @@ internal partial class RoslynEmitter
         }
 
         // The catches an earlier handler already covers are left out (#2363): python never runs
-        // them, and C# refuses a catch after one for its base (CS0160). The lowering decided which.
-        var pruned = IrNodeFor<IrPrunedTry>(tryStmt);
+        // them, and C# refuses a catch after one for its base (CS0160). The lowering decided which,
+        // and which handlers are alternations (plan-92249e D5).
+        var planned = IrNodeFor<IrPlannedTry>(tryStmt);
 
         var result = new List<CatchClauseSyntax>();
 
         for (var handlerIndex = 0; handlerIndex < handlers.Length; handlerIndex++)
         {
             var handler = handlers[handlerIndex];
-            var plan = pruned?.Handlers[handlerIndex];
+            var plan = planned?.Handlers[handlerIndex];
             if (plan is { Emitted: false })
                 continue;
             bool TypeEmitted(int typeIndex) => plan == null || plan.EmittedTypes[typeIndex];
@@ -1781,16 +1782,13 @@ internal partial class RoslynEmitter
 
                 // `except (A, B) as e:` — C# has no multi-type catch, and mapping the tuple annotation
                 // emitted `catch (ValueTuple<A, B> e)` (CS0155). The semantic phase decided the base to
-                // bind at and the alternatives to discriminate on, so this catches at that base and
-                // filters: catch (Base e) when (e is A || e is B). Handler order is unchanged, which is
-                // what keeps CPython's "first matching handler wins" (verified with python3).
-                if (_context.SemanticInfo?.GetTypeTestLowering(handler.ExceptionType) is
-                    { Kind: TypeTestLoweringKind.ExceptionAlternation, Alternatives: { } alternatives }
-                    alternation
-                    && handler.Name != null)
+                // bind at and the alternatives to discriminate on, and the lowering carried them on the
+                // plan (#2443, plan-92249e D5), so this catches at that base and filters:
+                // catch (Base e) when (e is A || e is B). Handler order is unchanged, which is what
+                // keeps CPython's "first matching handler wins" (verified with python3).
+                if (plan?.Alternation is { } alternation)
                 {
-                    var emittedAlternatives = alternatives.Where((_, typeIndex) => TypeEmitted(typeIndex)).ToList();
-                    result.Add(GenerateAlternationCatchClause(handler, alternation, emittedAlternatives, filterClause));
+                    result.Add(GenerateAlternationCatchClause(handler, alternation, filterClause));
                     continue;
                 }
 
@@ -1842,19 +1840,17 @@ internal partial class RoslynEmitter
     /// kept only for robustness.
     /// </summary>
     private TypeSyntax MapTestAssertTypeOperand(Expression typeOperand)
-        => _context.SemanticInfo?.GetTypeTestLowering(typeOperand) is { } lowering
-            ? MapTypeTestTarget(lowering)
-            : _typeMapper.MapTypeFromExpression(typeOperand);
+        => TypeTestTypeSyntax(typeOperand) ?? _typeMapper.MapTypeFromExpression(typeOperand);
 
     /// <summary>
     /// Emits <c>except (A, B) as e:</c> as <c>catch (Base e) when (e is A || e is B)</c>, applying the
-    /// base and the alternatives the semantic phase decided (#1235). Any user <c>when</c> filter is
-    /// composed with <c>&amp;&amp;</c> so both conditions still have to hold.
+    /// base and the alternatives the semantic phase decided (#1235), carried on the lowering's plan
+    /// with the covered alternatives already left out (plan-92249e D5). Any user <c>when</c> filter
+    /// is composed with <c>&amp;&amp;</c> so both conditions still have to hold.
     /// </summary>
     private CatchClauseSyntax GenerateAlternationCatchClause(
         ExceptHandler handler,
-        TypeTestLowering alternation,
-        IReadOnlyList<SemanticType> alternatives,
+        IrAlternationCatch alternation,
         CatchFilterClauseSyntax? userFilter)
     {
         var handlerSymbol = _context.SemanticInfo?.GetExceptHandlerSymbol(handler);
@@ -1864,7 +1860,7 @@ internal partial class RoslynEmitter
 
         var catchBlock = GenerateSuiteBlock(handler.Body);
 
-        var alternationTest = alternatives
+        var alternationTest = alternation.Alternatives
             .Select(alternative => (ExpressionSyntax)BinaryExpression(
                 SyntaxKind.IsExpression, IdentifierName(exceptionVar), MapTypeTestTypeName(alternative)))
             .Aggregate((left, right) => BinaryExpression(SyntaxKind.LogicalOrExpression, left, right));
@@ -1877,7 +1873,7 @@ internal partial class RoslynEmitter
                 ParenthesizedExpression(userFilter.FilterExpression)));
 
         return CatchClause(
-            CatchDeclaration(MapTypeTestTypeName(alternation.TestType), Identifier(exceptionVar)),
+            CatchDeclaration(MapTypeTestTypeName(alternation.BindAt), Identifier(exceptionVar)),
             filter,
             catchBlock);
     }

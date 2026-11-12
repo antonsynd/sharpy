@@ -233,10 +233,10 @@ public class ExceptHandlerReachabilityTests : StdlibAwareIntegrationTestBase
                 new ExceptHandler { ExceptionType = tuple }),
         };
         var info = new SemanticInfo();
-        info.SetTypeTestLowering(exceptionAnnotation, new TypeTestLowering(TypeTestLoweringKind.ClosedType,
-            new UserDefinedType { Name = "Exception", Symbol = exceptionSymbol }));
-        info.SetTypeTestLowering(exitElement, new TypeTestLowering(TypeTestLoweringKind.ClosedType,
-            new UserDefinedType { Name = "SystemExit", Symbol = exitSymbol }));
+        info.SetTypeTestType(exceptionAnnotation,
+            new UserDefinedType { Name = "Exception", Symbol = exceptionSymbol });
+        info.SetTypeTestType(exitElement,
+            new UserDefinedType { Name = "SystemExit", Symbol = exitSymbol });
 
         var verdict = ExceptHandlerReachability.Classify(tryStmt, info)[1];
 

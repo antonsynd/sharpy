@@ -1088,7 +1088,7 @@ internal partial class RoslynEmitter
     /// <param name="operatorNode">The node carrying the recorded modulo lowering.</param>
     private ExpressionSyntax? GenerateModuloValue(ExpressionSyntax left, ExpressionSyntax right, Node operatorNode)
     {
-        switch (_context.SemanticInfo?.GetOperatorLowering(operatorNode)?.Kind)
+        switch (OperatorLoweringOf(operatorNode).Kind)
         {
             case OperatorLoweringKind.DecimalModulo:
                 return GenerateDecimalModulo(left, right);
@@ -1174,7 +1174,7 @@ internal partial class RoslynEmitter
         ExpressionSyntax right,
         Node operatorNode)
     {
-        var powKind = _context.SemanticInfo?.GetOperatorLowering(operatorNode)?.Kind;
+        var powKind = OperatorLoweringOf(operatorNode).Kind;
 
         switch (powKind)
         {
@@ -1281,7 +1281,7 @@ internal partial class RoslynEmitter
     /// </summary>
     private ExpressionSyntax GenerateTrueDivideValue(ExpressionSyntax left, ExpressionSyntax right, Node operatorNode)
     {
-        switch (_context.SemanticInfo?.GetOperatorLowering(operatorNode)?.Kind)
+        switch (OperatorLoweringOf(operatorNode).Kind)
         {
             case OperatorLoweringKind.GuardedTrueDivisionCastLeft:
                 return GenerateTrueDiv(CastLeftToDouble(left), right);
@@ -1331,7 +1331,7 @@ internal partial class RoslynEmitter
     /// <param name="operatorNode">The node carrying the recorded floor-division lowering.</param>
     private ExpressionSyntax GenerateFloorDivideValue(ExpressionSyntax left, ExpressionSyntax right, Node operatorNode)
     {
-        switch (_context.SemanticInfo?.GetOperatorLowering(operatorNode)?.Kind)
+        switch (OperatorLoweringOf(operatorNode).Kind)
         {
             case OperatorLoweringKind.DecimalFloorDivide:
                 return GenerateDecimalFloorDivision(left, right);
