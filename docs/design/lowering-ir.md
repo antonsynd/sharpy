@@ -479,6 +479,8 @@ the AST, so the index remains.
 | P82 tranche 1 base (48c6afb3e) | **26,987** |
 | after P82 tranche 1 (8572f61c8) | **26,997** (+10) |
 | after P82 tranche 2 (f5c64af34) | **26,966** (−31) |
+| P82 tranche 3 base (6e98f9607) | **27,037** |
+| after P82 tranche 3 (a9cd420bd) | **27,058** (+21) |
 
 #1056's "emitter LOC decreases" done-when is **not met**: the final count exceeds the baseline. The
 cause is structural, not a shortfall of effort. Phase 2 **added** ~11 `GetIr*` reader helpers to the
@@ -570,6 +572,49 @@ and the stdlib docs regenerate with no diff.
   - inspection allowlist 166 → 188 rows: type-name 131 → 130 (407 → 398 sites), type-name-compare
     0 → 8 (20 seeded → 14 sites), type-read 17 → 32 (72 → 99 sites), name-lookup 15, declaration-line 3;
   - `.expected.cs` snapshots 170 → 173.
+
+### P82 tranche 3 (2026-11-12, #2443)
+
+The emitter's operator and type-test lowering reads moved onto the IR (plan-92249e). By the owner's
+ruling (2026-11-11, "Transport now") `_operatorLowerings` stays a table: the checker writes it, and the
+lowering pass and `ConstEligibility` read it through `GetOperatorLoweringForIr`; deriving and deleting
+it is tranche 4. `_typeTestLowerings` split along R-MX: the type half stays a type fact
+(`_typeTestTypes : Node → TypeTestType(TestType, Alternatives)`, `TypeTestLoweringKind` deleted), and
+the one lowering decision on it, the `except (A, B) as e` alternation, moved onto the try's IR node.
+Output is byte-identical: every `.expected.cs`, the spy-sourced stdlib C#, the spy-test C# and the
+stdlib docs regenerate with no diff.
+
+| Moved | Carrier | Emitter consumer | Commit |
+|-------|---------|------------------|--------|
+| `_operatorLowerings` reads (transport) | `IIrOperatorSite { Operator, NarrowTo }` on `IrOperatorExpression` (a `BinaryOp`, `UnaryOp` or super-operator `FunctionCall` with an entry), `IrOperatorAssignment` (an augmented `Assignment` that is neither a mutation nor a store wrap), `IrEqualityComparison.Operator` (reflected `==`, #1719) and `IrOptionalStoreWrap.Operator` (`x //= 2` into a narrowed Optional); read through `OperatorLoweringOf(Node)`, which looks through `IrOptionalWrappedElement` and answers `(Native, null)` on a miss | `RoslynEmitter.Expressions.Operators.cs` ×6, `RoslynEmitter.Statements.Assignments.cs` ×5, `RoslynEmitter.Operators.cs` ×4, `RoslynEmitter.Expressions.Access.cs` ×1, `RoslynEmitter.Statements.ControlFlow.cs` ×1 | 076a58b33 (IR), df1e0ac33 (emitter) |
+| `_typeTestLowerings` type half → `_typeTestTypes` | stays a type fact: `GetTypeTestType`, mapped by the one helper `TypeTestTypeSyntax(Node)` (one `type-read` allowlist row) | `RoslynEmitter.Expressions.Operators.cs` ×2, `RoslynEmitter.Expressions.Access.cs` ×1, `RoslynEmitter.Patterns.cs` ×1, `RoslynEmitter.Statements.ControlFlow.cs` ×1 | 54b0fd6b7 |
+| the `except` alternation | `IrPlannedTry` (was `IrPrunedTry`, built when a handler is covered or is an alternation) `.Handlers[i].Alternation : IrAlternationCatch(BindAt, Alternatives)`; `Alternatives` arrives filtered by the handler's verdict, so the emitter filters nothing | `RoslynEmitter.Statements.ControlFlow.cs` ×1 | a9cd420bd |
+
+- **Transport sweep** (`OperatorLoweringTransportTests`, 1c4501932): over the fixture corpus, every
+  `_operatorLowerings` entry has an `IIrOperatorSite` at its key with the same `(Kind, NarrowTo)`, and
+  every site has its entry, closed against `Enum.GetValues<OperatorLoweringKind>()` with per-key-kind
+  and per-carrier floors. Measured @ 1c4501932: 1203 entries over 2570 fixtures; entries on an
+  `IrConstant` key 0 of 15, on an `IrCollectionMutation` key 0 of 73 (the checker's early returns,
+  plan-92249e D1).
+- **`ForIr` census** (`EmitterCarrierOnlyConformanceTests`, a9cd420bd): Roslyn syntax, every invocation
+  whose member name ends `ForIr`, per directory: 0 under `CodeGen/`, ≥ 6 under `Lowering/` (9 measured).
+  It is the guard the "renamed so nothing in `CodeGen/` can bind it" convention lacked; the inspection
+  allowlist does not see a planted `GetOperatorLoweringForIr(` (mutation M4).
+- **Not taken** (owner, 2026-11-11, "Defer to tranche 4"): deriving `_operatorLowerings` in the pass and
+  deleting it; the array-bridge conversion (`ApplyArrayBridge`, 4 emitter sites) and
+  `_sequenceMaterializations` (4 checker writers), a position × route × conversion matrix that needs
+  its own generator; `_comparisonChainLowerings` (holds `OperatorLoweringKind` per link,
+  `RoslynEmitter.Expressions.Operators.cs`).
+- **Counts @ a9cd420bd vs base 6e98f9607:**
+  - side tables 84 → 84 (`SideTableCount_IsPinnedAtOrBelowTheE2Ratchet`: a rename, no deletion);
+  - checker `_semanticInfo.Set\w*Lowering(` 70 → 59 (the 11 `SetTypeTestLowering(` writers are now
+    `SetTypeTestType(`);
+  - emitter lowering-record reads (`GetOperatorLowering(`, `GetTypeTestLowering(`, any `ForIr(`)
+    23 → 0; `OperatorLoweringOf(` 0 → 17 reads, `TypeTestTypeSyntax(` 0 → 5;
+  - inspection allowlist 212 → 213 rows (`allowlist_rows_outside_seed` 517 → 518);
+  - `.expected.cs` snapshots 173 → 178 (T1's positive controls: super operator, reflected `==`, the
+    alternation fixture with its sibling cell, an operator under a store wrap and under a wrapped
+    element).
 
 ### Not done in E2 (post-E2 follow-ups)
 

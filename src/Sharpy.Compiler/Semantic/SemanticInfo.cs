@@ -136,6 +136,11 @@ public class SemanticInfo : ISemanticQuery
     //
     // Absent ⇒ the operand is not a classified type test: either the callee is a shadowed
     // `isinstance`, or the shape is one the classifier left to the ordinary runtime-call path.
+    //
+    // The type half only (R-MX; P82 tranche 3, #2443): the emitter maps TestType to syntax through
+    // its one helper, TypeTestTypeSyntax. An `except (A, B) as e` alternation's Alternatives are a
+    // lowering input: the lowering pass reads them (GetExceptAlternativesForIr) into
+    // IrPlannedTry's IrAlternationCatch, and the emitter reads the IR, never this list.
     private readonly ConcurrentDictionary<Node, TypeTestType> _typeTestTypes =
         new(ReferenceEqualityComparer.Instance);
 
@@ -491,6 +496,11 @@ public class SemanticInfo : ISemanticQuery
     private readonly ConcurrentDictionary<Expression, MultiAxisAccessLowering> _multiAxisAccessLowerings =
         new(ReferenceEqualityComparer.Instance);
 
+    // A lowering input (P82 tranche 3, #2443): the lowering pass copies each entry onto the
+    // IIrOperatorSite at its key (IrOperatorExpression, IrOperatorAssignment, IrEqualityComparison,
+    // IrOptionalStoreWrap); the emitter reads the IR, never this dict. Its other readers are
+    // ConstEligibility and the checker's own read-modify-write of NarrowTo, both before any IR
+    // exists. Deriving it in the pass and deleting it is tranche 4.
     private readonly ConcurrentDictionary<Node, OperatorLowering> _operatorLowerings =
         new(ReferenceEqualityComparer.Instance);
 
