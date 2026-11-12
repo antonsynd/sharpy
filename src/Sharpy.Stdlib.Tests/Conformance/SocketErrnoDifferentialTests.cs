@@ -161,8 +161,8 @@ public class SocketErrnoDifferentialTests
             ["member_unmapped_get_maxconnections"] = ("92", "95", ".NET refuses MaxConnections (2147483647) itself; the kernel answers ENOPROTOOPT"),
             ["member_unmapped_set_tcp64"] = ("92", "95", ".NET refuses IPPROTO_TCP option 64 itself; the kernel answers ENOPROTOOPT"),
             ["member_unmapped_get_tcp64"] = ("92", "95", ".NET refuses IPPROTO_TCP option 64 itself; the kernel answers ENOPROTOOPT"),
-            ["member_unmapped_set_useloopback"] = ("107", "95", "SOL_SOCKET 64 is UseLoopback to .NET, refused with 95; to the Linux kernel it is a real option, so python's call SUCCEEDS and the following recv raises 107"),
-            ["member_unmapped_get_useloopback"] = ("107", "95", "SOL_SOCKET 64 is UseLoopback to .NET, refused with 95; to the Linux kernel it is a real option, so python's call SUCCEEDS and the following recv raises 107"),
+            ["member_unmapped_set_useloopback"] = ("107", "95", "SOL_SOCKET 64 is UseLoopback to .NET, refused with 95; to the Linux kernel it is a real option (on this kernel; an older one would answer 92), so python's call SUCCEEDS and the following recv raises 107"),
+            ["member_unmapped_get_useloopback"] = ("107", "95", "SOL_SOCKET 64 is UseLoopback to .NET, refused with 95; to the Linux kernel it is a real option (on this kernel; an older one would answer 92), so python's call SUCCEEDS and the following recv raises 107"),
             ["member_unmapped_set_exclusiveaddressuse"] = ("92", "107", "SOL_SOCKET -5 is ExclusiveAddressUse, which .NET's setsockopt accepts on Linux: Sharpy's call SUCCEEDS and the following recv raises 107; the kernel answers the raw number ENOPROTOOPT"),
             ["member_unmapped_get_exclusiveaddressuse"] = ("92", "107", "SOL_SOCKET -5 is ExclusiveAddressUse, which .NET's getsockopt answers on Linux: Sharpy's call SUCCEEDS and the following recv raises 107; the kernel answers the raw number ENOPROTOOPT"),
         };
