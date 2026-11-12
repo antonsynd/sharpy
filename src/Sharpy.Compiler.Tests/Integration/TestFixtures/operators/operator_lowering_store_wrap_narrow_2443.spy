@@ -1,0 +1,20 @@
+# plan-92249e verify round (#2443): an augmented operator on a sub-int width stored into a narrowed
+# Optional slot. The statement is an IrOptionalStoreWrap whose operator lowering carries a NarrowTo
+# (the arithmetic promotes to int and narrows back before the store is wrapped), the one carrier the
+# corpus had with no NarrowTo entry. Without the narrowing the C# does not compile; a truncating `//`
+# would print -2. Values checked on CPython 3.15.
+
+
+def main() -> None:
+    x: int8? = Some(int8(100))
+    if x is not None:
+        x += int8(20)
+        print(x)
+    y: uint8? = Some(uint8(240))
+    if y is not None:
+        y += uint8(10)
+        print(y)
+    z: int16? = Some(int16(-5))
+    if z is not None:
+        z //= int16(2)
+        print(z)
