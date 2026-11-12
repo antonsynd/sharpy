@@ -270,29 +270,137 @@ public class SocketErrnoDifferentialTests
         Assert.Equal(linuxErrno, t.Errno);
     }
 
+    /// <summary>The call sites of the errno rule, each bound to its real entry point in the module.</summary>
+    public enum Site { NonblockingConnect, UnknownOption, NewDescriptor }
+
+    private static global::Sharpy.SocketModule.Error ErrorAt(Site site, SocketException ex) => site switch
+    {
+        Site.NonblockingConnect => global::Sharpy.SocketModule.SocketModuleModule._NonblockingConnectError(ex),
+        Site.UnknownOption => global::Sharpy.SocketModule.SocketModuleModule._UnknownOptionError(ex),
+        Site.NewDescriptor => global::Sharpy.SocketModule.SocketModuleModule._NewDescriptorError(ex),
+        _ => throw new ArgumentOutOfRangeException(nameof(site)),
+    };
+
     /// <summary>
-    /// The call-site rule (<c>_call_error</c>), oracle-free: each (call site, .NET code) it rewrites, and
-    /// the neighbours it must leave to the seam. "new descriptor" is the only witness of EMFILE: running out
-    /// of descriptors needs a process-wide limit, so the end-to-end cell is measured by hand
-    /// (<c>ulimit -n 1024</c>, opening sockets until one fails: CPython 24, Sharpy 24) and recorded in
-    /// docs/deviations.yaml. A genuine system-wide ENFILE (23) shares <c>TooManyOpenSockets</c> and also
-    /// reports 24 (a recorded cell, not producible here).
+    /// The call-site rule, oracle-free, through each site's own entry point: the .NET code it rewrites,
+    /// and neighbours it must leave to the seam. A genuine system-wide ENFILE (23) shares
+    /// <c>TooManyOpenSockets</c> and also reports 24 (a recorded cell, not producible here); EMFILE end to
+    /// end is <see cref="NewDescriptor_OutOfDescriptors_EqualsPython"/>.
     /// </summary>
     [SkippableTheory]
-    [InlineData("new descriptor", SocketError.TooManyOpenSockets, 24)]
-    [InlineData("nonblocking connect", SocketError.WouldBlock, 115)]
-    [InlineData("unknown option", SocketError.OperationNotSupported, 92)]
-    [InlineData("new descriptor", SocketError.WouldBlock, 11)]
-    [InlineData("nonblocking connect", SocketError.ConnectionRefused, 111)]
-    [InlineData("nonblocking connect", SocketError.TooManyOpenSockets, 23)]
-    [InlineData("unknown option", SocketError.ProtocolOption, 92)]
-    [InlineData("unknown option", SocketError.WouldBlock, 11)]
-    [InlineData("connect", SocketError.WouldBlock, 11)]
-    public void CallError_RewritesOnlyItsCallSiteAndCode(string call, SocketError code, int linuxErrno)
+    [InlineData(Site.NewDescriptor, SocketError.TooManyOpenSockets, 24)]
+    [InlineData(Site.NonblockingConnect, SocketError.WouldBlock, 115)]
+    [InlineData(Site.UnknownOption, SocketError.OperationNotSupported, 92)]
+    [InlineData(Site.NewDescriptor, SocketError.WouldBlock, 11)]
+    [InlineData(Site.NonblockingConnect, SocketError.ConnectionRefused, 111)]
+    [InlineData(Site.NonblockingConnect, SocketError.TooManyOpenSockets, 23)]
+    [InlineData(Site.UnknownOption, SocketError.ProtocolOption, 92)]
+    [InlineData(Site.UnknownOption, SocketError.WouldBlock, 11)]
+    [InlineData(Site.NewDescriptor, SocketError.OperationNotSupported, 95)]
+    public void ErrnoRule_EachSiteRewritesOnlyItsOwnCode(Site site, SocketError code, int linuxErrno)
     {
         TestPreconditions.RequireOrSkip(OperatingSystem.IsLinux(), "the pinned numbers are Linux's errno values.");
-        var e = global::Sharpy.SocketModule.SocketModuleModule._CallError(new SocketException((int)code), call);
-        Assert.Equal(linuxErrno, e.Errno);
+        Assert.Equal(linuxErrno, ErrorAt(site, new SocketException((int)code)).Errno);
+    }
+
+    private const string EmfilePython = """
+        import resource, socket
+        soft, hard = resource.getrlimit(resource.RLIMIT_NOFILE)
+        a = socket.socket()
+        a.bind(("127.0.0.1", 0))
+        a.listen(5)
+        b = socket.socket()
+        b.connect(("127.0.0.1", a.getsockname()[1]))
+        kept = []
+        create = accept = "-"
+        resource.setrlimit(resource.RLIMIT_NOFILE, (512, hard))
+        try:
+            while True:
+                kept.append(socket.socket())
+        except OSError as e:
+            create = e.errno
+        try:
+            a.accept()
+        except OSError as e:
+            accept = e.errno
+        for s in kept:
+            s.close()
+        resource.setrlimit(resource.RLIMIT_NOFILE, (soft, hard))
+        print("OUT", len(kept) > 0, create, accept)
+        """;
+
+    // Sharpy has no resource module: the program lowers its own soft limit with prlimit(1), and nothing
+    // that loads an assembly (an exception's type name) runs until the limit is raised again.
+    private const string EmfileSharpy = """
+        import socket
+        from system import Environment
+        from system.diagnostics import Process
+
+        def _limit(n: str) -> None:
+            p = Process.start("prlimit", f"--pid {Environment.process_id} --nofile={n}:")
+            p.wait_for_exit()
+
+        def main() -> None:
+            a = socket.socket()
+            a.bind(("127.0.0.1", 0))
+            a.listen(5)
+            b = socket.socket()
+            b.connect(("127.0.0.1", a.getsockname()[1]))
+            kept: list[socket.socket] = []
+            create: str = "-"
+            accept: str = "-"
+            _limit("512")
+            try:
+                while True:
+                    kept.append(socket.socket())
+            except socket.error as e:
+                create = str(e.errno)
+            try:
+                a.accept()
+            except socket.error as e:
+                accept = str(e.errno)
+            for s in kept:
+                s.close()
+            _limit("1024")
+            print(f"OUT {len(kept) > 0} {create} {accept}")
+        """;
+
+    /// <summary>
+    /// EMFILE end to end, at both descriptor-allocating call sites (<c>socket()</c> and <c>accept</c>):
+    /// each side lowers its own soft descriptor limit to 512, opens sockets until one fails, then
+    /// accepts a pending connection, and the printed errnos are compared (CPython 3.15.2: 24 and 24).
+    /// </summary>
+    [SkippableFact]
+    public void NewDescriptor_OutOfDescriptors_EqualsPython()
+    {
+        TestPreconditions.RequireOrSkip(OperatingSystem.IsLinux(), "EMFILE's number is Linux's errno value.");
+        TestPreconditions.RequireOrSkip(File.Exists("/usr/bin/prlimit") || File.Exists("/bin/prlimit"),
+            "the Sharpy side lowers its descriptor limit with prlimit(1) (util-linux), which is not installed.");
+        var python = PythonInterpreter.RequireOrSkip();
+        var work = SysPath.Combine(SysPath.GetTempPath(), "sharpy-socket-emfile-" + Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(work);
+        try
+        {
+            var script = SysPath.Combine(work, "emfile.py");
+            File.WriteAllText(script, EmfilePython);
+            var py = python.RunBatch(script, Array.Empty<string>(), timeoutMilliseconds: 120_000)
+                .Select(l => l.Trim()).Single(l => l.StartsWith("OUT ", StringComparison.Ordinal));
+            using var runner = new Runner();
+            var result = runner.Execute(EmfileSharpy);
+            Assert.True(result.Success, "the Sharpy program failed: " + string.Join("\n", result.CompilationErrors.Take(10)) + result.Failure);
+            var sh = result.StandardOutput.Replace("\r\n", "\n").Split('\n')
+                .Select(l => l.Trim()).Single(l => l.StartsWith("OUT ", StringComparison.Ordinal));
+            _output.WriteLine($"python: {py}; Sharpy: {sh}");
+            Assert.Equal("OUT True 24 24", py);
+            Assert.Equal(py, sh);
+        }
+        finally
+        {
+            try
+            { Directory.Delete(work, recursive: true); }
+            catch (IOException) { }
+            catch (UnauthorizedAccessException) { }
+        }
     }
 
     /// <summary>
@@ -452,7 +560,10 @@ public class SocketErrnoDifferentialTests
         }
 
         protected override IEnumerable<string> GetAdditionalReferenceAssemblyPaths() =>
-            base.GetAdditionalReferenceAssemblyPaths().Append(typeof(System.Net.Sockets.Socket).Assembly.Location);
+            base.GetAdditionalReferenceAssemblyPaths()
+                .Append(typeof(System.Net.Sockets.Socket).Assembly.Location)
+                .Append(typeof(System.Diagnostics.Process).Assembly.Location)
+                .Append(typeof(System.ComponentModel.Component).Assembly.Location);
 
         public (bool Success, IReadOnlyList<string> CompilationErrors, bool TimedOut, string StandardOutput, string Failure) Execute(string source)
         {

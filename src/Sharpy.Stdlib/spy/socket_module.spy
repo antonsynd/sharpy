@@ -173,31 +173,35 @@ def _is_member(members: Array, value: int) -> bool:
         i = i + 1
     return False
 
-def _call_error(ex: SocketException, call: str) -> error:
-    """The socket.error for a .NET SocketException raised at `call`: the seam's
-    (`error.from_socket_exception`), except where .NET reports a code whose NativeErrorCode is
-    not the errno the platform's call returns there.
+def _rewrite_errno(ex: SocketException, folded: SocketError, linux_errno: int, strerror: str) -> error:
+    """The socket.error for a .NET SocketException at a call site where .NET folds the errno the
+    platform's call returns into `folded`, whose NativeErrorCode names a different errno: on
+    Linux, `folded` becomes `linux_errno` with its strerror text; anything else goes to the seam
+    (`error.from_socket_exception`). Keyed on the CLR `SocketError`, never the message.
 
-    The rule, stated once (keyed on the CLR `SocketError`, never the message), Linux numbering:
-    - "nonblocking connect" + `WouldBlock` -> 115 `EINPROGRESS`: .NET folds the kernel's
-      EINPROGRESS into WouldBlock, whose native code is EAGAIN (11).
-    - "unknown option" + `OperationNotSupported` -> 92 `ENOPROTOOPT`: .NET refuses an option it
-      has no mapping for (see socket._kernel_says_enoprotoopt) before the kernel is asked,
-      with EOPNOTSUPP (95); the kernel answers such an option with ENOPROTOOPT.
-    - "new descriptor" + `TooManyOpenSockets` -> 24 `EMFILE`: .NET folds EMFILE and ENFILE into
-      TooManyOpenSockets, whose native code is ENFILE (23).
-    Off Linux nothing is rewritten: on Windows .NET's code is WinSock's own, which CPython
-    reports; macOS is unmeasured (docs/deviations.yaml, socket-errno-is-dotnet-socket-error).
+    Each call site has its own entry point below (one row of the rule each), so a call site
+    cannot name a rule that does not exist. Off Linux nothing is rewritten: on Windows .NET's
+    code is WinSock's own, which CPython reports; macOS is unmeasured (docs/deviations.yaml,
+    socket-errno-is-dotnet-socket-error).
     """
-    if RuntimeInformation.is_o_s_platform(OSPlatform.Linux):
-        code: SocketError = ex.socket_error_code
-        if call == "nonblocking connect" and code == SocketError.WouldBlock:
-            return error("Operation now in progress", ex, 115)
-        if call == "unknown option" and code == SocketError.OperationNotSupported:
-            return error("Protocol not available", ex, 92)
-        if call == "new descriptor" and code == SocketError.TooManyOpenSockets:
-            return error("Too many open files", ex, 24)
+    if RuntimeInformation.is_o_s_platform(OSPlatform.Linux) and ex.socket_error_code == folded:
+        return error(strerror, ex, linux_errno)
     return error.from_socket_exception(ex)
+
+def _nonblocking_connect_error(ex: SocketException) -> error:
+    """`connect` on a non-blocking socket: .NET folds the kernel's EINPROGRESS into `WouldBlock`
+    (native EAGAIN, 11); CPython reports 115 `EINPROGRESS`."""
+    return _rewrite_errno(ex, SocketError.WouldBlock, 115, "Operation now in progress")
+
+def _unknown_option_error(ex: SocketException) -> error:
+    """`setsockopt`/`getsockopt` on an option .NET refused itself (socket._kernel_says_enoprotoopt):
+    .NET's `OperationNotSupported` (95); the kernel would answer 92 `ENOPROTOOPT`."""
+    return _rewrite_errno(ex, SocketError.OperationNotSupported, 92, "Protocol not available")
+
+def _new_descriptor_error(ex: SocketException) -> error:
+    """A call that allocates a descriptor (`socket()`, `accept`): .NET folds EMFILE and ENFILE into
+    `TooManyOpenSockets` (native ENFILE, 23); CPython reports the process limit, 24 `EMFILE`."""
+    return _rewrite_errno(ex, SocketError.TooManyOpenSockets, 24, "Too many open files")
 
 @final
 class socket(IDisposable):
@@ -216,7 +220,7 @@ class socket(IDisposable):
         try:
             self._socket = NetSocket(family as! AddressFamily, sock_type as! SocketType, proto as! ProtocolType)
         except SocketException as ex:
-            raise _call_error(ex, "new descriptor")
+            raise _new_descriptor_error(ex)
         self._timeout = None
         default: float | None = None
         with _lock:
@@ -280,7 +284,7 @@ class socket(IDisposable):
         except SocketException as ex:
             if self._socket.blocking:
                 raise error.from_socket_exception(ex)
-            raise _call_error(ex, "nonblocking connect")
+            raise _nonblocking_connect_error(ex)
 
     def bind(self, address: tuple[host: str, port: int]) -> None:
         """Bind the socket to a local (host, port) address."""
@@ -321,7 +325,7 @@ class socket(IDisposable):
         except SocketException as ex when ex.socket_error_code == SocketError.TimedOut:
             raise _timed_out(ex, self._timeout_ms() > 0)
         except SocketException as ex:
-            raise _call_error(ex, "new descriptor")
+            raise _new_descriptor_error(ex)
 
     # ---- Data transfer methods ----
 
@@ -397,7 +401,7 @@ class socket(IDisposable):
             self._socket.set_socket_option(level as! SocketOptionLevel, optname as! SocketOptionName, value)
         except SocketException as ex:
             if self._kernel_says_enoprotoopt(level, optname, True):
-                raise _call_error(ex, "unknown option")
+                raise _unknown_option_error(ex)
             raise error.from_socket_exception(ex)
 
     def getsockopt(self, level: int, optname: int) -> int:
@@ -409,7 +413,7 @@ class socket(IDisposable):
             return opt as! int
         except SocketException as ex:
             if self._kernel_says_enoprotoopt(level, optname, False):
-                raise _call_error(ex, "unknown option")
+                raise _unknown_option_error(ex)
             raise error.from_socket_exception(ex)
 
     @private

@@ -110,42 +110,50 @@ namespace Sharpy.SocketModule
         }
 
         /// <summary>
-        /// The socket.error for a .NET SocketException raised at `call`: the seam's
-        /// (`error.from_socket_exception`), except where .NET reports a code whose NativeErrorCode is
-        /// not the errno the platform's call returns there.
-        /// The rule, stated once (keyed on the CLR `SocketError`, never the message), Linux numbering:
-        /// - "nonblocking connect" + `WouldBlock` -> 115 `EINPROGRESS`: .NET folds the kernel's
-        /// EINPROGRESS into WouldBlock, whose native code is EAGAIN (11).
-        /// - "unknown option" + `OperationNotSupported` -> 92 `ENOPROTOOPT`: .NET refuses an option it
-        /// has no mapping for (see socket._kernel_says_enoprotoopt) before the kernel is asked,
-        /// with EOPNOTSUPP (95); the kernel answers such an option with ENOPROTOOPT.
-        /// - "new descriptor" + `TooManyOpenSockets` -> 24 `EMFILE`: .NET folds EMFILE and ENFILE into
-        /// TooManyOpenSockets, whose native code is ENFILE (23).
-        /// Off Linux nothing is rewritten: on Windows .NET's code is WinSock's own, which CPython
-        /// reports; macOS is unmeasured (docs/deviations.yaml, socket-errno-is-dotnet-socket-error).
+        /// The socket.error for a .NET SocketException at a call site where .NET folds the errno the
+        /// platform's call returns into `folded`, whose NativeErrorCode names a different errno: on
+        /// Linux, `folded` becomes `linux_errno` with its strerror text; anything else goes to the seam
+        /// (`error.from_socket_exception`). Keyed on the CLR `SocketError`, never the message.
+        /// Each call site has its own entry point below (one row of the rule each), so a call site
+        /// cannot name a rule that does not exist. Off Linux nothing is rewritten: on Windows .NET's
+        /// code is WinSock's own, which CPython reports; macOS is unmeasured (docs/deviations.yaml,
+        /// socket-errno-is-dotnet-socket-error).
         /// </summary>
-        internal static global::Sharpy.SocketModule.Error _CallError(global::System.Net.Sockets.SocketException ex, string call)
+        internal static global::Sharpy.SocketModule.Error _RewriteErrno(global::System.Net.Sockets.SocketException ex, global::System.Net.Sockets.SocketError folded, int linuxErrno, string strerror)
         {
-            if (global::System.Runtime.InteropServices.RuntimeInformation.IsOSPlatform(global::System.Runtime.InteropServices.OSPlatform.Linux))
+            if (global::System.Runtime.InteropServices.RuntimeInformation.IsOSPlatform(global::System.Runtime.InteropServices.OSPlatform.Linux) && ex.SocketErrorCode == folded)
             {
-                global::System.Net.Sockets.SocketError code = ex.SocketErrorCode;
-                if (call == "nonblocking connect" && code == global::System.Net.Sockets.SocketError.WouldBlock)
-                {
-                    return new global::Sharpy.SocketModule.Error("Operation now in progress", ex, 115);
-                }
-
-                if (call == "unknown option" && code == global::System.Net.Sockets.SocketError.OperationNotSupported)
-                {
-                    return new global::Sharpy.SocketModule.Error("Protocol not available", ex, 92);
-                }
-
-                if (call == "new descriptor" && code == global::System.Net.Sockets.SocketError.TooManyOpenSockets)
-                {
-                    return new global::Sharpy.SocketModule.Error("Too many open files", ex, 24);
-                }
+                return new global::Sharpy.SocketModule.Error(strerror, ex, linuxErrno);
             }
 
             return global::Sharpy.SocketModule.Error.FromSocketException(ex);
+        }
+
+        /// <summary>
+        /// `connect` on a non-blocking socket: .NET folds the kernel's EINPROGRESS into `WouldBlock`
+        /// (native EAGAIN, 11); CPython reports 115 `EINPROGRESS`.
+        /// </summary>
+        internal static global::Sharpy.SocketModule.Error _NonblockingConnectError(global::System.Net.Sockets.SocketException ex)
+        {
+            return global::Sharpy.SocketModule.SocketModuleModule._RewriteErrno(ex, global::System.Net.Sockets.SocketError.WouldBlock, 115, "Operation now in progress");
+        }
+
+        /// <summary>
+        /// `setsockopt`/`getsockopt` on an option .NET refused itself (socket._kernel_says_enoprotoopt):
+        /// .NET's `OperationNotSupported` (95); the kernel would answer 92 `ENOPROTOOPT`.
+        /// </summary>
+        internal static global::Sharpy.SocketModule.Error _UnknownOptionError(global::System.Net.Sockets.SocketException ex)
+        {
+            return global::Sharpy.SocketModule.SocketModuleModule._RewriteErrno(ex, global::System.Net.Sockets.SocketError.OperationNotSupported, 92, "Protocol not available");
+        }
+
+        /// <summary>
+        /// A call that allocates a descriptor (`socket()`, `accept`): .NET folds EMFILE and ENFILE into
+        /// `TooManyOpenSockets` (native ENFILE, 23); CPython reports the process limit, 24 `EMFILE`.
+        /// </summary>
+        internal static global::Sharpy.SocketModule.Error _NewDescriptorError(global::System.Net.Sockets.SocketException ex)
+        {
+            return global::Sharpy.SocketModule.SocketModuleModule._RewriteErrno(ex, global::System.Net.Sockets.SocketError.TooManyOpenSockets, 24, "Too many open files");
         }
 
         /// <summary>
@@ -510,7 +518,7 @@ namespace Sharpy.SocketModule
                     throw global::Sharpy.SocketModule.Error.FromSocketException(ex_1);
                 }
 
-                throw global::Sharpy.SocketModule.SocketModuleModule._CallError(ex_1, "nonblocking connect");
+                throw global::Sharpy.SocketModule.SocketModuleModule._NonblockingConnectError(ex_1);
             }
         }
 
@@ -590,7 +598,7 @@ namespace Sharpy.SocketModule
             }
             catch (global::System.Net.Sockets.SocketException ex_1)
             {
-                throw global::Sharpy.SocketModule.SocketModuleModule._CallError(ex_1, "new descriptor");
+                throw global::Sharpy.SocketModule.SocketModuleModule._NewDescriptorError(ex_1);
             }
         }
 
@@ -726,7 +734,7 @@ namespace Sharpy.SocketModule
             {
                 if (this._KernelSaysEnoprotoopt(level, optname, true))
                 {
-                    throw global::Sharpy.SocketModule.SocketModuleModule._CallError(ex, "unknown option");
+                    throw global::Sharpy.SocketModule.SocketModuleModule._UnknownOptionError(ex);
                 }
 
                 throw global::Sharpy.SocketModule.Error.FromSocketException(ex);
@@ -752,7 +760,7 @@ namespace Sharpy.SocketModule
             {
                 if (this._KernelSaysEnoprotoopt(level, optname, false))
                 {
-                    throw global::Sharpy.SocketModule.SocketModuleModule._CallError(ex, "unknown option");
+                    throw global::Sharpy.SocketModule.SocketModuleModule._UnknownOptionError(ex);
                 }
 
                 throw global::Sharpy.SocketModule.Error.FromSocketException(ex);
@@ -1018,7 +1026,7 @@ namespace Sharpy.SocketModule
             }
             catch (global::System.Net.Sockets.SocketException ex)
             {
-                throw global::Sharpy.SocketModule.SocketModuleModule._CallError(ex, "new descriptor");
+                throw global::Sharpy.SocketModule.SocketModuleModule._NewDescriptorError(ex);
             }
 
             this._Timeout = null;
