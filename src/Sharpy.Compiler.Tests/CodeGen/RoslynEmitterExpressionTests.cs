@@ -447,7 +447,18 @@ public class RoslynEmitterExpressionTests
     {
         var semanticInfo = new SemanticInfo();
         semanticInfo.SetOperatorLowering(expr, new OperatorLowering(kind));
+        UseLoweredFacts(semanticInfo, expr);
+    }
+
+    /// <summary>
+    /// Hands the emitter <paramref name="semanticInfo"/> and the IR the lowering pass builds from it
+    /// over <paramref name="expr"/> (plan-92249e T4): the emitter reads an operator kind only from the
+    /// IR node the pass carries it onto.
+    /// </summary>
+    private void UseLoweredFacts(SemanticInfo semanticInfo, Expression expr)
+    {
         _context.SemanticInfo = semanticInfo;
+        _context.Ir = EmitterTestPipeline.LowerExpressions(semanticInfo, _context.SymbolTable, expr);
     }
 
     private static int CountOccurrences(string haystack, string needle)
@@ -466,18 +477,22 @@ public class RoslynEmitterExpressionTests
     [Fact]
     public void GenerateExpression_PowerOperator_EmitsOneCheckedIntPowInvocation()
     {
-        // Arrange
+        // Arrange — the operands are calls (`f(2) ** g(3)`), not bare literals: the lowering pass folds a
+        // power of two integer constants to a leaf constant before any operator lowering is read, and
+        // the checker records no IntegerPowInt on such a key (plan-92249e D1's folded-power predicate),
+        // so a literal `2 ** 3` with the tag is a state the pipeline never builds (plan-92249e T4).
+        // A call is also the operand a second splice would re-evaluate, which is what #1228 forbids.
         var expr = new BinaryOp
         {
             Operator = BinaryOperator.Power,
-            Left = new IntegerLiteral { Value = "2" },
-            Right = new IntegerLiteral { Value = "3" }
+            Left = new FunctionCall { Function = new Identifier { Name = "f" }, Arguments = ImmutableArray.Create<Expression>(new IntegerLiteral { Value = "2" }) },
+            Right = new FunctionCall { Function = new Identifier { Name = "g" }, Arguments = ImmutableArray.Create<Expression>(new IntegerLiteral { Value = "3" }) }
         };
         // The emitter is a pure translator: the integer-power lowering is the fact CheckBinaryOp
         // records (#1623), so the test records it the way the pipeline does.
         var semanticInfo = new SemanticInfo();
         semanticInfo.SetOperatorLowering(expr, new OperatorLowering(OperatorLoweringKind.IntegerPowInt));
-        _context.SemanticInfo = semanticInfo;
+        UseLoweredFacts(semanticInfo, expr);
 
         // Act
         var result = InvokeGenerateExpression(expr).ToString();
@@ -1353,7 +1368,7 @@ public class RoslynEmitterExpressionTests
     {
         // Arrange: value as? int → value is int _temp ? Optional<int>.Some(_temp) : default.
         // `as?` supplies the failure mode, so the target is written non-nullable (a written `?` is
-        // SPY0334). The emitter is a pure translator: the base type comes from the TypeTestLowering
+        // SPY0334). The emitter is a pure translator: the base type comes from the type-test type
         // CheckTypeCoercion records, so the test records it (#1670).
         var expr = new TypeCoercion
         {
@@ -1362,9 +1377,9 @@ public class RoslynEmitterExpressionTests
             Mode = CastFailureMode.Null
         };
         var semanticInfo = new SemanticInfo();
-        semanticInfo.SetTypeTestLowering(
+        semanticInfo.SetTypeTestType(
             expr.TargetType,
-            new TypeTestLowering(TypeTestLoweringKind.ClosedType, new BuiltinType { Name = "int", ClrType = typeof(int) }));
+            new BuiltinType { Name = "int", ClrType = typeof(int) });
         _context.SemanticInfo = semanticInfo;
 
         // Act
@@ -1384,7 +1399,7 @@ public class RoslynEmitterExpressionTests
     {
         // Arrange: value as? str → value is string _temp ? Optional<string>.Some(_temp) : default.
         // `as?` supplies the failure mode, so the target is written non-nullable (a written `?` is
-        // SPY0334). The emitter is a pure translator: the base type comes from the TypeTestLowering
+        // SPY0334). The emitter is a pure translator: the base type comes from the type-test type
         // CheckTypeCoercion records, so the test records it (#1670).
         var expr = new TypeCoercion
         {
@@ -1393,9 +1408,9 @@ public class RoslynEmitterExpressionTests
             Mode = CastFailureMode.Null
         };
         var semanticInfo = new SemanticInfo();
-        semanticInfo.SetTypeTestLowering(
+        semanticInfo.SetTypeTestType(
             expr.TargetType,
-            new TypeTestLowering(TypeTestLoweringKind.ClosedType, new BuiltinType { Name = "str", ClrType = typeof(string) }));
+            new BuiltinType { Name = "str", ClrType = typeof(string) });
         _context.SemanticInfo = semanticInfo;
 
         // Act
@@ -1414,7 +1429,7 @@ public class RoslynEmitterExpressionTests
     {
         // Arrange: value as? Dog → value is Dog _temp ? Optional<Dog>.Some(_temp) : default.
         // `as?` supplies the failure mode, so the target is written non-nullable (a written `?` is
-        // SPY0334). The emitter is a pure translator: the base type comes from the TypeTestLowering
+        // SPY0334). The emitter is a pure translator: the base type comes from the type-test type
         // CheckTypeCoercion records, so the test records it (#1670).
         var expr = new TypeCoercion
         {
@@ -1423,9 +1438,9 @@ public class RoslynEmitterExpressionTests
             Mode = CastFailureMode.Null
         };
         var semanticInfo = new SemanticInfo();
-        semanticInfo.SetTypeTestLowering(
+        semanticInfo.SetTypeTestType(
             expr.TargetType,
-            new TypeTestLowering(TypeTestLoweringKind.ClosedType, new UserDefinedType { Name = "Dog" }));
+            new UserDefinedType { Name = "Dog" });
         _context.SemanticInfo = semanticInfo;
 
         // Act

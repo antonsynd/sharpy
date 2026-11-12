@@ -101,14 +101,25 @@ Base exception for socket-related errors. Corresponds to Python's socket.error.
 Derives from OSError, so `except OSError` catches every socket exception. Python's
 socket.error IS OSError; here it is a subclass of its own (docs/deviations.yaml,
 socket-error-timeout-distinct-classes).
+`errno` is the platform's errno for a failed socket call, and None where python's is None:
+an error constructed without one, and a `timeout` raised because the socket's own timeout
+(`settimeout`) expired.
 
 ### `from_socket_exception(ex: SocketException) -> error`
 
 Create a socket error from a .NET SocketException.
+errno is the platform's own code, `SocketException.NativeErrorCode`: the POSIX errno on
+Unix and the WinSock code on Windows, which is what CPython reports on each. The
+`SocketError` value is kept instead for a name resolution failure (`HostNotFound`,
+`TryAgain`, `NoRecovery`, `NoData`), whose NativeErrorCode on Unix is not an `EAI_*`
+code, and wherever NativeErrorCode is not positive (an internal value on Unix, e.g.
+for `SocketError.SocketError`) (docs/deviations.yaml, socket-errno-is-dotnet-socket-error).
 
 ## timeout
 
 Raised when a socket operation times out. Corresponds to Python's socket.timeout.
+`errno` is None when the socket's own timeout expired, as python's; a kernel `ETIMEDOUT`
+carries the platform's errno.
 
 ## gaierror
 

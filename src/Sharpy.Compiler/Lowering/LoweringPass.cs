@@ -142,14 +142,28 @@ internal sealed partial class LoweringPass
         // _optionalStoreWraps): a plain, augmented or `??=` store to an identifier carries the slot on
         // the statement; an unpacking from a tuple literal marks each element stored into a narrowed
         // Optional target, which LowerExpression wraps when it reaches the element.
+        //
+        // An assignment's recorded operator lowering (P82 tranche 3, #2443, plan-92249e D1) rides on
+        // the store wrap when there is one (`x //= 2` into a narrowed `int?`), else on an
+        // IrOperatorAssignment: precedence is mutation, wrap (with operator), operator, opaque.
         if (statement is Assignment storeAssignment)
         {
+            var assignmentOperator = semanticInfo.GetOperatorLoweringForIr(storeAssignment);
             if (OptionalStoreWrapOf(storeAssignment, semanticInfo, state) is { } wrapAs)
             {
-                var storeWrap = new IrOptionalStoreWrap(wrapAs, SpanOf(storeAssignment),
-                    LowerChildren(storeAssignment, semanticInfo, state));
+                var storeWrap = new IrOptionalStoreWrap(wrapAs,
+                    assignmentOperator?.Kind ?? OperatorLoweringKind.Native, assignmentOperator?.NarrowTo,
+                    SpanOf(storeAssignment), LowerChildren(storeAssignment, semanticInfo, state));
                 state.Index[storeAssignment] = storeWrap;
                 return storeWrap;
+            }
+
+            if (assignmentOperator is not null)
+            {
+                var operatorAssignment = new IrOperatorAssignment(assignmentOperator.Kind, assignmentOperator.NarrowTo,
+                    SpanOf(storeAssignment), LowerChildren(storeAssignment, semanticInfo, state));
+                state.Index[storeAssignment] = operatorAssignment;
+                return operatorAssignment;
             }
 
             if (storeAssignment.Operator == AssignmentOperator.Assign
@@ -181,20 +195,60 @@ internal sealed partial class LoweringPass
             state.QualifiedNamePrefix.RemoveAt(state.QualifiedNamePrefix.Count - 1);
 
         // A `try` whose handlers (or tuple-handler types) an earlier handler already covers carries
-        // which catches to emit (#2363): the classifier the SPY0488 warning reads.
+        // which catches to emit (#2363): the classifier the SPY0488 warning reads. A bound tuple
+        // handler carries the base it catches at and the alternatives it filters on (#1235; P82
+        // tranche 3, #2443, plan-92249e D5).
         if (statement is TryStatement tryStatement
             && ExceptHandlerReachability.Classify(tryStatement, semanticInfo) is var verdicts
-            && verdicts.Any(v => v.PrunesAnything))
+            && PlanAlternations(tryStatement, verdicts, semanticInfo) is var alternations
+            && (verdicts.Any(v => v.PrunesAnything) || alternations.Any(a => a != null)))
         {
-            var plans = verdicts.Select(v => new IrHandlerPlan(!v.IsUnreachable, v.TypeReachable)).ToImmutableArray();
-            var pruned = new IrPrunedTry(plans, SpanOf(tryStatement), children);
-            state.Index[tryStatement] = pruned;
-            return pruned;
+            var plans = verdicts
+                .Select((v, i) => new IrHandlerPlan(!v.IsUnreachable, v.TypeReachable, alternations[i]))
+                .ToImmutableArray();
+            var planned = new IrPlannedTry(plans, SpanOf(tryStatement), children);
+            state.Index[tryStatement] = planned;
+            return planned;
         }
 
         var ir = new IrOpaqueStatement(statement, SpanOf(statement), children);
         state.Index[statement] = ir;
         return ir;
+    }
+
+    /// <summary>
+    /// The alternation catch of each handler of <paramref name="tryStatement"/>, aligned with its
+    /// handlers: for <c>except (A, B) as e:</c>, the common base the checker recorded on the tuple
+    /// annotation and its alternatives, restricted to the types the handler's verdict keeps (so the
+    /// emitter filters nothing); null for any other handler (#1235; P82 tranche 3, #2443,
+    /// plan-92249e D5). An <c>except*</c> try has no alternation: its handlers lower as a group.
+    /// </summary>
+    private static ImmutableArray<IrAlternationCatch?> PlanAlternations(
+        TryStatement tryStatement, ImmutableArray<ExceptHandlerVerdict> verdicts, SemanticInfo semanticInfo)
+    {
+        var handlers = tryStatement.Handlers;
+        var alternations = ImmutableArray.CreateBuilder<IrAlternationCatch?>(handlers.Length);
+        foreach (var (handler, verdict) in handlers.Zip(verdicts))
+        {
+            if (handler.IsExceptStar
+                || handler.Name == null
+                || handler.ExceptionType is not { } annotation
+                || semanticInfo.GetExceptAlternativesForIr(annotation) is not { } alternatives)
+            {
+                alternations.Add(null);
+                continue;
+            }
+
+            var bindAt = semanticInfo.GetTypeTestType(annotation)
+                ?? throw new InvalidOperationException(
+                    $"An except alternation at line {handler.LineStart} recorded no bind-at type.");
+            var emitted = alternatives
+                .Where((_, typeIndex) => verdict.TypeReachable[typeIndex])
+                .ToImmutableArray();
+            alternations.Add(new IrAlternationCatch(bindAt, emitted));
+        }
+
+        return alternations.MoveToImmutable();
     }
 
     /// <summary>
@@ -258,6 +312,13 @@ internal sealed partial class LoweringPass
             // _binaryOpLowerings).
             BinaryOp { Operator: BinaryOperator.Equal or BinaryOperator.NotEqual } eqOp
                 => LowerEqualityComparison(eqOp, semanticInfo, state),
+            // Any other operator — a binary or unary operator, or a super operator application — whose
+            // key has a recorded operator lowering carries it on the IR node (P82 tranche 3, #2443,
+            // plan-92249e D1); with no entry it stays opaque and reads (Native, null).
+            BinaryOp or UnaryOp or FunctionCall when semanticInfo.GetOperatorLoweringForIr(expression) is { } operatorLowering
+                => new IrOperatorExpression(expression, operatorLowering.Kind, operatorLowering.NarrowTo,
+                    semanticInfo.GetExpressionType(expression), SpanOf(expression),
+                    LowerChildren(expression, semanticInfo, state)),
             // Index access (obj[i]) carries its lowering strategy on the IR node (E2 #1056, migrates
             // _indexAccessLowerings).
             IndexAccess indexAccess => LowerIndexAccess(indexAccess, semanticInfo, state),
@@ -501,6 +562,8 @@ internal sealed partial class LoweringPass
             left,
             right,
             semanticInfo.GetBinaryOpLoweringForIr(binOp),
+            // A reflected `==`/`!=` (#1719) records its operator lowering on the same key (D1).
+            semanticInfo.GetOperatorLoweringForIr(binOp)?.Kind ?? OperatorLoweringKind.Native,
             semanticInfo.GetExpressionType(binOp),
             SpanOf(binOp));
     }

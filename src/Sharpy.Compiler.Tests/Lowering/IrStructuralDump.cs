@@ -45,6 +45,18 @@ internal static class IrStructuralDump
             case IrOpaqueStatement opaqueStatement:
                 sb.Append(" ast=").Append(opaqueStatement.Ast.GetType().Name);
                 break;
+            case IrOperatorExpression operatorExpression:
+                sb.Append(" ast=").Append(operatorExpression.Ast.GetType().Name);
+                break;
+        }
+
+        // An operator site (P82 tranche 3, #2443) shows the lowering it carries, so a kind or
+        // narrowing that varies with compile order is visible in the dump.
+        if (node is IIrOperatorSite site)
+        {
+            sb.Append(" op=").Append(site.Operator);
+            if (site.NarrowTo is { } narrowTo)
+                sb.Append(" narrow=").Append(narrowTo);
         }
 
         sb.Append('\n');

@@ -25,7 +25,8 @@ namespace Sharpy.Compiler.Lowering.Passes;
 /// Deliberately <b>not</b> folded in v1 (recorded on #640): division / floor-division / modulo (Python
 /// raises on a zero divisor, so these stay runtime code — Design Decision 6's trap rule), <c>**</c>
 /// (already folded by the initial lowering), <c>==</c>/<c>!=</c> (a typed <see cref="IrEqualityComparison"/>,
-/// not an opaque node), shifts, strings, and any expression nested inside a typed IR node.
+/// not an opaque node), shifts, strings, and any expression nested inside a typed IR node the shared
+/// walk does not descend into. An <see cref="IrOperatorExpression"/> folds as the opaque node it replaced.
 /// </para>
 /// </remarks>
 internal sealed class ConstFoldPass : IrTreeRewriter, IIrPass
@@ -33,8 +34,9 @@ internal sealed class ConstFoldPass : IrTreeRewriter, IIrPass
     public string FlagName => "opt_const_fold";
 
     /// <summary>
-    /// Folds an IR node bottom-up. An opaque expression whose folded operands are all constant collapses
-    /// to an <see cref="IrConstant"/> (a fresh node the shared walk returns as-is); a constant is left
+    /// Folds an IR node bottom-up. An opaque expression, or an <see cref="IrOperatorExpression"/> (the
+    /// typed node an operator with a recorded lowering replaced it with), whose folded operands are all
+    /// constant collapses to an <see cref="IrConstant"/> (a fresh node the shared walk returns as-is); a constant is left
     /// untouched (v1 never re-folds one). Everything else — the opaque-statement recursion and the
     /// typed-node fallthrough — is the base walk, which still reduces nested constants inside otherwise
     /// dynamic expressions/statements.
@@ -54,6 +56,17 @@ internal sealed class ConstFoldPass : IrTreeRewriter, IIrPass
                     return childrenChanged
                         ? new IrOpaqueExpression(opaque.Ast, opaque.Type, opaque.Span, children)
                         : opaque;
+                }
+
+            case IrOperatorExpression operatorExpression:
+                {
+                    // An operator expression with a recorded lowering (P82 tranche 3, #2443) folds as the
+                    // opaque node it replaced did: only `-<int literal>` (NegateLiteralInt/Long) both
+                    // carries an entry and folds. The base arm descends and rebuilds the same kind, so a
+                    // non-folding operator (`(2 + 3) // n`) keeps its lowering with folded operands.
+                    var rewritten = (IrOperatorExpression)base.RewriteNode(operatorExpression, context);
+                    return TryFoldExpression(rewritten.Ast, rewritten.Children, rewritten.Type, rewritten.Span)
+                        ?? (IrNode)rewritten;
                 }
 
             default:

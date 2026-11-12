@@ -110,7 +110,9 @@ def f(x: object) -> int:
         var typeTests = AstDescendants.SelfAndDescendants(module)
             .OfType<FunctionCall>()
             .Where(c => c.Arguments.Length == 2)
-            .Select(c => info.GetTypeTestLowering(c.Arguments[1]))
+            .Select(c => info.GetTypeTestType(c.Arguments[1]) is { } testType
+                ? new TypeTestType(testType, info.GetExceptAlternativesForIr(c.Arguments[1]))
+                : null)
             .Where(l => l != null)
             .Select(l => l!)
             .ToList();
@@ -210,7 +212,9 @@ def f(x: object) -> bool:
 
         var isOperatorTests = AstDescendants.SelfAndDescendants(module)
             .OfType<TypeCheck>()
-            .Select(tc => info.GetTypeTestLowering(tc.CheckType))
+            .Select(tc => info.GetTypeTestType(tc.CheckType) is { } testType
+                ? new TypeTestType(testType, info.GetExceptAlternativesForIr(tc.CheckType))
+                : null)
             .Where(l => l != null)
             .Select(l => l!)
             .ToList();
@@ -221,7 +225,9 @@ def f(x: object) -> bool:
         var isinstanceTests = AstDescendants.SelfAndDescendants(module)
             .OfType<FunctionCall>()
             .Where(c => c.Arguments.Length == 2)
-            .Select(c => info.GetTypeTestLowering(c.Arguments[1]))
+            .Select(c => info.GetTypeTestType(c.Arguments[1]) is { } testType
+                ? new TypeTestType(testType, info.GetExceptAlternativesForIr(c.Arguments[1]))
+                : null)
             .Where(l => l != null)
             .Select(l => l!)
             .ToList();
@@ -232,8 +238,8 @@ def f(x: object) -> bool:
         isOperatorTests[0].TestType.Should().Be(
             isinstanceTests[0].TestType,
             $"the {shape} test resolves through one classifier regardless of spelling");
-        isOperatorTests[0].Kind.Should().Be(
-            isinstanceTests[0].Kind,
+        isOperatorTests[0].Alternatives.Should().Be(
+            isinstanceTests[0].Alternatives,
             $"the {shape} test's lowering kind must not depend on the spelling");
     }
 #endif

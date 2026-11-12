@@ -318,8 +318,8 @@ def test_socket_ipv6_can_create():
 @test
 def test_socket_unsupported_family_raises_socket_error():
     # No host supports address family 999, so this runs everywhere. CPython 3.15 raises
-    # OSError (errno 97, EAFNOSUPPORT); the errno is not asserted here, since Sharpy's
-    # socket.error carries .NET's SocketError code. The CLR SocketException must not escape.
+    # OSError (errno 97 on Linux); the errno is compared with CPython by Conformance/
+    # SocketErrnoDifferentialTests, not here. The CLR SocketException must not escape.
     caught: bool = False
     try:
         socket.socket(999, socket.SOCK_STREAM)

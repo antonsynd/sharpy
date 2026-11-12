@@ -1,0 +1,72 @@
+# Independent-review line check (README item 6; `/implement-plan` > Cleanup and Report step 4): a pull
+# request into `dev` that changes code carries `Independent review @ <sha>: <verdict>; ...` in its body,
+# with no uncleared `do not merge`, reviewed shas on the PR (ancestors of the head, not on the base), a
+# fix range that starts at a reviewed sha, and no code commit (a merge by its remerge diff; any octopus)
+# after the point the line covers. build_tools/check_review_line.py decides; its docstring lists the
+# verdicts, which lines count (not code blocks, quotes or HTML comments), the one exemption besides
+# "no code path changed" (a base other than `dev`), and what it does not judge (that the review was
+# independent, that the fixes were read, the counts, an empty-diff history rewrite).
+#
+# ADVISORY as shipped: the check `review-line` is not in the `dev` ruleset's required set; making it
+# required is the owner's ruleset change. A draft PR is judged but never failed (a warning), so work
+# in progress stays green; marking it ready re-runs the check.
+#
+# Evidence, not a control: a pull_request run uses the PR's OWN copy of this workflow and of the
+# script, so a PR can change the check it is judged by. Even if made required, it would only show
+# what the line says against history; a reviewer of the PR still has to read changes to these two
+# files.
+#
+# Its own workflow, not a job in commit-subjects.yml: the body changes without a push, so this runs on
+# `edited` too, and re-running the required `subjects` check on every body edit would be noise.
+#
+# The base is `origin/<base ref>` fetched here, never the payload's `base.sha`, which is frozen when
+# the PR opens (#2626: opened on eabb480c6, merged onto 978b3d47f); against a frozen base, `dev`
+# commits merged into the lane would read as code after the review.
+#
+# Injection: the body and the base ref reach the script through env only; no PR text is interpolated
+# into the shell. The token reads the repository and nothing else. Known limit, not handled: the body
+# is one environment variable, Linux caps one at 128 KiB, and GitHub caps a body at 65,536 characters,
+# so only a body of mostly multi-byte characters could exceed it; the step then fails to start (red,
+# not a silent pass).
+name: Review Line
+
+on:
+  pull_request:
+    types: [opened, edited, synchronize, reopened, ready_for_review]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: review-line-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  review-line:
+    name: review-line
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    steps:
+    - uses: actions/checkout@v7
+      with:
+        # The reviewed shas, the base and the head must all be in the clone for the ancestry and
+        # staleness questions.
+        fetch-depth: 0
+
+    - name: Set up Python
+      uses: actions/setup-python@v7
+      with:
+        python-version-file: .python-version
+
+    - name: Check the independent-review line
+      env:
+        PR_BODY: ${{ github.event.pull_request.body }}
+        HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        BASE_REF: ${{ github.event.pull_request.base.ref }}
+        DRAFT: ${{ github.event.pull_request.draft }}
+      run: |
+        git fetch --no-tags origin "+refs/heads/$BASE_REF:refs/remotes/origin/$BASE_REF"
+        args=(--head "$HEAD_SHA" --base "origin/$BASE_REF" --base-ref "$BASE_REF")
+        if [ "$DRAFT" = "true" ]; then args+=(--draft); fi
+        python3 build_tools/check_review_line.py "${args[@]}"

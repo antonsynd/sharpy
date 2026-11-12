@@ -554,7 +554,7 @@ internal partial class TypeChecker
 
             if (narrowTo != null)
             {
-                var existing = _semanticInfo.GetOperatorLowering(assignment);
+                var existing = _semanticInfo.GetOperatorLoweringForIr(assignment);
                 var kind = existing?.Kind ?? OperatorLoweringKind.Native;
                 _semanticInfo.SetOperatorLowering(assignment, new OperatorLowering(kind, narrowTo));
             }
@@ -1958,9 +1958,7 @@ internal partial class TypeChecker
 
             var commonBase = ClampToExceptionBase(
                 FindCommonExceptionBase(alternatives, exceptionSymbol), exceptionSymbol);
-            _semanticInfo.SetTypeTestLowering(
-                annotation,
-                new TypeTestLowering(TypeTestLoweringKind.ExceptionAlternation, commonBase, alternatives));
+            _semanticInfo.SetTypeTestType(annotation, commonBase, alternatives);
             return commonBase;
         }
 

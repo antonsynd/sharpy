@@ -169,9 +169,7 @@ public class EmitterTypeAnnotationConsumptionTests
         var source = @"
             partial class RoslynEmitter {
                 private TypeSyntax MapClassifiedTypeOperand(TypeAnnotation annotation)
-                    => _context.SemanticInfo?.GetTypeTestLowering(annotation) is { } lowering
-                        ? MapTypeTestTarget(lowering)
-                        : _typeMapper.MapType(annotation);
+                    => TypeTestTypeSyntax(annotation) ?? _typeMapper.MapType(annotation);
             }";
 
         var sites = ScanSource("Control.cs", source);
