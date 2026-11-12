@@ -413,11 +413,11 @@ public class ExceptHandlerOrderDifferentialTests : IntegrationTestBase
         var pruned = new List<(int, int)>();
         foreach (var (node, irNode) in ir.Index)
         {
-            if (node is not TryStatement tryStmt || irNode is not IrPrunedTry prunedTry)
+            if (node is not TryStatement tryStmt || irNode is not IrPlannedTry plannedTry)
                 continue;
             for (var i = 0; i < tryStmt.Handlers.Length; i++)
             {
-                if (prunedTry.Handlers[i].Emitted)
+                if (plannedTry.Handlers[i].Emitted)
                     continue;
                 var handler = tryStmt.Handlers[i];
                 pruned.Add((handler.ExceptionType?.LineStart ?? handler.LineStart,

@@ -195,20 +195,60 @@ internal sealed partial class LoweringPass
             state.QualifiedNamePrefix.RemoveAt(state.QualifiedNamePrefix.Count - 1);
 
         // A `try` whose handlers (or tuple-handler types) an earlier handler already covers carries
-        // which catches to emit (#2363): the classifier the SPY0488 warning reads.
+        // which catches to emit (#2363): the classifier the SPY0488 warning reads. A bound tuple
+        // handler carries the base it catches at and the alternatives it filters on (#1235; P82
+        // tranche 3, #2443, plan-92249e D5).
         if (statement is TryStatement tryStatement
             && ExceptHandlerReachability.Classify(tryStatement, semanticInfo) is var verdicts
-            && verdicts.Any(v => v.PrunesAnything))
+            && PlanAlternations(tryStatement, verdicts, semanticInfo) is var alternations
+            && (verdicts.Any(v => v.PrunesAnything) || alternations.Any(a => a != null)))
         {
-            var plans = verdicts.Select(v => new IrHandlerPlan(!v.IsUnreachable, v.TypeReachable)).ToImmutableArray();
-            var pruned = new IrPrunedTry(plans, SpanOf(tryStatement), children);
-            state.Index[tryStatement] = pruned;
-            return pruned;
+            var plans = verdicts
+                .Select((v, i) => new IrHandlerPlan(!v.IsUnreachable, v.TypeReachable, alternations[i]))
+                .ToImmutableArray();
+            var planned = new IrPlannedTry(plans, SpanOf(tryStatement), children);
+            state.Index[tryStatement] = planned;
+            return planned;
         }
 
         var ir = new IrOpaqueStatement(statement, SpanOf(statement), children);
         state.Index[statement] = ir;
         return ir;
+    }
+
+    /// <summary>
+    /// The alternation catch of each handler of <paramref name="tryStatement"/>, aligned with its
+    /// handlers: for <c>except (A, B) as e:</c>, the common base the checker recorded on the tuple
+    /// annotation and its alternatives, restricted to the types the handler's verdict keeps (so the
+    /// emitter filters nothing); null for any other handler (#1235; P82 tranche 3, #2443,
+    /// plan-92249e D5). An <c>except*</c> try has no alternation: its handlers lower as a group.
+    /// </summary>
+    private static ImmutableArray<IrAlternationCatch?> PlanAlternations(
+        TryStatement tryStatement, ImmutableArray<ExceptHandlerVerdict> verdicts, SemanticInfo semanticInfo)
+    {
+        var handlers = tryStatement.Handlers;
+        var alternations = ImmutableArray.CreateBuilder<IrAlternationCatch?>(handlers.Length);
+        foreach (var (handler, verdict) in handlers.Zip(verdicts))
+        {
+            if (handler.IsExceptStar
+                || handler.Name == null
+                || handler.ExceptionType is not { } annotation
+                || semanticInfo.GetExceptAlternativesForIr(annotation) is not { } alternatives)
+            {
+                alternations.Add(null);
+                continue;
+            }
+
+            var bindAt = semanticInfo.GetTypeTestType(annotation)
+                ?? throw new InvalidOperationException(
+                    $"An except alternation at line {handler.LineStart} recorded no bind-at type.");
+            var emitted = alternatives
+                .Where((_, typeIndex) => verdict.TypeReachable[typeIndex])
+                .ToImmutableArray();
+            alternations.Add(new IrAlternationCatch(bindAt, emitted));
+        }
+
+        return alternations.MoveToImmutable();
     }
 
     /// <summary>

@@ -156,17 +156,21 @@ internal sealed record IrOperatorAssignment(
 }
 
 /// <summary>
-/// A lowered <c>try</c> some of whose <c>except</c> handlers, or some of whose tuple-handler types, an
-/// earlier handler already catches (#2363). Python tries handlers in order and never runs the covered
-/// part; C# refuses a catch for a type after a catch for its base (CS0160). The pass builds this node
-/// from <c>ExceptHandlerReachability</c> (the classifier the SPY0488 warning reads) only when something
-/// is covered; any other <c>try</c> stays an <see cref="IrOpaqueStatement"/>. The emitter reads
-/// <see cref="Handlers"/> and leaves the covered catches out.
+/// A lowered <c>try</c> whose catches the pass planned: some of its <c>except</c> handlers, or some of
+/// their tuple-handler types, an earlier handler already catches (#2363), or a handler is a bound
+/// tuple <c>except (A, B) as e:</c> that catches at a common base and discriminates (#1235; P82
+/// tranche 3, #2443, plan-92249e D5). Python tries handlers in order and never runs the covered
+/// part; C# refuses a catch for a type after a catch for its base (CS0160) and has no multi-type
+/// catch. Coverage comes from <c>ExceptHandlerReachability</c> (the classifier the SPY0488 warning
+/// reads), the alternation from the type the checker recorded on the tuple annotation. The pass
+/// builds this node only when something is covered or some handler is an alternation; any other
+/// <c>try</c> stays an <see cref="IrOpaqueStatement"/>. The emitter reads <see cref="Handlers"/>,
+/// leaves the covered catches out and emits each alternation as a filtered catch at its base.
 /// </summary>
 /// <param name="Handlers">One plan per handler, aligned with <c>TryStatement.Handlers</c>.</param>
 /// <param name="Span">The originating source span.</param>
 /// <param name="Children">The lowered children, in <c>GetChildNodes</c> order (totality).</param>
-internal sealed record IrPrunedTry(
+internal sealed record IrPlannedTry(
     ImmutableArray<IrHandlerPlan> Handlers,
     TextSpan Span,
     ImmutableArray<IrNode> Children) : IrStatement(Span)
@@ -176,9 +180,22 @@ internal sealed record IrPrunedTry(
 }
 
 /// <summary>
-/// What the emitter emits for one <c>except</c> handler of an <see cref="IrPrunedTry"/>.
+/// What the emitter emits for one <c>except</c> handler of an <see cref="IrPlannedTry"/>.
 /// </summary>
 /// <param name="Emitted">False when an earlier handler covers every type the handler names.</param>
 /// <param name="EmittedTypes">One flag per exception type the handler names, in source order (the
 /// elements of a tuple spelling, or its one type); empty for a bare <c>except:</c>.</param>
-internal sealed record IrHandlerPlan(bool Emitted, ImmutableArray<bool> EmittedTypes);
+/// <param name="Alternation">For a bound tuple handler <c>except (A, B) as e:</c>, the base it
+/// binds at and the alternatives it discriminates on; null for any other handler.</param>
+internal sealed record IrHandlerPlan(bool Emitted, ImmutableArray<bool> EmittedTypes, IrAlternationCatch? Alternation);
+
+/// <summary>
+/// One <c>except (A, B) as e:</c> handler lowered to <c>catch (BindAt e) when (e is A || e is B)</c>
+/// (#1235; P82 tranche 3, #2443, plan-92249e D5): C# has no multi-type catch, so it catches at the
+/// common base the checker recorded and filters on the alternatives.
+/// </summary>
+/// <param name="BindAt">The common exception base the handler binds at.</param>
+/// <param name="Alternatives">The alternatives the catch filters on, in source order, already
+/// restricted to the ones the plan emits (a tuple type an earlier handler or an earlier element of
+/// the same tuple covers is left out, aligned with <see cref="IrHandlerPlan.EmittedTypes"/>).</param>
+internal sealed record IrAlternationCatch(SemanticType BindAt, ImmutableArray<SemanticType> Alternatives);

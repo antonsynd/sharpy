@@ -110,14 +110,15 @@ internal abstract class IrTreeRewriter
                         : storeWrap;
                 }
 
-            case IrPrunedTry prunedTry:
+            case IrPlannedTry plannedTry:
                 {
-                    // A try whose covered handlers are left out (#2363) is still a try: its body and
-                    // its surviving handlers hold foldable operands, as the opaque try it replaced did.
-                    var children = RewriteChildren(prunedTry.Children, context, out var childrenChanged);
+                    // A try whose catches the pass planned (covered handlers left out, #2363; an
+                    // alternation caught at its base, plan-92249e D5) is still a try: its body and its
+                    // surviving handlers hold foldable operands, as the opaque try it replaced did.
+                    var children = RewriteChildren(plannedTry.Children, context, out var childrenChanged);
                     return childrenChanged
-                        ? new IrPrunedTry(prunedTry.Handlers, prunedTry.Span, children)
-                        : prunedTry;
+                        ? new IrPlannedTry(plannedTry.Handlers, plannedTry.Span, children)
+                        : plannedTry;
                 }
 
             case IrOptionalWrappedElement wrappedElement:

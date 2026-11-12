@@ -152,7 +152,7 @@ public class ConstFoldPassTests
     }
 
     /// <summary>
-    /// #2363: a try whose covered handlers are left out is a typed IR node (<c>IrPrunedTry</c>), and the
+    /// #2363: a try whose covered handlers are left out is a typed IR node (<c>IrPlannedTry</c>), and the
     /// shared rewriter descends into it as it did into the opaque try, so the fold reaches the try body
     /// and a surviving handler's body; the covered handler is still left out.
     /// </summary>

@@ -504,6 +504,95 @@ public class IrTotalityTests
     }
 
     /// <summary>
+    /// P82 tranche 3 (#2443, plan-92249e D5): a <c>try</c> one of whose handlers is a bound tuple
+    /// <c>except (NotFound, Denied) as e:</c> lowers to an <see cref="IrPlannedTry"/> even when nothing
+    /// is covered, its handler's plan carrying an <see cref="IrAlternationCatch"/> whose
+    /// <see cref="IrAlternationCatch.BindAt"/> is the common base the checker recorded on the tuple
+    /// annotation (<c>AppError</c>) and whose <see cref="IrAlternationCatch.Alternatives"/> are the
+    /// tuple's types, in source order. Over the alternation fixture: a try with no covered handler and
+    /// no alternation (<c>except ValueError:</c>) stays opaque, and the tree stays total.
+    /// </summary>
+    [Fact]
+    public void AlternationOnlyTry_LowersToIrPlannedTry_WithItsAlternationCatch()
+    {
+        var source = File.ReadAllText(Path.Combine(FixturesRoot, "except_tuple_binding_common_base.spy"));
+        var (model, ir) = CompileToIr(source);
+        var ast = model.Units.Values.Single(u => u.Ast != null).Ast!;
+        var astNodes = AssertIndexTotal(ast, ir.Index);
+        var info = model.SemanticInfo!;
+        var tries = astNodes.OfType<TryStatement>().OrderBy(t => SpanOf(t).Start).ToList();
+        Assert.Equal(7, tries.Count);
+
+        // The first try (in the loop): one alternation handler, nothing covered.
+        var alternationOnly = tries[0];
+        var planned = Assert.IsType<IrPlannedTry>(ir.Index[alternationOnly]);
+        var plan = Assert.Single(planned.Handlers);
+        Assert.True(plan.Emitted);
+        Assert.Equal(new[] { true, true }, plan.EmittedTypes);
+        var alternation = Assert.IsType<IrAlternationCatch>(plan.Alternation);
+        var annotation = alternationOnly.Handlers[0].ExceptionType!;
+        Assert.Equal("AppError", Assert.IsType<UserDefinedType>(alternation.BindAt).Name);
+        Assert.Equal(info.GetTypeTestType(annotation), alternation.BindAt);
+        Assert.Equal(new[] { "NotFound", "Denied" },
+            alternation.Alternatives.Select(t => Assert.IsType<UserDefinedType>(t).Name));
+        Assert.Equal(info.GetExceptAlternativesForIr(annotation)!.ToArray(), alternation.Alternatives.ToArray());
+
+        // The two inner tries of the fall-through cells are alternation-only too.
+        foreach (var inner in new[] { tries[4], tries[6] })
+        {
+            var innerPlan = Assert.Single(Assert.IsType<IrPlannedTry>(ir.Index[inner]).Handlers);
+            Assert.Equal(new[] { "NotFound", "Denied" },
+                innerPlan.Alternation!.Alternatives.Select(t => ((UserDefinedType)t).Name));
+        }
+
+        // The control: the outer tries (`except ValueError:`, `except AppError as e:`) have no
+        // covered handler and no alternation, so they stay opaque.
+        Assert.IsType<IrOpaqueStatement>(ir.Index[tries[3]]);
+        Assert.IsType<IrOpaqueStatement>(ir.Index[tries[5]]);
+        Assert.Equal(5, CollectNodes<IrPlannedTry>(ir).Count);
+    }
+
+    /// <summary>
+    /// P82 tranche 3 (#2443, plan-92249e D5): a <c>try</c> with both a covered part and an alternation
+    /// carries both on one <see cref="IrPlannedTry"/>. <c>except NotFound</c> then
+    /// <c>except (NotFound, Denied) as e:</c>: the second handler's <c>NotFound</c> is covered
+    /// (<see cref="IrHandlerPlan.EmittedTypes"/> <c>[false, true]</c>) and its alternation keeps only
+    /// <c>Denied</c> (the pass leaves the covered alternative out, so the emitter filters nothing).
+    /// The reverse order: the alternation first is whole, and the later <c>except NotFound as e:</c>
+    /// is not emitted and is no alternation.
+    /// </summary>
+    [Fact]
+    public void CoveredAndAlternationTry_CarriesBothOnOneIrPlannedTry()
+    {
+        var source = File.ReadAllText(Path.Combine(FixturesRoot, "except_tuple_binding_common_base.spy"));
+        var (model, ir) = CompileToIr(source);
+        var ast = model.Units.Values.Single(u => u.Ast != null).Ast!;
+        var astNodes = AssertIndexTotal(ast, ir.Index);
+        var tries = astNodes.OfType<TryStatement>().OrderBy(t => SpanOf(t).Start).ToList();
+
+        // "A specific handler placed first still wins."
+        var specificFirst = Assert.IsType<IrPlannedTry>(ir.Index[tries[1]]);
+        Assert.Equal(2, specificFirst.Handlers.Length);
+        Assert.True(specificFirst.Handlers[0].Emitted);
+        Assert.Null(specificFirst.Handlers[0].Alternation);
+        var covered = specificFirst.Handlers[1];
+        Assert.True(covered.Emitted);
+        Assert.Equal(new[] { false, true }, covered.EmittedTypes);
+        Assert.Equal("AppError", Assert.IsType<UserDefinedType>(covered.Alternation!.BindAt).Name);
+        Assert.Equal(new[] { "Denied" },
+            covered.Alternation.Alternatives.Select(t => Assert.IsType<UserDefinedType>(t).Name));
+
+        // "A tuple handler placed first still wins."
+        var tupleFirst = Assert.IsType<IrPlannedTry>(ir.Index[tries[2]]);
+        Assert.Equal(2, tupleFirst.Handlers.Length);
+        Assert.True(tupleFirst.Handlers[0].Emitted);
+        Assert.Equal(new[] { "NotFound", "Denied" },
+            tupleFirst.Handlers[0].Alternation!.Alternatives.Select(t => Assert.IsType<UserDefinedType>(t).Name));
+        Assert.False(tupleFirst.Handlers[1].Emitted);
+        Assert.Null(tupleFirst.Handlers[1].Alternation);
+    }
+
+    /// <summary>
     /// The index holds one node per AST expression/statement, keyed by identity, at its span. A
     /// constant integer power lowers to a leaf <see cref="IrConstant"/> whose operands are folded away
     /// and not lowered (<c>LoweringPass.TryLowerFoldedPower</c>), so the walk does not descend into it,
