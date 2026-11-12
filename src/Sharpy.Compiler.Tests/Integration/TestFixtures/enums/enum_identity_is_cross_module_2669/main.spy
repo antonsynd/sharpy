@@ -1,0 +1,18 @@
+# #2669 across a module boundary: the enum is declared in lib and reaches `is` through a
+# from-import, a module-qualified name and a nested declaring class. Every spelling is the same
+# identity comparison, answered as CPython answers it.
+import lib
+from lib import Color, Registry, favourite
+
+def main() -> None:
+    c: Color = Color.GREEN
+    print(c is Color.GREEN)
+    print(c is Color.RED)
+    print(c is lib.Color.GREEN)
+    print(c is not lib.Color.GREEN)
+    print(favourite() is c)
+    print(lib.favourite() is Color.RED)
+    level: Registry.Level = Registry.Level.HIGH
+    print(level is Registry.Level.HIGH)
+    print(level is Registry.Level.LOW)
+    print(level is lib.Registry.Level.HIGH)

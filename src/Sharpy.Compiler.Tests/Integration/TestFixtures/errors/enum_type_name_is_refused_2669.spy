@@ -1,0 +1,12 @@
+# #2669's positive control: an enum MEMBER after `is` is an identity comparison, but the enum TYPE
+# itself is still a type name, and `x is TypeName` stays retired (SPY0349, #1298).
+
+enum Color:
+    RED = 1
+    GREEN = 2
+
+
+def main() -> None:
+    c: Color = Color.RED
+    print(c is Color.RED)
+    print(c is Color)

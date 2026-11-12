@@ -1,0 +1,14 @@
+# `c is Color.RED is d` is a comparison CHAIN, not one identity comparison: its first link has no
+# single-comparison reading, so it keeps the SPY0349 refusal it had before #2669 rather than
+# comparing the bool of `c is Color.RED` against `d`. (An `is` link in a chain is not lowered at
+# all yet: `c is d is e` is SPY0519, the class #2648 tracks.)
+
+enum Color:
+    RED = 1
+    GREEN = 2
+
+
+def main() -> None:
+    c: Color = Color.RED
+    d: Color = Color.RED
+    print(c is Color.RED is d)

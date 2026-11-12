@@ -314,8 +314,10 @@ internal sealed partial class LoweringPass
                 => LowerEqualityComparison(eqOp, semanticInfo, state),
             // Any other operator — a binary or unary operator, or a super operator application — whose
             // key has a recorded operator lowering carries it on the IR node (P82 tranche 3, #2443,
-            // plan-92249e D1); with no entry it stays opaque and reads (Native, null).
-            BinaryOp or UnaryOp or FunctionCall when semanticInfo.GetOperatorLoweringForIr(expression) is { } operatorLowering
+            // plan-92249e D1); with no entry it stays opaque and reads (Native, null). A type test the
+            // checker resolved as an identity comparison against an enum member (`x is Color.RED`,
+            // #2669) is one more such operator: its entry is the identity lowering.
+            BinaryOp or UnaryOp or FunctionCall or TypeCheck when semanticInfo.GetOperatorLoweringForIr(expression) is { } operatorLowering
                 => new IrOperatorExpression(expression, operatorLowering.Kind, operatorLowering.NarrowTo,
                     semanticInfo.GetExpressionType(expression), SpanOf(expression),
                     LowerChildren(expression, semanticInfo, state)),

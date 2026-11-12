@@ -4,6 +4,7 @@
 |----------|-------------|------------|
 | `is` | Identity comparison | `object.ReferenceEquals()` |
 | `is not` | Negated identity | `!object.ReferenceEquals()` |
+| `is` / `is not` on an enum | Member identity | `==` / `!=` (same enum), `object.Equals()` (otherwise) |
 | `is None` | None check | `x is null` (reference / `T \| None`), `(object)x is null` (value type), `.IsNone` (Optional) |
 | `is not None` | Non-None check | `x is not null` (reference / `T \| None`), `(object)x is not null` (value type), `.IsSome` (Optional) |
 
@@ -81,6 +82,45 @@ def main() -> None:
 The identity spellings in the table above are unaffected: `x is None`, `x is not None` and
 `x is y` between two references all keep working, because none of them names a type.
 
+## Identity on Enums
+
+Enum members are singletons, so `is` on an enum answers what `==` on its members answers
+(owner ruling 2026-11-12, #2669). Whenever an operand's static type is an enum, `is` / `is not`
+compare the members themselves:
+
+```python
+enum Color:
+    RED = 1
+    GREEN = 2
+
+enum Size:
+    S = 1
+
+
+def main() -> None:
+    c: Color = Color.RED
+    d: Color = Color.RED
+    print(c is d)              # True — the same member
+    print(c is Color.GREEN)    # False
+    print(c is not Color.RED)  # False
+    absent: Color | None = None
+    print(absent is c)         # False — None is not a member
+    anything: object = c
+    print(anything is c)       # True — the object holds that member
+    s: Size = Size.S
+    print(c is s)              # False — members of different enums are never identical
+```
+
+- Both operands of the same enum type (either may be `E | None`) lower to the enum's own
+  `==` / `!=`; with `E | None` a `None` is identical only to another `None`.
+- An enum against any other operand — `object`, another enum type — lowers to
+  `object.Equals()`: both operands are evaluated exactly once, and members of two different
+  enums are never identical, even with equal values.
+- A member written after `is` (`c is Color.RED`) is a value, not a type name, so it is this
+  comparison and not the retired type test; `c is Color`, naming the enum type itself, is still
+  SPY0349.
+- An enum operand never draws the SPY0465 boxing warning below.
+
 ## Value-Type Boxing Warning
 
 Using `is` or `is not` with value types (e.g., `int`, `bool`, `float`, structs) emits a
@@ -97,4 +137,5 @@ x == y    # correct — value equality
 
 *Implementation*
 - *✅ Native for None checks; 🔄 Lowered for general identity.*
-- *⚠️ SPY0465 warning when both operands are value types.*
+- *✅ Enum operands: native `==` / `!=` for one enum type, `object.Equals()` otherwise (#2669).*
+- *⚠️ SPY0465 warning when both operands are value types (never for an enum operand).*

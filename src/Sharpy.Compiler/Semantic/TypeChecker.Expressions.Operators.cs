@@ -278,6 +278,9 @@ internal partial class TypeChecker
             _semanticInfo.SetOperatorLowering(binOp, new OperatorLowering(noneTestKind));
         }
 
+        // `is` / `is not` with an int-backed enum operand (#2669): identity is equality.
+        var isEnumIdentity = RecordEnumIdentity(binOp, leftType, rightType);
+
         if (binOp.Operator == BinaryOperator.NullCoalesce && leftType is OptionalType)
         {
             var kind = rightType is OptionalType
@@ -314,7 +317,10 @@ internal partial class TypeChecker
 
         // Warn when is/is not is used with value types — identity comparison is
         // meaningless because value types are boxed, so the result is always False.
-        if (binOp.Operator is BinaryOperator.Is or BinaryOperator.IsNot)
+        // Never for an enum operand (#2669): its `is` is lowered to value equality above, so the
+        // warning's claim would be false. The exemption reads the recorded decision, not
+        // IsValueType, so it holds whether or not an enum reports itself as a value type.
+        if (binOp.Operator is BinaryOperator.Is or BinaryOperator.IsNot && !isEnumIdentity)
         {
             var effectiveLeft = leftType is NullableType nl ? nl.UnderlyingType : leftType;
             var effectiveRight = rightType is NullableType nr ? nr.UnderlyingType : rightType;
@@ -2234,9 +2240,117 @@ internal partial class TypeChecker
         return type is BuiltinType { Name: "object" } or UserDefinedType { Name: "object" } or UnmappedClrType;
     }
 
+    /// <summary>
+    /// The int-backed enum an <c>is</c> operand's static type names — through <c>E | None</c>, and
+    /// through the symbol-less <see cref="UserDefinedType"/> a cross-module field type carries (the
+    /// fallback <c>TypeInferenceService.IsEnumType</c> uses) — or null for every other operand. A
+    /// string-backed enum is a reference singleton whose <c>is</c> already answers by reference.
+    /// </summary>
+    private TypeSymbol? IntBackedEnumOf(SemanticType type)
+    {
+        if (type is NullableType nullable)
+            type = nullable.UnderlyingType;
+        if (OperandView(type) is not UserDefinedType udt)
+            return null;
+
+        var symbol = udt.Symbol ?? (udt.Name != null ? _symbolTable.Lookup(udt.Name) as TypeSymbol : null);
+        return symbol is { TypeKind: TypeKind.Enum, IsStringEnum: false } ? symbol : null;
+    }
+
+    /// <summary>
+    /// How <c>is</c> / <c>is not</c> is answered when an operand is an int-backed enum (#2669, owner
+    /// ruling 2026-11-12), or null when neither is — the ONE classifier, shared by the binary operator
+    /// and the type-test spelling (<see cref="CheckTypeCheck"/>). Enum members are singletons in
+    /// Python, so identity is equality; in C# an int-backed enum is a value type and
+    /// <c>object.ReferenceEquals</c> boxes it, always False.
+    /// <list type="bullet">
+    /// <item>the same enum on both sides (either possibly <c>E | None</c>) →
+    /// <see cref="OperatorLoweringKind.EnumIdentityEquals"/>, the native (lifted) <c>==</c>;</item>
+    /// <item>an enum against anything else — <c>object</c>, another enum type, an untyped operand —
+    /// → <see cref="OperatorLoweringKind.EnumIdentityObjectEquals"/>, <c>object.Equals</c>, which
+    /// is right for every pair: a boxed member equals only the same member of the same enum. So a
+    /// same-enum pair this classifier fails to recognise as one (two import clones of one
+    /// declaration) still gets the right answer, and a different-enum pair never reaches the native
+    /// <c>==</c> C# refuses (CS0019).</item>
+    /// </list>
+    /// A <c>None</c> operand is never classified: the None test owns it (#2224).
+    /// </summary>
+    private OperatorLoweringKind? ClassifyEnumIdentity(SemanticType leftType, SemanticType rightType)
+    {
+        if (leftType is VoidType || rightType is VoidType)
+            return null;
+
+        var leftEnum = IntBackedEnumOf(leftType);
+        var rightEnum = IntBackedEnumOf(rightType);
+        if (leftEnum == null && rightEnum == null)
+            return null;
+
+        return leftEnum != null && rightEnum != null
+            && ReferenceEquals(leftEnum.DeclarationRoot(), rightEnum.DeclarationRoot())
+            ? OperatorLoweringKind.EnumIdentityEquals
+            : OperatorLoweringKind.EnumIdentityObjectEquals;
+    }
+
+    /// <summary>
+    /// Records <see cref="ClassifyEnumIdentity"/>'s answer on an <c>is</c> / <c>is not</c> node whose
+    /// operands are not the None literal, and reports whether it recorded one.
+    /// </summary>
+    private bool RecordEnumIdentity(BinaryOp binOp, SemanticType leftType, SemanticType rightType)
+    {
+        if (binOp.Operator is not (BinaryOperator.Is or BinaryOperator.IsNot)
+            || binOp.Left is NoneLiteral || binOp.Right is NoneLiteral
+            || ClassifyEnumIdentity(leftType, rightType) is not { } kind)
+            return false;
+
+        _semanticInfo.SetOperatorLowering(binOp, new OperatorLowering(kind));
+        return true;
+    }
+
+    /// <summary>
+    /// The enum whose MEMBER a type-test's dotted name spells (<c>Color.RED</c>,
+    /// <c>Outer.Color.RED</c>, <c>mod.Color.RED</c>), or null (#2669). Asked of the type resolver, the
+    /// same authority that would resolve the name as a type: the whole name must NOT resolve as a
+    /// type, its qualifier must resolve to an enum, and that enum must declare the last segment. Any
+    /// other name — a type, an unknown name, a class constant — keeps the SPY0349 refusal.
+    /// </summary>
+    private TypeSymbol? EnumOfMemberSpelledAsType(TypeAnnotation annotation)
+    {
+        var parts = annotation.NameParts;
+        if (parts.Length < 2 || !annotation.TypeArguments.IsEmpty
+            || _typeResolver.ResolveDottedTypeName(annotation.Name, escaped: false) != null)
+            return null;
+
+        var qualifier = string.Join(".", parts.Take(parts.Length - 1));
+        return _typeResolver.ResolveDottedTypeName(qualifier, escaped: false) is { TypeKind: TypeKind.Enum } enumSymbol
+            && enumSymbol.Fields.Any(f => f.Name == parts[^1])
+            ? enumSymbol
+            : null;
+    }
+
     private SemanticType CheckTypeCheck(TypeCheck typeCheck)
     {
-        CheckExpression(typeCheck.Value);
+        var valueType = CheckExpression(typeCheck.Value);
+
+        // `x is Color.RED` (#2669): the parser reads an uppercase name after `is` as a type, but an
+        // enum MEMBER is a value, and this is the identity comparison CPython runs. The parser built
+        // the expression reading of the dotted name (TypeCheck.IdentityOperand); it is checked — and
+        // the node lowered as an identity comparison — exactly when the name is an enum member.
+        if (typeCheck.IdentityOperand is { } identityOperand
+            && EnumOfMemberSpelledAsType(typeCheck.CheckType) is { } memberEnum)
+        {
+            var memberType = CheckExpression(identityOperand);
+
+            // The classifier answers from the operand types; when it has no answer for an int-backed
+            // member (its own access is left untyped — a nested enum's chain, #2038 — and the value
+            // is not an enum either), the member is still a member of `memberEnum`, and
+            // object.Equals is right for every pair.
+            var kind = memberEnum.IsStringEnum
+                ? OperatorLoweringKind.EnumMemberReferenceIdentity
+                : ClassifyEnumIdentity(OperandView(valueType), OperandView(memberType))
+                    ?? OperatorLoweringKind.EnumIdentityObjectEquals;
+            _semanticInfo.SetOperatorLowering(typeCheck, new OperatorLowering(kind));
+            return SemanticType.Bool;
+        }
 
         // #1298 (owner decision 2026-08-08): `x is TypeName` is retired as a type test.
         // `is` means reference identity only; the type-test spelling is isinstance.

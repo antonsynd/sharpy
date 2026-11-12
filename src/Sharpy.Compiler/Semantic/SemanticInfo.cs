@@ -3377,6 +3377,35 @@ public enum OperatorLoweringKind
     /// CS0037 on a value type and <c>x == null</c> would bind a struct's <c>operator ==</c>.
     /// </summary>
     BoxedNoneTest,
+
+    /// <summary>
+    /// <c>is</c> / <c>is not</c> whose operands are the SAME int-backed enum type, either side
+    /// possibly <c>E | None</c> (#2669, owner ruling 2026-11-12). An enum member is a singleton in
+    /// Python, so identity is equality; an int-backed enum is a C# value type, so
+    /// <c>object.ReferenceEquals</c> boxes each operand and always answers False. Emitted as the
+    /// native <c>l == r</c> / <c>l != r</c> — the enum's built-in operator, lifted over
+    /// <c>Nullable&lt;E&gt;</c> (None is None → True, None against a member → False).
+    /// </summary>
+    EnumIdentityEquals,
+
+    /// <summary>
+    /// <c>is</c> / <c>is not</c> with an int-backed enum operand against anything that is not the same
+    /// enum type — <c>object</c>, another enum type, a type parameter, any other value (#2669).
+    /// Emitted as <c>object.Equals(l, r)</c> / <c>!object.Equals(l, r)</c>: each operand is evaluated
+    /// once, a boxed enum equals only a boxed member of the same enum with the same value (an
+    /// <c>object</c> holding the member → True; a different enum type → False, the owner's ruling).
+    /// </summary>
+    EnumIdentityObjectEquals,
+
+    /// <summary>
+    /// A <see cref="Parser.Ast.TypeCheck"/> the checker resolved as an identity comparison against an
+    /// enum MEMBER (<c>t is Tone.A</c>, parsed as a type test because the member is spelled like a
+    /// type name) whose operands need no enum lowering — a string-backed enum's members are reference
+    /// singletons (#2669). Emitted as <c>object.ReferenceEquals(value, member)</c>, exactly what the
+    /// binary <c>is</c> emits with no record; the kind exists so the emitter reads "this type-test node
+    /// is an identity comparison" as a recorded fact instead of inferring it from the node's shape.
+    /// </summary>
+    EnumMemberReferenceIdentity,
     OptionalCoalesceBothOptional,
     OptionalUnwrapOr,
     StringRepeatStrLeft,
