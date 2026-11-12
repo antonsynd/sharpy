@@ -105,6 +105,12 @@ socket-error-timeout-distinct-classes).
 ### `from_socket_exception(ex: SocketException) -> error`
 
 Create a socket error from a .NET SocketException.
+errno is the platform's own code, `SocketException.NativeErrorCode`: the POSIX errno on
+Unix and the WinSock code on Windows, which is what CPython reports on each. The
+`SocketError` value is kept instead for a name resolution failure (`HostNotFound`,
+`TryAgain`, `NoRecovery`, `NoData`), whose NativeErrorCode on Unix is not an `EAI_*`
+code, and wherever NativeErrorCode is not positive (an internal value on Unix, e.g.
+for `SocketError.SocketError`) (docs/deviations.yaml, socket-errno-is-dotnet-socket-error).
 
 ## timeout
 
