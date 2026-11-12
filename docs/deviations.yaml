@@ -2468,8 +2468,8 @@ deviations:
     category: stdlib
     audience: python
     severity: none
-    python_behavior: "`OSError.errno` on a socket failure is the number the platform's own call returned: on Linux `socket.socket(999)` gives 97 (`EAFNOSUPPORT`) and an invalid socket type or protocol gives 22 (`EINVAL`), the value `socket(2)` itself returns; a timeout (`TimeoutError`) carries `errno` None; a name-resolution failure is `socket.gaierror` with an `EAI_*` code (-2, `EAI_NONAME`, on Linux)."
-    sharpy_behavior: "`error.from_socket_exception` carries `SocketException.NativeErrorCode` (owner ruling 2026-11-12, \"POSIX value\"): the POSIX errno on Unix and the WinSock code on Windows, so a refused connect is 111, an address in use 98, `socket.socket(999)` 97, as in CPython. Three cells still differ. (1) An invalid socket type or protocol: .NET checks the type and protocol itself before `socket(2)` and reports `EPROTOTYPE` (91) for the type and `EPROTONOSUPPORT` (93) for the protocol, where CPython's `socket(2)` gets `EINVAL` (22); the number is .NET's own native errno, not a mapping, and is kept. (2) A timeout: `errno` is an int, so where python has None Sharpy has the `SocketError` value 10060 (`TimedOut`) on a .NET timeout and 0 on the select-timeout path of `connect` and `accept`. (3) A name-resolution failure keeps the `SocketError` value (11001, `HostNotFound`; 11002-11004), because .NET's NativeErrorCode there is an internal value on Unix (-131073 for `HostNotFound`), not an `EAI_*` code; that the TYPE is plain `socket.error` where python raises `socket.gaierror` from `connect` is the open exception-type class #2556. Measured @ ec5cc378b + this change (Debug sharpyc), python3.15.2; compared per trigger by `src/Sharpy.Stdlib.Tests/Conformance/SocketErrnoDifferentialTests.cs`. Removal path: (1) and (3) need a mapping of .NET's codes to the platform's (`EINVAL` for a rejected type or protocol; `EAI_*` per platform), (2) needs `errno: int | None`, a public API decision."
+    python_behavior: "`OSError.errno` on a socket failure is the errno the platform's own call returned (on Linux: `socket.socket(999)` 97 `EAFNOSUPPORT`; an invalid socket type or protocol 22 `EINVAL`, what `socket(2)` returns; a non-blocking `connect` 115 `EINPROGRESS`; an unknown `setsockopt`/`getsockopt` option 92 `ENOPROTOOPT`; a kernel timeout on a blocking `connect` 110 `ETIMEDOUT`); a `socket.timeout` (`TimeoutError`) raised for an expired `settimeout` carries `errno` None; a name-resolution failure is `socket.gaierror` with an `EAI_*` code (-2, `EAI_NONAME`, on Linux)."
+    sharpy_behavior: "The rule: `errno` is .NET's `SocketException.NativeErrorCode` (`error.from_socket_exception`, owner ruling 2026-11-12, \"POSIX value\"). It equals CPython's wherever .NET surfaces the kernel's errno (refused connect 111, address in use 98, non-local bind 99, bind twice 22, send or recv unconnected 32/107, `shutdown` unconnected 107, send after `SHUT_WR` 32, `listen` on UDP 95, an oversized datagram 90, non-blocking `recv`/`accept` 11, `socket.socket(999)` 97). It differs where .NET rejects the call itself or folds one errno into another; every measured differing cell (Linux, CPython 3.15.2): (1) `socket.socket(AF_INET, 999)` 22 vs 91 (.NET's own `EPROTOTYPE`); (2) `socket.socket(AF_INET, SOCK_STREAM, 999)` and `SOCK_DGRAM, 999` 22 vs 93 (`EPROTONOSUPPORT`); (3) a non-blocking `connect` 115 (`BlockingIOError`) vs 11: .NET turns `EINPROGRESS` into `WouldBlock`, whose native code is `EAGAIN`; (4) `setsockopt(SOL_SOCKET, 9999, 1)` and `getsockopt(SOL_SOCKET, 9999)` 92 vs 95: .NET rejects the unknown option with `EOPNOTSUPP`; (5) a timeout: `errno` is an int, so where python has None Sharpy has 10060 (`SocketError.TimedOut`, the `when TimedOut` arms) and 0 on the select-timeout path of `connect` and `accept` (moving to `errno: int | None` is a separate later change, owner ruling); (6) INFERRED, not probed (needs an unanswering peer): a kernel `ETIMEDOUT` on a blocking `connect` is `OSError` 110 in python but goes through the `when TimedOut` arm to `socket.timeout` 10060; (7) a name-resolution failure keeps the `SocketError` value (11001 `HostNotFound`; 11002-11004), because .NET's NativeErrorCode there is not an `EAI_*` code (-131073 for `HostNotFound`, 11 for `TryAgain`, 61 for `NoData`); its number and its TYPE (plain `socket.error` from `connect` where python raises `socket.gaierror`) are fixed together later under #2556. The seam also keeps the `SocketError` value wherever NativeErrorCode is not positive. Measured @ 5318210a3 (Debug sharpyc), python3.15.2; cells (1)-(5) compared per trigger by `src/Sharpy.Stdlib.Tests/Conformance/SocketErrnoDifferentialTests.cs`. Removal path: per cell, a mapping of the code .NET reports to the one the platform's call returns (`EINVAL`, `EINPROGRESS`, `ENOPROTOOPT`, `EAI_*`); (5) by `errno: int | None`."
     spec_ref: null
     existing_diagnostic: null
     planned_diagnostic: null
@@ -2488,6 +2488,19 @@ deviations:
             socket.socket(socket.AF_INET, socket.SOCK_STREAM, 999)
         except OSError as e:
             print(e.errno)            # 22 (EINVAL)
+        a = socket.socket()
+        a.bind(("127.0.0.1", 0))
+        a.listen(1)
+        b = socket.socket()
+        b.setblocking(False)
+        try:
+            b.connect(("127.0.0.1", a.getsockname()[1]))
+        except OSError as e:
+            print(e.errno)            # 115 (EINPROGRESS)
+        try:
+            socket.socket().setsockopt(socket.SOL_SOCKET, 9999, 1)
+        except OSError as e:
+            print(e.errno)            # 92 (ENOPROTOOPT)
         s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         s.bind(("127.0.0.1", 0))
         s.settimeout(0.2)
@@ -2511,6 +2524,19 @@ deviations:
                 socket.socket(socket.AF_INET, socket.SOCK_STREAM, 999)
             except socket.error as e:
                 print(e.errno)            # 93 (EPROTONOSUPPORT)
+            a = socket.socket()
+            a.bind(("127.0.0.1", 0))
+            a.listen(1)
+            b = socket.socket()
+            b.setblocking(False)
+            try:
+                b.connect(("127.0.0.1", a.getsockname()[1]))
+            except socket.error as e:
+                print(e.errno)            # 11 (EAGAIN: .NET's WouldBlock)
+            try:
+                socket.socket().setsockopt(socket.SOL_SOCKET, 9999, 1)
+            except socket.error as e:
+                print(e.errno)            # 95 (EOPNOTSUPP)
             s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
             s.bind(("127.0.0.1", 0))
             s.settimeout(0.2)
