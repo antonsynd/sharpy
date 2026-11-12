@@ -14,8 +14,9 @@ namespace Sharpy.Compiler.Tests.Properties.Differential;
 /// tested against every container kind exactly as the <c>T</c> needle is, and its <c>None</c> answers what
 /// CPython answers — <c>False</c> for <c>in</c> (an equality scan finds no element equal to <c>None</c>),
 /// <c>True</c> for <c>not in</c>, and <c>TypeError</c> at run time where CPython raises (a <c>str</c> or
-/// <c>bytes</c> container) — owner rulings 2026-11-12, which cover the literal <c>None</c> needle too. Never
-/// SPY0222, SPY0908 or a CLR exception.
+/// <c>bytes</c> container) — owner rulings 2026-11-12. Never SPY0222, SPY0908 or a CLR exception. The literal
+/// <c>None</c> into a non-optional slot is refused (SPY0222) by owner ruling A, 2026-11-12; into an optional element
+/// type it is accepted (the plan's named control, not generated here).
 /// <para><b>Generated, never listed.</b> The full product of five axes, with no exclusion; the count is asserted
 /// from the axis sizes, not the generator:</para>
 /// <list type="bullet">
@@ -32,10 +33,10 @@ namespace Sharpy.Compiler.Tests.Properties.Differential;
 /// comprehension filter).</item>
 /// </list>
 /// <para><b>Expected map</b> (<see cref="Expect"/>). COMPARED cells print CPython 3.15's values (the
-/// <c>.python-version</c> pin), the literal <c>None</c> included (owner ruling 2026-11-12). HAND-EXPECTED cells — a
-/// typed needle the slot cannot hold (<see cref="SlotHolds"/>), refused by SPY0222 under the deviation
-/// <c>membership-needle-type-mismatch</c>, and chain links (SPY0519, #2648) — are counted apart in the summary
-/// line. One program per payload is compiled;
+/// <c>.python-version</c> pin). HAND-EXPECTED cells — a typed needle the slot cannot hold (<see cref="SlotHolds"/>),
+/// refused by SPY0222 under the deviation <c>membership-needle-type-mismatch</c> (owner ruling B for bool, float and
+/// decimal into an <c>int</c> slot), the literal <c>None</c> (SPY0222, ruling A), and chain links (SPY0519, #2648) —
+/// are counted apart in the summary line. One program per payload is compiled;
 /// cells refused at compile time are attributed by line, removed and the rest recompiled until it runs.</para>
 /// <para><b>Known red.</b> <c>optional-membership-differential-allowlist.txt</c> (Conformance): one row per
 /// <c>container/form</c>, each pinning its exact divergent cells and their observed Sharpy verdicts (<c>cells=</c>,
@@ -376,8 +377,8 @@ public class OptionalMembershipDifferentialTests : IntegrationTestBase
     /// The case → expected map. COMPARED: a needle the slot holds, plain or <c>T | None</c>, prints CPython's values —
     /// <c>False</c> for a None needle in an equality scan (owner ruling 1, #2635) and <c>TypeError</c> for a None
     /// needle in <c>str</c>/<c>bytes</c> (owner ruling 2: accepted, TypeError at run time); so does the literal
-    /// <c>None</c> (owner rulings 2026-11-12: "None in anything is false" and, for str/bytes, "follow CPython
-    /// here"). HAND-EXPECTED, by
+    /// HAND-EXPECTED, by owner ruling A (2026-11-12): the literal <c>None</c> into a non-optional slot (every generated
+    /// container) is refused by SPY0222. HAND-EXPECTED, by
     /// the deviation <c>membership-needle-type-mismatch</c> in <c>docs/deviations.yaml</c> ("a value the element type
     /// cannot hold can never be a member, so the test is a type error rather than a constant False"): a typed needle
     /// the slot cannot hold (<see cref="SlotHolds"/>) is refused by SPY0222. HAND-EXPECTED, out of this contract: a
@@ -387,11 +388,11 @@ public class OptionalMembershipDifferentialTests : IntegrationTestBase
     {
         if (cell.Form == Form.NoneLiteral && cell.Position != Position.ChainLink)
         {
-            // Owner, 2026-11-12: a literal None needle is accepted — "if we stay consistent with None in anything is
-            // false, and None not in anything is true, then sure". It is no longer refused under the deviation
-            // membership-needle-type-mismatch.
-            // For str/bytes the owner ruled the same day: "follow CPython here" — TypeError at run time.
-            return new Expectation(true, NoCodes, "literal None: owner rulings 2026-11-12 (CPython's answer, TypeError for str/bytes)");
+            // Owner ruling A, 2026-11-12 (superseding the day's earlier literal-None rulings): "switch to the table,
+            // refuse literal None for non-optional containers, makes the most sense". Every generated container's
+            // element type is non-optional (the literal into an optional element is the plan's named control), so the
+            // literal is refused at compile time, like any needle that can never match. The chain link inherits it.
+            return new Expectation(false, Spy0222, "literal None into a non-optional slot: owner ruling A (2026-11-12)");
         }
 
         if (cell.Position == Position.ChainLink)
@@ -530,7 +531,8 @@ public class OptionalMembershipDifferentialTests : IntegrationTestBase
         }
 
         Output.WriteLine($"{payloads.Count} payloads, {cells.Count} cases: {compared} compared with CPython, {handExpected} "
-            + $"hand-expected (slot mismatches by deviation membership-needle-type-mismatch; chain links by #2648); "
+            + $"hand-expected (slot mismatches by deviation membership-needle-type-mismatch; literal None by owner ruling A; "
+            + "chain links by #2648); "
             + $"{divergences.Count} divergent in {actualByRow.Count} rows; allowlist {allowlist.Count} rows; "
             + $"{problems.Count} pin problem line(s). Every divergence: {divergencePath}");
 
