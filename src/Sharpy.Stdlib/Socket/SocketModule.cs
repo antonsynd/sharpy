@@ -90,6 +90,26 @@ namespace Sharpy.SocketModule
         }
 
         /// <summary>
+        /// Whether `value` is the number of one of an int-backed enum's `members` (Enum.GetValues).
+        /// </summary>
+        internal static bool _IsMember(global::System.Array members, int value)
+        {
+            int i = 0;
+            while (i < members.Length)
+            {
+                var member = members.GetValue(i);
+                if (member != null && ((int)member) == value)
+                {
+                    return true;
+                }
+
+                i = i + 1;
+            }
+
+            return false;
+        }
+
+        /// <summary>
         /// The socket.error for a .NET SocketException raised at `call`: the seam's
         /// (`error.from_socket_exception`), except where .NET reports a code whose NativeErrorCode is
         /// not the errno the platform's call returns there.
@@ -752,8 +772,8 @@ namespace Sharpy.SocketModule
         /// </summary>
         private bool _KernelSaysEnoprotoopt(int level, int optname, bool setting)
         {
-            bool levelKnown = global::System.Enum.IsDefined(global::System.Net.Sockets.SocketOptionLevel.Socket.GetType(), (global::System.Net.Sockets.SocketOptionLevel)level);
-            bool nameKnown = global::System.Enum.IsDefined(global::System.Net.Sockets.SocketOptionName.Debug.GetType(), (global::System.Net.Sockets.SocketOptionName)optname);
+            bool levelKnown = global::Sharpy.SocketModule.SocketModuleModule._IsMember(global::System.Enum.GetValues(global::System.Net.Sockets.SocketOptionLevel.Socket.GetType()), level);
+            bool nameKnown = global::Sharpy.SocketModule.SocketModuleModule._IsMember(global::System.Enum.GetValues(global::System.Net.Sockets.SocketOptionName.Debug.GetType()), optname);
             if (levelKnown && nameKnown)
             {
                 return false;

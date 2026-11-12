@@ -163,6 +163,16 @@ def _timed_out(ex: SocketException, own_timeout: bool) -> timeout:
         return timeout("timed out", ex)
     return timeout(ex.Message, ex, error.from_socket_exception(ex).errno)
 
+def _is_member(members: Array, value: int) -> bool:
+    """Whether `value` is the number of one of an int-backed enum's `members` (Enum.GetValues)."""
+    i: int = 0
+    while i < members.length:
+        member = members.get_value(i)
+        if member is not None and (member as! int) == value:
+            return True
+        i = i + 1
+    return False
+
 def _call_error(ex: SocketException, call: str) -> error:
     """The socket.error for a .NET SocketException raised at `call`: the seam's
     (`error.from_socket_exception`), except where .NET reports a code whose NativeErrorCode is
@@ -404,8 +414,8 @@ class socket(IDisposable):
         left as .NET reports it). A defined member .NET has no Linux mapping for is not told
         apart here.
         """
-        level_known: bool = Enum.is_defined(SocketOptionLevel.Socket.get_type(), level as! SocketOptionLevel)
-        name_known: bool = Enum.is_defined(SocketOptionName.Debug.get_type(), optname as! SocketOptionName)
+        level_known: bool = _is_member(Enum.get_values(SocketOptionLevel.Socket.get_type()), level)
+        name_known: bool = _is_member(Enum.get_values(SocketOptionName.Debug.get_type()), optname)
         if level_known and name_known:
             return False
         if level == SOL_SOCKET:

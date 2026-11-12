@@ -280,6 +280,32 @@ public class SocketErrnoDifferentialTests
         Assert.Equal(linuxErrno, e.Errno);
     }
 
+    /// <summary>
+    /// The unknown-option rule rewrites only an option .NET refused because it has no enum member for the
+    /// level or name. A member .NET has but does not map on Linux (<c>UseLoopback</c>, 64) is refused by .NET
+    /// with 95 too and has no CPython counterpart, so it keeps 95 (docs/deviations.yaml cell 6); the
+    /// differential cannot witness this guard (every probed defined option reaches the kernel), so it is
+    /// pinned here, Sharpy only.
+    /// </summary>
+    [SkippableTheory]
+    [InlineData(65535, 9999, true, 92)]
+    [InlineData(65535, 9999, false, 92)]
+    [InlineData(65535, (int)SocketOptionName.UseLoopback, true, 95)]
+    [InlineData(65535, (int)SocketOptionName.UseLoopback, false, 95)]
+    public void UnknownOption_OnlyAnOptionWithNoEnumMember_IsRewritten(int level, int optname, bool setting, int linuxErrno)
+    {
+        TestPreconditions.RequireOrSkip(OperatingSystem.IsLinux(), "the pinned numbers are Linux's errno values.");
+        using var s = new global::Sharpy.SocketModule.Socket(2, 1, 0);
+        var e = Assert.ThrowsAny<global::Sharpy.SocketModule.Error>(() =>
+        {
+            if (setting)
+                s.Setsockopt(level, optname, 1);
+            else
+                s.Getsockopt(level, optname);
+        });
+        Assert.Equal(linuxErrno, e.Errno);
+    }
+
     internal readonly record struct Outcome(string Type, string? Errno);
 
     internal sealed class Run
