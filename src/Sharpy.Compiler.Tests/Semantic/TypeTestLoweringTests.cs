@@ -39,7 +39,7 @@ def f(x: object) -> bool:
     return isinstance(x, int)
 ");
 
-        lowering.Kind.Should().Be(TypeTestLoweringKind.ClosedType);
+        lowering.Alternatives.Should().BeNull("a closed-type test records no except alternation");
         lowering.TestType.Should().Be(SemanticType.Int);
     }
 
@@ -54,7 +54,7 @@ def f(x: object) -> bool:
     return isinstance(x, Animal)
 ");
 
-        lowering.Kind.Should().Be(TypeTestLoweringKind.ClosedType);
+        lowering.Alternatives.Should().BeNull("a closed-type test records no except alternation");
         lowering.TestType.Should().BeOfType<UserDefinedType>()
             .Which.Name.Should().Be("Animal");
     }
@@ -83,7 +83,7 @@ def f(x: list[int]) -> bool:
     return isinstance(x, list)
 ");
 
-        lowering.Kind.Should().Be(TypeTestLoweringKind.ClosedType);
+        lowering.Alternatives.Should().BeNull("a closed-type test records no except alternation");
         var generic = lowering.TestType.Should().BeOfType<GenericType>().Which;
         generic.Name.Should().Be("list");
         generic.TypeArguments.Should().ContainSingle().Which.Should().Be(SemanticType.Int);
@@ -100,7 +100,7 @@ def f(x: object) -> bool:
         // The written spelling names the instantiation, and .NET reifies it, so the test can be exact
         // rather than erased. CPython rejects this form outright (parameterized generics are not
         // usable in isinstance there); Sharpy accepts it because its generics are real runtime types.
-        lowering.Kind.Should().Be(TypeTestLoweringKind.ClosedType);
+        lowering.Alternatives.Should().BeNull("a closed-type test records no except alternation");
         var generic = lowering.TestType.Should().BeOfType<GenericType>().Which;
         generic.Name.Should().Be("list");
         generic.TypeArguments.Should().ContainSingle().Which.Should().Be(SemanticType.Int);
@@ -122,7 +122,7 @@ def f(b: Box[int]) -> bool:
 
         // #1207's core case: `Box` alone names no runtime type, but the subject's own static type
         // determines the vector, so the test is against Box[int].
-        lowering.Kind.Should().Be(TypeTestLoweringKind.ClosedType);
+        lowering.Alternatives.Should().BeNull("a closed-type test records no except alternation");
         var generic = lowering.TestType.Should().BeOfType<GenericType>().Which;
         generic.Name.Should().Be("Box");
         generic.TypeArguments.Should().ContainSingle().Which.Should().Be(SemanticType.Int);
@@ -144,7 +144,7 @@ def f(x: object) -> bool:
 
         // The spelling the open-generic rejection recommends. It has to work, or that diagnostic
         // names a remedy that does not (#1207).
-        lowering.Kind.Should().Be(TypeTestLoweringKind.ClosedType);
+        lowering.Alternatives.Should().BeNull("a closed-type test records no except alternation");
         var generic = lowering.TestType.Should().BeOfType<GenericType>().Which;
         generic.Name.Should().Be("Box");
         generic.TypeArguments.Should().ContainSingle().Which.Should().Be(SemanticType.Str);
@@ -160,7 +160,7 @@ def f(x: object) -> bool:
     return (isinstance)(x, str)
 ");
 
-        lowering.Kind.Should().Be(TypeTestLoweringKind.ClosedType);
+        lowering.Alternatives.Should().BeNull("a closed-type test records no except alternation");
         lowering.TestType.Should().Be(SemanticType.Str);
     }
 
@@ -179,7 +179,7 @@ def main() -> None:
 
         var lowerings = TypeTestLowerings(module, info);
         lowerings.Should().HaveCount(1);
-        lowerings[0].Kind.Should().Be(TypeTestLoweringKind.ClosedType);
+        lowerings[0].Alternatives.Should().BeNull("a closed-type test records no except alternation");
         lowerings[0].TestType.Should().BeOfType<Sharpy.Compiler.Semantic.TupleType>();
         var tupleType = (Sharpy.Compiler.Semantic.TupleType)lowerings[0].TestType;
         tupleType.ElementTypes.Should().HaveCount(2);
@@ -334,13 +334,13 @@ def main() -> None:
 
         var lowerings = TypeTestLowerings(libUnit.Ast!, merged!);
         lowerings.Should().ContainSingle("the type test in lib.spy must survive the per-file -> project merge");
-        lowerings[0].Kind.Should().Be(TypeTestLoweringKind.ClosedType);
+        lowerings[0].Alternatives.Should().BeNull("a closed-type test records no except alternation");
         lowerings[0].TestType.Should().Be(SemanticType.Int);
     }
 
     // --- Harness -------------------------------------------------------------------------------
 
-    private static TypeTestLowering SingleTypeTest(string source)
+    private static TypeTestType SingleTypeTest(string source)
     {
         var (module, info) = Analyze(source);
         var lowerings = TypeTestLowerings(module, info);
@@ -348,12 +348,14 @@ def main() -> None:
         return lowerings[0];
     }
 
-    private static List<TypeTestLowering> TypeTestLowerings(Module module, SemanticInfo info)
+    private static List<TypeTestType> TypeTestLowerings(Module module, SemanticInfo info)
     {
         return AstDescendants.SelfAndDescendants(module)
             .OfType<FunctionCall>()
             .Where(c => c.Arguments.Length == 2)
-            .Select(c => info.GetTypeTestLowering(c.Arguments[1]))
+            .Select(c => info.GetTypeTestType(c.Arguments[1]) is { } testType
+                ? new TypeTestType(testType, info.GetExceptAlternativesForIr(c.Arguments[1]))
+                : null)
             .Where(l => l != null)
             .Select(l => l!)
             .ToList();

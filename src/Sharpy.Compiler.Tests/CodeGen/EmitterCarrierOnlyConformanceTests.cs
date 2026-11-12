@@ -32,7 +32,7 @@ namespace Sharpy.Compiler.Tests.CodeGen;
 /// names: the standalone symbol records, <c>SemanticInfo</c>, <c>CodeGenInfo</c> and
 /// <c>SemanticBinding</c>. From those it takes the transitive closure
 /// of the semantic types appearing in their public signatures — so the node-keyed fact records
-/// (<c>BinaryOpLowering</c>, <c>NarrowedReadLowering</c>, <c>TypeTestLowering</c>, …) and the
+/// (<c>BinaryOpLowering</c>, <c>NarrowedReadLowering</c>, <c>TypeTestType</c>, …) and the
 /// enums they carry join automatically. Adding a new fact record and reading it from CodeGen needs
 /// no edit here; adding a new <em>decision-maker</em> and calling it from CodeGen fails this test.
 /// </para>

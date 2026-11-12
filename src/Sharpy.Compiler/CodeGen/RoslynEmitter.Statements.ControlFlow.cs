@@ -1784,13 +1784,12 @@ internal partial class RoslynEmitter
                 // bind at and the alternatives to discriminate on, so this catches at that base and
                 // filters: catch (Base e) when (e is A || e is B). Handler order is unchanged, which is
                 // what keeps CPython's "first matching handler wins" (verified with python3).
-                if (_context.SemanticInfo?.GetTypeTestLowering(handler.ExceptionType) is
-                    { Kind: TypeTestLoweringKind.ExceptionAlternation, Alternatives: { } alternatives }
-                    alternation
+                // A transport read (#2443): plan-92249e T7 moves the alternation onto IrPlannedTry.
+                if (_context.SemanticInfo?.GetExceptAlternativesForIr(handler.ExceptionType) is { } alternatives
                     && handler.Name != null)
                 {
                     var emittedAlternatives = alternatives.Where((_, typeIndex) => TypeEmitted(typeIndex)).ToList();
-                    result.Add(GenerateAlternationCatchClause(handler, alternation, emittedAlternatives, filterClause));
+                    result.Add(GenerateAlternationCatchClause(handler, emittedAlternatives, filterClause));
                     continue;
                 }
 
@@ -1842,9 +1841,7 @@ internal partial class RoslynEmitter
     /// kept only for robustness.
     /// </summary>
     private TypeSyntax MapTestAssertTypeOperand(Expression typeOperand)
-        => _context.SemanticInfo?.GetTypeTestLowering(typeOperand) is { } lowering
-            ? MapTypeTestTarget(lowering)
-            : _typeMapper.MapTypeFromExpression(typeOperand);
+        => TypeTestTypeSyntax(typeOperand) ?? _typeMapper.MapTypeFromExpression(typeOperand);
 
     /// <summary>
     /// Emits <c>except (A, B) as e:</c> as <c>catch (Base e) when (e is A || e is B)</c>, applying the
@@ -1853,7 +1850,6 @@ internal partial class RoslynEmitter
     /// </summary>
     private CatchClauseSyntax GenerateAlternationCatchClause(
         ExceptHandler handler,
-        TypeTestLowering alternation,
         IReadOnlyList<SemanticType> alternatives,
         CatchFilterClauseSyntax? userFilter)
     {
@@ -1877,7 +1873,11 @@ internal partial class RoslynEmitter
                 ParenthesizedExpression(userFilter.FilterExpression)));
 
         return CatchClause(
-            CatchDeclaration(MapTypeTestTypeName(alternation.TestType), Identifier(exceptionVar)),
+            CatchDeclaration(
+                TypeTestTypeSyntax(handler.ExceptionType!)
+                    ?? throw new InvalidOperationException(
+                        $"An except alternation at line {handler.LineStart} recorded no bind-at type."),
+                Identifier(exceptionVar)),
             filter,
             catchBlock);
     }

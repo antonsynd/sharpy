@@ -1142,9 +1142,8 @@ internal partial class RoslynEmitter
             // pattern and the Optional<T> argument), and re-deriving it from the annotation here is
             // what emitted the unspellable open generic (CS0305) — so a missing fact is an ICE, not
             // a fallback (Critical Rule 2).
-            var baseTypeSyntax = _context.SemanticInfo?.GetTypeTestLowering(coercion.TargetType) is { } targetLowering
-                ? MapTypeTestTarget(targetLowering)
-                : throw new InvalidOperationException(
+            var baseTypeSyntax = TypeTestTypeSyntax(coercion.TargetType)
+                ?? throw new InvalidOperationException(
                     $"No type-test lowering was recorded for the cast target "
                     + $"'{coercion.TargetType.Name}' at line {coercion.LineStart}, column "
                     + $"{coercion.ColumnStart}. CheckTypeCoercion records one for every target it "
@@ -1292,8 +1291,6 @@ internal partial class RoslynEmitter
     /// reader's shape (#1235).
     /// </summary>
     private TypeSyntax MapClassifiedTypeOperand(TypeAnnotation annotation)
-        => _context.SemanticInfo?.GetTypeTestLowering(annotation) is { } lowering
-            ? MapTypeTestTarget(lowering)
-            : _typeMapper.MapType(annotation);
+        => TypeTestTypeSyntax(annotation) ?? _typeMapper.MapType(annotation);
 
 }

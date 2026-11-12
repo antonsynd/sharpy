@@ -1958,9 +1958,7 @@ internal partial class TypeChecker
 
             var commonBase = ClampToExceptionBase(
                 FindCommonExceptionBase(alternatives, exceptionSymbol), exceptionSymbol);
-            _semanticInfo.SetTypeTestLowering(
-                annotation,
-                new TypeTestLowering(TypeTestLoweringKind.ExceptionAlternation, commonBase, alternatives));
+            _semanticInfo.SetTypeTestType(annotation, commonBase, alternatives);
             return commonBase;
         }
 

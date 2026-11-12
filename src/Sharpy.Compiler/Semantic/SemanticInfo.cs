@@ -125,9 +125,9 @@ public class SemanticInfo : ISemanticQuery
     private readonly ConcurrentDictionary<Expression, CharMaterializationKind> _charMaterializations =
         new(ReferenceEqualityComparer.Instance);
 
-    // Map a TYPE OPERAND node to the type test codegen must emit. Keyed on the operand node so the
-    // emitter and both narrowing resolvers read ONE decided type and none of them re-derives what the
-    // operand's syntax denotes (#1207, #1213, Critical Rule 2 pattern (b)).
+    // Map a TYPE OPERAND node to the type it tests (a type fact, R-MX). Keyed on the operand node so
+    // code generation and both narrowing resolvers read ONE decided type and none of them re-derives
+    // what the operand's syntax denotes (#1207, #1213, Critical Rule 2 pattern (b)).
     //
     // The key is `Node`, not `Expression`, because a type operand is written two ways: as an
     // expression (`isinstance(x, T)`'s second argument, the same node an IsType narrowing fact
@@ -136,7 +136,7 @@ public class SemanticInfo : ISemanticQuery
     //
     // Absent ⇒ the operand is not a classified type test: either the callee is a shadowed
     // `isinstance`, or the shape is one the classifier left to the ordinary runtime-call path.
-    private readonly ConcurrentDictionary<Node, TypeTestLowering> _typeTestLowerings =
+    private readonly ConcurrentDictionary<Node, TypeTestType> _typeTestTypes =
         new(ReferenceEqualityComparer.Instance);
 
     // #1816: the loop a break/continue binds to. Keyed on the transfer node; recorded by
@@ -1074,27 +1074,51 @@ public class SemanticInfo : ISemanticQuery
     }
 
     /// <summary>
-    /// Records the type test codegen must emit for a type operand — an <c>isinstance</c> argument or
-    /// the <see cref="TypeAnnotation"/> of an <c>is</c>/<c>as?</c>/<c>as!</c>, a match class pattern
-    /// or an <c>except</c> clause. Set by the TypeChecker's type-operand classifier, which is the
-    /// single authority on what the operand denotes; the emitter switches on
-    /// <see cref="TypeTestLowering.Kind"/> and the narrowing resolvers read
-    /// <see cref="TypeTestLowering.TestType"/>, so the emitted test and the narrowed type agree by
-    /// construction (#1207, #1213, #1235).
+    /// Records the type a type operand tests — an <c>isinstance</c> argument or the
+    /// <see cref="TypeAnnotation"/> of an <c>is</c>/<c>as?</c>/<c>as!</c>, a match class pattern or an
+    /// <c>except</c> clause. Set by the TypeChecker's type-operand classifier, which is the single
+    /// authority on what the operand denotes; code generation tests against
+    /// <paramref name="testType"/> and the narrowing resolvers narrow to it, so the emitted test and
+    /// the narrowed type agree by construction (#1207, #1213, #1235).
     /// </summary>
-    public void SetTypeTestLowering(Node typeOperand, TypeTestLowering lowering)
+    /// <param name="typeOperand">The type operand node.</param>
+    /// <param name="testType">The resolved closed type the operand denotes; for an <c>except</c>
+    /// alternation, the common base the clause binds at.</param>
+    /// <param name="alternatives">
+    /// <c>except (A, B) as e</c> only: the individual exception types, in written order. C# has no
+    /// multi-type catch, so the clause binds at <paramref name="testType"/> and discriminates with a
+    /// filter over these: <c>catch (Base e) when (e is A || e is B)</c> (#1235). <c>null</c> for every
+    /// other operand.
+    /// </param>
+    public void SetTypeTestType(
+        Node typeOperand, SemanticType testType, IReadOnlyList<SemanticType>? alternatives = null)
     {
-        Put(_typeTestLowerings, typeOperand, lowering);
+        Put(_typeTestTypes, typeOperand, new TypeTestType(testType, alternatives));
     }
 
     /// <summary>
-    /// Gets the type test recorded for a type operand, or <c>null</c> when the operand was not
-    /// classified as one (shadowed <c>isinstance</c>, a synthesized node the checker never saw, or a
-    /// shape the classifier leaves to the ordinary runtime-call path).
+    /// Gets the type recorded for a type operand — the type it tests and the narrowing target (for an
+    /// <c>except</c> alternation, the common base it binds at) — or <c>null</c> when the operand was
+    /// not classified as one (shadowed <c>isinstance</c>, a synthesized node the checker never saw, or
+    /// a shape the classifier leaves to the ordinary runtime-call path).
     /// </summary>
-    public TypeTestLowering? GetTypeTestLowering(Node typeOperand)
+    public SemanticType? GetTypeTestType(Node typeOperand)
     {
-        return _typeTestLowerings.TryGetValue(typeOperand, out var lowering) ? lowering : null;
+        return _typeTestTypes.TryGetValue(typeOperand, out var recorded) ? recorded.TestType : null;
+    }
+
+    /// <summary>
+    /// Gets the individual exception types of an <c>except (A, B) as e</c> alternation, in written
+    /// order, or <c>null</c> when the operand is not one (#1235).
+    /// </summary>
+    /// <remarks>
+    /// Lowering-input only (#2443): the lowering pass reads this to build the alternation catch;
+    /// code generation reads the IR, never this accessor. Renamed with the <c>ForIr</c> suffix so
+    /// nothing in <c>CodeGen/</c> can bind it.
+    /// </remarks>
+    public IReadOnlyList<SemanticType>? GetExceptAlternativesForIr(Node typeOperand)
+    {
+        return _typeTestTypes.TryGetValue(typeOperand, out var recorded) ? recorded.Alternatives : null;
     }
 
     /// <summary>
@@ -2353,8 +2377,8 @@ public class SemanticInfo : ISemanticQuery
         foreach (var kvp in other._receiverUnwraps)
             MergeEntry(_receiverUnwraps, kvp, other);
 
-        foreach (var kvp in other._typeTestLowerings)
-            MergeEntry(_typeTestLowerings, kvp, other);
+        foreach (var kvp in other._typeTestTypes)
+            MergeEntry(_typeTestTypes, kvp, other);
 
         foreach (var kvp in other._loopTransferTargets)
             MergeEntry(_loopTransferTargets, kvp, other);
@@ -2878,55 +2902,27 @@ public sealed record UnionCaseConstruction(
     TypeSymbol CaseSymbol);
 
 /// <summary>
-/// How codegen emits the type test for a classified <c>isinstance</c> type operand. The TypeChecker's
-/// classifier decides which applies, so the emitter switches on the tag alone and never inspects the
-/// operand expression's shape (#1207, #1213, Critical Rule 2 pattern (b)).
-/// </summary>
-public enum TypeTestLoweringKind
-{
-    /// <summary>
-    /// The operand denotes exactly one closed type. Emit <c>expr is T</c> against
-    /// <see cref="TypeTestLowering.TestType"/>.
-    /// </summary>
-    ClosedType,
-
-    /// <summary>
-    /// <b><c>except</c> clauses only.</b> The operand is a tuple of exception types with an <c>as</c>
-    /// binding — <c>except (A, B) as e:</c>. C# has no multi-type catch, so the clause binds at the
-    /// common base carried in <see cref="TypeTestLowering.TestType"/> and discriminates with a filter
-    /// over <see cref="TypeTestLowering.Alternatives"/>:
-    /// <c>catch (Base e) when (e is A || e is B)</c> (#1235).
-    /// <para>
-    /// The isinstance tuple form now denotes <c>tuple[A, B]</c> (#1532) — one closed type.
-    /// An <c>except</c> binding has a principled type to bind at — the same common base
-    /// <c>try[A | B]</c> already uses for its Result error type — so the multi-catch form is
-    /// supported here and structurally different from the isinstance case.
-    /// </para>
-    /// </summary>
-    ExceptionAlternation
-}
-
-/// <summary>
-/// The type test codegen must emit for an <c>isinstance</c> type operand, materialized per operand
-/// node by the TypeChecker's classifier (#1207, #1213). Node-keyed <see cref="SemanticInfo"/> record
-/// (Critical Rule 2 pattern (b)).
+/// The type a type operand tests, materialized per operand node by the TypeChecker's classifier
+/// (#1207, #1213). A type fact (R-MX), node-keyed in <see cref="SemanticInfo"/> (Critical Rule 2
+/// pattern (b)).
 /// <para>
-/// The classifier is the single authority on what the operand denotes: shapes it cannot lower to one
-/// closed type are rejected at semantic time (SPY0344, SPY0345), so no un-lowerable operand reaches
-/// codegen. <see cref="TestType"/> is also what the narrowing resolvers narrow to, which is what makes
-/// the emitted test and the narrowed type agree by construction rather than by two parallel
-/// derivations.
+/// The classifier is the single authority on what the operand denotes: shapes it cannot resolve to
+/// one closed type are rejected at semantic time (SPY0344, SPY0345), so no unresolvable operand
+/// reaches codegen. <see cref="TestType"/> is also what the narrowing resolvers narrow to, which is
+/// what makes the emitted test and the narrowed type agree by construction rather than by two
+/// parallel derivations.
 /// </para>
 /// </summary>
-/// <param name="Kind">Which emission shape to apply.</param>
-/// <param name="TestType">The resolved closed type the operand denotes — also the narrowing target.</param>
+/// <param name="TestType">The resolved closed type the operand denotes — also the narrowing target.
+/// For an <c>except</c> alternation, the common base the clause binds at.</param>
 /// <param name="Alternatives">
-/// The individual exception types of an <see cref="TypeTestLoweringKind.ExceptionAlternation"/>,
-/// in written order. <c>null</c> for every other kind — only the <c>except (A, B) as e</c> lowering
-/// tests more than one type, and it still binds at the single <paramref name="TestType"/>.
+/// <b><c>except</c> clauses only.</b> The individual exception types of <c>except (A, B) as e:</c>,
+/// in written order; <c>null</c> for every other operand. C# has no multi-type catch, so the clause
+/// binds at the single <paramref name="TestType"/> and discriminates with a filter over these:
+/// <c>catch (Base e) when (e is A || e is B)</c> (#1235). The isinstance tuple form denotes
+/// <c>tuple[A, B]</c> (#1532) — one closed type — so only an <c>except</c> binding records a list.
 /// </param>
-public sealed record TypeTestLowering(
-    TypeTestLoweringKind Kind,
+public sealed record TypeTestType(
     SemanticType TestType,
     IReadOnlyList<SemanticType>? Alternatives = null);
 

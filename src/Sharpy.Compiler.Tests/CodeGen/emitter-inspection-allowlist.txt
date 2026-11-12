@@ -110,6 +110,7 @@ RoslynEmitter.Expressions.Access.cs | type-read | GetExpressionSemanticType | 12
 RoslynEmitter.Expressions.Access.cs | type-read | GetExpressionType | 6 | cite=#2443 | reads the recorded expression SemanticType to choose emission
 RoslynEmitter.Expressions.Access.cs | type-read | GetInferredTypeArguments | 4 | cite=#2443 | reads a SemanticType via GetInferredTypeArguments (reflected type-read accessor); drains when the decision rides the IR or the mapper hand-off
 RoslynEmitter.Expressions.Access.cs | type-read | GetNullConditionalOptionalWrap | 1 | cite=#2443 | reads a SemanticType via GetNullConditionalOptionalWrap (reflected type-read accessor); drains when the decision rides the IR or the mapper hand-off
+RoslynEmitter.Expressions.Access.cs | type-read | GetTypeTestType | 1 | cite=#2443 | TypeTestTypeSyntax hands the type a type operand tests to the mapper; the emitter's only read of the type-test table (plan-92249e D6)
 RoslynEmitter.Expressions.Access.cs | name-lookup | predicate | 4 | cite=#2443 | finds a member Symbol or declaration by Name instead of a recorded binding
 RoslynEmitter.Expressions.Comprehensions.cs | type-name | GenericType | 2 | cite=#2443 | names a SemanticType-hierarchy type outside TypeSyntaxMapper
 RoslynEmitter.Expressions.Comprehensions.cs | type-name | SemanticType | 3 | cite=#2443 | names a SemanticType-hierarchy type outside TypeSyntaxMapper
@@ -186,6 +187,7 @@ RoslynEmitter.Statements.ControlFlow.cs | type-name | OptionalType | 1 | cite=#2
 RoslynEmitter.Statements.ControlFlow.cs | type-name | SemanticType | 5 | cite=#2443 | names a SemanticType-hierarchy type outside TypeSyntaxMapper
 RoslynEmitter.Statements.ControlFlow.cs | type-name | TypeSymbol | 1 | cite=#2443 | names a Symbol-hierarchy type; read the recorded CodeGenInfo/SemanticInfo fact
 RoslynEmitter.Statements.ControlFlow.cs | type-read | GetEffectiveType | 1 | cite=#2443 | reads a SemanticType via GetEffectiveType (reflected type-read accessor); drains when the decision rides the IR or the mapper hand-off
+RoslynEmitter.Statements.ControlFlow.cs | type-read | GetExceptAlternativesForIr | 1 | cite=#2443 | TEMPORARY transport read of the except alternation; plan-92249e T7 deletes this row when the alternation moves onto IrPlannedTry
 RoslynEmitter.Statements.ControlFlow.cs | type-read | GetExpressionSemanticType | 3 | cite=#2443 | reads the recorded expression SemanticType to choose emission
 RoslynEmitter.Statements.LocalDeclarations.cs | type-name | FunctionType | 2 | cite=#2443 | names a SemanticType-hierarchy type outside TypeSyntaxMapper
 RoslynEmitter.Statements.LocalDeclarations.cs | type-name | GenericType | 1 | cite=#2443 | names a SemanticType-hierarchy type outside TypeSyntaxMapper

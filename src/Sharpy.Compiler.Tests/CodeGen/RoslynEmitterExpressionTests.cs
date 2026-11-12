@@ -1368,7 +1368,7 @@ public class RoslynEmitterExpressionTests
     {
         // Arrange: value as? int → value is int _temp ? Optional<int>.Some(_temp) : default.
         // `as?` supplies the failure mode, so the target is written non-nullable (a written `?` is
-        // SPY0334). The emitter is a pure translator: the base type comes from the TypeTestLowering
+        // SPY0334). The emitter is a pure translator: the base type comes from the type-test type
         // CheckTypeCoercion records, so the test records it (#1670).
         var expr = new TypeCoercion
         {
@@ -1377,9 +1377,9 @@ public class RoslynEmitterExpressionTests
             Mode = CastFailureMode.Null
         };
         var semanticInfo = new SemanticInfo();
-        semanticInfo.SetTypeTestLowering(
+        semanticInfo.SetTypeTestType(
             expr.TargetType,
-            new TypeTestLowering(TypeTestLoweringKind.ClosedType, new BuiltinType { Name = "int", ClrType = typeof(int) }));
+            new BuiltinType { Name = "int", ClrType = typeof(int) });
         _context.SemanticInfo = semanticInfo;
 
         // Act
@@ -1399,7 +1399,7 @@ public class RoslynEmitterExpressionTests
     {
         // Arrange: value as? str → value is string _temp ? Optional<string>.Some(_temp) : default.
         // `as?` supplies the failure mode, so the target is written non-nullable (a written `?` is
-        // SPY0334). The emitter is a pure translator: the base type comes from the TypeTestLowering
+        // SPY0334). The emitter is a pure translator: the base type comes from the type-test type
         // CheckTypeCoercion records, so the test records it (#1670).
         var expr = new TypeCoercion
         {
@@ -1408,9 +1408,9 @@ public class RoslynEmitterExpressionTests
             Mode = CastFailureMode.Null
         };
         var semanticInfo = new SemanticInfo();
-        semanticInfo.SetTypeTestLowering(
+        semanticInfo.SetTypeTestType(
             expr.TargetType,
-            new TypeTestLowering(TypeTestLoweringKind.ClosedType, new BuiltinType { Name = "str", ClrType = typeof(string) }));
+            new BuiltinType { Name = "str", ClrType = typeof(string) });
         _context.SemanticInfo = semanticInfo;
 
         // Act
@@ -1429,7 +1429,7 @@ public class RoslynEmitterExpressionTests
     {
         // Arrange: value as? Dog → value is Dog _temp ? Optional<Dog>.Some(_temp) : default.
         // `as?` supplies the failure mode, so the target is written non-nullable (a written `?` is
-        // SPY0334). The emitter is a pure translator: the base type comes from the TypeTestLowering
+        // SPY0334). The emitter is a pure translator: the base type comes from the type-test type
         // CheckTypeCoercion records, so the test records it (#1670).
         var expr = new TypeCoercion
         {
@@ -1438,9 +1438,9 @@ public class RoslynEmitterExpressionTests
             Mode = CastFailureMode.Null
         };
         var semanticInfo = new SemanticInfo();
-        semanticInfo.SetTypeTestLowering(
+        semanticInfo.SetTypeTestType(
             expr.TargetType,
-            new TypeTestLowering(TypeTestLoweringKind.ClosedType, new UserDefinedType { Name = "Dog" }));
+            new UserDefinedType { Name = "Dog" });
         _context.SemanticInfo = semanticInfo;
 
         // Act

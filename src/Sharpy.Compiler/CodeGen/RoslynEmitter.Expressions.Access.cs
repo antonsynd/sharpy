@@ -209,10 +209,10 @@ internal partial class RoslynEmitter
             // `isinstance`, a `System.Type` value) and falls through to the ordinary call below.
             if (funcName.Name == BuiltinFunctionNames.IsInstance
                 && call.Arguments.Length == 2
-                && _context.SemanticInfo?.GetTypeTestLowering(call.Arguments[1]) is { } typeTest)
+                && TypeTestTypeSyntax(call.Arguments[1]) is { } typeTest)
             {
                 var value = GenerateExpression(call.Arguments[0]);
-                return Binary(SyntaxKind.IsExpression, value, MapTypeTestTarget(typeTest));
+                return Binary(SyntaxKind.IsExpression, value, typeTest);
             }
 
             // Check if this is a type instantiation (calling a class or struct constructor)
@@ -1335,12 +1335,16 @@ internal partial class RoslynEmitter
     }
 
     /// <summary>
-    /// Renders a classified <c>isinstance</c> type test as the C# type the <c>is</c> operator tests
-    /// against. Pure translation of a decision already made: the recorded closed type supplies the
-    /// name (#1207, #1213, #1619).
+    /// Renders the type the checker recorded for a type operand (an <c>isinstance</c> argument, a
+    /// class pattern, a cast target, an <c>except</c> type) as the C# type the test names, or
+    /// <c>null</c> when none was recorded — each caller keeps its own fallback or throw. Pure
+    /// translation of a decision already made: the recorded closed type supplies the name (#1207,
+    /// #1213, #1619). The emitter's only read of the type-test table (#2443).
     /// </summary>
-    private TypeSyntax MapTypeTestTarget(TypeTestLowering typeTest)
-        => MapTypeTestTypeName(typeTest.TestType);
+    private TypeSyntax? TypeTestTypeSyntax(Node operand)
+        => _context.SemanticInfo?.GetTypeTestType(operand) is { } testType
+            ? MapTypeTestTypeName(testType)
+            : null;
 
     /// <summary>
     /// Renders a decided test type as C# type syntax. A user/CLR type reaches its name through the

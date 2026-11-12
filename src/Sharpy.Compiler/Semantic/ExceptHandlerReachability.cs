@@ -63,7 +63,7 @@ internal sealed record ExceptHandlerVerdict(
 /// instantiated base chain (<see cref="GenericInstantiationWalker.EnumerateBaseChain"/>), so
 /// <c>except Box[int]:</c> covers <c>except SubBox[int]:</c> but not <c>except Box[str]:</c>. A type
 /// the checker recorded nothing for neither covers nor is covered.</para>
-/// <para>The one input besides the handler list is the <c>TypeTestLowering</c> the checker recorded
+/// <para>The one input besides the handler list is the <c>TypeTestType</c> the checker recorded
 /// for each handler type; <c>SemanticInfo.MergeFrom</c> copies it verbatim (a conflicting value
 /// throws), so the per-file validator and the post-merge lowering read the same facts.</para>
 /// <para>Sharpy has no <c>BaseException</c> (exception_handling.md): <c>except Exception:</c> catches
@@ -186,8 +186,7 @@ internal static class ExceptHandlerReachability
 
     /// <summary>The closed type the checker classified for one handler type (#1235), or null.</summary>
     private static SemanticType? RecordedType(TypeAnnotation element, SemanticInfo info)
-        => info.GetTypeTestLowering(element) is { Kind: TypeTestLoweringKind.ClosedType, TestType: var type }
-           && type is UserDefinedType { Symbol: not null } or GenericType
+        => info.GetTypeTestType(element) is { } type and (UserDefinedType { Symbol: not null } or GenericType)
             ? type
             : null;
 
