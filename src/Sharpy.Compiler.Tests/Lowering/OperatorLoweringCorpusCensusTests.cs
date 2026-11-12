@@ -34,7 +34,15 @@ namespace Sharpy.Compiler.Tests.Lowering;
 /// here until a fixture exercises it, instead of reading <c>Native</c> through an emitter helper
 /// that finds no carrier.</item>
 /// </list>
-/// The record's second member, <c>NarrowTo</c>, is floored for each key kind that writes one.</para>
+/// The record's second member, <c>NarrowTo</c>, is floored for each key kind a call site writes one
+/// for (read from the same syntax census), and for the <c>(Native, NarrowTo)</c> entry.</para>
+///
+/// <para><b>The binary / augmented pair.</b> A kind is not one fact per key kind: the checker
+/// classifies <c>a OP b</c> and <c>a OP= b</c> with the same classifiers, and the two are carried by
+/// different IR nodes. So every kind seen on a <c>BinaryOp</c> whose operator has an augmented twin
+/// (<see cref="AugmentedTwin"/>, total over <see cref="BinaryOperator"/>) must also be seen on an
+/// <c>Assignment</c> with that twin, or be in <see cref="NotOnAugmented"/> with the reason the
+/// checker cannot record it there; a row whose pair does appear fails until it is deleted.</para>
 ///
 /// <para>Categorised <c>GapDiscovery</c>: a standing corpus sweep, not an edit-loop test.</para>
 /// </summary>
@@ -57,6 +65,53 @@ public class OperatorLoweringCorpusCensusTests
             [OperatorLoweringKind.Native] = "the absent-entry convention; not a lowering to transport",
         };
 
+    /// <summary>
+    /// Kinds a <c>BinaryOp</c> records that its augmented twin cannot, each with the reason (probed
+    /// with the built compiler at eabb480c6).
+    /// </summary>
+    private static readonly IReadOnlyDictionary<OperatorLoweringKind, string> NotOnAugmented =
+        new Dictionary<OperatorLoweringKind, string>
+        {
+            [OperatorLoweringKind.TrueDivisionCastLeft] =
+                "an integer target: `i /= 2` is refused, the float64 result is not assignable (SPY0220)",
+            [OperatorLoweringKind.GuardedTrueDivisionCastLeft] =
+                "an integer target: `i /= j` is refused, the float64 result is not assignable (SPY0220)",
+            [OperatorLoweringKind.StringRepeatStrRight] =
+                "an integer target: `n *= \"ab\"` is refused, the str result is not assignable (SPY0220)",
+            [OperatorLoweringKind.DecimalPow] =
+                "`d **= 2` is refused: decimal ** int is float64, not assignable to decimal (SPY0220)",
+            [OperatorLoweringKind.OptionalUnwrapOr] =
+                "`??=` records only OptionalCoalesceBothOptional; a payload right side is a store wrap",
+        };
+
+    /// <summary>
+    /// The augmented operator of a binary operator, or <c>null</c> when it has none. No default arm:
+    /// a new <see cref="BinaryOperator"/> value throws here until it is classified.
+    /// </summary>
+    private static AssignmentOperator? AugmentedTwin(BinaryOperator op) => op switch
+    {
+        BinaryOperator.Add => AssignmentOperator.PlusAssign,
+        BinaryOperator.Subtract => AssignmentOperator.MinusAssign,
+        BinaryOperator.Multiply => AssignmentOperator.StarAssign,
+        BinaryOperator.Divide => AssignmentOperator.SlashAssign,
+        BinaryOperator.FloorDivide => AssignmentOperator.DoubleSlashAssign,
+        BinaryOperator.Modulo => AssignmentOperator.PercentAssign,
+        BinaryOperator.Power => AssignmentOperator.PowerAssign,
+        BinaryOperator.MatMul => AssignmentOperator.MatMulAssign,
+        BinaryOperator.BitwiseAnd => AssignmentOperator.AndAssign,
+        BinaryOperator.BitwiseOr => AssignmentOperator.OrAssign,
+        BinaryOperator.BitwiseXor => AssignmentOperator.XorAssign,
+        BinaryOperator.LeftShift => AssignmentOperator.LeftShiftAssign,
+        BinaryOperator.RightShift => AssignmentOperator.RightShiftAssign,
+        BinaryOperator.NullCoalesce => AssignmentOperator.NullCoalesceAssign,
+        BinaryOperator.Equal or BinaryOperator.NotEqual or BinaryOperator.LessThan
+            or BinaryOperator.LessThanOrEqual or BinaryOperator.GreaterThan
+            or BinaryOperator.GreaterThanOrEqual or BinaryOperator.And or BinaryOperator.Or
+            or BinaryOperator.In or BinaryOperator.NotIn or BinaryOperator.Is or BinaryOperator.IsNot => null,
+        _ => throw new InvalidOperationException(
+            $"BinaryOperator.{op} has no AugmentedTwin arm: add its augmented operator, or null (#2443)"),
+    };
+
     private static readonly FieldInfo OperatorLoweringsField =
         typeof(SemanticInfo).GetField("_operatorLowerings", BindingFlags.Instance | BindingFlags.NonPublic)
         ?? throw new InvalidOperationException(
@@ -65,7 +120,7 @@ public class OperatorLoweringCorpusCensusTests
     [Fact]
     public void EveryOperatorLoweringKindAndKeyKind_HasAnEntryInAFixtureWithCommittedOutput()
     {
-        var roster = KeyKindRoster();
+        var (roster, _, narrowToRoster, _) = ScanCallSites();
         var fixtures = FixtureDiscoveryHelper.DiscoverFixturesFrom(FixtureRoots.CompilerTests)
             .Where(f => !f.IsSkipped && f.ExpectedFile != null)
             .OrderBy(f => f.TestName, StringComparer.Ordinal)
@@ -77,6 +132,10 @@ public class OperatorLoweringCorpusCensusTests
         var cells = new SortedDictionary<(string Kind, string Key), int>();
         var firstFixture = new Dictionary<OperatorLoweringKind, string>();
         var narrowToByKeyKind = new SortedDictionary<string, int>(StringComparer.Ordinal);
+        var onBinary = new HashSet<(OperatorLoweringKind Kind, BinaryOperator Op)>();
+        var onAugmented = new HashSet<(OperatorLoweringKind Kind, AssignmentOperator Op)>();
+        var nativeWithNarrowTo = 0;
+        var notClean = new List<string>();
         var internalErrors = new List<string>();
         int compiled = 0, entries = 0;
 
@@ -100,7 +159,10 @@ public class OperatorLoweringCorpusCensusTests
             }
 
             if (!result.FrontEndClean)
+            {
+                notClean.Add(fixture.TestName);
                 continue;
+            }
 
             compiled++;
 
@@ -122,7 +184,16 @@ public class OperatorLoweringCorpusCensusTests
                         cells.GetValueOrDefault((lowering.Kind.ToString(), keyKind)) + 1;
                     firstFixture.TryAdd(lowering.Kind, fixture.TestName);
                     if (lowering.NarrowTo != null)
+                    {
                         narrowToByKeyKind[keyKind] = narrowToByKeyKind.GetValueOrDefault(keyKind) + 1;
+                        if (lowering.Kind == OperatorLoweringKind.Native)
+                            nativeWithNarrowTo++;
+                    }
+
+                    if (entry.Key is BinaryOp binary)
+                        onBinary.Add((lowering.Kind, binary.Operator));
+                    else if (entry.Key is Assignment augmented)
+                        onAugmented.Add((lowering.Kind, augmented.Operator));
                 }
             }
         }
@@ -145,7 +216,10 @@ public class OperatorLoweringCorpusCensusTests
             $"{internalErrors.Count} fixture(s) hit an internal compiler error; the census does not skip them:\n"
             + string.Join("\n", internalErrors.Take(25)));
 
-        Assert.True(compiled > 0, "no fixture compiled clean: the census read nothing");
+        // A fixture with committed output that does not compile clean would be dropped unseen.
+        Assert.True(notClean.Count == 0,
+            "fixture(s) with an .expected file that did not compile clean, so the census read nothing "
+            + "from them: " + string.Join(", ", notClean.Take(25)));
 
         var missingKinds = byKind.Where(p => p.Value == 0 && !ExcludedKinds.ContainsKey(p.Key))
             .Select(p => p.Key.ToString()).ToList();
@@ -164,14 +238,47 @@ public class OperatorLoweringCorpusCensusTests
             "key kind(s) a SetOperatorLowering call site writes that no fixture with an .expected file "
             + "exercises (#2443): " + string.Join(", ", missingKeyKinds));
 
-        // NarrowTo is the record's second member and moves with the kind. Its two writers are the
-        // augmented assignment that narrows its result and the super-operator call (the base type).
-        foreach (var keyKind in new[] { nameof(Assignment), nameof(FunctionCall) })
+        // NarrowTo is the record's second member and moves with the kind. Its writers are read from
+        // the call sites (today: the augmented assignment that narrows its result, and the
+        // super-operator call, whose NarrowTo is the base type).
+        Assert.True(narrowToRoster.Count > 0, "no SetOperatorLowering call site passes a NarrowTo: the scan reads nothing");
+        foreach (var keyKind in narrowToRoster)
         {
             Assert.True(narrowToByKeyKind.GetValueOrDefault(keyKind) > 0,
                 $"no {keyKind} entry with a NarrowTo in any fixture that has an .expected file: the "
                 + "member would move onto the IR with nothing observing it (#2443)");
         }
+
+        Assert.True(nativeWithNarrowTo > 0,
+            "no (Native, NarrowTo) entry in any fixture that has an .expected file: an augmented "
+            + "assignment that only narrows records the absent kind WITH a fact (#2443)");
+
+        // The binary / augmented pair (class doc).
+        var missingTwins = new List<string>();
+        var staleTwinExclusions = new SortedSet<string>(StringComparer.Ordinal);
+        foreach (var (kind, op) in onBinary.OrderBy(c => c.Kind).ThenBy(c => c.Op))
+        {
+            if (AugmentedTwin(op) is not { } twin)
+                continue;
+            var seen = onAugmented.Contains((kind, twin));
+            if (NotOnAugmented.ContainsKey(kind))
+            {
+                if (seen)
+                    staleTwinExclusions.Add(kind.ToString());
+            }
+            else if (!seen)
+            {
+                missingTwins.Add($"{kind} on {op} has no entry on {twin}");
+            }
+        }
+
+        Assert.True(missingTwins.Count == 0,
+            "kind(s) a BinaryOp records in the corpus whose augmented twin no fixture with an .expected "
+            + "file records. Add the augmented line to a fixture, or a NotOnAugmented row with the reason "
+            + "the checker cannot record it (#2443):\n  " + string.Join("\n  ", missingTwins));
+        Assert.True(staleTwinExclusions.Count == 0,
+            "NotOnAugmented row(s) whose kind now appears on its augmented twin; delete the row: "
+            + string.Join(", ", staleTwinExclusions));
 
         var unrostered = byKeyKind.Keys.Where(k => !roster.Contains(k)).ToList();
         Assert.True(unrostered.Count == 0,
@@ -186,9 +293,10 @@ public class OperatorLoweringCorpusCensusTests
     [Fact]
     public void KeyKindRoster_ResolvesEverySetOperatorLoweringCallSite()
     {
-        var (roster, sites, unresolved) = ScanCallSites();
+        var (roster, sites, narrowToRoster, unresolved) = ScanCallSites();
 
-        _output.WriteLine($"{sites} SetOperatorLowering call site(s); roster: {string.Join(", ", roster)}");
+        _output.WriteLine($"{sites} SetOperatorLowering call site(s); roster: {string.Join(", ", roster)}; "
+            + $"NarrowTo writers: {string.Join(", ", narrowToRoster)}");
         Assert.True(sites > 0, "no SetOperatorLowering call site found under Semantic/: the scan reads nothing");
         Assert.True(unresolved.Count == 0,
             "SetOperatorLowering call site(s) whose first argument is not a parameter, local or pattern "
@@ -198,12 +306,12 @@ public class OperatorLoweringCorpusCensusTests
             $"'{name}' is not an AST node type"));
     }
 
-    private static SortedSet<string> KeyKindRoster() => ScanCallSites().Roster;
-
-    private static (SortedSet<string> Roster, int Sites, List<string> Unresolved) ScanCallSites()
+    private static (SortedSet<string> Roster, int Sites, SortedSet<string> NarrowToRoster, List<string> Unresolved)
+        ScanCallSites()
     {
         var semanticDir = Path.Combine(FixtureRoots.RepositoryRoot, "src", "Sharpy.Compiler", "Semantic");
         var roster = new SortedSet<string>(StringComparer.Ordinal);
+        var narrowToRoster = new SortedSet<string>(StringComparer.Ordinal);
         var unresolved = new List<string>();
         var sites = 0;
 
@@ -227,50 +335,87 @@ public class OperatorLoweringCorpusCensusTests
                     continue;
                 }
 
-                if (DeclaredTypeOf(call, name) is { } type)
-                    roster.Add(type);
-                else
-                    unresolved.Add($"{where}: no declaration of '{name}' found in the enclosing member");
+                if (DeclaredTypeOf(call, name) is not { } type)
+                {
+                    unresolved.Add($"{where}: no declaration of '{name}' found before the call in an enclosing scope");
+                    continue;
+                }
+
+                roster.Add(type);
+
+                // A site writes a NarrowTo when its `new OperatorLowering(...)` passes a second argument.
+                var passesNarrowTo = call.ArgumentList.Arguments.Skip(1)
+                    .SelectMany(a => a.DescendantNodesAndSelf().OfType<BaseObjectCreationExpressionSyntax>())
+                    .Any(creation => creation.ArgumentList is { Arguments.Count: > 1 });
+                if (passesNarrowTo)
+                    narrowToRoster.Add(type);
             }
         }
 
-        return (roster, sites, unresolved);
+        return (roster, sites, narrowToRoster, unresolved);
     }
 
     /// <summary>
-    /// The declared type of <paramref name="name"/> as seen from <paramref name="use"/>: a parameter,
-    /// a typed local, or a declaration pattern (<c>is BinaryOp b</c>, <c>case UnaryOp u</c>) of the
-    /// enclosing member, innermost enclosing function first.
+    /// The declared type of <paramref name="name"/> as seen from <paramref name="use"/>: the nearest
+    /// declaration that starts before the use, in the innermost enclosing function first. A parameter,
+    /// a typed local, or a declaration pattern (<c>is BinaryOp b</c>, <c>case UnaryOp u</c>) counts;
+    /// a declaration inside a nested lambda or local function that does not enclose the use does not,
+    /// and neither does one that follows it.
     /// </summary>
     private static string? DeclaredTypeOf(Microsoft.CodeAnalysis.SyntaxNode use, string name)
     {
+        static bool IsFunction(Microsoft.CodeAnalysis.SyntaxNode node) => node is BaseMethodDeclarationSyntax
+            or LocalFunctionStatementSyntax or AnonymousFunctionExpressionSyntax or AccessorDeclarationSyntax;
+
         for (var scope = use.Parent; scope != null; scope = scope.Parent)
         {
-            if (scope is not (BaseMethodDeclarationSyntax or LocalFunctionStatementSyntax
-                or AnonymousFunctionExpressionSyntax or AccessorDeclarationSyntax))
-            {
+            if (!IsFunction(scope))
                 continue;
-            }
 
+            string? nearest = null;
             foreach (var node in scope.DescendantNodes())
             {
+                if (node.SpanStart >= use.SpanStart)
+                    break;
+
+                // Visible only if every function between the declaration and this scope encloses the use.
+                var visible = true;
+                for (var owner = node.Parent; owner != null && owner != scope; owner = owner.Parent)
+                {
+                    if (IsFunction(owner) && !owner.Span.Contains(use.Span))
+                    {
+                        visible = false;
+                        break;
+                    }
+                }
+
+                if (!visible)
+                    continue;
+
                 switch (node)
                 {
                     case ParameterSyntax { Type: { } parameterType } parameter
                         when parameter.Identifier.ValueText == name:
-                        return SimpleName(parameterType);
+                        nearest = SimpleName(parameterType);
+                        break;
                     case DeclarationPatternSyntax { Designation: SingleVariableDesignationSyntax designation } pattern
                         when designation.Identifier.ValueText == name:
-                        return SimpleName(pattern.Type);
+                        nearest = SimpleName(pattern.Type);
+                        break;
                     case RecursivePatternSyntax { Type: { } recursiveType, Designation: SingleVariableDesignationSyntax designation }
                         when designation.Identifier.ValueText == name:
-                        return SimpleName(recursiveType);
+                        nearest = SimpleName(recursiveType);
+                        break;
                     case VariableDeclarationSyntax { Type: var localType } declaration
-                        when !localType.IsVar && declaration.Variables.Any(v => v.Identifier.ValueText == name):
-                        return SimpleName(localType);
+                        when declaration.Variables.Any(v => v.Identifier.ValueText == name):
+                        // A `var` local hides an outer declaration and has no spelled type: unresolved.
+                        nearest = localType.IsVar ? null : SimpleName(localType);
+                        break;
                 }
             }
 
+            if (nearest != null)
+                return nearest;
             if (scope is BaseMethodDeclarationSyntax)
                 return null;
         }

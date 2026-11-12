@@ -8,3 +8,11 @@ def main() -> None:
     b: int64 = -3
     f: uint64 = 3UL
     print(b ** f)
+    a **= e
+    print(a)
+    b **= f
+    print(b)
+    c: uint64 = 3UL
+    d: uint64 = 4UL
+    c **= d
+    print(c)
