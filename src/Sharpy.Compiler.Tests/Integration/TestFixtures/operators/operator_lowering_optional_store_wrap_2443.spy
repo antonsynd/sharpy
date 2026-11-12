@@ -1,0 +1,17 @@
+# plan-92249e T1 (#2443): an augmented operator stored into a narrowed Optional slot. The
+# statement is an IrOptionalStoreWrap AND carries an operator lowering (floored `//`, `%`,
+# a guarded true division), so both facts must reach the one node. A truncating C# `/` or
+# `%` would print -3 and -1; a C# integer `/` would print 2.
+
+
+def main() -> None:
+    x: int? = Some(-7)
+    y: float? = Some(1.0)
+    if x is not None and y is not None:
+        x //= 2
+        print(x)
+        x %= 3
+        print(x)
+        x = 5
+        y = x / 2
+        print(y)

@@ -1,0 +1,19 @@
+# plan-92249e T1 (#2443): an operator whose result is a tuple element stored into a narrowed
+# Optional slot. The element is wrapped in Some(...) (IrOptionalWrappedElement), and the
+# operator's own lowering (floored `//` and `%`) is read through the wrap. A truncating C#
+# `/` or `%` would print -3 and -1.
+
+
+def main() -> None:
+    a = -7
+    b = 2
+    p: int? = Some(0)
+    r: int? = Some(0)
+    q = 0
+    if p is not None and r is not None:
+        p, q = a // b, 1
+        print(p, q)
+        r, q = a % b, 2
+        print(r, q)
+        p, q = -a // b, 3
+        print(p, q)

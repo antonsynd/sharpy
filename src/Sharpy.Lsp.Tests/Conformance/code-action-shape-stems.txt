@@ -8,7 +8,7 @@
 # GENERATED, HUMAN-REVIEWED: bash build_tools/regenerate_corpus_pins.sh rewrites the rows and the `# total` lines; review
 # the diff (a new stem's rows are its own; a moved row of an existing stem is a finding until explained). A new key's cite row in
 # code-action-shape-allowlist.txt is written by hand (the loader names it), and so is a drained key's deletion.
-# total stems identity keys=14 rows=2061
+# total stems identity keys=14 rows=2062
 # total stems crlf keys=8 rows=275
 # total stems cr keys=8 rows=286
 # total stems comment keys=7 rows=281
@@ -1856,6 +1856,7 @@ wrap-try identity diagnostics events/event_auto_clr_generic_subclass_1613 # #229
 wrap-try identity diagnostics events/event_subscribe_unsubscribe_0058 # #2296
 wrap-try identity diagnostics events/event_with_delegate_0049 # #2296
 wrap-try identity diagnostics events/event_with_lambda_subscribe_0009 # #2296
+wrap-try identity diagnostics except_tuple_binding_common_base # #2296
 wrap-try identity diagnostics exceptions/except_python_base_class_hierarchy_2124 # #2296
 wrap-try identity diagnostics exceptions/try_except_finally_0007 # #2296
 wrap-try identity diagnostics experimental/opt_stack_collections_gated # #2296
