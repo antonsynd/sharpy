@@ -6,6 +6,7 @@ using System.Reflection;
 using Sharpy.Compiler.Diagnostics;
 using Sharpy.Compiler.Parser.Ast;
 using Sharpy.Compiler.Semantic.Registry;
+using TypeKind = Sharpy.Compiler.Semantic.TypeKind;
 using Sharpy.TestInfrastructure.Integration;
 using Sharpy.TestInfrastructure.Oracles;
 using Xunit;
@@ -26,8 +27,11 @@ namespace Sharpy.Compiler.Tests.Properties.Differential;
 /// generator:</para>
 /// <list type="bullet">
 /// <item><b>payload</b> — the image of <see cref="PrimitiveCatalog.GetAllPrimitives"/> (one canonical name per
-/// CLR type) minus <see cref="ExcludedPrimitives"/>, each excluded with its reason, plus two composite kinds a
-/// primitive census cannot reach (a value-typed <c>tuple[int, int]</c>, a reference-typed user class), plus
+/// CLR type) minus <see cref="ExcludedPrimitives"/>, each excluded with its reason, plus a value-typed
+/// <c>tuple[int, int]</c> (the tuple type, outside both censuses), plus <see cref="TypeKindPayloads"/>: the image of
+/// the compiler's <see cref="TypeKind"/> (every kind of user-declared type, each generated or excluded with its
+/// reason; an enum by both of its representations, int-backed and string-backed), asserted both ways by
+/// <see cref="AssertCompositeAxisIsTheTypeKindImage"/>, plus
 /// <see cref="SlotPayloads"/>: every fixed needle slot of the container axis (a single-argument public
 /// <c>Contains</c> parameter, read by reflection) that is not a catalog primitive — asserted both ways by
 /// <see cref="AssertPayloadAxisIsTheCatalogAndTheSlots"/>;</item>
@@ -76,9 +80,81 @@ public class OptionalMembershipDifferentialTests : IntegrationTestBase
         ["void"] = "None itself, the needle form axis",
     };
 
-    private enum PayloadKind { Integer, Float, Decimal, Bool, Str, Tuple, Class, Slot }
+    private enum PayloadKind { Integer, Float, Decimal, Bool, Str, Tuple, UserType, Slot }
 
-    private sealed record Payload(string Name, PayloadKind Kind, string Member, string Other, string NonMember, Type? ClrType);
+    /// <summary>A payload: its Sharpy (and python) spelling, a member, a second member, a non-member, the CLR type a
+    /// fixed needle slot must be to hold it, and — for a user-declared type — its declaration in each language (python
+    /// has no <c>struct</c>, <c>interface</c>, <c>union</c> or <c>delegate</c>: its twin is a plain class or function
+    /// with the same constructor spelling, and every member test compares the very object it stored).</summary>
+    private sealed record Payload(string Name, PayloadKind Kind, string Member, string Other, string NonMember, Type? ClrType,
+        string? SharpyDeclaration = null, string? PythonDeclaration = null);
+
+    private const string PlainClassTwin = "    def __init__(self, v):\n        self.v = v\n";
+
+    /// <summary>
+    /// The composite payloads: one entry per <see cref="TypeKind"/> (the compiler's kinds of user-declared type), each
+    /// generating its payloads or naming why none is generated. <see cref="AssertCompositeAxisIsTheTypeKindImage"/>
+    /// asserts the keys are exactly <c>Enum.GetValues&lt;TypeKind&gt;()</c> and that each Sharpy declaration declares
+    /// its key's kind. An enum has two representations (an int-backed enum is a C# <c>enum</c>, a value type; a
+    /// string-backed one is a class, enums.md), so both are generated.
+    /// </summary>
+    private static readonly Dictionary<TypeKind, (Payload[] Generated, string? Excluded)> TypeKindPayloads = new()
+    {
+        [TypeKind.Class] = (new[]
+        {
+            new Payload("K", PayloadKind.UserType, "K(1)", "K(2)", "K(5)", null,
+                "class K:\n    v: int\n    def __init__(self, v: int):\n        self.v = v\n",
+                "class K:\n" + PlainClassTwin),
+        }, null),
+        [TypeKind.Struct] = (new[]
+        {
+            new Payload("SP", PayloadKind.UserType, "SP(1)", "SP(2)", "SP(5)", null,
+                "struct SP:\n    v: int\n    def __init__(self, v: int):\n        self.v = v\n",
+                "class SP:\n" + PlainClassTwin),
+        }, null),
+        [TypeKind.Interface] = (new[]
+        {
+            new Payload("IFace", PayloadKind.UserType, "KI(1)", "KI(2)", "KI(5)", null,
+                "interface IFace:\n    def tag(self) -> int:\n        return 0\n\n"
+                + "class KI(IFace):\n    v: int\n    def __init__(self, v: int):\n        self.v = v\n",
+                "class IFace:\n    def tag(self):\n        return 0\n\nclass KI(IFace):\n" + PlainClassTwin),
+        }, null),
+        [TypeKind.Enum] = (new[]
+        {
+            new Payload("Color", PayloadKind.UserType, "Color.RED", "Color.GREEN", "Color.BLUE", null,
+                "enum Color:\n    RED = 1\n    GREEN = 2\n    BLUE = 5\n",
+                "from enum import Enum\n\nclass Color(Enum):\n    RED = 1\n    GREEN = 2\n    BLUE = 5\n"),
+            // A string-backed enum is CPython's StrEnum: a str, so a `str` slot holds it (enums.md).
+            new Payload("Tone", PayloadKind.UserType, "Tone.A", "Tone.B", "Tone.Z", typeof(string),
+                "enum Tone:\n    A = \"a\"\n    B = \"b\"\n    Z = \"z\"\n",
+                "from enum import StrEnum\n\nclass Tone(StrEnum):\n    A = \"a\"\n    B = \"b\"\n    Z = \"z\"\n"),
+        }, null),
+        [TypeKind.Union] = (new[]
+        {
+            new Payload("U", PayloadKind.UserType, "U.A(1)", "U.A(2)", "U.A(5)", null,
+                "union U:\n    case A(v: int)\n",
+                "class U:\n    class A:\n        def __init__(self, v):\n            self.v = v\n"),
+        }, null),
+        [TypeKind.Delegate] = (new[]
+        {
+            new Payload("D", PayloadKind.UserType, "f1", "f2", "f5", null,
+                "delegate D(v: int) -> int\n\ndef f1(v: int) -> int:\n    return v\n\ndef f2(v: int) -> int:\n    return v\n\n"
+                + "def f5(v: int) -> int:\n    return v\n",
+                "def f1(v):\n    return v\n\ndef f2(v):\n    return v\n\ndef f5(v):\n    return v\n"),
+        }, null),
+    };
+
+    /// <summary>The declaration keyword of each <see cref="TypeKind"/>: a generated payload's Sharpy declaration must
+    /// declare its key's kind.</summary>
+    private static readonly Dictionary<TypeKind, string> TypeKindKeyword = new()
+    {
+        [TypeKind.Class] = "class ",
+        [TypeKind.Struct] = "struct ",
+        [TypeKind.Interface] = "interface ",
+        [TypeKind.Enum] = "enum ",
+        [TypeKind.Union] = "union ",
+        [TypeKind.Delegate] = "delegate ",
+    };
 
     /// <summary>
     /// The fixed needle slots of the container axis that are not catalog primitives, keyed by CLR full name: the
@@ -282,7 +358,9 @@ public class OptionalMembershipDifferentialTests : IntegrationTestBase
                 payloads.Add(payload);
         }
         payloads.Add(new Payload("tuple[int, int]", PayloadKind.Tuple, "(1, 2)", "(3, 4)", "(5, 6)", typeof(ValueTuple<int, int>)));
-        payloads.Add(new Payload("K", PayloadKind.Class, "K(1)", "K(2)", "K(5)", null));
+        foreach (var kind in Enum.GetValues<TypeKind>())
+            if (TypeKindPayloads.TryGetValue(kind, out var entry))
+                payloads.AddRange(entry.Generated);
         var types = SharpyTypesByName.Value;
         foreach (var (clrName, slot) in SlotPayloads.OrderBy(s => s.Key, StringComparer.Ordinal))
             payloads.Add(new Payload(slot.Name, PayloadKind.Slot, slot.Member, slot.Other, slot.NonMember,
@@ -345,7 +423,7 @@ public class OptionalMembershipDifferentialTests : IntegrationTestBase
 
     /// <summary>One program per payload over the cells still active; every line of a cell's function and of its
     /// driver loop is attributed to it, so a refusal anywhere in either removes that cell alone.</summary>
-    private static Program ProgramFor(Payload payload, IReadOnlyList<Cell> cells)
+    private static Program ProgramFor(Payload payload, IReadOnlyList<Cell> cells, bool python = false)
     {
         var lines = new List<string>();
         var cellByLine = new Dictionary<int, int>();
@@ -362,11 +440,12 @@ public class OptionalMembershipDifferentialTests : IntegrationTestBase
         Add("from email import EmailMessage");
         Add("from ipaddress import IPv4Address, IPv4Network, IPv6Address, IPv6Network");
         Add("");
-        Add("class K:");
-        Add("    v: int");
-        Add("    def __init__(self, v: int):");
-        Add("        self.v = v");
-        Add("");
+        if ((python ? payload.PythonDeclaration : payload.SharpyDeclaration) is { } declaration)
+        {
+            foreach (var line in declaration.TrimEnd('\n').Split('\n'))
+                Add(line);
+            Add("");
+        }
         Add("class Bag:");
         Add($"    items: list[{p}]");
         Add($"    def __init__(self, a: {p}, c: {p}):");
@@ -669,6 +748,7 @@ public class OptionalMembershipDifferentialTests : IntegrationTestBase
         AssertContainerAxisIsTheSpecTable();
         AssertClrRowIsTheContainsCensus();
         AssertPayloadAxisIsTheCatalogAndTheSlots();
+        AssertCompositeAxisIsTheTypeKindImage();
         AssertEveryExclusionHasAReason();
         // The generator's element-typed predicate is the literal roster, container by container.
         Assert.Equal(ElementTypedRoster.OrderBy(c => c), Containers().Where(IsElementTyped).OrderBy(c => c));
@@ -677,10 +757,11 @@ public class OptionalMembershipDifferentialTests : IntegrationTestBase
         var cells = GenerateCells(payloads);
 
         // Totality: the cell count is the product of the axis sizes, each from its own source (the catalog minus its
-        // named exclusions plus the two composites plus the reflected slot types; the spec table's containers, doubled
-        // for the literal element-typed roster; the enums). Never from the generator or its predicates, so a cell the
-        // generator drops (or invents) is red.
-        var payloadCount = CanonicalPrimitives().Count - ExcludedPrimitives.Count + 2 + RequiredSlotPayloadTypes().Count;
+        // named exclusions plus the tuple plus the TypeKind map's payloads plus the reflected slot types; the spec
+        // table's containers, doubled for the literal element-typed roster; the enums). Never from the generator or its
+        // predicates, so a cell the generator drops (or invents) is red.
+        var payloadCount = CanonicalPrimitives().Count - ExcludedPrimitives.Count + 1
+            + TypeKindPayloads.Values.Sum(v => v.Generated.Length) + RequiredSlotPayloadTypes().Count;
         var containerCount = SpecRowMap.Sum(m => m.Generated.Length);
         var elementTypedCount = ElementTypedRoster.Length;
         var formCount = Enum.GetValues<Form>().Length;
@@ -698,7 +779,7 @@ public class OptionalMembershipDifferentialTests : IntegrationTestBase
         // CPython: one program per payload × container (the runner passes a program as one argv string, which the OS
         // caps at 128 KiB), one batch.
         var chunks = cells.GroupBy(c => (c.Payload, c.Container)).Select(g => (Name: $"{g.Key.Payload.Name}/{g.Key.Container}",
-            Program: ProgramFor(g.Key.Payload, g.ToList()))).ToList();
+            Program: ProgramFor(g.Key.Payload, g.ToList(), python: true))).ToList();
         var py = oracle.RunBatch(chunks.Select((chunk, i) => new PyRequest(i, PythonPrelude + chunk.Program.Source + "main()\n")).ToList());
         var pythonById = new Dictionary<int, List<string>>();
         for (var i = 0; i < chunks.Count; i++)
@@ -923,6 +1004,33 @@ public class OptionalMembershipDifferentialTests : IntegrationTestBase
         Assert.All(catalogSlots, n => Assert.True(generated.Contains(n) || ExcludedPrimitives.ContainsKey(n), $"slot primitive {n}"));
     }
 
+    /// <summary>The composite payloads are the image of <see cref="TypeKind"/>: every kind is a key of
+    /// <see cref="TypeKindPayloads"/> and every key a kind; each key generates payloads or names its reason, never both;
+    /// each generated Sharpy declaration declares its key's kind (by keyword) and has a python twin; payload names are
+    /// distinct across the whole axis.</summary>
+    private static void AssertCompositeAxisIsTheTypeKindImage()
+    {
+        var kinds = Enum.GetValues<TypeKind>().OrderBy(k => k).ToList();
+        Assert.True(kinds.SequenceEqual(TypeKindPayloads.Keys.OrderBy(k => k)),
+            "TypeKind is [" + string.Join(", ", kinds) + "]; TypeKindPayloads keys are ["
+            + string.Join(", ", TypeKindPayloads.Keys.OrderBy(k => k)) + "]: generate or exclude (with a reason) each kind");
+        Assert.True(kinds.SequenceEqual(TypeKindKeyword.Keys.OrderBy(k => k)), "TypeKindKeyword must name every TypeKind");
+        foreach (var (kind, (generated, excluded)) in TypeKindPayloads)
+        {
+            Assert.True((generated.Length > 0) != (excluded != null), $"{kind}: payloads or an exclusion reason, exactly one");
+            foreach (var payload in generated)
+            {
+                Assert.True(payload.SharpyDeclaration is { } decl
+                    && decl.Split('\n').Any(l => l.StartsWith(TypeKindKeyword[kind], StringComparison.Ordinal)
+                        && l[TypeKindKeyword[kind].Length..].StartsWith(payload.Name, StringComparison.Ordinal)),
+                    $"{kind}: payload {payload.Name}'s Sharpy declaration does not declare a {kind} named {payload.Name}");
+                Assert.False(string.IsNullOrWhiteSpace(payload.PythonDeclaration), $"{kind}: payload {payload.Name} has no python twin");
+            }
+        }
+        var names = GeneratePayloads().Select(p => p.Name).ToList();
+        Assert.Equal(names.Count, names.Distinct(StringComparer.Ordinal).Count());
+    }
+
     /// <summary>The CLR row is the census: the roster's keys are exactly the public types of Sharpy.Core and
     /// Sharpy.Stdlib with a public instance single-argument <c>Contains</c>; each generates one container or names why
     /// not; and every container of the CLR row comes from the roster.</summary>
@@ -955,6 +1063,8 @@ public class OptionalMembershipDifferentialTests : IntegrationTestBase
     {
         static bool Blank(string? s) => string.IsNullOrWhiteSpace(s);
         Assert.All(ExcludedPrimitives, e => Assert.False(Blank(e.Value), $"primitive {e.Key}: no reason"));
+        Assert.All(TypeKindPayloads.Where(e => e.Value.Generated.Length == 0),
+            e => Assert.False(Blank(e.Value.Excluded), $"TypeKind {e.Key}: no exclusion reason"));
         Assert.All(ClrContainerRoster.Where(r => r.Value.Generated == null),
             r => Assert.False(Blank(r.Value.Excluded), $"census type {r.Key}: no exclusion reason"));
         Assert.All(SpecRowMap.Where(m => m.Excluded != null || m.Generated.Length == 0),
