@@ -189,7 +189,7 @@ uv_quiet pip install --python "$VENV/bin/python" "${pkgs[@]}"
 
 # 6. env file --------------------------------------------------------------------------
 ENV_FILE="$VENV/sharpy-env.sh"
-# The three paths below are written into a file every shell sources, so each goes through %q: a
+# The paths below are written into a file every shell sources, so each goes through %q: a
 # checkout or --dotnet-dir path holding a quote, \$ or a backtick is then a literal there, not the
 # end of a string or a command to run.
 q() { printf '%q' "$1"; }
