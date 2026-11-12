@@ -78,8 +78,6 @@ public class OperatorLoweringCorpusCensusTests
                 "an integer target: `i /= j` is refused, the float64 result is not assignable (SPY0220)",
             [OperatorLoweringKind.StringRepeatStrRight] =
                 "an integer target: `n *= \"ab\"` is refused, the str result is not assignable (SPY0220)",
-            [OperatorLoweringKind.DecimalPow] =
-                "`d **= 2` is refused: decimal ** int is float64, not assignable to decimal (SPY0220)",
             [OperatorLoweringKind.OptionalUnwrapOr] =
                 "`??=` records only OptionalCoalesceBothOptional; a payload right side is a store wrap",
         };
@@ -107,7 +105,8 @@ public class OperatorLoweringCorpusCensusTests
         BinaryOperator.Equal or BinaryOperator.NotEqual or BinaryOperator.LessThan
             or BinaryOperator.LessThanOrEqual or BinaryOperator.GreaterThan
             or BinaryOperator.GreaterThanOrEqual or BinaryOperator.And or BinaryOperator.Or
-            or BinaryOperator.In or BinaryOperator.NotIn or BinaryOperator.Is or BinaryOperator.IsNot => null,
+            or BinaryOperator.In or BinaryOperator.NotIn or BinaryOperator.Is or BinaryOperator.IsNot
+            or BinaryOperator.PipeForward => null,
         _ => throw new InvalidOperationException(
             $"BinaryOperator.{op} has no AugmentedTwin arm: add its augmented operator, or null (#2443)"),
     };
@@ -121,6 +120,10 @@ public class OperatorLoweringCorpusCensusTests
     public void EveryOperatorLoweringKindAndKeyKind_HasAnEntryInAFixtureWithCommittedOutput()
     {
         var (roster, _, narrowToRoster, _) = ScanCallSites();
+
+        // Total over the enum now, not lazily: an operator with no corpus entry is classified too.
+        foreach (var op in Enum.GetValues<BinaryOperator>())
+            _ = AugmentedTwin(op);
         var fixtures = FixtureDiscoveryHelper.DiscoverFixturesFrom(FixtureRoots.CompilerTests)
             .Where(f => !f.IsSkipped && f.ExpectedFile != null)
             .OrderBy(f => f.TestName, StringComparer.Ordinal)
@@ -299,8 +302,8 @@ public class OperatorLoweringCorpusCensusTests
             + $"NarrowTo writers: {string.Join(", ", narrowToRoster)}");
         Assert.True(sites > 0, "no SetOperatorLowering call site found under Semantic/: the scan reads nothing");
         Assert.True(unresolved.Count == 0,
-            "SetOperatorLowering call site(s) whose first argument is not a parameter, local or pattern "
-            + "variable of the enclosing member; extend ScanCallSites:\n  " + string.Join("\n  ", unresolved));
+            "SetOperatorLowering call site(s) the scan cannot read (the key's declared type, or the "
+            + "lowering's construction); rewrite the site or extend ScanCallSites:\n  " + string.Join("\n  ", unresolved));
         Assert.All(roster, name => Assert.True(
             typeof(Node).Assembly.GetTypes().Any(t => t.Name == name && typeof(Node).IsAssignableFrom(t)),
             $"'{name}' is not an AST node type"));
@@ -343,11 +346,20 @@ public class OperatorLoweringCorpusCensusTests
 
                 roster.Add(type);
 
-                // A site writes a NarrowTo when its `new OperatorLowering(...)` passes a second argument.
-                var passesNarrowTo = call.ArgumentList.Arguments.Skip(1)
-                    .SelectMany(a => a.DescendantNodesAndSelf().OfType<BaseObjectCreationExpressionSyntax>())
-                    .Any(creation => creation.ArgumentList is { Arguments.Count: > 1 });
-                if (passesNarrowTo)
+                // A site writes a NarrowTo when its `new OperatorLowering(...)` passes a second argument
+                // or sets the member in an initializer. Any other spelling of the value (a `with`
+                // expression, a local built earlier) cannot be read here, so it is unresolved, not skipped.
+                if (call.ArgumentList.Arguments.Count != 2
+                    || call.ArgumentList.Arguments[1].Expression is not BaseObjectCreationExpressionSyntax creation)
+                {
+                    unresolved.Add($"{where}: the lowering is not a `new OperatorLowering(...)` written at the call");
+                    continue;
+                }
+
+                var setsNarrowTo = creation.ArgumentList is { Arguments.Count: > 1 }
+                    || (creation.Initializer?.Expressions.OfType<AssignmentExpressionSyntax>()
+                        .Any(a => a.Left is IdentifierNameSyntax { Identifier.ValueText: nameof(OperatorLowering.NarrowTo) }) ?? false);
+                if (setsNarrowTo)
                     narrowToRoster.Add(type);
             }
         }

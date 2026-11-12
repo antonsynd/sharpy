@@ -1,0 +1,9 @@
+# P82 tranche 3 stage 0 (#2443): the augmented twin of a decimal power. Any decimal operand of
+# `**` takes the float64 path (deviation `decimal-power-is-float`; CPython raises TypeError for
+# float ** Decimal), so a float target takes `**=` with a decimal right side: 2.0 ** 2 is 4.0.
+
+def main() -> None:
+    f: float = 2.0
+    d: decimal = 2m
+    f **= d
+    print(f)
