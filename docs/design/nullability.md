@@ -4,7 +4,7 @@
 > two sub-rulings on truthiness and on `x == None` for a `T?` the same day). **Not yet implemented**:
 > [nullability-ledger.tsv](nullability-ledger.tsv) records today's behavior against each rule and is
 > checked on every test run.
-> No tracker is filed for this principle yet; the cells already filed are on #2644 and #2635.
+> Tracker: #2674. Cells already filed: #2644, #2635, #2675 (`?.` on a `T?`), #2676 (empty literals).
 > **Companions:** `docs/language_specification/nullable_types.md`, `tagged_unions_optional.md` and
 > `logical_operators.md` (rewritten around this file as each rule lands), #2230 (R-EH, platform
 > types), [python-fidelity-scope.md](python-fidelity-scope.md),
