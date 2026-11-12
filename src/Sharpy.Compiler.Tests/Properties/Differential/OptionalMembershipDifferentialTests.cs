@@ -144,6 +144,10 @@ public class OptionalMembershipDifferentialTests : IntegrationTestBase
         }, null),
     };
 
+    /// <summary>How many payloads <see cref="TypeKindPayloads"/> generates, as a literal: the totality count reads the
+    /// map itself, so only this pins a payload against silent deletion.</summary>
+    private const int CompositePayloadCount = 7;
+
     /// <summary>The declaration keyword of each <see cref="TypeKind"/>: a generated payload's Sharpy declaration must
     /// declare its key's kind.</summary>
     private static readonly Dictionary<TypeKind, string> TypeKindKeyword = new()
@@ -758,8 +762,9 @@ public class OptionalMembershipDifferentialTests : IntegrationTestBase
 
         // Totality: the cell count is the product of the axis sizes, each from its own source (the catalog minus its
         // named exclusions plus the tuple plus the TypeKind map's payloads plus the reflected slot types; the spec
-        // table's containers, doubled for the literal element-typed roster; the enums). Never from the generator or its
-        // predicates, so a cell the generator drops (or invents) is red.
+        // table's containers, doubled for the literal element-typed roster; the enums). Never from the generator's loops
+        // or its predicates, so a cell the generator drops (or invents) is red; the TypeKind map both sides read is
+        // pinned by CompositePayloadCount.
         var payloadCount = CanonicalPrimitives().Count - ExcludedPrimitives.Count + 1
             + TypeKindPayloads.Values.Sum(v => v.Generated.Length) + RequiredSlotPayloadTypes().Count;
         var containerCount = SpecRowMap.Sum(m => m.Generated.Length);
@@ -1020,13 +1025,24 @@ public class OptionalMembershipDifferentialTests : IntegrationTestBase
             Assert.True((generated.Length > 0) != (excluded != null), $"{kind}: payloads or an exclusion reason, exactly one");
             foreach (var payload in generated)
             {
+                // The declared name is the payload's WHOLE name: `class KI(IFace):` does not declare `K`.
                 Assert.True(payload.SharpyDeclaration is { } decl
-                    && decl.Split('\n').Any(l => l.StartsWith(TypeKindKeyword[kind], StringComparison.Ordinal)
-                        && l[TypeKindKeyword[kind].Length..].StartsWith(payload.Name, StringComparison.Ordinal)),
+                    && decl.Split('\n').Any(l => l.StartsWith(TypeKindKeyword[kind] + payload.Name, StringComparison.Ordinal)
+                        && l[(TypeKindKeyword[kind].Length + payload.Name.Length)..] is var rest
+                        && (rest.Length == 0 || rest[0] is ':' or '(')),
                     $"{kind}: payload {payload.Name}'s Sharpy declaration does not declare a {kind} named {payload.Name}");
                 Assert.False(string.IsNullOrWhiteSpace(payload.PythonDeclaration), $"{kind}: payload {payload.Name} has no python twin");
             }
         }
+        // The payload count below reads this map, as the generator does, so a payload deleted from an entry would
+        // shrink both together: the count is pinned here as a literal, and an enum by both of its representations.
+        Assert.True(TypeKindPayloads.Values.Sum(v => v.Generated.Length) == CompositePayloadCount,
+            $"TypeKindPayloads generates {TypeKindPayloads.Values.Sum(v => v.Generated.Length)} payloads; "
+            + $"{nameof(CompositePayloadCount)} says {CompositePayloadCount}: a payload was dropped or added without the literal");
+        var enumPayloads = TypeKindPayloads[TypeKind.Enum].Generated;
+        Assert.True(enumPayloads.Count(p => p.ClrType == null) == 1 && enumPayloads.Count(p => p.ClrType == typeof(string)) == 1
+            && enumPayloads.Length == 2,
+            "TypeKind.Enum generates exactly an int-backed enum (its own slot) and a string-backed one (a str slot holds it)");
         var names = GeneratePayloads().Select(p => p.Name).ToList();
         Assert.Equal(names.Count, names.Distinct(StringComparer.Ordinal).Count());
     }
