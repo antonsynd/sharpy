@@ -1,13 +1,14 @@
 ---
 name: batch-issues
 description: Read every open GitHub issue with comments, batch them into class-level remediation groups, surface the open-ended decisions with options and door-type, then (after the owner rules) write the round charter and file/close what the rulings create
-argument-hint: "[--charter <path>] [--since <sha>] [--issues 123,456]"
+argument-hint: "[--since-charter] [--charter <path>] [--since <sha>] [--issues 123,456]"
 ---
 
 Read `docs/design/verification-contract.md` §1 (class contract, standard cures), §10 (file by class, lanes), §11 (one group per plan) and §12 (the verification tier) and `docs/design/python-fidelity-scope.md` (which Python surfaces are compared) before proceeding. This skill runs in **two owner turns**: an analysis turn that ends in a decision list, and an application turn after the owner rules. Never post to GitHub or write the charter before the owner has ruled.
 
 **Usage:**
 - `/batch-issues` — read all open issues, batch, present groups + per-issue recommendations + decisions
+- `/batch-issues --since-charter` — batch only what moved since the newest charter was last committed: the issues filed since then, plus the placed issues that gained a comment since then; extends the CURRENT round's charter (§2b computes the list)
 - `/batch-issues --issues 1946,1947` — batch only these into the CURRENT round's charter (incremental placement after a verify round files new issues)
 - `/batch-issues --charter docs/process/rounds/remediation-round-YYYY-MM-DD-batching.md` — extend an existing charter instead of starting a new one
 
@@ -31,6 +32,29 @@ done
 for f in $S/issues/issue-*.json; do jq -r '"=== #\(.number) \(.title)\nLABELS: \([.labels[].name]|join(","))\n\(.body)\n" + ([.comments[] | "--- COMMENT by \(.author.login) \(.createdAt[:10]):\n\(.body)\n"] | join("\n"))' $f; done > $S/all-issues.txt
 ```
 Read `all-issues.txt` in ≤450-line chunks with the Read tool (a single `cat` over 60 KB gets persisted out of context).
+
+### 2b. `--since-charter`: read only what moved
+The anchor is the committer date of the newest charter's last commit (the charter is committed at every call, so that date is the last call). In scope: every open issue created after it, and every open issue with a comment posted after it. Dump those in full (old comments included: a new cell is read against the thread it joins) and mark the new comments:
+
+```bash
+C=$(ls -t docs/process/rounds/remediation-round-*-batching.md | head -1)
+SINCE=$(TZ=UTC git log -1 --date=format-local:%Y-%m-%dT%H:%M:%SZ --format=%cd -- "$C")
+S=<scratchpad>; mkdir -p $S/issues; : > $S/all-issues.txt
+for p in 1 2 3 4 5; do gh api -X GET "repos/antonsynd/sharpy/issues?state=open&per_page=100&page=$p"; done | jq -s 'add | map(select(.pull_request | not))' > $S/open.json
+for n in $(jq -r --arg s "$SINCE" '.[] | select(.created_at > $s or .updated_at > $s) | .number' $S/open.json | sort -n); do
+  gh api -X GET "repos/antonsynd/sharpy/issues/$n/comments?per_page=100" > $S/issues/c-$n.json
+  jq -e --arg s "$SINCE" --argjson n $n '(.[] | select(.number == $n) | .created_at > $s)' $S/open.json > /dev/null \
+    || jq -e --arg s "$SINCE" 'any(.[]; .created_at > $s)' $S/issues/c-$n.json > /dev/null || continue   # a label or body edit alone is not a comment
+  jq -r --argjson n $n '.[] | select(.number == $n) | "=== #\(.number) \(.title)\nCREATED \(.created_at) LABELS: \([.labels[].name] | join(","))\n\(.body)\n"' $S/open.json >> $S/all-issues.txt
+  jq -r --arg s "$SINCE" '.[] | "--- COMMENT by \(.user.login) \(.created_at)\(if .created_at > $s then " [NEW]" else "" end):\n\(.body)\n"' $S/issues/c-$n.json >> $S/all-issues.txt
+done
+for n in $(jq -r '.[].number' $S/open.json); do grep -q "#$n\b" "$C" || echo "not in the charter: #$n"; done   # cross-check for the new half
+gh api -X GET "repos/antonsynd/sharpy/issues?state=closed&since=$SINCE&per_page=100" | jq -r --arg s "$SINCE" '.[] | select(.pull_request | not) | select(.closed_at > $s) | "closed since: #\(.number) \(.state_reason) \(.title)"'
+```
+- Every "not in the charter" number must be in the dump; one that is not was filed before the anchor and missed, and is read with the rest.
+- The census is still taken over ALL open issues (`jq length $S/open.json`, the per-lane label counts), and the closed-since list feeds the filed/closed ratio and the §1 rows whose issues closed.
+- An owner ruling quoted in a new comment is already ruled: it gets its R-letter in Turn 2 and is listed under "Rulings to letter", never re-asked as a D-number.
+- Every other body stands as read at earlier calls; say so in the state line, with the two counts (new issues, new comments on how many placed issues).
 
 ### 3. Anchor placement on the class, not on a seam hypothesis
 For each non-parked issue, confirm the CLASS by reading: the contract sentence (what is uniform across which axis) and the axes. Read code only where a placement or a ruling hinges on a design fact (is a merge a feature? is there an error sentinel?). **Do not write per-issue seam `file:line` / cure hypotheses** into the charter — the plan author locates and measures the seam, and grep-only seam notes were refuted at `/create-plan` a third to a half of the time (14 of 30 premises on plan-0ca7b7), costing a re-derivation at every later stage. Record a seam only when you MEASURED it with the built binary (`src/Sharpy.Cli/bin/Debug/net10.0/sharpyc run`, lock-free), written `measured @ <sha>`. **No `dotnet build`/`test` during batching.** Verify Python behavior with `python3 -c` only for a claim that decides a placement or a ruling, and check the surface's row in `python-fidelity-scope.md` first — a DEVIATION-by-default surface is not a bug to place.
