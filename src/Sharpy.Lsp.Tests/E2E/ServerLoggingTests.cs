@@ -103,25 +103,46 @@ public class ServerLoggingTests
             _output, serverArgs: new[] { "--log-level", "Debug" });
         await client.InitializeAsync();
         await AnalyseAsync(client);
-        await WaitForAsync(() => client.StandardErrorLines.Any(
-            l => l.Contains(AnalysisLatencyLog.StagesMarker)));
-
-        var stageLinesBefore = Count(client, AnalysisLatencyLog.StagesMarker);
-        var latencyLinesBefore = Count(client, AnalysisLatencyLog.Marker);
+        await WaitForAsync(() => AnalysisLogSequence.HasStagesAfterLatency(Lines(client), 1));
 
         // A comment-only edit: the same AST, so an incremental fast path serves it without calling
         // the compiler. It still publishes, so it still logs a latency line.
         await client.DidChangeAsync(Uri, Source + "# a comment\n", 2);
         await client.WaitForNotificationAsync("textDocument/publishDiagnostics", LspTestClient.ArrivalTimeout);
-        await WaitForAsync(() => Count(client, AnalysisLatencyLog.Marker) > latencyLinesBefore);
+        await WaitForAsync(() => Count(client, AnalysisLatencyLog.Marker) >= 2);
 
-        Count(client, AnalysisLatencyLog.StagesMarker).Should().Be(stageLinesBefore,
+        // Settle before asserting the absence (#2589): a stage line for the fast-path edit, were
+        // one written, would trail its latency line, so asserting at that line could pass before it
+        // lands. A real edit made only now logs no earlier than the debounce delay plus a full
+        // analysis after that point (a bound, not a happens-before: the server exposes no signal),
+        // and is the positive control that this stream would have carried a stage line.
+        await client.DidChangeAsync(Uri, StructurallyEditedSource, 3);
+        await client.WaitForNotificationAsync("textDocument/publishDiagnostics", LspTestClient.ArrivalTimeout);
+        await WaitForAsync(() => AnalysisLogSequence.HasStagesAfterLatency(Lines(client), 3));
+
+        var lines = Lines(client);
+        lines.Select(l => l.Kind).Should().Equal(
+            new[]
+            {
+                AnalysisLogSequence.Kind.Latency, AnalysisLogSequence.Kind.Stages, // opening: analysed
+                AnalysisLogSequence.Kind.Latency,                                   // comment: fast path
+                AnalysisLogSequence.Kind.Latency, AnalysisLogSequence.Kind.Stages, // added def: analysed
+            },
             "an edit served without a compiler call has no stages to attribute; an empty breakdown "
             + "is the signal that the fast path worked, and inventing one would erase the "
             + "served-from-cache vs analysed distinction");
+        lines[4].ElapsedMs.Should().Be(lines[3].ElapsedMs,
+            "the stage line after the fast-path edit belongs to the later real edit, not to it");
 
         await ShutdownAsync(client);
     }
+
+    /// <summary>A top-level declaration added: neither NoChange nor BodyOnly, so the edit takes the
+    /// full compiler call and logs a stage line.</summary>
+    private const string StructurallyEditedSource = Source + "\ndef added() -> int:\n    return 0\n";
+
+    private static System.Collections.Generic.List<AnalysisLogSequence.Line> Lines(LspTestClient client)
+        => AnalysisLogSequence.Of(client.StandardErrorLines);
 
     [Fact]
     public async Task An_unusable_log_level_warns_but_still_serves()
