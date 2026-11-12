@@ -70,8 +70,6 @@ public class SocketErrnoDifferentialTests
             "a = _s()\na.bind((\"127.0.0.1\", 0))\na.listen(1)\na.setblocking(False)\na.accept()"),
         new Probe("nb_connect",
             "a = _s()\na.bind((\"127.0.0.1\", 0))\na.listen(1)\nb = _s()\nb.setblocking(False)\nb.connect((\"127.0.0.1\", a.getsockname()[1]))"),
-        new Probe("setsockopt_bad", "_s().setsockopt(socket.SOL_SOCKET, 9999, 1)"),
-        new Probe("getsockopt_bad", "_s().getsockopt(socket.SOL_SOCKET, 9999)"),
         new Probe("recv_timeout",
             "u = _s(socket.AF_INET, socket.SOCK_DGRAM)\nu.bind((\"127.0.0.1\", 0))\nu.settimeout(0.2)\nu.recv(10)"),
         new Probe("accept_timeout",
@@ -80,7 +78,39 @@ public class SocketErrnoDifferentialTests
         new Probe("connect_timeout",
             "a = _s()\na.bind((\"127.0.0.1\", 0))\na.listen(0)\n_s().connect((\"127.0.0.1\", a.getsockname()[1]))\n"
             + "c = _s()\nc.settimeout(0.3)\nc.connect((\"127.0.0.1\", a.getsockname()[1]))"),
-    };
+        // A valid option round-trips on both sides; the recv that follows is the raise compared.
+        new Probe("sockopt_valid",
+            "s = _s()\ns.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)\nif s.getsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR) != 0:\n    s.recv(1)"),
+    }.Concat(SockoptProbes()).ToArray();
+
+    /// <summary>
+    /// The unknown-option matrix, generated: {setsockopt, getsockopt} × {SOCK_STREAM, SOCK_DGRAM} × every
+    /// level (SOL_SOCKET, IPPROTO_IP, IPPROTO_TCP, IPPROTO_UDP, an unknown one) with an option name no
+    /// level defines (9999), plus an unknown level with a real name. Linux answers ENOPROTOOPT or
+    /// EOPNOTSUPP by level and socket type; .NET refuses the option itself, so every cell is compared.
+    /// The two <c>_real</c> rows are the twins the mapping must not rewrite: TCP_NODELAY on a UDP socket
+    /// reaches the kernel, which answers setsockopt ENOPROTOOPT and getsockopt EOPNOTSUPP.
+    /// </summary>
+    private static IEnumerable<Probe> SockoptProbes()
+    {
+        var types = new[] { ("stream", "socket.SOCK_STREAM"), ("dgram", "socket.SOCK_DGRAM") };
+        var targets = new[]
+        {
+            ("sol_socket", "socket.SOL_SOCKET, 9999"), ("ip", "socket.IPPROTO_IP, 9999"),
+            ("tcp", "socket.IPPROTO_TCP, 9999"), ("udp", "socket.IPPROTO_UDP, 9999"),
+            ("level9999", "9999, 9999"), ("level9999_name", "9999, socket.TCP_NODELAY"),
+        };
+        foreach (var (typeId, type) in types)
+        {
+            foreach (var (targetId, target) in targets)
+            {
+                yield return new Probe($"sockopt_set_{typeId}_{targetId}", $"_s(socket.AF_INET, {type}).setsockopt({target}, 1)");
+                yield return new Probe($"sockopt_get_{typeId}_{targetId}", $"_s(socket.AF_INET, {type}).getsockopt({target})");
+            }
+        }
+        yield return new Probe("sockopt_set_dgram_tcp_real", "_s(socket.AF_INET, socket.SOCK_DGRAM).setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)");
+        yield return new Probe("sockopt_get_dgram_tcp_real", "_s(socket.AF_INET, socket.SOCK_DGRAM).getsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY)");
+    }
 
     /// <summary>
     /// Probes whose errno still differs (cells of <c>docs/deviations.yaml</c>
@@ -95,9 +125,6 @@ public class SocketErrnoDifferentialTests
             ["bad_type"] = ("22", "91", ".NET rejects the type itself with EPROTOTYPE; CPython's socket(2) gets EINVAL"),
             ["bad_proto_stream"] = ("22", "93", ".NET rejects the protocol itself with EPROTONOSUPPORT; CPython's socket(2) gets EINVAL"),
             ["bad_proto_dgram"] = ("22", "93", ".NET rejects the protocol itself with EPROTONOSUPPORT; CPython's socket(2) gets EINVAL"),
-            ["nb_connect"] = ("115", "11", ".NET folds the kernel's EINPROGRESS into WouldBlock, whose native code is EAGAIN"),
-            ["setsockopt_bad"] = ("92", "95", ".NET rejects an unknown option name itself with EOPNOTSUPP; the kernel gives ENOPROTOOPT"),
-            ["getsockopt_bad"] = ("92", "95", ".NET rejects an unknown option name itself with EOPNOTSUPP; the kernel gives ENOPROTOOPT"),
         };
 
     private static readonly object Gate = new();
@@ -168,7 +195,12 @@ public class SocketErrnoDifferentialTests
     public void PositiveControl_PosixErrnosAgree()
     {
         var run = Execute();
-        foreach (var (id, errno) in new[] { ("bad_family", "97"), ("connect_refused", "111"), ("bind_in_use", "98"), ("recv_unconnected", "107") })
+        foreach (var (id, errno) in new[]
+        {
+            ("bad_family", "97"), ("connect_refused", "111"), ("bind_in_use", "98"), ("recv_unconnected", "107"),
+            ("nb_connect", "115"), ("nb_accept", "11"), ("sockopt_set_stream_sol_socket", "92"),
+            ("sockopt_get_dgram_tcp_real", "95"), ("recv_timeout", "None"),
+        })
         {
             Assert.DoesNotContain(id, KnownDivergences.Keys);
             Assert.Equal(errno, run.Python[id].Errno);
@@ -221,6 +253,31 @@ public class SocketErrnoDifferentialTests
         TestPreconditions.RequireOrSkip(OperatingSystem.IsLinux(), "the pinned number is Linux's errno value.");
         var t = global::Sharpy.SocketModule.SocketModuleModule._TimedOut(new SocketException((int)SocketError.TimedOut), ownTimeout);
         Assert.Equal(linuxErrno, t.Errno);
+    }
+
+    /// <summary>
+    /// The call-site rule (<c>_call_error</c>), oracle-free: each (call site, .NET code) it rewrites, and
+    /// the neighbours it must leave to the seam. "new descriptor" is the only witness of EMFILE: running out
+    /// of descriptors needs a process-wide limit, so the end-to-end cell is measured by hand
+    /// (<c>ulimit -n 1024</c>, opening sockets until one fails: CPython 24, Sharpy 24) and recorded in
+    /// docs/deviations.yaml. A genuine system-wide ENFILE (23) shares <c>TooManyOpenSockets</c> and also
+    /// reports 24 (a recorded cell, not producible here).
+    /// </summary>
+    [SkippableTheory]
+    [InlineData("new descriptor", SocketError.TooManyOpenSockets, 24)]
+    [InlineData("nonblocking connect", SocketError.WouldBlock, 115)]
+    [InlineData("unknown option", SocketError.OperationNotSupported, 92)]
+    [InlineData("new descriptor", SocketError.WouldBlock, 11)]
+    [InlineData("nonblocking connect", SocketError.ConnectionRefused, 111)]
+    [InlineData("nonblocking connect", SocketError.TooManyOpenSockets, 23)]
+    [InlineData("unknown option", SocketError.ProtocolOption, 92)]
+    [InlineData("unknown option", SocketError.WouldBlock, 11)]
+    [InlineData("connect", SocketError.WouldBlock, 11)]
+    public void CallError_RewritesOnlyItsCallSiteAndCode(string call, SocketError code, int linuxErrno)
+    {
+        TestPreconditions.RequireOrSkip(OperatingSystem.IsLinux(), "the pinned numbers are Linux's errno values.");
+        var e = global::Sharpy.SocketModule.SocketModuleModule._CallError(new SocketException((int)code), call);
+        Assert.Equal(linuxErrno, e.Errno);
     }
 
     internal readonly record struct Outcome(string Type, string? Errno);

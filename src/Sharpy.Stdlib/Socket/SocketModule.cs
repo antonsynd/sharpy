@@ -90,6 +90,45 @@ namespace Sharpy.SocketModule
         }
 
         /// <summary>
+        /// The socket.error for a .NET SocketException raised at `call`: the seam's
+        /// (`error.from_socket_exception`), except where .NET reports a code whose NativeErrorCode is
+        /// not the errno the platform's call returns there.
+        /// The rule, stated once (keyed on the CLR `SocketError`, never the message), Linux numbering:
+        /// - "nonblocking connect" + `WouldBlock` -> 115 `EINPROGRESS`: .NET folds the kernel's
+        /// EINPROGRESS into WouldBlock, whose native code is EAGAIN (11).
+        /// - "unknown option" + `OperationNotSupported` -> 92 `ENOPROTOOPT`: .NET refuses an option it
+        /// has no mapping for (see socket._kernel_says_enoprotoopt) before the kernel is asked,
+        /// with EOPNOTSUPP (95); the kernel answers such an option with ENOPROTOOPT.
+        /// - "new descriptor" + `TooManyOpenSockets` -> 24 `EMFILE`: .NET folds EMFILE and ENFILE into
+        /// TooManyOpenSockets, whose native code is ENFILE (23).
+        /// Off Linux nothing is rewritten: on Windows .NET's code is WinSock's own, which CPython
+        /// reports; macOS is unmeasured (docs/deviations.yaml, socket-errno-is-dotnet-socket-error).
+        /// </summary>
+        internal static global::Sharpy.SocketModule.Error _CallError(global::System.Net.Sockets.SocketException ex, string call)
+        {
+            if (global::System.Runtime.InteropServices.RuntimeInformation.IsOSPlatform(global::System.Runtime.InteropServices.OSPlatform.Linux))
+            {
+                global::System.Net.Sockets.SocketError code = ex.SocketErrorCode;
+                if (call == "nonblocking connect" && code == global::System.Net.Sockets.SocketError.WouldBlock)
+                {
+                    return new global::Sharpy.SocketModule.Error("Operation now in progress", ex, 115);
+                }
+
+                if (call == "unknown option" && code == global::System.Net.Sockets.SocketError.OperationNotSupported)
+                {
+                    return new global::Sharpy.SocketModule.Error("Protocol not available", ex, 92);
+                }
+
+                if (call == "new descriptor" && code == global::System.Net.Sockets.SocketError.TooManyOpenSockets)
+                {
+                    return new global::Sharpy.SocketModule.Error("Too many open files", ex, 24);
+                }
+            }
+
+            return global::Sharpy.SocketModule.Error.FromSocketException(ex);
+        }
+
+        /// <summary>
         /// Return the default timeout in seconds for new sockets, or None.
         /// </summary>
         public static double? Getdefaulttimeout()
@@ -446,7 +485,12 @@ namespace Sharpy.SocketModule
             }
             catch (global::System.Net.Sockets.SocketException ex_1)
             {
-                throw global::Sharpy.SocketModule.Error.FromSocketException(ex_1);
+                if (this._Socket.Blocking)
+                {
+                    throw global::Sharpy.SocketModule.Error.FromSocketException(ex_1);
+                }
+
+                throw global::Sharpy.SocketModule.SocketModuleModule._CallError(ex_1, "nonblocking connect");
             }
         }
 
@@ -526,7 +570,7 @@ namespace Sharpy.SocketModule
             }
             catch (global::System.Net.Sockets.SocketException ex_1)
             {
-                throw global::Sharpy.SocketModule.Error.FromSocketException(ex_1);
+                throw global::Sharpy.SocketModule.SocketModuleModule._CallError(ex_1, "new descriptor");
             }
         }
 
@@ -660,6 +704,11 @@ namespace Sharpy.SocketModule
             }
             catch (global::System.Net.Sockets.SocketException ex)
             {
+                if (this._KernelSaysEnoprotoopt(level, optname, true))
+                {
+                    throw global::Sharpy.SocketModule.SocketModuleModule._CallError(ex, "unknown option");
+                }
+
                 throw global::Sharpy.SocketModule.Error.FromSocketException(ex);
             }
         }
@@ -681,8 +730,52 @@ namespace Sharpy.SocketModule
             }
             catch (global::System.Net.Sockets.SocketException ex)
             {
+                if (this._KernelSaysEnoprotoopt(level, optname, false))
+                {
+                    throw global::Sharpy.SocketModule.SocketModuleModule._CallError(ex, "unknown option");
+                }
+
                 throw global::Sharpy.SocketModule.Error.FromSocketException(ex);
             }
+        }
+
+        /// <summary>
+        /// Whether .NET refused (level, optname) itself, having no member for it, where Linux
+        /// would have answered ENOPROTOOPT (each arm measured with CPython 3.15.2).
+        /// A level or option name that is no member of .NET's enum never reaches the kernel. Linux
+        /// answers an unknown option with ENOPROTOOPT at SOL_SOCKET on every socket; on an AF_INET
+        /// socket also at every level for setsockopt, and for getsockopt at IPPROTO_IP and at the
+        /// socket's own protocol (IPPROTO_TCP on SOCK_STREAM, IPPROTO_UDP on SOCK_DGRAM). Elsewhere
+        /// it answers EOPNOTSUPP, already .NET's number (AF_INET6 off SOL_SOCKET is unmeasured and
+        /// left as .NET reports it). A defined member .NET has no Linux mapping for is not told
+        /// apart here.
+        /// </summary>
+        private bool _KernelSaysEnoprotoopt(int level, int optname, bool setting)
+        {
+            bool levelKnown = global::System.Enum.IsDefined(global::System.Net.Sockets.SocketOptionLevel.Socket.GetType(), (global::System.Net.Sockets.SocketOptionLevel)level);
+            bool nameKnown = global::System.Enum.IsDefined(global::System.Net.Sockets.SocketOptionName.Debug.GetType(), (global::System.Net.Sockets.SocketOptionName)optname);
+            if (levelKnown && nameKnown)
+            {
+                return false;
+            }
+
+            if (level == global::Sharpy.SocketModule.SocketModuleModule.SOL_SOCKET)
+            {
+                return true;
+            }
+
+            if (this._Socket.AddressFamily != global::System.Net.Sockets.AddressFamily.InterNetwork)
+            {
+                return false;
+            }
+
+            if (setting || level == global::Sharpy.SocketModule.SocketModuleModule.IPPROTO_IP)
+            {
+                return true;
+            }
+
+            global::System.Net.Sockets.SocketType kind = this._Socket.SocketType;
+            return (level == global::Sharpy.SocketModule.SocketModuleModule.IPPROTO_TCP && kind == global::System.Net.Sockets.SocketType.Stream) || (level == global::Sharpy.SocketModule.SocketModuleModule.IPPROTO_UDP && kind == global::System.Net.Sockets.SocketType.Dgram);
         }
 
         /// <summary>
@@ -905,7 +998,7 @@ namespace Sharpy.SocketModule
             }
             catch (global::System.Net.Sockets.SocketException ex)
             {
-                throw global::Sharpy.SocketModule.Error.FromSocketException(ex);
+                throw global::Sharpy.SocketModule.SocketModuleModule._CallError(ex, "new descriptor");
             }
 
             this._Timeout = null;

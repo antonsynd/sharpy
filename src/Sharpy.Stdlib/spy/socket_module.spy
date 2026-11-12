@@ -1,6 +1,7 @@
 """Low-level networking interface (TCP, UDP, DNS)."""
 
-from system import IDisposable, Array, Double
+from system import IDisposable, Array, Double, Enum
+from system.runtime.interop_services import RuntimeInformation, OSPlatform
 from system.net import IPAddress, IPEndPoint, EndPoint, Dns
 from system.net.sockets import Socket as NetSocket, AddressFamily, SocketType, ProtocolType, SocketOptionLevel, SocketOptionName, SocketShutdown, SocketFlags, SocketException, SocketError, SelectMode
 # threading.Lock, not `from sharpy import Lock`: under the sharpy spelling `with _lock:` lowers to
@@ -162,6 +163,32 @@ def _timed_out(ex: SocketException, own_timeout: bool) -> timeout:
         return timeout("timed out", ex)
     return timeout(ex.Message, ex, error.from_socket_exception(ex).errno)
 
+def _call_error(ex: SocketException, call: str) -> error:
+    """The socket.error for a .NET SocketException raised at `call`: the seam's
+    (`error.from_socket_exception`), except where .NET reports a code whose NativeErrorCode is
+    not the errno the platform's call returns there.
+
+    The rule, stated once (keyed on the CLR `SocketError`, never the message), Linux numbering:
+    - "nonblocking connect" + `WouldBlock` -> 115 `EINPROGRESS`: .NET folds the kernel's
+      EINPROGRESS into WouldBlock, whose native code is EAGAIN (11).
+    - "unknown option" + `OperationNotSupported` -> 92 `ENOPROTOOPT`: .NET refuses an option it
+      has no mapping for (see socket._kernel_says_enoprotoopt) before the kernel is asked,
+      with EOPNOTSUPP (95); the kernel answers such an option with ENOPROTOOPT.
+    - "new descriptor" + `TooManyOpenSockets` -> 24 `EMFILE`: .NET folds EMFILE and ENFILE into
+      TooManyOpenSockets, whose native code is ENFILE (23).
+    Off Linux nothing is rewritten: on Windows .NET's code is WinSock's own, which CPython
+    reports; macOS is unmeasured (docs/deviations.yaml, socket-errno-is-dotnet-socket-error).
+    """
+    if RuntimeInformation.is_o_s_platform(OSPlatform.Linux):
+        code: SocketError = ex.socket_error_code
+        if call == "nonblocking connect" and code == SocketError.WouldBlock:
+            return error("Operation now in progress", ex, 115)
+        if call == "unknown option" and code == SocketError.OperationNotSupported:
+            return error("Protocol not available", ex, 92)
+        if call == "new descriptor" and code == SocketError.TooManyOpenSockets:
+            return error("Too many open files", ex, 24)
+    return error.from_socket_exception(ex)
+
 @final
 class socket(IDisposable):
     """Wraps System.Net.Sockets.Socket to provide a Python-like socket API.
@@ -179,7 +206,7 @@ class socket(IDisposable):
         try:
             self._socket = NetSocket(family as! AddressFamily, sock_type as! SocketType, proto as! ProtocolType)
         except SocketException as ex:
-            raise error.from_socket_exception(ex)
+            raise _call_error(ex, "new descriptor")
         self._timeout = None
         default: float | None = None
         with _lock:
@@ -230,7 +257,9 @@ class socket(IDisposable):
             # Send/ReceiveTimeout, so a TimedOut here is the kernel's ETIMEDOUT.
             raise _timed_out(ex, False)
         except SocketException as ex:
-            raise error.from_socket_exception(ex)
+            if self._socket.blocking:
+                raise error.from_socket_exception(ex)
+            raise _call_error(ex, "nonblocking connect")
 
     def bind(self, address: tuple[host: str, port: int]) -> None:
         """Bind the socket to a local (host, port) address."""
@@ -271,7 +300,7 @@ class socket(IDisposable):
         except SocketException as ex when ex.socket_error_code == SocketError.TimedOut:
             raise _timed_out(ex, self._timeout_ms() > 0)
         except SocketException as ex:
-            raise error.from_socket_exception(ex)
+            raise _call_error(ex, "new descriptor")
 
     # ---- Data transfer methods ----
 
@@ -346,6 +375,8 @@ class socket(IDisposable):
         try:
             self._socket.set_socket_option(level as! SocketOptionLevel, optname as! SocketOptionName, value)
         except SocketException as ex:
+            if self._kernel_says_enoprotoopt(level, optname, True):
+                raise _call_error(ex, "unknown option")
             raise error.from_socket_exception(ex)
 
     def getsockopt(self, level: int, optname: int) -> int:
@@ -356,7 +387,35 @@ class socket(IDisposable):
                 return 0
             return opt as! int
         except SocketException as ex:
+            if self._kernel_says_enoprotoopt(level, optname, False):
+                raise _call_error(ex, "unknown option")
             raise error.from_socket_exception(ex)
+
+    @private
+    def _kernel_says_enoprotoopt(self, level: int, optname: int, setting: bool) -> bool:
+        """Whether .NET refused (level, optname) itself, having no member for it, where Linux
+        would have answered ENOPROTOOPT (each arm measured with CPython 3.15.2).
+
+        A level or option name that is no member of .NET's enum never reaches the kernel. Linux
+        answers an unknown option with ENOPROTOOPT at SOL_SOCKET on every socket; on an AF_INET
+        socket also at every level for setsockopt, and for getsockopt at IPPROTO_IP and at the
+        socket's own protocol (IPPROTO_TCP on SOCK_STREAM, IPPROTO_UDP on SOCK_DGRAM). Elsewhere
+        it answers EOPNOTSUPP, already .NET's number (AF_INET6 off SOL_SOCKET is unmeasured and
+        left as .NET reports it). A defined member .NET has no Linux mapping for is not told
+        apart here.
+        """
+        level_known: bool = Enum.is_defined(SocketOptionLevel.Socket.get_type(), level as! SocketOptionLevel)
+        name_known: bool = Enum.is_defined(SocketOptionName.Debug.get_type(), optname as! SocketOptionName)
+        if level_known and name_known:
+            return False
+        if level == SOL_SOCKET:
+            return True
+        if self._socket.address_family != AddressFamily.InterNetwork:
+            return False
+        if setting or level == IPPROTO_IP:
+            return True
+        kind: SocketType = self._socket.socket_type
+        return (level == IPPROTO_TCP and kind == SocketType.Stream) or (level == IPPROTO_UDP and kind == SocketType.Dgram)
 
     # ---- Lifecycle methods ----
 
