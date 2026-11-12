@@ -295,16 +295,31 @@ public class SocketErrnoDifferentialTests
         Assert.Equal(linuxErrno, t.Errno);
     }
 
-    /// <summary>The call sites of the errno rule, each bound to its real entry point in the module.</summary>
-    public enum Site { NonblockingConnect, UnknownOption, NewDescriptor }
-
-    private static global::Sharpy.SocketModule.Error ErrorAt(Site site, SocketException ex) => site switch
+    /// <summary>
+    /// The call sites of the errno rule, each bound to its real entry point in the module. The connect
+    /// site's rule depends on the socket, so each kind of socket it can fail on is its own site.
+    /// </summary>
+    public enum Site
     {
-        Site.NonblockingConnect => global::Sharpy.SocketModule.SocketModuleModule._NonblockingConnectError(ex),
-        Site.UnknownOption => global::Sharpy.SocketModule.SocketModuleModule._UnknownOptionError(ex),
-        Site.NewDescriptor => global::Sharpy.SocketModule.SocketModuleModule._NewDescriptorError(ex),
-        _ => throw new ArgumentOutOfRangeException(nameof(site)),
-    };
+        ConnectStreamNonblocking, ConnectStreamBlocking, ConnectDgramNonblocking, ConnectDgramBlocking,
+        UnknownOption, NewDescriptor,
+    }
+
+    private static global::Sharpy.SocketModule.Error ErrorAt(Site site, SocketException ex)
+    {
+        switch (site)
+        {
+            case Site.UnknownOption:
+                return global::Sharpy.SocketModule.SocketModuleModule._UnknownOptionError(ex);
+            case Site.NewDescriptor:
+                return global::Sharpy.SocketModule.SocketModuleModule._NewDescriptorError(ex);
+        }
+        var stream = site is Site.ConnectStreamNonblocking or Site.ConnectStreamBlocking;
+        using var sock = new Socket(AddressFamily.InterNetwork, stream ? SocketType.Stream : SocketType.Dgram,
+            stream ? ProtocolType.Tcp : ProtocolType.Udp);
+        sock.Blocking = site is Site.ConnectStreamBlocking or Site.ConnectDgramBlocking;
+        return global::Sharpy.SocketModule.SocketModuleModule._ConnectError(ex, sock);
+    }
 
     /// <summary>
     /// The call-site rule, oracle-free, through each site's own entry point: the .NET code it rewrites,
@@ -314,11 +329,16 @@ public class SocketErrnoDifferentialTests
     /// </summary>
     [SkippableTheory]
     [InlineData(Site.NewDescriptor, SocketError.TooManyOpenSockets, 24)]
-    [InlineData(Site.NonblockingConnect, SocketError.WouldBlock, 115)]
+    [InlineData(Site.ConnectStreamNonblocking, SocketError.WouldBlock, 115)]
     [InlineData(Site.UnknownOption, SocketError.OperationNotSupported, 92)]
     [InlineData(Site.NewDescriptor, SocketError.WouldBlock, 11)]
-    [InlineData(Site.NonblockingConnect, SocketError.ConnectionRefused, 111)]
-    [InlineData(Site.NonblockingConnect, SocketError.TooManyOpenSockets, 23)]
+    [InlineData(Site.ConnectStreamNonblocking, SocketError.ConnectionRefused, 111)]
+    [InlineData(Site.ConnectStreamNonblocking, SocketError.TooManyOpenSockets, 23)]
+    // Only a non-blocking stream connect can be in progress; a WouldBlock anywhere else is a real
+    // EAGAIN (a datagram connect that cannot auto-bind a port: ConnectEagain_EqualsPython measures it).
+    [InlineData(Site.ConnectStreamBlocking, SocketError.WouldBlock, 11)]
+    [InlineData(Site.ConnectDgramNonblocking, SocketError.WouldBlock, 11)]
+    [InlineData(Site.ConnectDgramBlocking, SocketError.WouldBlock, 11)]
     [InlineData(Site.UnknownOption, SocketError.ProtocolOption, 92)]
     [InlineData(Site.UnknownOption, SocketError.WouldBlock, 11)]
     [InlineData(Site.NewDescriptor, SocketError.OperationNotSupported, 95)]
@@ -326,6 +346,113 @@ public class SocketErrnoDifferentialTests
     {
         TestPreconditions.RequireOrSkip(OperatingSystem.IsLinux(), "the pinned numbers are Linux's errno values.");
         Assert.Equal(linuxErrno, ErrorAt(site, new SocketException((int)code)).Errno);
+    }
+
+    private const string EagainPython = """
+        import socket
+        held = []
+        for p in (40000, 40001):
+            s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+            s.bind(("0.0.0.0", p))
+            held.append(s)
+        for mode in ("blocking", "nonblocking"):
+            u = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+            u.setblocking(mode == "blocking")
+            try:
+                u.connect(("127.0.0.1", 9))
+                print("OUT", mode, "-")
+            except OSError as e:
+                print("OUT", mode, e.errno)
+        """;
+
+    // The Sharpy program runs under the harness's own `dotnet exec`; it re-runs itself (its own
+    // assembly, argv[0]) inside `unshare -n`, where the ephemeral range is narrowed, and the inner run's
+    // output goes to the same stdout.
+    private const string EagainSharpy = """
+        import socket
+        from system import Environment
+        from system.diagnostics import Process
+
+        def probe() -> None:
+            held: list[socket.socket] = []
+            for p in [40000, 40001]:
+                s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+                s.bind(("0.0.0.0", p))
+                held.append(s)
+            for mode in ["blocking", "nonblocking"]:
+                u = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+                u.setblocking(mode == "blocking")
+                try:
+                    u.connect(("127.0.0.1", 9))
+                    print(f"OUT {mode} -")
+                except socket.error as e:
+                    print(f"OUT {mode} {e.errno}")
+
+        def main() -> None:
+            if Environment.get_environment_variable("SHARPY_EAGAIN_INNER") == "1":
+                probe()
+                return
+            me: str = Environment.get_command_line_args()[0]
+            script: str = "echo 40000 40001 > /proc/sys/net/ipv4/ip_local_port_range && SHARPY_EAGAIN_INNER=1 exec dotnet exec '" + me + "'"
+            p = Process.start("unshare", f"-n sh -c \"{script}\"")
+            p.wait_for_exit()
+            if p.exit_code != 0:
+                print(f"OUT SKIP unshare -n failed (exit {p.exit_code})")
+        """;
+
+    /// <summary>
+    /// A real EAGAIN from <c>connect</c>: inside a private network namespace (<c>unshare -n</c>) whose
+    /// ephemeral range is two ports, both bound, a UDP connect cannot auto-bind a port and Linux answers
+    /// EAGAIN, which .NET reports as <c>WouldBlock</c> like an in-progress connect. CPython 3.15.2 reports 11
+    /// for a blocking and a non-blocking socket; Sharpy must too (only a stream connect is in progress).
+    /// Skipped where creating a network namespace is not permitted. The host's network is untouched.
+    /// </summary>
+    [SkippableFact]
+    public void ConnectEagain_EqualsPython()
+    {
+        TestPreconditions.RequireOrSkip(OperatingSystem.IsLinux(), "the namespace and the errno are Linux's.");
+        TestPreconditions.RequireOrSkip(File.Exists("/usr/bin/unshare") || File.Exists("/bin/unshare"),
+            "unshare(1) (util-linux) is not installed.");
+        var python = PythonInterpreter.RequireOrSkip();
+        var work = SysPath.Combine(SysPath.GetTempPath(), "sharpy-socket-eagain-" + Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(work);
+        try
+        {
+            var script = SysPath.Combine(work, "eagain.py");
+            File.WriteAllText(script, EagainPython);
+            var psi = new System.Diagnostics.ProcessStartInfo("unshare")
+            {
+                RedirectStandardOutput = true,
+                RedirectStandardError = true,
+                UseShellExecute = false,
+            };
+            foreach (var a in new[] { "-n", "sh", "-c", $"echo 40000 40001 > /proc/sys/net/ipv4/ip_local_port_range && exec '{python.Executable}' '{script}'" })
+                psi.ArgumentList.Add(a);
+            using var proc = System.Diagnostics.Process.Start(psi)!;
+            var pyOut = proc.StandardOutput.ReadToEnd();
+            var pyErr = proc.StandardError.ReadToEnd();
+            proc.WaitForExit();
+            TestPreconditions.RequireOrSkip(proc.ExitCode == 0,
+                $"`unshare -n` (a private network namespace) is not permitted here: exit {proc.ExitCode}: {pyErr.Trim()}");
+            var py = pyOut.Replace("\r\n", "\n").Split('\n').Select(l => l.Trim()).Where(l => l.StartsWith("OUT ", StringComparison.Ordinal)).ToList();
+
+            using var runner = new Runner();
+            var result = runner.Execute(EagainSharpy);
+            Assert.True(result.Success, "the Sharpy program failed: " + string.Join("\n", result.CompilationErrors.Take(10)) + result.Failure);
+            var sh = result.StandardOutput.Replace("\r\n", "\n").Split('\n').Select(l => l.Trim())
+                .Where(l => l.StartsWith("OUT ", StringComparison.Ordinal)).ToList();
+            TestPreconditions.RequireOrSkip(!sh.Any(l => l.StartsWith("OUT SKIP", StringComparison.Ordinal)), "Sharpy: " + string.Join("; ", sh));
+            _output.WriteLine($"python: {string.Join("; ", py)}; Sharpy: {string.Join("; ", sh)}");
+            Assert.Equal(new[] { "OUT blocking 11", "OUT nonblocking 11" }, py);
+            Assert.Equal(py, sh);
+        }
+        finally
+        {
+            try
+            { Directory.Delete(work, recursive: true); }
+            catch (IOException) { }
+            catch (UnauthorizedAccessException) { }
+        }
     }
 
     private const string EmfilePython = """

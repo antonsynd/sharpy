@@ -130,11 +130,20 @@ namespace Sharpy.SocketModule
         }
 
         /// <summary>
-        /// `connect` on a non-blocking socket: .NET folds the kernel's EINPROGRESS into `WouldBlock`
-        /// (native EAGAIN, 11); CPython reports 115 `EINPROGRESS`.
+        /// `connect` failing on `sock`. Only a non-blocking STREAM connect can be in progress: .NET
+        /// folds the kernel's EINPROGRESS into `WouldBlock` (native EAGAIN, 11), and CPython reports 115
+        /// `EINPROGRESS`. A datagram connect never returns EINPROGRESS (it completes at once), so its
+        /// `WouldBlock` is a real EAGAIN (e.g. no ephemeral port left to auto-bind), which CPython
+        /// reports as 11; and a blocking connect reaches `WouldBlock` only on a real EAGAIN too. Both go
+        /// to the seam unchanged.
         /// </summary>
-        internal static global::Sharpy.SocketModule.Error _NonblockingConnectError(global::System.Net.Sockets.SocketException ex)
+        internal static global::Sharpy.SocketModule.Error _ConnectError(global::System.Net.Sockets.SocketException ex, global::System.Net.Sockets.Socket sock)
         {
+            if (sock.Blocking || sock.SocketType != global::System.Net.Sockets.SocketType.Stream)
+            {
+                return global::Sharpy.SocketModule.Error.FromSocketException(ex);
+            }
+
             return global::Sharpy.SocketModule.SocketModuleModule._RewriteErrno(ex, global::System.Net.Sockets.SocketError.WouldBlock, 115, "Operation now in progress");
         }
 
@@ -513,12 +522,7 @@ namespace Sharpy.SocketModule
             }
             catch (global::System.Net.Sockets.SocketException ex_1)
             {
-                if (this._Socket.Blocking)
-                {
-                    throw global::Sharpy.SocketModule.Error.FromSocketException(ex_1);
-                }
-
-                throw global::Sharpy.SocketModule.SocketModuleModule._NonblockingConnectError(ex_1);
+                throw global::Sharpy.SocketModule.SocketModuleModule._ConnectError(ex_1, this._Socket);
             }
         }
 

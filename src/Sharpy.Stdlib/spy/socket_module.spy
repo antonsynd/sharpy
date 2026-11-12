@@ -188,9 +188,15 @@ def _rewrite_errno(ex: SocketException, folded: SocketError, linux_errno: int, s
         return error(strerror, ex, linux_errno)
     return error.from_socket_exception(ex)
 
-def _nonblocking_connect_error(ex: SocketException) -> error:
-    """`connect` on a non-blocking socket: .NET folds the kernel's EINPROGRESS into `WouldBlock`
-    (native EAGAIN, 11); CPython reports 115 `EINPROGRESS`."""
+def _connect_error(ex: SocketException, sock: NetSocket) -> error:
+    """`connect` failing on `sock`. Only a non-blocking STREAM connect can be in progress: .NET
+    folds the kernel's EINPROGRESS into `WouldBlock` (native EAGAIN, 11), and CPython reports 115
+    `EINPROGRESS`. A datagram connect never returns EINPROGRESS (it completes at once), so its
+    `WouldBlock` is a real EAGAIN (e.g. no ephemeral port left to auto-bind), which CPython
+    reports as 11; and a blocking connect reaches `WouldBlock` only on a real EAGAIN too. Both go
+    to the seam unchanged."""
+    if sock.blocking or sock.socket_type != SocketType.Stream:
+        return error.from_socket_exception(ex)
     return _rewrite_errno(ex, SocketError.WouldBlock, 115, "Operation now in progress")
 
 def _unknown_option_error(ex: SocketException) -> error:
@@ -282,9 +288,7 @@ class socket(IDisposable):
             # Send/ReceiveTimeout, so a TimedOut here is the kernel's ETIMEDOUT.
             raise _timed_out(ex, False)
         except SocketException as ex:
-            if self._socket.blocking:
-                raise error.from_socket_exception(ex)
-            raise _nonblocking_connect_error(ex)
+            raise _connect_error(ex, self._socket)
 
     def bind(self, address: tuple[host: str, port: int]) -> None:
         """Bind the socket to a local (host, port) address."""
