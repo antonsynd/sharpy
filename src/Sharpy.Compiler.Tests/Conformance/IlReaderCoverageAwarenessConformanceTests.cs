@@ -14,14 +14,16 @@ namespace Sharpy.Compiler.Tests.Conformance;
 /// type and a hit probe into every body, so an IL roster over the running assembly reads IL that is not the shipped IL.
 /// Each such reader must either see through the probe or skip under the detector, and both go through
 /// <c>Sharpy.TestInfrastructure.CoverageInstrumentation</c>. The Stdlib exception-escape sweep was the fourth reflection or
-/// IL roster to meet that run unaware (after the inlinability roster and the two static-state rosters).
+/// IL roster to meet that run unaware (after the inlinability roster and the two static-state rosters). This guard polices
+/// the IL readers only: a reflection-only roster (<c>GetTypes</c>/<c>GetFields</c>, as the two static-state rosters are)
+/// reads no IL and is outside it.
 ///
 /// <para><b>Population.</b> Every <c>*.cs</c> under <c>src/*Tests/</c> and <c>src/Sharpy.TestInfrastructure/</c>, outside
 /// <c>bin</c> and <c>obj</c>. <b>Reader</b>: the file's syntax holds an invocation of a member named
-/// <c>GetMethodBody</c> or <c>GetILAsByteArray</c> (the only routes to a body's IL in .NET reflection and
-/// <c>System.Reflection.Metadata</c>'s <c>PEReader</c>). <b>Aware</b>: the file's syntax holds a member access
+/// <c>GetMethodBody</c> or <c>GetILAsByteArray</c> (the routes to a body's IL this repository uses, in .NET reflection
+/// and <c>System.Reflection.Metadata</c>'s <c>PEReader</c>; a <c>MethodBodyBlock</c> built from a raw blob would be another). <b>Aware</b>: the file's syntax holds a member access
 /// <c>CoverageInstrumentation.IsInjected</c> or <c>CoverageInstrumentation.IsInstrumented</c>. Both are read from the
-/// Roslyn syntax tree, never from text, so a comment or a string literal satisfies neither. The check is per file: a
+/// Roslyn syntax tree, never from text, so a comment, a string literal or a <c>nameof</c> satisfies neither. The check is per file: a
 /// helper that reads IL is itself a reader and carries the check, so a caller of an aware helper needs none.</para>
 ///
 /// <para><b>Exemptions</b> (<see cref="Exempt"/>): a reader whose IL comes only from assemblies the collector never
@@ -108,6 +110,7 @@ public sealed class IlReaderCoverageAwarenessConformanceTests
     [InlineData("var b = m.GetMethodBody(); /* CoverageInstrumentation.IsInstrumented(a) */", true, false)]
     [InlineData("var b = m.GetMethodBody(); var s = \"CoverageInstrumentation.IsInstrumented(a)\";", true, false)]
     [InlineData("var b = m.GetMethodBody(); var s = nameof(CoverageInstrumentation);", true, false)]
+    [InlineData("var b = m.GetMethodBody(); var s = nameof(CoverageInstrumentation.IsInjected);", true, false)]
     [InlineData("var b = m.GetMethodBody(); bool i = CoverageInstrumentation.IsInstrumented(a);", true, true)]
     [InlineData("var b = pe.GetMethodBody(rva); bool i = types.Any(Sharpy.TestInfrastructure.CoverageInstrumentation.IsInjected);", true, true)]
     [InlineData("// m.GetMethodBody()\nvar s = \"x.GetILAsByteArray()\";", false, false)]
@@ -126,7 +129,8 @@ public sealed class IlReaderCoverageAwarenessConformanceTests
         bool reads = root.DescendantNodes().OfType<InvocationExpressionSyntax>()
             .Any(i => InvokedName(i.Expression) is { } name && IlReadingMembers.Contains(name));
         bool aware = root.DescendantNodes().OfType<MemberAccessExpressionSyntax>()
-            .Any(m => DetectorMembers.Contains(m.Name.Identifier.Text) && RightmostName(m.Expression) == DetectorType);
+            .Any(m => DetectorMembers.Contains(m.Name.Identifier.Text) && RightmostName(m.Expression) == DetectorType
+                && !m.Ancestors().OfType<InvocationExpressionSyntax>().Any(i => i.Expression is IdentifierNameSyntax { Identifier.Text: "nameof" }));
         return (reads, aware);
     }
 
