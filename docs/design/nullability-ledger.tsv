@@ -1,242 +1,347 @@
-slot	use	value	cpython_3.15.2	sharpy_7db7aec44	target	status
-int|None	print	val	[5]	[5]	[5]	ok
-int|None	print	none	[None]	[None]	[None]	ok
-int|None	fstring	val	[5]	[5]	[5]	ok
-int|None	fstring	none	[None]	[None]	[None]	ok
-int|None	eq_value	val	[True]	[True]	[True]	ok
-int|None	eq_value	none	[False]	[False]	[False]	ok
-int|None	lt	val	[True]	[True]	[True] + warning	gap: no warning
-int|None	lt	none	!TypeError	[False]	!TypeError + warning	gap: no raise
-int|None	arith	val	[6]	refused SPY0222	[6] + warning	gap: refused today
-int|None	arith	none	!TypeError	refused SPY0222	!TypeError + warning	gap: refused today
-int|None	len_or_neg	val	[-5]	refused SPY0223	[-5] + warning	gap: refused today
-int|None	len_or_neg	none	!TypeError	refused SPY0223	!TypeError + warning	gap: refused today
-int|None	truthy	val	[t]	[t]	[t]	ok
-int|None	truthy	none	[f]	[f]	[f]	ok
-int|None	bool()	val	[True]	[True]	[True]	ok
-int|None	bool()	none	[False]	[False]	[False]	ok
-int|None	in_list	val	[True]	refused SPY0222	[True]	gap: refused today
-int|None	in_list	none	[False]	refused SPY0222	[False]	gap: refused today
-int|None	pass_T	val	[took]	refused SPY0220	[took] + warning	gap: refused today
-int|None	pass_T	none	[took]	refused SPY0220	!TypeError + warning	gap: refused today
-int|None	store_T	val	[5]	refused SPY0220	[5] + warning	gap: refused today
-int|None	store_T	none	[None]	refused SPY0220	!TypeError + warning	gap: refused today
-int|None	is_None	val	[False]	[False]	[False]	ok
-int|None	is_None	none	[True]	[True]	[True]	ok
-int|None	eq_None	val	[False]	refused SPY0222	[False]	gap: refused today
-int|None	eq_None	none	[True]	refused SPY0222	[True]	gap: refused today
-int|None	narrow	val	[took]	[took]	[took]	ok
-int|None	narrow	none	[none]	[none]	[none]	ok
-int|None	coalesce	val	[took]	[took]	[took]	ok
-int|None	coalesce	none	[took]	[took]	[took]	ok
-int|None	str()	val	[5]	[5]	[5]	ok
-int|None	str()	none	[None]	[None]	[None]	ok
-int|None	dict_key	val	[1]	[1]	[1]	ok
-int|None	dict_key	none	[1]	[1]	[1]	ok
-str|None	print	val	[ab]	[ab]	[ab]	ok
-str|None	print	none	[None]	[None]	[None]	ok
-str|None	fstring	val	[ab]	[ab]	[ab]	ok
-str|None	fstring	none	[None]	[None]	[None]	ok
-str|None	eq_value	val	[True]	[True]	[True]	ok
-str|None	eq_value	none	[False]	[False]	[False]	ok
-str|None	lt	val	[True]	refused SPY0908 CS0019	[True] + warning	gap: compiler crash
-str|None	lt	none	!TypeError	refused SPY0908 CS0019	!TypeError + warning	gap: compiler crash
-str|None	arith	val	[abc]	refused SPY0222	[abc] + warning	gap: refused today
-str|None	arith	none	!TypeError	refused SPY0222	!TypeError + warning	gap: refused today
-str|None	member	val	[AB]	[AB]	[AB] + warning	gap: no warning
-str|None	member	none	!AttributeError	!NullReferenceException	!AttributeError + warning	gap: wrong exception
-str|None	len_or_neg	val	[2]	[2]	[2] + warning	gap: no warning
-str|None	len_or_neg	none	!TypeError	!TypeError	!TypeError + warning	gap: no warning
-str|None	truthy	val	[t]	[t]	[t]	ok
-str|None	truthy	none	[f]	[f]	[f]	ok
-str|None	bool()	val	[True]	[True]	[True]	ok
-str|None	bool()	none	[False]	[False]	[False]	ok
-str|None	in_list	val	[True]	[True]	[True]	ok
-str|None	in_list	none	[False]	[False]	[False]	ok
-str|None	pass_T	val	[took]	[took]	[took] + warning	gap: no warning
-str|None	pass_T	none	[took]	[took]	!TypeError + warning	gap: no raise
-str|None	store_T	val	[ab]	[ab]	[ab] + warning	gap: no warning
-str|None	store_T	none	[None]	[None]	!TypeError + warning	gap: no raise
-str|None	is_None	val	[False]	[False]	[False]	ok
-str|None	is_None	none	[True]	[True]	[True]	ok
-str|None	eq_None	val	[False]	[False]	[False]	ok
-str|None	eq_None	none	[True]	[True]	[True]	ok
-str|None	narrow	val	[took]	[took]	[took]	ok
-str|None	narrow	none	[none]	[none]	[none]	ok
-str|None	coalesce	val	[took]	[took]	[took]	ok
-str|None	coalesce	none	[took]	[took]	[took]	ok
-str|None	qdot	val	[AB]	[AB]	[AB]	ok
-str|None	qdot	none	[None]	[None]	[None]	ok
-str|None	str()	val	[ab]	[ab]	[ab]	ok
-str|None	str()	none	[None]	[None]	[None]	ok
-str|None	dict_key	val	[1]	[1]	[1]	ok
-str|None	dict_key	none	[1]	[1]	[1]	ok
-str|None	for	val	[a b]	[a b]	[a b] + warning	gap: no warning
-str|None	for	none	!TypeError	!NullReferenceException	!TypeError + warning	gap: wrong exception
-str|None	index	val	[a]	[a]	[a] + warning	gap: no warning
-str|None	index	none	!TypeError	!NullReferenceException	!TypeError + warning	gap: wrong exception
-K|None	print	val	[K(5)]	[K(5)]	[K(5)]	ok
-K|None	print	none	[None]	[None]	[None]	ok
-K|None	fstring	val	[K(5)]	[K(5)]	[K(5)]	ok
-K|None	fstring	none	[None]	[None]	[None]	ok
-K|None	eq_value	val	[True]	[True]	[True]	ok
-K|None	eq_value	none	[False]	[False]	[False]	ok
-K|None	lt	val	[True]	[True]	[True] + warning	gap: no warning
-K|None	lt	none	!TypeError	!NullReferenceException	!TypeError + warning	gap: wrong exception
-K|None	arith	val	[K(6)]	refused SPY0222	[K(6)] + warning	gap: refused today
-K|None	arith	none	!TypeError	refused SPY0222	!TypeError + warning	gap: refused today
-K|None	member	val	[5]	[5]	[5] + warning	gap: no warning
-K|None	member	none	!AttributeError	!NullReferenceException	!AttributeError + warning	gap: wrong exception
-K|None	len_or_neg	val	[K(-5)]	refused SPY0223	[K(-5)] + warning	gap: refused today
-K|None	len_or_neg	none	!TypeError	refused SPY0223	!TypeError + warning	gap: refused today
-K|None	truthy	val	[t]	[t]	[t]	ok
-K|None	truthy	none	[f]	[f]	[f]	ok
-K|None	bool()	val	[True]	[True]	[True]	ok
-K|None	bool()	none	[False]	[False]	[False]	ok
-K|None	in_list	val	[True]	[True]	[True]	ok
-K|None	in_list	none	[False]	[False]	[False]	ok
-K|None	pass_T	val	[took]	[took]	[took] + warning	gap: no warning
-K|None	pass_T	none	[took]	[took]	!TypeError + warning	gap: no raise
-K|None	store_T	val	[K(5)]	[K(5)]	[K(5)] + warning	gap: no warning
-K|None	store_T	none	[None]	[None]	!TypeError + warning	gap: no raise
-K|None	is_None	val	[False]	[False]	[False]	ok
-K|None	is_None	none	[True]	[True]	[True]	ok
-K|None	eq_None	val	[False]	[False]	[False]	ok
-K|None	eq_None	none	[True]	[True]	[True]	ok
-K|None	narrow	val	[took]	[took]	[took]	ok
-K|None	narrow	none	[none]	[none]	[none]	ok
-K|None	coalesce	val	[took]	[took]	[took]	ok
-K|None	coalesce	none	[took]	[took]	[took]	ok
-K|None	qdot	val	[5]	[5]	[5]	ok
-K|None	qdot	none	[None]	[None]	[None]	ok
-K|None	str()	val	[K(5)]	[K(5)]	[K(5)]	ok
-K|None	str()	none	[None]	[None]	[None]	ok
-K|None	dict_key	val	[1]	[1]	[1]	ok
-K|None	dict_key	none	[1]	[1]	[1]	ok
-int?	print	val	[5]	[5]	[5]	ok
+# The cell table of docs/design/nullability.md. Generated and checked by NullabilityLedgerTests: do not edit by
+# hand. When the test is red, read the diff against .claude/tmp/nullability-ledger.proposed.tsv, and copy that
+# file here only if every changed row is intended (a gap that closed, never a matching cell that regressed).
+# [..] is printed output, !Name an exception, 'refused SPY…' a compile-time refusal.
+slot	use	value	cpython	sharpy	target	status
+int | None	print	value	[5]	[5]	[5]	ok
+int | None	print	none	[None]	[None]	[None]	ok
+int | None	fstring	value	[5]	[5]	[5]	ok
+int | None	fstring	none	[None]	[None]	[None]	ok
+int | None	str()	value	[5]	[5]	[5]	ok
+int | None	str()	none	[None]	[None]	[None]	ok
+int | None	is_None	value	[False]	[False]	[False]	ok
+int | None	is_None	none	[True]	[True]	[True]	ok
+int | None	narrow	value	[took]	[took]	[took]	ok
+int | None	narrow	none	[none]	[none]	[none]	ok
+int | None	coalesce	value	[took]	[took]	[took]	ok
+int | None	coalesce	none	[took]	[took]	[took]	ok
+int | None	truthy	value	[t]	[t]	[t]	ok
+int | None	truthy	falsy	[f]	[t]	[f]	gap: wrong value
+int | None	truthy	none	[f]	[f]	[f]	ok
+int | None	bool()	value	[True]	[True]	[True]	ok
+int | None	bool()	falsy	[False]	[False]	[False]	ok
+int | None	bool()	none	[False]	[False]	[False]	ok
+int | None	not	value	[False]	[False]	[False]	ok
+int | None	not	falsy	[True]	[False]	[True]	gap: wrong value
+int | None	not	none	[True]	[True]	[True]	ok
+int | None	eq_None	value	[False]	refused SPY0222	[False]	gap: refused today
+int | None	eq_None	none	[True]	refused SPY0222	[True]	gap: refused today
+int | None	eq_value	value	[True]	[True]	[True]	ok
+int | None	eq_value	none	[False]	[False]	[False]	ok
+int | None	in_list	value	[True]	refused SPY0222	[True]	gap: refused today
+int | None	in_list	none	[False]	refused SPY0222	[False]	gap: refused today
+int | None	dict_key	value	[1]	[1]	[1]	ok
+int | None	dict_key	none	[1]	[1]	[1]	ok
+int | None	qdot	value	[5]	[5]	[5]	ok
+int | None	qdot	none	[None]	[None]	[None]	ok
+int | None	member	value	[5]	[5]	[5] + warning	gap: no warning
+int | None	member	none	!AttributeError	!InvalidOperationException	!AttributeError + warning	gap: wrong exception
+int | None	lt	value	[True]	[True]	[True] + warning	gap: no warning
+int | None	lt	none	!TypeError	[False]	!TypeError + warning	gap: no raise
+int | None	arith	value	[6]	refused SPY0222	[6] + warning	gap: refused today
+int | None	arith	none	!TypeError	refused SPY0222	!TypeError + warning	gap: refused today
+int | None	neg	value	[-5]	refused SPY0223	[-5] + warning	gap: refused today
+int | None	neg	none	!TypeError	refused SPY0223	!TypeError + warning	gap: refused today
+int | None	pass_T	value	[took]	refused SPY0220	[took] + warning	gap: refused today
+int | None	pass_T	none	[took]	refused SPY0220	!TypeError + warning	gap: refused today
+int | None	store_T	value	[5]	refused SPY0220	[5] + warning	gap: refused today
+int | None	store_T	none	[None]	refused SPY0220	!TypeError + warning	gap: refused today
+str | None	print	value	[ab]	[ab]	[ab]	ok
+str | None	print	none	[None]	[None]	[None]	ok
+str | None	fstring	value	[ab]	[ab]	[ab]	ok
+str | None	fstring	none	[None]	[None]	[None]	ok
+str | None	str()	value	[ab]	[ab]	[ab]	ok
+str | None	str()	none	[None]	[None]	[None]	ok
+str | None	is_None	value	[False]	[False]	[False]	ok
+str | None	is_None	none	[True]	[True]	[True]	ok
+str | None	narrow	value	[took]	[took]	[took]	ok
+str | None	narrow	none	[none]	[none]	[none]	ok
+str | None	coalesce	value	[took]	[took]	[took]	ok
+str | None	coalesce	none	[took]	[took]	[took]	ok
+str | None	truthy	value	[t]	[t]	[t]	ok
+str | None	truthy	falsy	[f]	[t]	[f]	gap: wrong value
+str | None	truthy	none	[f]	[f]	[f]	ok
+str | None	bool()	value	[True]	[True]	[True]	ok
+str | None	bool()	falsy	[False]	[False]	[False]	ok
+str | None	bool()	none	[False]	[False]	[False]	ok
+str | None	not	value	[False]	[False]	[False]	ok
+str | None	not	falsy	[True]	[False]	[True]	gap: wrong value
+str | None	not	none	[True]	[True]	[True]	ok
+str | None	eq_None	value	[False]	[False]	[False]	ok
+str | None	eq_None	none	[True]	[True]	[True]	ok
+str | None	eq_value	value	[True]	[True]	[True]	ok
+str | None	eq_value	none	[False]	[False]	[False]	ok
+str | None	in_list	value	[True]	[True]	[True]	ok
+str | None	in_list	none	[False]	[False]	[False]	ok
+str | None	dict_key	value	[1]	[1]	[1]	ok
+str | None	dict_key	none	[1]	[1]	[1]	ok
+str | None	qdot	value	[AB]	[AB]	[AB]	ok
+str | None	qdot	none	[None]	[None]	[None]	ok
+str | None	member	value	[AB]	[AB]	[AB] + warning	gap: no warning
+str | None	member	none	!AttributeError	!NullReferenceException	!AttributeError + warning	gap: wrong exception
+str | None	lt	value	[True]	refused SPY0908	[True] + warning	gap: compiler crash
+str | None	lt	none	!TypeError	refused SPY0908	!TypeError + warning	gap: compiler crash
+str | None	arith	value	[abc]	refused SPY0222	[abc] + warning	gap: refused today
+str | None	arith	none	!TypeError	refused SPY0222	!TypeError + warning	gap: refused today
+str | None	len	value	[2]	[2]	[2] + warning	gap: no warning
+str | None	len	none	!TypeError	!TypeError	!TypeError + warning	gap: no warning
+str | None	for	value	[a b]	[a b]	[a b] + warning	gap: no warning
+str | None	for	none	!TypeError	!NullReferenceException	!TypeError + warning	gap: wrong exception
+str | None	index	value	[a]	[a]	[a] + warning	gap: no warning
+str | None	index	none	!TypeError	!NullReferenceException	!TypeError + warning	gap: wrong exception
+str | None	pass_T	value	[took]	[took]	[took] + warning	gap: no warning
+str | None	pass_T	none	[took]	[took]	!TypeError + warning	gap: no raise
+str | None	store_T	value	[ab]	[ab]	[ab] + warning	gap: no warning
+str | None	store_T	none	[None]	[None]	!TypeError + warning	gap: no raise
+K | None	print	value	[K(5)]	[K(5)]	[K(5)]	ok
+K | None	print	none	[None]	[None]	[None]	ok
+K | None	fstring	value	[K(5)]	[K(5)]	[K(5)]	ok
+K | None	fstring	none	[None]	[None]	[None]	ok
+K | None	str()	value	[K(5)]	[K(5)]	[K(5)]	ok
+K | None	str()	none	[None]	[None]	[None]	ok
+K | None	is_None	value	[False]	[False]	[False]	ok
+K | None	is_None	none	[True]	[True]	[True]	ok
+K | None	narrow	value	[took]	[took]	[took]	ok
+K | None	narrow	none	[none]	[none]	[none]	ok
+K | None	coalesce	value	[took]	[took]	[took]	ok
+K | None	coalesce	none	[took]	[took]	[took]	ok
+K | None	truthy	value	[t]	[t]	[t]	ok
+K | None	truthy	none	[f]	[f]	[f]	ok
+K | None	bool()	value	[True]	[True]	[True]	ok
+K | None	bool()	none	[False]	[False]	[False]	ok
+K | None	not	value	[False]	[False]	[False]	ok
+K | None	not	none	[True]	[True]	[True]	ok
+K | None	eq_None	value	[False]	[False]	[False]	ok
+K | None	eq_None	none	[True]	[True]	[True]	ok
+K | None	eq_value	value	[True]	[True]	[True]	ok
+K | None	eq_value	none	[False]	[False]	[False]	ok
+K | None	in_list	value	[True]	[True]	[True]	ok
+K | None	in_list	none	[False]	[False]	[False]	ok
+K | None	dict_key	value	[1]	[1]	[1]	ok
+K | None	dict_key	none	[1]	[1]	[1]	ok
+K | None	qdot	value	[5]	[5]	[5]	ok
+K | None	qdot	none	[None]	[None]	[None]	ok
+K | None	member	value	[5]	[5]	[5] + warning	gap: no warning
+K | None	member	none	!AttributeError	!NullReferenceException	!AttributeError + warning	gap: wrong exception
+K | None	lt	value	[True]	[True]	[True] + warning	gap: no warning
+K | None	lt	none	!TypeError	!NullReferenceException	!TypeError + warning	gap: wrong exception
+K | None	arith	value	[K(6)]	refused SPY0222	[K(6)] + warning	gap: refused today
+K | None	arith	none	!TypeError	refused SPY0222	!TypeError + warning	gap: refused today
+K | None	neg	value	[K(-5)]	refused SPY0223	[K(-5)] + warning	gap: refused today
+K | None	neg	none	!TypeError	refused SPY0223	!TypeError + warning	gap: refused today
+K | None	pass_T	value	[took]	[took]	[took] + warning	gap: no warning
+K | None	pass_T	none	[took]	[took]	!TypeError + warning	gap: no raise
+K | None	store_T	value	[K(5)]	[K(5)]	[K(5)] + warning	gap: no warning
+K | None	store_T	none	[None]	[None]	!TypeError + warning	gap: no raise
+list[int] | None	print	value	[[5]]	[[5]]	[[5]]	ok
+list[int] | None	print	none	[None]	[None]	[None]	ok
+list[int] | None	fstring	value	[[5]]	[[5]]	[[5]]	ok
+list[int] | None	fstring	none	[None]	[None]	[None]	ok
+list[int] | None	str()	value	[[5]]	[[5]]	[[5]]	ok
+list[int] | None	str()	none	[None]	[None]	[None]	ok
+list[int] | None	is_None	value	[False]	[False]	[False]	ok
+list[int] | None	is_None	none	[True]	[True]	[True]	ok
+list[int] | None	narrow	value	[took]	[took]	[took]	ok
+list[int] | None	narrow	none	[none]	[none]	[none]	ok
+list[int] | None	coalesce	value	[took]	[took]	[took]	ok
+list[int] | None	coalesce	none	[took]	[took]	[took]	ok
+list[int] | None	truthy	value	[t]	[t]	[t]	ok
+list[int] | None	truthy	falsy	[f]	refused SPY0227	[f]	gap: refused today
+list[int] | None	truthy	none	[f]	[f]	[f]	ok
+list[int] | None	bool()	value	[True]	[True]	[True]	ok
+list[int] | None	bool()	falsy	[False]	refused SPY0227	[False]	gap: refused today
+list[int] | None	bool()	none	[False]	[False]	[False]	ok
+list[int] | None	not	value	[False]	[False]	[False]	ok
+list[int] | None	not	falsy	[True]	refused SPY0227	[True]	gap: refused today
+list[int] | None	not	none	[True]	[True]	[True]	ok
+list[int] | None	eq_None	value	[False]	[False]	[False]	ok
+list[int] | None	eq_None	none	[True]	[True]	[True]	ok
+list[int] | None	eq_value	value	[True]	[True]	[True]	ok
+list[int] | None	eq_value	none	[False]	[False]	[False]	ok
+list[int] | None	qdot	value	[1]	[1]	[1]	ok
+list[int] | None	qdot	none	[None]	[None]	[None]	ok
+list[int] | None	member	value	[1]	[1]	[1] + warning	gap: no warning
+list[int] | None	member	none	!AttributeError	!NullReferenceException	!AttributeError + warning	gap: wrong exception
+list[int] | None	arith	value	[[5, 1]]	refused SPY0222	[[5, 1]] + warning	gap: refused today
+list[int] | None	arith	none	!TypeError	refused SPY0222	!TypeError + warning	gap: refused today
+list[int] | None	len	value	[1]	[1]	[1] + warning	gap: no warning
+list[int] | None	len	none	!TypeError	!TypeError	!TypeError + warning	gap: no warning
+list[int] | None	for	value	[5]	[5]	[5] + warning	gap: no warning
+list[int] | None	for	none	!TypeError	!NullReferenceException	!TypeError + warning	gap: wrong exception
+list[int] | None	index	value	[5]	[5]	[5] + warning	gap: no warning
+list[int] | None	index	none	!TypeError	!NullReferenceException	!TypeError + warning	gap: wrong exception
+list[int] | None	pass_T	value	[took]	[took]	[took] + warning	gap: no warning
+list[int] | None	pass_T	none	[took]	[took]	!TypeError + warning	gap: no raise
+list[int] | None	store_T	value	[[5]]	[[5]]	[[5]] + warning	gap: no warning
+list[int] | None	store_T	none	[None]	[None]	!TypeError + warning	gap: no raise
+int?	print	value	[5]	[5]	[5]	ok
 int?	print	none	[None]	[None]	[None]	ok
-int?	fstring	val	[5]	[5]	[5]	ok
+int?	fstring	value	[5]	[5]	[5]	ok
 int?	fstring	none	[None]	[None]	[None]	ok
-int?	eq_value	val	[True]	refused SPY0222	refused	ok
-int?	eq_value	none	[False]	refused SPY0222	refused	ok
-int?	lt	val	[True]	refused SPY0222	refused	ok
-int?	lt	none	!TypeError	refused SPY0222	refused	ok
-int?	arith	val	[6]	refused SPY0222	refused	ok
-int?	arith	none	!TypeError	refused SPY0222	refused	ok
-int?	len_or_neg	val	[-5]	refused SPY0223	refused	ok
-int?	len_or_neg	none	!TypeError	refused SPY0223	refused	ok
-int?	truthy	val	[t]	[t]	[t]	ok
-int?	truthy	none	[f]	[f]	[f]	ok
-int?	bool()	val	[True]	[True]	[True]	ok
-int?	bool()	none	[False]	[True]	[False]	gap: wrong value
-int?	in_list	val	[True]	refused SPY0222	refused	ok
-int?	in_list	none	[False]	refused SPY0222	refused	ok
-int?	pass_T	val	[took]	refused SPY0220	refused	ok
-int?	pass_T	none	[took]	refused SPY0220	refused	ok
-int?	store_T	val	[5]	refused SPY0220	refused	ok
-int?	store_T	none	[None]	refused SPY0220	refused	ok
-int?	is_None	val	[False]	[False]	[False]	ok
-int?	is_None	none	[True]	[True]	[True]	ok
-int?	eq_None	val	[False]	refused SPY0222	refused	ok
-int?	eq_None	none	[True]	refused SPY0222	refused	ok
-int?	narrow	val	[took]	[took]	[took]	ok
-int?	narrow	none	[none]	[none]	[none]	ok
-int?	coalesce	val	[took]	[took]	[took]	ok
-int?	coalesce	none	[took]	[took]	[took]	ok
-int?	str()	val	[5]	[5]	[5]	ok
+int?	str()	value	[5]	[5]	[5]	ok
 int?	str()	none	[None]	[None]	[None]	ok
-int?	dict_key	val	[1]	[1]	[1]	ok
+int?	is_None	value	[False]	[False]	[False]	ok
+int?	is_None	none	[True]	[True]	[True]	ok
+int?	narrow	value	[took]	[took]	[took]	ok
+int?	narrow	none	[none]	[none]	[none]	ok
+int?	coalesce	value	[took]	[took]	[took]	ok
+int?	coalesce	none	[took]	[took]	[took]	ok
+int?	truthy	value	[t]	[t]	[t]	ok
+int?	truthy	falsy	[f]	[t]	[t]	ok
+int?	truthy	none	[f]	[f]	[f]	ok
+int?	bool()	value	[True]	[True]	[True]	ok
+int?	bool()	falsy	[False]	[True]	[True]	ok
+int?	bool()	none	[False]	[True]	[False]	gap: wrong value
+int?	not	value	[False]	[False]	[False]	ok
+int?	not	falsy	[True]	[False]	[False]	ok
+int?	not	none	[True]	[True]	[True]	ok
+int?	eq_None	value	[False]	refused SPY0222	refused	ok
+int?	eq_None	none	[True]	refused SPY0222	refused	ok
+int?	eq_value	value	[True]	refused SPY0222	refused	ok
+int?	eq_value	none	[False]	refused SPY0222	refused	ok
+int?	in_list	value	[True]	refused SPY0222	refused	ok
+int?	in_list	none	[False]	refused SPY0222	refused	ok
+int?	dict_key	value	[1]	[1]	[1]	ok
 int?	dict_key	none	[1]	[1]	[1]	ok
-str?	print	val	[ab]	[ab]	[ab]	ok
+int?	qdot	value	[5]	refused SPY0908	[5]	gap: compiler crash
+int?	qdot	none	[None]	refused SPY0908	[None]	gap: compiler crash
+int?	member	value	[5]	refused SPY0326	refused	ok
+int?	member	none	!AttributeError	refused SPY0326	refused	ok
+int?	lt	value	[True]	refused SPY0222	refused	ok
+int?	lt	none	!TypeError	refused SPY0222	refused	ok
+int?	arith	value	[6]	refused SPY0222	refused	ok
+int?	arith	none	!TypeError	refused SPY0222	refused	ok
+int?	neg	value	[-5]	refused SPY0223	refused	ok
+int?	neg	none	!TypeError	refused SPY0223	refused	ok
+int?	pass_T	value	[took]	refused SPY0220	refused	ok
+int?	pass_T	none	[took]	refused SPY0220	refused	ok
+int?	store_T	value	[5]	refused SPY0220	refused	ok
+int?	store_T	none	[None]	refused SPY0220	refused	ok
+str?	print	value	[ab]	[ab]	[ab]	ok
 str?	print	none	[None]	[None]	[None]	ok
-str?	fstring	val	[ab]	[ab]	[ab]	ok
+str?	fstring	value	[ab]	[ab]	[ab]	ok
 str?	fstring	none	[None]	[None]	[None]	ok
-str?	eq_value	val	[True]	refused SPY0222	refused	ok
-str?	eq_value	none	[False]	refused SPY0222	refused	ok
-str?	lt	val	[True]	refused SPY0222	refused	ok
-str?	lt	none	!TypeError	refused SPY0222	refused	ok
-str?	arith	val	[abc]	refused SPY0222	refused	ok
-str?	arith	none	!TypeError	refused SPY0222	refused	ok
-str?	member	val	[AB]	refused SPY0326	refused	ok
-str?	member	none	!AttributeError	refused SPY0326	refused	ok
-str?	len_or_neg	val	[2]	refused SPY0326	refused	ok
-str?	len_or_neg	none	!TypeError	refused SPY0326	refused	ok
-str?	truthy	val	[t]	[t]	[t]	ok
-str?	truthy	none	[f]	[f]	[f]	ok
-str?	bool()	val	[True]	[True]	[True]	ok
-str?	bool()	none	[False]	[True]	[False]	gap: wrong value
-str?	in_list	val	[True]	refused SPY0222	refused	ok
-str?	in_list	none	[False]	refused SPY0222	refused	ok
-str?	pass_T	val	[took]	refused SPY0220	refused	ok
-str?	pass_T	none	[took]	refused SPY0220	refused	ok
-str?	store_T	val	[ab]	refused SPY0220	refused	ok
-str?	store_T	none	[None]	refused SPY0220	refused	ok
-str?	is_None	val	[False]	[False]	[False]	ok
-str?	is_None	none	[True]	[True]	[True]	ok
-str?	eq_None	val	[False]	refused SPY0222	refused	ok
-str?	eq_None	none	[True]	refused SPY0222	refused	ok
-str?	narrow	val	[took]	[took]	[took]	ok
-str?	narrow	none	[none]	[none]	[none]	ok
-str?	coalesce	val	[took]	[took]	[took]	ok
-str?	coalesce	none	[took]	[took]	[took]	ok
-str?	qdot	val	[AB]	[AB]	[AB]	ok
-str?	qdot	none	[None]	[None]	[None]	ok
-str?	str()	val	[ab]	[ab]	[ab]	ok
+str?	str()	value	[ab]	[ab]	[ab]	ok
 str?	str()	none	[None]	[None]	[None]	ok
-str?	dict_key	val	[1]	[1]	[1]	ok
+str?	is_None	value	[False]	[False]	[False]	ok
+str?	is_None	none	[True]	[True]	[True]	ok
+str?	narrow	value	[took]	[took]	[took]	ok
+str?	narrow	none	[none]	[none]	[none]	ok
+str?	coalesce	value	[took]	[took]	[took]	ok
+str?	coalesce	none	[took]	[took]	[took]	ok
+str?	truthy	value	[t]	[t]	[t]	ok
+str?	truthy	falsy	[f]	[t]	[t]	ok
+str?	truthy	none	[f]	[f]	[f]	ok
+str?	bool()	value	[True]	[True]	[True]	ok
+str?	bool()	falsy	[False]	[True]	[True]	ok
+str?	bool()	none	[False]	[True]	[False]	gap: wrong value
+str?	not	value	[False]	[False]	[False]	ok
+str?	not	falsy	[True]	[False]	[False]	ok
+str?	not	none	[True]	[True]	[True]	ok
+str?	eq_None	value	[False]	refused SPY0222	refused	ok
+str?	eq_None	none	[True]	refused SPY0222	refused	ok
+str?	eq_value	value	[True]	refused SPY0222	refused	ok
+str?	eq_value	none	[False]	refused SPY0222	refused	ok
+str?	in_list	value	[True]	refused SPY0222	refused	ok
+str?	in_list	none	[False]	refused SPY0222	refused	ok
+str?	dict_key	value	[1]	[1]	[1]	ok
 str?	dict_key	none	[1]	[1]	[1]	ok
-str?	for	val	[a b]	refused SPY0326	refused	ok
+str?	qdot	value	[AB]	[AB]	[AB]	ok
+str?	qdot	none	[None]	[None]	[None]	ok
+str?	member	value	[AB]	refused SPY0326	refused	ok
+str?	member	none	!AttributeError	refused SPY0326	refused	ok
+str?	lt	value	[True]	refused SPY0222	refused	ok
+str?	lt	none	!TypeError	refused SPY0222	refused	ok
+str?	arith	value	[abc]	refused SPY0222	refused	ok
+str?	arith	none	!TypeError	refused SPY0222	refused	ok
+str?	len	value	[2]	refused SPY0326	refused	ok
+str?	len	none	!TypeError	refused SPY0326	refused	ok
+str?	for	value	[a b]	refused SPY0326	refused	ok
 str?	for	none	!TypeError	refused SPY0326	refused	ok
-str?	index	val	[a]	refused SPY0326	refused	ok
+str?	index	value	[a]	refused SPY0326	refused	ok
 str?	index	none	!TypeError	refused SPY0326	refused	ok
-K?	print	val	[K(5)]	[K(5)]	[K(5)]	ok
+str?	pass_T	value	[took]	refused SPY0220	refused	ok
+str?	pass_T	none	[took]	refused SPY0220	refused	ok
+str?	store_T	value	[ab]	refused SPY0220	refused	ok
+str?	store_T	none	[None]	refused SPY0220	refused	ok
+K?	print	value	[K(5)]	[K(5)]	[K(5)]	ok
 K?	print	none	[None]	[None]	[None]	ok
-K?	fstring	val	[K(5)]	[K(5)]	[K(5)]	ok
+K?	fstring	value	[K(5)]	[K(5)]	[K(5)]	ok
 K?	fstring	none	[None]	[None]	[None]	ok
-K?	eq_value	val	[True]	refused SPY0908 CS9342	refused	gap: compiler crash
-K?	eq_value	none	[False]	refused SPY0908 CS9342	refused	gap: compiler crash
-K?	lt	val	[True]	refused SPY0222	refused	ok
-K?	lt	none	!TypeError	refused SPY0222	refused	ok
-K?	arith	val	[K(6)]	refused SPY0222	refused	ok
-K?	arith	none	!TypeError	refused SPY0222	refused	ok
-K?	member	val	[5]	refused SPY0326	refused	ok
-K?	member	none	!AttributeError	refused SPY0326	refused	ok
-K?	len_or_neg	val	[K(-5)]	refused SPY0223	refused	ok
-K?	len_or_neg	none	!TypeError	refused SPY0223	refused	ok
-K?	truthy	val	[t]	[t]	[t]	ok
-K?	truthy	none	[f]	[f]	[f]	ok
-K?	bool()	val	[True]	[True]	[True]	ok
-K?	bool()	none	[False]	[True]	[False]	gap: wrong value
-K?	in_list	val	[True]	refused SPY0222	refused	ok
-K?	in_list	none	[False]	refused SPY0222	refused	ok
-K?	pass_T	val	[took]	refused SPY0220	refused	ok
-K?	pass_T	none	[took]	refused SPY0220	refused	ok
-K?	store_T	val	[K(5)]	refused SPY0220	refused	ok
-K?	store_T	none	[None]	refused SPY0220	refused	ok
-K?	is_None	val	[False]	[False]	[False]	ok
-K?	is_None	none	[True]	[True]	[True]	ok
-K?	eq_None	val	[False]	refused SPY0222	refused	ok
-K?	eq_None	none	[True]	refused SPY0222	refused	ok
-K?	narrow	val	[took]	[took]	[took]	ok
-K?	narrow	none	[none]	[none]	[none]	ok
-K?	coalesce	val	[took]	[took]	[took]	ok
-K?	coalesce	none	[took]	[took]	[took]	ok
-K?	qdot	val	[5]	[5]	[5]	ok
-K?	qdot	none	[None]	[None]	[None]	ok
-K?	str()	val	[K(5)]	[K(5)]	[K(5)]	ok
+K?	str()	value	[K(5)]	[K(5)]	[K(5)]	ok
 K?	str()	none	[None]	[None]	[None]	ok
-K?	dict_key	val	[1]	[1]	[1]	ok
+K?	is_None	value	[False]	[False]	[False]	ok
+K?	is_None	none	[True]	[True]	[True]	ok
+K?	narrow	value	[took]	[took]	[took]	ok
+K?	narrow	none	[none]	[none]	[none]	ok
+K?	coalesce	value	[took]	[took]	[took]	ok
+K?	coalesce	none	[took]	[took]	[took]	ok
+K?	truthy	value	[t]	[t]	[t]	ok
+K?	truthy	none	[f]	[f]	[f]	ok
+K?	bool()	value	[True]	[True]	[True]	ok
+K?	bool()	none	[False]	[True]	[False]	gap: wrong value
+K?	not	value	[False]	[False]	[False]	ok
+K?	not	none	[True]	[True]	[True]	ok
+K?	eq_None	value	[False]	refused SPY0222	refused	ok
+K?	eq_None	none	[True]	refused SPY0222	refused	ok
+K?	eq_value	value	[True]	refused SPY0908	refused	gap: compiler crash
+K?	eq_value	none	[False]	refused SPY0908	refused	gap: compiler crash
+K?	in_list	value	[True]	refused SPY0222	refused	ok
+K?	in_list	none	[False]	refused SPY0222	refused	ok
+K?	dict_key	value	[1]	[1]	[1]	ok
 K?	dict_key	none	[1]	[1]	[1]	ok
-list[int]|None	truthy	empty []	[f]	[t]	[f]	gap: wrong value
-list[int]|None	bool()	empty []	[False]	[False]	[False]	ok
-list[int]|None	not	empty []	[True]	[False]	[True]	gap: wrong value
-int|None	truthy	zero 0	[f]	[t]	[f]	gap: wrong value
-int|None	bool()	zero 0	[False]	[False]	[False]	ok
-int|None	not	zero 0	[True]	[False]	[True]	gap: wrong value
-str|None	truthy	empty ""	[f]	[t]	[f]	gap: wrong value
-str|None	bool()	empty ""	[False]	[False]	[False]	ok
-str|None	not	empty ""	[True]	[False]	[True]	gap: wrong value
-int?	truthy	Some(0)	n/a	[t]	[t]	ok
-int?	bool()	Some(0)	n/a	[True]	[True]	ok
-int?	not	Some(0)	n/a	[False]	[False]	ok
-int?	eq_None (steer)	none	[True]	refused SPY0222	refused	ok
+K?	qdot	value	[5]	[5]	[5]	ok
+K?	qdot	none	[None]	[None]	[None]	ok
+K?	member	value	[5]	refused SPY0326	refused	ok
+K?	member	none	!AttributeError	refused SPY0326	refused	ok
+K?	lt	value	[True]	refused SPY0222	refused	ok
+K?	lt	none	!TypeError	refused SPY0222	refused	ok
+K?	arith	value	[K(6)]	refused SPY0222	refused	ok
+K?	arith	none	!TypeError	refused SPY0222	refused	ok
+K?	neg	value	[K(-5)]	refused SPY0223	refused	ok
+K?	neg	none	!TypeError	refused SPY0223	refused	ok
+K?	pass_T	value	[took]	refused SPY0220	refused	ok
+K?	pass_T	none	[took]	refused SPY0220	refused	ok
+K?	store_T	value	[K(5)]	refused SPY0220	refused	ok
+K?	store_T	none	[None]	refused SPY0220	refused	ok
+list[int]?	print	value	[[5]]	[[5]]	[[5]]	ok
+list[int]?	print	none	[None]	[None]	[None]	ok
+list[int]?	fstring	value	[[5]]	[[5]]	[[5]]	ok
+list[int]?	fstring	none	[None]	[None]	[None]	ok
+list[int]?	str()	value	[[5]]	[[5]]	[[5]]	ok
+list[int]?	str()	none	[None]	[None]	[None]	ok
+list[int]?	is_None	value	[False]	[False]	[False]	ok
+list[int]?	is_None	none	[True]	[True]	[True]	ok
+list[int]?	narrow	value	[took]	[took]	[took]	ok
+list[int]?	narrow	none	[none]	[none]	[none]	ok
+list[int]?	coalesce	value	[took]	[took]	[took]	ok
+list[int]?	coalesce	none	[took]	[took]	[took]	ok
+list[int]?	truthy	value	[t]	[t]	[t]	ok
+list[int]?	truthy	falsy	[f]	refused SPY0227	[t]	gap: refused today
+list[int]?	truthy	none	[f]	[f]	[f]	ok
+list[int]?	bool()	value	[True]	[True]	[True]	ok
+list[int]?	bool()	falsy	[False]	refused SPY0227	[True]	gap: refused today
+list[int]?	bool()	none	[False]	[True]	[False]	gap: wrong value
+list[int]?	not	value	[False]	[False]	[False]	ok
+list[int]?	not	falsy	[True]	refused SPY0227	[False]	gap: refused today
+list[int]?	not	none	[True]	[True]	[True]	ok
+list[int]?	eq_None	value	[False]	refused SPY0222	refused	ok
+list[int]?	eq_None	none	[True]	refused SPY0222	refused	ok
+list[int]?	eq_value	value	[True]	refused SPY0222	refused	ok
+list[int]?	eq_value	none	[False]	refused SPY0222	refused	ok
+list[int]?	qdot	value	[1]	[1]	[1]	ok
+list[int]?	qdot	none	[None]	[None]	[None]	ok
+list[int]?	member	value	[1]	refused SPY0326	refused	ok
+list[int]?	member	none	!AttributeError	refused SPY0326	refused	ok
+list[int]?	arith	value	[[5, 1]]	refused SPY0222	refused	ok
+list[int]?	arith	none	!TypeError	refused SPY0222	refused	ok
+list[int]?	len	value	[1]	refused SPY0326	refused	ok
+list[int]?	len	none	!TypeError	refused SPY0326	refused	ok
+list[int]?	for	value	[5]	refused SPY0326	refused	ok
+list[int]?	for	none	!TypeError	refused SPY0326	refused	ok
+list[int]?	index	value	[5]	refused SPY0326	refused	ok
+list[int]?	index	none	!TypeError	refused SPY0326	refused	ok
+list[int]?	pass_T	value	[took]	refused SPY0220	refused	ok
+list[int]?	pass_T	none	[took]	refused SPY0220	refused	ok
+list[int]?	store_T	value	[[5]]	refused SPY0220	refused	ok
+list[int]?	store_T	none	[None]	refused SPY0220	refused	ok

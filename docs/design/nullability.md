@@ -2,7 +2,8 @@
 
 > **Status:** Principle — ruled by the owner 2026-11-12 (the rules below, approved as drafted; the
 > two sub-rulings on truthiness and on `x == None` for a `T?` the same day). **Not yet implemented**:
-> [nullability-ledger.tsv](nullability-ledger.tsv) records today's behavior against each rule.
+> [nullability-ledger.tsv](nullability-ledger.tsv) records today's behavior against each rule and is
+> checked on every test run.
 > No tracker is filed for this principle yet; the cells already filed are on #2644 and #2635.
 > **Companions:** `docs/language_specification/nullable_types.md`, `tagged_unions_optional.md` and
 > `logical_operators.md` (rewritten around this file as each rule lands), #2230 (R-EH, platform
@@ -67,21 +68,30 @@ the way CPython does.
 ## The ledger
 
 [nullability-ledger.tsv](nullability-ledger.tsv) has one row per cell: slot type, use, value,
-CPython 3.15.2's answer (run, not recalled), Sharpy's answer @ 7db7aec44 (`sharpyc run`), the
-target under the rules above, and a status. `[...]` is printed output, `!Name` an exception,
-`refused SPY…` a compile-time refusal. 241 rows: 188 match the target and 53 are gaps.
+CPython 3.15.2's answer, Sharpy's answer, the target under the rules above, and a status. `[...]`
+is printed output, `!Name` an exception, `refused SPY…` a compile-time refusal.
+
+The ledger is generated and checked by `NullabilityLedgerTests`
+(`src/Sharpy.Compiler.Tests/Properties/Differential/`). On every run the test builds each
+slot × use × value program, runs it under CPython and under Sharpy, derives the target from the
+rules and the status from the two, and requires the result to equal the committed file byte for
+byte. A gap that closes and a matching cell that regresses are both red until the row is updated,
+so the file cannot drift, and its diff is the record of what moved. The regenerated table is
+written to `.claude/tmp/nullability-ledger.proposed.tsv`.
+
+Slots are `int`, `str`, a user class `K` and `list[int]`, each as `T | None` and as `T?`. Values
+are a value, `None`, and for the truthiness uses the falsy payload (`0`, `""`, `[]`).
+
+Measured @ 7279914b2: 342 cells, 266 match the target and 76 are gaps.
 
 | Gap | Rows | Where |
 |---|---|---|
-| refused today, should run with a warning | 18 | mostly `int \| None`: arithmetic, ordering, `in`, stores |
-| runs, but without the warning | 12 | reference `T \| None`: member access, ordering, `len`, stores |
-| wrong value | 9 | truthiness of an empty payload (`if x:`, `not x`); `bool()` on an empty `T?` |
-| `None` enters a `T` slot unraised, or an ordering prints a value | 5 | pass and store into `T`; `int \| None < 9` |
-| wrong exception (`NullReferenceException`) | 5 | member access, `for`, index, user-class ordering |
-| compiler crash (SPY0908) | 4 | `str \| None` ordering; `K? == K` with an `object`-typed `__eq__` |
-
-The ledger is a measurement, not a guard: no test reads it yet. The rows for `T | None` over an
-`int` member (`bit_length`) are omitted because `int` has no such member in Sharpy.
+| refused today, should run | 26 | `T \| None` arithmetic and unary minus; `int \| None` in `in`, `== None` and stores; an empty list literal into a `list[int] \| None` or `list[int]?` parameter (SPY0227) |
+| runs, but without the warning | 20 | member access, ordering, `len`, `for`, index and stores on a `T \| None` |
+| wrong exception | 9 | `NullReferenceException` (`InvalidOperationException` for `int \| None`) where CPython raises `AttributeError` or `TypeError` |
+| wrong value | 8 | `if x:` and `not x` on a falsy payload; `bool()` on an empty `T?` |
+| no raise | 7 | `None` passed or stored into a plain `T`; `int \| None < 9` prints `False` |
+| compiler crash (SPY0908) | 6 | `str \| None` ordering; `K? == K` with an `object`-typed `__eq__`; `?.` on an `int?` |
 
 ## What this changes
 
