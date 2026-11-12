@@ -367,7 +367,8 @@ public class SocketErrnoDifferentialTests
 
     // The Sharpy program runs under the harness's own `dotnet exec`; it re-runs itself (its own
     // assembly, argv[0]) inside `unshare -n`, where the ephemeral range is narrowed, and the inner run's
-    // output goes to the same stdout.
+    // output goes to the same stdout. The outer run then reports the inner run's exit code, which the test
+    // requires to be 0 (permission was established beforehand, so any failure here is the probe's own).
     private const string EagainSharpy = """
         import socket
         from system import Environment
@@ -396,16 +397,43 @@ public class SocketErrnoDifferentialTests
             script: str = "echo 40000 40001 > /proc/sys/net/ipv4/ip_local_port_range && SHARPY_EAGAIN_INNER=1 exec dotnet exec '" + me + "'"
             p = Process.start("unshare", f"-n sh -c \"{script}\"")
             p.wait_for_exit()
-            if p.exit_code != 0:
-                print(f"OUT SKIP unshare -n failed (exit {p.exit_code})")
+            print(f"INNER EXIT {p.exit_code}")
         """;
+
+    private const string NamespacePortRange = "echo 40000 40001 > /proc/sys/net/ipv4/ip_local_port_range";
+
+    /// <summary>Runs <c>sh -c <paramref name="command"/></c> inside <c>unshare -n</c>.</summary>
+    private static (int Exit, string Out, string Err) RunInNetworkNamespace(string command)
+    {
+        var psi = new System.Diagnostics.ProcessStartInfo("unshare")
+        {
+            RedirectStandardOutput = true,
+            RedirectStandardError = true,
+            UseShellExecute = false,
+        };
+        foreach (var a in new[] { "-n", "sh", "-c", command })
+            psi.ArgumentList.Add(a);
+        using var proc = System.Diagnostics.Process.Start(psi)!;
+        var stdout = proc.StandardOutput.ReadToEndAsync();
+        var stderr = proc.StandardError.ReadToEnd();
+        proc.WaitForExit();
+        return (proc.ExitCode, stdout.Result, stderr);
+    }
+
+    private static System.Collections.Generic.List<string> OutLines(string stdout) =>
+        stdout.Replace("\r\n", "\n").Split('\n').Select(l => l.Trim()).Where(l => l.StartsWith("OUT ", StringComparison.Ordinal)).ToList();
 
     /// <summary>
     /// A real EAGAIN from <c>connect</c>: inside a private network namespace (<c>unshare -n</c>) whose
     /// ephemeral range is two ports, both bound, a UDP connect cannot auto-bind a port and Linux answers
     /// EAGAIN, which .NET reports as <c>WouldBlock</c> like an in-progress connect. CPython 3.15.2 reports 11
     /// for a blocking and a non-blocking socket; Sharpy must too (only a stream connect is in progress).
-    /// Skipped where creating a network namespace is not permitted. The host's network is untouched.
+    /// The host's network is untouched.
+    /// <para>It runs only where this (possibly unprivileged) process may create a network namespace and
+    /// write its port range, which is most likely NOT the case on the CI runner; there the rule is carried by
+    /// the oracle-free <see cref="ErrnoRule_EachSiteRewritesOnlyItsOwnCode"/> connect rows. Permission is
+    /// probed first, on its own: only that probe failing is a skip. After it succeeds, each side's real run
+    /// must exit 0 and print both lines, or the test FAILS with the output.</para>
     /// </summary>
     [SkippableFact]
     public void ConnectEagain_EqualsPython()
@@ -418,30 +446,23 @@ public class SocketErrnoDifferentialTests
         Directory.CreateDirectory(work);
         try
         {
+            var permission = RunInNetworkNamespace(NamespacePortRange);
+            TestPreconditions.RequireOrSkip(permission.Exit == 0,
+                $"this process may not create a network namespace and set its port range (`unshare -n sh -c '{NamespacePortRange}'` "
+                + $"exit {permission.Exit}: {permission.Err.Trim()})");
+
             var script = SysPath.Combine(work, "eagain.py");
             File.WriteAllText(script, EagainPython);
-            var psi = new System.Diagnostics.ProcessStartInfo("unshare")
-            {
-                RedirectStandardOutput = true,
-                RedirectStandardError = true,
-                UseShellExecute = false,
-            };
-            foreach (var a in new[] { "-n", "sh", "-c", $"echo 40000 40001 > /proc/sys/net/ipv4/ip_local_port_range && exec '{python.Executable}' '{script}'" })
-                psi.ArgumentList.Add(a);
-            using var proc = System.Diagnostics.Process.Start(psi)!;
-            var pyOut = proc.StandardOutput.ReadToEnd();
-            var pyErr = proc.StandardError.ReadToEnd();
-            proc.WaitForExit();
-            TestPreconditions.RequireOrSkip(proc.ExitCode == 0,
-                $"`unshare -n` (a private network namespace) is not permitted here: exit {proc.ExitCode}: {pyErr.Trim()}");
-            var py = pyOut.Replace("\r\n", "\n").Split('\n').Select(l => l.Trim()).Where(l => l.StartsWith("OUT ", StringComparison.Ordinal)).ToList();
+            var pyRun = RunInNetworkNamespace($"{NamespacePortRange} && exec '{python.Executable}' '{script}'");
+            Assert.True(pyRun.Exit == 0, $"the python probe failed (exit {pyRun.Exit}):\n{pyRun.Out}\n{pyRun.Err}");
+            var py = OutLines(pyRun.Out);
 
             using var runner = new Runner();
             var result = runner.Execute(EagainSharpy);
             Assert.True(result.Success, "the Sharpy program failed: " + string.Join("\n", result.CompilationErrors.Take(10)) + result.Failure);
-            var sh = result.StandardOutput.Replace("\r\n", "\n").Split('\n').Select(l => l.Trim())
-                .Where(l => l.StartsWith("OUT ", StringComparison.Ordinal)).ToList();
-            TestPreconditions.RequireOrSkip(!sh.Any(l => l.StartsWith("OUT SKIP", StringComparison.Ordinal)), "Sharpy: " + string.Join("; ", sh));
+            Assert.True(result.StandardOutput.Contains("INNER EXIT 0", StringComparison.Ordinal),
+                $"the Sharpy probe's inner run failed:\n{result.StandardOutput}\n{result.Failure}");
+            var sh = OutLines(result.StandardOutput);
             _output.WriteLine($"python: {string.Join("; ", py)}; Sharpy: {string.Join("; ", sh)}");
             Assert.Equal(new[] { "OUT blocking 11", "OUT nonblocking 11" }, py);
             Assert.Equal(py, sh);
