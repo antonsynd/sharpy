@@ -71,20 +71,115 @@ namespace Sharpy.SocketModule
         }
 
         /// <summary>
+        /// The socket.timeout for a .NET SocketException whose code is `TimedOut`.
+        /// .NET reports the socket's own timeout and a kernel `ETIMEDOUT` alike, so the caller says
+        /// which it was: `own_timeout` True (a timeout is set on the socket, so its expiry is the
+        /// likelier) gives python's `timed out` with errno None; False (no timeout is set, so only the
+        /// kernel can time out) gives the platform's errno (110 on Linux), as python's `TimeoutError`
+        /// does. A kernel `ETIMEDOUT` while a timeout is set cannot be told apart and carries None
+        /// (docs/deviations.yaml, socket-errno-is-dotnet-socket-error).
+        /// </summary>
+        internal static global::Sharpy.SocketModule.Timeout _TimedOut(global::System.Net.Sockets.SocketException ex, bool ownTimeout)
+        {
+            if (ownTimeout)
+            {
+                return new global::Sharpy.SocketModule.Timeout("timed out", ex);
+            }
+
+            return new global::Sharpy.SocketModule.Timeout(ex.Message, ex, global::Sharpy.SocketModule.Error.FromSocketException(ex).Errno);
+        }
+
+        /// <summary>
+        /// Whether `value` is the number of one of an int-backed enum's `members` (Enum.GetValues).
+        /// </summary>
+        internal static bool _IsMember(global::System.Array members, int value)
+        {
+            int i = 0;
+            while (i < members.Length)
+            {
+                var member = members.GetValue(i);
+                if (member != null && ((int)member) == value)
+                {
+                    return true;
+                }
+
+                i = i + 1;
+            }
+
+            return false;
+        }
+
+        /// <summary>
+        /// The socket.error for a .NET SocketException at a call site where .NET folds the errno the
+        /// platform's call returns into `folded`, whose NativeErrorCode names a different errno: on
+        /// Linux, `folded` becomes `linux_errno` with its strerror text; anything else goes to the seam
+        /// (`error.from_socket_exception`). Keyed on the CLR `SocketError`, never the message.
+        /// Each call site has its own entry point below (one row of the rule each), so a call site
+        /// cannot name a rule that does not exist. Off Linux nothing is rewritten: on Windows .NET's
+        /// code is WinSock's own, which CPython reports; macOS is unmeasured (docs/deviations.yaml,
+        /// socket-errno-is-dotnet-socket-error).
+        /// </summary>
+        internal static global::Sharpy.SocketModule.Error _RewriteErrno(global::System.Net.Sockets.SocketException ex, global::System.Net.Sockets.SocketError folded, int linuxErrno, string strerror)
+        {
+            if (global::System.Runtime.InteropServices.RuntimeInformation.IsOSPlatform(global::System.Runtime.InteropServices.OSPlatform.Linux) && ex.SocketErrorCode == folded)
+            {
+                return new global::Sharpy.SocketModule.Error(strerror, ex, linuxErrno);
+            }
+
+            return global::Sharpy.SocketModule.Error.FromSocketException(ex);
+        }
+
+        /// <summary>
+        /// `connect` failing on `sock`. Only a non-blocking STREAM connect can be in progress: .NET
+        /// folds the kernel's EINPROGRESS into `WouldBlock` (native EAGAIN, 11), and CPython reports 115
+        /// `EINPROGRESS`. A datagram connect never returns EINPROGRESS (it completes at once), so its
+        /// `WouldBlock` is a real EAGAIN (e.g. no ephemeral port left to auto-bind), which CPython
+        /// reports as 11; and a blocking connect reaches `WouldBlock` only on a real EAGAIN too. Both go
+        /// to the seam unchanged.
+        /// </summary>
+        internal static global::Sharpy.SocketModule.Error _ConnectError(global::System.Net.Sockets.SocketException ex, global::System.Net.Sockets.Socket sock)
+        {
+            if (sock.Blocking || sock.SocketType != global::System.Net.Sockets.SocketType.Stream)
+            {
+                return global::Sharpy.SocketModule.Error.FromSocketException(ex);
+            }
+
+            return global::Sharpy.SocketModule.SocketModuleModule._RewriteErrno(ex, global::System.Net.Sockets.SocketError.WouldBlock, 115, "Operation now in progress");
+        }
+
+        /// <summary>
+        /// `setsockopt`/`getsockopt` on an option .NET refused itself (socket._kernel_says_enoprotoopt):
+        /// .NET's `OperationNotSupported` (95); the kernel would answer 92 `ENOPROTOOPT`.
+        /// </summary>
+        internal static global::Sharpy.SocketModule.Error _UnknownOptionError(global::System.Net.Sockets.SocketException ex)
+        {
+            return global::Sharpy.SocketModule.SocketModuleModule._RewriteErrno(ex, global::System.Net.Sockets.SocketError.OperationNotSupported, 92, "Protocol not available");
+        }
+
+        /// <summary>
+        /// A call that allocates a descriptor (`socket()`, `accept`): .NET folds EMFILE and ENFILE into
+        /// `TooManyOpenSockets` (native ENFILE, 23); CPython reports the process limit, 24 `EMFILE`.
+        /// </summary>
+        internal static global::Sharpy.SocketModule.Error _NewDescriptorError(global::System.Net.Sockets.SocketException ex)
+        {
+            return global::Sharpy.SocketModule.SocketModuleModule._RewriteErrno(ex, global::System.Net.Sockets.SocketError.TooManyOpenSockets, 24, "Too many open files");
+        }
+
+        /// <summary>
         /// Return the default timeout in seconds for new sockets, or None.
         /// </summary>
         public static double? Getdefaulttimeout()
         {
             {
-                var __ctx_1 = global::Sharpy.SocketModule.SocketModuleModule._Lock;
-                __ctx_1.Enter();
+                var __ctx_2 = global::Sharpy.SocketModule.SocketModuleModule._Lock;
+                __ctx_2.Enter();
                 try
                 {
                     return global::Sharpy.SocketModule.SocketModuleModule._DefaultTimeout;
                 }
                 finally
                 {
-                    __ctx_1.Exit();
+                    __ctx_2.Exit();
                 }
             }
         }
@@ -96,15 +191,15 @@ namespace Sharpy.SocketModule
         {
             global::Sharpy.SocketModule.SocketModuleModule._CheckTimeout(timeout);
             {
-                var __ctx_2 = global::Sharpy.SocketModule.SocketModuleModule._Lock;
-                __ctx_2.Enter();
+                var __ctx_3 = global::Sharpy.SocketModule.SocketModuleModule._Lock;
+                __ctx_3.Enter();
                 try
                 {
                     _DefaultTimeout = timeout;
                 }
                 finally
                 {
-                    __ctx_2.Exit();
+                    __ctx_3.Exit();
                 }
             }
         }
@@ -117,15 +212,15 @@ namespace Sharpy.SocketModule
         {
             double? @default = null;
             {
-                var __ctx_3 = global::Sharpy.SocketModule.SocketModuleModule._Lock;
-                __ctx_3.Enter();
+                var __ctx_4 = global::Sharpy.SocketModule.SocketModuleModule._Lock;
+                __ctx_4.Enter();
                 try
                 {
                     @default = global::Sharpy.SocketModule.SocketModuleModule._DefaultTimeout;
                 }
                 finally
                 {
-                    __ctx_3.Exit();
+                    __ctx_4.Exit();
                 }
             }
 
@@ -185,7 +280,7 @@ namespace Sharpy.SocketModule
                     return global::Sharpy.ArrayHelpers.GetItem(addresses, 0).ToString();
                 }
 
-                throw new global::Sharpy.SocketModule.Gaierror("Name or service not known", ((int)global::System.Net.Sockets.SocketError.HostNotFound));
+                throw new global::Sharpy.SocketModule.Gaierror("Name or service not known", (int?)((int)global::System.Net.Sockets.SocketError.HostNotFound));
             }
             catch (global::System.Net.Sockets.SocketException ex)
             {
@@ -234,12 +329,15 @@ namespace Sharpy.SocketModule
     /// Derives from OSError, so `except OSError` catches every socket exception. Python's
     /// socket.error IS OSError; here it is a subclass of its own (docs/deviations.yaml,
     /// socket-error-timeout-distinct-classes).
+    /// `errno` is the platform's errno for a failed socket call, and None where python's is None:
+    /// an error constructed without one, and a `timeout` raised because the socket's own timeout
+    /// (`settimeout`) expired.
     /// </summary>
     [global::Sharpy.SharpyModuleType("socket", "error")]
     [global::Sharpy.SharpyName("error")]
     public class Error : global::Sharpy.OSError
     {
-        public int Errno;
+        public int? Errno;
         /// <summary>
         /// Create a socket error from a .NET SocketException.
         /// errno is the platform's own code, `SocketException.NativeErrorCode`: the POSIX errno on
@@ -269,7 +367,7 @@ namespace Sharpy.SocketModule
         /// <summary>
         /// Create a socket error with the specified message and optional errno.
         /// </summary>
-        public Error(string message, int errno = 0) : base(message)
+        public Error(string message, int? errno = null) : base(message)
         {
             this.Errno = errno;
         }
@@ -277,7 +375,7 @@ namespace Sharpy.SocketModule
         /// <summary>
         /// Create a socket error wrapping an inner exception.
         /// </summary>
-        public Error(string message, global::System.Exception inner, int errno = 0) : base(message, inner)
+        public Error(string message, global::System.Exception inner, int? errno = null) : base(message, inner)
         {
             this.Errno = errno;
         }
@@ -285,6 +383,8 @@ namespace Sharpy.SocketModule
 
     /// <summary>
     /// Raised when a socket operation times out. Corresponds to Python's socket.timeout.
+    /// `errno` is None when the socket's own timeout expired, as python's; a kernel `ETIMEDOUT`
+    /// carries the platform's errno.
     /// </summary>
     [global::Sharpy.SharpyModuleType("socket", "timeout")]
     [global::Sharpy.SharpyName("timeout")]
@@ -293,14 +393,14 @@ namespace Sharpy.SocketModule
         /// <summary>
         /// Create a socket timeout error with the specified message.
         /// </summary>
-        public Timeout(string message, int errno = 0) : base(message, errno)
+        public Timeout(string message, int? errno = null) : base(message, errno)
         {
         }
 
         /// <summary>
         /// Create a socket timeout error wrapping an inner exception.
         /// </summary>
-        public Timeout(string message, global::System.Exception inner, int errno = 0) : base(message, inner, errno)
+        public Timeout(string message, global::System.Exception inner, int? errno = null) : base(message, inner, errno)
         {
         }
     }
@@ -315,14 +415,14 @@ namespace Sharpy.SocketModule
         /// <summary>
         /// Create a GAI error with the specified message.
         /// </summary>
-        public Gaierror(string message, int errno = 0) : base(message, errno)
+        public Gaierror(string message, int? errno = null) : base(message, errno)
         {
         }
 
         /// <summary>
         /// Create a GAI error wrapping an inner exception.
         /// </summary>
-        public Gaierror(string message, global::System.Exception inner, int errno = 0) : base(message, inner, errno)
+        public Gaierror(string message, global::System.Exception inner, int? errno = null) : base(message, inner, errno)
         {
         }
     }
@@ -337,14 +437,14 @@ namespace Sharpy.SocketModule
         /// <summary>
         /// Create an herror with the specified message.
         /// </summary>
-        public Herror(string message, int errno = 0) : base(message, errno)
+        public Herror(string message, int? errno = null) : base(message, errno)
         {
         }
 
         /// <summary>
         /// Create an herror wrapping an inner exception.
         /// </summary>
-        public Herror(string message, global::System.Exception inner, int errno = 0) : base(message, inner, errno)
+        public Herror(string message, global::System.Exception inner, int? errno = null) : base(message, inner, errno)
         {
         }
     }
@@ -396,7 +496,7 @@ namespace Sharpy.SocketModule
                 var ipAddresses = global::System.Net.Dns.GetHostAddresses(address.Item1);
                 if (global::Sharpy.Builtins.Len(ipAddresses) == 0)
                 {
-                    throw new global::Sharpy.SocketModule.Gaierror("Name or service not known", ((int)global::System.Net.Sockets.SocketError.HostNotFound));
+                    throw new global::Sharpy.SocketModule.Gaierror("Name or service not known", (int?)((int)global::System.Net.Sockets.SocketError.HostNotFound));
                 }
 
                 global::System.Net.IPEndPoint endpoint = new global::System.Net.IPEndPoint(global::Sharpy.ArrayHelpers.GetItem(ipAddresses, 0), address.Item2);
@@ -418,11 +518,11 @@ namespace Sharpy.SocketModule
             }
             catch (global::System.Net.Sockets.SocketException ex) when (ex.SocketErrorCode == global::System.Net.Sockets.SocketError.TimedOut)
             {
-                throw new global::Sharpy.SocketModule.Timeout("timed out", ex, ((int)ex.SocketErrorCode));
+                throw global::Sharpy.SocketModule.SocketModuleModule._TimedOut(ex, false);
             }
             catch (global::System.Net.Sockets.SocketException ex_1)
             {
-                throw global::Sharpy.SocketModule.Error.FromSocketException(ex_1);
+                throw global::Sharpy.SocketModule.SocketModuleModule._ConnectError(ex_1, this._Socket);
             }
         }
 
@@ -498,11 +598,11 @@ namespace Sharpy.SocketModule
             }
             catch (global::System.Net.Sockets.SocketException ex) when (ex.SocketErrorCode == global::System.Net.Sockets.SocketError.TimedOut)
             {
-                throw new global::Sharpy.SocketModule.Timeout("timed out", ex, ((int)ex.SocketErrorCode));
+                throw global::Sharpy.SocketModule.SocketModuleModule._TimedOut(ex, this._TimeoutMs() > 0);
             }
             catch (global::System.Net.Sockets.SocketException ex_1)
             {
-                throw global::Sharpy.SocketModule.Error.FromSocketException(ex_1);
+                throw global::Sharpy.SocketModule.SocketModuleModule._NewDescriptorError(ex_1);
             }
         }
 
@@ -517,7 +617,7 @@ namespace Sharpy.SocketModule
             }
             catch (global::System.Net.Sockets.SocketException ex) when (ex.SocketErrorCode == global::System.Net.Sockets.SocketError.TimedOut)
             {
-                throw new global::Sharpy.SocketModule.Timeout("timed out", ex, ((int)ex.SocketErrorCode));
+                throw global::Sharpy.SocketModule.SocketModuleModule._TimedOut(ex, this._TimeoutMs() > 0);
             }
             catch (global::System.Net.Sockets.SocketException ex_1)
             {
@@ -540,7 +640,7 @@ namespace Sharpy.SocketModule
                     int sent = this._Socket.Send(buffer, totalSent, total - totalSent, global::System.Net.Sockets.SocketFlags.None);
                     if (sent == 0)
                     {
-                        throw new global::Sharpy.SocketModule.Error("Connection reset by peer", ((int)global::System.Net.Sockets.SocketError.ConnectionReset));
+                        throw new global::Sharpy.SocketModule.Error("Connection reset by peer", (int?)((int)global::System.Net.Sockets.SocketError.ConnectionReset));
                     }
 
                     totalSent = totalSent + sent;
@@ -548,7 +648,7 @@ namespace Sharpy.SocketModule
             }
             catch (global::System.Net.Sockets.SocketException ex) when (ex.SocketErrorCode == global::System.Net.Sockets.SocketError.TimedOut)
             {
-                throw new global::Sharpy.SocketModule.Timeout("timed out", ex, ((int)ex.SocketErrorCode));
+                throw global::Sharpy.SocketModule.SocketModuleModule._TimedOut(ex, this._TimeoutMs() > 0);
             }
             catch (global::System.Net.Sockets.SocketException ex_1)
             {
@@ -571,7 +671,7 @@ namespace Sharpy.SocketModule
             }
             catch (global::System.Net.Sockets.SocketException ex) when (ex.SocketErrorCode == global::System.Net.Sockets.SocketError.TimedOut)
             {
-                throw new global::Sharpy.SocketModule.Timeout("timed out", ex, ((int)ex.SocketErrorCode));
+                throw global::Sharpy.SocketModule.SocketModuleModule._TimedOut(ex, this._TimeoutMs() > 0);
             }
             catch (global::System.Net.Sockets.SocketException ex_1)
             {
@@ -592,7 +692,7 @@ namespace Sharpy.SocketModule
             }
             catch (global::System.Net.Sockets.SocketException ex) when (ex.SocketErrorCode == global::System.Net.Sockets.SocketError.TimedOut)
             {
-                throw new global::Sharpy.SocketModule.Timeout("timed out", ex, ((int)ex.SocketErrorCode));
+                throw global::Sharpy.SocketModule.SocketModuleModule._TimedOut(ex, this._TimeoutMs() > 0);
             }
             catch (global::System.Net.Sockets.SocketException ex_1)
             {
@@ -617,7 +717,7 @@ namespace Sharpy.SocketModule
             }
             catch (global::System.Net.Sockets.SocketException ex) when (ex.SocketErrorCode == global::System.Net.Sockets.SocketError.TimedOut)
             {
-                throw new global::Sharpy.SocketModule.Timeout("timed out", ex, ((int)ex.SocketErrorCode));
+                throw global::Sharpy.SocketModule.SocketModuleModule._TimedOut(ex, this._TimeoutMs() > 0);
             }
             catch (global::System.Net.Sockets.SocketException ex_1)
             {
@@ -636,6 +736,11 @@ namespace Sharpy.SocketModule
             }
             catch (global::System.Net.Sockets.SocketException ex)
             {
+                if (this._KernelSaysEnoprotoopt(level, optname, true))
+                {
+                    throw global::Sharpy.SocketModule.SocketModuleModule._UnknownOptionError(ex);
+                }
+
                 throw global::Sharpy.SocketModule.Error.FromSocketException(ex);
             }
         }
@@ -657,8 +762,52 @@ namespace Sharpy.SocketModule
             }
             catch (global::System.Net.Sockets.SocketException ex)
             {
+                if (this._KernelSaysEnoprotoopt(level, optname, false))
+                {
+                    throw global::Sharpy.SocketModule.SocketModuleModule._UnknownOptionError(ex);
+                }
+
                 throw global::Sharpy.SocketModule.Error.FromSocketException(ex);
             }
+        }
+
+        /// <summary>
+        /// Whether .NET refused (level, optname) itself, having no member for it, where Linux
+        /// would have answered ENOPROTOOPT (each arm measured with CPython 3.15.2).
+        /// A level or option name that is no member of .NET's enum never reaches the kernel. Linux
+        /// answers an unknown option with ENOPROTOOPT at SOL_SOCKET on every socket; on an AF_INET
+        /// socket also at every level for setsockopt, and for getsockopt at IPPROTO_IP and at the
+        /// socket's own protocol (IPPROTO_TCP on SOCK_STREAM, IPPROTO_UDP on SOCK_DGRAM). Elsewhere
+        /// it answers EOPNOTSUPP, already .NET's number (AF_INET6 off SOL_SOCKET is unmeasured and
+        /// left as .NET reports it). A defined member .NET has no Linux mapping for is not told
+        /// apart here.
+        /// </summary>
+        private bool _KernelSaysEnoprotoopt(int level, int optname, bool setting)
+        {
+            bool levelKnown = global::Sharpy.SocketModule.SocketModuleModule._IsMember(global::System.Enum.GetValues(global::System.Net.Sockets.SocketOptionLevel.Socket.GetType()), level);
+            bool nameKnown = global::Sharpy.SocketModule.SocketModuleModule._IsMember(global::System.Enum.GetValues(global::System.Net.Sockets.SocketOptionName.Debug.GetType()), optname);
+            if (levelKnown && nameKnown)
+            {
+                return false;
+            }
+
+            if (level == global::Sharpy.SocketModule.SocketModuleModule.SOL_SOCKET)
+            {
+                return true;
+            }
+
+            if (this._Socket.AddressFamily != global::System.Net.Sockets.AddressFamily.InterNetwork)
+            {
+                return false;
+            }
+
+            if (setting || level == global::Sharpy.SocketModule.SocketModuleModule.IPPROTO_IP)
+            {
+                return true;
+            }
+
+            global::System.Net.Sockets.SocketType kind = this._Socket.SocketType;
+            return (level == global::Sharpy.SocketModule.SocketModuleModule.IPPROTO_TCP && kind == global::System.Net.Sockets.SocketType.Stream) || (level == global::Sharpy.SocketModule.SocketModuleModule.IPPROTO_UDP && kind == global::System.Net.Sockets.SocketType.Dgram);
         }
 
         /// <summary>
@@ -881,7 +1030,7 @@ namespace Sharpy.SocketModule
             }
             catch (global::System.Net.Sockets.SocketException ex)
             {
-                throw global::Sharpy.SocketModule.Error.FromSocketException(ex);
+                throw global::Sharpy.SocketModule.SocketModuleModule._NewDescriptorError(ex);
             }
 
             this._Timeout = null;
@@ -907,11 +1056,33 @@ namespace Sharpy.SocketModule
 
         /// <summary>
         /// Wrap an existing .NET socket (used for accepted connections).
+        /// The wrapper's .NET state is made to match what it records: an accepted .NET socket
+        /// inherits the listener's Send/ReceiveTimeout and non-blocking mode, where python's
+        /// accepted socket is blocking. Then the default timeout applies, as python's `accept`
+        /// does (getdefaulttimeout(), else blocking, whatever the listener's mode).
         /// </summary>
         public Socket(global::System.Net.Sockets.Socket existing)
         {
             this._Socket = existing;
-            this._Timeout = null;
+            this.Settimeout(null);
+            double? @default = null;
+            {
+                var __ctx_1 = global::Sharpy.SocketModule.SocketModuleModule._Lock;
+                __ctx_1.Enter();
+                try
+                {
+                    @default = global::Sharpy.SocketModule.SocketModuleModule._DefaultTimeout;
+                }
+                finally
+                {
+                    __ctx_1.Exit();
+                }
+            }
+
+            if (@default is not null)
+            {
+                this.Settimeout(@default.Value);
+            }
         }
     }
 }

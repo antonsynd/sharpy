@@ -1,6 +1,7 @@
 """Low-level networking interface (TCP, UDP, DNS)."""
 
-from system import IDisposable, Array, Double
+from system import IDisposable, Array, Double, Enum
+from system.runtime.interop_services import RuntimeInformation, OSPlatform
 from system.net import IPAddress, IPEndPoint, EndPoint, Dns
 from system.net.sockets import Socket as NetSocket, AddressFamily, SocketType, ProtocolType, SocketOptionLevel, SocketOptionName, SocketShutdown, SocketFlags, SocketException, SocketError, SelectMode
 # threading.Lock, not `from sharpy import Lock`: under the sharpy spelling `with _lock:` lowers to
@@ -75,16 +76,20 @@ class error(OSError):
     Derives from OSError, so `except OSError` catches every socket exception. Python's
     socket.error IS OSError; here it is a subclass of its own (docs/deviations.yaml,
     socket-error-timeout-distinct-classes).
+
+    `errno` is the platform's errno for a failed socket call, and None where python's is None:
+    an error constructed without one, and a `timeout` raised because the socket's own timeout
+    (`settimeout`) expired.
     """
 
-    errno: int
+    errno: int | None
 
-    def __init__(self, message: str, errno: int = 0):
+    def __init__(self, message: str, errno: int | None = None):
         """Create a socket error with the specified message and optional errno."""
         super().__init__(message)
         self.errno = errno
 
-    def __init__(self, message: str, inner: Exception, errno: int = 0):
+    def __init__(self, message: str, inner: Exception, errno: int | None = None):
         """Create a socket error wrapping an inner exception."""
         super().__init__(message, inner)
         self.errno = errno
@@ -108,37 +113,101 @@ class error(OSError):
         return error(ex.Message, ex, native)
 
 class timeout(error):
-    """Raised when a socket operation times out. Corresponds to Python's socket.timeout."""
+    """Raised when a socket operation times out. Corresponds to Python's socket.timeout.
 
-    def __init__(self, message: str, errno: int = 0):
+    `errno` is None when the socket's own timeout expired, as python's; a kernel `ETIMEDOUT`
+    carries the platform's errno.
+    """
+
+    def __init__(self, message: str, errno: int | None = None):
         """Create a socket timeout error with the specified message."""
         super().__init__(message, errno)
 
-    def __init__(self, message: str, inner: Exception, errno: int = 0):
+    def __init__(self, message: str, inner: Exception, errno: int | None = None):
         """Create a socket timeout error wrapping an inner exception."""
         super().__init__(message, inner, errno)
 
 class gaierror(error):
     """Raised for address-related errors (e.g., DNS failures). Python's socket.gaierror."""
 
-    def __init__(self, message: str, errno: int = 0):
+    def __init__(self, message: str, errno: int | None = None):
         """Create a GAI error with the specified message."""
         super().__init__(message, errno)
 
-    def __init__(self, message: str, inner: Exception, errno: int = 0):
+    def __init__(self, message: str, inner: Exception, errno: int | None = None):
         """Create a GAI error wrapping an inner exception."""
         super().__init__(message, inner, errno)
 
 class herror(error):
     """Raised for legacy address-related errors. Corresponds to Python's socket.herror."""
 
-    def __init__(self, message: str, errno: int = 0):
+    def __init__(self, message: str, errno: int | None = None):
         """Create an herror with the specified message."""
         super().__init__(message, errno)
 
-    def __init__(self, message: str, inner: Exception, errno: int = 0):
+    def __init__(self, message: str, inner: Exception, errno: int | None = None):
         """Create an herror wrapping an inner exception."""
         super().__init__(message, inner, errno)
+
+def _timed_out(ex: SocketException, own_timeout: bool) -> timeout:
+    """The socket.timeout for a .NET SocketException whose code is `TimedOut`.
+
+    .NET reports the socket's own timeout and a kernel `ETIMEDOUT` alike, so the caller says
+    which it was: `own_timeout` True (a timeout is set on the socket, so its expiry is the
+    likelier) gives python's `timed out` with errno None; False (no timeout is set, so only the
+    kernel can time out) gives the platform's errno (110 on Linux), as python's `TimeoutError`
+    does. A kernel `ETIMEDOUT` while a timeout is set cannot be told apart and carries None
+    (docs/deviations.yaml, socket-errno-is-dotnet-socket-error).
+    """
+    if own_timeout:
+        return timeout("timed out", ex)
+    return timeout(ex.Message, ex, error.from_socket_exception(ex).errno)
+
+def _is_member(members: Array, value: int) -> bool:
+    """Whether `value` is the number of one of an int-backed enum's `members` (Enum.GetValues)."""
+    i: int = 0
+    while i < members.length:
+        member = members.get_value(i)
+        if member is not None and (member as! int) == value:
+            return True
+        i = i + 1
+    return False
+
+def _rewrite_errno(ex: SocketException, folded: SocketError, linux_errno: int, strerror: str) -> error:
+    """The socket.error for a .NET SocketException at a call site where .NET folds the errno the
+    platform's call returns into `folded`, whose NativeErrorCode names a different errno: on
+    Linux, `folded` becomes `linux_errno` with its strerror text; anything else goes to the seam
+    (`error.from_socket_exception`). Keyed on the CLR `SocketError`, never the message.
+
+    Each call site has its own entry point below (one row of the rule each), so a call site
+    cannot name a rule that does not exist. Off Linux nothing is rewritten: on Windows .NET's
+    code is WinSock's own, which CPython reports; macOS is unmeasured (docs/deviations.yaml,
+    socket-errno-is-dotnet-socket-error).
+    """
+    if RuntimeInformation.is_o_s_platform(OSPlatform.Linux) and ex.socket_error_code == folded:
+        return error(strerror, ex, linux_errno)
+    return error.from_socket_exception(ex)
+
+def _connect_error(ex: SocketException, sock: NetSocket) -> error:
+    """`connect` failing on `sock`. Only a non-blocking STREAM connect can be in progress: .NET
+    folds the kernel's EINPROGRESS into `WouldBlock` (native EAGAIN, 11), and CPython reports 115
+    `EINPROGRESS`. A datagram connect never returns EINPROGRESS (it completes at once), so its
+    `WouldBlock` is a real EAGAIN (e.g. no ephemeral port left to auto-bind), which CPython
+    reports as 11; and a blocking connect reaches `WouldBlock` only on a real EAGAIN too. Both go
+    to the seam unchanged."""
+    if sock.blocking or sock.socket_type != SocketType.Stream:
+        return error.from_socket_exception(ex)
+    return _rewrite_errno(ex, SocketError.WouldBlock, 115, "Operation now in progress")
+
+def _unknown_option_error(ex: SocketException) -> error:
+    """`setsockopt`/`getsockopt` on an option .NET refused itself (socket._kernel_says_enoprotoopt):
+    .NET's `OperationNotSupported` (95); the kernel would answer 92 `ENOPROTOOPT`."""
+    return _rewrite_errno(ex, SocketError.OperationNotSupported, 92, "Protocol not available")
+
+def _new_descriptor_error(ex: SocketException) -> error:
+    """A call that allocates a descriptor (`socket()`, `accept`): .NET folds EMFILE and ENFILE into
+    `TooManyOpenSockets` (native ENFILE, 23); CPython reports the process limit, 24 `EMFILE`."""
+    return _rewrite_errno(ex, SocketError.TooManyOpenSockets, 24, "Too many open files")
 
 @final
 class socket(IDisposable):
@@ -157,7 +226,7 @@ class socket(IDisposable):
         try:
             self._socket = NetSocket(family as! AddressFamily, sock_type as! SocketType, proto as! ProtocolType)
         except SocketException as ex:
-            raise error.from_socket_exception(ex)
+            raise _new_descriptor_error(ex)
         self._timeout = None
         default: float | None = None
         with _lock:
@@ -166,9 +235,20 @@ class socket(IDisposable):
             self.settimeout(default)
 
     def __init__(self, existing: NetSocket):
-        """Wrap an existing .NET socket (used for accepted connections)."""
+        """Wrap an existing .NET socket (used for accepted connections).
+
+        The wrapper's .NET state is made to match what it records: an accepted .NET socket
+        inherits the listener's Send/ReceiveTimeout and non-blocking mode, where python's
+        accepted socket is blocking. Then the default timeout applies, as python's `accept`
+        does (getdefaulttimeout(), else blocking, whatever the listener's mode).
+        """
         self._socket = existing
-        self._timeout = None
+        self.settimeout(None)
+        default: float | None = None
+        with _lock:
+            default = _default_timeout
+        if default is not None:
+            self.settimeout(default)
 
     # ---- Properties ----
 
@@ -204,9 +284,11 @@ class socket(IDisposable):
             else:
                 self._socket.connect(endpoint)
         except SocketException as ex when ex.socket_error_code == SocketError.TimedOut:
-            raise timeout("timed out", ex, (ex.socket_error_code as! int))
+            # The socket's own timeout raised above (WaitOne); .NET's Connect ignores
+            # Send/ReceiveTimeout, so a TimedOut here is the kernel's ETIMEDOUT.
+            raise _timed_out(ex, False)
         except SocketException as ex:
-            raise error.from_socket_exception(ex)
+            raise _connect_error(ex, self._socket)
 
     def bind(self, address: tuple[host: str, port: int]) -> None:
         """Bind the socket to a local (host, port) address."""
@@ -245,9 +327,9 @@ class socket(IDisposable):
             conn: socket = socket(accepted)
             return (conn, (remote_ep.address.to_string(), remote_ep.port))
         except SocketException as ex when ex.socket_error_code == SocketError.TimedOut:
-            raise timeout("timed out", ex, (ex.socket_error_code as! int))
+            raise _timed_out(ex, self._timeout_ms() > 0)
         except SocketException as ex:
-            raise error.from_socket_exception(ex)
+            raise _new_descriptor_error(ex)
 
     # ---- Data transfer methods ----
 
@@ -256,7 +338,7 @@ class socket(IDisposable):
         try:
             return self._socket.send(data.to_array())
         except SocketException as ex when ex.socket_error_code == SocketError.TimedOut:
-            raise timeout("timed out", ex, (ex.socket_error_code as! int))
+            raise _timed_out(ex, self._timeout_ms() > 0)
         except SocketException as ex:
             raise error.from_socket_exception(ex)
 
@@ -272,7 +354,7 @@ class socket(IDisposable):
                     raise error("Connection reset by peer", (SocketError.ConnectionReset as! int))
                 total_sent = total_sent + sent
         except SocketException as ex when ex.socket_error_code == SocketError.TimedOut:
-            raise timeout("timed out", ex, (ex.socket_error_code as! int))
+            raise _timed_out(ex, self._timeout_ms() > 0)
         except SocketException as ex:
             raise error.from_socket_exception(ex)
 
@@ -285,7 +367,7 @@ class socket(IDisposable):
             Array.copy(buffer, result, received)
             return bytes(result)
         except SocketException as ex when ex.socket_error_code == SocketError.TimedOut:
-            raise timeout("timed out", ex, (ex.socket_error_code as! int))
+            raise _timed_out(ex, self._timeout_ms() > 0)
         except SocketException as ex:
             raise error.from_socket_exception(ex)
 
@@ -296,7 +378,7 @@ class socket(IDisposable):
             endpoint: IPEndPoint = IPEndPoint(ip_addr, address[1])
             return self._socket.send_to(data.to_array(), endpoint)
         except SocketException as ex when ex.socket_error_code == SocketError.TimedOut:
-            raise timeout("timed out", ex, (ex.socket_error_code as! int))
+            raise _timed_out(ex, self._timeout_ms() > 0)
         except SocketException as ex:
             raise error.from_socket_exception(ex)
 
@@ -311,7 +393,7 @@ class socket(IDisposable):
             ep: IPEndPoint = remote as! IPEndPoint
             return (bytes(result), (ep.address.to_string(), ep.port))
         except SocketException as ex when ex.socket_error_code == SocketError.TimedOut:
-            raise timeout("timed out", ex, (ex.socket_error_code as! int))
+            raise _timed_out(ex, self._timeout_ms() > 0)
         except SocketException as ex:
             raise error.from_socket_exception(ex)
 
@@ -322,6 +404,8 @@ class socket(IDisposable):
         try:
             self._socket.set_socket_option(level as! SocketOptionLevel, optname as! SocketOptionName, value)
         except SocketException as ex:
+            if self._kernel_says_enoprotoopt(level, optname, True):
+                raise _unknown_option_error(ex)
             raise error.from_socket_exception(ex)
 
     def getsockopt(self, level: int, optname: int) -> int:
@@ -332,7 +416,35 @@ class socket(IDisposable):
                 return 0
             return opt as! int
         except SocketException as ex:
+            if self._kernel_says_enoprotoopt(level, optname, False):
+                raise _unknown_option_error(ex)
             raise error.from_socket_exception(ex)
+
+    @private
+    def _kernel_says_enoprotoopt(self, level: int, optname: int, setting: bool) -> bool:
+        """Whether .NET refused (level, optname) itself, having no member for it, where Linux
+        would have answered ENOPROTOOPT (each arm measured with CPython 3.15.2).
+
+        A level or option name that is no member of .NET's enum never reaches the kernel. Linux
+        answers an unknown option with ENOPROTOOPT at SOL_SOCKET on every socket; on an AF_INET
+        socket also at every level for setsockopt, and for getsockopt at IPPROTO_IP and at the
+        socket's own protocol (IPPROTO_TCP on SOCK_STREAM, IPPROTO_UDP on SOCK_DGRAM). Elsewhere
+        it answers EOPNOTSUPP, already .NET's number (AF_INET6 off SOL_SOCKET is unmeasured and
+        left as .NET reports it). A defined member .NET has no Linux mapping for is not told
+        apart here.
+        """
+        level_known: bool = _is_member(Enum.get_values(SocketOptionLevel.Socket.get_type()), level)
+        name_known: bool = _is_member(Enum.get_values(SocketOptionName.Debug.get_type()), optname)
+        if level_known and name_known:
+            return False
+        if level == SOL_SOCKET:
+            return True
+        if self._socket.address_family != AddressFamily.InterNetwork:
+            return False
+        if setting or level == IPPROTO_IP:
+            return True
+        kind: SocketType = self._socket.socket_type
+        return (level == IPPROTO_TCP and kind == SocketType.Stream) or (level == IPPROTO_UDP and kind == SocketType.Dgram)
 
     # ---- Lifecycle methods ----
 
