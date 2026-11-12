@@ -234,7 +234,7 @@ public class OptionalMembershipDifferentialTests : IntegrationTestBase
             ["T: struct"] = ("`Container[T | None]` closed over a value type is `Container[T]` at the call "
                 + "(TypeSubstitution drops the `| None` of a type parameter bound to a value type, #1797), so no container "
                 + "with a None element reaches a `[T: struct]` cell: SPY0220 at the store, not at the membership test "
-                + "(#2635: the D7 family)",
+                + "(the value-ness work tracked by #2674; owner ruling H, 2026-11-12, moved it out of #2635)",
                 "def c[T: struct](x: T, xs: list[T | None]) -> bool:\n    return x in xs\n\n"
                 + "def main() -> None:\n    ys: list[int | None] = [1, None]\n    print(c[int](1, ys))\n",
                 DiagnosticCodes.Semantic.TypeMismatch),

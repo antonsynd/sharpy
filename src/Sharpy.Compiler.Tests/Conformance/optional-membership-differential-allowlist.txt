@@ -8,7 +8,7 @@
 # divergence (cell, CPython's answer, Sharpy's, the expectation) is written there on every run. Delete a row when
 # its last cell passes. Pin lines are comments, so scorecard_metrics.py counts one row per container/needle.
 
-ArgparseNamespace/NoneNeedle  cells=486  pin=eeb64fcb24dbb78a  # see #2647 (no needle slot: SPY0908; the literal None runs where ruling A refuses) and #2635; the Tone | None cells (NullReferenceException in the string enum's implicit conversion): #2635 comment 6831482754
+ArgparseNamespace/NoneNeedle  cells=486  pin=eeb64fcb24dbb78a  # see #2647 (no needle slot: SPY0908; the literal None runs where ruling A refuses) and #2635; the Tone | None cells (NullReferenceException in the string enum's implicit conversion): #2635 comment 6831482754; the 8 Optional cells of `T: struct` wait on #2674 (owner ruling H, 2026-11-12)
 #= Color/ArgparseNamespace/NoneLiteral/in/ChainLink -> sharpy refused SPY0519 | expected refused SPY0222
 #= Color/ArgparseNamespace/NoneLiteral/in/ComprehensionFilter -> sharpy values False | expected refused SPY0222
 #= Color/ArgparseNamespace/NoneLiteral/in/Expression -> sharpy values False | expected refused SPY0222
@@ -730,7 +730,7 @@ ArgparseNamespace/Plain  cells=232  pin=531bc5eba51a3ad1  # see #2647 (a CLR-bac
 #= uint8/ArgparseNamespace/Plain/not in/Expression -> sharpy refused SPY0908 | expected refused SPY0222
 #= uint8/ArgparseNamespace/Plain/not in/IfCondition -> sharpy refused SPY0908 | expected refused SPY0222
 
-Bytes/NoneNeedle  cells=484  pin=af2f5cbb8b07018b  # see #2647 (no needle slot: every cell here is SPY0908, or SPY0519 on a chain link the checker should refuse) and #2635 (the None answer, owner ruling: TypeError)
+Bytes/NoneNeedle  cells=484  pin=af2f5cbb8b07018b  # see #2647 (no needle slot: every cell here is SPY0908, or SPY0519 on a chain link the checker should refuse) and #2635 (the None answer, owner ruling: TypeError); the 8 Optional cells of `T: struct` wait on #2674 (owner ruling H, 2026-11-12)
 #= Color/Bytes/NoneLiteral/in/ChainLink -> sharpy refused SPY0519 | expected refused SPY0222
 #= Color/Bytes/NoneLiteral/in/ComprehensionFilter -> sharpy refused SPY0908 | expected refused SPY0222
 #= Color/Bytes/NoneLiteral/in/Expression -> sharpy refused SPY0908 | expected refused SPY0222
@@ -1418,7 +1418,7 @@ Bytes/Plain  cells=200  pin=b5027aa90a2245e1  # see #2647 (no needle slot: SPY09
 #= uint64/Bytes/Plain/not in/Expression -> sharpy refused SPY0908 | expected refused SPY0222
 #= uint64/Bytes/Plain/not in/IfCondition -> sharpy refused SPY0908 | expected refused SPY0222
 
-ChainMap/NoneNeedle  cells=146  pin=33dd82e85b91c6eb  # see #2635
+ChainMap/NoneNeedle  cells=146  pin=33dd82e85b91c6eb  # see #2635; the 26 Optional cells of `Color`, `GS[int]`, `Self@SS` and `T: struct` wait on #2674 (owner ruling H, 2026-11-12)
 #= Color/ChainMap/Optional/in/ComprehensionFilter -> sharpy refused SPY0908 | expected python True False False
 #= Color/ChainMap/Optional/in/Expression -> sharpy refused SPY0908 | expected python True False False
 #= Color/ChainMap/Optional/in/IfCondition -> sharpy refused SPY0908 | expected python True False False
@@ -1566,7 +1566,7 @@ ChainMap/NoneNeedle  cells=146  pin=33dd82e85b91c6eb  # see #2635
 #= uint8/ChainMap/Optional/not in/Expression -> sharpy refused SPY0222 | expected python False True True
 #= uint8/ChainMap/Optional/not in/IfCondition -> sharpy refused SPY0222 | expected python False True True
 
-ContainsDunder/NoneNeedle  cells=146  pin=2ba40b3ddff442df  # see #2635
+ContainsDunder/NoneNeedle  cells=146  pin=2ba40b3ddff442df  # see #2635; the 26 Optional cells of `Color`, `GS[int]`, `Self@SS` and `T: struct` wait on #2674 (owner ruling H, 2026-11-12)
 #= Color/ContainsDunder/Optional/in/ComprehensionFilter -> sharpy refused SPY0908 | expected python True False False
 #= Color/ContainsDunder/Optional/in/Expression -> sharpy refused SPY0908 | expected python True False False
 #= Color/ContainsDunder/Optional/in/IfCondition -> sharpy refused SPY0908 | expected python True False False
@@ -1714,7 +1714,7 @@ ContainsDunder/NoneNeedle  cells=146  pin=2ba40b3ddff442df  # see #2635
 #= uint8/ContainsDunder/Optional/not in/Expression -> sharpy refused SPY0222 | expected python False True True
 #= uint8/ContainsDunder/Optional/not in/IfCondition -> sharpy refused SPY0222 | expected python False True True
 
-Counter/NoneNeedle  cells=218  pin=0df80dd6431e8ec0  # see #2635 (value payloads; a reference payload's None throws ArgumentNullException in Counter.Contains); its CounterOfOptional cells are the Counter/Plain defect below
+Counter/NoneNeedle  cells=218  pin=0df80dd6431e8ec0  # see #2635 (value payloads; a reference payload's None throws ArgumentNullException in Counter.Contains); its CounterOfOptional cells are the Counter/Plain defect below; the 26 Optional cells of `Color`, `GS[int]`, `Self@SS` and `T: struct` wait on #2674 (owner ruling H, 2026-11-12)
 #= Color/Counter/Optional/in/ComprehensionFilter -> sharpy refused SPY0908 | expected python True False False
 #= Color/Counter/Optional/in/Expression -> sharpy refused SPY0908 | expected python True False False
 #= Color/Counter/Optional/in/IfCondition -> sharpy refused SPY0908 | expected python True False False
@@ -2460,7 +2460,7 @@ CounterOfOptional/Plain  cells=174  pin=dcbbbd7f73a15415  # #2651 (outside plan-
 #= uint8/CounterOfOptional/Plain/not in/Expression -> sharpy values other other | expected python False True
 #= uint8/CounterOfOptional/Plain/not in/IfCondition -> sharpy values other other | expected python False True
 
-DefaultDict/NoneNeedle  cells=146  pin=79e2c5ff0b4b6d5e  # see #2635
+DefaultDict/NoneNeedle  cells=146  pin=79e2c5ff0b4b6d5e  # see #2635; the 26 Optional cells of `Color`, `GS[int]`, `Self@SS` and `T: struct` wait on #2674 (owner ruling H, 2026-11-12)
 #= Color/DefaultDict/Optional/in/ComprehensionFilter -> sharpy refused SPY0908 | expected python True False False
 #= Color/DefaultDict/Optional/in/Expression -> sharpy refused SPY0908 | expected python True False False
 #= Color/DefaultDict/Optional/in/IfCondition -> sharpy refused SPY0908 | expected python True False False
@@ -2608,7 +2608,7 @@ DefaultDict/NoneNeedle  cells=146  pin=79e2c5ff0b4b6d5e  # see #2635
 #= uint8/DefaultDict/Optional/not in/Expression -> sharpy refused SPY0222 | expected python False True True
 #= uint8/DefaultDict/Optional/not in/IfCondition -> sharpy refused SPY0222 | expected python False True True
 
-Deque/NoneNeedle  cells=146  pin=230648afd7b25be2  # see #2635 (the IEnumerable[T]-without-Contains arm, by its representative deque)
+Deque/NoneNeedle  cells=146  pin=230648afd7b25be2  # see #2635 (the IEnumerable[T]-without-Contains arm, by its representative deque); the 26 Optional cells of `Color`, `GS[int]`, `Self@SS` and `T: struct` wait on #2674 (owner ruling H, 2026-11-12)
 #= Color/Deque/Optional/in/ComprehensionFilter -> sharpy refused SPY0908 | expected python True False False
 #= Color/Deque/Optional/in/Expression -> sharpy refused SPY0908 | expected python True False False
 #= Color/Deque/Optional/in/IfCondition -> sharpy refused SPY0908 | expected python True False False
@@ -2756,7 +2756,7 @@ Deque/NoneNeedle  cells=146  pin=230648afd7b25be2  # see #2635 (the IEnumerable[
 #= uint8/Deque/Optional/not in/Expression -> sharpy refused SPY0222 | expected python False True True
 #= uint8/Deque/Optional/not in/IfCondition -> sharpy refused SPY0222 | expected python False True True
 
-Dict/NoneNeedle  cells=146  pin=2264e27c2ade897f  # see #2635
+Dict/NoneNeedle  cells=146  pin=2264e27c2ade897f  # see #2635; the 26 Optional cells of `Color`, `GS[int]`, `Self@SS` and `T: struct` wait on #2674 (owner ruling H, 2026-11-12)
 #= Color/Dict/Optional/in/ComprehensionFilter -> sharpy refused SPY0908 | expected python True False False
 #= Color/Dict/Optional/in/Expression -> sharpy refused SPY0908 | expected python True False False
 #= Color/Dict/Optional/in/IfCondition -> sharpy refused SPY0908 | expected python True False False
@@ -2904,7 +2904,7 @@ Dict/NoneNeedle  cells=146  pin=2264e27c2ade897f  # see #2635
 #= uint8/Dict/Optional/not in/Expression -> sharpy refused SPY0222 | expected python False True True
 #= uint8/Dict/Optional/not in/IfCondition -> sharpy refused SPY0222 | expected python False True True
 
-DictKeys/NoneNeedle  cells=146  pin=7c24cb8a0c83918d  # see #2635
+DictKeys/NoneNeedle  cells=146  pin=7c24cb8a0c83918d  # see #2635; the 26 Optional cells of `Color`, `GS[int]`, `Self@SS` and `T: struct` wait on #2674 (owner ruling H, 2026-11-12)
 #= Color/DictKeys/Optional/in/ComprehensionFilter -> sharpy refused SPY0908 | expected python True False False
 #= Color/DictKeys/Optional/in/Expression -> sharpy refused SPY0908 | expected python True False False
 #= Color/DictKeys/Optional/in/IfCondition -> sharpy refused SPY0908 | expected python True False False
@@ -3052,7 +3052,7 @@ DictKeys/NoneNeedle  cells=146  pin=7c24cb8a0c83918d  # see #2635
 #= uint8/DictKeys/Optional/not in/Expression -> sharpy refused SPY0222 | expected python False True True
 #= uint8/DictKeys/Optional/not in/IfCondition -> sharpy refused SPY0222 | expected python False True True
 
-DictValues/NoneNeedle  cells=146  pin=6517ff18e86c0641  # see #2635
+DictValues/NoneNeedle  cells=146  pin=6517ff18e86c0641  # see #2635; the 26 Optional cells of `Color`, `GS[int]`, `Self@SS` and `T: struct` wait on #2674 (owner ruling H, 2026-11-12)
 #= Color/DictValues/Optional/in/ComprehensionFilter -> sharpy refused SPY0908 | expected python True False False
 #= Color/DictValues/Optional/in/Expression -> sharpy refused SPY0908 | expected python True False False
 #= Color/DictValues/Optional/in/IfCondition -> sharpy refused SPY0908 | expected python True False False
@@ -3200,7 +3200,7 @@ DictValues/NoneNeedle  cells=146  pin=6517ff18e86c0641  # see #2635
 #= uint8/DictValues/Optional/not in/Expression -> sharpy refused SPY0222 | expected python False True True
 #= uint8/DictValues/Optional/not in/IfCondition -> sharpy refused SPY0222 | expected python False True True
 
-EmailMessage/NoneNeedle  cells=492  pin=425db08b58e70141  # see #2647 (no needle slot: SPY0908; the literal None runs where ruling A refuses) and #2635 (None answers False where CPython raises AttributeError); the Tone | None cells (NullReferenceException in the string enum's implicit conversion): #2635 comment 6831482754
+EmailMessage/NoneNeedle  cells=492  pin=425db08b58e70141  # see #2647 (no needle slot: SPY0908; the literal None runs where ruling A refuses) and #2635 (None answers False where CPython raises AttributeError); the Tone | None cells (NullReferenceException in the string enum's implicit conversion): #2635 comment 6831482754; the 8 Optional cells of `T: struct` wait on #2674 (owner ruling H, 2026-11-12)
 #= Color/EmailMessage/NoneLiteral/in/ChainLink -> sharpy refused SPY0519 | expected refused SPY0222
 #= Color/EmailMessage/NoneLiteral/in/ComprehensionFilter -> sharpy values False | expected refused SPY0222
 #= Color/EmailMessage/NoneLiteral/in/Expression -> sharpy values False | expected refused SPY0222
@@ -3928,7 +3928,7 @@ EmailMessage/Plain  cells=232  pin=aa8d04ff4ad23c95  # see #2647 (a CLR-backed c
 #= uint8/EmailMessage/Plain/not in/Expression -> sharpy refused SPY0908 | expected refused SPY0222
 #= uint8/EmailMessage/Plain/not in/IfCondition -> sharpy refused SPY0908 | expected refused SPY0222
 
-FrozenDict/NoneNeedle  cells=146  pin=a55da43ece729fb5  # see #2635
+FrozenDict/NoneNeedle  cells=146  pin=a55da43ece729fb5  # see #2635; the 26 Optional cells of `Color`, `GS[int]`, `Self@SS` and `T: struct` wait on #2674 (owner ruling H, 2026-11-12)
 #= Color/FrozenDict/Optional/in/ComprehensionFilter -> sharpy refused SPY0908 | expected python True False False
 #= Color/FrozenDict/Optional/in/Expression -> sharpy refused SPY0908 | expected python True False False
 #= Color/FrozenDict/Optional/in/IfCondition -> sharpy refused SPY0908 | expected python True False False
@@ -4076,7 +4076,7 @@ FrozenDict/NoneNeedle  cells=146  pin=a55da43ece729fb5  # see #2635
 #= uint8/FrozenDict/Optional/not in/Expression -> sharpy refused SPY0222 | expected python False True True
 #= uint8/FrozenDict/Optional/not in/IfCondition -> sharpy refused SPY0222 | expected python False True True
 
-FrozenSet/NoneNeedle  cells=146  pin=aaf46ac53dd8da58  # see #2635
+FrozenSet/NoneNeedle  cells=146  pin=aaf46ac53dd8da58  # see #2635; the 26 Optional cells of `Color`, `GS[int]`, `Self@SS` and `T: struct` wait on #2674 (owner ruling H, 2026-11-12)
 #= Color/FrozenSet/Optional/in/ComprehensionFilter -> sharpy refused SPY0908 | expected python True False False
 #= Color/FrozenSet/Optional/in/Expression -> sharpy refused SPY0908 | expected python True False False
 #= Color/FrozenSet/Optional/in/IfCondition -> sharpy refused SPY0908 | expected python True False False
@@ -4224,7 +4224,7 @@ FrozenSet/NoneNeedle  cells=146  pin=aaf46ac53dd8da58  # see #2635
 #= uint8/FrozenSet/Optional/not in/Expression -> sharpy refused SPY0222 | expected python False True True
 #= uint8/FrozenSet/Optional/not in/IfCondition -> sharpy refused SPY0222 | expected python False True True
 
-IPv4Network/NoneNeedle  cells=494  pin=8746e1ffdcfd06ae  # see #2647 (no needle slot: SPY0908; the literal None and a None needle throw NullReferenceException where CPython raises AttributeError) and #2635
+IPv4Network/NoneNeedle  cells=494  pin=8746e1ffdcfd06ae  # see #2647 (no needle slot: SPY0908; the literal None and a None needle throw NullReferenceException where CPython raises AttributeError) and #2635; the 8 Optional cells of `T: struct` wait on #2674 (owner ruling H, 2026-11-12)
 #= Color/IPv4Network/NoneLiteral/in/ChainLink -> sharpy refused SPY0519 | expected refused SPY0222
 #= Color/IPv4Network/NoneLiteral/in/ComprehensionFilter -> sharpy values other | expected refused SPY0222
 #= Color/IPv4Network/NoneLiteral/in/Expression -> sharpy values other | expected refused SPY0222
@@ -4962,7 +4962,7 @@ IPv4Network/Plain  cells=240  pin=c142dc21dca03df0  # see #2647 (a CLR-backed co
 #= uint8/IPv4Network/Plain/not in/Expression -> sharpy refused SPY0908 | expected refused SPY0222
 #= uint8/IPv4Network/Plain/not in/IfCondition -> sharpy refused SPY0908 | expected refused SPY0222
 
-IPv6Network/NoneNeedle  cells=494  pin=70a12465a7cd09c5  # see #2647 (no needle slot: SPY0908; the literal None and a None needle throw NullReferenceException where CPython raises AttributeError) and #2635
+IPv6Network/NoneNeedle  cells=494  pin=70a12465a7cd09c5  # see #2647 (no needle slot: SPY0908; the literal None and a None needle throw NullReferenceException where CPython raises AttributeError) and #2635; the 8 Optional cells of `T: struct` wait on #2674 (owner ruling H, 2026-11-12)
 #= Color/IPv6Network/NoneLiteral/in/ChainLink -> sharpy refused SPY0519 | expected refused SPY0222
 #= Color/IPv6Network/NoneLiteral/in/ComprehensionFilter -> sharpy values other | expected refused SPY0222
 #= Color/IPv6Network/NoneLiteral/in/Expression -> sharpy values other | expected refused SPY0222
@@ -5700,7 +5700,7 @@ IPv6Network/Plain  cells=240  pin=0bba7db1dad51908  # see #2647 (a CLR-backed co
 #= uint8/IPv6Network/Plain/not in/Expression -> sharpy refused SPY0908 | expected refused SPY0222
 #= uint8/IPv6Network/Plain/not in/IfCondition -> sharpy refused SPY0908 | expected refused SPY0222
 
-List/NoneNeedle  cells=146  pin=d7129e65fcfd7730  # see #2635
+List/NoneNeedle  cells=146  pin=d7129e65fcfd7730  # see #2635; the 26 Optional cells of `Color`, `GS[int]`, `Self@SS` and `T: struct` wait on #2674 (owner ruling H, 2026-11-12)
 #= Color/List/Optional/in/ComprehensionFilter -> sharpy refused SPY0908 | expected python True False False
 #= Color/List/Optional/in/Expression -> sharpy refused SPY0908 | expected python True False False
 #= Color/List/Optional/in/IfCondition -> sharpy refused SPY0908 | expected python True False False
@@ -5848,7 +5848,7 @@ List/NoneNeedle  cells=146  pin=d7129e65fcfd7730  # see #2635
 #= uint8/List/Optional/not in/Expression -> sharpy refused SPY0222 | expected python False True True
 #= uint8/List/Optional/not in/IfCondition -> sharpy refused SPY0222 | expected python False True True
 
-OrderedDict/NoneNeedle  cells=146  pin=cf6eebc6fb9b9005  # see #2635
+OrderedDict/NoneNeedle  cells=146  pin=cf6eebc6fb9b9005  # see #2635; the 26 Optional cells of `Color`, `GS[int]`, `Self@SS` and `T: struct` wait on #2674 (owner ruling H, 2026-11-12)
 #= Color/OrderedDict/Optional/in/ComprehensionFilter -> sharpy refused SPY0908 | expected python True False False
 #= Color/OrderedDict/Optional/in/Expression -> sharpy refused SPY0908 | expected python True False False
 #= Color/OrderedDict/Optional/in/IfCondition -> sharpy refused SPY0908 | expected python True False False
@@ -5996,7 +5996,7 @@ OrderedDict/NoneNeedle  cells=146  pin=cf6eebc6fb9b9005  # see #2635
 #= uint8/OrderedDict/Optional/not in/Expression -> sharpy refused SPY0222 | expected python False True True
 #= uint8/OrderedDict/Optional/not in/IfCondition -> sharpy refused SPY0222 | expected python False True True
 
-Range/NoneNeedle  cells=48  pin=eb9335e15e49a651  # see #2635
+Range/NoneNeedle  cells=48  pin=eb9335e15e49a651  # see #2635; the 8 Optional cells of `T: struct` wait on #2674 (owner ruling H, 2026-11-12)
 #= T: struct/Range/Optional/in/ChainLink -> sharpy refused SPY0220,SPY0222 | expected refused SPY0222
 #= T: struct/Range/Optional/in/ComprehensionFilter -> sharpy refused SPY0220,SPY0222 | expected refused SPY0222
 #= T: struct/Range/Optional/in/Expression -> sharpy refused SPY0220,SPY0222 | expected refused SPY0222
@@ -6046,7 +6046,7 @@ Range/NoneNeedle  cells=48  pin=eb9335e15e49a651  # see #2635
 #= uint8/Range/Optional/not in/Expression -> sharpy refused SPY0222 | expected python False True True
 #= uint8/Range/Optional/not in/IfCondition -> sharpy refused SPY0222 | expected python False True True
 
-Set/NoneNeedle  cells=146  pin=5daefc477a877474  # see #2635
+Set/NoneNeedle  cells=146  pin=5daefc477a877474  # see #2635; the 26 Optional cells of `Color`, `GS[int]`, `Self@SS` and `T: struct` wait on #2674 (owner ruling H, 2026-11-12)
 #= Color/Set/Optional/in/ComprehensionFilter -> sharpy refused SPY0908 | expected python True False False
 #= Color/Set/Optional/in/Expression -> sharpy refused SPY0908 | expected python True False False
 #= Color/Set/Optional/in/IfCondition -> sharpy refused SPY0908 | expected python True False False
@@ -6194,7 +6194,7 @@ Set/NoneNeedle  cells=146  pin=5daefc477a877474  # see #2635
 #= uint8/Set/Optional/not in/Expression -> sharpy refused SPY0222 | expected python False True True
 #= uint8/Set/Optional/not in/IfCondition -> sharpy refused SPY0222 | expected python False True True
 
-Str/NoneNeedle  cells=22  pin=fc66d096e4186a67  # see #2635
+Str/NoneNeedle  cells=22  pin=fc66d096e4186a67  # see #2635; the 8 Optional cells of `T: struct` wait on #2674 (owner ruling H, 2026-11-12)
 #= T: struct/Str/Optional/in/ChainLink -> sharpy refused SPY0220,SPY0222 | expected refused SPY0222
 #= T: struct/Str/Optional/in/ComprehensionFilter -> sharpy refused SPY0220,SPY0222 | expected refused SPY0222
 #= T: struct/Str/Optional/in/Expression -> sharpy refused SPY0220,SPY0222 | expected refused SPY0222
@@ -6218,7 +6218,7 @@ Str/NoneNeedle  cells=22  pin=fc66d096e4186a67  # see #2635
 #= str/Str/Optional/not in/Expression -> sharpy values False True other | expected python False True TypeError
 #= str/Str/Optional/not in/IfCondition -> sharpy values False True other | expected python False True TypeError
 
-Tuple/NoneNeedle  cells=146  pin=6fd440ba05ce8587  # see #2635
+Tuple/NoneNeedle  cells=146  pin=6fd440ba05ce8587  # see #2635; the 26 Optional cells of `Color`, `GS[int]`, `Self@SS` and `T: struct` wait on #2674 (owner ruling H, 2026-11-12)
 #= Color/Tuple/Optional/in/ComprehensionFilter -> sharpy refused SPY0908 | expected python True False False
 #= Color/Tuple/Optional/in/Expression -> sharpy refused SPY0908 | expected python True False False
 #= Color/Tuple/Optional/in/IfCondition -> sharpy refused SPY0908 | expected python True False False
