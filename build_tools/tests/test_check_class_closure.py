@@ -263,6 +263,13 @@ def test_missing_issue_exits_2(tracker, capsys):
     assert "no such issue: #99999" in out
 
 
+def test_parse_tables_records_the_line_above():
+    (t,) = mod.parse_tables(
+        "intro\nNot a cell table:\n\n| a | b |\n|---|---|\n| 1 | 2 |\n"
+    )
+    assert t.above == "Not a cell table:" and t.opted_out()
+
+
 def test_parse_tables_ignores_fenced_tables():
     text = "```\n| cell | status |\n|---|---|\n| a | |\n```\n| cell | status |\n|---|---|\n| b | control |\n"
     tables = mod.parse_tables(text)
@@ -451,6 +458,224 @@ def test_comment_on_failure_posts_one_comment(tracker, capsys):
     assert path == "repos/antonsynd/sharpy/issues/2477/comments"
     assert "row '1' (body)" in payload["body"] and "row '2' (body)" in payload["body"]
     assert "To fix:" in payload["body"]
+
+
+# ── #2607 cell A: a table the check cannot classify must not pass silently ───
+# Header shapes copied from live trackers: #2517's body, #2363's and #2575's comments, #2156's
+# body; #2350's body (a cell list with neither a cell nor an observation column); evidence tables.
+
+
+@pytest.mark.parametrize(
+    "header, where",
+    [
+        (
+            "| operation | Sharpy | python 3.13 | python 3.14 | lane | reach | found by |",
+            "body",
+        ),
+        (
+            "| Handler list | Sharpy @ a6691fe2 | Sharpy @ 82cccf3a | python3 |",
+            "comment",
+        ),
+        ("| Source | python 3.15 | Sharpy at 021b0d8d9 (read) |", "comment"),
+        ("| target spelling | RHS | observed @ d1a25fddd | expected |", "body"),
+    ],
+)
+def test_observation_column_makes_a_cell_table(tracker, capsys, header, where):
+    width = header.count("|") - 1
+    rows = [
+        "| `1 / 0` |" + " x |" * (width - 1),
+        "| `1.0 / 0.0` |" + " y |" * (width - 1),
+    ]
+    t = table(*rows, header=header)
+    if where == "body":
+        closed_2477_with(tracker, t)
+    else:
+        closed_2477_with(
+            tracker,
+            table("| 1 | a | control |"),
+            [{"created_at": "2026-11-12T08:00:00Z", "body": t}],
+        )
+    code, out = run(capsys, "2477")
+    assert code == 1, out
+    shown = " | ".join(c.strip() for c in header.strip("|").split("|"))
+    assert f"cell table ({shown}) in " in out
+    assert "has no status column; 2 of its 2 row(s) have no status" in out
+
+
+UNRECOGNISED = table(
+    "| `acosh`, `asinh` | `Math.Acosh` | direct |",
+    "| `erf` | none | port |",
+    header="| missing | BCL rung (net10.0 / netstandard2.1) | note |",
+)
+
+
+def test_unrecognised_body_table_fails(tracker, capsys):
+    closed_2477_with(tracker, "## Cells\n\n" + UNRECOGNISED)
+    code, out = run(capsys, "2477")
+    assert code == 1, out
+    assert (
+        "unrecognised table (missing | BCL rung (net10.0 / netstandard2.1) | note) in body, "
+        "2 row(s)" in out
+    )
+    assert "write `not a cell table` on the line just above it" in out
+
+
+@pytest.mark.parametrize(
+    "above", ["*Inventory (not a cell table):*", "Not-a-cell-table: the fallbacks"]
+)
+def test_opt_out_line_above_an_unrecognised_table_passes(tracker, capsys, above):
+    closed_2477_with(tracker, f"## Cells\n\n{above}\n\n" + UNRECOGNISED)
+    code, out = run(capsys, "2477")
+    assert code == 0, out
+    assert "no cell table" in out
+
+
+def test_opt_out_two_lines_above_does_not_count(tracker, capsys):
+    closed_2477_with(
+        tracker, "Not a cell table follows.\n\nThe fallbacks:\n" + UNRECOGNISED
+    )
+    code, out = run(capsys, "2477")
+    assert code == 1, out
+    assert "unrecognised table (missing" in out
+
+
+def test_opt_out_does_not_hide_a_cell_column_table(tracker, capsys):
+    closed_2477_with(
+        tracker, "Not a cell table:\n" + table("| 1 | `1 / 0` |", header="| # | cell |")
+    )
+    code, out = run(capsys, "2477")
+    assert code == 1, out
+    assert "cell table (# | cell) in body has no status column" in out
+
+
+def test_opt_out_hides_an_observation_column_table(tracker, capsys):
+    bench = table("| 837 ms | 188 ms | 53 ms |", header="| python | sharpy | C# |")
+    closed_2477_with(tracker, table("| 1 | a | control |") + "\n" + bench)
+    code, out = run(capsys, "2477")
+    assert code == 1, out  # positive control: without the line the timings are cells
+    closed_2477_with(
+        tracker,
+        table("| 1 | a | control |") + "\nTimings (not a cell table):\n" + bench,
+    )
+    code, out = run(capsys, "2477")
+    assert code == 0, out
+    assert "1 accounted, 0 not" in out
+
+
+EVIDENCE = table(
+    "| CI | 2e7794899 | 4321/0/12 |",
+    "| local | 2e7794899 | 4321/0/12 |",
+    header="| Run | Commit | Result |",
+)
+
+
+def test_evidence_table_in_a_comment_is_not_read(tracker, capsys):
+    closed_2477_with(
+        tracker,
+        table("| 1 | a | fixed 80b6b9f69 |"),
+        [{"created_at": "2026-11-12T08:00:00Z", "body": "Evidence:\n" + EVIDENCE}],
+    )
+    code, out = run(capsys, "2477")
+    assert code == 0, out
+    assert "1 accounted, 0 not" in out
+    # Positive control: the same table in the body is read, and trips the rule.
+    closed_2477_with(tracker, table("| 1 | a | fixed 80b6b9f69 |") + "\n" + EVIDENCE)
+    code, out = run(capsys, "2477")
+    assert code == 1, out
+    assert "unrecognised table (Run | Commit | Result) in body, 2 row(s)" in out
+
+
+# ── #2607 cell B: a later comment can account for a status-less table ───────
+
+STATUSLESS_BODY = table(
+    "| `except (OSError, socket.timeout):` | `tuple2 caught` | CS0160 |",
+    "| `except OSError:` then `except socket.error:` | SPY0908 | refused |",
+    "| `except IOError:` then `except socket.gaierror:` | SPY0908 | refused |",
+    header="| cell | Sharpy | python3 |",
+)
+
+
+def restated(*keys_and_status: tuple[str, str]) -> str:
+    return table(
+        *(f"| {k} | {s} |" for k, s in keys_and_status), header="| cell | status |"
+    )
+
+
+def test_later_status_table_restating_every_row_accounts_for_a_statusless_table(
+    tracker, capsys
+):
+    closing = restated(
+        ("`except (OSError, socket.timeout):`", "fixed 80b6b9f69"),
+        ("`except OSError:` then `except socket.error:`", "control"),
+        ("`except IOError:` then `except socket.gaierror:`", "fixed PR #2588"),
+    )
+    closed_2477_with(
+        tracker,
+        STATUSLESS_BODY,
+        [{"created_at": "2026-11-12T08:00:00Z", "body": closing}],
+    )
+    code, out = run(capsys, "2477")
+    assert code == 0, out
+    assert "3 accounted, 0 not" in out
+
+
+def test_rows_a_later_table_does_not_restate_stay_unaccounted(tracker, capsys):
+    closing = restated(
+        ("`except (OSError, socket.timeout):`", "fixed 80b6b9f69"),
+        ("`except OSError:` then `except socket.error:`", "control"),
+    )
+    closed_2477_with(
+        tracker,
+        STATUSLESS_BODY,
+        [{"created_at": "2026-11-12T08:00:00Z", "body": closing}],
+    )
+    code, out = run(capsys, "2477")
+    assert code == 1, out
+    assert (
+        "cell table (cell | Sharpy | python3) in body has no status column; "
+        "1 of its 3 row(s) have no status: 'except ioerror: then except socket.gaierror:'"
+        in out
+    )
+    assert "restate those keys in a later comment's table that has one" in out
+
+
+def test_a_status_table_before_the_statusless_table_does_not_account_for_it(
+    tracker, capsys
+):
+    earlier = restated(
+        ("`except (OSError, socket.timeout):`", "control"),
+        ("`except OSError:` then `except socket.error:`", "control"),
+        ("`except IOError:` then `except socket.gaierror:`", "control"),
+    )
+    closed_2477_with(
+        tracker,
+        earlier,
+        [{"created_at": "2026-11-12T08:00:00Z", "body": STATUSLESS_BODY}],
+    )
+    code, out = run(capsys, "2477")
+    assert code == 1, out
+    assert (
+        "cell table (cell | Sharpy | python3) in 2026-11-12T08:00:00Z has no status column; "
+        "3 of its 3 row(s)" in out
+    )
+
+
+def test_restating_a_statusless_row_with_an_empty_status_stays_red(tracker, capsys):
+    closing = restated(
+        ("`except (OSError, socket.timeout):`", "fixed 80b6b9f69"),
+        ("`except OSError:` then `except socket.error:`", "control"),
+        ("`except IOError:` then `except socket.gaierror:`", ""),
+    )
+    closed_2477_with(
+        tracker,
+        STATUSLESS_BODY,
+        [{"created_at": "2026-11-12T08:00:00Z", "body": closing}],
+    )
+    code, out = run(capsys, "2477")
+    assert code == 1, out
+    assert "2 accounted, 1 not" in out
+    assert "status '(empty)' is not fixed/moved/control" in out
+    assert "has no status column" not in out
 
 
 def test_comment_on_failure_is_silent_when_accounted(tracker, capsys):

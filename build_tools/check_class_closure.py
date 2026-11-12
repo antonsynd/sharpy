@@ -3,19 +3,25 @@
 
 Convention (close-issues skill, batch-issues templates):
 
-- A cell table is a markdown table with a cell column (`cell`, `cells …` or `program`), in the
-  issue body or in a comment; it carries a `status` column. Rows whose `tracker` column names
+- A cell table is a markdown table, in the issue body or in a comment, whose header names a cell
+  column (`cell…`, `program…` or `axis values`), or else an observation column (`observed…`,
+  `expected…`, `python…`, `cpython…`, `sharpy…`) unless the nearest non-blank line above it says
+  `not a cell table`; it carries a `status` column. Rows whose `tracker` column names
   another issue are not this issue's cells. A row's key is its `#`, `cell`, `program` or
   `axis values` column (else its first column); two rows of one table with the same key are told
   apart by the whole row. A row in a later source (a later comment) with an earlier row's key
   supersedes it, so a closing comment can restate cells with their final status.
+- Any other table in the BODY with a data row and no `status` column fails as unrecognised: name
+  its key column `cell` and give it a `status` column, or write `not a cell table` on the line above.
+  Unrecognised comment tables (evidence, measurements, batching summaries) are not read.
 - At close every row's status is one of
     fixed <evidence>   -- a commit sha (7-40 hex, at least one digit, not a yyyymmdd date),
                           a backticked test or fixture name, or `PR #N`
     moved #N           -- #N is an issue (not a pull request) that was open when the tracker closed
     control            -- the row never was a defect
-- A cell table with no `status` column fails: its cells cannot be accounted for. An issue with
-  no cell table passes. Closures as `duplicate` or `not_planned` are not checked.
+- A row of a cell table with no `status` column is unaccounted unless a later source restates its
+  key in a table that has one; the table fails, listing those rows. An issue with no cell table
+  (and no unrecognised body table) passes. Closures as `duplicate` or `not_planned` are not checked.
 
 The strict check applies to closures on or after CUTOFF and to OPEN issues named on the command line
 (the `/close-issues` pre-close run). `--report` also reads older closures and, for a table written
@@ -145,10 +151,18 @@ def _split_row(line: str) -> list[str]:
     return cells
 
 
+CELL_MARKER_RE = re.compile(r"(cells?|program|axis values)\b")
+OBSERVATION_MARKER_RE = re.compile(r"(observed|expected|python3?|cpython|sharpy)\b")
+OPT_OUT_RE = re.compile(r"\bnot[\s-]+a[\s-]+cell[\s-]+table\b", re.IGNORECASE)
+OPT_OUT = "not a cell table"
+
+
 @dataclass
 class Table:
     header: list[str]
     rows: list[list[str]]
+    # The nearest non-blank line above the header: where a `not a cell table` opt-out is written.
+    above: str = ""
 
     def col(self, name: str) -> int | None:
         for i, h in enumerate(self.header):
@@ -159,12 +173,17 @@ class Table:
     def has_status(self) -> bool:
         return self.col("status") is not None
 
+    def _marked(self, marker: re.Pattern) -> bool:
+        return any(marker.match(_norm(h)) for h in self.header)
+
+    def opted_out(self) -> bool:
+        return bool(OPT_OUT_RE.search(self.above))
+
     def is_cell_table(self) -> bool:
-        for h in self.header:
-            h = h.strip().strip("*").lower()
-            if h == "program" or re.match(r"cells?\b", h):
-                return True
-        return False
+        """A cell column always makes a cell table; an observation column does unless opted out."""
+        if self._marked(CELL_MARKER_RE):
+            return True
+        return not self.opted_out() and self._marked(OBSERVATION_MARKER_RE)
 
 
 def _fence(line: str) -> str | None:
@@ -198,7 +217,10 @@ def parse_tables(text: str) -> list[Table]:
             while j < len(lines) and lines[j].strip() and "|" in lines[j]:
                 rows.append(_split_row(lines[j]))
                 j += 1
-            tables.append(Table(header, rows))
+            k = i - 1
+            while k >= 0 and not lines[k].strip():
+                k -= 1
+            tables.append(Table(header, rows, lines[k].strip() if k >= 0 else ""))
             i = j
             continue
         i += 1
@@ -287,27 +309,54 @@ def collect_cells(
 ) -> tuple[dict[str, Cell], list[str]]:
     """This issue's cells from every cell table, body then comments; a later source's key wins.
 
-    Also returns one problem per cell table (with rows of this issue) that has no status column.
+    Also returns the problems no row status can answer: one per cell table with no status column
+    whose rows (of this issue) are not all restated by a LATER table that has one, and one per
+    unrecognised body table. A status-less row never replaces a row that has a status.
     """
     cells: dict[str, Cell] = {}
+    # key -> sequence number of the latest status-column table that states it
+    stated_at: dict[str, int] = {}
+    # (sequence number, source, table, its row keys) per status-less cell table
+    statusless: list[tuple[int, str, Table, list[str]]] = []
     problems: list[str] = []
+    seq = 0
     for source, text in _sources(body, comments):
         for t in parse_tables(text):
-            if not t.is_cell_table():
-                continue
+            seq += 1
             rows = own_rows(t, number)
             if not rows:
                 continue
-            if not t.has_status():
-                problems.append(
-                    f"cell table ({' | '.join(t.header)}) in {source} has no status column"
-                )
+            if not t.is_cell_table():
+                if source == "body" and not t.has_status() and not t.opted_out():
+                    problems.append(
+                        f"unrecognised table ({' | '.join(t.header)}) in body, "
+                        f"{len(rows)} row(s): if its rows are cells, name the key column `cell` "
+                        f"and add a `status` column; if not, write `{OPT_OUT}` on the line "
+                        "just above it"
+                    )
                 continue
             si = t.col("status")
-            for row, keys in zip(rows, table_keys(t, rows)):
+            keys = table_keys(t, rows)
+            if si is None:
+                flat = list(dict.fromkeys(k for ks in keys for k in ks))
+                statusless.append((seq, source, t, flat))
+                continue
+            for row, ks in zip(rows, keys):
                 status = row[si] if si < len(row) else ""
-                for key in keys:
+                for key in ks:
                     cells[key] = Cell(key, status.strip(), source, " | ".join(row))
+                    stated_at[key] = seq
+    for at, source, t, keys in statusless:
+        unstated = [k for k in keys if stated_at.get(k, 0) <= at]
+        if unstated:
+            shown = ", ".join(repr(k) for k in unstated[:10])
+            more = f" and {len(unstated) - 10} more" if len(unstated) > 10 else ""
+            problems.append(
+                f"cell table ({' | '.join(t.header)}) in {source} has no status column; "
+                f"{len(unstated)} of its {len(keys)} row(s) have no status: {shown}{more}. "
+                "Add a `status` column to it, or restate those keys in a later comment's "
+                "table that has one"
+            )
     return cells, problems
 
 
@@ -521,7 +570,8 @@ def closed_since(date: str) -> list[dict]:
 
 FIX_HINT = (
     "give every row of each cell table a `status` of `fixed` plus a commit sha, a backticked "
-    "test name or `PR #N`; `moved #N` (an issue open when this one closed); or `control`"
+    "test name or `PR #N`; `moved #N` (an issue open when this one closed); or `control`. "
+    "A body table whose rows are not cells gets `not a cell table` on the line just above it"
 )
 
 
