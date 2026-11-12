@@ -47,7 +47,7 @@
 # total known-limit-S6ok wide range-line rows=13 n=45
 # total known-limit-S6ok wide range-whole rows=13 n=39
 # total refused-work wide range-block rows=1163 n=4321 withwork=13689
-# total refused-work wide range-line rows=194 n=2734 withwork=5040
+# total refused-work wide range-line rows=194 n=2734 withwork=5043
 # total refused-work wide range-statement rows=253 n=373 withwork=7091
 # total refused-work wide range-whole rows=0 n=0 withwork=3368
 # total s7-parity-exempt wide full rows=486 n=486
