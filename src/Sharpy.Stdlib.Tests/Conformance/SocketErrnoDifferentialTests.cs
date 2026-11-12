@@ -125,6 +125,20 @@ public class SocketErrnoDifferentialTests
         }
         yield return new Probe("sockopt_set_dgram_tcp_real", "_s(socket.AF_INET, socket.SOCK_DGRAM).setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)");
         yield return new Probe("sockopt_get_dgram_tcp_real", "_s(socket.AF_INET, socket.SOCK_DGRAM).getsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY)");
+        // Options that ARE .NET enum members but have no Linux mapping: .NET handles them itself (95, or a
+        // success for ExclusiveAddressUse), never the kernel, while python passes the same numbers to the
+        // kernel. A recv on the unconnected socket follows, so a call that succeeds still raises (107).
+        var unmapped = new[]
+        {
+            ("dontlinger", "socket.SOL_SOCKET, -129"), ("maxconnections", "socket.SOL_SOCKET, 2147483647"),
+            ("useloopback", "socket.SOL_SOCKET, 64"), ("tcp64", "socket.IPPROTO_TCP, 64"),
+            ("exclusiveaddressuse", "socket.SOL_SOCKET, -5"),
+        };
+        foreach (var (id, target) in unmapped)
+        {
+            yield return new Probe($"member_unmapped_set_{id}", $"s = _s()\ns.setsockopt({target}, 1)\ns.recv(1)");
+            yield return new Probe($"member_unmapped_get_{id}", $"s = _s()\ns.getsockopt({target})\ns.recv(1)");
+        }
     }
 
     /// <summary>
@@ -140,6 +154,17 @@ public class SocketErrnoDifferentialTests
             ["bad_type"] = ("22", "91", ".NET rejects the type itself with EPROTOTYPE; CPython's socket(2) gets EINVAL"),
             ["bad_proto_stream"] = ("22", "93", ".NET rejects the protocol itself with EPROTONOSUPPORT; CPython's socket(2) gets EINVAL"),
             ["bad_proto_dgram"] = ("22", "93", ".NET rejects the protocol itself with EPROTONOSUPPORT; CPython's socket(2) gets EINVAL"),
+            // Cell (6): a .NET option member with no Linux mapping is handled by .NET, never the kernel.
+            ["member_unmapped_set_dontlinger"] = ("92", "95", ".NET refuses DontLinger (-129) itself; the kernel answers the raw number ENOPROTOOPT"),
+            ["member_unmapped_get_dontlinger"] = ("92", "95", ".NET refuses DontLinger (-129) itself; the kernel answers the raw number ENOPROTOOPT"),
+            ["member_unmapped_set_maxconnections"] = ("92", "95", ".NET refuses MaxConnections (2147483647) itself; the kernel answers ENOPROTOOPT"),
+            ["member_unmapped_get_maxconnections"] = ("92", "95", ".NET refuses MaxConnections (2147483647) itself; the kernel answers ENOPROTOOPT"),
+            ["member_unmapped_set_tcp64"] = ("92", "95", ".NET refuses IPPROTO_TCP option 64 itself; the kernel answers ENOPROTOOPT"),
+            ["member_unmapped_get_tcp64"] = ("92", "95", ".NET refuses IPPROTO_TCP option 64 itself; the kernel answers ENOPROTOOPT"),
+            ["member_unmapped_set_useloopback"] = ("107", "95", "SOL_SOCKET 64 is UseLoopback to .NET, refused with 95; to the Linux kernel it is a real option, so python's call SUCCEEDS and the following recv raises 107"),
+            ["member_unmapped_get_useloopback"] = ("107", "95", "SOL_SOCKET 64 is UseLoopback to .NET, refused with 95; to the Linux kernel it is a real option, so python's call SUCCEEDS and the following recv raises 107"),
+            ["member_unmapped_set_exclusiveaddressuse"] = ("92", "107", "SOL_SOCKET -5 is ExclusiveAddressUse, which .NET's setsockopt accepts on Linux: Sharpy's call SUCCEEDS and the following recv raises 107; the kernel answers the raw number ENOPROTOOPT"),
+            ["member_unmapped_get_exclusiveaddressuse"] = ("92", "107", "SOL_SOCKET -5 is ExclusiveAddressUse, which .NET's getsockopt answers on Linux: Sharpy's call SUCCEEDS and the following recv raises 107; the kernel answers the raw number ENOPROTOOPT"),
         };
 
     private static readonly object Gate = new();
@@ -314,6 +339,9 @@ public class SocketErrnoDifferentialTests
         kept = []
         create = accept = "-"
         resource.setrlimit(resource.RLIMIT_NOFILE, (512, hard))
+        if resource.getrlimit(resource.RLIMIT_NOFILE)[0] != 512:
+            print("OUT SKIP the soft descriptor limit did not become 512")
+            raise SystemExit(0)
         try:
             while True:
                 kept.append(socket.socket())
@@ -336,11 +364,20 @@ public class SocketErrnoDifferentialTests
         from system import Environment
         from system.diagnostics import Process
 
-        def _limit(n: str) -> None:
+        def _soft_limit() -> str:
+            with open("/proc/self/limits") as f:
+                for line in f.read().split("\n"):
+                    if line.startswith("Max open files"):
+                        return line.split()[3]
+            return "?"
+
+        def _limit(n: str) -> bool:
             p = Process.start("prlimit", f"--pid {Environment.process_id} --nofile={n}:")
             p.wait_for_exit()
+            return p.exit_code == 0 and _soft_limit() == n
 
         def main() -> None:
+            original: str = _soft_limit()
             a = socket.socket()
             a.bind(("127.0.0.1", 0))
             a.listen(5)
@@ -349,7 +386,9 @@ public class SocketErrnoDifferentialTests
             kept: list[socket.socket] = []
             create: str = "-"
             accept: str = "-"
-            _limit("512")
+            if not _limit("512"):
+                print(f"OUT SKIP prlimit could not set the soft descriptor limit to 512 (it is {_soft_limit()})")
+                return
             try:
                 while True:
                     kept.append(socket.socket())
@@ -361,8 +400,11 @@ public class SocketErrnoDifferentialTests
                 accept = str(e.errno)
             for s in kept:
                 s.close()
-            _limit("1024")
+            _limit(original)
+            final: str = _soft_limit()
             print(f"OUT {len(kept) > 0} {create} {accept}")
+            if final != original:
+                print(f"RESTORE FAILED: soft limit {final}, was {original}")
         """;
 
     /// <summary>
@@ -385,11 +427,15 @@ public class SocketErrnoDifferentialTests
             File.WriteAllText(script, EmfilePython);
             var py = python.RunBatch(script, Array.Empty<string>(), timeoutMilliseconds: 120_000)
                 .Select(l => l.Trim()).Single(l => l.StartsWith("OUT ", StringComparison.Ordinal));
+            TestPreconditions.RequireOrSkip(!py.StartsWith("OUT SKIP", StringComparison.Ordinal), "python: " + py);
             using var runner = new Runner();
             var result = runner.Execute(EmfileSharpy);
             Assert.True(result.Success, "the Sharpy program failed: " + string.Join("\n", result.CompilationErrors.Take(10)) + result.Failure);
-            var sh = result.StandardOutput.Replace("\r\n", "\n").Split('\n')
-                .Select(l => l.Trim()).Single(l => l.StartsWith("OUT ", StringComparison.Ordinal));
+            var lines = result.StandardOutput.Replace("\r\n", "\n").Split('\n').Select(l => l.Trim()).ToList();
+            var sh = lines.Single(l => l.StartsWith("OUT ", StringComparison.Ordinal));
+            // A failed prlimit is a skip, never a run to the host's own (possibly huge) limit.
+            TestPreconditions.RequireOrSkip(!sh.StartsWith("OUT SKIP", StringComparison.Ordinal), "Sharpy: " + sh);
+            Assert.DoesNotContain(lines, l => l.StartsWith("RESTORE FAILED", StringComparison.Ordinal));
             _output.WriteLine($"python: {py}; Sharpy: {sh}");
             Assert.Equal("OUT True 24 24", py);
             Assert.Equal(py, sh);
@@ -406,9 +452,9 @@ public class SocketErrnoDifferentialTests
     /// <summary>
     /// The unknown-option rule rewrites only an option .NET refused because it has no enum member for the
     /// level or name. A member .NET has but does not map on Linux (<c>UseLoopback</c>, 64) is refused by .NET
-    /// with 95 too and has no CPython counterpart, so it keeps 95 (docs/deviations.yaml cell 6); the
-    /// differential cannot witness this guard (every probed defined option reaches the kernel), so it is
-    /// pinned here, Sharpy only.
+    /// with 95 too and keeps it, unrewritten (docs/deviations.yaml cell 6; CPython passes SOL_SOCKET 64 to
+    /// the kernel, where it is a real option, and SUCCEEDS: the <c>member_unmapped_*_useloopback</c> rows).
+    /// The guard (enum member or not) is pinned here directly, Sharpy only.
     /// </summary>
     [SkippableTheory]
     [InlineData(65535, 9999, true, 92)]
