@@ -105,6 +105,13 @@ Sharpy.Compiler.Tests/Lowering/IrTotalityTests.cs | Assert.Equal(2, CollectNodes
 Sharpy.Compiler.Tests/Lowering/IrTotalityTests.cs | Assert.Equal(2, CollectNodes<IrOptionalWrappedElement>(ir).Count); | ×1 | fixed-input | in-test input of OptionalStoreWrap_LowersToStoreWrapAndWrappedElement_AndStaysTotal
 Sharpy.Compiler.Tests/Lowering/IrTotalityTests.cs | Assert.Equal(2, unpacks.Count); | ×1 | fixed-input | in-test input of OptionalWalrusStore_LowersAtItsOwnSite_NestedUnderAnUnpackingElement
 Sharpy.Compiler.Tests/Lowering/IrTotalityTests.cs | Assert.Equal(3, lambdas.Count); | ×1 | fixed-input | in-test input of NoneBodiedVoidLambda_LowersBodyToIrElidedNoneBody_AndStaysTotal
+Sharpy.Compiler.Tests/Lowering/IrTotalityTests.cs | const int operatorLine = 29; | ×1 | fixed-input | in-test input of OptionalStoreWrap_LowersToStoreWrapAndWrappedElement_AndStaysTotal (type_system/optional_store_wrap_sites.spy:29, `z ??= Some(7)`)
+Sharpy.Compiler.Tests/Lowering/OperatorLoweringTransportTests.cs | Assert.True(collectionMutationKeys > 0, | ×1 | floor | lower bound
+Sharpy.Compiler.Tests/Lowering/OperatorLoweringTransportTests.cs | Assert.True(entries > 0, "no operator lowering entry in the corpus: the sweep is vacuous"); | ×1 | floor | lower bound
+Sharpy.Compiler.Tests/Lowering/OperatorLoweringTransportTests.cs | Assert.True(fixtures.Count > 0, "no fixture with an .expected file was discovered: the sweep is vacuous"); | ×1 | floor | lower bound
+Sharpy.Compiler.Tests/Lowering/OperatorLoweringTransportTests.cs | Assert.True(foldedPowerKeys > 0, | ×1 | floor | lower bound
+Sharpy.Compiler.Tests/Lowering/OperatorLoweringTransportTests.cs | Assert.True(implementers.Count > 0, "no IIrOperatorSite implementer found by reflection: the carrier floor is vacuous"); | ×1 | floor | lower bound
+Sharpy.Compiler.Tests/Lowering/OperatorLoweringTransportTests.cs | Assert.True(roster.Count > 0, "the SetOperatorLowering call-site roster is empty: the key-kind floor is vacuous"); | ×1 | floor | lower bound
 Sharpy.Compiler.Tests/Lowering/IrTotalityTests.cs | Assert.Equal(4, CollectNodes<IrOptionalWrappedElement>(ir).Count); | ×1 | fixed-input | in-test input of OptionalWalrusStore_LowersAtItsOwnSite_NestedUnderAnUnpackingElement
 Sharpy.Compiler.Tests/Lowering/IrTotalityTests.cs | Assert.Equal(5, CollectNodes<IrOptionalWalrusStore>(ir).Count); | ×1 | fixed-input | in-test input of OptionalWalrusStore_LowersAtItsOwnSite_NestedUnderAnUnpackingElement
 Sharpy.Compiler.Tests/Lowering/IrTotalityTests.cs | Assert.Equal(5, walruses.Count); | ×1 | fixed-input | in-test input of OptionalWalrusStore_LowersAtItsOwnSite_NestedUnderAnUnpackingElement
