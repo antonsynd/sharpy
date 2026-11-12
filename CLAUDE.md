@@ -24,7 +24,7 @@ src/Sharpy.Cli/bin/Debug/net10.0/sharpyc project x.spyproj
 5. `/ci-gate` at phase close.
 
 **Cloud session:**
-- No `dotnet`: `dotnet-install.sh --channel 10.0 --install-dir /root/.dotnet`; `export DOTNET_ROOT=/root/.dotnet`.
+- No `dotnet`/pytest on PATH: begin commands with `. .venv/sharpy-env.sh &&` (absent: `build_tools/setup_env.sh`).
 - `gh issue`/`gh pr` return 403: read with `gh api -X GET …`; write with `gh api -X POST …/issues/N/comments -F body=@file.md`.
 - `gh api --paginate` is refused: page with `&page=N`.
 - Run dotnet and gh with `dangerouslyDisableSandbox: true`.
