@@ -1,0 +1,14 @@
+# P82 tranche 3 stage 0 (#2443): a fixture for an operator-lowering cell the corpus census
+# (OperatorLoweringCorpusCensusTests) found with no committed output. float32 ** float32 stays
+# float32 (#2189): 1.1f squared is 1.21 at single precision, 1.210000052452088 if the result is
+# left a double. Value checked on CPython 3.15 by rounding through a 4-byte float.
+
+def main() -> None:
+    f: float32 = 1.1
+    g: float32 = 2.0
+    print(f ** g)
+    h: float32 = f ** g
+    print(h)
+    k: float32 = 1.1
+    k **= g
+    print(k)
