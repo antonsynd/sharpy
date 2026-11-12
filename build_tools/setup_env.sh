@@ -189,24 +189,28 @@ uv_quiet pip install --python "$VENV/bin/python" "${pkgs[@]}"
 
 # 6. env file --------------------------------------------------------------------------
 ENV_FILE="$VENV/sharpy-env.sh"
+# The paths below are written into a file every shell sources, so each goes through %q: a
+# checkout or --dotnet-dir path holding a quote, \$ or a backtick is then a literal there, not the
+# end of a string or a command to run.
+q() { printf '%q' "$1"; }
 cat > "$ENV_FILE" <<SH
 # Sharpy dev environment (written by build_tools/setup_env.sh); source it.
-export DOTNET_ROOT="$DOTNET_DIR"
+export DOTNET_ROOT=$(q "$DOTNET_DIR")
 export DOTNET_CLI_TELEMETRY_OPTOUT=1
 export DOTNET_NOLOGO=1
-export PATH="$DOTNET_DIR:\$HOME/.dotnet/tools:\$HOME/.local/bin:\$PATH"
+export PATH=$(q "$DOTNET_DIR"):"\$HOME/.dotnet/tools:\$HOME/.local/bin:\$PATH"
 SH
 if ((DOTNET11)); then
   cat >> "$ENV_FILE" <<SH
 # .NET 11 SDK, off PATH until Sharpy supports it (#2548): \`dotnet11 --info\`
-export DOTNET11_ROOT="$DOTNET11_DIR"
+export DOTNET11_ROOT=$(q "$DOTNET11_DIR")
 dotnet11() { DOTNET_ROOT="\$DOTNET11_ROOT" "\$DOTNET11_ROOT/dotnet" "\$@"; }
 SH
 fi
 cat >> "$ENV_FILE" <<SH
 # build_tools.shared.* imports need the repo root (build_tools/CLAUDE.md).
-export PYTHONPATH="$ROOT\${PYTHONPATH:+:\$PYTHONPATH}"
-. "$VENV/bin/activate"
+export PYTHONPATH=$(q "$ROOT")"\${PYTHONPATH:+:\$PYTHONPATH}"
+. $(q "$VENV/bin/activate")
 SH
 if ((PROFILE)); then
   # FIRST line of ~/.bashrc, not appended: a stock ~/.bashrc returns at `[ -z "$PS1" ] && return`
