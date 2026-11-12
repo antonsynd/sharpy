@@ -9,7 +9,7 @@ using Xunit.Abstractions;
 namespace Sharpy.Compiler.Tests.Properties.Differential;
 
 /// <summary>
-/// The class guard for identity on enums (#2669, owner ruling 2026-11-12): <c>is</c> / <c>is not</c> where an
+/// The class guard for identity and equality on enums (#2669, #2670). Identity (owner ruling 2026-11-12): <c>is</c> / <c>is not</c> where an
 /// operand's static type is an enum answers what CPython 3.15 answers. Enum members are singletons in Python, so
 /// identity and equality coincide; an int-backed enum is a C# value type, and the old lowering
 /// (<c>object.ReferenceEquals</c>) boxed both operands and always answered False.
@@ -22,14 +22,20 @@ namespace Sharpy.Compiler.Tests.Properties.Differential;
 /// another string enum with an equal value), and two effectful calls that print when they are evaluated (so the
 /// answer and the number of evaluations of each operand are both compared);</item>
 /// <item><b>operator</b> — <see cref="Operators"/>;</item>
-/// <item><b>position</b> — <see cref="Position"/>: the binary operator in a <c>print</c>, an <c>if</c> condition,
-/// a comparison-chain link, a comprehension filter.</item>
+/// <item><b>position</b> — <see cref="Position"/>: the binary operator as a printed value, an <c>if</c>
+/// condition, a comparison-chain link, a comprehension filter.</item>
 /// </list>
+/// <para><b>Equality</b> (#2670, owner ruling 2026-11-12) rides the same matrix: <c>==</c> / <c>!=</c> between two
+/// DIFFERENT enum types answers False / True as CPython does, both operands evaluated once — it was CS0019 behind
+/// SPY0908 for two int-backed enums, an int-backed against a string-backed one and <c>E | None</c> against another
+/// enum, and a silent True for two string-backed enums with equal values. The same-enum pairs are the control.</para>
 /// <para><b>Expected map</b> (<see cref="Expect"/>). COMPARED cells print CPython's lines. HAND-EXPECTED cells,
 /// counted apart: an <c>is</c> link of a comparison chain is not lowered at all (SPY0519, the class #2648 tracks; a
-/// chain headed by <c>x is Member</c> keeps SPY0349), and <c>is</c> between two operands that are BOTH typed
+/// chain headed by <c>x is Member</c> keeps SPY0349); <c>is</c> between two operands that are BOTH typed
 /// <c>object</c> stays boxed reference identity — no operand's static type is an enum, so the contract does not
-/// reach it and the answer is pinned so that a change is seen.</para>
+/// reach it and the answer is pinned so that a change is seen; and <c>==</c> / <c>!=</c> with an <c>object</c>
+/// operand is the checker's general rule, not an enum-pair decision (SPY0222 against an enum, SPY0402 for two
+/// objects, and a pinned reference comparison where a chain link skips that refusal).</para>
 /// <para>No cell may draw SPY0465 ("always False due to boxing"): an enum's <c>is</c> is value equality. The
 /// absence is read from the same diagnostics a positive control (<c>is</c> on two ints) is shown to hit.</para>
 /// <para>Skips when no python3 ≥ 3.15 answers, except under <c>SHARPY_REQUIRE_PYTHON_ORACLE=1</c> (CI).</para>
@@ -46,15 +52,23 @@ public class EnumIdentityDifferentialTests : IntegrationTestBase
         EnumCall, OtherEnumCall,
     }
 
+    /// <summary>Where the test is written: a returned expression, an <c>if</c> condition, a chain link, a filter.</summary>
     private enum Position { Print, IfCondition, ChainLink, ComprehensionFilter }
 
-    /// <summary>The operator axis: the identity tests.</summary>
-    private static readonly BinaryOperator[] Operators = { BinaryOperator.Is, BinaryOperator.IsNot };
+    /// <summary>The operator axis: the identity tests (#2669) and the equality tests (#2670).</summary>
+    private static readonly BinaryOperator[] Operators =
+    {
+        BinaryOperator.Is, BinaryOperator.IsNot, BinaryOperator.Equal, BinaryOperator.NotEqual,
+    };
+
+    private static bool IsIdentity(BinaryOperator op) => op is BinaryOperator.Is or BinaryOperator.IsNot;
 
     private static string Spell(BinaryOperator op) => op switch
     {
         BinaryOperator.Is => "is",
         BinaryOperator.IsNot => "is not",
+        BinaryOperator.Equal => "==",
+        BinaryOperator.NotEqual => "!=",
         _ => throw new ArgumentOutOfRangeException(nameof(op)),
     };
 
@@ -167,8 +181,12 @@ public class EnumIdentityDifferentialTests : IntegrationTestBase
 
     /// <summary>
     /// The program body shared by both languages (the enum declarations differ, <see cref="SharpyHeader"/> /
-    /// <see cref="PythonHeader"/>): every cell prints lines that start with its id. <c>CellByLine</c> is keyed by
-    /// the 1-based line of the SHARPY program (header included).
+    /// <see cref="PythonHeader"/>): one function per cell, declaring the cell's own operands and returning the
+    /// test's value from its position, and a <c>main</c> that prints each cell's id and value. An effectful operand
+    /// prints <c>id eval-…</c> when it is evaluated, so those lines precede the value and are compared with it.
+    /// <c>CellByLine</c> is keyed by the 1-based line of the SHARPY program (header included); every line of a cell's
+    /// function is the cell's, so a refusal raised anywhere in it — a statement hoisted out of a comprehension
+    /// included — is attributed to that cell.
     /// </summary>
     private static Program ProgramFor(IReadOnlyList<Cell> cells)
     {
@@ -182,12 +200,7 @@ public class EnumIdentityDifferentialTests : IntegrationTestBase
             "    print(cell, \"eval-size\")",
             "    return Size.S",
             "",
-            "def main():",
         };
-        foreach (var side in new[] { "l", "r" })
-            foreach (var operand in Enum.GetValues<Operand>())
-                if (Declaration(operand, side) is { } declaration)
-                    lines.Add("    " + declaration);
 
         var headerLines = SharpyHeader.Split('\n').Length - 1;
         var cellByLine = new Dictionary<int, int>();
@@ -200,24 +213,40 @@ public class EnumIdentityDifferentialTests : IntegrationTestBase
         foreach (var cell in cells)
         {
             var id = cell.Id.ToString(CultureInfo.InvariantCulture);
+            Add(cell, $"def cell_{id}() -> bool:");
+            // A statement of the cell's own before anything else: a C# error in a statement hoisted out of a
+            // comprehension is reported at the line of the statement BEFORE it, which without this would be the
+            // previous cell's (or no cell's) when the operands need no declaration.
+            Add(cell, $"    marker: int = {id}");
+            if (Declaration(cell.Left, "l") is { } leftDeclaration)
+                Add(cell, "    " + leftDeclaration);
+            if (Declaration(cell.Right, "r") is { } rightDeclaration)
+                Add(cell, "    " + rightDeclaration);
             switch (cell.Position)
             {
                 case Position.Print:
                 case Position.ChainLink:
-                    Add(cell, $"    print({id}, {cell.Expression})");
+                    Add(cell, $"    return {cell.Expression}");
                     break;
                 case Position.IfCondition:
                     Add(cell, $"    if {cell.Expression}:");
-                    Add(cell, $"        print({id}, True)");
-                    Add(cell, "    else:");
-                    Add(cell, $"        print({id}, False)");
+                    Add(cell, "        return True");
+                    Add(cell, "    return False");
                     break;
                 case Position.ComprehensionFilter:
-                    Add(cell, $"    print({id}, len([k for k in [0] if {cell.Expression}]) == 1)");
+                    Add(cell, $"    return len([k for k in [0] if {cell.Expression}]) == 1");
                     break;
                 default:
                     throw new ArgumentOutOfRangeException(nameof(cells));
             }
+            lines.Add("");
+        }
+
+        lines.Add("def main():");
+        foreach (var cell in cells)
+        {
+            var id = cell.Id.ToString(CultureInfo.InvariantCulture);
+            Add(cell, $"    print({id}, cell_{id}())");
         }
         lines.Add("    print(\"done\")");
         return new Program(string.Join("\n", lines) + "\n", cellByLine);
@@ -247,6 +276,26 @@ public class EnumIdentityDifferentialTests : IntegrationTestBase
 
     private static Expectation Expect(Cell cell)
     {
+        if (!IsIdentity(cell.Op))
+        {
+            // Equality with an `object` operand is not an enum-pair decision: the checker's general rules own it.
+            var objectOperands = (cell.Left == Operand.ObjectHoldingMember ? 1 : 0)
+                + (cell.Right == Operand.ObjectHoldingMember ? 1 : 0);
+            if (objectOperands == 2)
+            {
+                return cell.Position == Position.ChainLink
+                    ? new(false, new[] { "False" }, null,
+                        "`object == object` as a chain link is not refused as the binary form is, and compares the two "
+                        + "boxes by reference (pinned; outside #2670's contract)")
+                    : new(false, null, DiagnosticCodes.Validation.UnsupportedOperator,
+                        "`object == object` is refused (SPY0402): no enum operand type, outside #2670's contract");
+            }
+            if (objectOperands == 1)
+                return new(false, null, DiagnosticCodes.Semantic.InvalidBinaryOperation,
+                    "`object ==` an enum is refused by the checker (SPY0222): not a pair of enum types");
+            return ComparedToCPython;
+        }
+
         if (cell.Position == Position.ChainLink)
         {
             // `x is Member is y`: the type-test spelling heads a chain, which has no single-comparison reading.
@@ -269,8 +318,9 @@ public class EnumIdentityDifferentialTests : IntegrationTestBase
 
     private sealed record SharpyVerdict(IReadOnlyList<string>? Values, IReadOnlySet<string>? RefusedBy);
 
-    /// <summary>Compile rounds per program: checker refusals, then codegen refusals, then Roslyn's (SPY0908).</summary>
-    private const int MaxRounds = 12;
+    /// <summary>Compile rounds per program: checker refusals, then codegen refusals, then Roslyn's (SPY0908), which
+    /// can surface one cell per round. A green tree needs three; the ceiling only bounds a red one.</summary>
+    private const int MaxRounds = 200;
 
     /// <summary>Compiles the program, removing each cell a refusal is attributed to, until it runs.</summary>
     private Dictionary<int, SharpyVerdict> RunSharpy(
@@ -325,6 +375,16 @@ public class EnumIdentityDifferentialTests : IntegrationTestBase
         if (active.Count > 0)
             harnessFailures.Add($"{name}: still refusing after {MaxRounds} rounds");
         return verdicts;
+    }
+
+    private static string ReportDirectory()
+    {
+        var dir = new DirectoryInfo(AppContext.BaseDirectory);
+        while (dir != null && !File.Exists(Path.Combine(dir.FullName, "sharpy.sln")))
+            dir = dir.Parent;
+        var tmp = Path.Combine(dir?.FullName ?? Path.GetTempPath(), ".claude", "tmp");
+        Directory.CreateDirectory(tmp);
+        return tmp;
     }
 
     [SkippableFact]
@@ -402,10 +462,15 @@ public class EnumIdentityDifferentialTests : IntegrationTestBase
             divergences.Add($"{cell.Key}: `{cell.Expression}` sharpy {observed}, expected {wanted} — {expected.Why}");
         }
 
-        Output.WriteLine($"cells: {cells.Count} (compared to CPython: {compared}, pinned values: {pinned}, "
-            + $"hand-expected refusals: {refusals}); divergences: {divergences.Count}");
+        // Every divergence is written out; the assertion message carries the first of them.
+        var divergencePath = Path.Combine(ReportDirectory(), "enum-identity-differential-divergences.txt");
+        var summary = $"cells: {cells.Count} (compared to CPython: {compared}, pinned values: {pinned}, "
+            + $"hand-expected refusals: {refusals}); divergences: {divergences.Count}";
+        File.WriteAllLines(divergencePath, divergences.Prepend("# " + summary));
+        Output.WriteLine(summary);
         Assert.True(divergences.Count == 0,
-            $"{divergences.Count} of {cells.Count} cell(s) diverge:\n" + string.Join("\n", divergences.Take(60)));
+            $"{divergences.Count} of {cells.Count} cell(s) diverge (all in {divergencePath}):\n"
+            + string.Join("\n", divergences.Take(40)));
 
         // Absence with its positive control: no cell warns "always False due to boxing", read from the diagnostics
         // the same probe is shown to hit for two ints.
