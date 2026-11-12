@@ -30,6 +30,10 @@ public class AnalysisStageAttributionTests : IDisposable
 
     private const string Uri = "file:///attribution.spy";
 
+    /// <summary>A top-level declaration added: neither NoChange nor BodyOnly, so the edit takes the
+    /// full compiler call and — at Debug — logs a stage line.</summary>
+    private const string StructurallyEditedSource = Source + "\ndef added() -> int:\n    return 0\n";
+
     [Fact]
     public async Task Default_level_logs_latency_but_no_stage_attribution()
     {
@@ -38,6 +42,14 @@ public class AnalysisStageAttributionTests : IDisposable
 
         workspace.OpenDocument(Uri, Source, 1);
         await WaitForAsync(() => CountOf(logger, AnalysisLatencyLog.Marker) >= 1);
+
+        // Settle the opening analysis before asserting an absence about it: its stage line, were
+        // one written, follows its latency line, so reading right after that line can miss it
+        // (#2589). A later analysis, requested only after the first's latency line was seen, logs
+        // no earlier than the debounce delay plus a full analysis after it — the same bound as in
+        // Debug_logging_invents_no_stages_for_an_edit_the_fast_path_served.
+        workspace.UpdateDocument(Uri, StructurallyEditedSource, 2);
+        await WaitForAsync(() => CountOf(logger, AnalysisLatencyLog.Marker) >= 2);
 
         logger.Entries.Should().NotContain(e => e.Message.Contains(AnalysisLatencyLog.StagesMarker),
             "the attribution stays off until someone asks for Debug — it runs per keystroke");
@@ -67,20 +79,46 @@ public class AnalysisStageAttributionTests : IDisposable
         var logger = new LevelCapturingLogger<SharpyWorkspace>(LogLevel.Debug);
         using var workspace = new SharpyWorkspace(_api, logger);
 
+        // The opening analysis is a real one, so it logs a stage line — AFTER its latency line
+        // (SharpyWorkspace.FireAndForgetAnalysis). Wait on the line this asserts about, not on the
+        // latency line before it: reading the stage count at the latency line flaked (#2589).
         workspace.OpenDocument(Uri, Source, 1);
-        await WaitForAsync(() => CountOf(logger, AnalysisLatencyLog.Marker) >= 1);
-        var stageLinesAfterFirstAnalysis = CountOf(logger, AnalysisLatencyLog.StagesMarker);
-        stageLinesAfterFirstAnalysis.Should().BeGreaterThan(0, "the opening analysis is a real one");
+        await WaitForAsync(() => AnalysisLogSequence.HasStagesAfterLatency(Lines(logger), 1));
 
         // A comment-only edit: same AST, so an incremental fast path serves it without a compiler
         // call. It still publishes, so it still logs a latency line.
         workspace.UpdateDocument(Uri, Source + "# a comment\n", 2);
         await WaitForAsync(() => CountOf(logger, AnalysisLatencyLog.Marker) >= 2);
 
-        CountOf(logger, AnalysisLatencyLog.StagesMarker).Should().Be(stageLinesAfterFirstAnalysis,
+        // The absence below needs a settled point and a positive control, and this edit is both.
+        // A stage line for the fast-path edit, were one written, would trail its latency line just
+        // as the opening one did, so asserting at that latency line could pass before it lands. A
+        // real edit, made only now, cannot log before the debounce delay plus a full analysis have
+        // elapsed — far longer than the two adjacent, await-free statements that separate the
+        // product's latency and stage writes — and proves this logger would have recorded a stage
+        // line had there been one. The workspace exposes no "analysis finished logging" signal, so
+        // this is a bound, not a happens-before.
+        workspace.UpdateDocument(Uri, StructurallyEditedSource, 3);
+        await WaitForAsync(() => AnalysisLogSequence.HasStagesAfterLatency(Lines(logger), 3));
+
+        var lines = Lines(logger);
+        lines.Select(l => l.Kind).Should().Equal(
+            new[]
+            {
+                AnalysisLogSequence.Kind.Latency, AnalysisLogSequence.Kind.Stages, // opening: analysed
+                AnalysisLogSequence.Kind.Latency,                                   // comment: fast path
+                AnalysisLogSequence.Kind.Latency, AnalysisLogSequence.Kind.Stages, // added def: analysed
+            },
             "an edit served without a compiler call has no stages to attribute; emitting a "
             + "breakdown for it would erase the served-from-cache vs analysed distinction");
+        lines[1].ElapsedMs.Should().Be(lines[0].ElapsedMs,
+            "the opening analysis's stage line breaks down its own latency line");
+        lines[4].ElapsedMs.Should().Be(lines[3].ElapsedMs,
+            "the stage line after the fast-path edit belongs to the later real edit, not to it");
     }
+
+    private static SCG.List<AnalysisLogSequence.Line> Lines(LevelCapturingLogger<SharpyWorkspace> logger)
+        => AnalysisLogSequence.Of(logger.Entries.Select(e => e.Message));
 
     private static int CountOf(LevelCapturingLogger<SharpyWorkspace> logger, string marker)
         => logger.Entries.Count(e => e.Message.Contains(marker, StringComparison.Ordinal));
