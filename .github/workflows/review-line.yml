@@ -1,15 +1,20 @@
 # Independent-review line check (README item 6; `/implement-plan` > Cleanup and Report step 4): a pull
 # request into `dev` that changes code carries `Independent review @ <sha>: <verdict>; ...` in its body,
-# with a verdict other than `do not merge`, reviewed shas on the PR (ancestors of the head, not on the
-# base), a fix range that follows a review, and no code commit (a merge by its remerge diff) after the
-# point the line covers. build_tools/check_review_line.py decides; its docstring lists the verdicts,
-# which lines count (not code blocks, quotes or HTML comments), the one exemption besides "no code
-# path changed" (a base other than `dev`), and what it does not judge (that the review was
+# with no uncleared `do not merge`, reviewed shas on the PR (ancestors of the head, not on the base), a
+# fix range that starts at a reviewed sha, and no code commit (a merge by its remerge diff; any octopus)
+# after the point the line covers. build_tools/check_review_line.py decides; its docstring lists the
+# verdicts, which lines count (not code blocks, quotes or HTML comments), the one exemption besides
+# "no code path changed" (a base other than `dev`), and what it does not judge (that the review was
 # independent, that the fixes were read, the counts, an empty-diff history rewrite).
 #
 # ADVISORY as shipped: the check `review-line` is not in the `dev` ruleset's required set; making it
 # required is the owner's ruleset change. A draft PR is judged but never failed (a warning), so work
 # in progress stays green; marking it ready re-runs the check.
+#
+# Evidence, not a control: a pull_request run uses the PR's OWN copy of this workflow and of the
+# script, so a PR can change the check it is judged by. Even if made required, it would only show
+# what the line says against history; a reviewer of the PR still has to read changes to these two
+# files.
 #
 # Its own workflow, not a job in commit-subjects.yml: the body changes without a push, so this runs on
 # `edited` too, and re-running the required `subjects` check on every body edit would be noise.

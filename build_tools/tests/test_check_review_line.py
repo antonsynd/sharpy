@@ -343,6 +343,8 @@ def h(tmp_path: Path) -> Dict[str, str]:
     git(r, "init", "-q", "-b", "dev")
     git(r, "config", "user.email", "t@example.invalid")
     git(r, "config", "user.name", "t")
+    # Hermetic: a host-wide commit.gpgsign (or a signing helper) must not decide these tests.
+    git(r, "config", "commit.gpgsign", "false")
     s = {"repo": str(r), "D0": commit(r, "src/a.cs", "0")}
     git(r, "switch", "-q", "-c", "lane")
     s["L1"] = commit(r, "src/b.cs", "1")
@@ -485,11 +487,8 @@ def test_quoted_and_fenced_lines_do_not_count_on_history(h) -> None:
     dnm = f"Independent review @ {h['F1'][:9]}: do not merge; 3 blocking"
     assert j(h, f"{dnm}\n> {good}", head, base).verdict == mod.DO_NOT_MERGE
     assert j(h, f"{dnm}\n```\n{good}\n```", head, base).verdict == mod.DO_NOT_MERGE
-    # A later review on the line clears it.
-    assert (
-        j(h, f"{dnm}; second review @ {h['F1'][:9]}: merge", head, base).verdict
-        == mod.OK
-    )
+    # A later review on the line clears it only when it judges a later commit (see below).
+    assert j(h, f"{dnm}; second review @ {h['F1'][:9]}: merge", head, base).verdict == mod.DO_NOT_MERGE
 
 
 def test_a_code_file_renamed_out_of_a_code_path_is_a_code_change(
@@ -500,6 +499,8 @@ def test_a_code_file_renamed_out_of_a_code_path_is_a_code_change(
     git(r, "init", "-q", "-b", "dev")
     git(r, "config", "user.email", "t@example.invalid")
     git(r, "config", "user.name", "t")
+    # Hermetic: a host-wide commit.gpgsign (or a signing helper) must not decide these tests.
+    git(r, "config", "commit.gpgsign", "false")
     base = commit(r, "src/big.cs", "\n".join(f"line {i}" for i in range(200)))
     (r / "tools").mkdir()
     git(r, "mv", "src/big.cs", "tools/big.cs")
@@ -611,3 +612,120 @@ def test_the_workflow_judges_against_the_fetched_base_branch_not_the_payload() -
     assert "base.sha" not in yaml.safe_dump(wf)
     events = wf[True]["pull_request"]["types"]
     assert "edited" in events and "ready_for_review" in events
+
+
+# --- Second review round ------------------------------------------------------------------------
+
+
+def test_a_fix_range_must_start_at_a_reviewed_sha(h) -> None:
+    # Review @ L1, fixes L2..F1: L2 descends from the review but was never reviewed itself.
+    result = j(h, rl(h["L1"], (h["L2"], h["F1"])), h["F1"], h["D0"])
+    assert result.verdict == mod.BAD_RANGE, result.detail
+    # Positive control: the same range starting at the reviewed sha.
+    assert j(h, rl(h["L1"], (h["L1"], h["F1"])), h["F1"], h["D0"]).verdict == mod.OK
+
+
+def test_a_fix_range_must_run_forward(h) -> None:
+    # Starts at the reviewed sha (F1) but ends before it: the range covers nothing after the review.
+    result = j(h, rl(h["F1"], (h["F1"], h["L2"])), h["F1"], h["D0"])
+    assert result.verdict == mod.BAD_RANGE and "does not run forward" in result.detail
+
+
+def test_do_not_merge_is_cleared_only_by_a_review_of_a_later_commit(h) -> None:
+    head, base, IR = h["F1"], h["D0"], "Independent review @ "
+    s = lambda k: h[k][:9]
+    # A later clause reviewing an OLDER commit does not clear it, even with a range to the head.
+    older = f"{IR}{s('F1')}: do not merge; 3 blocking; second review @ {s('L2')}: merge; fixes {s('L2')}..{s('F1')}"
+    assert j(h, older, head, base).verdict == mod.DO_NOT_MERGE
+    # Nor does a later clause reviewing the SAME commit.
+    same = f"{IR}{s('F1')}: do not merge; second review @ {s('F1')}: merge"
+    assert j(h, same, head, base).verdict == mod.DO_NOT_MERGE
+    # Positive control: a review of a later commit clears it, on the same line or a later one.
+    later = f"{IR}{s('L2')}: do not merge; second review @ {s('F1')}: merge"
+    assert j(h, later, head, base).verdict == mod.OK
+    assert j(h, f"{IR}{s('L2')}: do not merge\n{IR}{s('F1')}: merge", head, base).verdict == mod.OK
+
+
+def test_comment_opener_inside_inline_code_is_text(h) -> None:
+    # The reviewer's A6: a literal `<!--` in inline code must not swallow the do-not-merge after it.
+    IR, s = "Independent review @ ", h["F1"][:9]
+    body = f"{IR}{s}: merge\n\nWe strip `<!--` comments.\n\n{IR}{s}: do not merge; 3 blocking"
+    assert j(h, body, h["F1"], h["D0"]).verdict == mod.DO_NOT_MERGE
+    # Outside code the same opener is a comment, and hides what follows, as GitHub renders it.
+    assert j(h, body.replace("`<!--`", "<!--"), h["F1"], h["D0"]).verdict == mod.OK
+
+
+@pytest.mark.parametrize(
+    "line, in_comment, want",
+    [
+        ("a <!-- b --> c", False, ("a  c", False)),
+        ("a `<!--` c", False, ("a `<!--` c", False)),
+        ("a ``x <!-- y`` c <!-- d", False, ("a ``x <!-- y`` c ", True)),
+        ("still hidden --> shown", True, (" shown", False)),
+        ("still hidden", True, ("", True)),
+        ("a ` unclosed <!-- x --> b", False, ("a `` unclosed  b".replace("``", "`"), False)),
+    ],
+)
+def test_strip_comments(line: str, in_comment: bool, want: tuple) -> None:
+    assert mod.strip_comments(line, in_comment) == want
+
+
+def test_a_fence_with_an_info_string_opens_and_never_closes() -> None:
+    body = "```\nx\n```text\nIndependent review @ abc1234: merge\n```"
+    assert mod.parse_body(body).lines == []
+    # Positive control: after a bare closing fence the line counts.
+    assert mod.parse_body("```text\nx\n```\nIndependent review @ abc1234: merge").last_line_parses
+
+
+@pytest.mark.parametrize("indent", ["    ", "\t", "     ", "  \t"])
+def test_indented_lines_never_count(indent: str) -> None:
+    assert mod.parse_body(indent + "Independent review @ abc1234: merge").lines == []
+    # Positive control: three spaces is not code.
+    assert mod.parse_body("   Independent review @ abc1234: merge").last_line_parses
+
+
+def test_a_code_file_renamed_after_the_review_is_stale(h) -> None:
+    # git log detects renames by default; without --no-renames the move lists only tools/a.cs.
+    r = Path(h["repo"])
+    git(r, "switch", "-q", "lane")
+    git(r, "reset", "-q", "--hard", h["F1"])
+    (r / "tools").mkdir()
+    # src/a.cs is on the base, so the PR's net diff touches src/ and the check is required.
+    git(r, "mv", "src/a.cs", "tools/a.cs")
+    git(r, "commit", "-q", "-m", "move")
+    head = git(r, "rev-parse", "HEAD")
+    result = j(h, rl(h["L2"], (h["L2"], h["F1"])), head, h["D0"])
+    assert result.verdict == mod.STALE and head[:9] in result.detail
+
+
+def test_an_octopus_merge_after_the_review_is_stale(h) -> None:
+    r = Path(h["repo"])
+    sides = []
+    for n in (1, 2):
+        git(r, "switch", "-q", "-c", f"side{n}", h["D0"])
+        commit(r, f"docs/side{n}.md", "1")
+        sides.append(f"side{n}")
+    git(r, "switch", "-q", "lane")
+    git(r, "reset", "-q", "--hard", h["F1"])
+    git(r, "switch", "-q", "-c", "two", h["F1"])
+    git(r, "merge", "-q", "--no-edit", "side1")
+    two = git(r, "rev-parse", "HEAD")
+    git(r, "switch", "-q", "-c", "octo", h["F1"])
+    git(r, "merge", "-q", "--no-edit", *sides)
+    octo = git(r, "rev-parse", "HEAD")
+    assert len(git(r, "log", "-1", "--format=%P", octo).split()) == 3
+    line = rl(h["L2"], (h["L2"], h["F1"]))
+    # Positive control: the two-parent merge of the same docs-only side is clean.
+    assert j(h, line, two, h["D0"]).verdict == mod.OK
+    result = j(h, line, octo, h["D0"])
+    assert result.verdict == mod.STALE and octo[:9] in result.detail
+
+
+def test_not_an_ancestor_message_names_a_rebase() -> None:
+    class NoHistory(mod.Git):
+        def is_ancestor(self, a: str, b: str) -> bool:
+            return False
+
+    result = mod.judge("Independent review @ deadbeef1: merge", ["src/a.cs"], "h", "b", NoHistory())
+    assert result.verdict == mod.NOT_ANCESTOR
+    assert "empty diff" in result.detail and "rebased with changes, the review must be repeated" in result.detail

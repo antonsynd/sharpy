@@ -12,9 +12,14 @@ same line; the last one written is the one that counts. Nothing enforced this be
 (src/) and #2612 (build_tools/) merged on 2026-11-11 with no line. This script makes a missing or
 malformed line visible; it is advisory unless the owner makes its check required.
 
-Which lines count. A line counts when, after an optional list marker, bold or a backtick, it starts
-with `Independent review @`. Lines inside fenced or indented code blocks, blockquotes (`>`) and HTML
-comments are never read: they quote the rule or an example, they do not state a review. A counted
+Which lines count. A line counts when, after at most three spaces, an optional list marker, bold or
+a backtick, it starts with `Independent review @`. Recognised and never read, because they quote the
+rule or an example rather than state a review: fenced code (``` or ~~~, an info string allowed on
+the opening fence; a fence closes only on a bare fence line), HTML comments outside inline code
+spans (a `<!--` inside backticks is text), blockquotes (`>`), and any line indented four spaces or a
+tab (indented code, but also a nested list item, which therefore never counts). NOT recognised: a
+line opening with a zero-width or other invisible character, a heading, a table cell or link text
+(none of these starts with the head, so none counts), and lazy paragraph continuations. A counted
 line parses only when its FIRST clause is `Independent review @ <hex sha>[ (note)]: <verdict>` and
 every later `review @` on it is a `second|third|fourth|fifth|final review @ <hex sha>[ (note)]:
 <verdict>`; a verdict is `merge`, `merge after fixes` or `do not merge` (bold allowed), followed by
@@ -28,18 +33,24 @@ Verdicts, in the order they are decided:
                  names no other exemption, so there is none for bots or for a head named `dev`;
   missing        no line counts;
   malformed      the last counted line does not parse;
-  do not merge   the last review written says so (a later review clears an earlier one);
+  do not merge   a review says so and no LATER review on a commit that strictly descends from
+                 the one it judged says otherwise (a later review of the same or an older commit
+                 does not clear it);
   sha not an ancestor of head
                  a reviewed sha, or a `fixes <a>..<b>` range's end, is not the head or one of its
                  ancestors, or this clone does not have it;
   sha on the base
                  a reviewed sha is already reachable from the base: it reviewed `dev`, not the PR;
-  bad fix range  the range's start is not a reviewed sha on the line or a descendant of one, is on
-                 the base, or is not an ancestor of the range's end;
+  bad fix range  the range's start is not the same commit as one of the line's reviewed shas, or
+                 is not an ancestor of the range's end;
   stale          a commit after the covered point (the last review's sha, or the fix range's end
                  when that descends from it), not reachable from the base, touches a code path. A
                  merge commit counts by its remerge diff (`git log --remerge-diff`, git >= 2.36):
-                 a clean `dev` merge changes nothing, code written while resolving it does;
+                 a clean `dev` merge changes nothing, code written while resolving it does, and so
+                 does ANY merge whose conflict touched a code path, even one resolved as `dev`'s
+                 side (the remerge diff shows the resolution against the conflict markers). A merge
+                 of more than two parents (octopus) is always stale: git computes no remerge diff
+                 for it;
   ok             otherwise.
 
 What this does NOT judge, deliberately: that the reviewer was independent or that the fix range was
@@ -125,30 +136,63 @@ FIX_RANGE = re.compile(
     re.IGNORECASE,
 )
 FENCE = re.compile(r"^ {0,3}(`{3,}|~{3,})")
-HTML_COMMENT = re.compile(r"<!--.*?(?:-->|\Z)", re.DOTALL)
+FENCE_CLOSE = re.compile(r"^ {0,3}(`{3,}|~{3,})\s*$")
+CODE_SPAN = re.compile(r"`+")
+REBASE_HINT = "; if the branch was rebased with changes, the review must be repeated at the new head"
 
 
 def is_code_path(path: str) -> bool:
     return path.startswith(CODE_PREFIXES)
 
 
+def strip_comments(line: str, in_comment: bool) -> tuple:
+    """`line` without HTML comments, leaving inline code spans (a backtick run up to the next run of
+    the same length on the line) untouched; and whether a comment is still open at its end."""
+    out: List[str] = []
+    i = 0
+    while i < len(line):
+        if in_comment:
+            close = line.find("-->", i)
+            if close < 0:
+                return "".join(out), True
+            i, in_comment = close + 3, False
+            continue
+        if line.startswith("<!--", i):
+            in_comment = True
+            i += 4
+            continue
+        tick = CODE_SPAN.match(line, i)
+        if tick:
+            close = line.find(tick.group(0), tick.end())
+            stop = close + len(tick.group(0)) if close >= 0 else tick.end()
+            out.append(line[i:stop])
+            i = stop
+            continue
+        out.append(line[i])
+        i += 1
+    return "".join(out), in_comment
+
+
 def visible_lines(body: str) -> List[str]:
-    """The body's lines a reader sees as prose: HTML comments, fenced and indented code, and
-    blockquotes (`>`) left to the line head, which never accepts `>`. Lines split on newlines only (not U+2028), CRLF accepted."""
-    text = HTML_COMMENT.sub("", (body or "").replace("\r\n", "\n").replace("\r", "\n"))
+    """The body's lines minus what the module docstring says is never read: fenced code, HTML
+    comments outside inline code spans, and lines indented four spaces or a tab. Blockquotes are
+    left to the line head, which never accepts `>`. Lines split on newlines only (not U+2028), CRLF
+    accepted."""
     out: List[str] = []
     fence: Optional[str] = None
-    for line in text.split("\n"):
-        m = FENCE.match(line)
+    in_comment = False
+    for line in (body or "").replace("\r\n", "\n").replace("\r", "\n").split("\n"):
         if fence is not None:
+            m = FENCE_CLOSE.match(line)
             if m and m.group(1)[0] == fence[0] and len(m.group(1)) >= len(fence):
                 fence = None
             continue
-        if m:
-            fence = m.group(1)
-            continue
-        if line.startswith(("    ", "\t")):
-            continue
+        if not in_comment:
+            m = FENCE.match(line)
+            if m:
+                fence = m.group(1)
+                continue
+        line, in_comment = strip_comments(line, in_comment)
         out.append(line)
     return out
 
@@ -232,7 +276,7 @@ class Git:
             "log",
             "--no-renames",
             "--remerge-diff",
-            "--format=@%H",
+            "--format=@%H %P",
             "--name-only",
             f"{covered}..{head}",
             f"^{base}",
@@ -243,7 +287,10 @@ class Git:
         sha = None
         for line in r.stdout.splitlines():
             if line.startswith("@"):
-                sha = line[1:]
+                sha, *parents = line[1:].split()
+                # git computes no remerge diff for an octopus: unknowable, so stale.
+                if len(parents) > 2 and sha not in out:
+                    out.append(sha)
             elif line and sha and is_code_path(line) and sha not in out:
                 out.append(sha)
         return out
@@ -288,14 +335,25 @@ def judge(
         )
 
     last = parsed.reviews[-1]
-    if last.verdict == DO_NOT_MERGE:
-        return Result(DO_NOT_MERGE, f"the last review, @ {last.sha}, says do not merge")
+    blocked: Optional[Review] = None
+    for review in parsed.reviews:
+        if review.verdict == DO_NOT_MERGE:
+            blocked = review
+        elif blocked and git.is_ancestor(blocked.sha, review.sha) and not git.is_ancestor(review.sha, blocked.sha):
+            blocked = None
+    if blocked:
+        return Result(
+            DO_NOT_MERGE,
+            f"the review @ {blocked.sha} says do not merge, and no later review of a commit after it clears it",
+        )
     for review in parsed.reviews:
         if not git.is_ancestor(review.sha, head):
             return Result(
                 NOT_ANCESTOR,
                 f"reviewed sha {review.sha} is not an ancestor of head {head[:9]} (or is unknown here)"
-                + REWRITE_HINT,
+                + REWRITE_HINT[:-1]
+                + REBASE_HINT
+                + ")",
             )
         if git.is_ancestor(review.sha, base):
             return Result(
@@ -312,16 +370,10 @@ def judge(
                 f"fix range end {end} is not an ancestor of head {head[:9]} (or is unknown here)"
                 + REWRITE_HINT,
             )
-        if not any(git.is_ancestor(r.sha, start) for r in parsed.reviews):
-            return Result(
-                BAD_RANGE,
-                f"fix range start {start} is not a reviewed sha or a descendant of one",
-            )
-        if git.is_ancestor(start, base) or not git.is_ancestor(start, end):
-            return Result(
-                BAD_RANGE,
-                f"fix range {start}..{end} is on the base or does not run forward",
-            )
+        if not any(git.is_ancestor(r.sha, start) and git.is_ancestor(start, r.sha) for r in parsed.reviews):
+            return Result(BAD_RANGE, f"fix range start {start} is not one of the line's reviewed shas")
+        if not git.is_ancestor(start, end):
+            return Result(BAD_RANGE, f"fix range {start}..{end} does not run forward")
         if git.is_ancestor(last.sha, end):
             covered = end
     after = git.code_commits_after(covered, head, base)
