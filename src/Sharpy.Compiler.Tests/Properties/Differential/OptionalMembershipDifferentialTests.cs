@@ -801,8 +801,10 @@ public class OptionalMembershipDifferentialTests : IntegrationTestBase
         // for every None needle is red there, and a container whose optional variant lost its None element is red here.
         // The Sharpy half (the cell runs and agrees today) holds for every element-typed container but the named ones.
         var trueFalseTrue = new[] { "True", "False", "True" };
+        var controlled = 0;
         foreach (var container in ElementTypedRoster)
         {
+            controlled++;
             var controls = cells.Where(c => c.Container == container && c.OptionalElement && c.Form == Form.Optional
                 && c.Operator == BinaryOperator.In && expectations[c.Id].Compared).ToList();
             Assert.True(controls.Any(c => pythonById[c.Id].SequenceEqual(trueFalseTrue)),
@@ -814,8 +816,11 @@ public class OptionalMembershipDifferentialTests : IntegrationTestBase
                     $"{container}OfOptional: no cell where Sharpy also answers True False True (exempt it in "
                     + "OptionalElementControlExcluded with a reason and an issue, or fix it)");
             else
-                Assert.DoesNotContain(controls, c => sharpyById[c.Id].Values is { } v && v.SequenceEqual(trueFalseTrue));
+                Assert.False(controls.Any(c => sharpyById[c.Id].Values is { } v && v.SequenceEqual(trueFalseTrue)),
+                    $"{container} is in OptionalElementControlExcluded but Sharpy now answers True False True: "
+                    + "delete the exemption");
         }
+        Assert.Equal(ElementTypedRoster.Length, controlled);
 
         // Written on every run, header included, so copying it over the allowlist is a byte-identical round trip
         // when nothing moved and a reviewable diff when something did.
