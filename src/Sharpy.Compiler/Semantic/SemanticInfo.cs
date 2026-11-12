@@ -2152,7 +2152,8 @@ public class SemanticInfo : ISemanticQuery
 
     /// <summary>
     /// Gets the operator lowering recorded for <paramref name="node"/> (a <c>BinaryOp</c>, a
-    /// <c>UnaryOp</c>, an augmented <c>Assignment</c> or a super operator <c>FunctionCall</c>), or
+    /// <c>UnaryOp</c>, an augmented or <c>??=</c> <c>Assignment</c> or a super operator
+    /// <c>FunctionCall</c>), or
     /// <c>null</c> when none was recorded (read as <see cref="OperatorLoweringKind.Native"/>).
     /// </summary>
     /// <remarks>

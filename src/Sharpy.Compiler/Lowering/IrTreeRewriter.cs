@@ -42,7 +42,7 @@ internal abstract class IrTreeRewriter
     /// Rewrites a single node. The base handles the shared cases: an <see cref="IrOpaqueExpression"/> or
     /// <see cref="IrOpaqueStatement"/> recurses into its children (rebuilding only on change), as do the
     /// typed nodes that replaced an opaque one and hold foldable operands (an operator expression or
-    /// assignment, a collection mutation, an Optional store or wrapped element, a pruned try), and every
+    /// assignment, a collection mutation, an Optional store or wrapped element, a planned try), and every
     /// typed node is returned as-is (a pass that needs to descend into one overrides this method). The
     /// <paramref name="context"/> is threaded through so an override can consult project-level semantic
     /// facts without any instance state.
