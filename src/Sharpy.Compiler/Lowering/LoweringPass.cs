@@ -142,14 +142,28 @@ internal sealed partial class LoweringPass
         // _optionalStoreWraps): a plain, augmented or `??=` store to an identifier carries the slot on
         // the statement; an unpacking from a tuple literal marks each element stored into a narrowed
         // Optional target, which LowerExpression wraps when it reaches the element.
+        //
+        // An assignment's recorded operator lowering (P82 tranche 3, #2443, plan-92249e D1) rides on
+        // the store wrap when there is one (`x //= 2` into a narrowed `int?`), else on an
+        // IrOperatorAssignment: precedence is mutation, wrap (with operator), operator, opaque.
         if (statement is Assignment storeAssignment)
         {
+            var assignmentOperator = semanticInfo.GetOperatorLowering(storeAssignment);
             if (OptionalStoreWrapOf(storeAssignment, semanticInfo, state) is { } wrapAs)
             {
-                var storeWrap = new IrOptionalStoreWrap(wrapAs, SpanOf(storeAssignment),
-                    LowerChildren(storeAssignment, semanticInfo, state));
+                var storeWrap = new IrOptionalStoreWrap(wrapAs,
+                    assignmentOperator?.Kind ?? OperatorLoweringKind.Native, assignmentOperator?.NarrowTo,
+                    SpanOf(storeAssignment), LowerChildren(storeAssignment, semanticInfo, state));
                 state.Index[storeAssignment] = storeWrap;
                 return storeWrap;
+            }
+
+            if (assignmentOperator is not null)
+            {
+                var operatorAssignment = new IrOperatorAssignment(assignmentOperator.Kind, assignmentOperator.NarrowTo,
+                    SpanOf(storeAssignment), LowerChildren(storeAssignment, semanticInfo, state));
+                state.Index[storeAssignment] = operatorAssignment;
+                return operatorAssignment;
             }
 
             if (storeAssignment.Operator == AssignmentOperator.Assign
@@ -258,6 +272,13 @@ internal sealed partial class LoweringPass
             // _binaryOpLowerings).
             BinaryOp { Operator: BinaryOperator.Equal or BinaryOperator.NotEqual } eqOp
                 => LowerEqualityComparison(eqOp, semanticInfo, state),
+            // Any other operator — a binary or unary operator, or a super operator application — whose
+            // key has a recorded operator lowering carries it on the IR node (P82 tranche 3, #2443,
+            // plan-92249e D1); with no entry it stays opaque and reads (Native, null).
+            BinaryOp or UnaryOp or FunctionCall when semanticInfo.GetOperatorLowering(expression) is { } operatorLowering
+                => new IrOperatorExpression(expression, operatorLowering.Kind, operatorLowering.NarrowTo,
+                    semanticInfo.GetExpressionType(expression), SpanOf(expression),
+                    LowerChildren(expression, semanticInfo, state)),
             // Index access (obj[i]) carries its lowering strategy on the IR node (E2 #1056, migrates
             // _indexAccessLowerings).
             IndexAccess indexAccess => LowerIndexAccess(indexAccess, semanticInfo, state),
@@ -501,6 +522,8 @@ internal sealed partial class LoweringPass
             left,
             right,
             semanticInfo.GetBinaryOpLoweringForIr(binOp),
+            // A reflected `==`/`!=` (#1719) records its operator lowering on the same key (D1).
+            semanticInfo.GetOperatorLowering(binOp)?.Kind ?? OperatorLoweringKind.Native,
             semanticInfo.GetExpressionType(binOp),
             SpanOf(binOp));
     }

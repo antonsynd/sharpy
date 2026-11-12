@@ -115,12 +115,41 @@ internal sealed record IrCollectionMutation(
 /// </summary>
 /// <param name="WrapAs">The slot's Optional type: the emitter prints <c>Optional&lt;T&gt;.Some(value)</c>
 /// for it.</param>
+/// <param name="Operator">The operator lowering the checker recorded on the assignment (an augmented
+/// store into a narrowed Optional slot, <c>x //= 2</c>: P82 tranche 3, #2443, plan-92249e D1);
+/// <see cref="OperatorLoweringKind.Native"/> when nothing was recorded (a plain <c>=</c>).</param>
+/// <param name="NarrowTo">The type the augmented result narrows to, or <c>null</c>.</param>
 /// <param name="Span">The originating source span.</param>
 /// <param name="Children">The lowered target and value, in <c>GetChildNodes</c> order (totality).</param>
 internal sealed record IrOptionalStoreWrap(
     OptionalType WrapAs,
+    OperatorLoweringKind Operator,
+    SemanticType? NarrowTo,
     TextSpan Span,
-    ImmutableArray<IrNode> Children) : IrStatement(Span)
+    ImmutableArray<IrNode> Children) : IrStatement(Span), IIrOperatorSite
+{
+    /// <inheritdoc/>
+    public override ImmutableArray<IrNode> Children { get; } = Children;
+}
+
+/// <summary>
+/// An <see cref="Assignment"/> whose key carries a recorded operator lowering
+/// (<c>SemanticInfo._operatorLowerings</c>; P82 tranche 3, #2443, plan-92249e D1) and that is neither
+/// an in-place collection mutation (<see cref="IrCollectionMutation"/>) nor a store into a narrowed
+/// Optional slot (<see cref="IrOptionalStoreWrap"/>, which carries its own operator): an augmented
+/// operator (<c>n //= 2</c>, <c>x **= 2</c>) or a <c>??=</c> on an Optional target. Precedence on an
+/// assignment is mutation, wrap, operator, opaque; an assignment with no entry stays an
+/// <see cref="IrOpaqueStatement"/>.
+/// </summary>
+/// <param name="Operator">How code generation must emit the operator.</param>
+/// <param name="NarrowTo">The type the augmented result narrows to, or <c>null</c>.</param>
+/// <param name="Span">The originating source span.</param>
+/// <param name="Children">The lowered target and value, in <c>GetChildNodes</c> order (totality).</param>
+internal sealed record IrOperatorAssignment(
+    OperatorLoweringKind Operator,
+    SemanticType? NarrowTo,
+    TextSpan Span,
+    ImmutableArray<IrNode> Children) : IrStatement(Span), IIrOperatorSite
 {
     /// <inheritdoc/>
     public override ImmutableArray<IrNode> Children { get; } = Children;

@@ -173,6 +173,57 @@ public class ConstFoldPassTests
         unfolded.Should().Contain("7 + 11", "the fold is the flag's doing");
     }
 
+    /// <summary>
+    /// P82 tranche 3 (#2443, plan-92249e D2): <c>-6</c> records <c>NegateLiteralInt</c>, so it lowers to
+    /// an <c>IrOperatorExpression</c>, the only operator kind that both carries an entry and folds. The
+    /// fold pass folds it as it folded the opaque node, so the enclosing product folds too.
+    /// </summary>
+    [Fact]
+    public void Enabled_FoldsNegatedIntLiteral_UnderOperatorExpression()
+    {
+        const string source = "def f() -> int:\n    x: int = -6 * 7\n    return x\n";
+
+        var cs = CompileCSharp(source, fold: true);
+
+        cs.Should().Contain("x = -42", "the negated literal folds, so its enclosing product folds");
+        cs.Should().NotContain("* 7", "the product is reduced");
+        CompileCSharp(source, fold: false).Should().Contain("* 7", "the fold is the flag's doing");
+    }
+
+    /// <summary>
+    /// P82 tranche 3 (#2443, plan-92249e D2): <c>(2 + 3) // n</c> records <c>IntegerFloorDivide</c>, so it
+    /// lowers to an <c>IrOperatorExpression</c>; the shared rewriter descends into it as it did into the
+    /// opaque node, so its foldable left operand folds while the division stays runtime code.
+    /// </summary>
+    [Fact]
+    public void Enabled_FoldsOperandUnderOperatorExpression()
+    {
+        const string source = "def f(n: int) -> int:\n    return (2 + 3) // n\n";
+
+        var cs = CompileCSharp(source, fold: true);
+
+        cs.Should().Contain("FloorDiv", "the floor division keeps its lowering");
+        cs.Should().NotContain("2 + 3", "the operator expression's operand is reached by the fold pass");
+        CompileCSharp(source, fold: false).Should().Contain("2 + 3", "the fold is the flag's doing");
+    }
+
+    /// <summary>
+    /// P82 tranche 3 (#2443, plan-92249e D2): <c>x //= 2 + 3</c> on an <c>int</c> records
+    /// <c>IntegerFloorDivide</c>, so it lowers to an <c>IrOperatorAssignment</c>; the shared rewriter
+    /// descends into it as it did into the opaque assignment, so its value folds.
+    /// </summary>
+    [Fact]
+    public void Enabled_FoldsValueUnderOperatorAssignment()
+    {
+        const string source = "def f(n: int) -> int:\n    x: int = n\n    x //= 2 + 3\n    return x\n";
+
+        var cs = CompileCSharp(source, fold: true);
+
+        cs.Should().Contain("FloorDiv", "the augmented floor division keeps its lowering");
+        cs.Should().NotContain("2 + 3", "the operator assignment's value is reached by the fold pass");
+        CompileCSharp(source, fold: false).Should().Contain("2 + 3", "the fold is the flag's doing");
+    }
+
     [Fact]
     public void NonFiniteDoubleResult_StaysUnfolded()
     {

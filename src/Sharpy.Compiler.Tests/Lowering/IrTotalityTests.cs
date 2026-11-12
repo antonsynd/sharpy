@@ -368,8 +368,11 @@ public class IrTotalityTests
     /// node (migrates <c>SemanticInfo._optionalStoreWraps</c>), over the Phase 0 positive-control
     /// fixture: the seven wrapped assignments (<c>d = 5</c>, <c>x += 5</c>, <c>y ??= 42</c>,
     /// <c>b.o ??= 3</c>, <c>arr[0] ??= 9</c>, <c>arr[1] ??= 8</c>, <c>w ??= a</c>) and the elements
-    /// <c>30</c>, <c>40</c>; the Optional-valued, nullable-slot and fresh-target controls stay opaque.
-    /// The index stays total (one node per key); the tree holds one extra node per wrapped element.
+    /// <c>30</c>, <c>40</c>; the Optional-valued, nullable-slot and fresh-target controls stay opaque,
+    /// except <c>z ??= Some(7)</c>, whose recorded <c>OptionalCoalesceBothOptional</c> makes it an
+    /// <see cref="IrOperatorAssignment"/> (P82 tranche 3, #2443, plan-92249e D1: the kind pin moved from
+    /// <see cref="IrOpaqueStatement"/> by design). The index stays total (one node per key); the tree
+    /// holds one extra node per wrapped element.
     /// </summary>
     [Fact]
     public void OptionalStoreWrap_LowersToStoreWrapAndWrappedElement_AndStaysTotal()
@@ -381,6 +384,7 @@ public class IrTotalityTests
         var astNodes = AssertIndexTotal(ast, index);
 
         int[] wrappedLines = { 19, 23, 26, 32, 36, 37, 51 };
+        const int operatorLine = 29;
         var assignments = astNodes.OfType<Assignment>().ToList();
         foreach (var assignment in assignments)
         {
@@ -388,6 +392,12 @@ public class IrTotalityTests
             {
                 var wrap = Assert.IsType<IrOptionalStoreWrap>(index[assignment]);
                 Assert.Equal(SemanticType.Int, wrap.WrapAs.UnderlyingType);
+            }
+            else if (assignment.LineStart == operatorLine)
+            {
+                var coalesce = Assert.IsType<IrOperatorAssignment>(index[assignment]);
+                Assert.Equal(OperatorLoweringKind.OptionalCoalesceBothOptional, coalesce.Operator);
+                Assert.Null(coalesce.NarrowTo);
             }
             else
             {

@@ -40,7 +40,9 @@ internal abstract class IrTreeRewriter
 
     /// <summary>
     /// Rewrites a single node. The base handles the shared cases: an <see cref="IrOpaqueExpression"/> or
-    /// <see cref="IrOpaqueStatement"/> recurses into its children (rebuilding only on change), and every
+    /// <see cref="IrOpaqueStatement"/> recurses into its children (rebuilding only on change), as do the
+    /// typed nodes that replaced an opaque one and hold foldable operands (an operator expression or
+    /// assignment, a collection mutation, an Optional store or wrapped element, a pruned try), and every
     /// typed node is returned as-is (a pass that needs to descend into one overrides this method). The
     /// <paramref name="context"/> is threaded through so an override can consult project-level semantic
     /// facts without any instance state.
@@ -65,6 +67,28 @@ internal abstract class IrTreeRewriter
                         : opaqueStatement;
                 }
 
+            case IrOperatorExpression operatorExpression:
+                {
+                    // An operator expression with a recorded lowering (P82 tranche 3, #2443) holds its
+                    // operands as the opaque node it replaced did: `(2 + 3) // n` folds its left operand.
+                    var children = RewriteChildren(operatorExpression.Children, context, out var childrenChanged);
+                    return childrenChanged
+                        ? new IrOperatorExpression(operatorExpression.Ast, operatorExpression.Operator,
+                            operatorExpression.NarrowTo, operatorExpression.Type, operatorExpression.Span, children)
+                        : operatorExpression;
+                }
+
+            case IrOperatorAssignment operatorAssignment:
+                {
+                    // An assignment with a recorded operator lowering (P82 tranche 3, #2443): its target
+                    // and value are foldable operands, as the opaque assignment's were (`x //= 2 + 3`).
+                    var children = RewriteChildren(operatorAssignment.Children, context, out var childrenChanged);
+                    return childrenChanged
+                        ? new IrOperatorAssignment(operatorAssignment.Operator, operatorAssignment.NarrowTo,
+                            operatorAssignment.Span, children)
+                        : operatorAssignment;
+                }
+
             case IrCollectionMutation mutation:
                 {
                     // The target and value are foldable operands (P82 #2443): descend as the opaque
@@ -81,7 +105,8 @@ internal abstract class IrTreeRewriter
                     // narrowed Optional slot still folds its value.
                     var children = RewriteChildren(storeWrap.Children, context, out var childrenChanged);
                     return childrenChanged
-                        ? new IrOptionalStoreWrap(storeWrap.WrapAs, storeWrap.Span, children)
+                        ? new IrOptionalStoreWrap(storeWrap.WrapAs, storeWrap.Operator, storeWrap.NarrowTo,
+                            storeWrap.Span, children)
                         : storeWrap;
                 }
 
@@ -114,8 +139,8 @@ internal abstract class IrTreeRewriter
                 }
 
             default:
-                // Typed nodes (equality, index, member, lowered loop, scope guard, with-item, constant,
-                // stack array): the shared walk does not descend into them — conservative and rare, and a
+                // Other typed nodes (equality, index, member, lowered loop, scope guard, with-item,
+                // constant, stack array): the shared walk does not descend into them — conservative and rare, and a
                 // pass opts in per node type by overriding this method.
                 return node;
         }
