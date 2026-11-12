@@ -208,11 +208,17 @@ if ((PROFILE)); then
   # python3 with no pytest and no dotnet on PATH. ~/.bashrc is written whatever $SHELL is, because
   # those shells are bash; a zsh user also gets ~/.zshrc (read by interactive zsh only).
   line="[ -f \"$ENV_FILE\" ] && . \"$ENV_FILE\"  # Sharpy"
-  ours='sharpy-env\.sh".*# Sharpy'   # this line for any checkout: the last one set up wins
+  # This line for any checkout (the last one set up wins), CRLF copies included; anchored, so a
+  # user's own line that merely mentions the file is kept.
+  ours='^\[ -f ".*sharpy-env\.sh" \] && \. ".*sharpy-env\.sh"  # Sharpy.?$'
+  # The path is written inside double quotes in a file every shell sources: refuse one that would
+  # end the quote or expand there.
+  [[ "$ENV_FILE" != *[\"\$\`\\]* ]] \
+    || die "--profile: the checkout path contains a quote, \$, backtick or backslash: $ENV_FILE"
   rcs=("$HOME/.bashrc"); [[ "${SHELL:-}" == */zsh ]] && rcs+=("$HOME/.zshrc")
   for rc in "${rcs[@]}"; do
     [[ ! -e "$rc" || -r "$rc" ]] || die "$rc exists but is not readable; not rewriting it"
-    if [[ "$(head -n 1 "$rc" 2>/dev/null)" == "$line" ]] && (( $(grep -ac "$ours" "$rc") == 1 )); then
+    if [[ "$(head -n 1 "$rc" 2>/dev/null)" == "$line" ]] && (( $(grep -acE "$ours" "$rc") == 1 )); then
       log "$rc already sources $ENV_FILE"
       continue
     fi
@@ -222,9 +228,10 @@ if ((PROFILE)); then
     tmp="$rc.sharpy.$$"
     printf '%s\n' "$line" > "$tmp"
     if [[ -e "$rc" ]]; then
-      grep -av "$ours" "$rc" >> "$tmp" || { [[ $? -eq 1 ]] || die "could not read $rc; left unchanged"; }
+      grep -avE "$ours" "$rc" >> "$tmp" \
+        || { [[ $? -eq 1 ]] || { rm -f "$tmp"; die "could not read $rc; left unchanged"; }; }
     fi
-    cat "$tmp" > "$rc"
+    cat "$tmp" > "$rc" || { rm -f "$tmp"; die "could not write $rc"; }
     rm -f "$tmp"
     log "added $ENV_FILE as the first line of $rc"
   done
