@@ -1,4 +1,8 @@
+extern alias SharpyRT;
+extern alias SharpyStdlib;
+
 using System.Globalization;
+using System.Reflection;
 using Sharpy.Compiler.Diagnostics;
 using Sharpy.Compiler.Parser.Ast;
 using Sharpy.Compiler.Semantic.Registry;
@@ -15,16 +19,25 @@ namespace Sharpy.Compiler.Tests.Properties.Differential;
 /// CPython answers — <c>False</c> for <c>in</c> (an equality scan finds no element equal to <c>None</c>),
 /// <c>True</c> for <c>not in</c>, and <c>TypeError</c> at run time where CPython raises (a <c>str</c> or
 /// <c>bytes</c> container) — owner rulings 2026-11-12. Never SPY0222, SPY0908 or a CLR exception. The literal
-/// <c>None</c> into a non-optional slot is refused (SPY0222) by owner ruling A, 2026-11-12; into an optional element
-/// type it is accepted (the plan's named control, not generated here).
-/// <para><b>Generated, never listed.</b> The full product of five axes, with no exclusion; the count is asserted
-/// from the axis sizes, not the generator:</para>
+/// <c>None</c> into a non-optional slot is refused (SPY0222) by owner ruling A, 2026-11-12, and accepted into an
+/// optional element type (the element-optionality axis).
+/// <para><b>Generated, never listed.</b> The full product of six axes, with one structural exclusion (an optional
+/// element exists only where the element type is the payload); the count is asserted from the axis sizes, not the
+/// generator:</para>
 /// <list type="bullet">
 /// <item><b>payload</b> — the image of <see cref="PrimitiveCatalog.GetAllPrimitives"/> (one canonical name per
 /// CLR type) minus <see cref="ExcludedPrimitives"/>, each excluded with its reason, plus two composite kinds a
-/// primitive census cannot reach: a value-typed <c>tuple[int, int]</c> and a reference-typed user class;</item>
+/// primitive census cannot reach (a value-typed <c>tuple[int, int]</c>, a reference-typed user class), plus
+/// <see cref="SlotPayloads"/>: every fixed needle slot of the container axis (a single-argument public
+/// <c>Contains</c> parameter, read by reflection) that is not a catalog primitive — asserted both ways by
+/// <see cref="AssertPayloadAxisIsTheCatalogAndTheSlots"/>;</item>
 /// <item><b>container</b> — the closed set of the spec's "Container kinds" table
-/// (<c>membership_operators.md</c>), read from the spec and mapped row by row (<see cref="SpecRowMap"/>);</item>
+/// (<c>membership_operators.md</c>), read from the spec and mapped row by row (<see cref="SpecRowMap"/>); the CLR
+/// row is closed against the reflection census of public single-argument <c>Contains</c> in Sharpy.Core and
+/// Sharpy.Stdlib (<see cref="ClrContainerRoster"/>, <see cref="AssertClrRowIsTheContainsCensus"/>), and its
+/// "any <c>IEnumerable[T]</c>" arm by one representative, <c>deque[T]</c> (<see cref="EnumerableArm"/>);</item>
+/// <item><b>element optionality</b> — <c>T</c> or <c>T | None</c> for every container whose element type is the
+/// payload (the container then also holds a <c>None</c> element); a fixed-slot container has no such spelling;</item>
 /// <item><b>needle form</b> — the plain <c>T</c> (the control twin), <c>T | None</c>, and the literal
 /// <c>None</c>;</item>
 /// <item><b>operator</b> — the <see cref="BinaryOperator"/> members that are membership tests;</item>
@@ -35,8 +48,8 @@ namespace Sharpy.Compiler.Tests.Properties.Differential;
 /// <para><b>Expected map</b> (<see cref="Expect"/>). COMPARED cells print CPython 3.15's values (the
 /// <c>.python-version</c> pin). HAND-EXPECTED cells — a typed needle the slot cannot hold (<see cref="SlotHolds"/>),
 /// refused by SPY0222 under the deviation <c>membership-needle-type-mismatch</c> (owner ruling B for bool, float and
-/// decimal into an <c>int</c> slot), the literal <c>None</c> (SPY0222, ruling A), and chain links (SPY0519, #2648) —
-/// are counted apart in the summary line. One program per payload is compiled;
+/// decimal into an <c>int</c> slot), the literal <c>None</c> into a non-optional slot (SPY0222, ruling A), and chain
+/// links (SPY0519, #2648) — are counted apart in the summary line. One program per payload is compiled;
 /// cells refused at compile time are attributed by line, removed and the rest recompiled until it runs.</para>
 /// <para><b>Known red.</b> <c>optional-membership-differential-allowlist.txt</c> (Conformance): one row per
 /// <c>container/form</c>, each pinning its exact divergent cells and their observed Sharpy verdicts (<c>cells=</c>,
@@ -51,6 +64,10 @@ public class OptionalMembershipDifferentialTests : IntegrationTestBase
 
     private const string AllowlistFileName = "optional-membership-differential-allowlist.txt";
 
+    /// <summary>The CLR row's stdlib containers (collections, ipaddress, argparse, email) are imported by every program.</summary>
+    protected override IEnumerable<string> GetAdditionalReferenceAssemblyPaths()
+        => base.GetAdditionalReferenceAssemblyPaths().Append(SharpyStdlibReference.Location);
+
     /// <summary>The primitives the payload axis leaves out, each with why its python twin cannot be spelled.</summary>
     private static readonly Dictionary<string, string> ExcludedPrimitives = new(StringComparer.Ordinal)
     {
@@ -59,11 +76,31 @@ public class OptionalMembershipDifferentialTests : IntegrationTestBase
         ["void"] = "None itself, the needle form axis",
     };
 
-    private enum PayloadKind { Integer, Float, Decimal, Bool, Str, Tuple, Class }
+    private enum PayloadKind { Integer, Float, Decimal, Bool, Str, Tuple, Class, Slot }
 
-    private sealed record Payload(string Name, PayloadKind Kind, string Member, string Other, string NonMember);
+    private sealed record Payload(string Name, PayloadKind Kind, string Member, string Other, string NonMember, Type? ClrType);
 
-    private enum Container { Tuple, List, Set, FrozenSet, Dict, DictKeys, DictValues, ContainsDunder, Str, Bytes, Range }
+    /// <summary>
+    /// The fixed needle slots of the container axis that are not catalog primitives, keyed by CLR full name: the
+    /// Sharpy (and python) spelling, a member of every container that holds the type, a second member, and a
+    /// non-member. <see cref="AssertPayloadAxisIsTheCatalogAndTheSlots"/> asserts the keys are exactly the reflected
+    /// slot types the catalog does not cover.
+    /// </summary>
+    private static readonly Dictionary<string, (string Name, string Member, string Other, string NonMember)> SlotPayloads =
+        new(StringComparer.Ordinal)
+        {
+            ["Sharpy.Bytes"] = ("bytes", "bytes([1])", "bytes([2])", "bytes([5])"),
+            ["Sharpy.IPv4Address"] = ("IPv4Address", "IPv4Address(\"10.0.0.1\")", "IPv4Address(\"10.0.0.2\")",
+                "IPv4Address(\"11.0.0.1\")"),
+            ["Sharpy.IPv6Address"] = ("IPv6Address", "IPv6Address(\"::1\")", "IPv6Address(\"::2\")", "IPv6Address(\"1::1\")"),
+        };
+
+    private enum Container
+    {
+        Tuple, List, Set, FrozenSet, Dict, DictKeys, DictValues, ContainsDunder, Str, Bytes, Range,
+        Counter, OrderedDict, ChainMap, DefaultDict, FrozenDict, IPv4Network, IPv6Network, ArgparseNamespace, EmailMessage,
+        Deque,
+    }
 
     /// <summary>
     /// The spec's "Container kinds" rows (first cell, verbatim) → the containers generated for that row, or the
@@ -79,21 +116,130 @@ public class OptionalMembershipDifferentialTests : IntegrationTestBase
         ("`tuple[...]`", new[] { Container.Tuple }, null),
         ("`range(...)`", new[] { Container.Range }, null),
         ("a class with `__contains__` (declared or inherited)", new[] { Container.ContainsDunder }, null),
-        ("a CLR type with a public `Contains`, or any `IEnumerable[T]`", Array.Empty<Container>(),
-            "no python twin; the CLR Contains arm is the same element-slot decision"),
+        ("a CLR type with a public `Contains`, or any `IEnumerable[T]`", new[]
+            {
+                Container.Counter, Container.OrderedDict, Container.ChainMap, Container.DefaultDict, Container.FrozenDict,
+                Container.IPv4Network, Container.IPv6Network, Container.ArgparseNamespace, Container.EmailMessage,
+                Container.Deque,
+            },
+            "the Contains arm is closed against the reflection census (ClrContainerRoster); the IEnumerable[T]-without-"
+            + "Contains arm is generated by one representative (EnumerableArm)"),
     };
+
+    /// <summary>
+    /// The spec row's "any <c>IEnumerable[T]</c>" arm: a receiver with no <c>Contains</c> of its own. Its needle is
+    /// decided by the checker's generic-container arm (<c>ResolveMembershipElementType</c>: a <c>GenericType</c> →
+    /// <c>InferIterableElementType</c>; <c>ProtocolMembership</c> admits it through <c>IEnumerable&lt;T&gt;</c>) and
+    /// emitted as LINQ's <c>Enumerable.Contains</c>. Every such receiver Sharpy spells is a <c>GenericType</c> over its
+    /// element and reaches that same arm and the same emission, so one representative stands for it: <c>deque[T]</c>
+    /// (an <c>Iterator[T]</c> from <c>iter(xs)</c> was probed at the base: the same SPY0222 for a <c>T | None</c>
+    /// needle, the same answers otherwise). <see cref="AssertClrRowIsTheContainsCensus"/> asserts it has no
+    /// <c>Contains</c> and is an <c>IEnumerable&lt;T&gt;</c>.
+    /// </summary>
+    private static readonly (string ClrName, Container Generated, string Why) EnumerableArm =
+        ("Sharpy.Deque`1", Container.Deque, "the IEnumerable[T]-without-Contains arm: one GenericType checker arm "
+            + "(InferIterableElementType) and one LINQ emission for every such receiver");
+
+    /// <summary>The element-typed containers, as a literal roster: the totality count reads its size, and
+    /// <see cref="IsElementTyped"/> (which the generator uses) is asserted equal to it.</summary>
+    private static readonly Container[] ElementTypedRoster =
+    {
+        Container.Tuple, Container.List, Container.Set, Container.FrozenSet, Container.Dict, Container.DictKeys,
+        Container.DictValues, Container.ContainsDunder, Container.Counter, Container.OrderedDict, Container.ChainMap,
+        Container.DefaultDict, Container.FrozenDict, Container.Deque,
+    };
+
+    /// <summary>Element-typed containers exempt from the Sharpy half of the optional-element control (a compared
+    /// <c>T | None</c> needle that Sharpy answers <c>True False True</c> today), each with its reason and issue.</summary>
+    private static readonly Dictionary<Container, string> OptionalElementControlExcluded = new()
+    {
+        [Container.Counter] = "#2651: Counter[T | None] with a None element throws ArgumentNullException at construction",
+    };
+
+    /// <summary>
+    /// The CLR row's census: every public type in Sharpy.Core and Sharpy.Stdlib with a public instance single-argument
+    /// <c>Contains</c> (a generic definition by its open name) → the container that generates it, or why none does.
+    /// <see cref="AssertClrRowIsTheContainsCensus"/> asserts the keys are exactly the reflected set.
+    /// </summary>
+    private static readonly Dictionary<string, (Container? Generated, string? Excluded)> ClrContainerRoster =
+        new(StringComparer.Ordinal)
+        {
+            ["Sharpy.List`1"] = (Container.List, null),
+            ["Sharpy.Set`1"] = (Container.Set, null),
+            ["Sharpy.FrozenSet`1"] = (Container.FrozenSet, null),
+            ["Sharpy.Dict`2"] = (Container.Dict, null),
+            ["Sharpy.DictKeyView`2"] = (Container.DictKeys, null),
+            ["Sharpy.DictValuesView`2"] = (Container.DictValues, null),
+            ["Sharpy.DictItemsView`2"] = (null, "its slot is the (K, V) pair, which no payload of this axis is: a pair "
+                + "payload would need its own value type per key; the pair is the dict's slot, generated by Dict"),
+            ["Sharpy.RangeIterator"] = (Container.Range, null),
+            ["Sharpy.IDict"] = (null, ObjectSlot),
+            ["Sharpy.IList"] = (null, ObjectSlot),
+            ["Sharpy.ISet"] = (null, ObjectSlot),
+            ["Sharpy.Bytes"] = (Container.Bytes, null),
+            ["Sharpy.FrozenDict`2"] = (Container.FrozenDict, null),
+            ["Sharpy.Counter`1"] = (Container.Counter, null),
+            ["Sharpy.OrderedDict`2"] = (Container.OrderedDict, null),
+            ["Sharpy.ChainMap`2"] = (Container.ChainMap, null),
+            ["Sharpy.DefaultDict`2"] = (Container.DefaultDict, null),
+            ["Sharpy.IPv4Network"] = (Container.IPv4Network, null),
+            ["Sharpy.IPv6Network"] = (Container.IPv6Network, null),
+            ["Sharpy.Namespace"] = (Container.ArgparseNamespace, null),
+            ["Sharpy.EmailMessage"] = (Container.EmailMessage, null),
+        };
+
+    private const string ObjectSlot = "a non-generic runtime interface whose Contains(object) slot admits every needle: no "
+        + "needle-type decision to make (as for the excluded `object` primitive)";
+
+    private static IEnumerable<Type> SharpyTypes() =>
+        new[] { typeof(SharpyRT::Sharpy.Builtins).Assembly, typeof(SharpyStdlib::Sharpy.EmailMessage).Assembly }
+            .Distinct()
+            .SelectMany(a => a.GetExportedTypes());
+
+    /// <summary>The public instance single-argument <c>Contains</c> parameter types of a CLR type.</summary>
+    private static IReadOnlyList<Type> ContainsSlots(Type type) =>
+        type.GetMethods(BindingFlags.Public | BindingFlags.Instance)
+            .Where(m => m.Name == "Contains" && m.GetParameters().Length == 1)
+            .Select(m => m.GetParameters()[0].ParameterType)
+            .Distinct()
+            .ToList();
+
+    /// <summary>The CLR type a container's membership test reaches: the roster's, <c>str</c>'s, or none (a tuple
+    /// projection; a user class).</summary>
+    private static Type? ClrTypeOf(Container container)
+    {
+        if (container == Container.Str)
+            return typeof(string);
+        if (container is Container.Tuple or Container.ContainsDunder)
+            return null;
+        var name = container == EnumerableArm.Generated
+            ? EnumerableArm.ClrName
+            : ClrContainerRoster.Single(r => r.Value.Generated == container).Key;
+        return SharpyTypesByName.Value[name];
+    }
+
+    private static readonly Lazy<Dictionary<string, Type>> SharpyTypesByName =
+        new(() => SharpyTypes().ToDictionary(t => t.FullName!, StringComparer.Ordinal));
+
+    /// <summary>A container whose element type is the payload, so it has a <c>T | None</c> element spelling: a tuple,
+    /// a user class, or a generic CLR type.</summary>
+    private static bool IsElementTyped(Container container) =>
+        container is Container.Tuple or Container.ContainsDunder || ClrTypeOf(container) is { IsGenericTypeDefinition: true };
 
     private enum Form { Plain, Optional, NoneLiteral }
 
     private enum Position { Expression, IfCondition, ComprehensionFilter, ChainLink }
 
-    private sealed record Cell(int Id, Payload Payload, Container Container, Form Form, BinaryOperator Operator, Position Position)
+    private sealed record Cell(int Id, Payload Payload, Container Container, bool OptionalElement, Form Form,
+        BinaryOperator Operator, Position Position)
     {
-        public string Key => $"{Payload.Name}/{Container}/{Form}/{OperatorSpelling(Operator)}/{Position}";
+        public string ContainerName => OptionalElement ? $"{Container}OfOptional" : Container.ToString();
+        public string Key => $"{Payload.Name}/{ContainerName}/{Form}/{OperatorSpelling(Operator)}/{Position}";
         /// <summary>The allowlist row: the container × whether the needle can be None (<c>T | None</c> and the literal
-        /// <c>None</c> share one row, as they share the rulings). Rows pin their exact cells, so the key's coarseness
-        /// hides nothing.</summary>
-        public string RowKey => $"{Container}/{(Form == Form.Plain ? "Plain" : "NoneNeedle")}";
+        /// <c>None</c> share one row, as they share the rulings; an optional element has its own row, since a defect
+        /// that only an optional element shows is a different class). Rows pin their exact cells, so the key's
+        /// coarseness hides nothing.</summary>
+        public string RowKey => $"{ContainerName}/{(Form == Form.Plain ? "Plain" : "NoneNeedle")}";
     }
 
     private static string OperatorSpelling(BinaryOperator op) => op == BinaryOperator.In ? "in" : "not in";
@@ -118,58 +264,82 @@ public class OptionalMembershipDifferentialTests : IntegrationTestBase
             if (ExcludedPrimitives.ContainsKey(name))
                 continue;
             var info = PrimitiveCatalog.GetByName(name)!;
+            var clr = info.ClrType;
             var payload = info.Kind switch
             {
                 PrimitiveCatalog.NumericKind.SignedInteger or PrimitiveCatalog.NumericKind.UnsignedInteger
-                    => new Payload(name, PayloadKind.Integer, "1", "2", "5"),
-                PrimitiveCatalog.NumericKind.FloatingPoint => new Payload(name, PayloadKind.Float, "1.5", "2.5", "5.5"),
+                    => new Payload(name, PayloadKind.Integer, "1", "2", "5", clr),
+                PrimitiveCatalog.NumericKind.FloatingPoint => new Payload(name, PayloadKind.Float, "1.5", "2.5", "5.5", clr),
                 // The python twin spells it through the prelude's `from decimal import Decimal as decimal`.
                 PrimitiveCatalog.NumericKind.Decimal
-                    => new Payload(name, PayloadKind.Decimal, "decimal(1)", "decimal(2)", "decimal(5)"),
-                _ when name == "bool" => new Payload(name, PayloadKind.Bool, "True", "True", "False"),
-                _ when name == "str" => new Payload(name, PayloadKind.Str, "\"a\"", "\"b\"", "\"z\""),
+                    => new Payload(name, PayloadKind.Decimal, "decimal(1)", "decimal(2)", "decimal(5)", clr),
+                _ when name == "bool" => new Payload(name, PayloadKind.Bool, "True", "True", "False", clr),
+                _ when name == "str" => new Payload(name, PayloadKind.Str, "\"a\"", "\"b\"", "\"z\"", clr),
                 // A primitive the generator has no literals for: the totality assertion names it.
                 _ => null,
             };
             if (payload != null)
                 payloads.Add(payload);
         }
-        payloads.Add(new Payload("tuple[int, int]", PayloadKind.Tuple, "(1, 2)", "(3, 4)", "(5, 6)"));
-        payloads.Add(new Payload("K", PayloadKind.Class, "K(1)", "K(2)", "K(5)"));
+        payloads.Add(new Payload("tuple[int, int]", PayloadKind.Tuple, "(1, 2)", "(3, 4)", "(5, 6)", typeof(ValueTuple<int, int>)));
+        payloads.Add(new Payload("K", PayloadKind.Class, "K(1)", "K(2)", "K(5)", null));
+        var types = SharpyTypesByName.Value;
+        foreach (var (clrName, slot) in SlotPayloads.OrderBy(s => s.Key, StringComparer.Ordinal))
+            payloads.Add(new Payload(slot.Name, PayloadKind.Slot, slot.Member, slot.Other, slot.NonMember,
+                types.GetValueOrDefault(clrName)));
         return payloads;
     }
 
-    /// <summary>The full product of the axes, with no exclusion: a needle the container's slot cannot hold is a CELL
-    /// (its expectation is the spec's refusal), never a skip.</summary>
+    private static Container[] Containers() => SpecRowMap.SelectMany(m => m.Generated).OrderBy(c => c).ToArray();
+
+    /// <summary>The full product of the axes; the one structural exclusion is an optional element on a fixed-slot
+    /// container, which has no spelling. A needle the container's slot cannot hold is a CELL (its expectation is the
+    /// spec's refusal), never a skip.</summary>
     private static List<Cell> GenerateCells(IReadOnlyList<Payload> payloads)
     {
+        var containers = Containers();
         var cells = new List<Cell>();
         foreach (var payload in payloads)
-            foreach (var container in Enum.GetValues<Container>())
-            {
-                foreach (var form in Enum.GetValues<Form>())
-                    foreach (var op in Operators)
-                        foreach (var position in Enum.GetValues<Position>())
-                            cells.Add(new Cell(cells.Count, payload, container, form, op, position));
-            }
+            foreach (var container in containers)
+                foreach (var optionalElement in IsElementTyped(container) ? new[] { false, true } : new[] { false })
+                    foreach (var form in Enum.GetValues<Form>())
+                        foreach (var op in Operators)
+                            foreach (var position in Enum.GetValues<Position>())
+                                cells.Add(new Cell(cells.Count, payload, container, optionalElement, form, op, position));
         return cells;
     }
 
-    private static string ContainerSource(Cell cell) => cell.Container switch
+    /// <summary>The container expression. An optional element types <c>a</c>, <c>c</c> and <c>z</c> as
+    /// <c>T | None</c> and adds <c>z</c> (always <c>None</c>) as an element, so <c>None</c> is a member.</summary>
+    private static string ContainerSource(Cell cell)
     {
-        Container.Tuple => "(a, c)",
-        Container.List => "[a, c]",
-        Container.Set => "{a, c}",
-        Container.FrozenSet => "frozenset([a, c])",
-        Container.Dict => "{a: 0, c: 1}",
-        Container.DictKeys => "{a: 0, c: 1}.keys()",
-        Container.DictValues => "{0: a, 1: c}.values()",
-        Container.ContainsDunder => "Bag(a, c)",
-        Container.Str => "\"ab\"",
-        Container.Bytes => "bytes([1, 2])",
-        Container.Range => "range(1, 3)",
-        _ => throw new InvalidOperationException(cell.Container.ToString()),
-    };
+        var o = cell.OptionalElement;
+        var items = o ? "a, c, z" : "a, c";
+        return cell.Container switch
+        {
+            Container.Tuple => $"({items})",
+            Container.List => $"[{items}]",
+            Container.Set => $"{{{items}}}",
+            Container.FrozenSet => $"frozenset([{items}])",
+            Container.Dict => o ? "{a: 0, c: 1, z: 2}" : "{a: 0, c: 1}",
+            Container.DictKeys => o ? "{a: 0, c: 1, z: 2}.keys()" : "{a: 0, c: 1}.keys()",
+            Container.DictValues => o ? "{0: a, 1: c, 2: z}.values()" : "{0: a, 1: c}.values()",
+            Container.ContainsDunder => o ? "OBag(a, c, z)" : "Bag(a, c)",
+            Container.Str => "\"ab\"",
+            Container.Bytes => "bytes([1, 2])",
+            Container.Range => "range(1, 3)",
+            // Built by a helper from typed locals: an explicit type argument list on a constructor call does not take
+            // a `T | None` argument (SPY0342), and the helpers spell both variants the same way.
+            Container.Counter or Container.OrderedDict or Container.ChainMap or Container.DefaultDict or Container.FrozenDict
+                or Container.Deque
+                => $"make_{cell.Container}{(o ? "_o" : "")}({items})",
+            Container.IPv4Network => "IPv4Network(\"10.0.0.0/8\")",
+            Container.IPv6Network => "IPv6Network(\"::/112\")",
+            Container.ArgparseNamespace => "make_ns()",
+            Container.EmailMessage => "make_msg()",
+            _ => throw new InvalidOperationException(cell.Container.ToString()),
+        };
+    }
 
     private sealed record Program(string Source, Dictionary<int, int> CellByLine);
 
@@ -187,6 +357,11 @@ public class OptionalMembershipDifferentialTests : IntegrationTestBase
         }
 
         var p = payload.Name;
+        Add("from argparse import ArgumentParser, Namespace");
+        Add("from collections import ChainMap, Counter, OrderedDict, defaultdict, deque");
+        Add("from email import EmailMessage");
+        Add("from ipaddress import IPv4Address, IPv4Network, IPv6Address, IPv6Network");
+        Add("");
         Add("class K:");
         Add("    v: int");
         Add("    def __init__(self, v: int):");
@@ -199,18 +374,78 @@ public class OptionalMembershipDifferentialTests : IntegrationTestBase
         Add($"    def __contains__(self, item: {p}) -> bool:");
         Add("        return item in self.items");
         Add("");
+        Add("class OBag:");
+        Add($"    items: list[{p} | None]");
+        Add($"    def __init__(self, a: {p} | None, c: {p} | None, z: {p} | None):");
+        Add("        self.items = [a, c, z]");
+        Add($"    def __contains__(self, item: {p} | None) -> bool:");
+        Add("        return item in self.items");
+        Add("");
+        // The CLR row's generic containers, each over `a, c` (element T) and `a, c, z` (element T | None, z = None).
+        foreach (var optional in new[] { false, true })
+        {
+            var e = optional ? $"{p} | None" : p;
+            var sig = optional ? $"a: {e}, c: {e}, z: {e}" : $"a: {e}, c: {e}";
+            var suffix = optional ? "_o" : "";
+            var items = optional ? "a, c, z" : "a, c";
+            var dict = optional ? "{a: 0, c: 1, z: 2}" : "{a: 0, c: 1}";
+            Add($"def make_Counter{suffix}({sig}) -> Counter[{e}]:");
+            Add($"    xs: list[{e}] = [{items}]");
+            Add($"    r: Counter[{e}] = Counter(xs)");
+            Add("    return r");
+            Add($"def make_Deque{suffix}({sig}) -> deque[{e}]:");
+            Add($"    xs: list[{e}] = [{items}]");
+            Add($"    r: deque[{e}] = deque(xs)");
+            Add("    return r");
+            Add($"def make_OrderedDict{suffix}({sig}) -> OrderedDict[{e}, int]:");
+            Add($"    d: dict[{e}, int] = {dict}");
+            Add($"    r: OrderedDict[{e}, int] = OrderedDict(d)");
+            Add("    return r");
+            Add($"def make_FrozenDict{suffix}({sig}) -> frozendict[{e}, int]:");
+            Add($"    d: dict[{e}, int] = {dict}");
+            Add($"    r: frozendict[{e}, int] = frozendict(d)");
+            Add("    return r");
+            Add($"def make_ChainMap{suffix}({sig}) -> ChainMap[{e}, int]:");
+            Add($"    first: dict[{e}, int] = {{a: 0}}");
+            Add($"    rest: dict[{e}, int] = {(optional ? "{c: 1, z: 2}" : "{c: 1}")}");
+            Add($"    r: ChainMap[{e}, int] = ChainMap(first, rest)");
+            Add("    return r");
+            Add($"def make_DefaultDict{suffix}({sig}) -> defaultdict[{e}, int]:");
+            Add($"    r: defaultdict[{e}, int] = defaultdict(int)");
+            Add("    r[a] = 0");
+            Add("    r[c] = 1");
+            if (optional)
+                Add("    r[z] = 2");
+            Add("    return r");
+            Add("");
+        }
+        // A Namespace holding "a" and "b"; positionals, as Sharpy's argparse takes no `--` options here.
+        Add("def make_ns() -> Namespace:");
+        Add("    parser = ArgumentParser()");
+        Add("    parser.add_argument(\"a\")");
+        Add("    parser.add_argument(\"b\")");
+        Add("    return parser.parse_args([\"1\", \"2\"])");
+        Add("");
+        Add("def make_msg() -> EmailMessage:");
+        Add("    m = EmailMessage()");
+        Add("    m.add_header(\"a\", \"1\")");
+        Add("    m.add_header(\"b\", \"2\")");
+        Add("    return m");
+        Add("");
 
         foreach (var cell in cells)
         {
             var op = OperatorSpelling(cell.Operator);
             var needle = cell.Form == Form.NoneLiteral ? "None" : "x";
+            var elements = cell.OptionalElement ? $"a: {p} | None, c: {p} | None, z: {p} | None" : $"a: {p}, c: {p}";
             var parameters = cell.Form switch
             {
-                Form.Plain => $"x: {p}, a: {p}, c: {p}",
-                Form.Optional => $"x: {p} | None, a: {p}, c: {p}",
-                _ => $"a: {p}, c: {p}",
+                Form.Plain => $"x: {p}, {elements}",
+                Form.Optional => $"x: {p} | None, {elements}",
+                _ => elements,
             };
-            var test = $"{needle} {op} {ContainerSource(cell)}";
+            var container = ContainerSource(cell);
+            var test = $"{needle} {op} {container}";
             Add($"def c{cell.Id}({parameters}) -> bool:", cell.Id);
             // A located first statement: code the emitter hoists above the test (a comprehension) carries no
             // #line of its own, and a Roslyn error there maps to the last located line — this cell's, not the
@@ -233,8 +468,8 @@ public class OptionalMembershipDifferentialTests : IntegrationTestBase
                     // The first link reads the needle twice; the literal None's spelling is `None is None` (Sharpy has
                     // no `None == None`), so the cell tests the chain arm's needle decision, not `==`.
                     Add(cell.Form == Form.NoneLiteral
-                        ? $"    return None is None {op} {ContainerSource(cell)}"
-                        : $"    return x == x {op} {ContainerSource(cell)}", cell.Id);
+                        ? $"    return None is None {op} {container}"
+                        : $"    return x == x {op} {container}", cell.Id);
                     break;
             }
             Add("");
@@ -249,17 +484,20 @@ public class OptionalMembershipDifferentialTests : IntegrationTestBase
         foreach (var cell in cells)
         {
             var id = cell.Id.ToString(CultureInfo.InvariantCulture);
+            var elements = cell.OptionalElement ? "a, c, None" : "a, c";
             var (loop, call) = cell.Form switch
             {
-                Form.Plain => ("    for v in plain:", $"c{id}(v, a, c)"),
-                Form.Optional => ("    for v in optional:", $"c{id}(v, a, c)"),
-                _ => ("    for v in [0]:", $"c{id}(a, c)"),
+                Form.Plain => ("    for v in plain:", $"c{id}(v, {elements})"),
+                Form.Optional => ("    for v in optional:", $"c{id}(v, {elements})"),
+                _ => ("    for v in [0]:", $"c{id}({elements})"),
             };
             Add(loop, cell.Id);
             Add("        try:", cell.Id);
             Add($"            print({id}, {call})", cell.Id);
             Add("        except TypeError:", cell.Id);
             Add($"            print({id}, \"TypeError\")", cell.Id);
+            Add("        except AttributeError:", cell.Id);
+            Add($"            print({id}, \"AttributeError\")", cell.Id);
             Add("        except Exception:", cell.Id);
             Add($"            print({id}, \"other\")", cell.Id);
         }
@@ -356,42 +594,40 @@ public class OptionalMembershipDifferentialTests : IntegrationTestBase
     private static readonly IReadOnlySet<string> NoCodes = new HashSet<string>();
     private static readonly IReadOnlySet<string> Spy0222 = new HashSet<string> { DiagnosticCodes.Semantic.InvalidBinaryOperation };
 
-    /// <summary>The spec's needle-slot rule (membership_operators.md › Container kinds): every generated
-    /// equality-scan container's slot IS the payload; <c>range</c> and <c>bytes</c> hold an <c>int</c>, so an integer
-    /// payload fits when the catalog converts it to <c>int32</c> implicitly and nothing else fits; <c>str</c> holds a
-    /// <c>str</c> (substring test).</summary>
+    /// <summary>The needle-slot rule (membership_operators.md › Container kinds, as owner ruling C amends the
+    /// <c>bytes</c> row): an element-typed container's slot IS the payload. A fixed-slot container's slots are its
+    /// public single-argument <c>Contains</c> parameter types, read by reflection: the payload holds one when its CLR
+    /// type is that type, or when it is an integer the catalog converts implicitly to it (so <c>range</c> and
+    /// <c>bytes</c> take <c>int</c> and narrower, <c>bytes</c> also takes <c>bytes</c>, <c>str</c> takes <c>str</c>,
+    /// an IP network its address type).</summary>
     private static bool SlotHolds(Cell cell)
     {
+        if (IsElementTyped(cell.Container))
+            return true;
         var payload = cell.Payload;
-        return cell.Container switch
-        {
-            Container.Range or Container.Bytes => payload.Kind == PayloadKind.Integer
-                && (payload.Name == "int32" || PrimitiveCatalog.CanImplicitlyConvert(
-                    PrimitiveCatalog.GetByName(payload.Name)!, PrimitiveCatalog.GetByName("int32")!)),
-            Container.Str => payload.Kind == PayloadKind.Str,
-            _ => true,
-        };
+        if (payload.ClrType is not { } clr)
+            return false;
+        return ContainsSlots(ClrTypeOf(cell.Container)!).Any(slot => slot == clr
+            || (payload.Kind == PayloadKind.Integer && PrimitiveCatalog.GetByClrType(slot) is { } to
+                && PrimitiveCatalog.CanImplicitlyConvert(PrimitiveCatalog.GetByName(payload.Name)!, to)));
     }
 
     /// <summary>
     /// The case → expected map. COMPARED: a needle the slot holds, plain or <c>T | None</c>, prints CPython's values —
-    /// <c>False</c> for a None needle in an equality scan (owner ruling 1, #2635) and <c>TypeError</c> for a None
-    /// needle in <c>str</c>/<c>bytes</c> (owner ruling 2: accepted, TypeError at run time); so does the literal
-    /// HAND-EXPECTED, by owner ruling A (2026-11-12): the literal <c>None</c> into a non-optional slot (every generated
-    /// container) is refused by SPY0222. HAND-EXPECTED, by
-    /// the deviation <c>membership-needle-type-mismatch</c> in <c>docs/deviations.yaml</c> ("a value the element type
-    /// cannot hold can never be a member, so the test is a type error rather than a constant False"): a typed needle
-    /// the slot cannot hold (<see cref="SlotHolds"/>) is refused by SPY0222. HAND-EXPECTED, out of this contract: a
-    /// chain link (#2648, below).
+    /// <c>False</c> for a None needle in an equality scan (owner ruling 1, #2635), <c>TypeError</c> for a None needle
+    /// in <c>str</c>/<c>bytes</c> (owner ruling 2: accepted, TypeError at run time), and whatever CPython answers for
+    /// the other fixed-slot containers; so does the literal <c>None</c> into an optional element (owner ruling A).
+    /// HAND-EXPECTED, by owner ruling A (2026-11-12): the literal <c>None</c> into a non-optional slot is refused by
+    /// SPY0222. HAND-EXPECTED, by the deviation <c>membership-needle-type-mismatch</c> in <c>docs/deviations.yaml</c>:
+    /// a typed needle the slot cannot hold (<see cref="SlotHolds"/>) is refused by SPY0222. HAND-EXPECTED, out of this
+    /// contract: a chain link (#2648, below).
     /// </summary>
     private static Expectation Expect(Cell cell, IReadOnlyDictionary<string, Cell> byKey)
     {
-        if (cell.Form == Form.NoneLiteral && cell.Position != Position.ChainLink)
+        if (cell.Form == Form.NoneLiteral && !cell.OptionalElement && cell.Position != Position.ChainLink)
         {
-            // Owner ruling A, 2026-11-12 (superseding the day's earlier literal-None rulings): "switch to the table,
-            // refuse literal None for non-optional containers, makes the most sense". Every generated container's
-            // element type is non-optional (the literal into an optional element is the plan's named control), so the
-            // literal is refused at compile time, like any needle that can never match. The chain link inherits it.
+            // Owner ruling A, 2026-11-12: "switch to the table, refuse literal None for non-optional containers, makes
+            // the most sense". The chain link inherits it.
             return new Expectation(false, Spy0222, "literal None into a non-optional slot: owner ruling A (2026-11-12)");
         }
 
@@ -406,17 +642,23 @@ public class OptionalMembershipDifferentialTests : IntegrationTestBase
             return new Expectation(false, codes, "chain link: the expression twin's checker verdict, then SPY0519 (#2648)");
         }
 
+        if (cell.Form == Form.NoneLiteral)
+            return new Expectation(true, NoCodes, "literal None into an optional element: owner ruling A (2026-11-12)");
+
         if (!SlotHolds(cell))
             return new Expectation(false, Spy0222, "by deviation membership-needle-type-mismatch, not by oracle: the slot cannot hold this type");
 
         return new Expectation(true, NoCodes, cell.Form == Form.Plain
             ? "plain needle"
-            : "T | None needle: owner rulings 1-2 (None is no member of an equality scan; TypeError for str/bytes)");
+            : "T | None needle: owner rulings 1-2 (None is no member of an equality scan; TypeError for str/bytes); CPython's answer elsewhere");
     }
 
+    /// <summary>The python twin's names for Sharpy's types and its <c>email.EmailMessage</c> (python's lives in
+    /// <c>email.message</c>).</summary>
     private const string PythonPrelude =
         "from decimal import Decimal as decimal\n"
-        + "int8 = int16 = int32 = int64 = uint8 = uint16 = uint32 = uint64 = int\nfloat32 = float64 = float\n";
+        + "int8 = int16 = int32 = int64 = uint8 = uint16 = uint32 = uint64 = int\nfloat32 = float64 = float\n"
+        + "import email, email.message\nemail.EmailMessage = email.message.EmailMessage\n";
 
     [SkippableFact]
     public void OptionalNeedle_EveryContainerOperatorPosition_MatchesCPython()
@@ -424,35 +666,45 @@ public class OptionalMembershipDifferentialTests : IntegrationTestBase
         // The oracle minor is the repository's .python-version pin (3.15).
         var oracle = PythonBatchOracle.Over(PythonInterpreter.RequireOrSkip(minMinor: 15));
 
-        AssertPayloadAxisIsTheCatalog();
         AssertContainerAxisIsTheSpecTable();
+        AssertClrRowIsTheContainsCensus();
+        AssertPayloadAxisIsTheCatalogAndTheSlots();
+        AssertEveryExclusionHasAReason();
+        // The generator's element-typed predicate is the literal roster, container by container.
+        Assert.Equal(ElementTypedRoster.OrderBy(c => c), Containers().Where(IsElementTyped).OrderBy(c => c));
 
         var payloads = GeneratePayloads();
         var cells = GenerateCells(payloads);
 
         // Totality: the cell count is the product of the axis sizes, each from its own source (the catalog minus its
-        // named exclusions plus the two composites; the spec table's containers; the enums). Never from the generator,
-        // so a cell the generator drops (or invents) is red.
-        var payloadCount = CanonicalPrimitives().Count - ExcludedPrimitives.Count + 2;
+        // named exclusions plus the two composites plus the reflected slot types; the spec table's containers, doubled
+        // for the literal element-typed roster; the enums). Never from the generator or its predicates, so a cell the
+        // generator drops (or invents) is red.
+        var payloadCount = CanonicalPrimitives().Count - ExcludedPrimitives.Count + 2 + RequiredSlotPayloadTypes().Count;
         var containerCount = SpecRowMap.Sum(m => m.Generated.Length);
+        var elementTypedCount = ElementTypedRoster.Length;
         var formCount = Enum.GetValues<Form>().Length;
         var positionCount = Enum.GetValues<Position>().Length;
-        var expectedCount = payloadCount * containerCount * Operators.Length * formCount * positionCount;
+        var containerVariants = containerCount + elementTypedCount;
+        var expectedCount = payloadCount * containerVariants * Operators.Length * formCount * positionCount;
         Assert.Equal(2, Operators.Length);
         Assert.Equal(payloadCount, payloads.Count);
         Assert.True(expectedCount == cells.Count,
             $"the generator made {cells.Count} cells; the axes give {expectedCount} ({payloadCount} payloads x "
-            + $"{containerCount} containers x {Operators.Length} operators x {formCount} forms x {positionCount} positions): "
+            + $"{containerVariants} container variants ({containerCount} containers, {elementTypedCount} with an optional "
+            + $"element) x {Operators.Length} operators x {formCount} forms x {positionCount} positions): "
             + "a cell was dropped or invented");
 
-        // CPython: one program per payload, one batch.
-        var programs = payloads.Select(p => ProgramFor(p, cells.Where(c => c.Payload == p).ToList())).ToList();
-        var py = oracle.RunBatch(programs.Select((prog, i) => new PyRequest(i, PythonPrelude + prog.Source + "main()\n")).ToList());
+        // CPython: one program per payload × container (the runner passes a program as one argv string, which the OS
+        // caps at 128 KiB), one batch.
+        var chunks = cells.GroupBy(c => (c.Payload, c.Container)).Select(g => (Name: $"{g.Key.Payload.Name}/{g.Key.Container}",
+            Program: ProgramFor(g.Key.Payload, g.ToList()))).ToList();
+        var py = oracle.RunBatch(chunks.Select((chunk, i) => new PyRequest(i, PythonPrelude + chunk.Program.Source + "main()\n")).ToList());
         var pythonById = new Dictionary<int, List<string>>();
-        for (var i = 0; i < payloads.Count; i++)
+        for (var i = 0; i < chunks.Count; i++)
         {
             Assert.True(py.TryGetValue(i, out var result) && result.Ok,
-                $"python3 did not run the {payloads[i].Name} program: " + (result?.Stderr ?? "no verdict"));
+                $"python3 did not run the {chunks[i].Name} program: " + (result?.Stderr ?? "no verdict"));
             foreach (var (id, values) in ParseLines(result!.Stdout))
                 pythonById[id] = values;
         }
@@ -544,6 +796,31 @@ public class OptionalMembershipDifferentialTests : IntegrationTestBase
         // The optional column can pass: a reference payload's T | None needle already runs and prints False for None.
         Assert.Contains(cells, c => c.Form == Form.Optional && sharpyById[c.Id].Values is { } v
             && v.Contains("False") && v.SequenceEqual(pythonById[c.Id]) && divergences.All(d => d.Cell != c));
+        // The element-optionality axis discriminates, container by container: a None needle into an optional element
+        // is a member (CPython `True False True` over a member, a non-member and None), so a lift that answers False
+        // for every None needle is red there, and a container whose optional variant lost its None element is red here.
+        // The Sharpy half (the cell runs and agrees today) holds for every element-typed container but the named ones.
+        var trueFalseTrue = new[] { "True", "False", "True" };
+        var controlled = 0;
+        foreach (var container in ElementTypedRoster)
+        {
+            controlled++;
+            var controls = cells.Where(c => c.Container == container && c.OptionalElement && c.Form == Form.Optional
+                && c.Operator == BinaryOperator.In && expectations[c.Id].Compared).ToList();
+            Assert.True(controls.Any(c => pythonById[c.Id].SequenceEqual(trueFalseTrue)),
+                $"{container}OfOptional: no compared T | None needle cell where CPython answers True False True "
+                + "(the optional variant must hold a None element)");
+            if (!OptionalElementControlExcluded.ContainsKey(container))
+                Assert.True(controls.Any(c => pythonById[c.Id].SequenceEqual(trueFalseTrue)
+                        && sharpyById[c.Id].Values is { } v && v.SequenceEqual(trueFalseTrue)),
+                    $"{container}OfOptional: no cell where Sharpy also answers True False True (exempt it in "
+                    + "OptionalElementControlExcluded with a reason and an issue, or fix it)");
+            else
+                Assert.False(controls.Any(c => sharpyById[c.Id].Values is { } v && v.SequenceEqual(trueFalseTrue)),
+                    $"{container} is in OptionalElementControlExcluded but Sharpy now answers True False True: "
+                    + "delete the exemption");
+        }
+        Assert.Equal(ElementTypedRoster.Length, controlled);
 
         // Written on every run, header included, so copying it over the allowlist is a byte-identical round trip
         // when nothing moved and a reviewable diff when something did.
@@ -607,17 +884,85 @@ public class OptionalMembershipDifferentialTests : IntegrationTestBase
         return tmp;
     }
 
-    /// <summary>Every canonical primitive is a payload or an exclusion with its reason — never neither, never both.</summary>
-    private static void AssertPayloadAxisIsTheCatalog()
+    /// <summary>The fixed needle-slot types of the container axis (reflected <c>Contains</c> parameters of every
+    /// non-element-typed container) that the catalog does not name: the payloads <see cref="SlotPayloads"/> must
+    /// spell.</summary>
+    private static IReadOnlyList<Type> RequiredSlotPayloadTypes() =>
+        SpecRowMap.SelectMany(m => m.Generated)
+            .Where(c => !IsElementTyped(c))
+            .SelectMany(c => ContainsSlots(ClrTypeOf(c)!))
+            .Where(t => PrimitiveCatalog.GetByClrType(t) == null)
+            .Distinct()
+            .OrderBy(t => t.FullName, StringComparer.Ordinal)
+            .ToList();
+
+    /// <summary>Every canonical primitive is a payload or an exclusion with its reason — never neither, never both; and
+    /// every fixed needle slot of the container axis is a payload's type (a catalog primitive, or a
+    /// <see cref="SlotPayloads"/> entry), with no slot payload that is not such a slot.</summary>
+    private static void AssertPayloadAxisIsTheCatalogAndTheSlots()
     {
         var canonical = CanonicalPrimitives();
-        var generated = GeneratePayloads().Select(p => p.Name).ToHashSet(StringComparer.Ordinal);
+        var payloads = GeneratePayloads();
+        var generated = payloads.Select(p => p.Name).ToHashSet(StringComparer.Ordinal);
         var unaccounted = canonical.Where(n => !generated.Contains(n) && !ExcludedPrimitives.ContainsKey(n)).ToList();
         Assert.True(unaccounted.Count == 0,
             "primitives neither generated nor excluded (give them literals or an exclusion reason): " + string.Join(", ", unaccounted));
         var phantom = ExcludedPrimitives.Keys.Where(n => !canonical.Contains(n)).ToList();
         Assert.True(phantom.Count == 0, "excluded names that are not canonical primitives: " + string.Join(", ", phantom));
         Assert.DoesNotContain(generated, ExcludedPrimitives.ContainsKey);
+
+        var required = RequiredSlotPayloadTypes().Select(t => t.FullName!).ToList();
+        Assert.True(required.OrderBy(n => n, StringComparer.Ordinal).SequenceEqual(SlotPayloads.Keys.OrderBy(n => n, StringComparer.Ordinal)),
+            "the container axis's fixed needle slots outside the catalog are [" + string.Join(", ", required)
+            + "]; SlotPayloads spells [" + string.Join(", ", SlotPayloads.Keys.OrderBy(n => n, StringComparer.Ordinal)) + "]");
+        Assert.All(payloads.Where(p => p.Kind == PayloadKind.Slot), p => Assert.NotNull(p.ClrType));
+        // Every catalog-typed slot is a payload or an excluded primitive.
+        var catalogSlots = SpecRowMap.SelectMany(m => m.Generated).Where(c => !IsElementTyped(c))
+            .SelectMany(c => ContainsSlots(ClrTypeOf(c)!)).Select(PrimitiveCatalog.GetByClrType).OfType<PrimitiveCatalog.PrimitiveInfo>()
+            .Select(i => i.SharpyName).Distinct().ToList();
+        Assert.All(catalogSlots, n => Assert.True(generated.Contains(n) || ExcludedPrimitives.ContainsKey(n), $"slot primitive {n}"));
+    }
+
+    /// <summary>The CLR row is the census: the roster's keys are exactly the public types of Sharpy.Core and
+    /// Sharpy.Stdlib with a public instance single-argument <c>Contains</c>; each generates one container or names why
+    /// not; and every container of the CLR row comes from the roster.</summary>
+    private static void AssertClrRowIsTheContainsCensus()
+    {
+        var census = SharpyTypes().Where(t => ContainsSlots(t).Count > 0).Select(t => t.FullName!)
+            .OrderBy(n => n, StringComparer.Ordinal).ToList();
+        var roster = ClrContainerRoster.Keys.OrderBy(n => n, StringComparer.Ordinal).ToList();
+        Assert.True(census.SequenceEqual(roster),
+            "public single-argument Contains census [" + string.Join(", ", census) + "] vs ClrContainerRoster ["
+            + string.Join(", ", roster) + "]: generate or exclude (with a reason) each type, and drop each phantom");
+        foreach (var (name, (generated, excluded)) in ClrContainerRoster)
+            Assert.True(generated.HasValue != (excluded != null), $"{name}: a container or an exclusion reason, exactly one");
+        var fromRoster = ClrContainerRoster.Values.Where(v => v.Generated.HasValue).Select(v => v.Generated!.Value).ToList();
+        Assert.Equal(fromRoster.Count, fromRoster.Distinct().Count());
+        var clrRow = SpecRowMap.Single(m => m.Row.StartsWith("a CLR type", StringComparison.Ordinal)).Generated;
+        Assert.All(clrRow, c => Assert.True(fromRoster.Contains(c) || c == EnumerableArm.Generated, $"{c}: not from the roster"));
+        Assert.Contains(EnumerableArm.Generated, clrRow);
+        Assert.DoesNotContain(EnumerableArm.Generated, fromRoster);
+        // The representative IS of the arm it stands for: no Contains of its own, an IEnumerable<T>.
+        var arm = SharpyTypesByName.Value[EnumerableArm.ClrName];
+        Assert.Empty(ContainsSlots(arm));
+        Assert.Contains(arm.GetInterfaces(), i => i.IsGenericType && i.GetGenericTypeDefinition() == typeof(IEnumerable<>));
+    }
+
+    /// <summary>Every exclusion names its reason: a primitive, a census type, a spec row's unexpanded part, the
+    /// enumerable arm's representative, and an exemption from the optional-element control (which also names its
+    /// issue). An empty or blank reason is red.</summary>
+    private static void AssertEveryExclusionHasAReason()
+    {
+        static bool Blank(string? s) => string.IsNullOrWhiteSpace(s);
+        Assert.All(ExcludedPrimitives, e => Assert.False(Blank(e.Value), $"primitive {e.Key}: no reason"));
+        Assert.All(ClrContainerRoster.Where(r => r.Value.Generated == null),
+            r => Assert.False(Blank(r.Value.Excluded), $"census type {r.Key}: no exclusion reason"));
+        Assert.All(SpecRowMap.Where(m => m.Excluded != null || m.Generated.Length == 0),
+            m => Assert.False(Blank(m.Excluded), $"spec row {m.Row}: no exclusion reason"));
+        Assert.False(Blank(EnumerableArm.Why), "EnumerableArm: no reason");
+        Assert.All(OptionalElementControlExcluded, e => Assert.True(
+            !Blank(e.Value) && System.Text.RegularExpressions.Regex.IsMatch(e.Value, "#[0-9]+"),
+            $"{e.Key}: an optional-element control exemption needs a reason and an issue"));
     }
 
     /// <summary>The container axis is the spec's "Container kinds" table: every row is mapped, every mapped row
