@@ -18,10 +18,10 @@
 # total known-limit-S6ok identity ontype rows=13 n=45
 # total known-limit-S6ok identity range-line rows=13 n=45
 # total known-limit-S6ok identity range-whole rows=13 n=39
-# total refused-work identity range-block rows=7 n=9 withwork=2411
+# total refused-work identity range-block rows=7 n=9 withwork=2413
 # total refused-work identity range-line rows=4 n=10 withwork=138
-# total refused-work identity range-statement rows=1 n=1 withwork=1051
-# total refused-work identity range-whole rows=0 n=0 withwork=2230
+# total refused-work identity range-statement rows=1 n=1 withwork=1052
+# total refused-work identity range-whole rows=0 n=0 withwork=2231
 # total s7-parity-exempt identity full rows=486 n=486
 # total s7-parity-exempt identity ontype rows=482 n=482
 # total s7-parity-exempt identity range-line rows=482 n=482
@@ -32,24 +32,24 @@
 # total known-limit-S6ok comment ontype rows=2 n=18
 # total known-limit-S6ok comment range-line rows=2 n=18
 # total known-limit-S6ok comment range-whole rows=2 n=6
-# total refused-work comment range-block rows=1 n=4 withwork=2490
+# total refused-work comment range-block rows=1 n=4 withwork=2493
 # total refused-work comment range-line rows=0 n=0 withwork=33
-# total refused-work comment range-statement rows=0 n=0 withwork=730
-# total refused-work comment range-whole rows=0 n=0 withwork=3375
-# total s7-parity-exempt comment full rows=1656 n=1656
-# total s7-parity-exempt comment ontype rows=1652 n=1652
-# total s7-parity-exempt comment range-line rows=1652 n=1652
-# total s7-parity-exempt comment range-whole rows=1656 n=1656
+# total refused-work comment range-statement rows=0 n=0 withwork=731
+# total refused-work comment range-whole rows=0 n=0 withwork=3377
+# total s7-parity-exempt comment full rows=1657 n=1657
+# total s7-parity-exempt comment ontype rows=1653 n=1653
+# total s7-parity-exempt comment range-line rows=1653 n=1653
+# total s7-parity-exempt comment range-whole rows=1657 n=1657
 # total known-limit-S6k wide ontype rows=2 n=2
 # total known-limit-S6k wide range-line rows=2 n=2
 # total known-limit-S6ok wide full rows=13 n=39
 # total known-limit-S6ok wide ontype rows=13 n=45
 # total known-limit-S6ok wide range-line rows=13 n=45
 # total known-limit-S6ok wide range-whole rows=13 n=39
-# total refused-work wide range-block rows=1163 n=4321 withwork=13690
+# total refused-work wide range-block rows=1163 n=4325 withwork=13700
 # total refused-work wide range-line rows=194 n=2734 withwork=5043
-# total refused-work wide range-statement rows=253 n=373 withwork=7092
-# total refused-work wide range-whole rows=0 n=0 withwork=3369
+# total refused-work wide range-statement rows=253 n=373 withwork=7095
+# total refused-work wide range-whole rows=0 n=0 withwork=3371
 # total s7-parity-exempt wide full rows=486 n=486
 # total s7-parity-exempt wide range-whole rows=486 n=486
 # total known-limit-S6k crlf ontype rows=2 n=2
@@ -3335,6 +3335,7 @@ s7-parity-exempt comment full operators/augassign_collection_rhs_1682 1 # #2279
 s7-parity-exempt comment full operators/augassign_refuse_set_list_1682 1 # #2279
 s7-parity-exempt comment full operators/augassign_rhs_projection_1682 1 # #2279
 s7-parity-exempt comment full operators/generic_compareto_1623 1 # #2279
+s7-parity-exempt comment full operators/operator_lowering_optional_store_wrap_2443 1 # #2279
 s7-parity-exempt comment full operators/optional_operator_lowering_matrix_1623 1 # #2279
 s7-parity-exempt comment full operators/string_repeat_both_orders_1623 1 # #2279
 s7-parity-exempt comment full optional_narrowed_ops 1 # #2279
@@ -4987,6 +4988,7 @@ s7-parity-exempt comment ontype operators/augassign_collection_rhs_1682 1 # #227
 s7-parity-exempt comment ontype operators/augassign_refuse_set_list_1682 1 # #2279
 s7-parity-exempt comment ontype operators/augassign_rhs_projection_1682 1 # #2279
 s7-parity-exempt comment ontype operators/generic_compareto_1623 1 # #2279
+s7-parity-exempt comment ontype operators/operator_lowering_optional_store_wrap_2443 1 # #2279
 s7-parity-exempt comment ontype operators/optional_operator_lowering_matrix_1623 1 # #2279
 s7-parity-exempt comment ontype operators/string_repeat_both_orders_1623 1 # #2279
 s7-parity-exempt comment ontype optional_narrowed_ops 1 # #2279
@@ -6639,6 +6641,7 @@ s7-parity-exempt comment range-line operators/augassign_collection_rhs_1682 1 # 
 s7-parity-exempt comment range-line operators/augassign_refuse_set_list_1682 1 # #2279
 s7-parity-exempt comment range-line operators/augassign_rhs_projection_1682 1 # #2279
 s7-parity-exempt comment range-line operators/generic_compareto_1623 1 # #2279
+s7-parity-exempt comment range-line operators/operator_lowering_optional_store_wrap_2443 1 # #2279
 s7-parity-exempt comment range-line operators/optional_operator_lowering_matrix_1623 1 # #2279
 s7-parity-exempt comment range-line operators/string_repeat_both_orders_1623 1 # #2279
 s7-parity-exempt comment range-line optional_narrowed_ops 1 # #2279
@@ -8295,6 +8298,7 @@ s7-parity-exempt comment range-whole operators/augassign_collection_rhs_1682 1 #
 s7-parity-exempt comment range-whole operators/augassign_refuse_set_list_1682 1 # #2279
 s7-parity-exempt comment range-whole operators/augassign_rhs_projection_1682 1 # #2279
 s7-parity-exempt comment range-whole operators/generic_compareto_1623 1 # #2279
+s7-parity-exempt comment range-whole operators/operator_lowering_optional_store_wrap_2443 1 # #2279
 s7-parity-exempt comment range-whole operators/optional_operator_lowering_matrix_1623 1 # #2279
 s7-parity-exempt comment range-whole operators/string_repeat_both_orders_1623 1 # #2279
 s7-parity-exempt comment range-whole optional_narrowed_ops 1 # #2279
@@ -9312,7 +9316,7 @@ refused-work wide range-block events/event_with_lambda_subscribe_0009 2 # #2538
 refused-work wide range-block events/event_with_lambda_subscribe_0023 1 # #2538
 refused-work wide range-block events/event_with_lambda_subscribe_0059 3 # #2538
 refused-work wide range-block except_closed_generic_exception 3 # #2538
-refused-work wide range-block except_tuple_binding_common_base 14 # #2538
+refused-work wide range-block except_tuple_binding_common_base 18 # #2538
 refused-work wide range-block exception_handling/except_no_parens 7 # #2538
 refused-work wide range-block exception_handling/keyerror_text 28 # #2538
 refused-work wide range-block exception_handling/nested_except_same_variable 5 # #2538

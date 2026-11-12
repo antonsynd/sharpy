@@ -33,6 +33,7 @@ public class IrWrappedElementLookThroughTests
         ["IrLoweredLoop"] = "constructed: " + nameof(WrappedLoweredLoop_SizingComesFromTheChild),
         ["IrLoweredGenerator"] = "constructed: " + nameof(WrappedLoweredGenerator_ClausesComeFromTheChild),
         ["IrMemberAccess"] = "constructed: " + nameof(WrappedMemberAccess_ResolvedClrNameComesFromTheChild),
+        ["IrOperatorExpression"] = "output: operators/operator_lowering_wrapped_element_2443 `Some(global::Sharpy.Builtins.FloorDiv(a, b))` snapshot (absent: Native, `//` throws \"No floor-division lowering recorded\")",
     };
 
     /// <summary>Kinds the emitter reads by key but never through a wrapped element, with the reason.</summary>
@@ -43,9 +44,21 @@ public class IrWrappedElementLookThroughTests
     };
 
     /// <summary>
+    /// The emitter's by-key reads of an IR interface rather than a kind: the helper's name and the
+    /// interface it reads at the key (looking through the wrap, as <c>IrNodeFor&lt;T&gt;</c> does). A
+    /// call of the helper reads every <see cref="IrExpression"/> kind implementing the interface
+    /// (plan-92249e D3: <c>OperatorLoweringOf</c> reads the <see cref="IIrOperatorSite"/>).
+    /// </summary>
+    private static readonly Dictionary<string, Type> InterfaceReaders = new(StringComparer.Ordinal)
+    {
+        ["OperatorLoweringOf"] = typeof(IIrOperatorSite),
+    };
+
+    /// <summary>
     /// M10's guard: the roster — <see cref="IrExpression"/> subclasses by reflection (minus the wrap
-    /// itself) that CodeGen reads with <c>IrNodeFor&lt;T&gt;</c> — equals the pinned ∪ excluded
-    /// kinds, and every table entry is a member of the vocabulary.
+    /// itself) that CodeGen reads with <c>IrNodeFor&lt;T&gt;</c>, or through an
+    /// <see cref="InterfaceReaders"/> helper it calls — equals the pinned ∪ excluded kinds, and every
+    /// table entry is a member of the vocabulary.
     /// </summary>
     [Fact]
     public void Roster_IsClosed()
@@ -56,10 +69,26 @@ public class IrWrappedElementLookThroughTests
             .ToHashSet(StringComparer.Ordinal);
 
         var directory = EmitterBannedTokenScanTests.FindCodeGenSourceDirectory();
-        var read = Directory.GetFiles(directory, "*.cs", SearchOption.AllDirectories)
-            .SelectMany(f => Regex.Matches(File.ReadAllText(f), @"\b(?:Required)?IrNodeFor<(\w+)>").Select(m => m.Groups[1].Value))
+        var sources = Directory.GetFiles(directory, "*.cs", SearchOption.AllDirectories).Select(File.ReadAllText).ToList();
+        var read = sources
+            .SelectMany(text => Regex.Matches(text, @"\b(?:Required)?IrNodeFor<(\w+)>").Select(m => m.Groups[1].Value))
             .ToHashSet(StringComparer.Ordinal);
         read.Should().Contain("IrIndexAccess", "the census sees the emitter's by-key reads");
+
+        // A call of an interface reader (its declaration excluded) reads every expression kind that
+        // implements the interface.
+        foreach (var (helper, siteInterface) in InterfaceReaders)
+        {
+            var calls = sources.Sum(text =>
+                Regex.Matches(text, $@"\b{helper}\((?!\s*Node\s+\w+\s*\))").Count);
+            if (calls == 0)
+                continue;
+            read.UnionWith(typeof(IrExpression).Assembly.GetTypes()
+                .Where(t => siteInterface.IsAssignableFrom(t) && typeof(IrExpression).IsAssignableFrom(t) && !t.IsAbstract)
+                .Select(t => t.Name));
+        }
+        read.Should().Contain("IrOperatorExpression",
+            "the census sees the emitter's interface reads (OperatorLoweringOf reads IIrOperatorSite)");
 
         var roster = vocabulary.Where(read.Contains).OrderBy(n => n, StringComparer.Ordinal).ToList();
         var tabled = Pinned.Keys.Concat(Excluded.Keys).OrderBy(n => n, StringComparer.Ordinal).ToList();

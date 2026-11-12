@@ -608,7 +608,7 @@ internal sealed class ConstEligibility
                 return false;
         }
 
-        var lowering = semanticInfo.GetOperatorLowering(node);
+        var lowering = semanticInfo.GetOperatorLoweringForIr(node);
         return lowering == null || lowering.Kind is OperatorLoweringKind.Native
             or OperatorLoweringKind.TrueDivisionCastLeft
             or OperatorLoweringKind.ShiftCountCastToInt

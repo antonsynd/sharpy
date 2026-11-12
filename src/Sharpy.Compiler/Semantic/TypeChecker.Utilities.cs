@@ -501,7 +501,7 @@ internal partial class TypeChecker
             if (annotation.IsOptional || annotation.IsCSharpNullable || annotation.IsResult)
                 return null;
 
-            _semanticInfo.SetTypeTestLowering(lodgeOn, new TypeTestLowering(TypeTestLoweringKind.ClosedType, spelled));
+            _semanticInfo.SetTypeTestType(lodgeOn, spelled);
             return spelled;
         }
 
@@ -512,7 +512,7 @@ internal partial class TypeChecker
         if (!annotation.IsNameBacktickEscaped
             && ResolveBuiltinPrimitiveTypeName(annotation.Name) is { } primitive)
         {
-            _semanticInfo.SetTypeTestLowering(lodgeOn, new TypeTestLowering(TypeTestLoweringKind.ClosedType, primitive));
+            _semanticInfo.SetTypeTestType(lodgeOn, primitive);
             return primitive;
         }
 
@@ -589,8 +589,7 @@ internal partial class TypeChecker
             && !isNameEscaped
             && subjectType is GenericType { Name: BuiltinNames.Array } arrayScrutinee)
         {
-            _semanticInfo.SetTypeTestLowering(
-                lodgeOn, new TypeTestLowering(TypeTestLoweringKind.ClosedType, arrayScrutinee));
+            _semanticInfo.SetTypeTestType(lodgeOn, arrayScrutinee);
             return arrayScrutinee;
         }
 
@@ -598,15 +597,14 @@ internal partial class TypeChecker
         if (!typeSymbol.IsGeneric)
         {
             var closed = BuildClosedTypeTestType(typeSymbol);
-            _semanticInfo.SetTypeTestLowering(lodgeOn, new TypeTestLowering(TypeTestLoweringKind.ClosedType, closed));
+            _semanticInfo.SetTypeTestType(lodgeOn, closed);
             return closed;
         }
 
         // Arm 1b — fill the generic vector from the subject's own static type.
         if (FillTypeArgumentsFromSubject(typeSymbol, subjectType) is { } closedGeneric)
         {
-            _semanticInfo.SetTypeTestLowering(
-                lodgeOn, new TypeTestLowering(TypeTestLoweringKind.ClosedType, closedGeneric));
+            _semanticInfo.SetTypeTestType(lodgeOn, closedGeneric);
             return closedGeneric;
         }
 
@@ -902,7 +900,7 @@ internal partial class TypeChecker
     /// </para>
     /// </summary>
     private SemanticType? ResolveIsTypeFactType(Expression typeExpression) =>
-        _semanticInfo.GetTypeTestLowering(typeExpression)?.TestType;
+        _semanticInfo.GetTypeTestType(typeExpression);
 
     /// <summary>
     /// Returns true if the given type contains any <see cref="TypeParameterType"/>

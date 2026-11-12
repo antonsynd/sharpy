@@ -32,7 +32,7 @@ namespace Sharpy.Compiler.Tests.CodeGen;
 /// names: the standalone symbol records, <c>SemanticInfo</c>, <c>CodeGenInfo</c> and
 /// <c>SemanticBinding</c>. From those it takes the transitive closure
 /// of the semantic types appearing in their public signatures — so the node-keyed fact records
-/// (<c>BinaryOpLowering</c>, <c>NarrowedReadLowering</c>, <c>TypeTestLowering</c>, …) and the
+/// (<c>BinaryOpLowering</c>, <c>NarrowedReadLowering</c>, <c>TypeTestType</c>, …) and the
 /// enums they carry join automatically. Adding a new fact record and reading it from CodeGen needs
 /// no edit here; adding a new <em>decision-maker</em> and calling it from CodeGen fails this test.
 /// </para>
@@ -297,6 +297,106 @@ public class EmitterCarrierOnlyConformanceTests
                 $"ratchet entry {file} — {type} ({issue}) allows {count} references but only "
                 + $"{actual} remain: lower the number, or delete the entry when it reaches zero, "
                 + "in the same commit that removed them (allowlists drain on fix)");
+        }
+    }
+
+    // ---- the ForIr convention (#2443, plan-92249e D7) -------------------------------------------
+
+    /// <summary>
+    /// The least number of <c>…ForIr</c> calls under <c>src/Sharpy.Compiler/Lowering/</c>: the positive
+    /// control of <see cref="ForIrAccessors_AreCalledByTheLoweringNeverByCodeGen"/>. The lowering pass
+    /// is the consumer the convention names, so a census that sees fewer is reading the wrong tree.
+    /// </summary>
+    private const int LoweringForIrCallFloor = 6;
+
+    /// <summary>
+    /// The <c>ForIr</c> convention (#2443, plan-92249e D7): a <c>SemanticInfo</c> accessor whose name
+    /// ends <c>ForIr</c> is lowering input, "renamed so nothing in <c>CodeGen/</c> can bind it" — the
+    /// emitter reads the IR node the pass built from it instead. Until this census nothing asserted
+    /// that. A Roslyn-syntax census of every invocation whose member name ends <c>ForIr</c>
+    /// (<c>a.XForIr(…)</c>, <c>a?.XForIr(…)</c>, <c>XForIr(…)</c>; comments and declarations are not
+    /// invocations), per directory: zero under <c>CodeGen/</c>, and at least
+    /// <see cref="LoweringForIrCallFloor"/> under <c>Lowering/</c> (the positive control: the census
+    /// sees the calls that exist).
+    /// </summary>
+    [Fact]
+    public void ForIrAccessors_AreCalledByTheLoweringNeverByCodeGen()
+    {
+        var codeGenDirectory = EmitterBannedTokenScanTests.FindCodeGenSourceDirectory();
+        var loweringDirectory = Path.Combine(Path.GetDirectoryName(codeGenDirectory)!, "Lowering");
+
+        var codeGenCalls = ForIrInvocationsUnder(codeGenDirectory);
+        var loweringCalls = ForIrInvocationsUnder(loweringDirectory);
+
+        _output.WriteLine($"FORIR-CENSUS dir=CodeGen calls={codeGenCalls.Count}");
+        _output.WriteLine($"FORIR-CENSUS dir=Lowering calls={loweringCalls.Count}");
+        foreach (var call in codeGenCalls.Concat(loweringCalls))
+            _output.WriteLine($"  {call}");
+
+        codeGenCalls.Should().BeEmpty(
+            "a ...ForIr accessor is lowering input: the emitter reads the IR node the pass built from it "
+            + "(#2443 items 1-2). Calls:\n  " + string.Join("\n  ", codeGenCalls));
+        loweringCalls.Count.Should().BeGreaterThanOrEqualTo(LoweringForIrCallFloor,
+            $"the positive control: the lowering pass calls the ForIr accessors, so a census of {loweringDirectory} "
+            + "that sees fewer is reading the wrong tree or the wrong syntax");
+    }
+
+    /// <summary>
+    /// Controls for <see cref="ForIrInvocations"/>: each invocation spelling is counted, and a
+    /// declaration, a comment, a string and a non-<c>ForIr</c> call are not.
+    /// </summary>
+    [Fact]
+    public void SyntheticForIrInvocations_AreCounted_DeclarationsAndMentionsAreNot()
+    {
+        const string source = """
+            class C
+            {
+                // info.GetOperatorLoweringForIr(node) in a comment
+                public object? GetThingForIr(object node) => null;
+                void M(Info info, Info? maybe, object node)
+                {
+                    var a = info.GetOperatorLoweringForIr(node);
+                    var b = maybe?.GetExceptAlternativesForIr(node);
+                    var c = GetThingForIr(node);
+                    var d = info.GetGenericForIr<int>(node);
+                    var e = info.GetOperatorLowering(node);
+                    var f = "x.GetOperatorLoweringForIr(node)";
+                }
+            }
+            """;
+
+        ForIrInvocations("Synthetic.cs", source).Select(call => call.Split(' ')[1]).Should().Equal(
+            new[] { "GetOperatorLoweringForIr", "GetExceptAlternativesForIr", "GetThingForIr", "GetGenericForIr" },
+            "member access, conditional access, a bare call and a generic call are each one invocation");
+    }
+
+    private static List<string> ForIrInvocationsUnder(string directory)
+    {
+        Directory.Exists(directory).Should().BeTrue($"the census root {directory} exists");
+        return Directory.GetFiles(directory, "*.cs", SearchOption.AllDirectories)
+            .OrderBy(f => f, StringComparer.Ordinal)
+            .SelectMany(f => ForIrInvocations(Path.GetFileName(f), File.ReadAllText(f)))
+            .ToList();
+    }
+
+    /// <summary>Every invocation in <paramref name="source"/> whose member name ends <c>ForIr</c>, as <c>file:line name</c>.</summary>
+    private static IEnumerable<string> ForIrInvocations(string fileName, string source)
+    {
+        var root = CSharpSyntaxTree.ParseText(source).GetRoot();
+        foreach (var invocation in root.DescendantNodes().OfType<InvocationExpressionSyntax>())
+        {
+            var name = invocation.Expression switch
+            {
+                MemberAccessExpressionSyntax access => access.Name.Identifier.Text,
+                MemberBindingExpressionSyntax binding => binding.Name.Identifier.Text,
+                SimpleNameSyntax simple => simple.Identifier.Text,
+                _ => null,
+            };
+            if (name == null || !name.EndsWith("ForIr", StringComparison.Ordinal))
+                continue;
+
+            var line = invocation.GetLocation().GetLineSpan().StartLinePosition.Line + 1;
+            yield return $"{fileName}:{line} {name}";
         }
     }
 
@@ -819,7 +919,7 @@ public class EmitterCarrierOnlyConformanceTests
                 "GetInferredTypeArguments", "GetPatternUnionCaseTypeArguments", "GetVariableType",
             },
             "SemanticType getters, list-of-SemanticType getters and SemanticBinding getters are all type reads");
-        TypeReadAccessors.Should().NotContain(new[] { "GetOperatorLowering", "MergeFrom" },
+        TypeReadAccessors.Should().NotContain(new[] { "GetOperatorLoweringForIr", "MergeFrom" },
             "a getter that returns no SemanticType is not a type read");
 
         var source = string.Join("\n",

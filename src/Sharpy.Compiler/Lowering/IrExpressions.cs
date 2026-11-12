@@ -22,15 +22,23 @@ internal abstract record IrExpression(SemanticType? Type, TextSpan Span) : IrNod
 /// <param name="Right">The lowered right operand.</param>
 /// <param name="Strategy">How code generation must emit the comparison (native operator, instance
 /// or static <c>Equals</c> call, or null pattern check).</param>
+/// <param name="Operator">The operator lowering the checker recorded on the comparison
+/// (<see cref="OperatorLoweringKind.ReflectedOperands"/> when the right operand's reflected dunder
+/// answers it; <see cref="OperatorLoweringKind.Native"/> when nothing was recorded). P82 tranche 3
+/// (#2443, plan-92249e D1).</param>
 /// <param name="Type">The result type (<c>bool</c>).</param>
 /// <param name="Span">The originating source span.</param>
 internal sealed record IrEqualityComparison(
     IrExpression Left,
     IrExpression Right,
     BinaryOpLowering Strategy,
+    OperatorLoweringKind Operator,
     SemanticType? Type,
-    TextSpan Span) : IrExpression(Type, Span)
+    TextSpan Span) : IrExpression(Type, Span), IIrOperatorSite
 {
+    /// <summary>Always <c>null</c>: the checker records no narrowing on a comparison.</summary>
+    public SemanticType? NarrowTo => null;
+
     /// <inheritdoc/>
     public override ImmutableArray<IrNode> Children => ImmutableArray.Create<IrNode>(Left, Right);
 }
@@ -288,6 +296,35 @@ internal sealed record IrOpaqueExpression(
     SemanticType? Type,
     TextSpan Span,
     ImmutableArray<IrNode> Children) : IrExpression(Type, Span)
+{
+    /// <inheritdoc/>
+    public override ImmutableArray<IrNode> Children { get; } = Children;
+}
+
+/// <summary>
+/// An operator expression whose AST key carries a recorded operator lowering
+/// (<c>SemanticInfo._operatorLowerings</c>; P82 tranche 3, #2443, plan-92249e D1): a
+/// <see cref="BinaryOp"/> other than <c>==</c>/<c>!=</c> (an <see cref="IrEqualityComparison"/>) and
+/// other than a folded constant power (an <see cref="IrConstant"/>), a <see cref="UnaryOp"/>, or a
+/// <see cref="FunctionCall"/> that applies a base class's operator (<c>super().__add__(o)</c>). The
+/// pass builds it exactly when the key has an entry; any other such expression stays an
+/// <see cref="IrOpaqueExpression"/>, whose operator reads <c>(Native, null)</c>.
+/// </summary>
+/// <param name="Ast">The original AST expression, kept because the E3 const-folding pass folds from
+/// it (<c>-5</c> is a <see cref="OperatorLoweringKind.NegateLiteralInt"/> and folds).</param>
+/// <param name="Operator">How code generation must emit the operator.</param>
+/// <param name="NarrowTo">The base type a super operator application casts its receiver to, or
+/// <c>null</c>.</param>
+/// <param name="Type">The expression's resolved type, when the type checker recorded one.</param>
+/// <param name="Span">The originating source span.</param>
+/// <param name="Children">The lowered child IR nodes, in <c>GetChildNodes</c> order (totality).</param>
+internal sealed record IrOperatorExpression(
+    Expression Ast,
+    OperatorLoweringKind Operator,
+    SemanticType? NarrowTo,
+    SemanticType? Type,
+    TextSpan Span,
+    ImmutableArray<IrNode> Children) : IrExpression(Type, Span), IIrOperatorSite
 {
     /// <inheritdoc/>
     public override ImmutableArray<IrNode> Children { get; } = Children;

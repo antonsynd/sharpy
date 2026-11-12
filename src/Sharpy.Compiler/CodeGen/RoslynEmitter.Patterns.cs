@@ -1273,7 +1273,7 @@ internal partial class RoslynEmitter
     /// <para>
     /// One reader for the type-pattern arm, all three positional self-matching sub-arms
     /// (binding / wildcard / inner pattern) and the property-pattern arm, because they emit one
-    /// test. The recorded <see cref="TypeTestLowering"/> is consulted FIRST and the recorded pattern
+    /// test. The recorded type-test type (<see cref="TypeTestTypeSyntax"/>) is consulted FIRST and the recorded pattern
     /// type only as its narrower sibling: the two differ exactly where the difference matters — an
     /// erased builtin collection tests <c>Sharpy.IList</c> while it CAPTURES <c>list[object]</c>, and
     /// reading the capture type here is what emitted <c>case Sharpy.List&lt;object&gt; xs:</c> for
@@ -1289,8 +1289,8 @@ internal partial class RoslynEmitter
     /// </summary>
     private TypeSyntax PatternTestTypeSyntax(Pattern pattern, TypeAnnotation annotation)
     {
-        if (_context.SemanticInfo?.GetTypeTestLowering(pattern) is { } lowering)
-            return MapTypeTestTarget(lowering);
+        if (TypeTestTypeSyntax(pattern) is { } testType)
+            return testType;
 
         if (_context.SemanticInfo?.GetPatternType(pattern) is { } decidedPatternType)
             return _typeMapper.MapSemanticType(decidedPatternType);

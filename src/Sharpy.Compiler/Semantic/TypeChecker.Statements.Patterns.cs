@@ -960,7 +960,7 @@ internal partial class TypeChecker
     /// <summary>
     /// Check a type pattern: resolve the type, handle union cases, validate compatibility,
     /// and register any binding variable. Routes through the shared class-pattern classifier so
-    /// <see cref="Semantic.SemanticInfo.SetTypeTestLowering"/> is recorded for every path
+    /// <see cref="Semantic.SemanticInfo.SetTypeTestType"/> is recorded for every path
     /// and the emitter reads that fact instead of re-resolving (#1670).
     /// </summary>
     private void CheckTypePattern(TypePattern typePattern, SemanticType scrutineeType)
@@ -984,8 +984,7 @@ internal partial class TypeChecker
                 && scrutineeType is OptionalType earlyOptional
                     ? earlyOptional.UnderlyingType
                     : earlyResolved;
-            _semanticInfo.SetTypeTestLowering(typePattern,
-                new TypeTestLowering(TypeTestLoweringKind.ClosedType, earlyTestType));
+            _semanticInfo.SetTypeTestType(typePattern, earlyTestType);
 
             return;
         }

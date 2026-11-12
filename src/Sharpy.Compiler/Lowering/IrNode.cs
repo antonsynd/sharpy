@@ -40,3 +40,23 @@ internal abstract record IrNode(SemanticType? Type, TextSpan Span)
     /// </summary>
     public abstract ImmutableArray<IrNode> Children { get; }
 }
+
+/// <summary>
+/// An IR node that carries the operator lowering the type checker recorded for its AST key
+/// (<c>SemanticInfo._operatorLowerings</c>, P82 tranche 3, #2443, plan-92249e D1): an
+/// <see cref="IrOperatorExpression"/>, an <see cref="IrOperatorAssignment"/>, an
+/// <see cref="IrEqualityComparison"/> (a reflected <c>==</c>/<c>!=</c>) or an
+/// <see cref="IrOptionalStoreWrap"/> (an augmented store into a narrowed Optional slot). The lowering
+/// pass copies the recorded fact; a key with no entry reads <c>(Native, null)</c>, the table's own
+/// convention.
+/// </summary>
+internal interface IIrOperatorSite
+{
+    /// <summary>How code generation must emit the operator (<see cref="OperatorLoweringKind.Native"/> when
+    /// the checker recorded nothing).</summary>
+    OperatorLoweringKind Operator { get; }
+
+    /// <summary>The type the operator's result (an augmented store) or receiver (a super operator call)
+    /// narrows to, or <c>null</c>.</summary>
+    SemanticType? NarrowTo { get; }
+}

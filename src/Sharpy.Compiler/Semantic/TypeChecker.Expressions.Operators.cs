@@ -1961,9 +1961,7 @@ internal partial class TypeChecker
             var baseTargetType = _typeResolver.ResolveTypeAnnotation(baseAnnotation, AnnotationPosition.Value);
             if (baseTargetType is not UnknownType)
             {
-                _semanticInfo.SetTypeTestLowering(
-                    coercion.TargetType,
-                    new TypeTestLowering(TypeTestLoweringKind.ClosedType, baseTargetType));
+                _semanticInfo.SetTypeTestType(coercion.TargetType, baseTargetType);
             }
         }
 

@@ -111,6 +111,23 @@ public class OperatorLoweringCorpusCensusTests
             $"BinaryOperator.{op} has no AugmentedTwin arm: add its augmented operator, or null (#2443)"),
     };
 
+    /// <summary>
+    /// The corpus: every non-skipped fixture with an <c>.expected</c> file, in name order. Shared with
+    /// <see cref="OperatorLoweringTransportTests"/> so both sweeps read the same programs.
+    /// </summary>
+    internal static List<TestFixtureInfo> CorpusFixtures() =>
+        FixtureDiscoveryHelper.DiscoverFixturesFrom(FixtureRoots.CompilerTests)
+            .Where(f => !f.IsSkipped && f.ExpectedFile != null)
+            .OrderBy(f => f.TestName, StringComparer.Ordinal)
+            .ToList();
+
+    /// <summary>The checker's recorded operator lowerings in <paramref name="info"/>, read by reflection.</summary>
+    internal static IEnumerable<(Node Key, OperatorLowering Lowering)> EntriesOf(SemanticInfo info)
+    {
+        foreach (DictionaryEntry entry in (IDictionary)OperatorLoweringsField.GetValue(info)!)
+            yield return ((Node)entry.Key, (OperatorLowering)entry.Value!);
+    }
+
     private static readonly FieldInfo OperatorLoweringsField =
         typeof(SemanticInfo).GetField("_operatorLowerings", BindingFlags.Instance | BindingFlags.NonPublic)
         ?? throw new InvalidOperationException(
@@ -124,10 +141,7 @@ public class OperatorLoweringCorpusCensusTests
         // Total over the enum now, not lazily: an operator with no corpus entry is classified too.
         foreach (var op in Enum.GetValues<BinaryOperator>())
             _ = AugmentedTwin(op);
-        var fixtures = FixtureDiscoveryHelper.DiscoverFixturesFrom(FixtureRoots.CompilerTests)
-            .Where(f => !f.IsSkipped && f.ExpectedFile != null)
-            .OrderBy(f => f.TestName, StringComparer.Ordinal)
-            .ToList();
+        var fixtures = CorpusFixtures();
         Assert.True(fixtures.Count > 0, "no fixture with an .expected file was discovered: the census is vacuous");
 
         var byKind = Enum.GetValues<OperatorLoweringKind>().ToDictionary(k => k, _ => 0);
@@ -309,7 +323,7 @@ public class OperatorLoweringCorpusCensusTests
             $"'{name}' is not an AST node type"));
     }
 
-    private static (SortedSet<string> Roster, int Sites, SortedSet<string> NarrowToRoster, List<string> Unresolved)
+    internal static (SortedSet<string> Roster, int Sites, SortedSet<string> NarrowToRoster, List<string> Unresolved)
         ScanCallSites()
     {
         var semanticDir = Path.Combine(FixtureRoots.RepositoryRoot, "src", "Sharpy.Compiler", "Semantic");
