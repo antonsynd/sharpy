@@ -696,7 +696,7 @@ def test_numbered_rows_of_an_unrelated_table_do_not_restate(tracker, capsys):
         "cell table (# | cell) in body has no status column; 2 of its 2 row(s) have no "
         "status: '1', '2'" in out
     )
-    assert "with the same `#` value and the same `cell` text" in out
+    assert "with the same `#` value and a `cell` column with the same text" in out
 
 
 def test_numbered_rows_with_the_same_cell_text_restate(tracker, capsys):
@@ -762,15 +762,95 @@ def test_opt_out_in_a_table_row_or_html_comment_does_not_count(tracker, capsys, 
     assert "cell table (observed | expected) in body has no status column" in out
 
 
-def test_opt_out_never_hides_a_table_with_a_status_column(tracker, capsys):
+ACCEPTANCE = table(
+    "| builds | green | done |", header="| criterion | expected result | status |"
+)
+
+
+def test_opt_out_hides_a_status_column_acceptance_table_in_the_body(tracker, capsys):
     closed_2477_with(
         tracker,
-        "Not a cell table:\n"
+        table("| 1 | bug | control |")
+        + "\nAcceptance (not a cell table):\n\n"
+        + ACCEPTANCE,
+    )
+    code, out = run(capsys, "2477")
+    assert code == 0, out
+    assert "1 accounted, 0 not" in out
+
+
+def test_opt_out_hides_a_status_column_progress_table_in_a_comment(tracker, capsys):
+    progress = "Plan progress — not a cell table:\n\n" + table(
+        "| 1 | green | done |", header="| step | expected | status |"
+    )
+    closed_2477_with(
+        tracker,
+        table("| 1 | bug | control |"),
+        [{"created_at": "2026-11-12T08:00:00Z", "body": progress}],
+    )
+    code, out = run(capsys, "2477")
+    assert code == 0, out  # body cell 1 keeps its `control`; `done` overwrites nothing
+    assert "1 accounted, 0 not" in out
+
+
+def test_html_comment_opt_out_does_not_hide_a_status_column_table(tracker, capsys):
+    closed_2477_with(
+        tracker,
+        "<!-- not a cell table -->\n"
         + table("| x | y | open |", header="| observed | expected | status |"),
     )
     code, out = run(capsys, "2477")
     assert code == 1, out
     assert "row 'x' (body): status 'open' is not fixed/moved/control" in out
+
+
+# ── PR #2640 second review: a cell column is required to restate a cell row ──
+
+
+def test_a_restating_table_without_a_cell_column_does_not_restate_cell_rows(
+    tracker, capsys
+):
+    other = table(
+        "| 1 | unrelated thing | control |",
+        "| 2 | other | control |",
+        header="| # | program | status |",
+    )
+    closed_2477_with(
+        tracker,
+        NUMBERED_STATUSLESS,
+        [{"created_at": "2026-11-12T08:00:00Z", "body": other}],
+    )
+    code, out = run(capsys, "2477")
+    assert code == 1, out
+    assert "2 of its 2 row(s) have no status: '1', '2'" in out
+
+
+# ── PR #2640 second review: a `#` that expands to nothing still keys its row ──
+
+
+def test_reversed_range_row_without_status_is_judged(tracker, capsys):
+    closed_2477_with(tracker, table("| 3-1 | bug |", header="| # | cell |"))
+    code, out = run(capsys, "2477")
+    assert code == 1, out
+    assert "1 of its 1 row(s) have no status: '3-1'" in out
+
+
+def test_reversed_range_row_with_empty_status_fails(tracker, capsys):
+    closed_2477_with(tracker, table("| 5-2 | bug | |"))
+    code, out = run(capsys, "2477")
+    assert code == 1, out
+    assert "row '5-2' (body): status '(empty)'" in out
+
+
+def test_reversed_or_oversized_range_is_one_key():
+    t = mod.Table(["#", "cell"], [])
+    assert mod.row_keys(t, ["3-1, 5", "a"]) == ["3-1", "5"]
+    assert mod.row_keys(t, [", ;", "a"]) == [
+        ", ;"
+    ]  # nothing to expand: the text is the key
+    assert mod.row_keys(t, ["1-1000", "a"]) == [str(n) for n in range(1, 1001)]
+    assert mod.row_keys(t, ["1-1001", "a"]) == ["1-1001"]
+    assert mod.row_keys(t, ["1-99999999", "a"]) == ["1-99999999"]
 
 
 def test_opt_out_beside_an_html_comment_still_counts(tracker, capsys):

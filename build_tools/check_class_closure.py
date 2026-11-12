@@ -6,8 +6,8 @@ Convention (close-issues skill, batch-issues templates):
 - A cell table is a markdown table, in the issue body or in a comment, whose header names a cell
   column (`cell…`, `program…` or `axis values`), or else an observation column (`observed…`,
   `expected…`, `python…`, `cpython…`, `sharpy…`) unless the nearest non-blank line above it says
-  `not a cell table` in visible prose (not a table row, not an HTML comment; never honoured for a
-  table with a `status` column); it carries a `status` column. Rows whose `tracker` column names
+  `not a cell table` in visible prose (not a table row, not an HTML comment); it carries a
+  `status` column. Rows whose `tracker` column names
   another issue are not this issue's cells. A row's key is its `#`, `cell`, `program` or
   `axis values` column (else its first column); two rows of one table with the same key are told
   apart by the whole row. A row in a later source (a later comment) with an earlier row's key
@@ -21,8 +21,8 @@ Convention (close-issues skill, batch-issues templates):
     moved #N           -- #N is an issue (not a pull request) that was open when the tracker closed
     control            -- the row never was a defect
 - A row of a cell table with no `status` column is unaccounted unless a later source restates its
-  key (and its `cell` text, when both tables have a `cell` column) in a table that has one; the
-  table fails, listing those rows. An issue with no cell table
+  key in a table that has one (when the status-less table has a `cell` column, the restating
+  table needs one too, with the same text); the table fails, listing those rows. An issue with no cell table
   (and no unrecognised body table) passes. Closures as `duplicate` or `not_planned` are not checked.
 
 The strict check applies to closures on or after CUTOFF and to OPEN issues named on the command line
@@ -60,6 +60,7 @@ SKIPPED_REASONS = ("duplicate", "not_planned")
 REPO_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 KEY_COLUMNS = ("#", "cell", "program", "axis values")
+MAX_RANGE = 1000  # a `#` range of more numbers than this is one key, its text
 ISSUE_RE = re.compile(r"#(\d+)")
 HEX_RE = re.compile(r"\b[0-9a-f]{7,40}\b")
 TEST_NAME_RE = re.compile(r"`([A-Za-z_][\w./:~-]*)`")
@@ -180,8 +181,8 @@ class Table:
 
     def opted_out(self) -> bool:
         """The line above says `not a cell table` in visible prose: not in a table row or an HTML
-        comment. A table with a `status` column is never opted out."""
-        if self.has_status() or "|" in self.above:
+        comment. (It never hides a `cell`/`program`/`axis values` table: see is_cell_table.)"""
+        if "|" in self.above:
             return False
         visible = re.sub(r"<!--.*?(-->|$)", "", self.above)
         visible = re.sub(r"^.*?-->", "", visible)
@@ -247,7 +248,11 @@ def _norm(s: str) -> str:
 
 
 def row_keys(table: Table, row: list[str]) -> list[str]:
-    """The keys a row answers to; a numeric `#` like `1–3, 5` expands to each number."""
+    """The keys a row answers to; a numeric `#` like `1–3, 5` expands to each number.
+
+    A reversed or oversized range (`3-1`, more than MAX_RANGE numbers) is one key, its text; a
+    row never answers to no key, so it is always judged.
+    """
     for name in KEY_COLUMNS:
         idx = table.col(name)
         if idx is not None and idx < len(row) and row[idx].strip():
@@ -256,13 +261,12 @@ def row_keys(table: Table, row: list[str]) -> list[str]:
                 nums: list[str] = []
                 for part in re.split(r"[,;]", raw):
                     m = re.match(r"^\s*(\d+)\s*(?:[-–—]|\.\.)\s*(\d+)\s*$", part)
-                    if m:
-                        nums += [
-                            str(n) for n in range(int(m.group(1)), int(m.group(2)) + 1)
-                        ]
+                    lo, hi = (int(m.group(1)), int(m.group(2))) if m else (0, -1)
+                    if m and lo <= hi and hi - lo < MAX_RANGE:
+                        nums += [str(n) for n in range(lo, hi + 1)]
                     elif part.strip():
                         nums.append(_norm(part))
-                return nums
+                return nums or [_norm(raw)]
             return [_norm(raw)]
     return [_norm(row[0])] if row else []
 
@@ -327,8 +331,9 @@ def collect_cells(
     Also returns the problems no row status can answer: one per cell table with no status column
     whose rows (of this issue) are not all restated by a LATER table that has one, and one per
     unrecognised body table. A status-less row never replaces a row that has a status. A row
-    restates a status-less row when it has the same key and, if both tables have a `cell` column,
-    the same cell text (a later table numbered 1, 2, … does not restate unrelated rows 1, 2, …).
+    restates a status-less row when it has the same key and, if the status-less table has a `cell`
+    column, a `cell` column with the same text (a later table numbered 1, 2, … does not restate
+    unrelated rows 1, 2, …; a table with no `cell` column restates only on the key).
     """
     cells: dict[str, Cell] = {}
     # key -> (sequence number of its table, its normalised `cell` text or None) per status row
@@ -370,7 +375,7 @@ def collect_cells(
 
     def restated(key: str, at: int, text: str | None) -> bool:
         return any(
-            s > at and (text is None or other is None or other == text)
+            s > at and (text is None or other == text)
             for s, other in stated.get(key, [])
         )
 
@@ -381,7 +386,7 @@ def collect_cells(
             more = f" and {len(unstated) - 10} more" if len(unstated) > 10 else ""
             key = t.key_column()
             same_cell = (
-                " and the same `cell` text"
+                " and a `cell` column with the same text"
                 if key != "cell" and t.col("cell") is not None
                 else ""
             )
