@@ -25,7 +25,17 @@ The shared rules for `/create-plan`, `/verify-plan`, `/implement-plan` and `/ver
 
 1. **File of record.** `docs/process/plans/<plan-id>.md`, from the first draft on. Line 1 is the
    `<!-- DRAFT, not verified … -->` marker or a `/verify-plan` stamp; `/implement-plan` reads it and
-   refuses a DRAFT or a NEEDS REVISION.
+   refuses a DRAFT or a NEEDS REVISION. Read it only after `git fetch origin && git pull --ff-only`:
+   a stale checkout lacks it or holds an old copy. A branch with no upstream, a detached HEAD or one
+   that cannot fast-forward is reported and left as it is (never reset, rebased or given an
+   upstream); the fetched remote refs are then what is read. A plan's stages live on an unmerged
+   branch until its pull request merges, so find and list plans from the remotes, not the checkout:
+   - **Find:** `git log --remotes --source -1 --format='%h %S' -- docs/process/plans/<plan-id>.md`
+     prints the newest commit touching the plan and one remote branch that holds it; read it there
+     (`git show <branch>:docs/process/plans/<plan-id>.md`). Empty output: no remote branch has it
+     (a mistyped id, or a working copy never committed); ask, never fall back to `dev`.
+   - **List** the three newest, then find each as above:
+     `git log --remotes --format= --name-only -- 'docs/process/plans/plan-*.md' | awk 'NF && !s[$0]++' | head -3`
 2. **Working copy.** `.claude/plans/<plan-id>.md` (gitignored) is edited inside one session and copied
    over the file of record at each commit. With no working copy (a new container), copy the file of
    record back and drop the DRAFT marker; if both exist and differ beyond it, ask which is current.
