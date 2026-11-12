@@ -55,6 +55,13 @@ done
 log() { printf '\033[1;34m[setup-env]\033[0m %s\n' "$*" >&2; }
 die() { printf '\033[1;31m[setup-env]\033[0m %s\n' "$*" >&2; exit 1; }
 
+# --profile writes "$ROOT/.venv/sharpy-env.sh" inside double quotes in a file every shell sources:
+# refuse, before anything is installed, a checkout path that would end the quote, expand there or
+# split the line.
+if ((PROFILE)) && [[ "$ROOT" == *[\"\$\`\\]* || "$ROOT" == *$'\n'* ]]; then
+  die "--profile: the checkout path contains a quote, \$, backtick, backslash or newline: $ROOT"
+fi
+
 command -v curl >/dev/null 2>&1 || die "curl is required (e.g. apt-get install -y curl)"
 abspath() { mkdir -p "$1" && (cd "$1" && pwd); }
 DOTNET_DIR="$(abspath "$DOTNET_DIR")"; DOTNET="$DOTNET_DIR/dotnet"
@@ -208,23 +215,29 @@ if ((PROFILE)); then
   # python3 with no pytest and no dotnet on PATH. ~/.bashrc is written whatever $SHELL is, because
   # those shells are bash; a zsh user also gets ~/.zshrc (read by interactive zsh only).
   line="[ -f \"$ENV_FILE\" ] && . \"$ENV_FILE\"  # Sharpy"
-  ours='sharpy-env\.sh".*# Sharpy'   # this line for any checkout: the last one set up wins
+  # This line for any checkout (the last one set up wins), CRLF copies included; anchored, so a
+  # user's own line that merely mentions the file is kept.
+  ours='^\[ -f ".*sharpy-env\.sh" \] && \. ".*sharpy-env\.sh"  # Sharpy.?$'
   rcs=("$HOME/.bashrc"); [[ "${SHELL:-}" == */zsh ]] && rcs+=("$HOME/.zshrc")
   for rc in "${rcs[@]}"; do
     [[ ! -e "$rc" || -r "$rc" ]] || die "$rc exists but is not readable; not rewriting it"
-    if [[ "$(head -n 1 "$rc" 2>/dev/null)" == "$line" ]] && (( $(grep -ac "$ours" "$rc") == 1 )); then
+    if [[ "$(head -n 1 "$rc" 2>/dev/null)" == "$line" ]] && (( $(LC_ALL=C grep -acE "$ours" "$rc") == 1 )); then
       log "$rc already sources $ENV_FILE"
       continue
     fi
     # Build the new file beside the old one, then copy it over: a failed read or a full disk leaves
     # the rc as it was, and `cat >` keeps a symlinked rc and its mode. -a: without it grep treats
-    # an rc with a NUL or a non-UTF-8 byte as binary and prints none of its lines.
+    # an rc with a NUL or a non-UTF-8 byte as binary and prints none of its lines. LC_ALL=C: `.*`
+    # must also span a path holding a byte that is not valid UTF-8.
     tmp="$rc.sharpy.$$"
-    printf '%s\n' "$line" > "$tmp"
+    printf '%s\n' "$line" > "$tmp" || { rm -f "$tmp"; die "could not write $tmp"; }
     if [[ -e "$rc" ]]; then
-      grep -av "$ours" "$rc" >> "$tmp" || { [[ $? -eq 1 ]] || die "could not read $rc; left unchanged"; }
+      LC_ALL=C grep -avE "$ours" "$rc" >> "$tmp" \
+        || { [[ $? -eq 1 ]] || { rm -f "$tmp"; die "could not read $rc; left unchanged"; }; }
     fi
-    cat "$tmp" > "$rc"
+    # A copy that fails part-way has already truncated the rc: the temp file is then the only
+    # complete copy, so it stays.
+    cat "$tmp" > "$rc" || die "could not write $rc; its intended contents are in $tmp"
     rm -f "$tmp"
     log "added $ENV_FILE as the first line of $rc"
   done
