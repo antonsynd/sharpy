@@ -23,6 +23,12 @@ method), and `inspect.signature` in the running python3 decides the verdict:
              constructor, uninspectable builtin) -- must be listed in SKIPS below with a
              reason; a skip entry that no longer matches a skip-status cell fails
 
+A constructor with no inspectable signature whose parameter is also an attribute of the
+instance (the C-implemented OSError family's `errno`) is listed in OBSERVED instead of SKIPS:
+the running python3 calls it with the parameter omitted and reads the attribute, and that
+value decides pass/finding as a signature default would. An OBSERVED row whose cell no longer
+needs observing (it became inspectable, or left the spy source) is stale and fails.
+
 Usage:
     python3 build_tools/spy_none_default_audit.py          # print the audit matrix
     python3 build_tools/spy_none_default_audit.py --check  # exit 1 on any ratchet violation
@@ -69,6 +75,32 @@ SKIPS: dict[str, str] = {
     ),
 }
 
+# Constructors CPython gives no inspectable signature, whose default is OBSERVED instead (see
+# the module docstring). Key -> (the positional arguments of the call that omits the
+# parameter, the reason it must be observed).
+OBSERVED: dict[str, tuple[tuple, str]] = {
+    "socket::error.__init__::errno": (
+        ("x",),
+        "socket.error is OSError, a C constructor with no __text_signature__; "
+        "`OSError('x').errno` is the default",
+    ),
+    "socket::timeout.__init__::errno": (
+        ("x",),
+        "socket.timeout is TimeoutError, a C constructor with no __text_signature__; "
+        "`socket.timeout('x').errno` is the default",
+    ),
+    "socket::gaierror.__init__::errno": (
+        ("x",),
+        "socket.gaierror subclasses OSError in C, no __text_signature__; "
+        "`socket.gaierror('x').errno` is the default",
+    ),
+    "socket::herror.__init__::errno": (
+        ("x",),
+        "socket.herror subclasses OSError in C, no __text_signature__; "
+        "`socket.herror('x').errno` is the default",
+    ),
+}
+
 _NONE_DEFAULTS = {"None", "None()"}
 
 
@@ -96,6 +128,7 @@ class Verdict:
     cell: SpyParam
     status: str  # "pass" | "finding" | "skip"
     cpython: str  # CPython default repr, or the reason it could not be compared
+    how: str = "signature"  # "signature" | "observed" (OBSERVED: the instance attribute)
 
 
 # --------------------------------------------------------------------------- spy parsing
@@ -328,6 +361,26 @@ def classify(cell: SpyParam, cpython_callable) -> Verdict:
     return Verdict(cell, "finding", _describe_default(p.default))
 
 
+def observe(cell: SpyParam, cpython_callable, args: tuple) -> Verdict:
+    """An OBSERVED cell: the attribute `cell.param` of `cpython_callable(*args)`.
+
+    A callable that has become inspectable is classified by its signature instead (its
+    verdict's `how` is then "signature", so the OBSERVED row reports stale).
+    """
+    try:
+        _signature(cpython_callable)
+        return classify(cell, cpython_callable)
+    except (TypeError, ValueError):
+        pass
+    try:
+        value = getattr(cpython_callable(*args), cell.param)
+    except Exception as ex:  # noqa: BLE001 - any failure means "cannot observe"
+        return Verdict(cell, "skip", f"unobservable: {ex!r}", "observed")
+    if value is None:
+        return Verdict(cell, "pass", "None (observed)", "observed")
+    return Verdict(cell, "finding", f"{value!r} (observed)", "observed")
+
+
 def resolve(cell: SpyParam):
     """The CPython callable for a cell, or a reason string when CPython has none."""
     mod = importlib.import_module(cell.module)
@@ -342,12 +395,15 @@ def resolve(cell: SpyParam):
     return getattr(cls, cell.func, f"no method {cell.module}.{cls_name}.{cell.func}")
 
 
-def audit(cells: list[SpyParam]) -> list[Verdict]:
+def audit(cells: list[SpyParam], observed: dict | None = None) -> list[Verdict]:
+    observed = OBSERVED if observed is None else observed
     out = []
     for cell in cells:
         target = resolve(cell)
         if isinstance(target, str):
             out.append(Verdict(cell, "skip", target))
+        elif cell.key in observed:
+            out.append(observe(cell, target, observed[cell.key][0]))
         else:
             out.append(classify(cell, target))
     return out
@@ -369,7 +425,10 @@ def load_allowlist(path: Path = ALLOWLIST) -> dict[str, str]:
 
 
 def violations(
-    verdicts: list[Verdict], allowlist: dict[str, str], skips: dict[str, str]
+    verdicts: list[Verdict],
+    allowlist: dict[str, str],
+    skips: dict[str, str],
+    observed: dict | None = None,
 ) -> list[str]:
     errors = []
     by_key = {v.cell.key: v for v in verdicts}
@@ -381,7 +440,13 @@ def violations(
                 f"({v.cell.spy_file}:{v.cell.line}) -- cure with an overload without "
                 f"the parameter (R-EV), or allowlist it citing an issue"
             )
-        if v.status == "skip" and k not in skips:
+        if v.status == "skip" and v.how == "observed":
+            # An OBSERVED cell that could not be observed is never excused by a SKIPS row.
+            errors.append(
+                f"UNOBSERVABLE {k}: {v.cpython} ({v.cell.spy_file}:{v.cell.line}) -- "
+                f"fix the OBSERVED row's call arguments, or delete the row"
+            )
+        elif v.status == "skip" and k not in skips:
             errors.append(
                 f"UNCLASSIFIED {k}: {v.cpython} ({v.cell.spy_file}:{v.cell.line}) -- "
                 f"add a reasoned SKIPS entry or fix the CLASS_MAP"
@@ -396,6 +461,17 @@ def violations(
     for k in skips:
         if k not in by_key or by_key[k].status != "skip":
             errors.append(f"STALE skip {k}: no longer a skip-status cell -- delete it")
+    for k in observed or {}:
+        if k in skips:
+            errors.append(
+                f"OVERLAP {k}: both an OBSERVED and a SKIPS row -- a cell is observed "
+                f"or skipped, never both; delete one"
+            )
+        if k not in by_key or by_key[k].how != "observed":
+            errors.append(
+                f"STALE observed {k}: the cell is gone or now has an inspectable "
+                f"signature -- delete the OBSERVED row"
+            )
     return errors
 
 
@@ -420,7 +496,7 @@ def main(argv=None) -> int:
     verdicts = audit(collect_none_defaults())
     print(render(verdicts))
     if args.check:
-        errors = violations(verdicts, load_allowlist(), SKIPS)
+        errors = violations(verdicts, load_allowlist(), SKIPS, OBSERVED)
         for e in errors:
             print(e, file=sys.stderr)
         return 1 if errors else 0

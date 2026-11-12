@@ -101,6 +101,9 @@ Base exception for socket-related errors. Corresponds to Python's socket.error.
 Derives from OSError, so `except OSError` catches every socket exception. Python's
 socket.error IS OSError; here it is a subclass of its own (docs/deviations.yaml,
 socket-error-timeout-distinct-classes).
+`errno` is the platform's errno for a failed socket call, and None where python's is None:
+an error constructed without one, and a `timeout` raised because the socket's own timeout
+(`settimeout`) expired.
 
 ### `from_socket_exception(ex: SocketException) -> error`
 
@@ -115,6 +118,8 @@ for `SocketError.SocketError`) (docs/deviations.yaml, socket-errno-is-dotnet-soc
 ## timeout
 
 Raised when a socket operation times out. Corresponds to Python's socket.timeout.
+`errno` is None when the socket's own timeout expired, as python's; a kernel `ETIMEDOUT`
+carries the platform's errno.
 
 ## gaierror
 
