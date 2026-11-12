@@ -36,7 +36,9 @@ def _cell(module="m", cls=None, func="f", param="p"):
 
 def test_spy_none_defaults_match_cpython():
     verdicts = audit_mod.audit(collect_none_defaults())
-    errors = violations(verdicts, audit_mod.load_allowlist(), audit_mod.SKIPS)
+    errors = violations(
+        verdicts, audit_mod.load_allowlist(), audit_mod.SKIPS, audit_mod.OBSERVED
+    )
     assert not errors, "\n".join(errors) + "\n\n" + audit_mod.render(verdicts)
 
 
@@ -173,6 +175,40 @@ def test_unclassified_skip_fails_and_stale_skip_fails():
     assert any(
         "STALE skip" in e for e in violations([_v("pass")], {}, {"m::f::p": "reason"})
     )
+
+
+# ── observed defaults (uninspectable C constructors) ─────────────────────────
+
+
+def test_observed_cells_are_checked_not_skipped():
+    """The OSError-family errno cells are decided by observation: pass, never skip."""
+    by_key = {v.cell.key: v for v in audit_mod.audit(collect_none_defaults())}
+    for key in audit_mod.OBSERVED:
+        assert by_key[key].how == "observed" and by_key[key].status == "pass", by_key[key]
+
+
+def test_observe_value_is_a_finding_none_passes():
+    class E(OSError):  # inherits the C constructor: no inspectable signature
+        pass
+
+    assert audit_mod.observe(_cell(param="errno"), E, ("x",)).status == "pass"
+    v = audit_mod.observe(_cell(param="errno"), E, (5, "x"))  # errno 5 when given
+    assert v.status == "finding" and v.how == "observed" and v.cpython == "5 (observed)"
+
+
+def test_observe_inspectable_callable_uses_the_signature_and_row_is_stale():
+    def f(p=None):
+        return None
+
+    v = audit_mod.observe(_cell(), f, ())
+    assert v.how == "signature" and v.status == "pass"
+    errs = violations([v], {}, {}, {"m::f::p": ((), "reason")})
+    assert any("STALE observed" in e for e in errs)
+
+
+def test_observed_row_naming_no_cell_is_stale():
+    errs = violations([], {}, {}, {"m::f::p": ((), "reason")})
+    assert any("STALE observed" in e for e in errs)
 
 
 # ── spy parser ────────────────────────────────────────────────────────────────
