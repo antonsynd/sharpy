@@ -1256,7 +1256,7 @@ deviations:
     audience: python
     severity: none
     python_behavior: "Enum members are singletons, so `c is d` is `True` when both names hold the same member; `is` is the idiomatic enum comparison."
-    sharpy_behavior: "An int-backed enum is a .NET value type (owner ruling 2026-11-12, #2635 ruling E). `c is d` on two enum-typed variables boxes each operand and prints `False`, with no diagnostic today; SPY0465 will warn here once plan-4e2867 makes enums value types at every reader. `c is Color.RED` (a member named directly) is refused, SPY0349. Use `==`. Axiom precedence: .NET (1) > Python (2)."
+    sharpy_behavior: "An int-backed enum is a .NET value type (owner ruling 2026-11-12, #2635 ruling E). `c is d` on two enum-typed variables boxes each operand and prints `False`, with no diagnostic today; SPY0465 will warn here once plan-4e2867 makes enums value types at every reader. A string-backed enum is a reference type and `c is d` prints `True` there, as in Python; the deviation is int-backed only. `c is Color.RED` (a member named directly) is refused, SPY0349. Use `==`. Axiom precedence: .NET (1) > Python (2)."
     spec_ref: docs/language_specification/identity_operators.md
     existing_diagnostic: null
     planned_diagnostic: SPY0465
