@@ -17,7 +17,12 @@ a backtick, it starts with `Independent review @`. Recognised and never read, be
 rule or an example rather than state a review: fenced code (``` or ~~~, an info string allowed on
 the opening fence; a fence closes only on a bare fence line), HTML comments outside inline code
 spans (a `<!--` inside backticks is text), blockquotes (`>`), and any line indented four spaces or a
-tab (indented code, but also a nested list item, which therefore never counts). NOT recognised: a
+tab (indented code, but also a nested list item, which therefore never counts). As GitHub renders
+it, a comment closed on its own line is removed wherever it sits, but an unclosed `<!--` hides the
+lines after it only when it STARTS a line (after at most three spaces): mid-line it is literal
+text, and in an indented or quoted line it is never a comment. A line that starts with `<!--`
+hides what follows even inside a paragraph, e.g. after an inline code span left open on the line
+before. NOT recognised: a
 line opening with a zero-width or other invisible character, a heading, a table cell or link text
 (none of these starts with the head, so none counts), and lazy paragraph continuations. A counted
 line parses only when its FIRST clause is `Independent review @ <hex sha>[ (note)]: <verdict>` and
@@ -26,21 +31,23 @@ every later `review @` on it is a `second|third|fourth|fifth|final review @ <hex
 punctuation, a dash or the end of the line. So `Independent review @ head pending; ... second
 review @ X: merge` is malformed, not passed on the later clause.
 
-Verdicts, in the order they are decided:
+Verdicts, in the order they are decided (the sha checks come before `do not merge`, so a rebased
+branch gets the rebase hint; every one of them fails the check):
 
   not required   the base is not `dev` (a promotion into `mainline`, a stacked PR), or no changed
                  path is a code path (a sync of `mainline` into `dev` changes none). README item 6
                  names no other exemption, so there is none for bots or for a head named `dev`;
   missing        no line counts;
   malformed      the last counted line does not parse;
-  do not merge   a review says so and no LATER review on a commit that strictly descends from
-                 the one it judged says otherwise (a later review of the same or an older commit
-                 does not clear it);
   sha not an ancestor of head
                  a reviewed sha, or a `fixes <a>..<b>` range's end, is not the head or one of its
                  ancestors, or this clone does not have it;
   sha on the base
                  a reviewed sha is already reachable from the base: it reviewed `dev`, not the PR;
+  do not merge   any review says so that no LATER-written review of a commit strictly descending
+                 from the one it judged clears (a later review of the same or an older commit does
+                 not clear it; each do-not-merge must be cleared on its own). Reviews are read in
+                 the order written, so an older do-not-merge written on a later line still blocks;
   bad fix range  the range's start is not the same commit as one of the line's reviewed shas, or
                  is not an ancestor of the range's end;
   stale          a commit after the covered point (the last review's sha, or the fix range's end
@@ -147,7 +154,9 @@ def is_code_path(path: str) -> bool:
 
 def strip_comments(line: str, in_comment: bool) -> tuple:
     """`line` without HTML comments, leaving inline code spans (a backtick run up to the next run of
-    the same length on the line) untouched; and whether a comment is still open at its end."""
+    the same length on the line) untouched; and whether a comment is still open at its end. A
+    comment closed on the line is removed; an unclosed `<!--` opens one only at the start of the
+    line (after at most three spaces), and is literal text anywhere else."""
     out: List[str] = []
     i = 0
     while i < len(line):
@@ -158,7 +167,13 @@ def strip_comments(line: str, in_comment: bool) -> tuple:
             i, in_comment = close + 3, False
             continue
         if line.startswith("<!--", i):
-            in_comment = True
+            close = line.find("-->", i + 4)
+            if close >= 0:
+                i = close + 3
+                continue
+            if not line[:i].strip(" ") and i <= 3:
+                return "".join(out), True
+            out.append("<!--")
             i += 4
             continue
         tick = CODE_SPAN.match(line, i)
@@ -192,6 +207,8 @@ def visible_lines(body: str) -> List[str]:
             if m:
                 fence = m.group(1)
                 continue
+        # An indented (4+ spaces, tab) or quoted (`>`) line can never open a comment that carries
+        # over: strip_comments opens one only when `<!--` starts the line after at most 3 spaces.
         line, in_comment = strip_comments(line, in_comment)
         out.append(line)
     return out
@@ -335,17 +352,6 @@ def judge(
         )
 
     last = parsed.reviews[-1]
-    blocked: Optional[Review] = None
-    for review in parsed.reviews:
-        if review.verdict == DO_NOT_MERGE:
-            blocked = review
-        elif blocked and git.is_ancestor(blocked.sha, review.sha) and not git.is_ancestor(review.sha, blocked.sha):
-            blocked = None
-    if blocked:
-        return Result(
-            DO_NOT_MERGE,
-            f"the review @ {blocked.sha} says do not merge, and no later review of a commit after it clears it",
-        )
     for review in parsed.reviews:
         if not git.is_ancestor(review.sha, head):
             return Result(
@@ -361,17 +367,47 @@ def judge(
                 f"reviewed sha {review.sha} is already on the base: it names `dev`, not this PR",
             )
 
+    if parsed.fix_range and not git.is_ancestor(parsed.fix_range[1], head):
+        return Result(
+            NOT_ANCESTOR,
+            f"fix range end {parsed.fix_range[1]} is not an ancestor of head {head[:9]} (or is unknown here)"
+            + REWRITE_HINT[:-1]
+            + REBASE_HINT
+            + ")",
+        )
+
+    # Every do-not-merge stands until a LATER-written review of a strictly descending commit
+    # clears it; one review may clear several.
+    blocking: List[Review] = []
+    for review in parsed.reviews:
+        if review.verdict == DO_NOT_MERGE:
+            blocking.append(review)
+        else:
+            blocking = [
+                b
+                for b in blocking
+                if not (
+                    git.is_ancestor(b.sha, review.sha)
+                    and not git.is_ancestor(review.sha, b.sha)
+                )
+            ]
+    if blocking:
+        shas = ", ".join(b.sha for b in blocking)
+        return Result(
+            DO_NOT_MERGE,
+            f"the review(s) @ {shas} say do not merge, and no later review of a commit after each clears it",
+        )
     covered = last.sha
     if parsed.fix_range:
         start, end = parsed.fix_range
-        if not git.is_ancestor(end, head):
+        if not any(
+            git.is_ancestor(r.sha, start) and git.is_ancestor(start, r.sha)
+            for r in parsed.reviews
+        ):
             return Result(
-                NOT_ANCESTOR,
-                f"fix range end {end} is not an ancestor of head {head[:9]} (or is unknown here)"
-                + REWRITE_HINT,
+                BAD_RANGE,
+                f"fix range start {start} is not one of the line's reviewed shas",
             )
-        if not any(git.is_ancestor(r.sha, start) and git.is_ancestor(start, r.sha) for r in parsed.reviews):
-            return Result(BAD_RANGE, f"fix range start {start} is not one of the line's reviewed shas")
         if not git.is_ancestor(start, end):
             return Result(BAD_RANGE, f"fix range {start}..{end} does not run forward")
         if git.is_ancestor(last.sha, end):

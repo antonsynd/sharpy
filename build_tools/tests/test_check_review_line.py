@@ -488,7 +488,10 @@ def test_quoted_and_fenced_lines_do_not_count_on_history(h) -> None:
     assert j(h, f"{dnm}\n> {good}", head, base).verdict == mod.DO_NOT_MERGE
     assert j(h, f"{dnm}\n```\n{good}\n```", head, base).verdict == mod.DO_NOT_MERGE
     # A later review on the line clears it only when it judges a later commit (see below).
-    assert j(h, f"{dnm}; second review @ {h['F1'][:9]}: merge", head, base).verdict == mod.DO_NOT_MERGE
+    assert (
+        j(h, f"{dnm}; second review @ {h['F1'][:9]}: merge", head, base).verdict
+        == mod.DO_NOT_MERGE
+    )
 
 
 def test_a_code_file_renamed_out_of_a_code_path_is_a_code_change(
@@ -643,7 +646,10 @@ def test_do_not_merge_is_cleared_only_by_a_review_of_a_later_commit(h) -> None:
     # Positive control: a review of a later commit clears it, on the same line or a later one.
     later = f"{IR}{s('L2')}: do not merge; second review @ {s('F1')}: merge"
     assert j(h, later, head, base).verdict == mod.OK
-    assert j(h, f"{IR}{s('L2')}: do not merge\n{IR}{s('F1')}: merge", head, base).verdict == mod.OK
+    assert (
+        j(h, f"{IR}{s('L2')}: do not merge\n{IR}{s('F1')}: merge", head, base).verdict
+        == mod.OK
+    )
 
 
 def test_comment_opener_inside_inline_code_is_text(h) -> None:
@@ -651,8 +657,12 @@ def test_comment_opener_inside_inline_code_is_text(h) -> None:
     IR, s = "Independent review @ ", h["F1"][:9]
     body = f"{IR}{s}: merge\n\nWe strip `<!--` comments.\n\n{IR}{s}: do not merge; 3 blocking"
     assert j(h, body, h["F1"], h["D0"]).verdict == mod.DO_NOT_MERGE
-    # Outside code the same opener is a comment, and hides what follows, as GitHub renders it.
-    assert j(h, body.replace("`<!--`", "<!--"), h["F1"], h["D0"]).verdict == mod.OK
+    # Outside code, an unclosed opener in the middle of a line is literal text too (GFM renders
+    # `We strip <!-- comments.` as text), so the do-not-merge after it still counts.
+    assert (
+        j(h, body.replace("`<!--`", "<!--"), h["F1"], h["D0"]).verdict
+        == mod.DO_NOT_MERGE
+    )
 
 
 @pytest.mark.parametrize(
@@ -660,10 +670,17 @@ def test_comment_opener_inside_inline_code_is_text(h) -> None:
     [
         ("a <!-- b --> c", False, ("a  c", False)),
         ("a `<!--` c", False, ("a `<!--` c", False)),
-        ("a ``x <!-- y`` c <!-- d", False, ("a ``x <!-- y`` c ", True)),
+        ("a ``x <!-- y`` c <!-- d", False, ("a ``x <!-- y`` c <!-- d", False)),
+        ("<!-- d", False, ("", True)),
+        ("   <!-- d", False, ("   ", True)),
+        ("    <!-- d", False, ("    <!-- d", False)),
         ("still hidden --> shown", True, (" shown", False)),
         ("still hidden", True, ("", True)),
-        ("a ` unclosed <!-- x --> b", False, ("a `` unclosed  b".replace("``", "`"), False)),
+        (
+            "a ` unclosed <!-- x --> b",
+            False,
+            ("a `` unclosed  b".replace("``", "`"), False),
+        ),
     ],
 )
 def test_strip_comments(line: str, in_comment: bool, want: tuple) -> None:
@@ -674,7 +691,9 @@ def test_a_fence_with_an_info_string_opens_and_never_closes() -> None:
     body = "```\nx\n```text\nIndependent review @ abc1234: merge\n```"
     assert mod.parse_body(body).lines == []
     # Positive control: after a bare closing fence the line counts.
-    assert mod.parse_body("```text\nx\n```\nIndependent review @ abc1234: merge").last_line_parses
+    assert mod.parse_body(
+        "```text\nx\n```\nIndependent review @ abc1234: merge"
+    ).last_line_parses
 
 
 @pytest.mark.parametrize("indent", ["    ", "\t", "     ", "  \t"])
@@ -726,6 +745,163 @@ def test_not_an_ancestor_message_names_a_rebase() -> None:
         def is_ancestor(self, a: str, b: str) -> bool:
             return False
 
-    result = mod.judge("Independent review @ deadbeef1: merge", ["src/a.cs"], "h", "b", NoHistory())
+    result = mod.judge(
+        "Independent review @ deadbeef1: merge", ["src/a.cs"], "h", "b", NoHistory()
+    )
     assert result.verdict == mod.NOT_ANCESTOR
-    assert "empty diff" in result.detail and "rebased with changes, the review must be repeated" in result.detail
+    assert (
+        "empty diff" in result.detail
+        and "rebased with changes, the review must be repeated" in result.detail
+    )
+
+
+# --- Third review round -------------------------------------------------------------------------
+
+
+def _linear(tmp_path: Path, n: int = 10) -> tuple:
+    r = tmp_path / "lin"
+    r.mkdir()
+    git(r, "init", "-q", "-b", "dev")
+    git(r, "config", "user.email", "t@example.invalid")
+    git(r, "config", "user.name", "t")
+    git(r, "config", "commit.gpgsign", "false")
+    base = commit(r, "README.md", "0")
+    git(r, "switch", "-q", "-c", "lane")
+    shas = {i: commit(r, "src/l.cs", str(i)) for i in range(1, n + 1)}
+    return r, base, shas
+
+
+def test_every_do_not_merge_must_be_cleared_on_its_own(tmp_path: Path) -> None:
+    r, base, L = _linear(tmp_path)
+    g = mod.Git(str(r))
+    s = lambda i: L[i][:9]
+    IR = "Independent review @ "
+
+    def v(body: str) -> mod.Result:
+        return mod.judge(body, g.changed_paths(base, L[10]), L[10], base, g)
+
+    # L5 clears the do-not-merge @ L3 but not the one @ L9, which a single slot would forget.
+    two = f"{IR}{s(9)}: do not merge; second review @ {s(3)}: do not merge; third review @ {s(5)}: merge; fixes {s(5)}..{s(10)}"
+    result = v(two)
+    assert (
+        result.verdict == mod.DO_NOT_MERGE
+        and s(9) in result.detail
+        and s(3) not in result.detail
+    )
+    # Control: the single do-not-merge @ L9 alone is not cleared by L5 either.
+    assert (
+        v(
+            f"{IR}{s(9)}: do not merge; second review @ {s(5)}: merge; fixes {s(5)}..{s(10)}"
+        ).verdict
+        == mod.DO_NOT_MERGE
+    )
+    # Control: one later review clears both when it descends from both.
+    assert (
+        v(
+            f"{IR}{s(9)}: do not merge; second review @ {s(3)}: do not merge; third review @ {s(10)}: merge"
+        ).verdict
+        == mod.OK
+    )
+    # Documented: an older do-not-merge written on a later line still blocks.
+    late = f"{IR}{s(5)}: do not merge; second review @ {s(9)}: merge\n{IR}{s(3)}: do not merge"
+    assert v(late).verdict == mod.DO_NOT_MERGE
+
+
+def test_a_do_not_merge_with_valid_shas_stays_do_not_merge(tmp_path: Path) -> None:
+    r, base, L = _linear(tmp_path)
+    g = mod.Git(str(r))
+    body = f"Independent review @ {L[10][:9]}: do not merge; 3 blocking"
+    assert (
+        mod.judge(body, g.changed_paths(base, L[10]), L[10], base, g).verdict
+        == mod.DO_NOT_MERGE
+    )
+
+
+@pytest.mark.parametrize("where", ["blocking", "clearing", "range end"])
+def test_an_unknown_sha_in_a_do_not_merge_line_gets_the_rebase_hint(
+    tmp_path: Path, where: str
+) -> None:
+    r, base, L = _linear(tmp_path)
+    g = mod.Git(str(r))
+    s = lambda i: L[i][:9]
+    gone = "deadbeef1"
+    body = {
+        "blocking": f"Independent review @ {gone}: do not merge",
+        "clearing": f"Independent review @ {s(5)}: do not merge; second review @ {gone}: merge",
+        "range end": f"Independent review @ {s(5)}: do not merge; fixes {s(5)}..{gone}",
+    }[where]
+    result = mod.judge(body, g.changed_paths(base, L[10]), L[10], base, g)
+    assert (
+        result.verdict == mod.NOT_ANCESTOR and "rebased with changes" in result.detail
+    ), result.detail
+
+
+GOOD_T = "Independent review @ {sha}: merge"
+DNM_T = "Independent review @ {sha}: do not merge; 3 blocking"
+
+
+@pytest.mark.parametrize(
+    "trigger",
+    [
+        "Use a <!-- marker to hide notes.",  # (a) mid-line, unclosed: literal text
+        "    x = '<!--'",  # (c) indented code
+        "> quoted <!--",  # (d) blockquote
+        "   > quoted, indented <!--",
+        # Text before the opener within the first three columns: GFM keeps the next line visible
+        # (pandoc -f gfm: the quote's HTML block ends with the quote; `a <!-- x` is text).
+        "> <!-- x",
+        "a <!-- x",
+    ],
+)
+def test_an_unclosed_opener_that_does_not_start_a_line_hides_nothing(
+    tmp_path: Path, trigger: str
+) -> None:
+    r, base, L = _linear(tmp_path)
+    g = mod.Git(str(r))
+    body = (
+        GOOD_T.format(sha=L[10][:9])
+        + "\n\n"
+        + trigger
+        + "\n\n"
+        + DNM_T.format(sha=L[10][:9])
+    )
+    assert (
+        mod.judge(body, g.changed_paths(base, L[10]), L[10], base, g).verdict
+        == mod.DO_NOT_MERGE
+    )
+
+
+@pytest.mark.parametrize(
+    "trigger",
+    [
+        "<!-- template",  # a line that starts with <!-- opens a comment that spans lines
+        "   <!-- template",
+        # (b) a code span left open across a soft break: the next line STARTS with <!--, which in
+        # GFM opens an HTML block even inside a paragraph (pandoc -f gfm hides what follows), so
+        # the do-not-merge after it is hidden from a reader and from this check alike.
+        "see `a\n<!--` b",
+    ],
+)
+def test_a_comment_that_starts_a_line_hides_the_lines_after_it(
+    tmp_path: Path, trigger: str
+) -> None:
+    r, base, L = _linear(tmp_path)
+    g = mod.Git(str(r))
+    body = (
+        GOOD_T.format(sha=L[10][:9])
+        + "\n\n"
+        + trigger
+        + "\n\n"
+        + DNM_T.format(sha=L[10][:9])
+    )
+    assert (
+        mod.judge(body, g.changed_paths(base, L[10]), L[10], base, g).verdict == mod.OK
+    )
+
+
+def test_a_comment_closed_on_its_line_is_removed_mid_line() -> None:
+    lines = mod.visible_lines("a <!-- hidden --> b\nnext")
+    assert lines == ["a  b", "next"]
+    # And a comment opened at the start of a line and closed later hides only its contents.
+    # (Each hidden line stays as an empty string, so line positions are kept.)
+    assert mod.visible_lines("<!-- x\ny\nz --> w\nv") == ["", "", " w", "v"]
