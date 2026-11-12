@@ -17,14 +17,14 @@ Create an implementation plan for an engineer to follow, at the **tier the chart
 
 ## Argument Handling
 
-**Sync first**, before reading or listing any plan: `git fetch origin && git pull --ff-only`; the newest copy may be on an unmerged branch (`docs/process/README.md` › The stage trail, item 1).
+**Sync first**, before reading or listing any plan: `git fetch origin && git pull --ff-only`, then find or list it from the remotes (`docs/process/README.md` › The stage trail, item 1).
 
 Parse `$ARGUMENTS`:
 - Strip a trailing `--light` or `--full` and remember it as the requested tier
 - If it looks like comma-separated numbers (e.g., `222,223,224`), treat them as GitHub issue numbers
 - If it looks like a description, use it as the planning goal
 - If the first word is `revise`, the rest names ONE existing plan: a path under `docs/process/plans/` or `.claude/plans/`, or a bare plan-id (`plan-a1b2c3`, resolved to `docs/process/plans/plan-a1b2c3.md`). Go to **Revising a plan** below; the Scope check, the Tier check and Steps 1–3 as written are for a NEW plan and do not run. `revise` with no plan, or with a name that resolves to no file, lists the newest plans (the two commands below) and asks which — never guess. A `--light` / `--full` flag next to `revise` is a tier change, which is the owner's: ask, and record the answer as `override:` in `## Scope`
-- If empty, ask the user what they want to plan. To re-plan an existing plan, list the three newest (`ls -t docs/process/plans/*.md | head -3`), ask which — never pick silently — and follow **Revising a plan**.
+- If empty, ask the user what they want to plan. To re-plan an existing plan, list the three newest (stage trail item 1), ask which — never pick silently — and follow **Revising a plan**.
 
 ## Revising a plan (`revise <plan path or id>`)
 
