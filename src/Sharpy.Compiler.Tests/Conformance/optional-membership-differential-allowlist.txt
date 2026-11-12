@@ -8,7 +8,7 @@
 # divergence (cell, CPython's answer, Sharpy's, the expectation) is written there on every run. Delete a row when
 # its last cell passes. Pin lines are comments, so scorecard_metrics.py counts one row per container/needle.
 
-ArgparseNamespace/NoneNeedle  cells=374  pin=58a20b799aa39e79  # see #2647 (no needle slot: SPY0908; the literal None runs where ruling A refuses) and #2635
+ArgparseNamespace/NoneNeedle  cells=374  pin=58a20b799aa39e79  # see #2647 (no needle slot: SPY0908; the literal None runs where ruling A refuses) and #2635; the Tone | None cells (NullReferenceException in the string enum's implicit conversion): #2635 comment 6831482754
 #= Color/ArgparseNamespace/NoneLiteral/in/ChainLink -> sharpy refused SPY0519 | expected refused SPY0222
 #= Color/ArgparseNamespace/NoneLiteral/in/ComprehensionFilter -> sharpy values False | expected refused SPY0222
 #= Color/ArgparseNamespace/NoneLiteral/in/Expression -> sharpy values False | expected refused SPY0222
@@ -2590,7 +2590,7 @@ DictValues/NoneNeedle  cells=126  pin=506b2fc10538230c  # see #2635
 #= uint8/DictValues/Optional/not in/Expression -> sharpy refused SPY0222 | expected python False True True
 #= uint8/DictValues/Optional/not in/IfCondition -> sharpy refused SPY0222 | expected python False True True
 
-EmailMessage/NoneNeedle  cells=380  pin=d3af034b4b259c6c  # see #2647 (no needle slot: SPY0908; the literal None runs where ruling A refuses) and #2635 (None answers False where CPython raises AttributeError)
+EmailMessage/NoneNeedle  cells=380  pin=d3af034b4b259c6c  # see #2647 (no needle slot: SPY0908; the literal None runs where ruling A refuses) and #2635 (None answers False where CPython raises AttributeError); the Tone | None cells (NullReferenceException in the string enum's implicit conversion): #2635 comment 6831482754
 #= Color/EmailMessage/NoneLiteral/in/ChainLink -> sharpy refused SPY0519 | expected refused SPY0222
 #= Color/EmailMessage/NoneLiteral/in/ComprehensionFilter -> sharpy values False | expected refused SPY0222
 #= Color/EmailMessage/NoneLiteral/in/Expression -> sharpy values False | expected refused SPY0222
