@@ -821,6 +821,14 @@ deviations:
   spec_ref: docs/language_specification/bitwise_operators.md
   existing_diagnostic: SPY0348
   planned_diagnostic: null
+- id: socket-errno-is-dotnet-socket-error
+  category: stdlib
+  audience: python
+  severity: none
+  code: null
+  spec_ref: null
+  existing_diagnostic: null
+  planned_diagnostic: null
 - id: socket-error-timeout-distinct-classes
   category: stdlib
   audience: python
