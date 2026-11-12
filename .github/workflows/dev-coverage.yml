@@ -26,15 +26,19 @@
 # dispatches as the person running it, with coverage off).
 #
 # Overlap: `.claude/scripts/ci-gate --ref dev` started while this run is in flight may adopt this
-# coverage-on run as its own; that is harmless (a superset of the coverage-off gate).
+# coverage-on run as its own; that is harmless (a superset of the coverage-off gate). Conversely, a
+# lane's edited copy of this workflow dispatched with `--ref <lane>` could create a bot run on `dev`
+# that satisfies the tree skip without collecting coverage (contrived; the skip only saves cost, and
+# `always` overrides it).
 #
 # Cost: one idle ubuntu job that polls once a minute, plus the dispatched run (measured 21.7 min wall,
 # 131.8 runner-minutes coverage-on in 43128092645, against 114.3 for coverage-off PR run
 # 43124845663).
 #
-# Visibility: this job fails, with an `::error::` naming the cause, when the dispatched run fails, is
-# cancelled, never appears, has not finished 100 min after dispatch, or cannot be read (5 API errors
-# in a row); it never ends by the job timeout. Its job summary names the tested sha and links the
+# Visibility: this job fails, with an `::error::` naming the cause, when a read of dev fails 5 times
+# in a row, the dispatch is refused, the dispatched run never appears, has not finished 100 min after
+# dispatch, cannot be read (5 API errors in a row while polling), or concludes anything but
+# success; it never ends by the job timeout. Every API read is retried (10 s apart) before it counts. Its job summary names the tested sha and links the
 # run. The dispatched run itself is triggered by github-actions[bot], which receives no failure
 # e-mail; this job's failure is what e-mails a person. Nothing here comments, opens issues or pushes.
 #
@@ -82,11 +86,16 @@ jobs:
     steps:
       - name: Read dev's tip and whether it still needs a coverage-on run
         id: dev
+        env:
+          MAX_API_ERRORS: '5'
         run: |
           set -euo pipefail
-          sha=$(gh api "repos/$GH_REPO/commits/dev" --jq .sha)
-          tree=$(gh api "repos/$GH_REPO/git/commits/$sha" --jq .tree.sha)
-          ahead=$(gh api "repos/$GH_REPO/compare/mainline...$sha" --jq .ahead_by)
+          fail() { echo "::error::$1"; echo "**Failed:** $1" >> "$GITHUB_STEP_SUMMARY"; exit 1; }
+          # gh api with up to MAX_API_ERRORS attempts, 10 s apart; non-zero only when all fail.
+          api() { local n=0 out; until out=$(gh api "$@"); do n=$((n + 1)); [ "$n" -lt "$MAX_API_ERRORS" ] || return 1; sleep 10; done; printf '%s\n' "$out"; }
+          sha=$(api "repos/$GH_REPO/commits/dev" --jq .sha) || fail "$MAX_API_ERRORS API errors in a row reading dev's tip"
+          tree=$(api "repos/$GH_REPO/git/commits/$sha" --jq .tree.sha) || fail "$MAX_API_ERRORS API errors in a row reading the tree of dev@${sha:0:9}"
+          ahead=$(api "repos/$GH_REPO/compare/mainline...$sha" --jq .ahead_by) || fail "$MAX_API_ERRORS API errors in a row comparing mainline...dev"
           echo "sha=$sha" >> "$GITHUB_OUTPUT"
           echo "dev is at \`$sha\` (tree \`$tree\`), $ahead commit(s) ahead of mainline" | tee -a "$GITHUB_STEP_SUMMARY"
           run=true
@@ -96,17 +105,24 @@ jobs:
             run=false
             echo "Skipped: nothing on dev that the mainline push has not already run coverage-on." | tee -a "$GITHUB_STEP_SUMMARY"
           else
-            # Successful bot-dispatched runs on dev (the coverage-on proxy above), newest first.
-            prev=$(gh api "repos/$GH_REPO/actions/workflows/dotnet10.yml/runs?event=workflow_dispatch&branch=dev&status=success&per_page=30" \
-              --jq '.workflow_runs[] | select(.triggering_actor.login == "github-actions[bot]") | .head_sha' | awk '!seen[$0]++' | head -n 10) \
-              || prev=""   # a failed lookup means "not known to be tested": run
-            for p in $prev; do
-              if [ "$(gh api "repos/$GH_REPO/git/commits/$p" --jq .tree.sha)" = "$tree" ]; then
-                run=false
-                echo "Skipped: a successful coverage-on run already tested this tree, at \`$p\`." | tee -a "$GITHUB_STEP_SUMMARY"
-                break
-              fi
-            done
+            # Successful bot-dispatched runs on dev (the coverage-on proxy above), newest first. The
+            # skip only saves cost, so a lookup that keeps failing means "run", with a warning.
+            if prev=$(api "repos/$GH_REPO/actions/workflows/dotnet10.yml/runs?event=workflow_dispatch&branch=dev&status=success&per_page=30" \
+                --jq '.workflow_runs[] | select(.triggering_actor.login == "github-actions[bot]") | .head_sha'); then
+              for p in $(printf '%s\n' "$prev" | awk 'NF && !seen[$0]++' | head -n 10); do
+                if ! ptree=$(api "repos/$GH_REPO/git/commits/$p" --jq .tree.sha); then
+                  echo "::warning::could not read the tree of $p; not counting it as tested"
+                  continue
+                fi
+                if [ "$ptree" = "$tree" ]; then
+                  run=false
+                  echo "Skipped: a successful coverage-on run already tested this tree, at \`$p\`." | tee -a "$GITHUB_STEP_SUMMARY"
+                  break
+                fi
+              done
+            else
+              echo "::warning::could not list earlier coverage-on runs; running"
+            fi
           fi
           echo "run=$run" >> "$GITHUB_OUTPUT"
 
@@ -138,18 +154,20 @@ jobs:
           errors=0
           status=""
           while :; do
-            if status=$(gh api "repos/$GH_REPO/actions/runs/$id" --jq .status); then
+            # One read for all three fields, its exit status tested: on an HTTP error gh prints the
+            # error body on stdout, so the fields are also checked before they count.
+            if row=$(gh api "repos/$GH_REPO/actions/runs/$id" --jq '"\(.status) \(.conclusion // "none") \(.head_sha)"') \
+               && read -r status conclusion tested <<<"$row" && [[ "$tested" =~ ^[0-9a-f]{40}$ ]]; then
               errors=0
             else
               errors=$((errors + 1))
+              status=""
               [ "$errors" -lt "$MAX_API_ERRORS" ] || fail "$MAX_API_ERRORS API errors in a row while polling $url"
             fi
             [ "$status" = "completed" ] && break
             [ "$SECONDS" -lt "$deadline" ] || fail "$url had not completed $WAIT_MINUTES min after dispatch (last status: ${status:-unknown}); it is still running"
             sleep 60
           done
-          read -r tested conclusion < <(gh api "repos/$GH_REPO/actions/runs/$id" --jq '"\(.head_sha) \(.conclusion)"') \
-            || fail "could not read the result of $url"
           {
             echo ""
             echo "| | |"
