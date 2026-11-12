@@ -1,0 +1,184 @@
+# A coverage-on run of the .NET 10 gate on `dev`'s tip, once a day, before anything is promoted.
+#
+# Why (#2607, PR #2626): dotnet10.yml collects coverage only on `mainline` pushes and `coverage:
+# true` dispatches (its COVERAGE_ON). Coverage instruments the assemblies, so a test that reads IL
+# or enumerates the types of an instrumented assembly can pass every coverage-off PR gate and fail
+# only after promotion: StdlibExceptionEscapeSweepTests (PR #2574) did, on both mainline pushes
+# 43091991974 and 43114694166. This workflow runs the same coverage-on suite on `dev` first.
+#
+# How: it DISPATCHES dotnet10.yml at `dev` with `coverage: true` (what `.claude/scripts/ci-gate`
+# does with coverage off, and what run 43128092645 did by hand), waits for that run, and fails when
+# it does not succeed. A dispatch runs `dev`'s own copy of dotnet10.yml at `dev`'s tip, so the jobs,
+# shards and filters tested are exactly the ones the next promotion will run. dotnet10.yml is not
+# edited: no required check, filter or shard changes.
+#
+# This file first runs after it is promoted to `mainline`, the default branch: a schedule fires only
+# from the default branch's copy, and a dispatch (`gh workflow run dev-coverage.yml`) also needs the
+# workflow on the default branch (GET actions/workflows/dev-coverage.yml was 404 on 2026-11-12 with
+# the file only on a lane).
+#
+# Skipped (unless `always`) when `dev` has no commit `mainline` lacks (the mainline push already ran
+# coverage-on there), or when a successful coverage-on run already tested `dev`'s tip tree: the
+# unchanged-`dev` case, and a `mainline`-into-`dev` sync merge, whose tree equals the `dev` it merged
+# into. The runs API does not return a dispatch's inputs, so "coverage-on" is told by the narrowest
+# honest proxy: a workflow_dispatch of dotnet10.yml on `dev` triggered by github-actions[bot]. Only
+# this workflow dispatches dotnet10.yml as the bot (auto-tag.yml dispatches release.yml; ci-gate
+# dispatches as the person running it, with coverage off).
+#
+# Overlap: `.claude/scripts/ci-gate --ref dev` started while this run is in flight may adopt this
+# coverage-on run as its own; that is harmless (a superset of the coverage-off gate). Conversely, a
+# lane's edited copy of this workflow dispatched with `--ref <lane>` could create a bot run on `dev`
+# that satisfies the tree skip without collecting coverage (contrived; the skip only saves cost, and
+# `always` overrides it).
+#
+# Cost: one idle ubuntu job that polls once a minute, plus the dispatched run (measured 21.7 min wall,
+# 131.8 runner-minutes coverage-on in 43128092645, against 114.3 for coverage-off PR run
+# 43124845663).
+#
+# Visibility: this job fails, with an `::error::` naming the cause, when a read of dev fails 5 times
+# in a row, the dispatch is refused, the dispatched run never appears, has not finished 100 min after
+# dispatch, cannot be read (5 API errors in a row while polling), or concludes anything but
+# success; it never ends by the job timeout. Every API read is retried (10 s apart) before it counts. Its job summary names the tested sha and links the
+# run. The dispatched run itself is triggered by github-actions[bot], which receives no failure
+# e-mail; this job's failure is what e-mails a person. Nothing here comments, opens issues or pushes.
+#
+# Token: `actions: write` is needed only to create the workflow_dispatch event (a GITHUB_TOKEN
+# dispatch is the one kind of event that does start a new run). It does not grant `contents`
+# write: this job cannot push to any branch or tag. It can also cancel, re-run or delete runs, so
+# nothing in this job does anything but dispatch dotnet10.yml and read runs.
+name: Dev Coverage-On Run
+
+on:
+  schedule:
+    # 11:41 UTC: clear of the 04:23 nightly soak (up to ~2 h of jobs) and of the 6-9 AM Pacific window.
+    # Failure mail for a scheduled run goes to the user who last changed this cron line. The commit
+    # adding it is authored by an identity with no GitHub account, so who is mailed is UNVERIFIED:
+    # the owner must confirm (or re-save this line themselves).
+    - cron: '41 11 * * *'
+  workflow_dispatch:
+    inputs:
+      always:
+        description: Run even when dev has nothing new to test
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+concurrency:
+  group: dev-coverage
+  cancel-in-progress: false
+
+jobs:
+  coverage-on-dev:
+    name: Coverage-on .NET 10 run on dev
+    runs-on: ubuntu-latest
+    # The dispatched run took 21.7 min (43128092645). The wait below ends itself at 100 min, so this
+    # limit is only a backstop.
+    timeout-minutes: 120
+    permissions:
+      contents: read
+      actions: write
+    env:
+      GH_TOKEN: ${{ github.token }}
+      GH_REPO: ${{ github.repository }}
+      ALWAYS: ${{ inputs.always || false }}
+    steps:
+      - name: Read dev's tip and whether it still needs a coverage-on run
+        id: dev
+        env:
+          MAX_API_ERRORS: '5'
+        run: |
+          set -euo pipefail
+          fail() { echo "::error::$1"; echo "**Failed:** $1" >> "$GITHUB_STEP_SUMMARY"; exit 1; }
+          # gh api with up to MAX_API_ERRORS attempts, 10 s apart; non-zero only when all fail.
+          api() { local n=0 out; until out=$(gh api "$@"); do n=$((n + 1)); [ "$n" -lt "$MAX_API_ERRORS" ] || return 1; sleep 10; done; printf '%s\n' "$out"; }
+          sha=$(api "repos/$GH_REPO/commits/dev" --jq .sha) || fail "$MAX_API_ERRORS API errors in a row reading dev's tip"
+          tree=$(api "repos/$GH_REPO/git/commits/$sha" --jq .tree.sha) || fail "$MAX_API_ERRORS API errors in a row reading the tree of dev@${sha:0:9}"
+          ahead=$(api "repos/$GH_REPO/compare/mainline...$sha" --jq .ahead_by) || fail "$MAX_API_ERRORS API errors in a row comparing mainline...dev"
+          echo "sha=$sha" >> "$GITHUB_OUTPUT"
+          echo "dev is at \`$sha\` (tree \`$tree\`), $ahead commit(s) ahead of mainline" | tee -a "$GITHUB_STEP_SUMMARY"
+          run=true
+          if [ "$ALWAYS" = "true" ]; then
+            echo "always: running regardless." | tee -a "$GITHUB_STEP_SUMMARY"
+          elif [ "$ahead" = "0" ]; then
+            run=false
+            echo "Skipped: nothing on dev that the mainline push has not already run coverage-on." | tee -a "$GITHUB_STEP_SUMMARY"
+          else
+            # Successful bot-dispatched runs on dev (the coverage-on proxy above), newest first. The
+            # skip only saves cost, so a lookup that keeps failing means "run", with a warning.
+            if prev=$(api "repos/$GH_REPO/actions/workflows/dotnet10.yml/runs?event=workflow_dispatch&branch=dev&status=success&per_page=30" \
+                --jq '.workflow_runs[] | select(.triggering_actor.login == "github-actions[bot]") | .head_sha'); then
+              for p in $(printf '%s\n' "$prev" | awk 'NF && !seen[$0]++' | head -n 10); do
+                if ! ptree=$(api "repos/$GH_REPO/git/commits/$p" --jq .tree.sha); then
+                  echo "::warning::could not read the tree of $p; not counting it as tested"
+                  continue
+                fi
+                if [ "$ptree" = "$tree" ]; then
+                  run=false
+                  echo "Skipped: a successful coverage-on run already tested this tree, at \`$p\`." | tee -a "$GITHUB_STEP_SUMMARY"
+                  break
+                fi
+              done
+            else
+              echo "::warning::could not list earlier coverage-on runs; running"
+            fi
+          fi
+          echo "run=$run" >> "$GITHUB_OUTPUT"
+
+      - name: Dispatch dotnet10.yml on dev with coverage on, and wait for it
+        if: ${{ steps.dev.outputs.run == 'true' }}
+        env:
+          READ_SHA: ${{ steps.dev.outputs.sha }}
+          WAIT_MINUTES: '100'
+          MAX_API_ERRORS: '5'
+        run: |
+          set -euo pipefail
+          deadline=$((SECONDS + WAIT_MINUTES * 60))
+          fail() { echo "::error::$1"; echo "**Failed:** $1" >> "$GITHUB_STEP_SUMMARY"; exit 1; }
+          runs() {
+            gh api "repos/$GH_REPO/actions/workflows/dotnet10.yml/runs?event=workflow_dispatch&branch=dev&per_page=50" \
+              | jq '[.workflow_runs[] | select(.triggering_actor.login == "github-actions[bot]") | .id]'
+          }
+          before=$(runs) || fail "could not list dotnet10.yml runs before dispatching"
+          gh workflow run dotnet10.yml --ref dev -f coverage=true || fail "the dispatch of dotnet10.yml on dev was refused"
+          id=""
+          for _ in $(seq 1 30); do
+            sleep 10
+            id=$(runs | jq --argjson before "$before" '(. - $before) | max // empty') || id=""
+            [ -n "$id" ] && break
+          done
+          [ -n "$id" ] || fail "no dispatched dotnet10.yml run appeared on dev within 5 min"
+          url="https://github.com/$GH_REPO/actions/runs/$id"
+          echo "Dispatched run: $url"
+          errors=0
+          status=""
+          while :; do
+            # One read for all three fields, its exit status tested: on an HTTP error gh prints the
+            # error body on stdout, so the fields are also checked before they count.
+            if row=$(gh api "repos/$GH_REPO/actions/runs/$id" --jq '"\(.status) \(.conclusion // "none") \(.head_sha)"') \
+               && read -r status conclusion tested <<<"$row" && [[ "$tested" =~ ^[0-9a-f]{40}$ ]]; then
+              errors=0
+            else
+              errors=$((errors + 1))
+              status=""
+              [ "$errors" -lt "$MAX_API_ERRORS" ] || fail "$MAX_API_ERRORS API errors in a row while polling $url"
+            fi
+            [ "$status" = "completed" ] && break
+            [ "$SECONDS" -lt "$deadline" ] || fail "$url had not completed $WAIT_MINUTES min after dispatch (last status: ${status:-unknown}); it is still running"
+            sleep 60
+          done
+          {
+            echo ""
+            echo "| | |"
+            echo "|---|---|"
+            echo "| tested sha (the run's head_sha) | \`$tested\` |"
+            echo "| dev tip read before dispatch | \`$READ_SHA\` |"
+            echo "| run | $url |"
+            echo "| conclusion | **$conclusion** |"
+            if [ "$tested" != "$READ_SHA" ]; then
+              echo ""
+              echo "dev moved between the read and the dispatch: the run tested \`$tested\`."
+            fi
+          } | tee -a "$GITHUB_STEP_SUMMARY"
+          [ "$conclusion" = "success" ] || fail "coverage-on .NET 10 run on dev@${tested:0:9} concluded $conclusion: $url"
