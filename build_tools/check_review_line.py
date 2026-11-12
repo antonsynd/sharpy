@@ -12,39 +12,55 @@ same line; the last one written is the one that counts. Nothing enforced this be
 (src/) and #2612 (build_tools/) merged on 2026-11-11 with no line. This script makes a missing or
 malformed line visible; it is advisory unless the owner makes its check required.
 
+Which lines count. A line counts when, after an optional list marker, bold or a backtick, it starts
+with `Independent review @`. Lines inside fenced or indented code blocks, blockquotes (`>`) and HTML
+comments are never read: they quote the rule or an example, they do not state a review. A counted
+line parses only when its FIRST clause is `Independent review @ <hex sha>[ (note)]: <verdict>` and
+every later `review @` on it is a `second|third|fourth|fifth|final review @ <hex sha>[ (note)]:
+<verdict>`; a verdict is `merge`, `merge after fixes` or `do not merge` (bold allowed), followed by
+punctuation, a dash or the end of the line. So `Independent review @ head pending; ... second
+review @ X: merge` is malformed, not passed on the later clause.
+
 Verdicts, in the order they are decided:
 
-  not required   the base is not `dev` (a promotion into `mainline`, a stacked PR), the head is
-                 `dev`, the author is a bot (a login ending in `[bot]`: dependabot, github-actions),
-                 or no changed path is a code path (a sync of `mainline` into `dev` changes none);
-  missing        no line starts with `Independent review @` (list markers, `>`, `**` and backticks
-                 before it are skipped);
-  malformed      the last such line has no `review @ <hex sha>: <verdict>` with a verdict of
-                 `merge`, `merge after fixes` or `do not merge`;
-  do not merge   the last review written on the line(s) says so;
+  not required   the base is not `dev` (a promotion into `mainline`, a stacked PR), or no changed
+                 path is a code path (a sync of `mainline` into `dev` changes none). README item 6
+                 names no other exemption, so there is none for bots or for a head named `dev`;
+  missing        no line counts;
+  malformed      the last counted line does not parse;
+  do not merge   the last review written says so (a later review clears an earlier one);
   sha not an ancestor of head
-                 a reviewed sha, or the end of a `fixes <a>..<b>` range, is not an ancestor of (or
-                 equal to) the head, or this clone does not have it;
-  stale          a non-merge commit after the covered point (the last review's sha, or the fix
-                 range's end when that descends from it), not reachable from the base, touches a
-                 code path;
+                 a reviewed sha, or a `fixes <a>..<b>` range's end, is not the head or one of its
+                 ancestors, or this clone does not have it;
+  sha on the base
+                 a reviewed sha is already reachable from the base: it reviewed `dev`, not the PR;
+  bad fix range  the range's start is not a reviewed sha on the line or a descendant of one, is on
+                 the base, or is not an ancestor of the range's end;
+  stale          a commit after the covered point (the last review's sha, or the fix range's end
+                 when that descends from it), not reachable from the base, touches a code path. A
+                 merge commit counts by its remerge diff (`git log --remerge-diff`, git >= 2.36):
+                 a clean `dev` merge changes nothing, code written while resolving it does;
   ok             otherwise.
 
 What this does NOT judge, deliberately: that the reviewer was independent or that the fix range was
 read (a line is text anyone can write); the `<n> applied, <m> declined` counts (real lines vary:
 `0 blocking, 3 optional notes`, `no new findings`); whether a fix round needed a second review (an
 added abstraction or guard, a public surface, the 100-line threshold); whether the commits inside
-the fix range are only the review's fixes; and whether a merge commit's conflict resolution changed
-code (every merge is treated as a `dev` merge).
+the fix range are only the review's fixes; and a history rewrite with an empty diff (CLAUDE.md: the
+line stays current when `git diff <old> <new>` is empty), because the old sha is usually not
+fetchable: such a PR reads as `sha not an ancestor of head` until the line's shas are updated.
 
 Usage:
-    python3 build_tools/check_review_line.py --base <sha> --head <sha> [--body-env PR_BODY]
-        [--base-ref dev] [--head-ref <branch>] [--author <login>] [--draft]
+    python3 build_tools/check_review_line.py --head <sha> [--base <rev>] [--base-ref dev]
+        [--body-env PR_BODY] [--draft]
 
-The body is read from the named environment variable (default PR_BODY), never from argv, so a
-workflow never puts PR text on a command line. Changed paths are `git diff --name-only base...head`.
-Exit 0 for `ok` / `not required` (and for any verdict on a draft, which prints a warning), 1 for
-any other verdict, 2 if git fails.
+--base defaults to `origin/<base-ref>`: the base branch's tip in this clone, not the event payload's
+`base.sha`, which is frozen when the PR opens (#2626 was opened on eabb480c6 and merged onto
+978b3d47f). The body is read from the named environment variable (default PR_BODY), never from argv,
+so a workflow never puts PR text on a command line. Changed paths are `git diff --no-renames
+--name-only base...head`, so a code file moved out of a code path still counts. Exit 0 for `ok` /
+`not required` (and for any verdict on a draft, which prints a warning), 1 for any other verdict,
+2 if git fails.
 """
 
 from __future__ import annotations
@@ -74,26 +90,67 @@ MISSING = "missing"
 MALFORMED = "malformed"
 DO_NOT_MERGE = "do not merge"
 NOT_ANCESTOR = "sha not an ancestor of head"
+ON_BASE = "sha on the base"
+BAD_RANGE = "bad fix range"
 STALE = "stale"
 PASSING = (NOT_REQUIRED, OK)
 
-# A line that starts, after list markers, quote markers, bold and backticks, with the line's head.
-LINE_HEAD = re.compile(r"^[\s>*`_-]*independent review @", re.IGNORECASE)
-# One review: `Independent review @ <sha>`, `second review @ <sha> (the head)`, then `: <verdict>`
-# ending at punctuation or the end of the line, so `merge after fix;` is not read as `merge`.
-REVIEW = re.compile(
-    r"\b(?:independent|second|third|fourth|fifth|final)\s+review\s+@\s+([0-9a-f]{7,40})\b"
-    r"(?:\s*\([^)]*\))?\s*:\s*(do not merge|merge after fixes|merge)(?=\s*(?:[;,.(`]|$))",
+REWRITE_HINT = (
+    " (if the branch was rewritten with an empty diff, update the shas in the line)"
+)
+
+# Markup a line may open with: up to three spaces, a list marker, bold/italic marks, a backtick.
+# Never `>`: a blockquote quotes a line, it does not state a review.
+PREFIX = r"^ {0,3}(?:[-*+]\s+)?[*_`]*"
+LINE_HEAD = re.compile(PREFIX + r"independent review @", re.IGNORECASE)
+SHA = r"([0-9a-fA-F]{7,40})\b"
+NOTE = r"(?:\s*\([^)]*\))?"
+VERDICT = r"[*_]{0,2}(do not merge|merge after fixes|merge)[*_]{0,2}(?=\s*(?:[;,.(`]|—|–|-(?=\s)|$))"
+FIRST = re.compile(
+    PREFIX + r"independent\s+review\s+@\s+" + SHA + NOTE + r"\s*:\s*" + VERDICT,
     re.IGNORECASE,
 )
+LATER = re.compile(
+    r"\b(?:second|third|fourth|fifth|final)\s+review\s+@\s+"
+    + SHA
+    + NOTE
+    + r"\s*:\s*"
+    + VERDICT,
+    re.IGNORECASE,
+)
+ANY_REVIEW = re.compile(r"\breview\s+@", re.IGNORECASE)
 # `fixes <a>..<b> read by the lead`, `the second review read the fix commit <a>..<b> itself`.
 FIX_RANGE = re.compile(
-    r"\bfix(?:es|\s+commits?)?\s+([0-9a-f]{7,40})\.\.([0-9a-f]{7,40})\b", re.IGNORECASE
+    r"\bfix(?:es|\s+commits?)?\s+([0-9a-fA-F]{7,40})\.\.([0-9a-fA-F]{7,40})\b",
+    re.IGNORECASE,
 )
+FENCE = re.compile(r"^ {0,3}(`{3,}|~{3,})")
+HTML_COMMENT = re.compile(r"<!--.*?(?:-->|\Z)", re.DOTALL)
 
 
 def is_code_path(path: str) -> bool:
     return path.startswith(CODE_PREFIXES)
+
+
+def visible_lines(body: str) -> List[str]:
+    """The body's lines a reader sees as prose: HTML comments, fenced and indented code, and
+    blockquotes (`>`) left to the line head, which never accepts `>`. Lines split on newlines only (not U+2028), CRLF accepted."""
+    text = HTML_COMMENT.sub("", (body or "").replace("\r\n", "\n").replace("\r", "\n"))
+    out: List[str] = []
+    fence: Optional[str] = None
+    for line in text.split("\n"):
+        m = FENCE.match(line)
+        if fence is not None:
+            if m and m.group(1)[0] == fence[0] and len(m.group(1)) >= len(fence):
+                fence = None
+            continue
+        if m:
+            fence = m.group(1)
+            continue
+        if line.startswith(("    ", "\t")):
+            continue
+        out.append(line)
+    return out
 
 
 @dataclass(frozen=True)
@@ -106,25 +163,38 @@ class Review:
 class ParsedLine:
     lines: List[str] = field(default_factory=list)
     reviews: List[Review] = field(default_factory=list)
-    fix_end: Optional[str] = None
+    fix_range: Optional[tuple] = None
     last_line_parses: bool = False
 
 
+def parse_line(line: str) -> Optional[List[Review]]:
+    """The reviews a counted line states, or None when it does not parse."""
+    first = FIRST.match(line)
+    if not first:
+        return None
+    reviews = [Review(first.group(1).lower(), first.group(2).lower())]
+    reviews += [
+        Review(m.group(1).lower(), m.group(2).lower())
+        for m in LATER.finditer(line, first.end())
+    ]
+    if len(reviews) != len(ANY_REVIEW.findall(line)):
+        return None
+    return reviews
+
+
 def parse_body(body: str) -> ParsedLine:
-    """Every review and the last fix range on every line that starts with `Independent review @`."""
+    """Every review and the last fix range on every counted line."""
     parsed = ParsedLine()
-    for line in (body or "").splitlines():
+    for line in visible_lines(body):
         if not LINE_HEAD.match(line):
             continue
         parsed.lines.append(line.strip())
-        found = [
-            Review(m.group(1).lower(), m.group(2).lower())
-            for m in REVIEW.finditer(line)
-        ]
-        parsed.reviews += found
-        parsed.last_line_parses = bool(found)
-        for m in FIX_RANGE.finditer(line):
-            parsed.fix_end = m.group(2).lower()
+        reviews = parse_line(line)
+        parsed.last_line_parses = reviews is not None
+        if reviews:
+            parsed.reviews += reviews
+            for m in FIX_RANGE.finditer(line):
+                parsed.fix_range = (m.group(1).lower(), m.group(2).lower())
     return parsed
 
 
@@ -139,7 +209,7 @@ class Result:
 
 
 class Git:
-    """The two questions the check asks of history. Tests pass a fake or a scratch repository."""
+    """The questions the check asks of history. Tests pass a fake or a scratch repository."""
 
     def __init__(self, cwd: Optional[str] = None) -> None:
         self.cwd = cwd
@@ -156,10 +226,12 @@ class Git:
         return self._run("merge-base", "--is-ancestor", ancestor, head).returncode == 0
 
     def code_commits_after(self, covered: str, head: str, base: str) -> List[str]:
-        """Non-merge commits in `covered..head` not reachable from `base` that touch a code path."""
+        """Commits in `covered..head` not reachable from `base` that touch a code path; a merge by
+        what its own resolution changed (its remerge diff)."""
         r = self._run(
             "log",
-            "--no-merges",
+            "--no-renames",
+            "--remerge-diff",
             "--format=@%H",
             "--name-only",
             f"{covered}..{head}",
@@ -177,7 +249,7 @@ class Git:
         return out
 
     def changed_paths(self, base: str, head: str) -> List[str]:
-        r = self._run("diff", "--name-only", f"{base}...{head}")
+        r = self._run("diff", "--no-renames", "--name-only", f"{base}...{head}")
         if r.returncode != 0:
             raise RuntimeError(r.stderr.strip() or "git diff failed")
         return [p for p in r.stdout.splitlines() if p]
@@ -190,18 +262,12 @@ def judge(
     base: str,
     git: Git,
     base_ref: str = RULE_BASE,
-    head_ref: str = "",
-    author: str = "",
 ) -> Result:
     if base_ref != RULE_BASE:
         return Result(
             NOT_REQUIRED,
             f"base is {base_ref!r}; the rule covers pull requests into {RULE_BASE!r}",
         )
-    if head_ref == RULE_BASE:
-        return Result(NOT_REQUIRED, f"head is {RULE_BASE!r}: a promotion, not a lane")
-    if author.endswith("[bot]"):
-        return Result(NOT_REQUIRED, f"author {author} is a bot")
     code = [p for p in paths if is_code_path(p)]
     if not code:
         return Result(
@@ -212,12 +278,13 @@ def judge(
     if not parsed.lines:
         return Result(
             MISSING,
-            f"{len(code)} code path(s) changed (e.g. {code[0]}) and no line starts with `Independent review @`",
+            f"{len(code)} code path(s) changed (e.g. {code[0]}) and no line starts with `Independent review @`"
+            " outside code, quotes and comments",
         )
     if not parsed.last_line_parses:
         return Result(
             MALFORMED,
-            f"no `review @ <sha>: <verdict>` read from: {parsed.lines[-1][:160]}",
+            f"no `Independent review @ <sha>: <verdict>` read from: {parsed.lines[-1][:160]}",
         )
 
     last = parsed.reviews[-1]
@@ -227,22 +294,42 @@ def judge(
         if not git.is_ancestor(review.sha, head):
             return Result(
                 NOT_ANCESTOR,
-                f"reviewed sha {review.sha} is not an ancestor of head {head[:9]} (or is unknown here)",
+                f"reviewed sha {review.sha} is not an ancestor of head {head[:9]} (or is unknown here)"
+                + REWRITE_HINT,
             )
-    if parsed.fix_end and not git.is_ancestor(parsed.fix_end, head):
-        return Result(
-            NOT_ANCESTOR,
-            f"fix range end {parsed.fix_end} is not an ancestor of head {head[:9]} (or is unknown here)",
-        )
+        if git.is_ancestor(review.sha, base):
+            return Result(
+                ON_BASE,
+                f"reviewed sha {review.sha} is already on the base: it names `dev`, not this PR",
+            )
 
     covered = last.sha
-    if parsed.fix_end and git.is_ancestor(last.sha, parsed.fix_end):
-        covered = parsed.fix_end
+    if parsed.fix_range:
+        start, end = parsed.fix_range
+        if not git.is_ancestor(end, head):
+            return Result(
+                NOT_ANCESTOR,
+                f"fix range end {end} is not an ancestor of head {head[:9]} (or is unknown here)"
+                + REWRITE_HINT,
+            )
+        if not any(git.is_ancestor(r.sha, start) for r in parsed.reviews):
+            return Result(
+                BAD_RANGE,
+                f"fix range start {start} is not a reviewed sha or a descendant of one",
+            )
+        if git.is_ancestor(start, base) or not git.is_ancestor(start, end):
+            return Result(
+                BAD_RANGE,
+                f"fix range {start}..{end} is on the base or does not run forward",
+            )
+        if git.is_ancestor(last.sha, end):
+            covered = end
     after = git.code_commits_after(covered, head, base)
     if after:
         return Result(
             STALE,
-            f"{len(after)} code commit(s) after {covered[:9]}, the last point the line covers: {', '.join(s[:9] for s in after[:5])}",
+            f"{len(after)} code commit(s) after {covered[:9]}, the last point the line covers: "
+            f"{', '.join(s[:9] for s in after[:5])}" + REWRITE_HINT,
         )
     return Result(
         OK, f"review @ {last.sha}: {last.verdict}; covered through {covered[:9]}"
@@ -251,34 +338,32 @@ def judge(
 
 def main(argv: Optional[List[str]] = None, git_factory: Callable[[], Git] = Git) -> int:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
-    parser.add_argument(
-        "--base", required=True, help="the base sha (the PR's base tip)"
-    )
     parser.add_argument("--head", required=True, help="the PR's head sha")
+    parser.add_argument("--base", help="the base tip (default origin/<base-ref>)")
+    parser.add_argument("--base-ref", default=RULE_BASE)
     parser.add_argument(
         "--body-env", default="PR_BODY", help="environment variable holding the PR body"
     )
-    parser.add_argument("--base-ref", default=RULE_BASE)
-    parser.add_argument("--head-ref", default="")
-    parser.add_argument("--author", default="")
     parser.add_argument(
         "--draft", action="store_true", help="a draft: report, never fail"
     )
     args = parser.parse_args(argv)
 
+    base = args.base or f"origin/{args.base_ref}"
     git = git_factory()
     try:
-        paths = git.changed_paths(args.base, args.head)
-        result = judge(
-            os.environ.get(args.body_env, ""),
-            paths,
-            args.head,
-            args.base,
-            git,
-            base_ref=args.base_ref,
-            head_ref=args.head_ref,
-            author=args.author,
-        )
+        if args.base_ref != RULE_BASE:
+            result = judge("", [], args.head, base, git, base_ref=args.base_ref)
+        else:
+            paths = git.changed_paths(base, args.head)
+            result = judge(
+                os.environ.get(args.body_env, ""),
+                paths,
+                args.head,
+                base,
+                git,
+                base_ref=args.base_ref,
+            )
     except RuntimeError as exc:
         print(f"check_review_line: {exc}", file=sys.stderr)
         return 2
