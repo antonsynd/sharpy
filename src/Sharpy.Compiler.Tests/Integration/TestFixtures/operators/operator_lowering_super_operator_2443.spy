@@ -1,0 +1,25 @@
+# P82 tranche 3 stage 0 (#2443): a fixture for an operator-lowering cell the corpus census
+# (OperatorLoweringCorpusCensusTests) found with no committed output. Values checked on CPython 3.15.
+
+class V:
+    x: int
+
+    def __init__(self, x: int):
+        self.x = x
+
+    def __add__(self, other: V) -> V:
+        return V(self.x + other.x)
+
+
+class W(V):
+    def __init__(self, x: int):
+        super().__init__(x)
+
+    def __add__(self, other: V) -> V:
+        base = super().__add__(other)
+        return V(base.x + 100)
+
+
+def main() -> None:
+    print((W(1) + V(2)).x)
+    print((V(1) + V(2)).x)

@@ -1,0 +1,10 @@
+# P82 tranche 3 stage 0 (#2443): a fixture for an operator-lowering cell the corpus census
+# (OperatorLoweringCorpusCensusTests) found with no committed output. Values checked on CPython 3.15.
+
+def main() -> None:
+    a: uint64 = 3UL
+    e: int64 = 4
+    print(a ** e)
+    b: int64 = -3
+    f: uint64 = 3UL
+    print(b ** f)

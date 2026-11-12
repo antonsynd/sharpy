@@ -33,7 +33,8 @@ namespace Sharpy.Compiler.Tests.Lowering;
 /// entry's key has a type outside the roster. A new writer with a fifth key kind therefore fails
 /// here until a fixture exercises it, instead of reading <c>Native</c> through an emitter helper
 /// that finds no carrier.</item>
-/// </list></para>
+/// </list>
+/// The record's second member, <c>NarrowTo</c>, is floored for each key kind that writes one.</para>
 ///
 /// <para>Categorised <c>GapDiscovery</c>: a standing corpus sweep, not an edit-loop test.</para>
 /// </summary>
@@ -75,7 +76,7 @@ public class OperatorLoweringCorpusCensusTests
         var byKeyKind = new SortedDictionary<string, int>(StringComparer.Ordinal);
         var cells = new SortedDictionary<(string Kind, string Key), int>();
         var firstFixture = new Dictionary<OperatorLoweringKind, string>();
-        var withNarrowTo = 0;
+        var narrowToByKeyKind = new SortedDictionary<string, int>(StringComparer.Ordinal);
         var internalErrors = new List<string>();
         int compiled = 0, entries = 0;
 
@@ -121,14 +122,15 @@ public class OperatorLoweringCorpusCensusTests
                         cells.GetValueOrDefault((lowering.Kind.ToString(), keyKind)) + 1;
                     firstFixture.TryAdd(lowering.Kind, fixture.TestName);
                     if (lowering.NarrowTo != null)
-                        withNarrowTo++;
+                        narrowToByKeyKind[keyKind] = narrowToByKeyKind.GetValueOrDefault(keyKind) + 1;
                 }
             }
         }
 
         _output.WriteLine(
             $"fixtures with .expected: {fixtures.Count}, compiled clean: {compiled}, entries: {entries}, "
-            + $"with NarrowTo: {withNarrowTo}");
+            + "with NarrowTo: " + (narrowToByKeyKind.Count == 0 ? "0"
+                : string.Join(", ", narrowToByKeyKind.Select(p => $"{p.Key}={p.Value}"))));
         _output.WriteLine("key-kind roster (SetOperatorLowering call sites): " + string.Join(", ", roster));
         _output.WriteLine("per key kind: " + string.Join(", ", byKeyKind.Select(p => $"{p.Key}={p.Value}")));
         foreach (var kind in Enum.GetValues<OperatorLoweringKind>())
@@ -161,6 +163,15 @@ public class OperatorLoweringCorpusCensusTests
         Assert.True(missingKeyKinds.Count == 0,
             "key kind(s) a SetOperatorLowering call site writes that no fixture with an .expected file "
             + "exercises (#2443): " + string.Join(", ", missingKeyKinds));
+
+        // NarrowTo is the record's second member and moves with the kind. Its two writers are the
+        // augmented assignment that narrows its result and the super-operator call (the base type).
+        foreach (var keyKind in new[] { nameof(Assignment), nameof(FunctionCall) })
+        {
+            Assert.True(narrowToByKeyKind.GetValueOrDefault(keyKind) > 0,
+                $"no {keyKind} entry with a NarrowTo in any fixture that has an .expected file: the "
+                + "member would move onto the IR with nothing observing it (#2443)");
+        }
 
         var unrostered = byKeyKind.Keys.Where(k => !roster.Contains(k)).ToList();
         Assert.True(unrostered.Count == 0,
