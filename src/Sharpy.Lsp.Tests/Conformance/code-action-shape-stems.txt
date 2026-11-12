@@ -8,7 +8,7 @@
 # GENERATED, HUMAN-REVIEWED: bash build_tools/regenerate_corpus_pins.sh rewrites the rows and the `# total` lines; review
 # the diff (a new stem's rows are its own; a moved row of an existing stem is a finding until explained). A new key's cite row in
 # code-action-shape-allowlist.txt is written by hand (the loader names it), and so is a drained key's deletion.
-# total stems identity keys=14 rows=2060
+# total stems identity keys=14 rows=2061
 # total stems crlf keys=8 rows=275
 # total stems cr keys=8 rows=286
 # total stems comment keys=7 rows=281
@@ -649,6 +649,7 @@ extract-method identity diagnostics operator_overload_specificity # #2294
 extract-method identity diagnostics operators/comparison_chain_mixed_lowerings_1642 # #2294
 extract-method identity diagnostics operators/iteration_lowering_1623 # #2294
 extract-method identity diagnostics operators/operator_lowering_augmented_narrow_2443 # #2294
+extract-method identity diagnostics operators/operator_lowering_pow_decimal_augmented_2443 # #2294
 extract-method identity diagnostics operators/operator_lowering_pow_float32_2443 # #2294
 extract-method identity diagnostics operators/operator_lowering_super_operator_2443 # #2294
 extract-method identity diagnostics operators/string_ordinal_compare_1623 # #2294
