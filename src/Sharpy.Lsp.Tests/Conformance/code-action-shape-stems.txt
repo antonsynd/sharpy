@@ -8,10 +8,10 @@
 # GENERATED, HUMAN-REVIEWED: bash build_tools/regenerate_corpus_pins.sh rewrites the rows and the `# total` lines; review
 # the diff (a new stem's rows are its own; a moved row of an existing stem is a finding until explained). A new key's cite row in
 # code-action-shape-allowlist.txt is written by hand (the loader names it), and so is a drained key's deletion.
-# total stems identity keys=14 rows=2056
-# total stems crlf keys=8 rows=275
-# total stems cr keys=8 rows=284
-# total stems comment keys=7 rows=278
+# total stems identity keys=14 rows=2058
+# total stems crlf keys=8 rows=276
+# total stems cr keys=8 rows=286
+# total stems comment keys=7 rows=280
 extract-method identity diagnostics Formatting/module_docstring_then_statement # #2294
 extract-method identity diagnostics abstract_class_interface_stubs # #2294
 extract-method identity diagnostics access_modifiers/access_modifiers # #2294
@@ -648,6 +648,8 @@ extract-method identity diagnostics nullable_comparison_operators # #2294
 extract-method identity diagnostics operator_overload_specificity # #2294
 extract-method identity diagnostics operators/comparison_chain_mixed_lowerings_1642 # #2294
 extract-method identity diagnostics operators/iteration_lowering_1623 # #2294
+extract-method identity diagnostics operators/operator_lowering_augmented_narrow_2443 # #2294
+extract-method identity diagnostics operators/operator_lowering_super_operator_2443 # #2294
 extract-method identity diagnostics operators/string_ordinal_compare_1623 # #2294
 extract-method identity diagnostics optional_narrowed_ops # #2294
 extract-method identity diagnostics optional_protocol_ops_strict # #2294
@@ -2144,6 +2146,7 @@ extract-method crlf diagnostics narrowing/narrowing_nested_if # #2294
 extract-method crlf diagnostics narrowing/narrowing_none_check # #2294
 extract-method crlf diagnostics nested_types/nested_default_public_1259 # #2294
 extract-method crlf diagnostics operand_order/index_store_1853 # #2294
+extract-method crlf diagnostics operators/operator_lowering_pow_float32_2443 # #2294
 extract-method crlf diagnostics optional_result/result_type_0016 # #2294
 extract-method crlf diagnostics optional_result/result_unwrap_0002 # #2294
 extract-method crlf diagnostics overload_generic_inferred_optional_1811 # #2294
@@ -2566,6 +2569,7 @@ remove-annotation cr diagnostics interop/clr_nested_type_chain_bool_store_1864 #
 remove-annotation cr diagnostics module_property_then_variable_2360 # #2296
 remove-annotation cr diagnostics narrowing/narrowing_optional_callee # #2296
 remove-annotation cr diagnostics nested_types/nested_default_public_1259 # #2296
+remove-annotation cr diagnostics operators/operator_lowering_pow_float32_2443 # #2296
 remove-annotation cr diagnostics self_type/self_interface_inherited_impl_1342 # #2296
 remove-annotation cr diagnostics single_evaluation_index_read # #2296
 remove-annotation cr diagnostics type_aliases/generic_alias_arity_error # #2296
@@ -2618,6 +2622,7 @@ wrap-try cr diagnostics interfaces/interface_generic_method_0002 # #2296
 wrap-try cr diagnostics interfaces/interface_streamlined_0010 # #2296
 wrap-try cr diagnostics lambdas/lambda_basic_0001 # #2296
 wrap-try cr diagnostics operators/augassign_positive_controls_1631 # #2296
+wrap-try cr diagnostics operators/operator_lowering_pow_float32_2443 # #2296
 wrap-try cr diagnostics pattern_matching/match_type_binding_0049 # #2296
 wrap-try cr diagnostics properties/property_inheritance_0013 # #2296
 wrap-try cr diagnostics question_mark_chained # #2296
@@ -2838,6 +2843,7 @@ extract-variable comment parse functions/operator_sections # #2294
 extract-variable comment parse indirect_callee/bound_callable_ref # #2294
 inline-variable comment diagnostics basics/escaped_wildcard_binds_2166 # #2296
 inline-variable comment diagnostics if_elif_else_variable_scoping # #2296
+inline-variable comment diagnostics operators/operator_lowering_pow_float32_2443 # #2296
 inline-variable comment diagnostics pattern_matching/class_pattern_capture_not_last_ok_1624 # #2296
 remove-annotation comment diagnostics basics/comparison_operators # #2296
 remove-annotation comment diagnostics basics/decimal_literal_exponent_forms # #2296
@@ -2891,6 +2897,7 @@ wrap-try comment diagnostics generic_variance/variance_builtin_to_interface_0001
 wrap-try comment diagnostics inheritance/class_inheritance_0031 # #2296
 wrap-try comment diagnostics match_class_pattern_open_generic_filled # #2296
 wrap-try comment diagnostics operand_order/dict_comprehension_operand_order_1853 # #2296
+wrap-try comment diagnostics operators/operator_lowering_pow_float32_2443 # #2296
 wrap-try comment diagnostics optional_result/result_type_0016 # #2296
 wrap-try comment diagnostics optional_result/result_unwrap_0002 # #2296
 wrap-try comment diagnostics pattern_matching/match_tuple_0001 # #2296
