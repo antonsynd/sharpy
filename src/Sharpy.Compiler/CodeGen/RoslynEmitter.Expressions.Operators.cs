@@ -58,7 +58,7 @@ internal partial class RoslynEmitter
             return negated ? UnaryPattern(Token(SyntaxKind.NotKeyword), pattern) : pattern;
         }
 
-        switch (_context.SemanticInfo?.GetOperatorLowering(binOp)?.Kind)
+        switch (OperatorLoweringOf(binOp).Kind)
         {
             case OperatorLoweringKind.OptionalNoneTest:
                 return Member(subject, negated ? "IsSome" : "IsNone");
@@ -233,7 +233,7 @@ internal partial class RoslynEmitter
             case BinaryOperator.Multiply:
                 {
                     // String repetition: the tag says which operand is the string (#1623).
-                    var repeatKind = _context.SemanticInfo?.GetOperatorLowering(binOp)?.Kind;
+                    var repeatKind = OperatorLoweringOf(binOp).Kind;
                     if (repeatKind == OperatorLoweringKind.StringRepeatStrLeft)
                         return GenerateStringRepeat(left, right);
                     if (repeatKind == OperatorLoweringKind.StringRepeatStrRight)
@@ -287,11 +287,11 @@ internal partial class RoslynEmitter
         {
             return GenerateLoweredComparison(
                 kind, left, right, binOp.Left, binOp.Right,
-                _context.SemanticInfo?.GetOperatorLowering(binOp)?.Kind ?? OperatorLoweringKind.Native,
+                OperatorLoweringOf(binOp).Kind,
                 GetIrBinaryOpLowering(binOp) ?? BinaryOpLowering.NativeOperator);
         }
 
-        if (_context.SemanticInfo?.GetOperatorLowering(binOp)?.Kind
+        if (OperatorLoweringOf(binOp).Kind
             == OperatorLoweringKind.ShiftCountCastToInt)
         {
             right = CastExpression(
@@ -443,7 +443,7 @@ internal partial class RoslynEmitter
         // width (or no tag) takes the ordinary unary-minus path below.
         if (unaryOp.Operator == UnaryOperator.Minus && unaryOp.Operand is IntegerLiteral il)
         {
-            var negateKind = _context.SemanticInfo?.GetOperatorLowering(unaryOp)?.Kind;
+            var negateKind = OperatorLoweringOf(unaryOp).Kind;
             if (negateKind is OperatorLoweringKind.NegateLiteralInt or OperatorLoweringKind.NegateLiteralLong)
             {
                 var ulongMagnitude = ParseIntegerText(il.Value.Replace("_", "", StringComparison.Ordinal));
@@ -867,7 +867,7 @@ internal partial class RoslynEmitter
         ExpressionSyntax right = null!;
         var rightEvals = WithEvaluationSink(() => { right = GenerateExpression(binOp.Right); });
 
-        var coalesceKind = _context.SemanticInfo?.GetOperatorLowering(binOp)?.Kind;
+        var coalesceKind = OperatorLoweringOf(binOp).Kind;
 
         if (rightEvals.Count == 0)
         {

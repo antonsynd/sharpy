@@ -819,7 +819,7 @@ public class EmitterCarrierOnlyConformanceTests
                 "GetInferredTypeArguments", "GetPatternUnionCaseTypeArguments", "GetVariableType",
             },
             "SemanticType getters, list-of-SemanticType getters and SemanticBinding getters are all type reads");
-        TypeReadAccessors.Should().NotContain(new[] { "GetOperatorLowering", "MergeFrom" },
+        TypeReadAccessors.Should().NotContain(new[] { "GetOperatorLoweringForIr", "MergeFrom" },
             "a getter that returns no SemanticType is not a type read");
 
         var source = string.Join("\n",

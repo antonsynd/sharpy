@@ -284,7 +284,7 @@ internal partial class RoslynEmitter
         if (test is BinaryOp { Operator: BinaryOperator.Is or BinaryOperator.IsNot } noneTest
             && (noneTest.Right is NoneLiteral || noneTest.Left is NoneLiteral))
         {
-            if (_context.SemanticInfo?.GetOperatorLowering(noneTest)?.Kind == OperatorLoweringKind.OptionalNoneTest)
+            if (OperatorLoweringOf(noneTest).Kind == OperatorLoweringKind.OptionalNoneTest)
             {
                 var optionalArgs = new List<ArgumentSyntax> { Argument(GenerateExpression(noneTest)) };
                 if (assert.Message != null)

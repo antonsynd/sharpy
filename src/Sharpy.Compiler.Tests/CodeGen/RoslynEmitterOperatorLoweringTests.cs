@@ -49,6 +49,17 @@ public class RoslynEmitterOperatorLoweringTests
         }
     }
 
+    /// <summary>
+    /// Hands the emitter <paramref name="info"/> and the IR the lowering pass builds from it over
+    /// <paramref name="roots"/> (plan-92249e T4): the emitter reads an operator kind only from the IR
+    /// node the pass carries it onto, never from the table a test records it in.
+    /// </summary>
+    private void UseLoweredFacts(SemanticInfo info, params Expression[] roots)
+    {
+        _context.SemanticInfo = info;
+        _context.Ir = EmitterTestPipeline.LowerExpressions(info, _context.SymbolTable, roots);
+    }
+
     private static Identifier Id(string name) => new() { Name = name };
 
     private static ComparisonChain Chain(ComparisonOperator op, params Expression[] operands) => new()
@@ -241,7 +252,7 @@ public class RoslynEmitterOperatorLoweringTests
         if (kind != OperatorLoweringKind.Native)
             info.SetOperatorLowering(binOp, new OperatorLowering(kind));
         info.SetComparisonChainLowering(chain, Links(Ordering(kind), Ordering(kind)));
-        _context.SemanticInfo = info;
+        UseLoweredFacts(info, binOp, chain);
 
         var binary = Emit(binOp);
         var chained = Emit(chain);
@@ -259,7 +270,7 @@ public class RoslynEmitterOperatorLoweringTests
         var binOp = new BinaryOp { Left = Id("a"), Operator = BinaryOperator.Multiply, Right = Id("b") };
         var info = new SemanticInfo();
         info.SetOperatorLowering(binOp, new OperatorLowering(OperatorLoweringKind.StringRepeatStrLeft));
-        _context.SemanticInfo = info;
+        UseLoweredFacts(info, binOp);
 
         Emit(binOp).Should().Be("global::Sharpy.StringHelpers.Repeat(a, b)");
     }
@@ -270,7 +281,7 @@ public class RoslynEmitterOperatorLoweringTests
         var binOp = new BinaryOp { Left = Id("a"), Operator = BinaryOperator.Multiply, Right = Id("b") };
         var info = new SemanticInfo();
         info.SetOperatorLowering(binOp, new OperatorLowering(OperatorLoweringKind.StringRepeatStrRight));
-        _context.SemanticInfo = info;
+        UseLoweredFacts(info, binOp);
 
         Emit(binOp).Should().Be("global::Sharpy.StringHelpers.Repeat(b, a)");
     }
@@ -302,7 +313,7 @@ public class RoslynEmitterOperatorLoweringTests
         var binOp = new BinaryOp { Left = Id("a"), Operator = BinaryOperator.Power, Right = Id("b") };
         var info = new SemanticInfo();
         info.SetOperatorLowering(binOp, new OperatorLowering(kind));
-        _context.SemanticInfo = info;
+        UseLoweredFacts(info, binOp);
 
         Emit(binOp).Should().Be(expected);
     }
@@ -331,7 +342,7 @@ public class RoslynEmitterOperatorLoweringTests
         var binOp = new BinaryOp { Left = Id("a"), Operator = BinaryOperator.Divide, Right = Id("b") };
         var info = new SemanticInfo();
         info.SetOperatorLowering(binOp, new OperatorLowering(kind));
-        _context.SemanticInfo = info;
+        UseLoweredFacts(info, binOp);
 
         Emit(binOp).Should().Be(expected);
     }
@@ -361,7 +372,7 @@ public class RoslynEmitterOperatorLoweringTests
         var binOp = new BinaryOp { Left = Id("a"), Operator = BinaryOperator.FloorDivide, Right = Id("b") };
         var info = new SemanticInfo();
         info.SetOperatorLowering(binOp, new OperatorLowering(kind));
-        _context.SemanticInfo = info;
+        UseLoweredFacts(info, binOp);
 
         Emit(binOp).Should().Be(expected);
     }
@@ -385,7 +396,7 @@ public class RoslynEmitterOperatorLoweringTests
         var binOp = new BinaryOp { Left = Id("a"), Operator = BinaryOperator.Modulo, Right = Id("b") };
         var info = new SemanticInfo();
         info.SetOperatorLowering(binOp, new OperatorLowering(kind));
-        _context.SemanticInfo = info;
+        UseLoweredFacts(info, binOp);
 
         Emit(binOp).Should().Be(expected);
     }
@@ -403,18 +414,22 @@ public class RoslynEmitterOperatorLoweringTests
 
     /// <summary>
     /// Emits <c>a OP= b</c> through the real front end (so the local has its CodeGenInfo), then
-    /// overwrites the tag the checker recorded on the Assignment before emitting — the emitted C# must
-    /// follow the OVERWRITTEN tag, proving the augmented site reads the fact and not the operand types.
+    /// overwrites the tag the checker recorded on the Assignment before the lowering pass carries it onto
+    /// the IR (plan-92249e T4) — the emitted C# must follow the OVERWRITTEN tag, proving the augmented
+    /// site reads the fact and not the operand types.
     /// <see cref="OperatorLoweringKind.Native"/> stands in for "no family recorded": the emitter's
     /// switch treats any non-family tag exactly as an absent record.
     /// </summary>
     private static string EmitAugmentedWithTag(string source, AssignmentOperator op, OperatorLoweringKind kind)
     {
-        var analysis = EmitterTestPipeline.Analyze(EmitterTestPipeline.Parse(source));
+        var analysis = EmitterTestPipeline.Analyze(EmitterTestPipeline.Parse(source),
+            beforeLowering: (module, info) =>
+            {
+                var assignment = module.GetChildNodes().SelectMany(AstDescendants.SelfAndDescendants).OfType<Assignment>()
+                    .Single(a => a.Operator == op);
+                info.SetOperatorLowering(assignment, new OperatorLowering(kind));
+            });
         analysis.TypeChecker.Diagnostics.GetErrors().Should().BeEmpty();
-        var assignment = analysis.Module.GetChildNodes().SelectMany(AstDescendants.SelfAndDescendants).OfType<Assignment>()
-            .Single(a => a.Operator == op);
-        analysis.SemanticInfo.SetOperatorLowering(assignment, new OperatorLowering(kind));
         return analysis.Emitter.GenerateCompilationUnit(analysis.Module).NormalizeWhitespace().ToFullString();
     }
 
@@ -475,7 +490,7 @@ def main() -> None:
         var unary = Negated("2147483648");
         var info = new SemanticInfo();
         info.SetOperatorLowering(unary, new OperatorLowering(OperatorLoweringKind.NegateLiteralInt));
-        _context.SemanticInfo = info;
+        UseLoweredFacts(info, unary);
 
         Emit(unary).Should().Be("-2147483648");
     }
@@ -486,7 +501,7 @@ def main() -> None:
         var unary = Negated("2147483648");
         var info = new SemanticInfo();
         info.SetOperatorLowering(unary, new OperatorLowering(OperatorLoweringKind.NegateLiteralLong));
-        _context.SemanticInfo = info;
+        UseLoweredFacts(info, unary);
 
         Emit(unary).Should().Be("-2147483648L");
     }
@@ -497,7 +512,7 @@ def main() -> None:
         var unary = Negated("9223372036854775808");
         var info = new SemanticInfo();
         info.SetOperatorLowering(unary, new OperatorLowering(OperatorLoweringKind.NegateLiteralLong));
-        _context.SemanticInfo = info;
+        UseLoweredFacts(info, unary);
 
         Emit(unary).Should().Be("-9223372036854775808L");
     }

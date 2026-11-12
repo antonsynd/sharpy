@@ -2116,7 +2116,21 @@ public class SemanticInfo : ISemanticQuery
         Put(_operatorLowerings, node, lowering);
     }
 
-    public OperatorLowering? GetOperatorLowering(Node node)
+    /// <summary>
+    /// Gets the operator lowering recorded for <paramref name="node"/> (a <c>BinaryOp</c>, a
+    /// <c>UnaryOp</c>, an augmented <c>Assignment</c> or a super operator <c>FunctionCall</c>), or
+    /// <c>null</c> when none was recorded (read as <see cref="OperatorLoweringKind.Native"/>).
+    /// </summary>
+    /// <remarks>
+    /// Lowering-input only (P82 tranche 3, #2443, plan-92249e D2): the lowering pass reads this to
+    /// build the <c>IIrOperatorSite</c> nodes (<c>IrOperatorExpression</c>,
+    /// <c>IrOperatorAssignment</c>, <c>IrEqualityComparison.Operator</c>,
+    /// <c>IrOptionalStoreWrap.Operator</c>); code generation reads the IR, never this accessor. The
+    /// other readers are semantic (the constant-eligibility validator and the checker's own
+    /// read-modify-write of <c>NarrowTo</c>), both before any IR exists. Renamed with the
+    /// <c>ForIr</c> suffix so nothing in <c>CodeGen/</c> can bind it.
+    /// </remarks>
+    public OperatorLowering? GetOperatorLoweringForIr(Node node)
     {
         return _operatorLowerings.TryGetValue(node, out var lowering) ? lowering : null;
     }

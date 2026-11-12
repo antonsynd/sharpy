@@ -232,7 +232,7 @@ def main() -> None:
         errors.Should().BeEmpty();
 
         var binOp = Find<BinaryOp>(module).Single();
-        var binaryKind = info.GetOperatorLowering(binOp)?.Kind ?? OperatorLoweringKind.Native;
+        var binaryKind = info.GetOperatorLoweringForIr(binOp)?.Kind ?? OperatorLoweringKind.Native;
         var binaryEquality = info.GetBinaryOpLoweringForIr(binOp);
 
         var links = info.GetComparisonChainLowering(SingleChain(module))!.Links;
@@ -257,7 +257,7 @@ def main() -> None:
     r: bool = a < b
 ");
         errors.Should().BeEmpty();
-        info.GetOperatorLowering(SingleBinaryOp(module, BinaryOperator.LessThan))!.Kind
+        info.GetOperatorLoweringForIr(SingleBinaryOp(module, BinaryOperator.LessThan))!.Kind
             .Should().Be(OperatorLoweringKind.StringOrdinalCompare);
     }
 
@@ -275,7 +275,7 @@ def main() -> None:
     {statement}
 ");
         errors.Should().BeEmpty();
-        info.GetOperatorLowering(SingleBinaryOp(module, BinaryOperator.Multiply))!.Kind.Should().Be(expected);
+        info.GetOperatorLoweringForIr(SingleBinaryOp(module, BinaryOperator.Multiply))!.Kind.Should().Be(expected);
     }
 
     [Fact]
@@ -288,7 +288,7 @@ def main() -> None:
 ");
         errors.Should().BeEmpty();
         var assignment = Find<Assignment>(module).Single(a => a.Operator == AssignmentOperator.StarAssign);
-        info.GetOperatorLowering(assignment)!.Kind.Should().Be(OperatorLoweringKind.StringRepeatStrLeft);
+        info.GetOperatorLoweringForIr(assignment)!.Kind.Should().Be(OperatorLoweringKind.StringRepeatStrLeft);
     }
 
     [Fact]
@@ -299,7 +299,7 @@ def main() -> None:
     r: int = 3 * 4
 ");
         errors.Should().BeEmpty();
-        info.GetOperatorLowering(SingleBinaryOp(module, BinaryOperator.Multiply)).Should().BeNull();
+        info.GetOperatorLoweringForIr(SingleBinaryOp(module, BinaryOperator.Multiply)).Should().BeNull();
     }
 
     #endregion
@@ -323,7 +323,7 @@ def main() -> None:
     r = {expr}
 ");
         errors.Should().BeEmpty();
-        info.GetOperatorLowering(SingleBinaryOp(module, BinaryOperator.Power))!.Kind.Should().Be(expected);
+        info.GetOperatorLoweringForIr(SingleBinaryOp(module, BinaryOperator.Power))!.Kind.Should().Be(expected);
     }
 
     [Theory]
@@ -340,7 +340,7 @@ def main() -> None:
 ");
         errors.Should().BeEmpty();
         var assignment = Find<Assignment>(module).Single(a => a.Operator == AssignmentOperator.PowerAssign);
-        info.GetOperatorLowering(assignment)!.Kind.Should().Be(expected);
+        info.GetOperatorLoweringForIr(assignment)!.Kind.Should().Be(expected);
     }
 
     #endregion
@@ -381,7 +381,7 @@ def main() -> None:
     r = {expr}
 ");
         errors.Should().BeEmpty();
-        info.GetOperatorLowering(SingleBinaryOp(module, BinaryOperator.FloorDivide))!.Kind.Should().Be(expected);
+        info.GetOperatorLoweringForIr(SingleBinaryOp(module, BinaryOperator.FloorDivide))!.Kind.Should().Be(expected);
     }
 
     [Theory]
@@ -408,7 +408,7 @@ def main() -> None:
     r = {expr}
 ");
         errors.Should().BeEmpty();
-        info.GetOperatorLowering(SingleBinaryOp(module, BinaryOperator.Modulo))!.Kind.Should().Be(expected);
+        info.GetOperatorLoweringForIr(SingleBinaryOp(module, BinaryOperator.Modulo))!.Kind.Should().Be(expected);
     }
 
     [Theory]
@@ -425,7 +425,7 @@ def main() -> None:
     r = {expr}
 ");
         errors.Should().BeEmpty();
-        info.GetOperatorLowering(SingleBinaryOp(module, BinaryOperator.Modulo))!.Kind.Should().Be(expected);
+        info.GetOperatorLoweringForIr(SingleBinaryOp(module, BinaryOperator.Modulo))!.Kind.Should().Be(expected);
     }
 
     [Fact]
@@ -452,9 +452,9 @@ def main() -> None:
         // The `%` inside __mod__ would be int % int; the user-type operands are the subject.
         var binary = Find<BinaryOp>(module).Single(b => b.Operator == BinaryOperator.Modulo
             && b.Left is Identifier { Name: "a" });
-        info.GetOperatorLowering(binary).Should().BeNull("user __mod__ maps to operator %, native");
+        info.GetOperatorLoweringForIr(binary).Should().BeNull("user __mod__ maps to operator %, native");
         var augmented = Find<Assignment>(module).Single(a => a.Operator == AssignmentOperator.PercentAssign);
-        info.GetOperatorLowering(augmented).Should().BeNull("augmented %= on a user type is native too");
+        info.GetOperatorLoweringForIr(augmented).Should().BeNull("augmented %= on a user type is native too");
     }
 
     [Fact]
@@ -476,7 +476,7 @@ def main() -> None:
     c = a // b
 ");
         errors.Should().ContainSingle(e => e.StartsWith("SPY0222"));
-        info.GetOperatorLowering(SingleBinaryOp(module, BinaryOperator.FloorDivide)).Should().BeNull();
+        info.GetOperatorLoweringForIr(SingleBinaryOp(module, BinaryOperator.FloorDivide)).Should().BeNull();
     }
 
     [Theory]
@@ -505,7 +505,7 @@ def main() -> None:
 ");
         errors.Should().BeEmpty();
         var assignment = Find<Assignment>(module).Single(a => a.Operator == op);
-        info.GetOperatorLowering(assignment)!.Kind.Should().Be(expected);
+        info.GetOperatorLoweringForIr(assignment)!.Kind.Should().Be(expected);
     }
 
     // `/` (#2517): the operand-type axis × the divisor-spelling axis, crossed in code. A divisor that is a
@@ -562,7 +562,7 @@ def main() -> None:
     r = {expr}
 ");
         errors.Should().BeEmpty();
-        OperatorLoweringKind? recorded = info.GetOperatorLowering(SingleBinaryOp(module, BinaryOperator.Divide))?.Kind;
+        OperatorLoweringKind? recorded = info.GetOperatorLoweringForIr(SingleBinaryOp(module, BinaryOperator.Divide))?.Kind;
         recorded.Should().Be(expected, "the recorded division family (null = no record, native `/`)");
     }
 
@@ -581,7 +581,7 @@ def main() -> None:
 ");
         errors.Should().BeEmpty();
         var assignment = Find<Assignment>(module).Single(a => a.Operator == AssignmentOperator.SlashAssign);
-        info.GetOperatorLowering(assignment)!.Kind.Should().Be(expected);
+        info.GetOperatorLoweringForIr(assignment)!.Kind.Should().Be(expected);
     }
 
     [Fact]
@@ -594,7 +594,7 @@ def main() -> None:
 ");
         errors.Should().BeEmpty();
         var assignment = Find<Assignment>(module).Single(a => a.Operator == AssignmentOperator.SlashAssign);
-        info.GetOperatorLowering(assignment).Should().BeNull();
+        info.GetOperatorLoweringForIr(assignment).Should().BeNull();
     }
 
     [Fact]
@@ -608,7 +608,7 @@ def main() -> None:
 ");
         errors.Should().BeEmpty();
         var assignment = Find<Assignment>(module).Single(a => a.Operator == AssignmentOperator.PercentAssign);
-        info.GetOperatorLowering(assignment)!.Kind.Should().Be(OperatorLoweringKind.FlooredModulo);
+        info.GetOperatorLoweringForIr(assignment)!.Kind.Should().Be(OperatorLoweringKind.FlooredModulo);
     }
 
     [Theory]
@@ -641,8 +641,8 @@ def main() -> None:
         errors.Should().BeEmpty();
         var binaryOperator = op == "//" ? BinaryOperator.FloorDivide : BinaryOperator.Modulo;
         var assignmentOperator = op == "//" ? AssignmentOperator.DoubleSlashAssign : AssignmentOperator.PercentAssign;
-        var binaryKind = info.GetOperatorLowering(SingleBinaryOp(module, binaryOperator))?.Kind;
-        var augmentedKind = info.GetOperatorLowering(
+        var binaryKind = info.GetOperatorLoweringForIr(SingleBinaryOp(module, binaryOperator))?.Kind;
+        var augmentedKind = info.GetOperatorLoweringForIr(
             Find<Assignment>(module).Single(a => a.Operator == assignmentOperator))?.Kind;
         augmentedKind.Should().Be(binaryKind);
     }
@@ -665,7 +665,7 @@ def main() -> None:
 ");
         errors.Should().BeEmpty();
         var unary = Find<UnaryOp>(module).Single();
-        info.GetOperatorLowering(unary)!.Kind.Should().Be(expected);
+        info.GetOperatorLoweringForIr(unary)!.Kind.Should().Be(expected);
     }
 
     [Theory]
@@ -679,7 +679,7 @@ def main() -> None:
 ");
         errors.Should().BeEmpty();
         var unary = Find<UnaryOp>(module).Single();
-        info.GetOperatorLowering(unary).Should().BeNull();
+        info.GetOperatorLoweringForIr(unary).Should().BeNull();
     }
 
     #endregion
@@ -750,7 +750,7 @@ class Derived(Base):
         errors.Should().BeEmpty();
 
         var superCall = SingleSuperCall(module, "__add__");
-        var lowering = info.GetOperatorLowering(superCall);
+        var lowering = info.GetOperatorLoweringForIr(superCall);
 
         lowering.Should().NotBeNull();
         lowering!.Kind.Should().Be(OperatorLoweringKind.SuperOperatorApplication);
@@ -775,7 +775,7 @@ class Derived(Base):
         errors.Should().BeEmpty();
 
         var superCall = SingleSuperCall(module, "__neg__");
-        var lowering = info.GetOperatorLowering(superCall);
+        var lowering = info.GetOperatorLoweringForIr(superCall);
         lowering.Should().NotBeNull();
         lowering!.Kind.Should().Be(OperatorLoweringKind.SuperOperatorApplication);
     }
@@ -796,7 +796,7 @@ class Derived(Base):
         errors.Should().BeEmpty();
 
         var superCall = SingleSuperCall(module, "__lt__");
-        var lowering = info.GetOperatorLowering(superCall);
+        var lowering = info.GetOperatorLoweringForIr(superCall);
         lowering.Should().NotBeNull();
         lowering!.Kind.Should().Be(OperatorLoweringKind.SuperOperatorApplication);
     }
@@ -821,7 +821,7 @@ class Derived(Base):
         errors.Should().BeEmpty();
 
         var superCall = SingleSuperCall(module, "__str__");
-        info.GetOperatorLowering(superCall).Should().BeNull();
+        info.GetOperatorLoweringForIr(superCall).Should().BeNull();
     }
 
     /// <summary>

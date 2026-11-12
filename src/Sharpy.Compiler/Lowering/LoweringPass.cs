@@ -148,7 +148,7 @@ internal sealed partial class LoweringPass
         // IrOperatorAssignment: precedence is mutation, wrap (with operator), operator, opaque.
         if (statement is Assignment storeAssignment)
         {
-            var assignmentOperator = semanticInfo.GetOperatorLowering(storeAssignment);
+            var assignmentOperator = semanticInfo.GetOperatorLoweringForIr(storeAssignment);
             if (OptionalStoreWrapOf(storeAssignment, semanticInfo, state) is { } wrapAs)
             {
                 var storeWrap = new IrOptionalStoreWrap(wrapAs,
@@ -275,7 +275,7 @@ internal sealed partial class LoweringPass
             // Any other operator — a binary or unary operator, or a super operator application — whose
             // key has a recorded operator lowering carries it on the IR node (P82 tranche 3, #2443,
             // plan-92249e D1); with no entry it stays opaque and reads (Native, null).
-            BinaryOp or UnaryOp or FunctionCall when semanticInfo.GetOperatorLowering(expression) is { } operatorLowering
+            BinaryOp or UnaryOp or FunctionCall when semanticInfo.GetOperatorLoweringForIr(expression) is { } operatorLowering
                 => new IrOperatorExpression(expression, operatorLowering.Kind, operatorLowering.NarrowTo,
                     semanticInfo.GetExpressionType(expression), SpanOf(expression),
                     LowerChildren(expression, semanticInfo, state)),
@@ -523,7 +523,7 @@ internal sealed partial class LoweringPass
             right,
             semanticInfo.GetBinaryOpLoweringForIr(binOp),
             // A reflected `==`/`!=` (#1719) records its operator lowering on the same key (D1).
-            semanticInfo.GetOperatorLowering(binOp)?.Kind ?? OperatorLoweringKind.Native,
+            semanticInfo.GetOperatorLoweringForIr(binOp)?.Kind ?? OperatorLoweringKind.Native,
             semanticInfo.GetExpressionType(binOp),
             SpanOf(binOp));
     }

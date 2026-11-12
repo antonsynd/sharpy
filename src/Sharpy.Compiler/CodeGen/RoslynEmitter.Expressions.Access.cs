@@ -683,10 +683,9 @@ internal partial class RoslynEmitter
             // `((Base)this).Equals(x)` — still virtual-dispatching back to the override that made
             // the call, i.e. infinite recursion. Those dunders fall through to the unchanged
             // SuperExpression -> base route below, which is already correct for them.
-            var superOperatorLowering = memberAccess.Object is SuperExpression
-                ? _context.SemanticInfo?.GetOperatorLowering(call)
-                : null;
-            var isSuperOperatorApplication = superOperatorLowering is { Kind: OperatorLoweringKind.SuperOperatorApplication }
+            var superOperatorLowering = OperatorLoweringOf(call);
+            var isSuperOperatorApplication = memberAccess.Object is SuperExpression
+                && superOperatorLowering.Kind == OperatorLoweringKind.SuperOperatorApplication
                 && (DunderMapping.TryGetBinaryExpressionKind(memberAccess.Member) != null
                     || DunderMapping.TryGetUnaryExpressionKind(memberAccess.Member) != null);
 
@@ -696,7 +695,7 @@ internal partial class RoslynEmitter
             // element access on the open type (CS0305). This subsumes the former AST re-derivation arm —
             // one authority, the classifier's denoted type (#1817).
             var obj = isSuperOperatorApplication
-                ? Cast(_typeMapper.MapSemanticType(superOperatorLowering!.NarrowTo!), GenerateSelfReceiver())
+                ? Cast(_typeMapper.MapSemanticType(superOperatorLowering.NarrowTo!), GenerateSelfReceiver())
                 : _context.SemanticInfo?.GetDenotedType(memberAccess.Object) is { } denotedCallReceiver
                     ? _typeMapper.MapSemanticType(denotedCallReceiver)
                     : GenerateExpression(memberAccess.Object);
@@ -2191,6 +2190,31 @@ internal partial class RoslynEmitter
             return hit;
         return node is IrOptionalWrappedElement { Children: [TIr element] } ? element : null;
     }
+
+    /// <summary>
+    /// The operator lowering the lowering IR carries for <paramref name="ast"/> (P82 tranche 3,
+    /// #2443, plan-92249e D3): the <see cref="IIrOperatorSite"/> at the key — an
+    /// <see cref="IrOperatorExpression"/>, an <see cref="IrOperatorAssignment"/>, an
+    /// <see cref="IrEqualityComparison"/> or an <see cref="IrOptionalStoreWrap"/> — looking through an
+    /// <see cref="IrOptionalWrappedElement"/> to its single child as <see cref="IrNodeFor{TIr}"/> does.
+    /// A key with no operator site reads <c>(Native, null)</c>: the convention of the recorded table
+    /// the pass copies from (an absent entry is <see cref="OperatorLoweringKind.Native"/>), not a new
+    /// default. The helper decides nothing; each caller switches on the kind it returns.
+    /// </summary>
+    private OperatorLowering OperatorLoweringOf(Node ast)
+    {
+        if (_context.Ir.Index.TryGetValue(ast, out var node)
+            && (node as IIrOperatorSite
+                ?? (node is IrOptionalWrappedElement { Children: [IIrOperatorSite element] } ? element : null)) is { } site)
+        {
+            return new OperatorLowering(site.Operator, site.NarrowTo);
+        }
+
+        return NativeOperatorLowering;
+    }
+
+    /// <summary>The <c>(Native, null)</c> answer of <see cref="OperatorLoweringOf"/> for a key with no operator site.</summary>
+    private static readonly OperatorLowering NativeOperatorLowering = new(OperatorLoweringKind.Native);
 
     /// <summary>
     /// The lowering-IR node of kind <typeparamref name="TIr"/> for an AST shape the lowering pass

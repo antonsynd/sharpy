@@ -1,3 +1,4 @@
+using System.Collections.Immutable;
 using FluentAssertions;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
@@ -56,7 +57,10 @@ internal static class EmitterTestPipeline
     /// <param name="emitLineDirectives">Override <see cref="CodeGenContext.EmitLineDirectives"/> (default: the context's default, true).</param>
     /// <param name="rewriteIr">Replaces the lowered IR before the emitter reads it — a constructed-IR
     /// test's way to hand the emitter a node the pass would not build (plan-1faae3 D5).</param>
-    internal static Analysis Analyze(Module module, bool isEntryPoint = false, string? sourceFilePath = null, bool runValidators = false, bool? emitLineDirectives = null, Func<IrCompilation, IrCompilation>? rewriteIr = null)
+    /// <param name="beforeLowering">Edits the checker's recorded facts after analysis and BEFORE the
+    /// lowering pass reads them — a test's way to overwrite a lowering-input fact (an operator kind)
+    /// so the pass carries the overwritten value onto the IR the emitter reads (plan-92249e T4).</param>
+    internal static Analysis Analyze(Module module, bool isEntryPoint = false, string? sourceFilePath = null, bool runValidators = false, bool? emitLineDirectives = null, Func<IrCompilation, IrCompilation>? rewriteIr = null, Action<Module, SemanticInfo>? beforeLowering = null)
     {
         var builtins = new BuiltinRegistry();
         var symbolTable = new SymbolTable(builtins);
@@ -81,6 +85,7 @@ internal static class EmitterTestPipeline
         semanticBinding.MaterializeCodeGenInfo();
         semanticBinding.MaterializeVariableTypes();
 
+        beforeLowering?.Invoke(module, semanticInfo);
         var ir = new LoweringPass().Lower(
             new[] { (sourceFilePath ?? "<test>", module) },
             semanticInfo,
@@ -101,6 +106,27 @@ internal static class EmitterTestPipeline
         if (emitLineDirectives is { } directives)
             context.EmitLineDirectives = directives;
         return new Analysis(module, new RoslynEmitter(context), typeChecker, symbolTable, semanticInfo, semanticBinding);
+    }
+
+    /// <summary>
+    /// Lowers hand-built expressions over a hand-recorded <see cref="SemanticInfo"/>, each as an
+    /// expression statement of one synthetic module, with the production <see cref="LoweringPass"/>.
+    /// A unit test that records a lowering fact by hand (an operator kind) and calls the emitter on a
+    /// bare expression sets the result as <see cref="CodeGenContext.Ir"/>, so the emitter reads the fact
+    /// from the IR node the pass builds from it, as it does in the pipeline (P82 tranche 3, #2443,
+    /// plan-92249e T4): over <see cref="IrCompilation.Empty"/> it would read no operator site at all.
+    /// </summary>
+    internal static IrCompilation LowerExpressions(SemanticInfo semanticInfo, SymbolTable symbolTable, params Expression[] roots)
+    {
+        var module = new Module
+        {
+            Body = roots.Select(root => (Statement)new ExpressionStatement { Expression = root }).ToImmutableArray(),
+        };
+        return new LoweringPass().Lower(
+            new[] { ("<test>", module) },
+            semanticInfo,
+            new SemanticBinding(),
+            symbolTable);
     }
 
     /// <summary>Parses, analyzes and emits the compilation unit for <paramref name="source"/>.</summary>

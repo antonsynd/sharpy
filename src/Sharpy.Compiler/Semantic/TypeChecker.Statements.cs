@@ -554,7 +554,7 @@ internal partial class TypeChecker
 
             if (narrowTo != null)
             {
-                var existing = _semanticInfo.GetOperatorLowering(assignment);
+                var existing = _semanticInfo.GetOperatorLoweringForIr(assignment);
                 var kind = existing?.Kind ?? OperatorLoweringKind.Native;
                 _semanticInfo.SetOperatorLowering(assignment, new OperatorLowering(kind, narrowTo));
             }
