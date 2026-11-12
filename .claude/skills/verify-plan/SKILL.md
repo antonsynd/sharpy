@@ -17,6 +17,8 @@ The nine-dimension pass checks every verifiable claim against the codebase at a 
 
 ## Argument Handling
 
+**Sync first**, before reading or listing any plan: `git fetch origin && git pull --ff-only`; the newest copy may be on an unmerged branch (`docs/process/README.md` › The stage trail, item 1).
+
 If `$ARGUMENTS` is non-empty, use it as the path to the plan file.
 
 If `$ARGUMENTS` is empty, list the three newest plans (`ls -t docs/process/plans/*.md | head -3`) and ask which — never pick silently. The pass edits the working copy `.claude/plans/<plan-id>.md` and commits it over the file of record (Output §4; working-copy rules: `docs/process/README.md` › The stage trail). A plan that already carries a stamp is a re-verification: the new stamp and summary replace the old ones.

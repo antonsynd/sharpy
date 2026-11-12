@@ -17,6 +17,8 @@ Create an implementation plan for an engineer to follow, at the **tier the chart
 
 ## Argument Handling
 
+**Sync first**, before reading or listing any plan: `git fetch origin && git pull --ff-only`; the newest copy may be on an unmerged branch (`docs/process/README.md` › The stage trail, item 1).
+
 Parse `$ARGUMENTS`:
 - Strip a trailing `--light` or `--full` and remember it as the requested tier
 - If it looks like comma-separated numbers (e.g., `222,223,224`), treat them as GitHub issue numbers

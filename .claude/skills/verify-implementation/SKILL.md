@@ -11,6 +11,8 @@ Verify that a plan has been fully and correctly implemented. Reads the plan, der
 
 ## Argument Handling
 
+**Sync first**, before reading or listing any plan: `git fetch origin && git pull --ff-only`; the newest copy may be on an unmerged branch (`docs/process/README.md` › The stage trail, item 1).
+
 If `$ARGUMENTS` is non-empty, use it as the path to the plan file.
 
 The plan is the file of record `docs/process/plans/<plan-id>.md` (`docs/process/README.md` › The stage trail). If `$ARGUMENTS` is empty, list the three newest (`ls -t docs/process/plans/*.md | head -3`) and **ask** which — never pick silently.

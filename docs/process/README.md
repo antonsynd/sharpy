@@ -25,7 +25,11 @@ The shared rules for `/create-plan`, `/verify-plan`, `/implement-plan` and `/ver
 
 1. **File of record.** `docs/process/plans/<plan-id>.md`, from the first draft on. Line 1 is the
    `<!-- DRAFT, not verified … -->` marker or a `/verify-plan` stamp; `/implement-plan` reads it and
-   refuses a DRAFT or a NEEDS REVISION.
+   refuses a DRAFT or a NEEDS REVISION. Read it only after `git fetch origin && git pull --ff-only`
+   (a branch that cannot fast-forward is reported, never reset): a stale checkout lacks it or holds an
+   old copy. The newest copy may be on an unmerged branch:
+   `git branch -r --contains $(git log --remotes -1 --format=%h -- docs/process/plans/<plan-id>.md)`
+   names it; read the plan there (`git show <branch>:<path>`).
 2. **Working copy.** `.claude/plans/<plan-id>.md` (gitignored) is edited inside one session and copied
    over the file of record at each commit. With no working copy (a new container), copy the file of
    record back and drop the DRAFT marker; if both exist and differ beyond it, ask which is current.

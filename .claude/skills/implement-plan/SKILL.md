@@ -10,6 +10,8 @@ Implement a plan — a `/verify-plan`-stamped one at `full` tier, or a light des
 
 ## Argument Handling
 
+**Sync first**, before reading or listing any plan: `git fetch origin && git pull --ff-only`; the newest copy may be on an unmerged branch (`docs/process/README.md` › The stage trail, item 1).
+
 Parse `$ARGUMENTS` for:
 1. **Plan path** — the first argument (a file path ending in `.md`)
 2. **--exclude flag** — optional, comma-separated list of section names to skip
