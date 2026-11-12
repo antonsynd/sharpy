@@ -225,9 +225,20 @@ class socket(IDisposable):
             self.settimeout(default)
 
     def __init__(self, existing: NetSocket):
-        """Wrap an existing .NET socket (used for accepted connections)."""
+        """Wrap an existing .NET socket (used for accepted connections).
+
+        The wrapper's .NET state is made to match what it records: an accepted .NET socket
+        inherits the listener's Send/ReceiveTimeout and non-blocking mode, where python's
+        accepted socket is blocking. Then the default timeout applies, as python's `accept`
+        does (getdefaulttimeout(), else blocking, whatever the listener's mode).
+        """
         self._socket = existing
-        self._timeout = None
+        self.settimeout(None)
+        default: float | None = None
+        with _lock:
+            default = _default_timeout
+        if default is not None:
+            self.settimeout(default)
 
     # ---- Properties ----
 

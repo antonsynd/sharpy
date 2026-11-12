@@ -81,6 +81,21 @@ public class SocketErrnoDifferentialTests
         // A valid option round-trips on both sides; the recv that follows is the raise compared.
         new Probe("sockopt_valid",
             "s = _s()\ns.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)\nif s.getsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR) != 0:\n    s.recv(1)"),
+        // An accepted socket is blocking unless a default timeout is set, whatever the listener's
+        // timeout or mode: the peer sends after 0.6 s, and the accepted socket must receive it rather
+        // than time out at the listener's 0.3 s (or raise EAGAIN off a non-blocking listener).
+        new Probe("accepted_recv_listener_timeout",
+            "a = _s()\na.bind((\"127.0.0.1\", 0))\na.listen(1)\na.settimeout(0.3)\nb = _s()\nb.connect((\"127.0.0.1\", a.getsockname()[1]))\nconn = _keep(a.accept()[0])\n_send_later(b, 0.6)\n"
+            + "if conn.recv(10) == b\"hi\":\n    _s().recv(1)"),
+        new Probe("accepted_recv_listener_nonblocking",
+            "a = _s()\na.bind((\"127.0.0.1\", 0))\na.listen(1)\na.setblocking(False)\nb = _s()\nb.connect((\"127.0.0.1\", a.getsockname()[1]))\ntime.sleep(0.1)\nconn = _keep(a.accept()[0])\n_send_later(b, 0.6)\n"
+            + "if conn.gettimeout() is None and conn.getblocking() and conn.recv(10) == b\"hi\":\n    _s().recv(1)"),
+        new Probe("accepted_gettimeout_no_default",
+            "a = _s()\na.bind((\"127.0.0.1\", 0))\na.listen(1)\na.settimeout(0.3)\nb = _s()\nb.connect((\"127.0.0.1\", a.getsockname()[1]))\nconn = _keep(a.accept()[0])\n"
+            + "if conn.gettimeout() is None and conn.getblocking():\n    _s().recv(1)"),
+        new Probe("accepted_gettimeout_default",
+            "a = _s()\na.bind((\"127.0.0.1\", 0))\na.listen(1)\na.settimeout(0.3)\nb = _s()\nb.connect((\"127.0.0.1\", a.getsockname()[1]))\nsocket.setdefaulttimeout(1.5)\nconn = _keep(a.accept()[0])\n"
+            + "socket.setdefaulttimeout(None)\nif conn.gettimeout() == 1.5:\n    _s().recv(1)"),
     }.Concat(SockoptProbes()).ToArray();
 
     /// <summary>
@@ -385,10 +400,12 @@ public class SocketErrnoDifferentialTests
 
     internal static string PythonProgram(IReadOnlyList<Probe> probes)
     {
-        var sb = new StringBuilder("import socket\n\n_opened = []\n\n");
+        var sb = new StringBuilder("import socket\nimport threading\nimport time\n\n_opened = []\n_timers = []\n\n");
         sb.Append("def _keep(s):\n    _opened.append(s)\n    return s\n\n");
+        sb.Append("def _send_later(s, delay):\n    t = threading.Timer(delay, lambda: s.send(b\"hi\"))\n    _timers.append(t)\n    t.start()\n\n");
         sb.Append("def _s(*args):\n    return _keep(socket.socket(*args))\n\n");
-        sb.Append("def _close_all():\n    for s in _opened:\n        s.close()\n    _opened.clear()\n\n");
+        sb.Append("def _close_all():\n    for t in _timers:\n        t.join()\n    _timers.clear()\n"
+                  + "    for s in _opened:\n        s.close()\n    _opened.clear()\n    socket.setdefaulttimeout(None)\n\n");
         foreach (var p in probes)
             sb.Append($"def p_{p.Id}():\n{Indent(p.Body, "    ")}\n\n");
         sb.Append("for _id in [" + string.Join(", ", probes.Select(p => $"'{p.Id}'")) + "]:\n");
@@ -400,12 +417,16 @@ public class SocketErrnoDifferentialTests
 
     internal static string SharpyProgram(IReadOnlyList<Probe> probes)
     {
-        var sb = new StringBuilder("import socket\n\n_opened: list[socket.socket] = []\n\n");
+        var sb = new StringBuilder("import socket\nimport threading\nimport time\n\n_opened: list[socket.socket] = []\n"
+                                   + "_timers: list[threading.Timer] = []\n\n");
         sb.Append("def _keep(s: socket.socket) -> socket.socket:\n    _opened.append(s)\n    return s\n\n");
+        sb.Append("def _send_later(s: socket.socket, delay: float) -> None:\n    def send() -> None:\n        s.send(b\"hi\")\n"
+                  + "    t = threading.Timer(delay, send)\n    _timers.append(t)\n    t.start()\n\n");
         // Literal defaults, as socket.socket's own: a default naming socket.AF_INET is SPY0908 (CS1736) today.
         sb.Append("def _s(family: int = 2, sock_type: int = 1, proto: int = 0) -> socket.socket:\n"
                   + "    return _keep(socket.socket(family, sock_type, proto))\n\n");
-        sb.Append("def _close_all() -> None:\n    for s in _opened:\n        s.close()\n    _opened.clear()\n\n");
+        sb.Append("def _close_all() -> None:\n    for t in _timers:\n        t.join()\n    _timers.clear()\n"
+                  + "    for s in _opened:\n        s.close()\n    _opened.clear()\n    socket.setdefaulttimeout(None)\n\n");
         foreach (var p in probes)
             sb.Append($"def p_{p.Id}() -> None:\n{Indent(p.Body, "    ")}\n\n");
         sb.Append("def main() -> None:\n");

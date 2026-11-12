@@ -154,15 +154,15 @@ namespace Sharpy.SocketModule
         public static double? Getdefaulttimeout()
         {
             {
-                var __ctx_1 = global::Sharpy.SocketModule.SocketModuleModule._Lock;
-                __ctx_1.Enter();
+                var __ctx_2 = global::Sharpy.SocketModule.SocketModuleModule._Lock;
+                __ctx_2.Enter();
                 try
                 {
                     return global::Sharpy.SocketModule.SocketModuleModule._DefaultTimeout;
                 }
                 finally
                 {
-                    __ctx_1.Exit();
+                    __ctx_2.Exit();
                 }
             }
         }
@@ -174,15 +174,15 @@ namespace Sharpy.SocketModule
         {
             global::Sharpy.SocketModule.SocketModuleModule._CheckTimeout(timeout);
             {
-                var __ctx_2 = global::Sharpy.SocketModule.SocketModuleModule._Lock;
-                __ctx_2.Enter();
+                var __ctx_3 = global::Sharpy.SocketModule.SocketModuleModule._Lock;
+                __ctx_3.Enter();
                 try
                 {
                     _DefaultTimeout = timeout;
                 }
                 finally
                 {
-                    __ctx_2.Exit();
+                    __ctx_3.Exit();
                 }
             }
         }
@@ -195,15 +195,15 @@ namespace Sharpy.SocketModule
         {
             double? @default = null;
             {
-                var __ctx_3 = global::Sharpy.SocketModule.SocketModuleModule._Lock;
-                __ctx_3.Enter();
+                var __ctx_4 = global::Sharpy.SocketModule.SocketModuleModule._Lock;
+                __ctx_4.Enter();
                 try
                 {
                     @default = global::Sharpy.SocketModule.SocketModuleModule._DefaultTimeout;
                 }
                 finally
                 {
-                    __ctx_3.Exit();
+                    __ctx_4.Exit();
                 }
             }
 
@@ -1044,11 +1044,33 @@ namespace Sharpy.SocketModule
 
         /// <summary>
         /// Wrap an existing .NET socket (used for accepted connections).
+        /// The wrapper's .NET state is made to match what it records: an accepted .NET socket
+        /// inherits the listener's Send/ReceiveTimeout and non-blocking mode, where python's
+        /// accepted socket is blocking. Then the default timeout applies, as python's `accept`
+        /// does (getdefaulttimeout(), else blocking, whatever the listener's mode).
         /// </summary>
         public Socket(global::System.Net.Sockets.Socket existing)
         {
             this._Socket = existing;
-            this._Timeout = null;
+            this.Settimeout(null);
+            double? @default = null;
+            {
+                var __ctx_1 = global::Sharpy.SocketModule.SocketModuleModule._Lock;
+                __ctx_1.Enter();
+                try
+                {
+                    @default = global::Sharpy.SocketModule.SocketModuleModule._DefaultTimeout;
+                }
+                finally
+                {
+                    __ctx_1.Exit();
+                }
+            }
+
+            if (@default is not null)
+            {
+                this.Settimeout(@default.Value);
+            }
         }
     }
 }
