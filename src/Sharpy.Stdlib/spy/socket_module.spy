@@ -75,16 +75,20 @@ class error(OSError):
     Derives from OSError, so `except OSError` catches every socket exception. Python's
     socket.error IS OSError; here it is a subclass of its own (docs/deviations.yaml,
     socket-error-timeout-distinct-classes).
+
+    `errno` is the platform's errno for a failed socket call, and None where python's is None:
+    an error constructed without one, and a `timeout` raised because the socket's own timeout
+    (`settimeout`) expired.
     """
 
-    errno: int
+    errno: int | None
 
-    def __init__(self, message: str, errno: int = 0):
+    def __init__(self, message: str, errno: int | None = None):
         """Create a socket error with the specified message and optional errno."""
         super().__init__(message)
         self.errno = errno
 
-    def __init__(self, message: str, inner: Exception, errno: int = 0):
+    def __init__(self, message: str, inner: Exception, errno: int | None = None):
         """Create a socket error wrapping an inner exception."""
         super().__init__(message, inner)
         self.errno = errno
@@ -108,37 +112,55 @@ class error(OSError):
         return error(ex.Message, ex, native)
 
 class timeout(error):
-    """Raised when a socket operation times out. Corresponds to Python's socket.timeout."""
+    """Raised when a socket operation times out. Corresponds to Python's socket.timeout.
 
-    def __init__(self, message: str, errno: int = 0):
+    `errno` is None when the socket's own timeout expired, as python's; a kernel `ETIMEDOUT`
+    carries the platform's errno.
+    """
+
+    def __init__(self, message: str, errno: int | None = None):
         """Create a socket timeout error with the specified message."""
         super().__init__(message, errno)
 
-    def __init__(self, message: str, inner: Exception, errno: int = 0):
+    def __init__(self, message: str, inner: Exception, errno: int | None = None):
         """Create a socket timeout error wrapping an inner exception."""
         super().__init__(message, inner, errno)
 
 class gaierror(error):
     """Raised for address-related errors (e.g., DNS failures). Python's socket.gaierror."""
 
-    def __init__(self, message: str, errno: int = 0):
+    def __init__(self, message: str, errno: int | None = None):
         """Create a GAI error with the specified message."""
         super().__init__(message, errno)
 
-    def __init__(self, message: str, inner: Exception, errno: int = 0):
+    def __init__(self, message: str, inner: Exception, errno: int | None = None):
         """Create a GAI error wrapping an inner exception."""
         super().__init__(message, inner, errno)
 
 class herror(error):
     """Raised for legacy address-related errors. Corresponds to Python's socket.herror."""
 
-    def __init__(self, message: str, errno: int = 0):
+    def __init__(self, message: str, errno: int | None = None):
         """Create an herror with the specified message."""
         super().__init__(message, errno)
 
-    def __init__(self, message: str, inner: Exception, errno: int = 0):
+    def __init__(self, message: str, inner: Exception, errno: int | None = None):
         """Create an herror wrapping an inner exception."""
         super().__init__(message, inner, errno)
+
+def _timed_out(ex: SocketException, own_timeout: bool) -> timeout:
+    """The socket.timeout for a .NET SocketException whose code is `TimedOut`.
+
+    .NET reports the socket's own timeout and a kernel `ETIMEDOUT` alike, so the caller says
+    which it was: `own_timeout` True (a timeout is set on the socket, so its expiry is the
+    likelier) gives python's `timed out` with errno None; False (no timeout is set, so only the
+    kernel can time out) gives the platform's errno (110 on Linux), as python's `TimeoutError`
+    does. A kernel `ETIMEDOUT` while a timeout is set cannot be told apart and carries None
+    (docs/deviations.yaml, socket-errno-is-dotnet-socket-error).
+    """
+    if own_timeout:
+        return timeout("timed out", ex)
+    return timeout(ex.Message, ex, error.from_socket_exception(ex).errno)
 
 @final
 class socket(IDisposable):
@@ -204,7 +226,9 @@ class socket(IDisposable):
             else:
                 self._socket.connect(endpoint)
         except SocketException as ex when ex.socket_error_code == SocketError.TimedOut:
-            raise timeout("timed out", ex, (ex.socket_error_code as! int))
+            # The socket's own timeout raised above (WaitOne); .NET's Connect ignores
+            # Send/ReceiveTimeout, so a TimedOut here is the kernel's ETIMEDOUT.
+            raise _timed_out(ex, False)
         except SocketException as ex:
             raise error.from_socket_exception(ex)
 
@@ -245,7 +269,7 @@ class socket(IDisposable):
             conn: socket = socket(accepted)
             return (conn, (remote_ep.address.to_string(), remote_ep.port))
         except SocketException as ex when ex.socket_error_code == SocketError.TimedOut:
-            raise timeout("timed out", ex, (ex.socket_error_code as! int))
+            raise _timed_out(ex, self._timeout_ms() > 0)
         except SocketException as ex:
             raise error.from_socket_exception(ex)
 
@@ -256,7 +280,7 @@ class socket(IDisposable):
         try:
             return self._socket.send(data.to_array())
         except SocketException as ex when ex.socket_error_code == SocketError.TimedOut:
-            raise timeout("timed out", ex, (ex.socket_error_code as! int))
+            raise _timed_out(ex, self._timeout_ms() > 0)
         except SocketException as ex:
             raise error.from_socket_exception(ex)
 
@@ -272,7 +296,7 @@ class socket(IDisposable):
                     raise error("Connection reset by peer", (SocketError.ConnectionReset as! int))
                 total_sent = total_sent + sent
         except SocketException as ex when ex.socket_error_code == SocketError.TimedOut:
-            raise timeout("timed out", ex, (ex.socket_error_code as! int))
+            raise _timed_out(ex, self._timeout_ms() > 0)
         except SocketException as ex:
             raise error.from_socket_exception(ex)
 
@@ -285,7 +309,7 @@ class socket(IDisposable):
             Array.copy(buffer, result, received)
             return bytes(result)
         except SocketException as ex when ex.socket_error_code == SocketError.TimedOut:
-            raise timeout("timed out", ex, (ex.socket_error_code as! int))
+            raise _timed_out(ex, self._timeout_ms() > 0)
         except SocketException as ex:
             raise error.from_socket_exception(ex)
 
@@ -296,7 +320,7 @@ class socket(IDisposable):
             endpoint: IPEndPoint = IPEndPoint(ip_addr, address[1])
             return self._socket.send_to(data.to_array(), endpoint)
         except SocketException as ex when ex.socket_error_code == SocketError.TimedOut:
-            raise timeout("timed out", ex, (ex.socket_error_code as! int))
+            raise _timed_out(ex, self._timeout_ms() > 0)
         except SocketException as ex:
             raise error.from_socket_exception(ex)
 
@@ -311,7 +335,7 @@ class socket(IDisposable):
             ep: IPEndPoint = remote as! IPEndPoint
             return (bytes(result), (ep.address.to_string(), ep.port))
         except SocketException as ex when ex.socket_error_code == SocketError.TimedOut:
-            raise timeout("timed out", ex, (ex.socket_error_code as! int))
+            raise _timed_out(ex, self._timeout_ms() > 0)
         except SocketException as ex:
             raise error.from_socket_exception(ex)
 

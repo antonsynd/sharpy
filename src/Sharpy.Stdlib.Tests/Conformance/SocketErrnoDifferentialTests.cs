@@ -76,6 +76,10 @@ public class SocketErrnoDifferentialTests
             "u = _s(socket.AF_INET, socket.SOCK_DGRAM)\nu.bind((\"127.0.0.1\", 0))\nu.settimeout(0.2)\nu.recv(10)"),
         new Probe("accept_timeout",
             "a = _s()\na.bind((\"127.0.0.1\", 0))\na.listen(1)\na.settimeout(0.2)\na.accept()"),
+        // listen(0) admits one connection on Linux; the next SYN is dropped, so a timed connect expires.
+        new Probe("connect_timeout",
+            "a = _s()\na.bind((\"127.0.0.1\", 0))\na.listen(0)\n_s().connect((\"127.0.0.1\", a.getsockname()[1]))\n"
+            + "c = _s()\nc.settimeout(0.3)\nc.connect((\"127.0.0.1\", a.getsockname()[1]))"),
     };
 
     /// <summary>
@@ -94,8 +98,6 @@ public class SocketErrnoDifferentialTests
             ["nb_connect"] = ("115", "11", ".NET folds the kernel's EINPROGRESS into WouldBlock, whose native code is EAGAIN"),
             ["setsockopt_bad"] = ("92", "95", ".NET rejects an unknown option name itself with EOPNOTSUPP; the kernel gives ENOPROTOOPT"),
             ["getsockopt_bad"] = ("92", "95", ".NET rejects an unknown option name itself with EOPNOTSUPP; the kernel gives ENOPROTOOPT"),
-            ["recv_timeout"] = ("None", "10060", "python's TimeoutError carries no errno; Sharpy's errno is an int and the timeout arms pass the SocketError value"),
-            ["accept_timeout"] = ("None", "0", "python's TimeoutError carries no errno; Sharpy's errno is an int, 0 on the select-timeout path"),
         };
 
     private static readonly object Gate = new();
@@ -204,6 +206,21 @@ public class SocketErrnoDifferentialTests
         TestPreconditions.RequireOrSkip(OperatingSystem.IsLinux(), "the pinned numbers are Linux's errno values.");
         var ex = new SocketException((int)code);
         Assert.Equal(linuxErrno, global::Sharpy.SocketModule.Error.FromSocketException(ex).Errno);
+    }
+
+    /// <summary>
+    /// A .NET <c>TimedOut</c> is the socket's own timeout (errno None, python's <c>timed out</c>) or, where no
+    /// timeout is set, the kernel's <c>ETIMEDOUT</c> (110 on Linux, python's <c>TimeoutError</c> errno). The
+    /// kernel arm cannot be probed without an unanswering peer, so the rule is pinned here (no oracle).
+    /// </summary>
+    [SkippableTheory]
+    [InlineData(true, null)]
+    [InlineData(false, 110)]
+    public void TimedOut_OwnTimeoutHasNoErrno_KernelTimeoutCarriesETIMEDOUT(bool ownTimeout, int? linuxErrno)
+    {
+        TestPreconditions.RequireOrSkip(OperatingSystem.IsLinux(), "the pinned number is Linux's errno value.");
+        var t = global::Sharpy.SocketModule.SocketModuleModule._TimedOut(new SocketException((int)SocketError.TimedOut), ownTimeout);
+        Assert.Equal(linuxErrno, t.Errno);
     }
 
     internal readonly record struct Outcome(string Type, string? Errno);
