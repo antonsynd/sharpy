@@ -110,7 +110,8 @@ Sharpy.Compiler.Tests/Lowering/OperatorLoweringTransportTests.cs | Assert.True(c
 Sharpy.Compiler.Tests/Lowering/OperatorLoweringTransportTests.cs | Assert.True(entries > 0, "no operator lowering entry in the corpus: the sweep is vacuous"); | ×1 | floor | lower bound
 Sharpy.Compiler.Tests/Lowering/OperatorLoweringTransportTests.cs | Assert.True(fixtures.Count > 0, "no fixture with an .expected file was discovered: the sweep is vacuous"); | ×1 | floor | lower bound
 Sharpy.Compiler.Tests/Lowering/OperatorLoweringTransportTests.cs | Assert.True(foldedPowerKeys > 0, | ×1 | floor | lower bound
-Sharpy.Compiler.Tests/Lowering/OperatorLoweringTransportTests.cs | Assert.True(implementers.Count > 0, "no IIrOperatorSite implementer found by reflection: the carrier floor is vacuous"); | ×1 | floor | lower bound
+Sharpy.Compiler.Tests/Lowering/OperatorLoweringTransportTests.cs | Assert.True(implementerTypes.Count > 0, "no IIrOperatorSite implementer found by reflection: the carrier floor is vacuous"); | ×1 | floor | lower bound
+Sharpy.Compiler.Tests/Lowering/OperatorLoweringTransportTests.cs | Assert.True(narrowingCarriers.Count > 0 && narrowingCarriers.Count < implementers.Count, | ×1 | floor | lower bound
 Sharpy.Compiler.Tests/Lowering/OperatorLoweringTransportTests.cs | Assert.True(roster.Count > 0, "the SetOperatorLowering call-site roster is empty: the key-kind floor is vacuous"); | ×1 | floor | lower bound
 Sharpy.Compiler.Tests/Lowering/IrTotalityTests.cs | Assert.Equal(4, CollectNodes<IrOptionalWrappedElement>(ir).Count); | ×1 | fixed-input | in-test input of OptionalWalrusStore_LowersAtItsOwnSite_NestedUnderAnUnpackingElement
 Sharpy.Compiler.Tests/Lowering/IrTotalityTests.cs | Assert.Equal(5, CollectNodes<IrOptionalWalrusStore>(ir).Count); | ×1 | fixed-input | in-test input of OptionalWalrusStore_LowersAtItsOwnSite_NestedUnderAnUnpackingElement

@@ -313,9 +313,9 @@ public class EmitterCarrierOnlyConformanceTests
     /// The <c>ForIr</c> convention (#2443, plan-92249e D7): a <c>SemanticInfo</c> accessor whose name
     /// ends <c>ForIr</c> is lowering input, "renamed so nothing in <c>CodeGen/</c> can bind it" — the
     /// emitter reads the IR node the pass built from it instead. Until this census nothing asserted
-    /// that. A Roslyn-syntax census of every invocation whose member name ends <c>ForIr</c>
-    /// (<c>a.XForIr(…)</c>, <c>a?.XForIr(…)</c>, <c>XForIr(…)</c>; comments and declarations are not
-    /// invocations), per directory: zero under <c>CodeGen/</c>, and at least
+    /// that. A Roslyn-syntax census of every name reference that ends <c>ForIr</c>
+    /// (<c>a.XForIr(…)</c>, <c>a?.XForIr(…)</c>, <c>XForIr(…)</c>, and the method group <c>a.XForIr</c>;
+    /// comments and declarations are not references), per directory: zero under <c>CodeGen/</c>, and at least
     /// <see cref="LoweringForIrCallFloor"/> under <c>Lowering/</c> (the positive control: the census
     /// sees the calls that exist).
     /// </summary>
@@ -342,8 +342,8 @@ public class EmitterCarrierOnlyConformanceTests
     }
 
     /// <summary>
-    /// Controls for <see cref="ForIrInvocations"/>: each invocation spelling is counted, and a
-    /// declaration, a comment, a string and a non-<c>ForIr</c> call are not.
+    /// Controls for <see cref="ForIrInvocations"/>: each invocation spelling and a method group are
+    /// counted, and a declaration, a comment, a string and a non-<c>ForIr</c> call are not.
     /// </summary>
     [Fact]
     public void SyntheticForIrInvocations_AreCounted_DeclarationsAndMentionsAreNot()
@@ -361,13 +361,19 @@ public class EmitterCarrierOnlyConformanceTests
                     var d = info.GetGenericForIr<int>(node);
                     var e = info.GetOperatorLowering(node);
                     var f = "x.GetOperatorLoweringForIr(node)";
+                    System.Func<object, object?> g = info.GetBoundForIr;
+                    var h = nameof(Info.GetNamedForIr);
                 }
             }
             """;
 
         ForIrInvocations("Synthetic.cs", source).Select(call => call.Split(' ')[1]).Should().Equal(
-            new[] { "GetOperatorLoweringForIr", "GetExceptAlternativesForIr", "GetThingForIr", "GetGenericForIr" },
-            "member access, conditional access, a bare call and a generic call are each one invocation");
+            new[]
+            {
+                "GetOperatorLoweringForIr", "GetExceptAlternativesForIr", "GetThingForIr", "GetGenericForIr",
+                "GetBoundForIr", "GetNamedForIr",
+            },
+            "member access, conditional access, a bare call, a generic call, a method group and a nameof are each one reference");
     }
 
     private static List<string> ForIrInvocationsUnder(string directory)
@@ -379,23 +385,22 @@ public class EmitterCarrierOnlyConformanceTests
             .ToList();
     }
 
-    /// <summary>Every invocation in <paramref name="source"/> whose member name ends <c>ForIr</c>, as <c>file:line name</c>.</summary>
+    /// <summary>
+    /// Every reference in <paramref name="source"/> to a name that ends <c>ForIr</c>, as <c>file:line name</c>:
+    /// an invocation in any spelling, and a method group (<c>Func&lt;…&gt; f = info.XForIr;</c>), which binds
+    /// the accessor without invoking it by name. A declaration's name is a token, not a name node, so
+    /// it is not counted.
+    /// </summary>
     private static IEnumerable<string> ForIrInvocations(string fileName, string source)
     {
         var root = CSharpSyntaxTree.ParseText(source).GetRoot();
-        foreach (var invocation in root.DescendantNodes().OfType<InvocationExpressionSyntax>())
+        foreach (var simple in root.DescendantNodes().OfType<SimpleNameSyntax>())
         {
-            var name = invocation.Expression switch
-            {
-                MemberAccessExpressionSyntax access => access.Name.Identifier.Text,
-                MemberBindingExpressionSyntax binding => binding.Name.Identifier.Text,
-                SimpleNameSyntax simple => simple.Identifier.Text,
-                _ => null,
-            };
-            if (name == null || !name.EndsWith("ForIr", StringComparison.Ordinal))
+            var name = simple.Identifier.Text;
+            if (!name.EndsWith("ForIr", StringComparison.Ordinal))
                 continue;
 
-            var line = invocation.GetLocation().GetLineSpan().StartLinePosition.Line + 1;
+            var line = simple.GetLocation().GetLineSpan().StartLinePosition.Line + 1;
             yield return $"{fileName}:{line} {name}";
         }
     }

@@ -28,7 +28,9 @@ namespace Sharpy.Compiler.Tests.Lowering;
 /// folded power) or an <see cref="IrCollectionMutation"/> = 0, each measured over a non-empty set of
 /// such keys (the positive control is in the same test).</item>
 /// <item><b>Carriers.</b> Every implementer of <see cref="IIrOperatorSite"/> in the compiler assembly
-/// (reflection, so a fifth carrier is red here) is seen carrying a non-<c>Native</c> operator.</item>
+/// (reflection, so a fifth carrier is red here) is seen carrying a non-<c>Native</c> operator, and
+/// every one that takes a <c>NarrowTo</c> (a constructor parameter of that name, by reflection) is seen
+/// carrying a non-null one: without that floor a pass that drops the field on one carrier is green.</item>
 /// <item><b>Key kinds.</b> Every key kind a <c>SetOperatorLowering(</c> call site writes (the census's
 /// own call-site roster) appears on the entry → site side, and no entry is keyed outside it.</item>
 /// </list>
@@ -47,12 +49,21 @@ public class OperatorLoweringTransportTests
     public void EveryOperatorLoweringEntry_IsCarriedByItsIrNode_AndEveryOperatorSite_HasItsEntry()
     {
         var (roster, _, _, _) = OperatorLoweringCorpusCensusTests.ScanCallSites();
-        var implementers = typeof(IIrOperatorSite).Assembly.GetTypes()
+        var implementerTypes = typeof(IIrOperatorSite).Assembly.GetTypes()
             .Where(t => typeof(IIrOperatorSite).IsAssignableFrom(t) && !t.IsInterface && !t.IsAbstract)
-            .Select(t => t.Name)
-            .OrderBy(n => n, StringComparer.Ordinal)
+            .OrderBy(t => t.Name, StringComparer.Ordinal)
             .ToList();
-        Assert.True(implementers.Count > 0, "no IIrOperatorSite implementer found by reflection: the carrier floor is vacuous");
+        Assert.True(implementerTypes.Count > 0, "no IIrOperatorSite implementer found by reflection: the carrier floor is vacuous");
+        var implementers = implementerTypes.Select(t => t.Name).ToList();
+        // The carriers the pass can hand a NarrowTo: those whose constructor takes one. A carrier that
+        // computes the member (IrEqualityComparison: always null) is not in the floor, by its own shape.
+        var narrowingCarriers = implementerTypes
+            .Where(t => t.GetConstructors().Any(c => c.GetParameters().Any(p => p.Name == nameof(IIrOperatorSite.NarrowTo))))
+            .Select(t => t.Name)
+            .ToList();
+        Assert.True(narrowingCarriers.Count > 0 && narrowingCarriers.Count < implementers.Count,
+            "the NarrowTo floor's roster is every carrier or none: the constructor-parameter census reads the wrong shape "
+            + $"(narrowing: {string.Join(", ", narrowingCarriers)})");
 
         var fixtures = OperatorLoweringCorpusCensusTests.CorpusFixtures();
         Assert.True(fixtures.Count > 0, "no fixture with an .expected file was discovered: the sweep is vacuous");
@@ -65,6 +76,7 @@ public class OperatorLoweringTransportTests
         var sitesNonNative = implementers.ToDictionary(n => n, _ => 0);
         var sitesNativeWithEntry = implementers.ToDictionary(n => n, _ => 0);
         var sitesNativeAbsent = implementers.ToDictionary(n => n, _ => 0);
+        var sitesNarrowing = implementers.ToDictionary(n => n, _ => 0);
         int entries = 0, viaWrappedElement = 0, treeSites = 0, rewrittenSites = 0;
         int foldedPowerKeys = 0, collectionMutationKeys = 0;
         var entryToSiteMisses = new List<string>();
@@ -256,6 +268,9 @@ public class OperatorLoweringTransportTests
                     continue;
                 }
 
+                if (site.NarrowTo is not null)
+                    sitesNarrowing[carrierName]++;
+
                 if (site.Operator != OperatorLoweringKind.Native)
                     sitesNonNative[carrierName]++;
                 else if (expected is not null)
@@ -282,7 +297,7 @@ public class OperatorLoweringTransportTests
         {
             _output.WriteLine(
                 $"  {name,-22} non-Native={sitesNonNative[name],6}  (Native, entry)={sitesNativeWithEntry[name],6}  "
-                + $"(Native, absent)={sitesNativeAbsent[name],6}");
+                + $"(Native, absent)={sitesNativeAbsent[name],6}  NarrowTo={sitesNarrowing[name],4}");
         }
 
         foreach (var line in indexOnlySites)
@@ -335,6 +350,13 @@ public class OperatorLoweringTransportTests
             "IIrOperatorSite implementer(s) never seen carrying a non-Native operator in a fixture that has an "
             + ".expected file; add a fixture whose output differs when it reads Native (#2443): "
             + string.Join(", ", unseenCarriers));
+
+        // (d') every carrier that takes a NarrowTo is seen carrying one (agreeing with its entry, by (b)).
+        var unseenNarrowing = narrowingCarriers.Where(n => sitesNarrowing[n] == 0).ToList();
+        Assert.True(unseenNarrowing.Count == 0,
+            "IIrOperatorSite implementer(s) that take a NarrowTo but are never seen carrying one in a fixture that "
+            + "has an .expected file, so a pass that drops it there is green; add a fixture (#2443): "
+            + string.Join(", ", unseenNarrowing));
 
         // (e) every key kind is carried; no entry is keyed outside the roster.
         Assert.True(roster.Count > 0, "the SetOperatorLowering call-site roster is empty: the key-kind floor is vacuous");
