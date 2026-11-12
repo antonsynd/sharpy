@@ -6,7 +6,8 @@ Convention (close-issues skill, batch-issues templates):
 - A cell table is a markdown table, in the issue body or in a comment, whose header names a cell
   column (`cell…`, `program…` or `axis values`), or else an observation column (`observed…`,
   `expected…`, `python…`, `cpython…`, `sharpy…`) unless the nearest non-blank line above it says
-  `not a cell table`; it carries a `status` column. Rows whose `tracker` column names
+  `not a cell table` in visible prose (not a table row, not an HTML comment; never honoured for a
+  table with a `status` column); it carries a `status` column. Rows whose `tracker` column names
   another issue are not this issue's cells. A row's key is its `#`, `cell`, `program` or
   `axis values` column (else its first column); two rows of one table with the same key are told
   apart by the whole row. A row in a later source (a later comment) with an earlier row's key
@@ -20,7 +21,8 @@ Convention (close-issues skill, batch-issues templates):
     moved #N           -- #N is an issue (not a pull request) that was open when the tracker closed
     control            -- the row never was a defect
 - A row of a cell table with no `status` column is unaccounted unless a later source restates its
-  key in a table that has one; the table fails, listing those rows. An issue with no cell table
+  key (and its `cell` text, when both tables have a `cell` column) in a table that has one; the
+  table fails, listing those rows. An issue with no cell table
   (and no unrecognised body table) passes. Closures as `duplicate` or `not_planned` are not checked.
 
 The strict check applies to closures on or after CUTOFF and to OPEN issues named on the command line
@@ -177,7 +179,20 @@ class Table:
         return any(marker.match(_norm(h)) for h in self.header)
 
     def opted_out(self) -> bool:
-        return bool(OPT_OUT_RE.search(self.above))
+        """The line above says `not a cell table` in visible prose: not in a table row or an HTML
+        comment. A table with a `status` column is never opted out."""
+        if self.has_status() or "|" in self.above:
+            return False
+        visible = re.sub(r"<!--.*?(-->|$)", "", self.above)
+        visible = re.sub(r"^.*?-->", "", visible)
+        return bool(OPT_OUT_RE.search(visible))
+
+    def key_column(self) -> str:
+        """The header a row's key is read from (see row_keys)."""
+        for name in KEY_COLUMNS:
+            if self.col(name) is not None:
+                return name
+        return self.header[0] if self.header else ""
 
     def is_cell_table(self) -> bool:
         """A cell column always makes a cell table; an observation column does unless opted out."""
@@ -311,13 +326,15 @@ def collect_cells(
 
     Also returns the problems no row status can answer: one per cell table with no status column
     whose rows (of this issue) are not all restated by a LATER table that has one, and one per
-    unrecognised body table. A status-less row never replaces a row that has a status.
+    unrecognised body table. A status-less row never replaces a row that has a status. A row
+    restates a status-less row when it has the same key and, if both tables have a `cell` column,
+    the same cell text (a later table numbered 1, 2, … does not restate unrelated rows 1, 2, …).
     """
     cells: dict[str, Cell] = {}
-    # key -> sequence number of the latest status-column table that states it
-    stated_at: dict[str, int] = {}
-    # (sequence number, source, table, its row keys) per status-less cell table
-    statusless: list[tuple[int, str, Table, list[str]]] = []
+    # key -> (sequence number of its table, its normalised `cell` text or None) per status row
+    stated: dict[str, list[tuple[int, str | None]]] = {}
+    # (sequence number, source, table, {row key: its `cell` text or None}) per status-less table
+    statusless: list[tuple[int, str, Table, dict[str, str | None]]] = []
     problems: list[str] = []
     seq = 0
     for source, text in _sources(body, comments):
@@ -336,28 +353,53 @@ def collect_cells(
                     )
                 continue
             si = t.col("status")
+            ci = t.col("cell")
             keys = table_keys(t, rows)
             if si is None:
-                flat = list(dict.fromkeys(k for ks in keys for k in ks))
-                statusless.append((seq, source, t, flat))
+                cell_of: dict[str, str | None] = {}
+                for row, ks in zip(rows, keys):
+                    for key in ks:
+                        cell_of[key] = _cell_text(row, ci)
+                statusless.append((seq, source, t, cell_of))
                 continue
             for row, ks in zip(rows, keys):
                 status = row[si] if si < len(row) else ""
                 for key in ks:
                     cells[key] = Cell(key, status.strip(), source, " | ".join(row))
-                    stated_at[key] = seq
-    for at, source, t, keys in statusless:
-        unstated = [k for k in keys if stated_at.get(k, 0) <= at]
+                    stated.setdefault(key, []).append((seq, _cell_text(row, ci)))
+
+    def restated(key: str, at: int, text: str | None) -> bool:
+        return any(
+            s > at and (text is None or other is None or other == text)
+            for s, other in stated.get(key, [])
+        )
+
+    for at, source, t, cell_of in statusless:
+        unstated = [k for k, text in cell_of.items() if not restated(k, at, text)]
         if unstated:
-            shown = ", ".join(repr(k) for k in unstated[:10])
+            shown = ", ".join(repr(_clip(k)) for k in unstated[:10])
             more = f" and {len(unstated) - 10} more" if len(unstated) > 10 else ""
+            key = t.key_column()
+            same_cell = (
+                " and the same `cell` text"
+                if key != "cell" and t.col("cell") is not None
+                else ""
+            )
             problems.append(
                 f"cell table ({' | '.join(t.header)}) in {source} has no status column; "
-                f"{len(unstated)} of its {len(keys)} row(s) have no status: {shown}{more}. "
+                f"{len(unstated)} of its {len(cell_of)} row(s) have no status: {shown}{more}. "
                 "Add a `status` column to it, or restate those keys in a later comment's "
-                "table that has one"
+                f"table that has one, with the same `{key}` value{same_cell}"
             )
     return cells, problems
+
+
+def _cell_text(row: list[str], ci: int | None) -> str | None:
+    return _norm(row[ci]) if ci is not None and ci < len(row) else None
+
+
+def _clip(s: str, width: int = 80) -> str:
+    return s if len(s) <= width else s[: width - 1] + "…"
 
 
 def _is_sha(token: str) -> bool:
@@ -571,7 +613,8 @@ def closed_since(date: str) -> list[dict]:
 FIX_HINT = (
     "give every row of each cell table a `status` of `fixed` plus a commit sha, a backticked "
     "test name or `PR #N`; `moved #N` (an issue open when this one closed); or `control`. "
-    "A body table whose rows are not cells gets `not a cell table` on the line just above it"
+    "A table whose rows are not cells (an unrecognised body table, or a comment or body table "
+    "named by an observation column) gets `not a cell table` on the line just above it"
 )
 
 

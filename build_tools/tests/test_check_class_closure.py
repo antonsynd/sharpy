@@ -678,6 +678,150 @@ def test_restating_a_statusless_row_with_an_empty_status_stays_red(tracker, caps
     assert "has no status column" not in out
 
 
+# ── PR #2640 review: restatement needs the cell text too ─────────────────────
+
+NUMBERED_STATUSLESS = table("| 1 | bug A |", "| 2 | bug B |", header="| # | cell |")
+
+
+def test_numbered_rows_of_an_unrelated_table_do_not_restate(tracker, capsys):
+    unrelated = table("| 1 | x | control |", "| 2 | y | control |")
+    closed_2477_with(
+        tracker,
+        NUMBERED_STATUSLESS,
+        [{"created_at": "2026-11-12T08:00:00Z", "body": unrelated}],
+    )
+    code, out = run(capsys, "2477")
+    assert code == 1, out
+    assert (
+        "cell table (# | cell) in body has no status column; 2 of its 2 row(s) have no "
+        "status: '1', '2'" in out
+    )
+    assert "with the same `#` value and the same `cell` text" in out
+
+
+def test_numbered_rows_with_the_same_cell_text_restate(tracker, capsys):
+    same = table("| 1 | `bug A` | control |", "| 2 | **bug B** | fixed PR #2588 |")
+    closed_2477_with(
+        tracker,
+        NUMBERED_STATUSLESS,
+        [{"created_at": "2026-11-12T08:00:00Z", "body": same}],
+    )
+    code, out = run(capsys, "2477")
+    assert code == 0, out
+    assert "2 accounted, 0 not" in out
+
+
+def test_restatement_without_a_cell_column_matches_on_the_key(tracker, capsys):
+    # #2517's shape: the body table is keyed by its first column, `operation`.
+    body = table(
+        "| `1 / 0` | prints `inf` | ZeroDivisionError |",
+        "| `1.0 / 0.0` | prints `inf` | ZeroDivisionError |",
+        header="| operation | Sharpy | python 3.13 |",
+    )
+    closing = table(
+        "| `1 / 0` | ZeroDivisionError | fixed `ZeroDivisionDifferentialTests` |",
+        "| `1.0 / 0.0` | ZeroDivisionError | fixed `ZeroDivisionDifferentialTests` |",
+        header="| cell | expected | status |",
+    )
+    closed_2477_with(
+        tracker, body, [{"created_at": "2026-11-12T08:00:00Z", "body": closing}]
+    )
+    code, out = run(capsys, "2477")
+    assert code == 0, out
+    assert "2 accounted, 0 not" in out
+
+
+def test_long_unstated_keys_are_clipped(tracker, capsys):
+    long_cell = "`" + "x" * 200 + "`"
+    closed_2477_with(tracker, table(f"| {long_cell} | 1 |", header="| cell | python |"))
+    code, out = run(capsys, "2477")
+    assert code == 1, out
+    assert "'" + "x" * 79 + "…'" in out and "x" * 81 not in out
+
+
+# ── PR #2640 review: where the opt-out line counts ───────────────────────────
+
+OBS_TABLE = table("| real divergence | 2 |", header="| observed | expected |")
+
+
+@pytest.mark.parametrize(
+    "above",
+    [
+        # the nearest non-blank line is the last row of another table
+        table("| a | the `not a cell table` line is ignored | control |") + "\n",
+        "<!-- not a cell table -->\n",
+        "<!-- a reviewer note:\nnot a cell table -->\n",
+        "Timings <!-- not a cell table\n",
+    ],
+    ids=["table-row", "html-comment", "html-comment-tail", "html-comment-open"],
+)
+def test_opt_out_in_a_table_row_or_html_comment_does_not_count(tracker, capsys, above):
+    closed_2477_with(tracker, above + OBS_TABLE)
+    code, out = run(capsys, "2477")
+    assert code == 1, out
+    assert "cell table (observed | expected) in body has no status column" in out
+
+
+def test_opt_out_never_hides_a_table_with_a_status_column(tracker, capsys):
+    closed_2477_with(
+        tracker,
+        "Not a cell table:\n"
+        + table("| x | y | open |", header="| observed | expected | status |"),
+    )
+    code, out = run(capsys, "2477")
+    assert code == 1, out
+    assert "row 'x' (body): status 'open' is not fixed/moved/control" in out
+
+
+def test_opt_out_beside_an_html_comment_still_counts(tracker, capsys):
+    closed_2477_with(tracker, "<!-- timings --> Not a cell table:\n" + OBS_TABLE)
+    code, out = run(capsys, "2477")
+    assert code == 0, out
+
+
+# ── PR #2640 review: the marker vocabulary, pinned ───────────────────────────
+
+
+@pytest.mark.parametrize(
+    "word",
+    [
+        "cell",
+        "Cells (one per row)",
+        "program",
+        "axis values",
+        "observed @ 9aae96977",
+        "expected",
+        "python 3.13",
+        "python3",
+        "CPython 3.15.2",
+        "Sharpy @ HEAD",
+    ],
+)
+def test_each_marker_word_makes_a_cell_table(word):
+    assert mod.Table(["id", word], [["1", "a"]]).is_cell_table()
+
+
+@pytest.mark.parametrize(
+    "word", ["unexpected", "the observed value", "pythonic", "sharpyc run", "cellar"]
+)
+def test_a_marker_inside_another_word_is_not_a_marker(word):
+    assert not mod.Table(["id", word], [["1", "a"]]).is_cell_table()
+
+
+def test_observation_table_with_empty_statuses_fails(tracker, capsys):
+    # #2613's shape: an observation-column table whose status column was left empty.
+    closed_2477_with(
+        tracker,
+        table(
+            "| blank-line re-placement | `x` | `y` | |",
+            header="| shape | observed | expected | status |",
+        ),
+    )
+    code, out = run(capsys, "2477")
+    assert code == 1, out
+    assert "row 'blank-line re-placement' (body): status '(empty)'" in out
+
+
 def test_comment_on_failure_is_silent_when_accounted(tracker, capsys):
     closed_2477_with(tracker, table("| 1 | a | control |"))
     code, _ = run(capsys, "--comment-on-failure", "2477")
