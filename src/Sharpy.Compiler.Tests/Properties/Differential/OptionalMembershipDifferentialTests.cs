@@ -239,7 +239,7 @@ public class OptionalMembershipDifferentialTests : IntegrationTestBase
                 + "def main() -> None:\n    ys: list[int | None] = [1, None]\n    print(c[int](1, ys))\n",
                 DiagnosticCodes.Semantic.TypeMismatch),
             ["T"] = ("the literal `None` has no emission at an unconstrained `T | None` (CS1503 `<null>` to `T?`, "
-                + "SPY0908): a defect of unconstrained generics, outside #2635's contract, which would turn every "
+                + "SPY0908): a defect of unconstrained generics tracked by #2672, which would turn every "
                 + "literal-None cell of the variant red",
                 KDeclaration + "\ndef c[T](xs: list[T | None]) -> bool:\n    return None in xs\n\n"
                 + "def main() -> None:\n    ys: list[K | None] = [K(1), None]\n    print(c[K](ys))\n",
