@@ -118,7 +118,10 @@ def main() -> None:
   enums are never identical, even with equal values.
 - A member written after `is` (`c is Color.RED`) is a value, not a type name, so it is this
   comparison and not the retired type test; `c is Color`, naming the enum type itself, is still
-  SPY0349.
+  SPY0349. This holds for a Sharpy enum (top-level, nested or module-qualified) and a top-level
+  CLR enum (`d is DayOfWeek.Monday`). A member of a CLR enum nested in another type
+  (`f is Environment.SpecialFolder.Desktop`) is still read as a type and refused SPY0349
+  (#2681); compare it with `==`.
 - An enum operand never draws the SPY0465 boxing warning below.
 
 ## Value-Type Boxing Warning

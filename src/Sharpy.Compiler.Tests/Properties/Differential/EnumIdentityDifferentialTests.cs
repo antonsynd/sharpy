@@ -341,7 +341,7 @@ public class EnumIdentityDifferentialTests : IntegrationTestBase
                 return cell.Position == Position.ChainLink
                     ? new(false, new[] { "False" }, null,
                         "`object == object` as a chain link is not refused as the binary form is, and compares the two "
-                        + "boxes by reference (pinned; outside #2670's contract)")
+                        + "boxes by reference (pinned; outside #2670's contract, cell on #2648)")
                     : new(false, null, DiagnosticCodes.Validation.UnsupportedOperator,
                         "`object == object` is refused (SPY0402): no enum operand type, outside #2670's contract");
             }
@@ -365,7 +365,7 @@ public class EnumIdentityDifferentialTests : IntegrationTestBase
         {
             // Two `object`s: neither static type is an enum, so this is ordinary reference identity on two boxes.
             return new(false, new[] { cell.Op == BinaryOperator.Is ? "False" : "True" }, null,
-                "both operands are typed `object`: outside #2669's contract, reference identity of two boxes (pinned)");
+                "both operands are typed `object`: outside #2669's contract, reference identity of two boxes (pinned; deviations.yaml enum-identity-is)");
         }
 
         return ComparedToCPython;
