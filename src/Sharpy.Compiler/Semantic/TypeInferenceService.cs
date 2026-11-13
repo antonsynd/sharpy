@@ -151,9 +151,10 @@ internal class TypeInferenceService
     /// int-backed enums (CS0019), an int-backed against a string-backed one (CS0019), and two
     /// string-backed enums (which C# would compare by backing string, True for equal values where
     /// CPython answers False). Erring toward "different" is safe — <c>object.Equals</c> on two
-    /// members of the SAME enum is still their equality — so an enum reached through two import
-    /// clones is compared by declaration (<see cref="Symbol.DeclarationRoot"/>) and an operand
-    /// whose symbol cannot be found keeps the native operator it has today.
+    /// members of the SAME enum is still their equality — but it boxes, so "same" is asked of
+    /// <see cref="TypeHierarchyService.IsSameEnumDeclaration"/>: import clones and the two symbols
+    /// of one CLR enum (an imported name against a CLR member's type) are one enum and keep the
+    /// native operator, as does an operand whose symbol cannot be found.
     /// </summary>
     private bool IsCrossEnumEquality(BinaryOperator op, SemanticType left, SemanticType right)
     {
@@ -162,7 +163,7 @@ internal class TypeInferenceService
 
         return EnumSymbolOf(UnwrapNullable(left)) is { } leftEnum
             && EnumSymbolOf(UnwrapNullable(right)) is { } rightEnum
-            && !ReferenceEquals(leftEnum.DeclarationRoot(), rightEnum.DeclarationRoot());
+            && !TypeHierarchyService.IsSameEnumDeclaration(leftEnum, rightEnum);
     }
 
     /// <summary>The enum <paramref name="type"/> names, by the same two routes as <see cref="IsEnumType"/>, or null.</summary>

@@ -304,6 +304,20 @@ internal static class TypeHierarchyService
     }
 
     /// <summary>
+    /// Whether two enum symbols name ONE enum declaration, for the decisions that pick between the
+    /// enum's native operator and <c>object.Equals</c> (#2669 <c>is</c>, #2670 <c>==</c>). One
+    /// declaration is reached through more than one symbol: an import clone (same
+    /// <see cref="Symbol.DeclarationRoot"/>), and — for a CLR enum — the symbol an import binds
+    /// against the one the bridge builds for a member's or property's type
+    /// (<c>ex.SocketErrorCode == SocketError.TimedOut</c>), which share only their
+    /// <see cref="TypeSymbol.ClrType"/>. <see cref="IsSameType"/> is the identity authority for the
+    /// second; comparing the symbols by reference called that pair two different enums and boxed a
+    /// same-type comparison.
+    /// </summary>
+    internal static bool IsSameEnumDeclaration(TypeSymbol a, TypeSymbol b)
+        => ReferenceEquals(a.DeclarationRoot(), b.DeclarationRoot()) || IsSameType(a, b);
+
+    /// <summary>
     /// Whether <see cref="IsSameType"/>'s answer for these two symbols is AUTHORITATIVE — that is,
     /// whether both carry the same KIND of identity context, so a <c>false</c> means "different
     /// declarations" rather than "not enough information to tell".

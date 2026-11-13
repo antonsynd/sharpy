@@ -2286,7 +2286,7 @@ internal partial class TypeChecker
             return null;
 
         return leftEnum != null && rightEnum != null
-            && ReferenceEquals(leftEnum.DeclarationRoot(), rightEnum.DeclarationRoot())
+            && TypeHierarchyService.IsSameEnumDeclaration(leftEnum, rightEnum)
             ? OperatorLoweringKind.EnumIdentityEquals
             : OperatorLoweringKind.EnumIdentityObjectEquals;
     }

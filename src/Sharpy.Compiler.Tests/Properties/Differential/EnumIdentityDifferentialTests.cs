@@ -19,8 +19,11 @@ namespace Sharpy.Compiler.Tests.Properties.Differential;
 /// holding another member of the same enum, an enum member written literally (the spelling the parser reads as a
 /// type name, SPY0349 before the fix), <c>E | None</c> holding a member and holding None, a variable and a member
 /// of ANOTHER int-backed enum, an <c>object</c> holding a member, the string-backed variants (variable, member,
-/// another string enum with an equal value), and two effectful calls that print when they are evaluated (so the
-/// answer and the number of evaluations of each operand are both compared);</item>
+/// another string enum with an equal value), two effectful calls that print when they are evaluated (so the
+/// answer and the number of evaluations of each operand are both compared), and the CLR enums — a
+/// <c>System.DayOfWeek</c> variable, member, <c>DateTime.day_of_week</c> property (typed by the CLR bridge, not
+/// by the imported name) and <c>DayOfWeek | None</c>, and a variable of another CLR enum
+/// (<c>DateTimeKind</c>); their CPython twins are plain <c>Enum</c> classes of the same members;</item>
 /// <item><b>operator</b> — <see cref="Operators"/>;</item>
 /// <item><b>position</b> — <see cref="Position"/>: the binary operator as a printed value, an <c>if</c>
 /// condition, a comparison-chain link, a comprehension filter.</item>
@@ -36,6 +39,10 @@ namespace Sharpy.Compiler.Tests.Properties.Differential;
 /// reach it and the answer is pinned so that a change is seen; and <c>==</c> / <c>!=</c> with an <c>object</c>
 /// operand is the checker's general rule, not an enum-pair decision (SPY0222 against an enum, SPY0402 for two
 /// objects, and a pinned reference comparison where a chain link skips that refusal).</para>
+/// <para><b>Emitted shape</b> (<see cref="ShapeViolation"/>): every cell that runs and compares two operands of ONE
+/// int-backed enum must emit the enum's native operator, and every pair of two different enums
+/// <c>object.Equals</c> (the probe's positive control). The answers alone cannot see a same-enum pair that was
+/// boxed: <c>object.Equals</c> answers it correctly.</para>
 /// <para>No cell may draw SPY0465 ("always False due to boxing"): an enum's <c>is</c> is value equality. The
 /// absence is read from the same diagnostics a positive control (<c>is</c> on two ints) is shown to hit.</para>
 /// <para>Skips when no python3 ≥ 3.15 answers, except under <c>SHARPY_REQUIRE_PYTHON_ORACLE=1</c> (CI).</para>
@@ -50,7 +57,29 @@ public class EnumIdentityDifferentialTests : IntegrationTestBase
         OtherEnumVar, OtherEnumMember, ObjectHoldingMember,
         StrEnumVar, StrEnumMember, OtherStrEnumVar,
         EnumCall, OtherEnumCall,
+        ClrEnumVar, ClrEnumMember, ClrEnumProperty, OptionalClrEnum, OtherClrEnumVar,
     }
+
+    /// <summary>
+    /// Which enum declaration an operand's STATIC type names (through <c>E | None</c>), or null for an
+    /// <c>object</c>. Two operands of one family are a same-enum pair: the emitted-shape assertion requires
+    /// their comparison to be the enum's native operator. Stated per operand, never derived from the answers.
+    /// </summary>
+    private static string? Family(Operand operand) => operand switch
+    {
+        Operand.EnumVar or Operand.EnumOtherMemberVar or Operand.EnumMember or Operand.OptionalHoldingMember
+            or Operand.OptionalHoldingNone or Operand.EnumCall => "Color",
+        Operand.OtherEnumVar or Operand.OtherEnumMember or Operand.OtherEnumCall => "Size",
+        Operand.StrEnumVar or Operand.StrEnumMember => "Tone",
+        Operand.OtherStrEnumVar => "Mood",
+        Operand.ClrEnumVar or Operand.ClrEnumMember or Operand.ClrEnumProperty or Operand.OptionalClrEnum => "DayOfWeek",
+        Operand.OtherClrEnumVar => "DateTimeKind",
+        Operand.ObjectHoldingMember => null,
+        _ => throw new ArgumentOutOfRangeException(nameof(operand)),
+    };
+
+    /// <summary>The string-backed families: reference singletons, whose <c>is</c> is reference identity by design.</summary>
+    private static bool IsStringBacked(string family) => family is "Tone" or "Mood";
 
     /// <summary>Where the test is written: a returned expression, an <c>if</c> condition, a chain link, a filter.</summary>
     private enum Position { Print, IfCondition, ChainLink, ComprehensionFilter }
@@ -83,6 +112,11 @@ public class EnumIdentityDifferentialTests : IntegrationTestBase
         Operand.ObjectHoldingMember => $"{side}_obj: object = Color.RED",
         Operand.StrEnumVar => $"{side}_tone: Tone = Tone.A",
         Operand.OtherStrEnumVar => $"{side}_mood: Mood = Mood.A",
+        Operand.ClrEnumVar => $"{side}_day: DayOfWeek = DayOfWeek.Monday",
+        // 2024-01-01 is a Monday: the property is typed by the CLR bridge, not by an imported name.
+        Operand.ClrEnumProperty => $"{side}_dt: DateTime = DateTime(2024, 1, 1)",
+        Operand.OptionalClrEnum => $"{side}_oday: DayOfWeek | None = DayOfWeek.Monday",
+        Operand.OtherClrEnumVar => $"{side}_kind: DateTimeKind = DateTimeKind.Utc",
         _ => null,
     };
 
@@ -102,12 +136,17 @@ public class EnumIdentityDifferentialTests : IntegrationTestBase
         Operand.OtherStrEnumVar => $"{side}_mood",
         Operand.EnumCall => $"ev_color({cell.ToString(CultureInfo.InvariantCulture)})",
         Operand.OtherEnumCall => $"ev_size({cell.ToString(CultureInfo.InvariantCulture)})",
+        Operand.ClrEnumVar => $"{side}_day",
+        Operand.ClrEnumMember => "DayOfWeek.Monday",
+        Operand.ClrEnumProperty => $"{side}_dt.day_of_week",
+        Operand.OptionalClrEnum => $"{side}_oday",
+        Operand.OtherClrEnumVar => $"{side}_kind",
         _ => throw new ArgumentOutOfRangeException(nameof(operand)),
     };
 
     /// <summary>An operand the parser reads as a type name after <c>is</c>: an uppercase dotted member.</summary>
     private static bool IsMemberLiteral(Operand operand)
-        => operand is Operand.EnumMember or Operand.OtherEnumMember or Operand.StrEnumMember;
+        => operand is Operand.EnumMember or Operand.OtherEnumMember or Operand.StrEnumMember or Operand.ClrEnumMember;
 
     private sealed record Cell(int Id, Operand Left, Operand Right, BinaryOperator Op, Position Position)
     {
@@ -138,6 +177,8 @@ public class EnumIdentityDifferentialTests : IntegrationTestBase
     }
 
     private const string SharpyHeader = """
+        from system import DayOfWeek, DateTime, DateTimeKind
+
         enum Color:
             RED = 1
             GREEN = 2
@@ -158,6 +199,20 @@ public class EnumIdentityDifferentialTests : IntegrationTestBase
 
     private const string PythonHeader = """
         from enum import Enum
+
+        # The CLR enums' twins: System.DayOfWeek, System.DateTimeKind, and a DateTime whose day_of_week is the
+        # member the CLR property returns for 2024-01-01.
+        class DayOfWeek(Enum):
+            Sunday = 0
+            Monday = 1
+
+        class DateTimeKind(Enum):
+            Unspecified = 0
+            Utc = 1
+
+        class DateTime:
+            def __init__(self, year, month, day):
+                self.day_of_week = DayOfWeek.Monday
 
         class Color(Enum):
             RED = 1
@@ -324,7 +379,8 @@ public class EnumIdentityDifferentialTests : IntegrationTestBase
 
     /// <summary>Compiles the program, removing each cell a refusal is attributed to, until it runs.</summary>
     private Dictionary<int, SharpyVerdict> RunSharpy(
-        string name, IReadOnlyList<Cell> cells, List<string> harnessFailures, List<string> boxingWarnings)
+        string name, IReadOnlyList<Cell> cells, List<string> harnessFailures, List<string> boxingWarnings,
+        Dictionary<int, string> emittedByCell)
     {
         var verdicts = new Dictionary<int, SharpyVerdict>();
         var active = cells.ToList();
@@ -339,6 +395,9 @@ public class EnumIdentityDifferentialTests : IntegrationTestBase
                     verdicts[cell.Id] = new SharpyVerdict(byId.TryGetValue(cell.Id, out var v) ? v : new List<string>(), null);
                 if (!run.StandardOutput.Contains("done", StringComparison.Ordinal))
                     harnessFailures.Add($"{name}: the program did not reach its last line");
+                foreach (var cell in active)
+                    if (EmittedCellBody(run.GeneratedCSharp ?? "", cell.Id) is { } body)
+                        emittedByCell[cell.Id] = body;
                 boxingWarnings.AddRange(run.RawDiagnostics
                     .Where(d => d.Code == DiagnosticCodes.Validation.IsWithValueTypes)
                     .Select(d => $"{name} line {d.Line}: {d.Message}"));
@@ -377,6 +436,40 @@ public class EnumIdentityDifferentialTests : IntegrationTestBase
         return verdicts;
     }
 
+    /// <summary>The emitted C# of one cell's function (<c>cell_7</c> is <c>Cell7()</c>), up to the next member.</summary>
+    private static string? EmittedCellBody(string generated, int id)
+    {
+        var start = generated.IndexOf($" Cell{id.ToString(CultureInfo.InvariantCulture)}()", StringComparison.Ordinal);
+        if (start < 0)
+            return null;
+        var end = generated.IndexOf("public static", start, StringComparison.Ordinal);
+        return end < 0 ? generated[start..] : generated[start..end];
+    }
+
+    /// <summary>
+    /// The emitted-shape rule (#2670 follow-up): a comparison of two operands of ONE int-backed enum is the enum's
+    /// native operator — never a boxing <c>object.Equals</c> / <c>object.ReferenceEquals</c> — whichever symbols the
+    /// two operands' types reached the checker through (an imported CLR enum name against a CLR property's type
+    /// were two symbols of one enum, and every such stdlib comparison was boxed). The positive control is the
+    /// cross-family pair of the same run, which must be <c>object.Equals</c>: the probe is shown to see the call.
+    /// Returns null when the cell meets the rule or the rule does not speak of it.
+    /// </summary>
+    private static string? ShapeViolation(Cell cell, string body)
+    {
+        if (Family(cell.Left) is not { } left || Family(cell.Right) is not { } right)
+            return null;
+        if (IsStringBacked(left) || IsStringBacked(right))
+            return null;
+
+        var boxes = body.Contains("object.Equals(", StringComparison.Ordinal)
+            || body.Contains("object.ReferenceEquals(", StringComparison.Ordinal);
+        if (left == right)
+            return boxes ? "a same-enum pair must lower to the native operator, but the cell boxes" : null;
+        return body.Contains("object.Equals(", StringComparison.Ordinal)
+            ? null
+            : "a pair of two different enums must lower to object.Equals (the shape probe's positive control)";
+    }
+
     private static string ReportDirectory()
     {
         var dir = new DirectoryInfo(AppContext.BaseDirectory);
@@ -398,7 +491,7 @@ public class EnumIdentityDifferentialTests : IntegrationTestBase
         // Totality: the count is the product of the axis sizes, never read back from the generator.
         var operandCount = Enum.GetValues<Operand>().Length;
         var positionCount = Enum.GetValues<Position>().Length;
-        Assert.Equal(13, operandCount);
+        Assert.Equal(18, operandCount);
         Assert.Equal(4, positionCount);
         Assert.Equal(operandCount * operandCount * Operators.Length * positionCount, cells.Count);
 
@@ -421,8 +514,9 @@ public class EnumIdentityDifferentialTests : IntegrationTestBase
         var harnessFailures = new List<string>();
         var boxingWarnings = new List<string>();
         var sharpyById = new Dictionary<int, SharpyVerdict>();
+        var emittedByCell = new Dictionary<int, string>();
         foreach (var group in groups)
-            foreach (var (id, verdict) in RunSharpy(group.Name, group.Cells, harnessFailures, boxingWarnings))
+            foreach (var (id, verdict) in RunSharpy(group.Name, group.Cells, harnessFailures, boxingWarnings, emittedByCell))
                 sharpyById[id] = verdict;
         Assert.True(harnessFailures.Count == 0, "harness: " + string.Join("\n", harnessFailures));
         Assert.Equal(cells.Count, sharpyById.Count);
@@ -471,6 +565,36 @@ public class EnumIdentityDifferentialTests : IntegrationTestBase
         Assert.True(divergences.Count == 0,
             $"{divergences.Count} of {cells.Count} cell(s) diverge (all in {divergencePath}):\n"
             + string.Join("\n", divergences.Take(40)));
+
+        // Emitted shape, over every cell that ran: same-enum pairs are native, cross-enum pairs are object.Equals.
+        var shapeViolations = new List<string>();
+        int sameEnumShapes = 0, crossEnumShapes = 0;
+        foreach (var cell in cells)
+        {
+            if (sharpyById[cell.Id].Values == null)
+                continue;
+            if (!emittedByCell.TryGetValue(cell.Id, out var body))
+            {
+                shapeViolations.Add($"{cell.Key}: the cell ran but its emitted function was not found");
+                continue;
+            }
+            if (Family(cell.Left) is { } lf && Family(cell.Right) is { } rf && !IsStringBacked(lf) && !IsStringBacked(rf))
+            {
+                if (lf == rf)
+                    sameEnumShapes++;
+                else
+                    crossEnumShapes++;
+            }
+            if (ShapeViolation(cell, body) is { } violation)
+                shapeViolations.Add($"{cell.Key}: `{cell.Expression}` {violation}: {body.Trim().ReplaceLineEndings(" ")}");
+        }
+        File.WriteAllLines(Path.Combine(ReportDirectory(), "enum-identity-differential-shapes.txt"),
+            shapeViolations.Prepend($"# shape cells: same-enum {sameEnumShapes}, cross-enum {crossEnumShapes}; "
+                + $"violations: {shapeViolations.Count}"));
+        Assert.True(sameEnumShapes > 0 && crossEnumShapes > 0, "the shape assertion saw no cells");
+        Assert.True(shapeViolations.Count == 0,
+            $"{shapeViolations.Count} cell(s) have the wrong emitted shape (same-enum {sameEnumShapes}, cross-enum "
+            + $"{crossEnumShapes}):\n" + string.Join("\n", shapeViolations.Take(30)));
 
         // Absence with its positive control: no cell warns "always False due to boxing", read from the diagnostics
         // the same probe is shown to hit for two ints.
