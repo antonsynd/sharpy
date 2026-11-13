@@ -131,8 +131,9 @@ over Python syntax). Catalogued as `membership-needle-type-mismatch` in `docs/de
 A needle whose own type is `T | None` (a name, an attribute, a call, a subscript) is accepted
 wherever the `T` needle is: it is checked against the needle slot as `T`. A needle written as a
 conditional expression or as a new `:=` binding is instead an argument into the slot, like the
-argument of a call, and an optional branch or value is refused there; bind it to a
-`T | None` name first. What the `None` of an accepted needle answers at run time is what Python
+argument of a call. With a value-type `T`, an optional branch or value is refused there. With a
+reference `T` it is accepted, but it is not a `None` needle: the `str`/`bytes` answer below does not
+hold for it (#2644). Bind it to a `T | None` name first. What the `None` of an accepted needle answers at run time is what Python
 answers:
 
 - in an equality scan (a list, set, dict, tuple or range), `None` equals no element, so `in` is
@@ -141,11 +142,12 @@ answers:
 - in a CLR-backed container, the receiver's own `Contains` answers: `False` for a `Counter` or an
   argparse `Namespace`, `AttributeError` for an IP network or an `EmailMessage`.
 
-One receiver does not give Python's answer yet. A value-type `T | None` needle (`int | None`, a
+Not every receiver and needle type gives Python's answer yet (#2674). A value-type `T | None` needle (`int | None`, a
 struct) into a class whose `__contains__` parameter is the plain `T` answers `False` for `None`
 without calling `__contains__`, where Python calls it with `None`. A `__contains__` that tests
 equality agrees with Python either way; one that does not (it returns `True` for every value) differs.
-Declaring the parameter `T | None` passes the `None` through and gives Python's answer (#2674).
+Declaring the parameter `T | None` passes the `None` through and gives Python's answer. A `T | None`
+needle whose `T` is an int-backed enum, a generic struct or `Self` in a struct is not lifted yet.
 
 <!-- spec-sweep: output -->
 ```python
