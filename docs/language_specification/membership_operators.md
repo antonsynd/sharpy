@@ -141,6 +141,12 @@ answers:
 - in a CLR-backed container, the receiver's own `Contains` answers: `False` for a `Counter` or an
   argparse `Namespace`, `AttributeError` for an IP network or an `EmailMessage`.
 
+One receiver does not give Python's answer yet. A value-type `T | None` needle (`int | None`, a
+struct) into a class whose `__contains__` parameter is the plain `T` answers `False` for `None`
+without calling `__contains__`, where Python calls it with `None`. A `__contains__` that tests
+equality agrees with Python either way; one that does not (it returns `True` for every value) differs.
+Declaring the parameter `T | None` passes the `None` through and gives Python's answer (#2674).
+
 <!-- spec-sweep: output -->
 ```python
 errno: int | None = None
@@ -204,3 +210,4 @@ print(y in [1, 2])              # False
 
 *Implementation*
 - *Lowered: `x in y` emits `y.Contains(x)`. For Sharpy classes, `__contains__` compiles to a C# `Contains` method, so the same `.Contains()` call dispatches correctly for both Sharpy and .NET types.*
+- *A `T | None` needle the checker lifts (None needles, above) emits a Core helper instead, `Builtins.ContainsOptional(x, y, …)` for a value-type needle in an equality scan and `Builtins.ContainsNoneRaises(x, y, …)` for `str`/`bytes`: it tests the needle for `None`, then makes the same `.Contains()` call. The needle is evaluated before the container there.*
