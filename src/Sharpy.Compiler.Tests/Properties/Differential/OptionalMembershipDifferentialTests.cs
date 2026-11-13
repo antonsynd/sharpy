@@ -58,6 +58,8 @@ namespace Sharpy.Compiler.Tests.Properties.Differential;
 /// the two statement-level contexts that lower a binary operator differently (an <c>if</c> condition, a
 /// comprehension filter).</item>
 /// </list>
+/// <para><b>Excluded axis.</b> Declaration order: every container is declared above its use
+/// (<see cref="DeclarationOrderExcluded"/>, #2249, with the program that must stay refused).</para>
 /// <para><b>Expected map</b> (<see cref="Expect"/>). COMPARED cells print CPython 3.15's values (the
 /// <c>.python-version</c> pin). HAND-EXPECTED cells — a typed needle the slot cannot hold (<see cref="SlotHolds"/>),
 /// refused by SPY0222 under the deviation <c>membership-needle-type-mismatch</c> (owner ruling B for bool, float and
@@ -251,6 +253,32 @@ public class OptionalMembershipDifferentialTests : IntegrationTestBase
                 DiagnosticCodes.Infrastructure.GeneratedCodeCompilationError),
         };
 
+    private const string LaterDeclaredBag =
+        "class IBag:\n    a: int\n    b: int\n    def __init__(self, a: int, b: int):\n        self.a = a\n"
+        + "        self.b = b\n    def __contains__(self, v: int) -> bool:\n        return v == self.a or v == self.b\n";
+
+    private const string LaterDeclaredUse = "def main():\n    x: int | None = None\n    print(x in IBag(1, 2))\n";
+
+    /// <summary>
+    /// The excluded axis "declaration order": the generator declares every container ABOVE its use
+    /// (<see cref="ProgramFor"/>). With the <c>__contains__</c> class declared BELOW the test, no needle slot
+    /// resolves at the check (a later-declared class's member types are not there yet), so the <c>T | None</c> needle
+    /// is neither lifted nor refused and reaches Roslyn. The entry names the reason and its tracker, the program
+    /// that shows it and the one code it must still be refused by; <c>Control</c> is the same program with
+    /// the class declared above, which must run and print <c>ControlOutput</c> (so the refusal is the
+    /// order's, not the program's). <see cref="AssertDeclarationOrderExclusionStillHolds"/> compiles both: when the
+    /// defect is fixed it is red until the entry is deleted and declaration order becomes an axis.
+    /// </summary>
+    private static readonly (string Why, string Program, string RefusedBy, string Control, string ControlOutput)
+        DeclarationOrderExcluded =
+        ("a `__contains__` class declared below its use resolves no needle slot at the membership check (a "
+            + "later-declared class's member types are missing there, #2249), so `x: int | None; x in IBag(1, 2)` is "
+            + "SPY0908 (CS1503 `int?` to `int`) before and after plan-4e2867: declaration order is not an axis here",
+            LaterDeclaredUse + "\n" + LaterDeclaredBag,
+            DiagnosticCodes.Infrastructure.GeneratedCodeCompilationError,
+            LaterDeclaredBag + "\n" + LaterDeclaredUse,
+            "False\n");
+
     /// <summary>
     /// The payload axis against the compiler's type model: one entry per census key
     /// (<see cref="SemanticTypeCensusKeys"/>, by reflection) — every sealed <c>SemanticType</c> record, and a record
@@ -266,7 +294,7 @@ public class OptionalMembershipDifferentialTests : IntegrationTestBase
     {
         ["BuiltinType"] = (13, null),
         ["ConstructorReferenceType"] = (0, TransientCarrier),
-        ["FunctionType"] = (0, "a function type is a delegate to C#, a reference type whatever D7 decides: its declared "
+        ["FunctionType"] = (0, "a function type is a delegate to C#, a reference type whatever #2674 decides: its declared "
             + "twin is the `D` payload (probed at the base: `((int) -> int) | None in list[(int) -> int]` prints False for None)"),
         ["GenericFunctionType"] = (0, TransientCarrier),
         ["GenericType/Class"] = (1, null),
@@ -313,7 +341,7 @@ public class OptionalMembershipDifferentialTests : IntegrationTestBase
 
     private const string TransientCarrier = "a transient checker carrier: no binding ever has this type (its record says so)";
 
-    private const string ReferenceTwin = "a class to C# whether generic or not, so a reference type whatever D7 decides: "
+    private const string ReferenceTwin = "a class to C# whether generic or not, so a reference type whatever #2674 decides: "
         + "the declared twin is the payload ";
 
     private const string UnconstrainedTwin = "the constraint says nothing about value-ness, so `T | None` is the "
@@ -1024,6 +1052,7 @@ public class OptionalMembershipDifferentialTests : IntegrationTestBase
         AssertCompositeAxisIsTheTypeKindImage();
         AssertPayloadAxisIsTheSemanticTypeCensus();
         AssertOptionalElementExclusionsStillHold();
+        AssertDeclarationOrderExclusionStillHolds();
         AssertEveryExclusionHasAReason();
         // The generator's element-typed predicate is the literal roster, container by container.
         Assert.Equal(ElementTypedRoster.OrderBy(c => c), Containers().Where(IsElementTyped).OrderBy(c => c));
@@ -1466,6 +1495,26 @@ public class OptionalMembershipDifferentialTests : IntegrationTestBase
         }
     }
 
+    /// <summary>The declaration-order exclusion still holds: its program (the <c>__contains__</c> class below its
+    /// use) is refused by exactly the named code, and its control (the class above) runs and prints the lifted
+    /// answer. Red when the defect is fixed, until the entry is deleted and the order joins the axes.</summary>
+    private void AssertDeclarationOrderExclusionStillHolds()
+    {
+        var (_, program, refusedBy, control, controlOutput) = DeclarationOrderExcluded;
+        var controlRun = CompileAndExecute(control, "declaration_order_control.spy", executionTimeoutMs: 120_000);
+        Assert.True(RanToCompletion(controlRun) && controlRun.StandardOutput.ReplaceLineEndings("\n") == controlOutput,
+            "DeclarationOrderExcluded: its control (the class declared above its use) must run and print "
+            + $"[{controlOutput.TrimEnd()}]; it "
+            + (RanToCompletion(controlRun) ? $"printed [{controlRun.StandardOutput.TrimEnd()}]" : controlRun.FailureSummary())
+            + "\n" + control);
+        var run = CompileAndExecute(program, "declaration_order_exclusion.spy", executionTimeoutMs: 120_000);
+        var codes = run.RawDiagnostics.Where(d => d.IsError).Select(d => d.Code ?? "?").Distinct().OrderBy(c => c, StringComparer.Ordinal).ToList();
+        Assert.True(!RanToCompletion(run) && codes.Count == 1 && codes[0] == refusedBy,
+            $"DeclarationOrderExcluded says the program below is refused by {refusedBy}; it "
+            + (RanToCompletion(run) ? "now runs" : "is refused by " + string.Join(",", codes))
+            + ": delete the entry (declaration order then becomes an axis of the generator)\n" + program);
+    }
+
     /// <summary>The CLR row is the census: the roster's keys are exactly the public types of Sharpy.Core and
     /// Sharpy.Stdlib with a public instance single-argument <c>Contains</c>; each generates one container or names why
     /// not; and every container of the CLR row comes from the roster.</summary>
@@ -1503,6 +1552,9 @@ public class OptionalMembershipDifferentialTests : IntegrationTestBase
         Assert.All(OptionalElementExcluded, e => Assert.True(
             !Blank(e.Value.Why) && System.Text.RegularExpressions.Regex.IsMatch(e.Value.Why, "#[0-9]+"),
             $"{e.Key}: an optional-element exclusion needs a reason and an issue"));
+        Assert.True(!Blank(DeclarationOrderExcluded.Why)
+            && System.Text.RegularExpressions.Regex.IsMatch(DeclarationOrderExcluded.Why, "#[0-9]+"),
+            "DeclarationOrderExcluded: an excluded axis needs a reason and an issue");
         Assert.All(SemanticTypeCensus.Where(e => e.Value.Payloads == 0),
             e => Assert.False(Blank(e.Value.Excluded), $"SemanticType census key {e.Key}: no exclusion reason"));
         Assert.All(ClrContainerRoster.Where(r => r.Value.Generated == null),
