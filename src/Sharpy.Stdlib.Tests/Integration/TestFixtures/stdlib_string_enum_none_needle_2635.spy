@@ -1,0 +1,27 @@
+# A string-backed enum's implicit conversion to `str` is null-safe (#2635, plan-4e2867 D8): a
+# `Tone | None` holding None converts to None, so the receiver's own Contains answers it
+# (argparse Namespace: False; EmailMessage: AttributeError) instead of a NullReferenceException.
+from argparse import ArgumentParser
+from email import EmailMessage
+
+enum Tone:
+    A = "a"
+    B = "b"
+
+def shout(s: str) -> str:
+    return s + "!"
+
+def main():
+    ns = ArgumentParser().parse_args([])
+    t: Tone | None = None
+    print(t in ns, t not in ns)
+    try:
+        print(t in EmailMessage())
+    except AttributeError:
+        print("AttributeError")
+
+    # A member still converts to its value.
+    w: Tone | None = Tone.A
+    print(w in ns)
+    s: str = Tone.B
+    print(shout(Tone.A), s)
