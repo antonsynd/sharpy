@@ -128,7 +128,7 @@
 
 ## Open items pending owner confirmation
 
-two at call 44 — whether R-OX's "strictly about reference equality" leaves the enum-by-member rule (R-OM) standing (read: yes; on any other value type `is` is always `False` with SPY0465), and the owner's verbatim words for R-OP if they are wanted in §4.
+none at call 44 — both answered by the owner on 2026-11-13: the enum-by-member rule (R-OM) stands (quoted on the R-OX row), and the R-OP row carries the owner's words, read from the transcript of the session that drafted the rules.
 
 ## Unparsed
 
