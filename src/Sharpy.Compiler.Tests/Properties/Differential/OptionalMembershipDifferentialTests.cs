@@ -266,7 +266,7 @@ public class OptionalMembershipDifferentialTests : IntegrationTestBase
     /// is neither lifted nor refused and reaches Roslyn. The entry names the reason and its tracker, the program
     /// that shows it and the one code it must still be refused by; <c>Control</c> is the same program with
     /// the class declared above, which must run and print <c>ControlOutput</c> (so the refusal is the
-    /// order's, not the program's). <see cref="AssertDeclarationOrderExclusionStillHolds"/> compiles both: when the
+    /// order's, not the program's). <see cref="DeclarationOrderExclusionProblem"/> compiles both: when the
     /// defect is fixed it is red until the entry is deleted and declaration order becomes an axis.
     /// </summary>
     private static readonly (string Why, string Program, string RefusedBy, string Control, string ControlOutput)
@@ -1052,7 +1052,9 @@ public class OptionalMembershipDifferentialTests : IntegrationTestBase
         AssertCompositeAxisIsTheTypeKindImage();
         AssertPayloadAxisIsTheSemanticTypeCensus();
         AssertOptionalElementExclusionsStillHold();
-        AssertDeclarationOrderExclusionStillHolds();
+        // Measured here, asserted after the matrix: its control rests on the lift the matrix measures, so a
+        // regression there must not hide the cells that say which rows it broke.
+        var declarationOrderProblem = DeclarationOrderExclusionProblem();
         AssertEveryExclusionHasAReason();
         // The generator's element-typed predicate is the literal roster, container by container.
         Assert.Equal(ElementTypedRoster.OrderBy(c => c), Containers().Where(IsElementTyped).OrderBy(c => c));
@@ -1227,8 +1229,10 @@ public class OptionalMembershipDifferentialTests : IntegrationTestBase
             File.WriteAllLines(problemPath, problems);
             Assert.Fail($"{problems.Count} pin problem line(s) against {AllowlistFileName}: every line is in {problemPath}; "
                 + $"a regenerated allowlist (rows' citations kept) is in {proposedPath}. First lines:\n"
-                + string.Join("\n", problems.Take(30)));
+                + string.Join("\n", problems.Take(30))
+                + (declarationOrderProblem != null ? "\nAlso: " + declarationOrderProblem : ""));
         }
+        Assert.True(declarationOrderProblem == null, declarationOrderProblem);
     }
 
     /// <summary>The first 16 hex digits of SHA-256 over the row's sorted <c>cell -&gt; verdict</c> lines.</summary>
@@ -1497,22 +1501,24 @@ public class OptionalMembershipDifferentialTests : IntegrationTestBase
 
     /// <summary>The declaration-order exclusion still holds: its program (the <c>__contains__</c> class below its
     /// use) is refused by exactly the named code, and its control (the class above) runs and prints the lifted
-    /// answer. Red when the defect is fixed, until the entry is deleted and the order joins the axes.</summary>
-    private void AssertDeclarationOrderExclusionStillHolds()
+    /// answer. Returns the problem, or null. A problem is red when the defect is fixed, until the entry is deleted
+    /// and the order joins the axes.</summary>
+    private string? DeclarationOrderExclusionProblem()
     {
         var (_, program, refusedBy, control, controlOutput) = DeclarationOrderExcluded;
         var controlRun = CompileAndExecute(control, "declaration_order_control.spy", executionTimeoutMs: 120_000);
-        Assert.True(RanToCompletion(controlRun) && controlRun.StandardOutput.ReplaceLineEndings("\n") == controlOutput,
-            "DeclarationOrderExcluded: its control (the class declared above its use) must run and print "
-            + $"[{controlOutput.TrimEnd()}]; it "
-            + (RanToCompletion(controlRun) ? $"printed [{controlRun.StandardOutput.TrimEnd()}]" : controlRun.FailureSummary())
-            + "\n" + control);
+        if (!RanToCompletion(controlRun) || controlRun.StandardOutput.ReplaceLineEndings("\n") != controlOutput)
+            return "DeclarationOrderExcluded: its control (the class declared above its use) must run and print "
+                + $"[{controlOutput.TrimEnd()}]; it "
+                + (RanToCompletion(controlRun) ? $"printed [{controlRun.StandardOutput.TrimEnd()}]" : controlRun.FailureSummary())
+                + "\n" + control;
         var run = CompileAndExecute(program, "declaration_order_exclusion.spy", executionTimeoutMs: 120_000);
         var codes = run.RawDiagnostics.Where(d => d.IsError).Select(d => d.Code ?? "?").Distinct().OrderBy(c => c, StringComparer.Ordinal).ToList();
-        Assert.True(!RanToCompletion(run) && codes.Count == 1 && codes[0] == refusedBy,
-            $"DeclarationOrderExcluded says the program below is refused by {refusedBy}; it "
-            + (RanToCompletion(run) ? "now runs" : "is refused by " + string.Join(",", codes))
-            + ": delete the entry (declaration order then becomes an axis of the generator)\n" + program);
+        if (RanToCompletion(run) || codes.Count != 1 || codes[0] != refusedBy)
+            return $"DeclarationOrderExcluded says the program below is refused by {refusedBy}; it "
+                + (RanToCompletion(run) ? "now runs" : "is refused by " + string.Join(",", codes))
+                + ": delete the entry (declaration order then becomes an axis of the generator)\n" + program;
+        return null;
     }
 
     /// <summary>The CLR row is the census: the roster's keys are exactly the public types of Sharpy.Core and
