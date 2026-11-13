@@ -17,6 +17,7 @@ on:
     paths:
       - 'src/**'
       - 'Directory.Build.props'
+      - 'global.json'
       - '.editorconfig'
       - 'sharpy.sln'
       - 'build_tools/regenerate_spy_stdlib.sh'
