@@ -24,6 +24,7 @@ on:
       - 'src/Sharpy.Stdlib.Tests/Spy/cpython/**'
       - 'THIRD-PARTY-NOTICES.txt'
       - 'Directory.Build.props'
+      - 'global.json'
       - '.editorconfig'
       - 'docs/language_specification/**'
       - 'docs/stdlib/**'
@@ -81,6 +82,7 @@ jobs:
         # test_third_party_notices.py (#2602) reads it with the Core/Stdlib sources above.
         THIRD-PARTY-NOTICES.txt
         Directory.Build.props
+        global.json
         .editorconfig
         docs/language_specification/**
         docs/stdlib/**

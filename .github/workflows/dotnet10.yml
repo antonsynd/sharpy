@@ -59,6 +59,7 @@ on:
     paths:
       - 'src/**'
       - 'Directory.Build.props'
+      - 'global.json'
       - 'sharpy.sln'
       - '.editorconfig'
       - '.github/workflows/dotnet10.yml'
@@ -235,6 +236,7 @@ jobs:
         src/**
         # Every build reads these; warnings are errors, so .editorconfig can fail one.
         Directory.Build.props
+        global.json
         sharpy.sln
         .editorconfig
         .github/workflows/dotnet10.yml
@@ -327,7 +329,13 @@ jobs:
         key: nuget-${{ runner.os }}-${{ hashFiles('**/*.csproj', '**/*.props', '**/*.targets') }}
         restore-keys: nuget-${{ runner.os }}-
     - name: Restore dependencies
-      run: dotnet restore
+      # global.json holds the SDK on 10.0.x: a runner image that also carries a newer major would
+      # otherwise build with it, and a test job on an older image cannot start a test host from
+      # that output (PR #2682: build on SDK 11.0.100, tests on 10.0.404, "Test Run Aborted").
+      # The version is printed so the log says which SDK built the artifact.
+      run: |
+        echo "dotnet SDK: $(dotnet --version)"
+        dotnet restore
     - name: Save the NuGet package cache
       if: ${{ steps.nuget.outputs.cache-hit != 'true' }}
       uses: actions/cache/save@v6

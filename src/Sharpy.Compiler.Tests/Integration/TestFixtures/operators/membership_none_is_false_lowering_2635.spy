@@ -1,0 +1,64 @@
+# A value-type `T | None` needle is lifted into the container's `T` slot (#2635, plan-4e2867 D1):
+# None equals no element (False for `in`, True for `not in`), and a held value asks the container.
+# The lifted test wraps the SAME container test the plain form emits, so the tuple array bridge,
+# the dict key view and a user `__contains__` all answer for the unwrapped value.
+
+class Pair:
+    lo: int
+    hi: int
+
+    def __init__(self, lo: int, hi: int):
+        self.lo = lo
+        self.hi = hi
+
+    def __contains__(self, v: int) -> bool:
+        return v == self.lo or v == self.hi
+
+struct Point:
+    x: int
+
+    def __init__(self, x: int):
+        self.x = x
+
+def needle() -> int | None:
+    print("needle")
+    return 2
+
+def box() -> list[int]:
+    print("container")
+    return [1, 2]
+
+def main():
+    x: int | None = None
+    y: int | None = 2
+    print(x in [1, 2], y in [1, 2], x not in [1, 2], y not in [1, 2])
+
+    # The issue's socket idiom: a tuple literal container.
+    errno: int | None = 111
+    codes = (111, 98)
+    print(errno in (111, 98), x in (111, 98), x not in (111, 98), errno in codes, x in codes)
+
+    print(x in {1, 2}, y in {1, 2})
+    print(x in {1: "a", 2: "b"}, y in {1: "a", 2: "b"})
+    print(x in range(3), y in range(3))
+    print(x in Pair(1, 2), y in Pair(1, 2))
+
+    f: float | None = None
+    g: float | None = 1.5
+    print(f in [1.5], g in [1.5])
+    b: bool | None = None
+    c: bool | None = True
+    print(b in [True], c in [True])
+    p: Point | None = None
+    q: Point | None = Point(1)
+    print(p in [Point(1)], q in [Point(1)])
+    t: tuple[int, int] | None = None
+    u: tuple[int, int] | None = (1, 2)
+    print(t in [(1, 2)], u in [(1, 2)])
+
+    # A lifted cell evaluates the needle before the container, as Python does (D4).
+    print(needle() in box())
+
+    # A reference needle is not lifted: the container's own Contains answers None.
+    s: str | None = None
+    print(s in ["a"], s not in ["a"])

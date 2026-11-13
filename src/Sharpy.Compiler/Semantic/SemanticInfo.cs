@@ -3457,6 +3457,24 @@ public enum OperatorLoweringKind
     /// method — see <see cref="CodeGenInfo.RequiresInstanceImpl"/>.
     /// </summary>
     SuperOperatorApplication,
+
+    /// <summary>
+    /// <c>x in y</c> / <c>x not in y</c> whose needle is a VALUE-type <c>T | None</c> lifted into a
+    /// <c>T</c> slot (#2635): <c>None</c> equals no element, so the test answers <c>False</c>
+    /// (<c>True</c> for <c>not in</c>) without calling the container, and otherwise calls its
+    /// <c>Contains</c> with the unwrapped value — <c>Builtins.ContainsOptional</c>. Recorded because a
+    /// CLR <c>Contains(T)</c> takes no <c>T?</c>. Decided only by <c>TypeChecker.ClassifyMembership</c>;
+    /// a reference needle and a needle assignable as it stands record nothing.
+    /// </summary>
+    MembershipNoneIsFalse,
+    /// <summary>
+    /// <c>x in y</c> / <c>x not in y</c> whose container is a SUBSEQUENCE container — its CLR type has
+    /// a <c>Contains</c> taking the type itself (<c>str</c>, <c>bytes</c>) — and whose needle is a
+    /// <c>T | None</c>, value or reference, whose <c>T</c> fits a slot (#2635): a <c>None</c> needle
+    /// raises <c>TypeError</c> at run time as Python does — <c>Builtins.ContainsNoneRaises</c>.
+    /// Decided only by <c>TypeChecker.ClassifyMembership</c>, before its assignability test.
+    /// </summary>
+    MembershipNoneRaises,
 }
 
 public sealed record OperatorLowering(OperatorLoweringKind Kind, SemanticType? NarrowTo = null);

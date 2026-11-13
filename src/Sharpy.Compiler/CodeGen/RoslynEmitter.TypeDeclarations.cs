@@ -1469,13 +1469,20 @@ internal partial class RoslynEmitter
                     IdentifierName(StringEnumShape.NameProperty)), Str(": ")), valueRepr), Str(">"))))
             .WithSemicolonToken(Token(SyntaxKind.SemicolonToken)));
 
-        // public static implicit operator string(LogLevel value) => value.Value;
+        // public static implicit operator string(LogLevel value) => (value?.Value)!;
+        // Null-safe (#2635, plan-4e2867 D8): a `LogLevel | None` holding None converts to None instead
+        // of dereferencing it (NullReferenceException in op_Implicit), so the consumer of the `str`
+        // answers for None itself. The declared signature is unchanged — a member in, its string
+        // out — so the `!` keeps the body warning-free under the generated `#nullable enable` and
+        // every call site's flow analysis is what it was.
         members.Add(ConversionOperatorDeclaration(Token(SyntaxKind.ImplicitKeyword), stringType)
             .WithModifiers(TokenList(Token(SyntaxKind.PublicKeyword), Token(SyntaxKind.StaticKeyword)))
             .WithParameterList(ParameterList(SingletonSeparatedList(
                 Parameter(Identifier("value")).WithType(classType))))
-            .WithExpressionBody(ArrowExpressionClause(MemberAccessExpression(
-                SyntaxKind.SimpleMemberAccessExpression, IdentifierName("value"), IdentifierName("Value"))))
+            .WithExpressionBody(ArrowExpressionClause(PostfixUnaryExpression(
+                SyntaxKind.SuppressNullableWarningExpression,
+                ParenthesizedExpression(ConditionalAccessExpression(
+                    IdentifierName("value"), MemberBindingExpression(IdentifierName("Value")))))))
             .WithSemicolonToken(Token(SyntaxKind.SemicolonToken)));
 
         // public static readonly Sharpy.List<LogLevel> Values = new(new LogLevel[] { ... });

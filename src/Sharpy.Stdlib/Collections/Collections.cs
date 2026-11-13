@@ -585,7 +585,20 @@ namespace Sharpy
         /// Check if the counter contains a key (alias for ContainsKey).
         /// Used by the <c>in</c> operator.
         /// </summary>
-        public bool Contains(T key) => ContainsKey(key);
+        public bool Contains(T key)
+        {
+            // CPython: `None in Counter(["a"])` is False. The declared parameter stays `T` (as
+            // `Namespace.Contains` declares its own), but a `T | None` needle reaches here as
+            // null at run time, and `Dictionary.ContainsKey(null)` would throw
+            // ArgumentNullException. A Counter cannot hold a None key (#2651), so the answer
+            // is always False.
+            if (key is null)
+            {
+                return false;
+            }
+
+            return ContainsKey(key);
+        }
 
         /// <summary>
         /// Combine two counters by adding counts.

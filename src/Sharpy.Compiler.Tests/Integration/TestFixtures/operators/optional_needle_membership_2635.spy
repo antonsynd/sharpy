@@ -1,0 +1,58 @@
+# A `T | None` needle is decided like its `T` twin (#2635, plan-4e2867): the issue's socket idiom
+# (`e.errno in (111, 98)` with `errno: int | None`), its controls (`==`, `??`), `not in`, the
+# statement positions, and the TypeError a None needle raises into `str` / `bytes`.
+
+class ConnError:
+    errno: int | None
+
+    def __init__(self, errno: int | None):
+        self.errno = errno
+
+def retry_codes() -> list[int]:
+    return [111, 98]
+
+def retryable(e: ConnError) -> bool:
+    return e.errno in (111, 98)
+
+def describe(e: ConnError) -> str:
+    if e.errno in (111, 98):
+        return "retry"
+    if e.errno not in retry_codes() and e.errno not in {13: "EACCES"}:
+        return "unknown"
+    return "fatal"
+
+def sub(x: str | None) -> str:
+    try:
+        if x in "refused":
+            return "yes"
+        return "no"
+    except TypeError:
+        return "TypeError"
+
+def byte_cell(i: int | None, b: bytes | None) -> str:
+    out: list[str] = []
+    try:
+        out.append(str(i not in bytes([111, 98])))
+    except TypeError:
+        out.append("TypeError")
+    try:
+        out.append(str(b in bytes([111, 98])))
+    except TypeError:
+        out.append("TypeError")
+    return " ".join(out)
+
+def main():
+    errors = [ConnError(111), ConnError(98), ConnError(13), ConnError(None)]
+    for e in errors:
+        # The controls: equality and coalescing already took an `int | None`.
+        print(retryable(e), e.errno not in (111, 98), e.errno == 111, (e.errno ?? 0) in (111, 98), describe(e))
+
+    # A comprehension filter, a set, a dict (its keys), a range and a list a call returns.
+    print([e.errno ?? -1 for e in errors if e.errno in retry_codes()])
+    print(len([e for e in errors if e.errno not in {111, 98}]))
+    n: int | None = None
+    m: int | None = 2
+    print(n in {1: "a", 2: "b"}, m in {1: "a", 2: "b"}, n in range(5), m in range(5), n not in range(5))
+
+    print(sub(None), sub("fuse"), sub("x"))
+    print(byte_cell(None, None), "|", byte_cell(98, bytes([98])), "|", byte_cell(7, bytes([7])))

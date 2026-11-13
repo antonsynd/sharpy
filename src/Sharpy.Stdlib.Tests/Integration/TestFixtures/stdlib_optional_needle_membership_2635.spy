@@ -1,0 +1,52 @@
+# The receivers of a CLR-backed container answer a None needle as CPython does (#2635,
+# plan-4e2867 D6): False in an equality scan (Counter, argparse Namespace), AttributeError in an
+# IP network and an EmailMessage.
+from argparse import ArgumentParser, Namespace
+from collections import Counter
+from email import EmailMessage
+from ipaddress import IPv4Address, IPv4Network, IPv6Address, IPv6Network
+
+def in_v4(a: IPv4Address | None) -> str:
+    try:
+        return str(a in IPv4Network("10.0.0.0/8"))
+    except AttributeError:
+        return "AttributeError"
+
+def not_in_v6(a: IPv6Address | None) -> str:
+    try:
+        return str(a not in IPv6Network("::/112"))
+    except AttributeError:
+        return "AttributeError"
+
+def in_message(h: str | None) -> str:
+    m = EmailMessage()
+    m.add_header("subject", "hi")
+    try:
+        if h in m:
+            return "header"
+        return "absent"
+    except AttributeError:
+        return "AttributeError"
+
+def in_namespace(h: str | None) -> bool:
+    parser = ArgumentParser()
+    parser.add_argument("host")
+    ns: Namespace = parser.parse_args(["example"])
+    return h in ns
+
+def main():
+    print(in_v4(None), in_v4(IPv4Address("10.1.2.3")), in_v4(IPv4Address("11.0.0.1")))
+    print(not_in_v6(None), not_in_v6(IPv6Address("::1")), not_in_v6(IPv6Address("1::1")))
+    print(in_message(None), in_message("subject"), in_message("to"))
+    print(in_namespace(None), in_namespace("host"), in_namespace("port"))
+
+    words: list[str] = ["a", "b", "a"]
+    counts: Counter[str] = Counter(words)
+    s: str | None = None
+    t: str | None = "a"
+    print(s in counts, s not in counts, t in counts)
+    nums: list[int] = [111, 98]
+    codes: Counter[int] = Counter(nums)
+    n: int | None = None
+    k: int | None = 98
+    print(n in codes, n not in codes, k in codes)
