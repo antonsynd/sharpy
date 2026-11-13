@@ -128,7 +128,7 @@
 
 ## Open items pending owner confirmation
 
-one at call 44 — the owner's verbatim words for R-OP, wanted in §4 (owner 2026-11-13: "sure?") and being read from the session that wrote `docs/design/nullability.md`; R-OX's question is answered: the enum-by-member rule (R-OM) stands (owner 2026-11-13, quoted on the R-OX row).
+none at call 44 — both answered by the owner on 2026-11-13: the enum-by-member rule (R-OM) stands (quoted on the R-OX row), and the R-OP row carries the owner's words, read from the transcript of the session that drafted the rules.
 
 ## Unparsed
 
