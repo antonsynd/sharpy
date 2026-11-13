@@ -131,7 +131,7 @@ over Python syntax). Catalogued as `membership-needle-type-mismatch` in `docs/de
 A needle whose own type is `T | None` (a name, an attribute, a call, a subscript) is accepted
 wherever the `T` needle is: it is checked against the needle slot as `T`. A needle written as a
 conditional expression or as a new `:=` binding is instead an argument into the slot, like the
-argument of a call, and an optional branch or value is refused there (SPY0220); bind it to a
+argument of a call, and an optional branch or value is refused there; bind it to a
 `T | None` name first. What the `None` of an accepted needle answers at run time is what Python
 answers:
 
