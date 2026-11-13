@@ -20,7 +20,7 @@ and value types:
 | Use | `str \| None`, `K \| None` | `int \| None` | `T?` |
 |---|---|---|---|
 | Pass or store into a plain `T` | runs silently; `None` lands in the `T` slot | refused | refused |
-| Member access, `for`, index | runs; `NullReferenceException` on `None` | refused | refused |
+| Member access, `for`, index | runs; `NullReferenceException` on `None` | member access runs; `InvalidOperationException` on `None` | refused |
 | Arithmetic | refused | refused | refused |
 | `x < value` | `str`: SPY0908; a user class: `NullReferenceException` | prints `False` on `None` | refused |
 | `x in [...]`, `x == None` | runs | refused | refused |
@@ -69,7 +69,11 @@ the way CPython does.
 
 [nullability-ledger.tsv](nullability-ledger.tsv) has one row per cell: slot type, use, value,
 CPython 3.15.2's answer, Sharpy's answer, the target under the rules above, and a status. `[...]`
-is printed output, `!Name` an exception, `refused SPY…` a compile-time refusal.
+is printed output, `!Name` an exception, `refused SPY…` a compile-time refusal. Python has no
+`T?`, so on a `T?` row the `cpython` column is what the same use does on the bare payload (or on
+`None`): it is context, and the target comes from the strict rules, not from it. A Sharpy answer
+that came with warnings ends `+ warning <codes>`; a warning on a row whose target has none is the
+status `gap: spurious warning`.
 
 The ledger is generated and checked by `NullabilityLedgerTests`
 (`src/Sharpy.Compiler.Tests/Properties/Differential/`). On every run the test builds each
@@ -80,16 +84,18 @@ so the file cannot drift, and its diff is the record of what moved. The regenera
 written to `.claude/tmp/nullability-ledger.proposed.tsv`.
 
 Slots are `int`, `str`, a user class `K` and `list[int]`, each as `T | None` and as `T?`. Values
-are a value, `None`, and for the truthiness uses the falsy payload (`0`, `""`, `[]`).
+are a value, `None`, and for the truthiness uses the falsy payload (`0`, `""`, `[]`). The payload
+reaches the slot through a local typed `T`, so the cell measures the use and not whether a literal
+can be typed from the slot (#2676).
 
-Measured @ 7279914b2: 342 cells, 266 match the target and 76 are gaps.
+Measured @ a121b0c81: 342 cells, 270 match the target and 72 are gaps.
 
 | Gap | Rows | Where |
 |---|---|---|
-| refused today, should run | 26 | `T \| None` arithmetic and unary minus; `int \| None` in `in`, `== None` and stores; an empty list literal into a `list[int] \| None` or `list[int]?` parameter (SPY0227) |
+| refused today, should run | 20 | `T \| None` arithmetic and unary minus; `int \| None` in `in`, `== None` and stores |
 | runs, but without the warning | 20 | member access, ordering, `len`, `for`, index and stores on a `T \| None` |
 | wrong exception | 9 | `NullReferenceException` (`InvalidOperationException` for `int \| None`) where CPython raises `AttributeError` or `TypeError` |
-| wrong value | 8 | `if x:` and `not x` on a falsy payload; `bool()` on an empty `T?` |
+| wrong value | 10 | `if x:` and `not x` on a falsy payload, an empty `list[int] \| None` included; `bool()` on an empty `T?` |
 | no raise | 7 | `None` passed or stored into a plain `T`; `int \| None < 9` prints `False` |
 | compiler crash (SPY0908) | 6 | `str \| None` ordering; `K? == K` with an `object`-typed `__eq__`; `?.` on an `int?` |
 

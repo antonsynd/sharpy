@@ -13,8 +13,8 @@ int | None	is_None	value	[False]	[False]	[False]	ok
 int | None	is_None	none	[True]	[True]	[True]	ok
 int | None	narrow	value	[took]	[took]	[took]	ok
 int | None	narrow	none	[none]	[none]	[none]	ok
-int | None	coalesce	value	[took]	[took]	[took]	ok
-int | None	coalesce	none	[took]	[took]	[took]	ok
+int | None	coalesce	value	[5 took]	[5 took]	[5 took]	ok
+int | None	coalesce	none	[0 took]	[0 took]	[0 took]	ok
 int | None	truthy	value	[t]	[t]	[t]	ok
 int | None	truthy	falsy	[f]	[t]	[f]	gap: wrong value
 int | None	truthy	none	[f]	[f]	[f]	ok
@@ -56,7 +56,7 @@ str | None	is_None	value	[False]	[False]	[False]	ok
 str | None	is_None	none	[True]	[True]	[True]	ok
 str | None	narrow	value	[took]	[took]	[took]	ok
 str | None	narrow	none	[none]	[none]	[none]	ok
-str | None	coalesce	value	[took]	[took]	[took]	ok
+str | None	coalesce	value	[ab took]	[ab took]	[ab took]	ok
 str | None	coalesce	none	[took]	[took]	[took]	ok
 str | None	truthy	value	[t]	[t]	[t]	ok
 str | None	truthy	falsy	[f]	[t]	[f]	gap: wrong value
@@ -103,8 +103,8 @@ K | None	is_None	value	[False]	[False]	[False]	ok
 K | None	is_None	none	[True]	[True]	[True]	ok
 K | None	narrow	value	[took]	[took]	[took]	ok
 K | None	narrow	none	[none]	[none]	[none]	ok
-K | None	coalesce	value	[took]	[took]	[took]	ok
-K | None	coalesce	none	[took]	[took]	[took]	ok
+K | None	coalesce	value	[K(5) took]	[K(5) took]	[K(5) took]	ok
+K | None	coalesce	none	[K(0) took]	[K(0) took]	[K(0) took]	ok
 K | None	truthy	value	[t]	[t]	[t]	ok
 K | None	truthy	none	[f]	[f]	[f]	ok
 K | None	bool()	value	[True]	[True]	[True]	ok
@@ -143,16 +143,16 @@ list[int] | None	is_None	value	[False]	[False]	[False]	ok
 list[int] | None	is_None	none	[True]	[True]	[True]	ok
 list[int] | None	narrow	value	[took]	[took]	[took]	ok
 list[int] | None	narrow	none	[none]	[none]	[none]	ok
-list[int] | None	coalesce	value	[took]	[took]	[took]	ok
-list[int] | None	coalesce	none	[took]	[took]	[took]	ok
+list[int] | None	coalesce	value	[[5] took]	[[5] took]	[[5] took]	ok
+list[int] | None	coalesce	none	[[0] took]	[[0] took]	[[0] took]	ok
 list[int] | None	truthy	value	[t]	[t]	[t]	ok
-list[int] | None	truthy	falsy	[f]	refused SPY0227	[f]	gap: refused today
+list[int] | None	truthy	falsy	[f]	[t]	[f]	gap: wrong value
 list[int] | None	truthy	none	[f]	[f]	[f]	ok
 list[int] | None	bool()	value	[True]	[True]	[True]	ok
-list[int] | None	bool()	falsy	[False]	refused SPY0227	[False]	gap: refused today
+list[int] | None	bool()	falsy	[False]	[False]	[False]	ok
 list[int] | None	bool()	none	[False]	[False]	[False]	ok
 list[int] | None	not	value	[False]	[False]	[False]	ok
-list[int] | None	not	falsy	[True]	refused SPY0227	[True]	gap: refused today
+list[int] | None	not	falsy	[True]	[False]	[True]	gap: wrong value
 list[int] | None	not	none	[True]	[True]	[True]	ok
 list[int] | None	eq_None	value	[False]	[False]	[False]	ok
 list[int] | None	eq_None	none	[True]	[True]	[True]	ok
@@ -184,8 +184,8 @@ int?	is_None	value	[False]	[False]	[False]	ok
 int?	is_None	none	[True]	[True]	[True]	ok
 int?	narrow	value	[took]	[took]	[took]	ok
 int?	narrow	none	[none]	[none]	[none]	ok
-int?	coalesce	value	[took]	[took]	[took]	ok
-int?	coalesce	none	[took]	[took]	[took]	ok
+int?	coalesce	value	[5 took]	[5 took]	[5 took]	ok
+int?	coalesce	none	[0 took]	[0 took]	[0 took]	ok
 int?	truthy	value	[t]	[t]	[t]	ok
 int?	truthy	falsy	[f]	[t]	[t]	ok
 int?	truthy	none	[f]	[f]	[f]	ok
@@ -227,7 +227,7 @@ str?	is_None	value	[False]	[False]	[False]	ok
 str?	is_None	none	[True]	[True]	[True]	ok
 str?	narrow	value	[took]	[took]	[took]	ok
 str?	narrow	none	[none]	[none]	[none]	ok
-str?	coalesce	value	[took]	[took]	[took]	ok
+str?	coalesce	value	[ab took]	[ab took]	[ab took]	ok
 str?	coalesce	none	[took]	[took]	[took]	ok
 str?	truthy	value	[t]	[t]	[t]	ok
 str?	truthy	falsy	[f]	[t]	[t]	ok
@@ -274,8 +274,8 @@ K?	is_None	value	[False]	[False]	[False]	ok
 K?	is_None	none	[True]	[True]	[True]	ok
 K?	narrow	value	[took]	[took]	[took]	ok
 K?	narrow	none	[none]	[none]	[none]	ok
-K?	coalesce	value	[took]	[took]	[took]	ok
-K?	coalesce	none	[took]	[took]	[took]	ok
+K?	coalesce	value	[K(5) took]	[K(5) took]	[K(5) took]	ok
+K?	coalesce	none	[K(0) took]	[K(0) took]	[K(0) took]	ok
 K?	truthy	value	[t]	[t]	[t]	ok
 K?	truthy	none	[f]	[f]	[f]	ok
 K?	bool()	value	[True]	[True]	[True]	ok
@@ -314,16 +314,16 @@ list[int]?	is_None	value	[False]	[False]	[False]	ok
 list[int]?	is_None	none	[True]	[True]	[True]	ok
 list[int]?	narrow	value	[took]	[took]	[took]	ok
 list[int]?	narrow	none	[none]	[none]	[none]	ok
-list[int]?	coalesce	value	[took]	[took]	[took]	ok
-list[int]?	coalesce	none	[took]	[took]	[took]	ok
+list[int]?	coalesce	value	[[5] took]	[[5] took]	[[5] took]	ok
+list[int]?	coalesce	none	[[0] took]	[[0] took]	[[0] took]	ok
 list[int]?	truthy	value	[t]	[t]	[t]	ok
-list[int]?	truthy	falsy	[f]	refused SPY0227	[t]	gap: refused today
+list[int]?	truthy	falsy	[f]	[t]	[t]	ok
 list[int]?	truthy	none	[f]	[f]	[f]	ok
 list[int]?	bool()	value	[True]	[True]	[True]	ok
-list[int]?	bool()	falsy	[False]	refused SPY0227	[True]	gap: refused today
+list[int]?	bool()	falsy	[False]	[True]	[True]	ok
 list[int]?	bool()	none	[False]	[True]	[False]	gap: wrong value
 list[int]?	not	value	[False]	[False]	[False]	ok
-list[int]?	not	falsy	[True]	refused SPY0227	[False]	gap: refused today
+list[int]?	not	falsy	[True]	[False]	[False]	ok
 list[int]?	not	none	[True]	[True]	[True]	ok
 list[int]?	eq_None	value	[False]	refused SPY0222	refused	ok
 list[int]?	eq_None	none	[True]	refused SPY0222	refused	ok

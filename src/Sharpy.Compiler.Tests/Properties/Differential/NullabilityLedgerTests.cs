@@ -30,7 +30,6 @@ public class NullabilityLedgerTests : IntegrationTestBase
 
     private sealed record Slot(string Name, Payload Payload, bool Strict)
     {
-        public string Annotation => Name;
         public string PayloadType => TypeName[Payload];
     }
 
@@ -74,7 +73,9 @@ public class NullabilityLedgerTests : IntegrationTestBase
         new("str()", Rule.Safe, false, All("print(str(x))")),
         new("is_None", Rule.Safe, false, All("print(x is None)")),
         new("narrow", Rule.Safe, false, All("if x is not None:\n    print(take(x))\nelse:\n    print(\"none\")")),
-        new("coalesce", Rule.Safe, false, All("print(take(x ?? d))", "print(take(x if x is not None else d))")),
+        // The chosen value is printed, so a `??` that picks the wrong side shows; `take` checks the result is a T.
+        new("coalesce", Rule.Safe, false, All("print(x ?? d)\nprint(take(x ?? d))",
+            "print(x if x is not None else d)\nprint(take(x if x is not None else d))")),
         new("truthy", Rule.Truthiness, false, All("print(\"t\" if x else \"f\")")),
         new("bool()", Rule.Truthiness, false, All("print(bool(x))")),
         new("not", Rule.Truthiness, false, All("print(not x)")),
@@ -201,14 +202,17 @@ public class NullabilityLedgerTests : IntegrationTestBase
     {
         var (value, fallback, falsy) = Values[cell.Slot.Payload];
         var payload = cell.Value == ValueKind.Falsy ? falsy! : value;
+        // The payload is bound to a typed local first: whether an empty literal can be typed from a nullable or
+        // optional slot is another question (#2676), and it would refuse the falsy rows before their use ran.
         var argument = cell.Value == ValueKind.None
             ? (cell.Slot.Strict ? "None()" : "None")
-            : (cell.Slot.Strict ? $"Some({payload})" : payload);
+            : (cell.Slot.Strict ? "Some(v)" : "v");
         var t = cell.Slot.PayloadType;
+        var local = cell.Value == ValueKind.None ? "" : $"    v: {t} = {payload}\n";
         return SharpyK
             + $"def take(x: {t}) -> str:\n    return \"took\"\n"
-            + $"def run(x: {cell.Slot.Annotation}, d: {t}) -> None:\n{Indent(cell.Use.Body[cell.Slot.Payload].Sharpy)}\n"
-            + $"def main() -> None:\n    run({argument}, {fallback})\n";
+            + $"def run(x: {cell.Slot.Name}, d: {t}) -> None:\n{Indent(cell.Use.Body[cell.Slot.Payload].Sharpy)}\n"
+            + $"def main() -> None:\n{local}    run({argument}, {fallback})\n";
     }
 
     private static string PythonProgram(Cell cell)
@@ -242,7 +246,9 @@ public class NullabilityLedgerTests : IntegrationTestBase
     private string Observe(Cell cell)
     {
         var run = CompileAndExecute(SharpyProgram(cell), "nullability_ledger.spy", executionTimeoutMs: 120_000);
-        var warning = run.RawDiagnostics.Any(d => d.IsWarning) ? " + warning" : "";
+        var warningCodes = run.RawDiagnostics.Where(d => d.IsWarning).Select(d => d.Code ?? "?").Distinct()
+            .OrderBy(c => c, StringComparer.Ordinal).ToList();
+        var warning = warningCodes.Count > 0 ? WarningMark + string.Join(",", warningCodes) : "";
         if (RanToCompletion(run))
             return Printed(run.StandardOutput) + warning;
         var codes = run.RawDiagnostics.Where(d => d.IsError).Select(d => d.Code ?? "?").Distinct()
@@ -283,19 +289,29 @@ public class NullabilityLedgerTests : IntegrationTestBase
         };
     }
 
-    private static string Status(string observed, string target)
+    /// <summary>What follows an answer that came with a warning: the codes in an observation, nothing in a target
+    /// (the nullability warning has no code yet, so a target only says one is due).</summary>
+    private const string WarningMark = " + warning ";
+
+    private static string Status(string observedWithWarnings, string targetWithWarning)
     {
+        // The warning is judged apart from the answer. The codes stay in the ledger row, so which warning made a
+        // row read `ok` is in the diff a reviewer reads.
+        var mark = observedWithWarnings.IndexOf(WarningMark, StringComparison.Ordinal);
+        var observed = mark < 0 ? observedWithWarnings : observedWithWarnings[..mark];
+        var warned = mark >= 0;
+        var warningDue = targetWithWarning.EndsWith(WarningMark.TrimEnd(), StringComparison.Ordinal);
+        var target = warningDue ? targetWithWarning[..^WarningMark.TrimEnd().Length] : targetWithWarning;
+
         var crashed = observed.Contains(DiagnosticCodes.Infrastructure.GeneratedCodeCompilationError, StringComparison.Ordinal);
         if (target == "refused")
             return crashed ? "gap: compiler crash" : observed.StartsWith("refused ", StringComparison.Ordinal) ? "ok" : "gap: not refused";
         if (observed == target)
-            return "ok";
+            return warningDue == warned ? "ok" : warningDue ? "gap: no warning" : "gap: spurious warning";
         if (crashed)
             return "gap: compiler crash";
         if (observed.StartsWith("refused ", StringComparison.Ordinal))
             return "gap: refused today";
-        if (observed + " + warning" == target)
-            return "gap: no warning";
         var raises = target.StartsWith('!');
         if (observed.StartsWith('!'))
             return raises ? "gap: wrong exception" : "gap: throws";
@@ -309,13 +325,24 @@ public class NullabilityLedgerTests : IntegrationTestBase
         + "# [..] is printed output, !Name an exception, 'refused SPY…' a compile-time refusal.\n"
         + "slot\tuse\tvalue\tcpython\tsharpy\ttarget\tstatus\n";
 
+    /// <summary>No cell warns today, so the ledger alone cannot show that a warning is judged: this pins it.</summary>
+    [Theory]
+    [InlineData("[5]", "[5]", "ok")]
+    [InlineData("[5] + warning SPY0451", "[5] + warning", "ok")]
+    [InlineData("[5]", "[5] + warning", "gap: no warning")]
+    [InlineData("[5] + warning SPY0451", "[5]", "gap: spurious warning")]
+    [InlineData("[4] + warning SPY0451", "[5] + warning", "gap: wrong value")]
+    [InlineData("!NullReferenceException", "!TypeError + warning", "gap: wrong exception")]
+    public void Status_JudgesTheWarningApartFromTheAnswer(string observed, string target, string status) =>
+        Assert.Equal(status, Status(observed, target));
+
     [SkippableFact]
     public void Ledger_IsWhatCPythonAndSharpyAnswerToday()
     {
         // The oracle minor is the repository's .python-version pin (3.15).
         var oracle = PythonBatchOracle.Over(PythonInterpreter.RequireOrSkip(minMinor: 15));
 
-        // Every rule class is one the target function decides, and every use has a body for some payload.
+        // Every use has a body for some payload, use names are distinct, and every rule class has a use.
         Assert.All(Uses, u => Assert.NotEmpty(u.Body));
         Assert.Equal(Uses.Length, Uses.Select(u => u.Name).Distinct(StringComparer.Ordinal).Count());
         Assert.Equal(Enum.GetValues<Rule>().OrderBy(r => r), Uses.Select(u => u.Rule).Distinct().OrderBy(r => r));
