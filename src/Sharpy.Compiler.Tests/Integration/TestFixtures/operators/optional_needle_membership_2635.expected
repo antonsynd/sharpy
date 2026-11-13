@@ -1,0 +1,9 @@
+True False True True retry
+True False False True retry
+False True False False fatal
+False True False False unknown
+[111, 98]
+2
+False True False True True
+TypeError yes no
+TypeError TypeError | False True | True False

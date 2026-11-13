@@ -1,0 +1,2 @@
+SPY0222: Type 'str' does not support operator 'in' with operand of type 'bytes'
+!count 1

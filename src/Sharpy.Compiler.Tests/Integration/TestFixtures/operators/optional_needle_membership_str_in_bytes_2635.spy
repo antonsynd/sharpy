@@ -1,0 +1,5 @@
+# `bytes` takes an `int` or a `bytes` needle; a `str` is neither (#2647, plan-4e2867 D3):
+# SPY0222 at the needle, where it was an internal error (SPY0908) before.
+
+def main():
+    print("a" in bytes([1]))

@@ -1,0 +1,6 @@
+AttributeError True False
+AttributeError False True
+AttributeError header absent
+False True False
+False True True
+False True True

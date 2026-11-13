@@ -18,10 +18,10 @@
 # total known-limit-S6ok identity ontype rows=13 n=45
 # total known-limit-S6ok identity range-line rows=13 n=45
 # total known-limit-S6ok identity range-whole rows=13 n=39
-# total refused-work identity range-block rows=7 n=9 withwork=2413
+# total refused-work identity range-block rows=7 n=9 withwork=2422
 # total refused-work identity range-line rows=4 n=10 withwork=138
 # total refused-work identity range-statement rows=1 n=1 withwork=1052
-# total refused-work identity range-whole rows=0 n=0 withwork=2235
+# total refused-work identity range-whole rows=0 n=0 withwork=2240
 # total s7-parity-exempt identity full rows=486 n=486
 # total s7-parity-exempt identity ontype rows=482 n=482
 # total s7-parity-exempt identity range-line rows=482 n=482
@@ -32,24 +32,24 @@
 # total known-limit-S6ok comment ontype rows=2 n=18
 # total known-limit-S6ok comment range-line rows=2 n=18
 # total known-limit-S6ok comment range-whole rows=2 n=6
-# total refused-work comment range-block rows=1 n=4 withwork=2494
+# total refused-work comment range-block rows=1 n=4 withwork=2503
 # total refused-work comment range-line rows=0 n=0 withwork=33
 # total refused-work comment range-statement rows=0 n=0 withwork=731
-# total refused-work comment range-whole rows=0 n=0 withwork=3382
-# total s7-parity-exempt comment full rows=1658 n=1658
-# total s7-parity-exempt comment ontype rows=1654 n=1654
-# total s7-parity-exempt comment range-line rows=1654 n=1654
-# total s7-parity-exempt comment range-whole rows=1658 n=1658
+# total refused-work comment range-whole rows=0 n=0 withwork=3387
+# total s7-parity-exempt comment full rows=1660 n=1660
+# total s7-parity-exempt comment ontype rows=1656 n=1656
+# total s7-parity-exempt comment range-line rows=1656 n=1656
+# total s7-parity-exempt comment range-whole rows=1660 n=1660
 # total known-limit-S6k wide ontype rows=2 n=2
 # total known-limit-S6k wide range-line rows=2 n=2
 # total known-limit-S6ok wide full rows=13 n=39
 # total known-limit-S6ok wide ontype rows=13 n=45
 # total known-limit-S6ok wide range-line rows=13 n=45
 # total known-limit-S6ok wide range-whole rows=13 n=39
-# total refused-work wide range-block rows=1163 n=4325 withwork=13718
-# total refused-work wide range-line rows=194 n=2734 withwork=5074
-# total refused-work wide range-statement rows=253 n=373 withwork=7110
-# total refused-work wide range-whole rows=0 n=0 withwork=3376
+# total refused-work wide range-block rows=1165 n=4330 withwork=13764
+# total refused-work wide range-line rows=195 n=2772 withwork=5116
+# total refused-work wide range-statement rows=253 n=373 withwork=7132
+# total refused-work wide range-whole rows=0 n=0 withwork=3381
 # total s7-parity-exempt wide full rows=486 n=486
 # total s7-parity-exempt wide range-whole rows=486 n=486
 # total known-limit-S6k crlf ontype rows=2 n=2
@@ -3337,6 +3337,8 @@ s7-parity-exempt comment full operators/augassign_rhs_projection_1682 1 # #2279
 s7-parity-exempt comment full operators/generic_compareto_1623 1 # #2279
 s7-parity-exempt comment full operators/operator_lowering_optional_store_wrap_2443 1 # #2279
 s7-parity-exempt comment full operators/operator_lowering_store_wrap_narrow_2443 1 # #2279
+s7-parity-exempt comment full operators/optional_needle_membership_bytes_needle_2635 1 # #2279
+s7-parity-exempt comment full operators/optional_needle_membership_str_in_bytes_2635 1 # #2279
 s7-parity-exempt comment full operators/optional_operator_lowering_matrix_1623 1 # #2279
 s7-parity-exempt comment full operators/string_repeat_both_orders_1623 1 # #2279
 s7-parity-exempt comment full optional_narrowed_ops 1 # #2279
@@ -4991,6 +4993,8 @@ s7-parity-exempt comment ontype operators/augassign_rhs_projection_1682 1 # #227
 s7-parity-exempt comment ontype operators/generic_compareto_1623 1 # #2279
 s7-parity-exempt comment ontype operators/operator_lowering_optional_store_wrap_2443 1 # #2279
 s7-parity-exempt comment ontype operators/operator_lowering_store_wrap_narrow_2443 1 # #2279
+s7-parity-exempt comment ontype operators/optional_needle_membership_bytes_needle_2635 1 # #2279
+s7-parity-exempt comment ontype operators/optional_needle_membership_str_in_bytes_2635 1 # #2279
 s7-parity-exempt comment ontype operators/optional_operator_lowering_matrix_1623 1 # #2279
 s7-parity-exempt comment ontype operators/string_repeat_both_orders_1623 1 # #2279
 s7-parity-exempt comment ontype optional_narrowed_ops 1 # #2279
@@ -6645,6 +6649,8 @@ s7-parity-exempt comment range-line operators/augassign_rhs_projection_1682 1 # 
 s7-parity-exempt comment range-line operators/generic_compareto_1623 1 # #2279
 s7-parity-exempt comment range-line operators/operator_lowering_optional_store_wrap_2443 1 # #2279
 s7-parity-exempt comment range-line operators/operator_lowering_store_wrap_narrow_2443 1 # #2279
+s7-parity-exempt comment range-line operators/optional_needle_membership_bytes_needle_2635 1 # #2279
+s7-parity-exempt comment range-line operators/optional_needle_membership_str_in_bytes_2635 1 # #2279
 s7-parity-exempt comment range-line operators/optional_operator_lowering_matrix_1623 1 # #2279
 s7-parity-exempt comment range-line operators/string_repeat_both_orders_1623 1 # #2279
 s7-parity-exempt comment range-line optional_narrowed_ops 1 # #2279
@@ -8303,6 +8309,8 @@ s7-parity-exempt comment range-whole operators/augassign_rhs_projection_1682 1 #
 s7-parity-exempt comment range-whole operators/generic_compareto_1623 1 # #2279
 s7-parity-exempt comment range-whole operators/operator_lowering_optional_store_wrap_2443 1 # #2279
 s7-parity-exempt comment range-whole operators/operator_lowering_store_wrap_narrow_2443 1 # #2279
+s7-parity-exempt comment range-whole operators/optional_needle_membership_bytes_needle_2635 1 # #2279
+s7-parity-exempt comment range-whole operators/optional_needle_membership_str_in_bytes_2635 1 # #2279
 s7-parity-exempt comment range-whole operators/optional_operator_lowering_matrix_1623 1 # #2279
 s7-parity-exempt comment range-whole operators/string_repeat_both_orders_1623 1 # #2279
 s7-parity-exempt comment range-whole optional_narrowed_ops 1 # #2279
@@ -9662,7 +9670,9 @@ refused-work wide range-block operators/comparison_chain_mixed_lowerings_1642 1 
 refused-work wide range-block operators/floor_div_modulo_lowering_matrix_1658 2 # #2538
 refused-work wide range-block operators/floor_div_user_type_refused_1658 2 # #2538
 refused-work wide range-block operators/iteration_lowering_1623 3 # #2538
+refused-work wide range-block operators/membership_none_is_false_lowering_2635 3 # #2538
 refused-work wide range-block operators/operator_lowering_super_operator_2443 4 # #2538
+refused-work wide range-block operators/optional_needle_membership_2635 2 # #2538
 refused-work wide range-block optional_narrowed_ops 6 # #2538
 refused-work wide range-block optional_result/maybe_chained 2 # #2538
 refused-work wide range-block optional_result/optional_null_conditional_coalesce 2 # #2538
@@ -10084,6 +10094,7 @@ refused-work wide range-line narrowing/narrowing_optional_callee 6 # #2538
 refused-work wide range-line nested_types/nested_default_public_1259 13 # #2538
 refused-work wide range-line operators/augassign_collection_rhs_1682 17 # #2538
 refused-work wide range-line operators/augassign_positive_controls_1631 24 # #2538
+refused-work wide range-line operators/membership_none_is_false_lowering_2635 38 # #2538
 refused-work wide range-line optional_result/result_type_0016 27 # #2538
 refused-work wide range-line optional_result/result_unwrap_0002 43 # #2538
 refused-work wide range-line optional_result/try_expression_multi_exception_common_base 10 # #2538
