@@ -24,10 +24,11 @@ namespace Sharpy.Compiler.Tests.Properties.Differential;
 /// <c>bytes</c> container) — owner rulings 2026-11-12. Never SPY0222, SPY0908 or a CLR exception. The literal
 /// <c>None</c> into a non-optional slot is refused (SPY0222) by owner ruling A, 2026-11-12, and accepted into an
 /// optional element type (the element-optionality axis).
-/// <para><b>Generated, never listed.</b> The full product of six axes, with two structural exclusions (an optional
+/// <para><b>Generated, never listed.</b> The full product of seven axes, with three structural exclusions (an optional
 /// element exists only where the element type is the payload, and not for a payload
-/// <see cref="OptionalElementExcluded"/> names with the defect that refuses it); the count is asserted from the axis
-/// sizes, not the generator:</para>
+/// <see cref="OptionalElementExcluded"/> names with the defect that refuses it; the literal <c>None</c> has no
+/// evaluation to order, <see cref="OrderExcludedForms"/>); the count is asserted from the axis sizes, not the
+/// generator:</para>
 /// <list type="bullet">
 /// <item><b>payload</b> — the image of <see cref="PrimitiveCatalog.GetAllPrimitives"/> (one canonical name per
 /// CLR type) minus <see cref="ExcludedPrimitives"/>, each excluded with its reason, plus a value-typed
@@ -48,7 +49,10 @@ namespace Sharpy.Compiler.Tests.Properties.Differential;
 /// (<c>membership_operators.md</c>), read from the spec and mapped row by row (<see cref="SpecRowMap"/>); the CLR
 /// row is closed against the reflection census of public single-argument <c>Contains</c> in Sharpy.Core and
 /// Sharpy.Stdlib (<see cref="ClrContainerRoster"/>, <see cref="AssertClrRowIsTheContainsCensus"/>), and its
-/// "any <c>IEnumerable[T]</c>" arm by one representative, <c>deque[T]</c> (<see cref="EnumerableArm"/>);</item>
+/// "any <c>IEnumerable[T]</c>" arm by one representative, <c>deque[T]</c> (<see cref="EnumerableArm"/>); plus the
+/// kinds an owner ruling decides before the spec table carries them (<see cref="RuledContainerKinds"/>, #2653: a
+/// user class that only iterates, plain and generic, answers by iteration; one with only <c>__getitem__</c> and
+/// <c>__len__</c> stays refused);</item>
 /// <item><b>element optionality</b> — <c>T</c> or <c>T | None</c> for every container whose element type is the
 /// payload (the container then also holds a <c>None</c> element); a fixed-slot container has no such spelling;</item>
 /// <item><b>needle form</b> — the plain <c>T</c> (the control twin), <c>T | None</c>, and the literal
@@ -56,21 +60,29 @@ namespace Sharpy.Compiler.Tests.Properties.Differential;
 /// <item><b>operator</b> — the <see cref="BinaryOperator"/> members that are membership tests;</item>
 /// <item><b>position</b> — the checker's two membership sites (a binary operator, a comparison-chain link) and
 /// the two statement-level contexts that lower a binary operator differently (an <c>if</c> condition, a
-/// comprehension filter).</item>
+/// comprehension filter);</item>
+/// <item><b>observation</b> — the cell's value, or its operand evaluation ORDER (#2645): the needle and the
+/// container (and a chain link's head operand) go through a tracing identity call, so the cell prints which was
+/// evaluated first and then its value.</item>
 /// </list>
 /// <para><b>Excluded axis.</b> Declaration order: every container is declared above its use
 /// (<see cref="DeclarationOrderExcluded"/>, #2249, with the program that must stay refused).</para>
 /// <para><b>Expected map</b> (<see cref="Expect"/>). COMPARED cells print CPython 3.15's values (the
 /// <c>.python-version</c> pin). HAND-EXPECTED cells — a typed needle the slot cannot hold (<see cref="SlotHolds"/>),
 /// refused by SPY0222 under the deviation <c>membership-needle-type-mismatch</c> (owner ruling B for bool, float and
-/// decimal into an <c>int</c> slot), the literal <c>None</c> into a non-optional slot (SPY0222, ruling A), and chain
-/// links (SPY0519, #2648) — are counted apart in the summary line. One program per payload is compiled;
+/// decimal into an <c>int</c> slot), the literal <c>None</c> into a non-optional slot (SPY0222, ruling A), and a
+/// class with only <c>__getitem__</c> and <c>__len__</c> (SPY0320, owner ruling R-OA) — are counted apart in the
+/// summary line. A chain link expects what its expression twin expects (#2648: a link gets its binary twin's
+/// verdict), and an order cell what its value twin expects. One program per payload is compiled;
 /// cells refused at compile time are attributed by line, removed and the rest recompiled until it runs.</para>
 /// <para><b>Known red.</b> <c>optional-membership-differential-allowlist.txt</c> (Conformance): one row per
 /// <c>container/form</c>, each pinning its exact divergent cells and their observed Sharpy verdicts (<c>cells=</c>,
-/// <c>pin=</c> and one <c>#= cell -&gt; verdict</c> line per cell). A cell that starts or stops diverging inside a
+/// <c>pin=</c> and one <c>#= cell -&gt; verdict</c> line per cell; a <c>bulk</c> row keeps the count and the digest
+/// and leaves the lines to the divergence report). A cell that starts or stops diverging inside a
 /// row, or whose wrong answer changes, fails the test; the problems and a regenerated allowlist are written under
-/// <c>.claude/tmp/</c>, and every divergence always is.</para>
+/// <c>.claude/tmp/</c>, and every divergence always is. The cells of the three classes plan P93 drains have rows
+/// of their own (<see cref="Cell.RowKey"/>): <c>Order/*</c> (#2645), <c>UserIterable/*</c> (#2653),
+/// <c>ChainLink/*</c> (#2648).</para>
 /// <para>Skips when no python3 ≥ 3.15 answers, except under <c>SHARPY_REQUIRE_PYTHON_ORACLE=1</c> (CI).</para>
 /// </summary>
 public class OptionalMembershipDifferentialTests : IntegrationTestBase
@@ -78,6 +90,10 @@ public class OptionalMembershipDifferentialTests : IntegrationTestBase
     public OptionalMembershipDifferentialTests(ITestOutputHelper output) : base(output) => MuteCompilePath = true;
 
     private const string AllowlistFileName = "optional-membership-differential-allowlist.txt";
+
+    /// <summary>One compile reports every refused cell (the default cap is 100 semantic errors, so a payload with
+    /// thousands of known-red cells took a compile round per hundred).</summary>
+    protected override int MaxErrors => 1_000_000;
 
     /// <summary>The CLR row's stdlib containers (collections, ipaddress, argparse, email) are imported by every program.</summary>
     protected override IEnumerable<string> GetAdditionalReferenceAssemblyPaths()
@@ -182,6 +198,10 @@ public class OptionalMembershipDifferentialTests : IntegrationTestBase
     /// <summary>The (payload, form) pairs <see cref="OptionalElementExcluded"/> removes from the optional-element
     /// variant: all three forms of <c>T: struct</c> and the literal-None form of <c>T</c>.</summary>
     private const int OptionalElementExcludedForms = 4;
+
+    /// <summary>The same pairs counted once per observation each form has (<see cref="ObservationsOf"/>): the
+    /// literal-None form has no order observation, so 2 + 2 + 1 for <c>T: struct</c> and 1 for <c>T</c>.</summary>
+    private const int OptionalElementExcludedObservedForms = 6;
 
     /// <summary>The declaration keyword of each <see cref="TypeKind"/>: a generated payload's Sharpy declaration must
     /// declare its key's kind.</summary>
@@ -366,7 +386,7 @@ public class OptionalMembershipDifferentialTests : IntegrationTestBase
     {
         Tuple, List, Set, FrozenSet, Dict, DictKeys, DictValues, ContainsDunder, Str, Bytes, Range,
         Counter, OrderedDict, ChainMap, DefaultDict, FrozenDict, IPv4Network, IPv6Network, ArgparseNamespace, EmailMessage,
-        Deque,
+        Deque, IterDunder, GenericIterDunder, GetItemLen,
     }
 
     /// <summary>
@@ -394,6 +414,36 @@ public class OptionalMembershipDifferentialTests : IntegrationTestBase
     };
 
     /// <summary>
+    /// Container kinds an owner ruling decides and the spec's table does not carry yet (#2653): the ruling, the
+    /// containers generated for it, whether the ruling REFUSES the kind, and its words. R-NZ (owner, 2026-11-12:
+    /// "accept as CPython, record it as a ruling"): a user class with <c>__iter__</c> and no <c>__contains__</c>,
+    /// plain or generic, answers <c>in</c> by iteration, the needle checked against the iterator's element type.
+    /// R-OA (owner, 2026-11-12: "maybe let's say no on __getitem__ with __len__"): a class with only
+    /// <c>__len__</c> and <c>__getitem__</c> stays refused (SPY0320), where CPython answers through the legacy
+    /// sequence protocol. <see cref="AssertContainerAxisIsTheSpecTable"/> asserts the spec table has no
+    /// <c>__iter__</c> row: when the spec gains R-NZ's row the test is red until that entry moves into
+    /// <see cref="SpecRowMap"/>.
+    /// </summary>
+    private static readonly (string Ruling, Container[] Generated, bool Refused, string Why)[] RuledContainerKinds =
+    {
+        ("R-NZ", new[] { Container.IterDunder, Container.GenericIterDunder }, false,
+            "a user class with `__iter__` and no `__contains__` answers `in` / `not in` by iteration (#2653); "
+            + "the class is declared over the payload (IterDunder) and as a generic class constructed over it "
+            + "(GenericIterDunder: a GenericType to the checker)"),
+        ("R-OA", new[] { Container.GetItemLen }, true,
+            "a class with only `__len__` + `__getitem__` stays refused for `in` (SPY0320): the index need not be an "
+            + "integer, and an integer index need not be dense (#2653)"),
+    };
+
+    /// <summary>The containers a ruling refuses (<see cref="RuledContainerKinds"/>): every cell expects SPY0320.</summary>
+    private static bool IsRefusedByRuling(Container container) =>
+        RuledContainerKinds.Any(k => k.Refused && k.Generated.Contains(container));
+
+    /// <summary>The user classes that only iterate (R-NZ): their cells have rows of their own.</summary>
+    private static bool IsUserIterable(Container container) =>
+        RuledContainerKinds.Any(k => !k.Refused && k.Generated.Contains(container));
+
+    /// <summary>
     /// The spec row's "any <c>IEnumerable[T]</c>" arm: a receiver with no <c>Contains</c> of its own. Its needle is
     /// decided by the checker's generic-container arm (<c>ResolveMembershipElementType</c>: a <c>GenericType</c> →
     /// <c>InferIterableElementType</c>; <c>ProtocolMembership</c> admits it through <c>IEnumerable&lt;T&gt;</c>) and
@@ -413,7 +463,8 @@ public class OptionalMembershipDifferentialTests : IntegrationTestBase
     {
         Container.Tuple, Container.List, Container.Set, Container.FrozenSet, Container.Dict, Container.DictKeys,
         Container.DictValues, Container.ContainsDunder, Container.Counter, Container.OrderedDict, Container.ChainMap,
-        Container.DefaultDict, Container.FrozenDict, Container.Deque,
+        Container.DefaultDict, Container.FrozenDict, Container.Deque, Container.IterDunder, Container.GenericIterDunder,
+        Container.GetItemLen,
     };
 
     /// <summary>Element-typed containers exempt from the Sharpy half of the optional-element control (a compared
@@ -421,6 +472,9 @@ public class OptionalMembershipDifferentialTests : IntegrationTestBase
     private static readonly Dictionary<Container, string> OptionalElementControlExcluded = new()
     {
         [Container.Counter] = "#2651: Counter[T | None] with a None element throws ArgumentNullException at construction",
+        [Container.IterDunder] = "#2653: a class with `__iter__` and no `__contains__` is refused (SPY0320) until R-NZ lands",
+        [Container.GenericIterDunder] = "#2653: a generic class with `__iter__` and no `__contains__` is refused (SPY0320) "
+            + "until R-NZ lands",
     };
 
     /// <summary>
@@ -477,7 +531,7 @@ public class OptionalMembershipDifferentialTests : IntegrationTestBase
     {
         if (container == Container.Str)
             return typeof(string);
-        if (container is Container.Tuple or Container.ContainsDunder)
+        if (container is Container.Tuple or Container.ContainsDunder || IsUserClass(container))
             return null;
         var name = container == EnumerableArm.Generated
             ? EnumerableArm.ClrName
@@ -491,22 +545,49 @@ public class OptionalMembershipDifferentialTests : IntegrationTestBase
     /// <summary>A container whose element type is the payload, so it has a <c>T | None</c> element spelling: a tuple,
     /// a user class, or a generic CLR type.</summary>
     private static bool IsElementTyped(Container container) =>
-        container is Container.Tuple or Container.ContainsDunder || ClrTypeOf(container) is { IsGenericTypeDefinition: true };
+        container is Container.Tuple or Container.ContainsDunder || IsUserClass(container)
+        || ClrTypeOf(container) is { IsGenericTypeDefinition: true };
+
+    /// <summary>The ruled kinds are user classes declared over the payload: no CLR type, an element type.</summary>
+    private static bool IsUserClass(Container container) => RuledContainerKinds.Any(k => k.Generated.Contains(container));
 
     private enum Form { Plain, Optional, NoneLiteral }
 
     private enum Position { Expression, IfCondition, ComprehensionFilter, ChainLink }
 
+    /// <summary>What a cell observes: its value, or the order its operands are evaluated in and then its value
+    /// (#2645: CPython evaluates the needle before the container).</summary>
+    private enum Observation { Value, Order }
+
+    /// <summary>The allowlist rows of the order observation, which its own fact owns.</summary>
+    private const string OrderRowPrefix = "Order/";
+
+    /// <summary>The forms the order observation leaves out, each with its reason.</summary>
+    private static readonly Dictionary<Form, string> OrderExcludedForms = new()
+    {
+        [Form.NoneLiteral] = "a literal needle has no evaluation to order: only the container would be traced",
+    };
+
+    private static IEnumerable<Observation> ObservationsOf(Form form) =>
+        Enum.GetValues<Observation>().Where(o => o == Observation.Value || !OrderExcludedForms.ContainsKey(form));
+
     private sealed record Cell(int Id, Payload Payload, Container Container, bool OptionalElement, Form Form,
-        BinaryOperator Operator, Position Position)
+        BinaryOperator Operator, Position Position, Observation Observation)
     {
         public string ContainerName => OptionalElement ? $"{Container}OfOptional" : Container.ToString();
-        public string Key => $"{Payload.Name}/{ContainerName}/{Form}/{OperatorSpelling(Operator)}/{Position}";
+        public string Key => $"{Payload.Name}/{ContainerName}/{Form}/{OperatorSpelling(Operator)}/{Position}"
+            + (Observation == Observation.Value ? "" : $"/{Observation}");
         /// <summary>The allowlist row: the container × whether the needle can be None (<c>T | None</c> and the literal
         /// <c>None</c> share one row, as they share the rulings; an optional element has its own row, since a defect
         /// that only an optional element shows is a different class). Rows pin their exact cells, so the key's
-        /// coarseness hides nothing.</summary>
-        public string RowKey => $"{ContainerName}/{(Form == Form.Plain ? "Plain" : "NoneNeedle")}";
+        /// coarseness hides nothing.
+        /// <para>The cells of the three classes plan P93 drains have rows of their own: every order cell (#2645; the
+        /// order fact owns those rows), then by value a user class that only iterates (#2653), then a chain link
+        /// (#2648).</para></summary>
+        public string RowKey => (Observation == Observation.Order ? OrderRowPrefix
+            : IsUserIterable(Container) ? "UserIterable/"
+            : Position == Position.ChainLink ? "ChainLink/"
+            : ContainerName + "/") + (Form == Form.Plain ? "Plain" : "NoneNeedle");
     }
 
     private static string OperatorSpelling(BinaryOperator op) => op == BinaryOperator.In ? "in" : "not in";
@@ -560,7 +641,8 @@ public class OptionalMembershipDifferentialTests : IntegrationTestBase
         return payloads;
     }
 
-    private static Container[] Containers() => SpecRowMap.SelectMany(m => m.Generated).OrderBy(c => c).ToArray();
+    private static Container[] Containers() => SpecRowMap.SelectMany(m => m.Generated)
+        .Concat(RuledContainerKinds.SelectMany(k => k.Generated)).OrderBy(c => c).ToArray();
 
     /// <summary>The full product of the axes; the two structural exclusions are an optional element on a fixed-slot
     /// container, which has no spelling, and the forms <see cref="OptionalElementExcluded"/> names for a payload. A needle
@@ -579,7 +661,9 @@ public class OptionalMembershipDifferentialTests : IntegrationTestBase
                             continue;
                         foreach (var op in Operators)
                             foreach (var position in Enum.GetValues<Position>())
-                                cells.Add(new Cell(cells.Count, payload, container, optionalElement, form, op, position));
+                                foreach (var observation in ObservationsOf(form))
+                                    cells.Add(new Cell(cells.Count, payload, container, optionalElement, form, op, position,
+                                        observation));
                     }
         return cells;
     }
@@ -600,6 +684,9 @@ public class OptionalMembershipDifferentialTests : IntegrationTestBase
             Container.DictKeys => o ? "{a: 0, c: 1, z: 2}.keys()" : "{a: 0, c: 1}.keys()",
             Container.DictValues => o ? "{0: a, 1: c, 2: z}.values()" : "{0: a, 1: c}.values()",
             Container.ContainsDunder => o ? $"OBag{bagArguments}(a, c, z)" : $"Bag{bagArguments}(a, c)",
+            Container.IterDunder => o ? $"OIterBag{bagArguments}(a, c, z)" : $"IterBag{bagArguments}(a, c)",
+            Container.GetItemLen => o ? $"OSeqBag{bagArguments}(a, c, z)" : $"SeqBag{bagArguments}(a, c)",
+            Container.GenericIterDunder => $"make_GIter{(o ? "_o" : "")}({items})",
             Container.Str => "\"ab\"",
             Container.Bytes => "bytes([1, 2])",
             Container.Range => "range(1, 3)",
@@ -635,6 +722,9 @@ public class OptionalMembershipDifferentialTests : IntegrationTestBase
             Container.DictKeys => ($"dict[{e}, int]", "xs.keys()", ContainerSource(cell with { Container = Container.Dict })),
             Container.DictValues => ($"dict[int, {e}]", "xs.values()", o ? "{0: a, 1: c, 2: z}" : "{0: a, 1: c}"),
             Container.ContainsDunder => (o ? "OBag[T]" : "Bag[T]", "xs", source),
+            Container.IterDunder => (o ? "OIterBag[T]" : "IterBag[T]", "xs", source),
+            Container.GetItemLen => (o ? "OSeqBag[T]" : "SeqBag[T]", "xs", source),
+            Container.GenericIterDunder => ($"GIterBag[{e}]", "xs", source),
             Container.Counter => ($"Counter[{e}]", "xs", source),
             Container.OrderedDict => ($"OrderedDict[{e}, int]", "xs", source),
             Container.ChainMap => ($"ChainMap[{e}, int]", "xs", source),
@@ -682,6 +772,12 @@ public class OptionalMembershipDifferentialTests : IntegrationTestBase
         void AddTest(string indent, Cell cell, string needle, string container)
         {
             var op = OperatorSpelling(cell.Operator);
+            // The order observation: each operand goes through the tracing identity, which prints the cell and the
+            // operand's side before it returns it (`n` the needle, `c` the container, `h` a chain's head operand).
+            var ordered = cell.Observation == Observation.Order;
+            string Traced(string side, string operand) => ordered ? $"tr({cell.Id}, \"{side}\", {operand})" : operand;
+            needle = Traced("n", needle);
+            container = Traced("c", container);
             var test = $"{needle} {op} {container}";
             // A located first statement: code the emitter hoists above the test (a comprehension) carries no
             // #line of its own, and a Roslyn error there maps to the last located line — this cell's, not the
@@ -705,7 +801,7 @@ public class OptionalMembershipDifferentialTests : IntegrationTestBase
                     // no `None == None`), so the cell tests the chain arm's needle decision, not `==`.
                     Add(cell.Form == Form.NoneLiteral
                         ? $"{indent}return None is None {op} {container}"
-                        : $"{indent}return x == x {op} {container}", cell.Id);
+                        : $"{indent}return {Traced("h", "x")} == {needle} {op} {container}", cell.Id);
                     break;
             }
         }
@@ -790,12 +886,59 @@ public class OptionalMembershipDifferentialTests : IntegrationTestBase
             Add($"    def __contains__(self, item: {bagElement} | None) -> bool:");
             Add("        return item in self.items");
             Add("");
+            // The ruled kinds (#2653). A class that only iterates, over the payload and over `T | None`:
+            foreach (var (name, element, parameters, items) in new[]
+                {
+                    ("IterBag", bagElement, $"a: {bagElement}, c: {bagElement}", "[a, c]"),
+                    ("OIterBag", $"{bagElement} | None",
+                        $"a: {bagElement} | None, c: {bagElement} | None, z: {bagElement} | None", "[a, c, z]"),
+                })
+            {
+                Add($"class {name}{bagClause}:");
+                Add($"    items: list[{element}]");
+                Add($"    def __init__(self, {parameters}):");
+                Add($"        self.items = {items}");
+                Add($"    def __iter__(self) -> Iterator[{element}]:");
+                Add("        return iter(self.items)");
+                Add("");
+            }
+            // The same class as a generic one (python has no type-parameter clause to drop here: one class).
+            Add($"class GIterBag{(python ? "" : "[G]")}:");
+            Add("    items: list[G]");
+            Add("    def __init__(self, items: list[G]):");
+            Add("        self.items = items");
+            Add("    def __iter__(self) -> Iterator[G]:");
+            Add("        return iter(self.items)");
+            Add("");
+            // A class with only the legacy sequence protocol (owner ruling R-OA: refused).
+            foreach (var (name, element, parameters, items) in new[]
+                {
+                    ("SeqBag", bagElement, $"a: {bagElement}, c: {bagElement}", "[a, c]"),
+                    ("OSeqBag", $"{bagElement} | None",
+                        $"a: {bagElement} | None, c: {bagElement} | None, z: {bagElement} | None", "[a, c, z]"),
+                })
+            {
+                Add($"class {name}{bagClause}:");
+                Add($"    items: list[{element}]");
+                Add($"    def __init__(self, {parameters}):");
+                Add($"        self.items = {items}");
+                Add("    def __len__(self) -> int:");
+                Add("        return len(self.items)");
+                Add($"    def __getitem__(self, i: int) -> {element}:");
+                Add("        return self.items[i]");
+                Add("");
+            }
         }
 
         Add("from argparse import ArgumentParser, Namespace");
         Add("from collections import ChainMap, Counter, OrderedDict, defaultdict, deque");
         Add("from email import EmailMessage");
         Add("from ipaddress import IPv4Address, IPv4Network, IPv6Address, IPv6Network");
+        Add("");
+        // The tracing identity of the order observation: prints the cell and the operand's side, returns the operand.
+        Add($"def tr{(python ? "" : "[V]")}(cell: int, side: str, v: V) -> V:");
+        Add("    print(cell, side)");
+        Add("    return v");
         Add("");
         // A Self payload's cells are in its declaration, so the __contains__ classes go above it: an argument checked
         // against a __contains__ class declared BELOW the test is not refused today but reaches Roslyn (#2249: a
@@ -833,6 +976,10 @@ public class OptionalMembershipDifferentialTests : IntegrationTestBase
             Add($"def make_Deque{suffix}({sig}) -> deque[{e}]:");
             Add($"    xs: list[{e}] = [{items}]");
             Add($"    r: deque[{e}] = deque(xs)");
+            Add("    return r");
+            Add($"def make_GIter{suffix}({sig}) -> GIterBag[{e}]:");
+            Add($"    xs: list[{e}] = [{items}]");
+            Add($"    r: GIterBag[{e}] = GIterBag(xs)");
             Add("    return r");
             Add($"def make_OrderedDict{suffix}({sig}) -> OrderedDict[{e}, int]:");
             Add($"    d: dict[{e}, int] = {dict}");
@@ -909,20 +1056,30 @@ public class OptionalMembershipDifferentialTests : IntegrationTestBase
 
     /// <summary>Compiles the payload's program, removing each cell a refusal is attributed to, until it runs.</summary>
     private Dictionary<int, SharpyVerdict> RunSharpy(Payload payload, IReadOnlyList<Cell> cells, List<string> harnessFailures)
+        => RunRounds(payload.Name, cells.Select(c => c.Id).ToList(),
+            active => ProgramFor(payload, cells.Where(c => active.Contains(c.Id)).ToList()), "optional_membership.spy",
+            harnessFailures, out _);
+
+    /// <summary>Compiles a program over the cells still active (<paramref name="programFor"/>), removing each cell a
+    /// refusal is attributed to by line, until it runs; <paramref name="ranSource"/> is the program that ran.</summary>
+    private Dictionary<int, SharpyVerdict> RunRounds(string name, IReadOnlyList<int> ids,
+        Func<IReadOnlySet<int>, Program> programFor, string fileName, List<string> harnessFailures, out string? ranSource)
     {
+        ranSource = null;
         var verdicts = new Dictionary<int, SharpyVerdict>();
-        var active = cells.ToList();
+        var active = ids.ToHashSet();
         for (var round = 0; round < MaxRounds; round++)
         {
-            var program = ProgramFor(payload, active);
-            var run = CompileAndExecute(program.Source, "optional_membership.spy", executionTimeoutMs: 120_000);
+            var program = programFor(active);
+            var run = CompileAndExecute(program.Source, fileName, executionTimeoutMs: 120_000);
             if (RanToCompletion(run))
             {
                 var byId = ParseLines(run.StandardOutput);
-                foreach (var cell in active)
-                    verdicts[cell.Id] = new SharpyVerdict(byId.TryGetValue(cell.Id, out var v) ? v : new List<string>(), null);
+                foreach (var id in ids.Where(active.Contains))
+                    verdicts[id] = new SharpyVerdict(byId.TryGetValue(id, out var v) ? v : new List<string>(), null);
                 if (!run.StandardOutput.Contains("done", StringComparison.Ordinal))
-                    harnessFailures.Add($"{payload.Name}: the program did not reach its last line");
+                    harnessFailures.Add($"{name}: the program did not reach its last line");
+                ranSource = program.Source;
                 return verdicts;
             }
 
@@ -936,7 +1093,7 @@ public class OptionalMembershipDifferentialTests : IntegrationTestBase
                         refused[id] = codes = new HashSet<string>(StringComparer.Ordinal);
                     codes.Add(d.Code ?? "?");
                     if (d.Code == DiagnosticCodes.Infrastructure.GeneratedCodeCompilationError)
-                        Output.WriteLine($"  {payload.Name} c{id} line {line}: {d.Message}");
+                        Output.WriteLine($"  {name} c{id} line {line}: {d.Message}");
                 }
                 else
                 {
@@ -945,17 +1102,17 @@ public class OptionalMembershipDifferentialTests : IntegrationTestBase
             }
             if (unattributed.Count > 0 || refused.Count == 0)
             {
-                harnessFailures.Add($"{payload.Name}: round {round} failed with no cell to remove: "
+                harnessFailures.Add($"{name}: round {round} failed with no cell to remove: "
                     + (unattributed.Count > 0 ? string.Join("; ", unattributed.Take(5)) : run.FailureSummary()));
                 return verdicts;
             }
             foreach (var (id, codes) in refused)
                 verdicts[id] = new SharpyVerdict(null, codes);
-            active = active.Where(c => !refused.ContainsKey(c.Id)).ToList();
-            Output.WriteLine($"{payload.Name}: round {round} removed {refused.Count} cell(s) ("
+            active.ExceptWith(refused.Keys);
+            Output.WriteLine($"{name}: round {round} removed {refused.Count} cell(s) ("
                 + string.Join(",", refused.Values.SelectMany(c => c).Distinct().OrderBy(c => c, StringComparer.Ordinal)) + ")");
         }
-        harnessFailures.Add($"{payload.Name}: still refusing after {MaxRounds} rounds");
+        harnessFailures.Add($"{name}: still refusing after {MaxRounds} rounds");
         return verdicts;
     }
 
@@ -966,6 +1123,17 @@ public class OptionalMembershipDifferentialTests : IntegrationTestBase
     {
         public bool Compared => Values;
 
+        /// <summary>Codes that may accompany the refusal. Empty for every expectation but a ruled refusal: there
+        /// the one expected code must be among the codes and nothing outside this set may be.</summary>
+        public IReadOnlySet<string> Tolerated { get; init; } = NoCodes;
+
+        /// <summary>Whether a refusal by <paramref name="codes"/> is the expected one: exactly one of
+        /// <see cref="RefusedBy"/>, or — with <see cref="Tolerated"/> codes — one of them and otherwise only
+        /// tolerated ones.</summary>
+        public bool MeetsRefusal(IReadOnlySet<string> codes) => Tolerated.Count == 0
+            ? codes.Count == 1 && RefusedBy.Contains(codes.Single())
+            : codes.Any(RefusedBy.Contains) && codes.All(c => RefusedBy.Contains(c) || Tolerated.Contains(c));
+
         public string Describe() => (Values ? "python's values" : "")
             + (RefusedBy.Count > 0 ? "refused by " + string.Join("|", RefusedBy.OrderBy(c => c, StringComparer.Ordinal)) : "")
             + " (" + Why + ")";
@@ -973,6 +1141,7 @@ public class OptionalMembershipDifferentialTests : IntegrationTestBase
 
     private static readonly IReadOnlySet<string> NoCodes = new HashSet<string>();
     private static readonly IReadOnlySet<string> Spy0222 = new HashSet<string> { DiagnosticCodes.Semantic.InvalidBinaryOperation };
+    private static readonly IReadOnlySet<string> Spy0320 = new HashSet<string> { DiagnosticCodes.Semantic.ProtocolMissingMethod };
 
     /// <summary>The needle-slot rule (membership_operators.md › Container kinds, as owner ruling C amends the
     /// <c>bytes</c> row): an element-typed container's slot IS the payload. A fixed-slot container's slots are its
@@ -999,27 +1168,34 @@ public class OptionalMembershipDifferentialTests : IntegrationTestBase
     /// the other fixed-slot containers; so does the literal <c>None</c> into an optional element (owner ruling A).
     /// HAND-EXPECTED, by owner ruling A (2026-11-12): the literal <c>None</c> into a non-optional slot is refused by
     /// SPY0222. HAND-EXPECTED, by the deviation <c>membership-needle-type-mismatch</c> in <c>docs/deviations.yaml</c>:
-    /// a typed needle the slot cannot hold (<see cref="SlotHolds"/>) is refused by SPY0222. HAND-EXPECTED, out of this
-    /// contract: a chain link (#2648, below).
+    /// a typed needle the slot cannot hold (<see cref="SlotHolds"/>) is refused by SPY0222. HAND-EXPECTED, by owner
+    /// ruling R-OA (2026-11-12): every cell of a class with only <c>__getitem__</c> and <c>__len__</c> is refused by
+    /// SPY0320. A chain link and an order cell take their twin's expectation.
     /// </summary>
-    private static Expectation Expect(Cell cell, IReadOnlyDictionary<string, Cell> byKey)
+    private static Expectation Expect(Cell cell)
     {
-        if (cell.Form == Form.NoneLiteral && !cell.OptionalElement && cell.Position != Position.ChainLink)
+        // An order cell expects what its value twin expects (its trace is part of the compared output), and a chain
+        // link what its expression twin expects: a link gets its binary twin's verdict (#2648), so a twin that runs
+        // is compared with CPython's answer for the chain and a refused twin is refused by the same code.
+        if (cell.Observation != Observation.Value || cell.Position == Position.ChainLink)
+            return Expect(cell with { Observation = Observation.Value, Position = Position.Expression });
+
+        if (IsRefusedByRuling(cell.Container))
         {
-            // Owner ruling A, 2026-11-12: "switch to the table, refuse literal None for non-optional containers, makes
-            // the most sense". The chain link inherits it.
-            return new Expectation(false, Spy0222, "literal None into a non-optional slot: owner ruling A (2026-11-12)");
+            // Owner ruling R-OA, 2026-11-12: "maybe let's say no on __getitem__ with __len__". The needle check may
+            // also speak (SPY0222: a generic class's element type resolves through `__getitem__`).
+            return new Expectation(false, Spy0320, "a class with only __len__ + __getitem__: owner ruling R-OA (2026-11-12), "
+                + "a deliberate divergence from CPython's legacy sequence protocol")
+            {
+                Tolerated = Spy0222,
+            };
         }
 
-        if (cell.Position == Position.ChainLink)
+        if (cell.Form == Form.NoneLiteral && !cell.OptionalElement)
         {
-            // The checker's chain arm decides the needle as the binary arm does; codegen then refuses every `in` link
-            // with SPY0519 (#2648, out of this contract), so a link whose expression twin runs expects SPY0519.
-            var atExpression = Expect(byKey[cell.Key.Replace("/ChainLink", "/Expression", StringComparison.Ordinal)], byKey);
-            var codes = atExpression.Values
-                ? new HashSet<string> { DiagnosticCodes.CodeGen.UnsupportedOperator }
-                : new HashSet<string>(atExpression.RefusedBy);
-            return new Expectation(false, codes, "chain link: the expression twin's checker verdict, then SPY0519 (#2648)");
+            // Owner ruling A, 2026-11-12: "switch to the table, refuse literal None for non-optional containers, makes
+            // the most sense".
+            return new Expectation(false, Spy0222, "literal None into a non-optional slot: owner ruling A (2026-11-12)");
         }
 
         if (cell.Form == Form.NoneLiteral)
@@ -1041,7 +1217,18 @@ public class OptionalMembershipDifferentialTests : IntegrationTestBase
         + "import email, email.message\nemail.EmailMessage = email.message.EmailMessage\n";
 
     [SkippableFact]
-    public void OptionalNeedle_EveryContainerOperatorPosition_MatchesCPython()
+    public void OptionalNeedle_EveryContainerOperatorPosition_MatchesCPython() => RunMembershipMatrix(Observation.Value);
+
+    /// <summary>The same matrix by its order observation (#2645): every cell traces its operands, and CPython's
+    /// trace (the needle before the container, a chain's head operand before both) is part of the compared output.
+    /// A fact of its own so that neither half of the matrix runs for longer than CI's per-test hang limit.</summary>
+    [SkippableFact]
+    public void Membership_EveryContainerOperatorPosition_EvaluatesItsOperandsLeftToRight() => RunMembershipMatrix(Observation.Order);
+
+    /// <summary>The membership matrix over the cells of one observation. The axes and the totality count are the
+    /// whole product's in both facts; each fact runs, compares and pins its own half (the order half owns the
+    /// <c>Order/*</c> rows).</summary>
+    private void RunMembershipMatrix(Observation observation)
     {
         // The oracle minor is the repository's .python-version pin (3.15).
         var oracle = PythonBatchOracle.Over(PythonInterpreter.RequireOrSkip(minMinor: 15));
@@ -1060,7 +1247,7 @@ public class OptionalMembershipDifferentialTests : IntegrationTestBase
         Assert.Equal(ElementTypedRoster.OrderBy(c => c), Containers().Where(IsElementTyped).OrderBy(c => c));
 
         var payloads = GeneratePayloads();
-        var cells = GenerateCells(payloads);
+        var allCells = GenerateCells(payloads);
 
         // Totality: the cell count is the product of the axis sizes, each from its own source (the payload counts the
         // SemanticType census pins, key by key; the spec table's containers, doubled for the literal element-typed
@@ -1069,27 +1256,43 @@ public class OptionalMembershipDifferentialTests : IntegrationTestBase
         var payloadCount = SemanticTypeCensus.Values.Sum(v => v.Payloads);
         Assert.Equal(payloadCount, CanonicalPrimitives().Count - ExcludedPrimitives.Count + 1
             + CompositePayloadCount + ScopedPayloads.Length + RequiredSlotPayloadTypes().Count);
-        var containerCount = SpecRowMap.Sum(m => m.Generated.Length);
+        var containerCount = SpecRowMap.Sum(m => m.Generated.Length) + RuledContainerKinds.Sum(k => k.Generated.Length);
         var elementTypedCount = ElementTypedRoster.Length;
         var formCount = Enum.GetValues<Form>().Length;
         var positionCount = Enum.GetValues<Position>().Length;
         var containerVariants = containerCount + elementTypedCount;
+        // A form is observed once per observation, less the (form, order) pairs OrderExcludedForms names.
+        var observedFormCount = formCount * Enum.GetValues<Observation>().Length - OrderExcludedForms.Count;
+        Assert.All(OrderExcludedForms, e => Assert.False(string.IsNullOrWhiteSpace(e.Value), $"{e.Key}: no reason"));
         // OptionalElementExcluded removes whole forms of a payload's optional-element variant. The number of
         // (payload, form) pairs it removes is pinned here, not read from the table the generator reads, so an entry
         // added or widened there is red until this count is raised with it.
         Assert.True(OptionalElementExcluded.Values.Sum(e => e.Forms.Distinct().Count()) == OptionalElementExcludedForms,
             $"OptionalElementExcluded removes {OptionalElementExcluded.Values.Sum(e => e.Forms.Distinct().Count())} "
             + $"(payload, form) pairs; {OptionalElementExcludedForms} are pinned");
-        var expectedCount = (payloadCount * containerVariants * formCount - OptionalElementExcludedForms * elementTypedCount)
-            * Operators.Length * positionCount;
+        var excludedObservedForms = OptionalElementExcluded.Values.Sum(e => e.Forms.Distinct().Sum(f => ObservationsOf(f).Count()));
+        Assert.True(excludedObservedForms == OptionalElementExcludedObservedForms,
+            $"OptionalElementExcluded removes {excludedObservedForms} (payload, form, observation) triples; "
+            + $"{OptionalElementExcludedObservedForms} are pinned");
+        var expectedCount = (payloadCount * containerVariants * observedFormCount
+            - OptionalElementExcludedObservedForms * elementTypedCount) * Operators.Length * positionCount;
         Assert.Equal(2, Operators.Length);
         Assert.Equal(payloadCount, payloads.Count);
-        Assert.True(expectedCount == cells.Count,
-            $"the generator made {cells.Count} cells; the axes give {expectedCount} ({payloadCount} payloads x "
+        Assert.True(expectedCount == allCells.Count,
+            $"the generator made {allCells.Count} cells; the axes give {expectedCount} ({payloadCount} payloads x "
             + $"{containerVariants} container variants ({containerCount} containers, {elementTypedCount} with an optional "
-            + $"element) x {formCount} forms, less {OptionalElementExcludedForms} excluded (payload, form) pairs of the "
-            + $"optional-element variant, x {Operators.Length} operators x {positionCount} positions): "
-            + "a cell was dropped or invented");
+            + $"element) x {observedFormCount} observed forms ({formCount} forms, each by value and by order, less "
+            + $"{OrderExcludedForms.Count} order-excluded), less {OptionalElementExcludedObservedForms} excluded (payload, "
+            + $"form, observation) triples of the optional-element variant, x {Operators.Length} operators x "
+            + $"{positionCount} positions): a cell was dropped or invented");
+        Assert.Equal(allCells.Count, allCells.Select(c => c.Key).Distinct(StringComparer.Ordinal).Count());
+
+        // This fact's half of the product, and the rows it owns.
+        var cells = allCells.Where(c => c.Observation == observation).ToList();
+        Assert.NotEmpty(cells);
+        bool Owns(string row) => !row.StartsWith(SequenceRowPrefix, StringComparison.Ordinal)
+            && row.StartsWith(OrderRowPrefix, StringComparison.Ordinal) == (observation == Observation.Order);
+        var report = observation == Observation.Value ? "optional-membership-differential" : "membership-order-differential";
 
         // CPython: one program per payload × container (the runner passes a program as one argv string, which the OS
         // caps at 128 KiB), one batch.
@@ -1115,8 +1318,7 @@ public class OptionalMembershipDifferentialTests : IntegrationTestBase
         Assert.True(harnessFailures.Count == 0, "harness: " + string.Join("\n", harnessFailures));
         Assert.Equal(cells.Count, sharpyById.Count);
 
-        var byKey = cells.ToDictionary(c => c.Key, StringComparer.Ordinal);
-        var expectations = cells.ToDictionary(c => c.Id, c => Expect(c, byKey));
+        var expectations = cells.ToDictionary(c => c.Id, Expect);
 
         var divergences = new List<(Cell Cell, string Observed, string Detail)>();
         foreach (var cell in cells)
@@ -1125,7 +1327,7 @@ public class OptionalMembershipDifferentialTests : IntegrationTestBase
             var sharpy = sharpyById[cell.Id];
             var expected = expectations[cell.Id];
             var meets = sharpy.RefusedBy is { } refusedBy
-                ? refusedBy.Count == 1 && expected.RefusedBy.Contains(refusedBy.Single())
+                ? expected.MeetsRefusal(refusedBy)
                 : expected.Values && python.SequenceEqual(sharpy.Values!);
             if (meets)
                 continue;
@@ -1144,7 +1346,7 @@ public class OptionalMembershipDifferentialTests : IntegrationTestBase
         var compared = expectations.Values.Count(e => e.Compared);
         var handExpected = cells.Count - compared;
         var reportDir = ReportDirectory();
-        var divergencePath = Path.Combine(reportDir, "optional-membership-differential-divergences.txt");
+        var divergencePath = Path.Combine(reportDir, $"{report}-divergences.txt");
         File.WriteAllLines(divergencePath, divergences.OrderBy(d => d.Cell.Key, StringComparer.Ordinal)
             .Select(d => $"{d.Cell.Key}  {d.Detail}"));
 
@@ -1152,14 +1354,594 @@ public class OptionalMembershipDifferentialTests : IntegrationTestBase
         var actualByRow = divergences.GroupBy(d => d.Cell.RowKey, StringComparer.Ordinal)
             .ToDictionary(g => g.Key, g => g.ToDictionary(d => d.Cell.Key, d => d.Observed, StringComparer.Ordinal),
                 StringComparer.Ordinal);
+        var problems = PinProblems(actualByRow, allowlist, Owns);
+
+        Output.WriteLine($"{observation}: {payloads.Count} payloads, {cells.Count} of {allCells.Count} cases: {compared} compared with CPython, {handExpected} "
+            + $"hand-expected (slot mismatches by deviation membership-needle-type-mismatch; literal None by owner ruling A; "
+            + "__getitem__ + __len__ classes by owner ruling R-OA); "
+            + $"{divergences.Count} divergent in {actualByRow.Count} rows; allowlist {allowlist.Count} rows; "
+            + $"{problems.Count} pin problem line(s). Every divergence: {divergencePath}");
+
+        // Positive controls: the oracle column reaches every answer the expected map distinguishes.
+        Assert.Contains(cells, c => pythonById[c.Id].Contains("True"));
+        Assert.Contains(cells, c => pythonById[c.Id].Contains("False"));
+        Assert.Contains(cells, c => expectations[c.Id].Compared && c.Form == Form.Optional && pythonById[c.Id].Contains("TypeError"));
+        Assert.Contains(cells, c => c.Form == Form.Plain && c.Position != Position.ChainLink && sharpyById[c.Id].Values != null);
+        // The optional column can pass: a T | None needle's cell already runs, prints False for None and agrees (by
+        // value a reference payload's; by order a lifted one's, whose helper takes the needle first).
+        var divergent = divergences.Select(d => d.Cell.Id).ToHashSet();
+        Assert.Contains(cells, c => c.Form == Form.Optional && sharpyById[c.Id].Values is { } v
+            && v.Contains("False") && v.SequenceEqual(pythonById[c.Id]) && !divergent.Contains(c.Id));
+        // A ruled refusal is a refusal of something CPython answers, and Sharpy refuses it today.
+        var refusedCells = cells.Where(c => IsRefusedByRuling(c.Container)).ToList();
+        Assert.NotEmpty(refusedCells);
+        Assert.All(refusedCells, c => Assert.False(expectations[c.Id].Compared, $"{c.Key}: a ruled refusal is compared"));
+        Assert.Contains(refusedCells, c => pythonById[c.Id].Contains("True") && sharpyById[c.Id].RefusedBy is { } by
+            && expectations[c.Id].MeetsRefusal(by));
+        Assert.Equal(1, ElementTypedRoster.Count(IsRefusedByRuling));
+        if (observation == Observation.Order)
+        {
+            // The order observation reaches the oracle: CPython traces the needle before the container in every
+            // cell (and a chain's head operand before both).
+            static bool Before(IReadOnlyList<string> trace, string first, string second) =>
+                trace.Contains(first) && trace.Contains(second)
+                && Enumerable.Range(0, trace.Count).Where(i => trace[i] == second).All(i => i > 0 && trace.Take(i).Contains(first));
+            Assert.All(cells, c => Assert.True(Before(pythonById[c.Id], "n", "c"),
+                $"{c.Key}: CPython's trace [{string.Join(" ", pythonById[c.Id])}] does not show the needle before the container"));
+            Assert.All(cells.Where(c => c.Position == Position.ChainLink), c => Assert.True(Before(pythonById[c.Id], "h", "n"),
+                $"{c.Key}: CPython's trace [{string.Join(" ", pythonById[c.Id])}] does not show the chain's head operand first"));
+        }
+        else
+        {
+            // The element-optionality axis discriminates, container by container: a None needle into an optional
+            // element is a member (CPython `True False True` over a member, a non-member and None), so a lift that
+            // answers False for every None needle is red there, and a container whose optional variant lost its None
+            // element is red here. The Sharpy half (the cell runs and agrees today) holds for every element-typed
+            // container but the named ones.
+            var trueFalseTrue = new[] { "True", "False", "True" };
+            var controlled = 0;
+            foreach (var container in ElementTypedRoster)
+            {
+                controlled++;
+                if (IsRefusedByRuling(container))
+                    continue;
+                var controls = cells.Where(c => c.Container == container && c.OptionalElement && c.Form == Form.Optional
+                    && c.Operator == BinaryOperator.In && expectations[c.Id].Compared).ToList();
+                Assert.True(controls.Any(c => pythonById[c.Id].SequenceEqual(trueFalseTrue)),
+                    $"{container}OfOptional: no compared T | None needle cell where CPython answers True False True "
+                    + "(the optional variant must hold a None element)");
+                if (!OptionalElementControlExcluded.ContainsKey(container))
+                    Assert.True(controls.Any(c => pythonById[c.Id].SequenceEqual(trueFalseTrue)
+                            && sharpyById[c.Id].Values is { } v && v.SequenceEqual(trueFalseTrue)),
+                        $"{container}OfOptional: no cell where Sharpy also answers True False True (exempt it in "
+                        + "OptionalElementControlExcluded with a reason and an issue, or fix it)");
+                else
+                    Assert.False(controls.Any(c => sharpyById[c.Id].Values is { } v && v.SequenceEqual(trueFalseTrue)),
+                        $"{container} is in OptionalElementControlExcluded but Sharpy now answers True False True: "
+                        + "delete the exemption");
+            }
+            Assert.Equal(ElementTypedRoster.Length, controlled);
+        }
+
+        // Written on every run, header included, so copying it over the allowlist is a byte-identical round trip
+        // when nothing moved and a reviewable diff when something did.
+        var proposedPath = Path.Combine(reportDir, $"{report}-proposed-allowlist.txt");
+        File.WriteAllText(proposedPath, string.Join("\n", ProposedAllowlist(actualByRow, allowlist, Owns)) + "\n");
+
+        if (problems.Count > 0)
+        {
+            var problemPath = Path.Combine(reportDir, $"{report}-pin-problems.txt");
+            File.WriteAllLines(problemPath, problems);
+            Assert.Fail($"{problems.Count} pin problem line(s) against {AllowlistFileName}: every line is in {problemPath}; "
+                + $"a regenerated allowlist (rows' citations kept) is in {proposedPath}. First lines:\n"
+                + string.Join("\n", problems.Take(30))
+                + (declarationOrderProblem != null ? "\nAlso: " + declarationOrderProblem : ""));
+        }
+        Assert.True(declarationOrderProblem == null, declarationOrderProblem);
+    }
+
+    // ---------------------------------------------------------------------------------------------------------
+    // The operator-sequence matrix (#2645 evaluation order, #2648 chain links)
+    // ---------------------------------------------------------------------------------------------------------
+
+    /// <summary>The allowlist rows <see cref="OperatorSequences_OverEffectfulOperands_AreTheirDesugaring"/> owns.</summary>
+    private const string SequenceRowPrefix = "Sequence/";
+
+    /// <summary>How a sequence's operands are typed: the payload; <c>T | None</c>; the tagged <c>T?</c>, on both
+    /// values or on the first alone (the operand types <c>??</c> has its two lowerings for); or the payload with the
+    /// literal <c>None</c> as the last operand (the None tests and their refusals).</summary>
+    private enum SequenceForm { Plain, Optional, Tagged, TaggedLeft, NoneLast }
+
+    /// <summary>
+    /// The spelling of every <see cref="BinaryOperator"/>, or why the sequence matrix does not generate it. No
+    /// default arm: a new operator throws here until it is spelled or excluded.
+    /// </summary>
+    private static (string? Spelling, string? Excluded) SpellingOf(BinaryOperator op) => op switch
+    {
+        BinaryOperator.Add => ("+", null),
+        BinaryOperator.Subtract => ("-", null),
+        BinaryOperator.Multiply => ("*", null),
+        BinaryOperator.Divide => ("/", null),
+        BinaryOperator.FloorDivide => ("//", null),
+        BinaryOperator.Modulo => ("%", null),
+        BinaryOperator.Power => ("**", null),
+        BinaryOperator.MatMul => (null, "`@` is an experimental feature, off by default (SPY0331): no ungated program spells it"),
+        BinaryOperator.Equal => ("==", null),
+        BinaryOperator.NotEqual => ("!=", null),
+        BinaryOperator.LessThan => ("<", null),
+        BinaryOperator.LessThanOrEqual => ("<=", null),
+        BinaryOperator.GreaterThan => (">", null),
+        BinaryOperator.GreaterThanOrEqual => (">=", null),
+        BinaryOperator.And => ("and", null),
+        BinaryOperator.Or => ("or", null),
+        BinaryOperator.BitwiseAnd => ("&", null),
+        BinaryOperator.BitwiseOr => ("|", null),
+        BinaryOperator.BitwiseXor => ("^", null),
+        BinaryOperator.LeftShift => ("<<", null),
+        BinaryOperator.RightShift => (">>", null),
+        BinaryOperator.In => ("in", null),
+        BinaryOperator.NotIn => ("not in", null),
+        BinaryOperator.Is => ("is", null),
+        BinaryOperator.IsNot => ("is not", null),
+        BinaryOperator.NullCoalesce => ("??", null),
+        BinaryOperator.PipeForward => (null, "the right operand of `|>` is a callee, not a value: `x |> f` is the call `f(x)`"),
+        _ => throw new InvalidOperationException($"BinaryOperator.{op} has no spelling here: spell it or exclude it with a reason"),
+    };
+
+    /// <summary>How many <see cref="BinaryOperator"/> members <see cref="SpellingOf"/> excludes, as a literal: the
+    /// totality count reads the map the generator reads, so only this pins an operator against a silent exclusion.</summary>
+    private const int SequenceExcludedOperators = 2;
+
+    /// <summary>
+    /// The operand types a one-operator sequence pairs the payload with, on either side, besides the payload itself:
+    /// a type and a value. A closed literal set, closed against the compiler by <see cref="SequenceExcludedKinds"/>:
+    /// every <c>OperatorLoweringKind</c> the checker records on a binary operator must be recorded in a generated
+    /// program, so a lowering only a mixed pair reaches (a string repeated by an int on its left) names its pivot.
+    /// </summary>
+    private static readonly (string Type, string Value)[] Pivots =
+    {
+        ("int", "2"), ("int64", "2"), ("uint64", "2"), ("float", "2.5"), ("str", "\"ab\""),
+        // A class whose comparison dunders take an `int` on their right: `int < Rf` is the reflected lowering.
+        ("Rf", "Rf(2)"),
+    };
+
+    private const string PivotDeclarations =
+        "class Rf:\n    n: int\n    def __init__(self, n: int):\n        self.n = n\n"
+        + "    def __lt__(self, o: int) -> bool:\n        return self.n < o\n"
+        + "    def __le__(self, o: int) -> bool:\n        return self.n <= o\n"
+        + "    def __gt__(self, o: int) -> bool:\n        return self.n > o\n"
+        + "    def __ge__(self, o: int) -> bool:\n        return self.n >= o\n";
+
+    /// <summary>
+    /// Payloads of the sequence matrix alone. The membership matrix leaves a type-constrained type parameter out
+    /// as the unconstrained one's twin (<see cref="SemanticTypeCensus"/>, <c>TypeParameterType/TypeConstraint</c>:
+    /// the constraint says nothing about a needle), but an ordering operator is decided BY the constraint (the
+    /// <c>TypeParameterCompareTo</c> lowering), so the sequence matrix generates it.
+    /// </summary>
+    private static readonly Payload[] SequenceOnlyPayloads =
+    {
+        new("T: IComparable[T]", PayloadKind.UserType, "1", "2", "5", null)
+        { TypeParameters = "[T: IComparable[T]]", Binding = "int" },
+    };
+
+    /// <summary>How many payloads <see cref="SequenceOnlyPayloads"/> adds, as a literal (the generator reads the array).</summary>
+    private const int SequenceOnlyPayloadCount = 1;
+
+    /// <summary>The <see cref="BinaryOperator"/> of a chain link, by name: every <see cref="ComparisonOperator"/> has
+    /// one (a link is a binary operation), and a new one fails here.</summary>
+    private static BinaryOperator LinkOperator(ComparisonOperator op) => Enum.Parse<BinaryOperator>(op.ToString());
+
+    /// <summary>A sequence: one operator between two operands, or a chain of two comparison links over three. Its
+    /// cell (<see cref="CellId"/>) is the expression over traced operands; its reference (<see cref="ReferenceId"/>)
+    /// is the desugaring over the same operands.</summary>
+    private sealed record Sequence(int Id, Payload Payload, SequenceForm Form, BinaryOperator[] Operators, int? Pivot, bool PivotOnLeft)
+    {
+        public int CellId => Id * 2;
+        public int ReferenceId => Id * 2 + 1;
+        public string Key => $"{Payload.Name}/{Form}/{string.Join(",", Operators.Select(o => SpellingOf(o).Spelling))}"
+            + (Pivot is { } p ? $"/{Pivots[p].Type} on the {(PivotOnLeft ? "left" : "right")}" : "");
+        public string RowKey => SequenceRowPrefix + (Operators.Length == 1 ? "Binary" : "Chain");
+    }
+
+    /// <summary>The full product: for each payload, every form of every spelled binary operator and of every pair
+    /// of chain links; and, in the plain form, every spelled binary operator with each pivot on each side.</summary>
+    private static List<Sequence> GenerateSequences(IReadOnlyList<Payload> payloads)
+    {
+        var binary = Enum.GetValues<BinaryOperator>().Where(o => SpellingOf(o).Spelling != null).ToList();
+        var links = Enum.GetValues<ComparisonOperator>().Select(LinkOperator).ToList();
+        var sequences = new List<Sequence>();
+        foreach (var payload in payloads)
+            foreach (var form in Enum.GetValues<SequenceForm>())
+            {
+                foreach (var op in binary)
+                {
+                    sequences.Add(new Sequence(sequences.Count, payload, form, new[] { op }, null, false));
+                    if (form != SequenceForm.Plain)
+                        continue;
+                    for (var pivot = 0; pivot < Pivots.Length; pivot++)
+                        foreach (var onLeft in new[] { false, true })
+                            sequences.Add(new Sequence(sequences.Count, payload, form, new[] { op }, pivot, onLeft));
+                }
+                foreach (var first in links)
+                    foreach (var second in links)
+                        sequences.Add(new Sequence(sequences.Count, payload, form, new[] { first, second }, null, false));
+            }
+        return sequences;
+    }
+
+    /// <summary>An operand over the payload's two values <c>a</c> and <c>c</c>, <paramref name="depth"/> lists deep:
+    /// the right operand of a membership link is a list of what its left operand is.</summary>
+    private static string SequenceOperand(int depth, bool alternate) => depth == 0
+        ? (alternate ? "c" : "a")
+        : alternate ? $"[{SequenceOperand(depth - 1, true)}]" : $"[{SequenceOperand(depth - 1, false)}, {SequenceOperand(depth - 1, true)}]";
+
+    /// <summary>The operands of a sequence, left to right: the payload's values (a membership operator's right
+    /// operand one list deeper than its left), a pivot local on one side, or the literal <c>None</c> last.</summary>
+    private static string[] SequenceOperands(Sequence sequence)
+    {
+        if (sequence.Pivot != null)
+            return sequence.PivotOnLeft ? new[] { "p", "a" } : new[] { "a", "p" };
+        var operands = new List<string> { SequenceOperand(0, false) };
+        var depth = 0;
+        var alternate = false;
+        foreach (var op in sequence.Operators)
+        {
+            if (op is BinaryOperator.In or BinaryOperator.NotIn)
+            {
+                depth++;
+                alternate = false;
+            }
+            else
+            {
+                alternate = !alternate;
+            }
+            operands.Add(SequenceOperand(depth, alternate));
+        }
+        if (sequence.Form == SequenceForm.NoneLast)
+            operands[^1] = "None";
+        return operands.ToArray();
+    }
+
+    /// <summary>One program per payload over the functions still active. A sequence's cell computes the expression
+    /// with every operand through the tracing identity; its reference is the desugaring — the left operand bound to a
+    /// name first, then the operator applied to the name (a chain: both operands of the first link bound, the second
+    /// link evaluated only when the first holds, comparison_chaining.md). Both print their value. A type-parameter
+    /// payload's functions are generic over its clause and called over its binding; a <c>Self</c> payload's are
+    /// methods of its declaration.</summary>
+    private static Program SequenceProgramFor(Payload payload, IReadOnlyList<Sequence> sequences, IReadOnlySet<int> active)
+    {
+        var lines = new List<string>();
+        var cellByLine = new Dictionary<int, int>();
+        void Add(string line, int? id = null)
+        {
+            lines.Add(line);
+            if (id is { } cell)
+                cellByLine[lines.Count] = cell;
+        }
+
+        var method = payload.SelfOf != null;
+        var scope = method ? "    " : "";
+        var self = method ? "self, " : "";
+
+        void AddFunction(Sequence sequence, bool reference)
+        {
+            var id = reference ? sequence.ReferenceId : sequence.CellId;
+            if (!active.Contains(id))
+                return;
+            var type = payload.CellSpelling + sequence.Form switch
+            {
+                SequenceForm.Optional => " | None",
+                SequenceForm.Tagged or SequenceForm.TaggedLeft => "?",
+                _ => "",
+            };
+            var second = sequence.Form == SequenceForm.TaggedLeft ? payload.CellSpelling : type;
+            var operands = SequenceOperands(sequence);
+            var ops = sequence.Operators.Select(o => SpellingOf(o).Spelling!).ToArray();
+            string Traced(int i) => operands[i] == "None" ? "None" : $"tr({id}, {i}, {operands[i]})";
+            Add($"{scope}def e{id}{payload.TypeParameters}({self}a: {type}, c: {second}) -> None:", id);
+            if (sequence.Pivot is { } pivot)
+                Add($"{scope}    p: {Pivots[pivot].Type} = {Pivots[pivot].Value}", id);
+            if (!reference)
+            {
+                Add($"{scope}    v = {Traced(0)}" + string.Concat(ops.Select((o, i) => $" {o} {Traced(i + 1)}")), id);
+            }
+            else
+            {
+                Add($"{scope}    t0 = {Traced(0)}", id);
+                if (ops.Length == 1)
+                {
+                    Add($"{scope}    v = t0 {ops[0]} {Traced(1)}", id);
+                }
+                else
+                {
+                    Add($"{scope}    t1 = {Traced(1)}", id);
+                    Add($"{scope}    v = t0 {ops[0]} t1", id);
+                    Add($"{scope}    if v:", id);
+                    Add($"{scope}        v = t1 {ops[1]} {Traced(2)}", id);
+                }
+            }
+            Add($"{scope}    print({id}, v)", id);
+            Add("");
+        }
+
+        void AddFunctions()
+        {
+            foreach (var sequence in sequences)
+            {
+                AddFunction(sequence, reference: false);
+                AddFunction(sequence, reference: true);
+            }
+        }
+
+        void AddDriverBody(string indent, string callee)
+        {
+            foreach (var sequence in sequences)
+                foreach (var id in new[] { sequence.CellId, sequence.ReferenceId })
+                {
+                    if (!active.Contains(id))
+                        continue;
+                    Add($"{indent}try:", id);
+                    // The tagged Optional is constructed, never converted to (SPY0604).
+                    var arguments = sequence.Form switch
+                    {
+                        SequenceForm.Tagged => "Some(a), Some(c)",
+                        SequenceForm.TaggedLeft => "Some(a), c",
+                        _ => "a, c",
+                    };
+                    Add($"{indent}    {callee}{id}{(payload.IsTypeParameter ? $"[{payload.Binding}]" : "")}({arguments})", id);
+                    Add($"{indent}except Exception:", id);
+                    Add($"{indent}    print({id}, \"raised\")", id);
+                }
+        }
+
+        Add("from ipaddress import IPv4Address, IPv6Address");
+        Add("");
+        Add("def tr[V](cell: int, operand: int, v: V) -> V:");
+        Add("    print(cell, operand)");
+        Add("    return v");
+        Add("");
+        foreach (var line in PivotDeclarations.TrimEnd('\n').Split('\n'))
+            Add(line);
+        Add("");
+        if (payload.SharpyDeclaration is { } declaration)
+        {
+            foreach (var line in declaration.TrimEnd('\n').Split('\n'))
+                Add(line);
+            if (method)
+            {
+                Add("");
+                AddFunctions();
+                Add($"    def drive(self, a: {payload.CellSpelling}, c: {payload.CellSpelling}) -> None:");
+                Add("        pass");
+                AddDriverBody("        ", "self.e");
+            }
+            Add("");
+        }
+        if (!method)
+            AddFunctions();
+        Add("def main() -> None:");
+        Add($"    a: {payload.OuterSpelling} = {payload.Member}");
+        Add($"    c: {payload.OuterSpelling} = {payload.Other}");
+        if (method)
+            Add("    a.drive(a, c)");
+        else
+            AddDriverBody("    ", "e");
+        Add("    print(\"done\")");
+        return new Program(string.Join("\n", lines) + "\n", cellByLine);
+    }
+
+    /// <summary>
+    /// The <c>OperatorLoweringKind</c> values no generated sequence records on a binary operator, each with its
+    /// reason. Every other value must be recorded on a <see cref="BinaryOp"/> of a program that ran
+    /// (<see cref="KindsOnBinaryOperators"/>, read by reflection from the checker's own record), and an excluded value
+    /// that is recorded is red until its entry is deleted: the pivot set (<see cref="Pivots"/>) is closed against the
+    /// compiler's enumeration of lowerings, not against a list of operand pairs someone thought of.
+    /// </summary>
+    private static readonly Dictionary<Sem.OperatorLoweringKind, string> SequenceExcludedKinds = new()
+    {
+        [Sem.OperatorLoweringKind.Native] = "the absent-entry convention: no record is written for it",
+        [Sem.OperatorLoweringKind.TrueDivisionCastLeft] = "recorded only when the divisor is a non-zero literal: a literal "
+            + "operand has no evaluation to order (the variable-divisor twin, GuardedTrueDivisionCastLeft, is recorded)",
+        [Sem.OperatorLoweringKind.OptionalNoneTest] = "a None test on a `T?` subject: its other operand is the literal `None`, "
+            + "and the NoneLast form types its subject as the payload (its twins ReferenceNoneTest and BoxedNoneTest are recorded)",
+        [Sem.OperatorLoweringKind.EnumMemberReferenceIdentity] = "recorded on a TypeCheck node (`t is Tone.A`, a member "
+            + "spelled after `is`), never on a BinaryOp: the right operand is a member name, not an evaluation",
+        [Sem.OperatorLoweringKind.NegateLiteralInt] = "recorded on a unary minus",
+        [Sem.OperatorLoweringKind.NegateLiteralLong] = "recorded on a unary minus",
+        [Sem.OperatorLoweringKind.SuperOperatorApplication] = "recorded on the call `super().__op__(x)`, not on a BinaryOp: "
+            + "its receiver is `super()`, which has no evaluation of its own to order",
+        [Sem.OperatorLoweringKind.MembershipNoneIsFalse] = "a value-type `T | None` needle into a container of plain `T`: "
+            + "every such cell is in the membership matrix by value and by order (form Optional, a non-optional element); "
+            + "a sequence's operands share one form",
+        [Sem.OperatorLoweringKind.MembershipNoneRaises] = "a `T | None` needle into `str` / `bytes`: every such cell is in "
+            + "the membership matrix by value and by order; a sequence's operands share one form",
+    };
+
+    private static readonly FieldInfo OperatorLoweringsField =
+        typeof(Sem.SemanticInfo).GetField("_operatorLowerings", BindingFlags.Instance | BindingFlags.NonPublic)
+        ?? throw new InvalidOperationException("SemanticInfo._operatorLowerings is gone: the sequence census moves with it");
+
+    /// <summary>The lowering kinds the checker recorded on the binary operators of a program that compiles.</summary>
+    private static HashSet<Sem.OperatorLoweringKind> KindsOnBinaryOperators(string name, string source)
+    {
+        var options = new CompilerOptions
+        {
+            References = new[] { Sharpy.TestInfrastructure.SharpyCoreReference.Location, SharpyStdlibReference.Location },
+            OutputType = "exe",
+            WarningsAsErrors = false,
+        };
+        var result = new Compiler(options, NullLogger.Instance).Compile(source, "operator_sequence_census.spy");
+        var errors = result.Diagnostics.GetErrors().Select(d => $"[{d.Code}] {d.Message}").ToList();
+        Assert.True(errors.Count == 0 && result.SemanticInfo != null,
+            $"{name}: the program that ran does not compile for the census: " + string.Join("; ", errors.Take(5)));
+        var kinds = new HashSet<Sem.OperatorLoweringKind>();
+        foreach (System.Collections.DictionaryEntry entry in (System.Collections.IDictionary)OperatorLoweringsField.GetValue(result.SemanticInfo)!)
+            if (entry.Key is BinaryOp)
+                kinds.Add(((Sem.OperatorLowering)entry.Value!).Kind);
+        return kinds;
+    }
+
+    /// <summary>
+    /// Operands are evaluated left to right, and a comparison chain is its links (#2645, #2648): an operator
+    /// expression over effectful operands prints what its DESUGARING prints — the left operand bound to a name
+    /// first, then the operator applied to it; for a chain <c>a op1 b op2 c</c>, <c>t0 = a; t1 = b; v = t0 op1 t1;
+    /// if v: v = t1 op2 c</c> (comparison_chaining.md) — and is refused exactly when the desugaring is, by a code
+    /// the desugaring is refused by: a link gets its binary twin's verdict. The reference is Sharpy's own answer for
+    /// the desugared program, so no oracle is needed and a divergence the binary form has from CPython is not
+    /// counted twice here.
+    /// <para><b>Generated, never listed.</b> payload (the axis of the membership matrix) × form
+    /// (<see cref="SequenceForm"/>) × sequence: every <see cref="BinaryOperator"/> <see cref="SpellingOf"/> spells,
+    /// and every ordered pair of <see cref="ComparisonOperator"/> links; in the plain form each binary operator also
+    /// takes each pivot type on each side (<see cref="Pivots"/>). The count is asserted from the enumerations, and
+    /// the operand types are closed against <c>OperatorLoweringKind</c> (<see cref="SequenceExcludedKinds"/>).</para>
+    /// <para><b>Known red.</b> The <c>Sequence/Binary</c> and <c>Sequence/Chain</c> rows of the allowlist.</para>
+    /// </summary>
+    [Fact]
+    public void OperatorSequences_OverEffectfulOperands_AreTheirDesugaring()
+    {
+        var payloads = GeneratePayloads().Concat(SequenceOnlyPayloads).ToList();
+        var sequences = GenerateSequences(payloads);
+
+        // Totality: from the enumerations, never from the generator's loops.
+        var operators = Enum.GetValues<BinaryOperator>();
+        Assert.All(operators, o => Assert.True((SpellingOf(o).Spelling != null) != (SpellingOf(o).Excluded != null)
+            && (SpellingOf(o).Spelling ?? SpellingOf(o).Excluded)!.Trim().Length > 0, $"{o}: a spelling or an exclusion reason, exactly one"));
+        Assert.True(operators.Count(o => SpellingOf(o).Excluded != null) == SequenceExcludedOperators,
+            $"SpellingOf excludes {operators.Count(o => SpellingOf(o).Excluded != null)} operators; {SequenceExcludedOperators} are pinned");
+        var binaryCount = operators.Length - SequenceExcludedOperators;
+        var linkCount = Enum.GetValues<ComparisonOperator>().Length;
+        Assert.Equal(linkCount, Enum.GetValues<ComparisonOperator>().Select(LinkOperator).Distinct().Count());
+        var formCount = Enum.GetValues<SequenceForm>().Length;
+        var payloadCount = SemanticTypeCensus.Values.Sum(v => v.Payloads) + SequenceOnlyPayloadCount;
+        Assert.Equal(payloadCount, payloads.Count);
+        Assert.Equal(payloads.Count, payloads.Select(p => p.Name).Distinct(StringComparer.Ordinal).Count());
+        var expectedCount = payloadCount * (formCount * (binaryCount + linkCount * linkCount) + binaryCount * Pivots.Length * 2);
+        Assert.True(expectedCount == sequences.Count,
+            $"the generator made {sequences.Count} sequences; the axes give {expectedCount} ({payloadCount} payloads x "
+            + $"({formCount} forms x ({binaryCount} binary operators + {linkCount} x {linkCount} chain link pairs) + "
+            + $"{binaryCount} binary operators x {Pivots.Length} pivots x 2 sides)): a sequence was dropped or invented");
+        Assert.Equal(sequences.Count, sequences.Select(s => s.Key).Distinct(StringComparer.Ordinal).Count());
+
+        var harnessFailures = new List<string>();
+        var verdicts = new Dictionary<int, SharpyVerdict>();
+        var kinds = new HashSet<Sem.OperatorLoweringKind>();
+        foreach (var payload in payloads)
+        {
+            var own = sequences.Where(s => s.Payload == payload).ToList();
+            var ids = own.SelectMany(s => new[] { s.CellId, s.ReferenceId }).ToList();
+            var payloadVerdicts = RunRounds(payload.Name, ids, active => SequenceProgramFor(payload, own, active),
+                "operator_sequence.spy", harnessFailures, out var ranSource);
+            foreach (var (id, verdict) in payloadVerdicts)
+                verdicts[id] = verdict;
+            if (ranSource != null)
+                kinds.UnionWith(KindsOnBinaryOperators(payload.Name, ranSource));
+        }
+        Assert.True(harnessFailures.Count == 0, "harness: " + string.Join("\n", harnessFailures));
+        Assert.Equal(sequences.Count * 2, verdicts.Count);
+
+        static string Describe(SharpyVerdict verdict) => verdict.RefusedBy is { } by
+            ? "refused " + string.Join(",", by.OrderBy(c => c, StringComparer.Ordinal))
+            : "prints " + string.Join(" ", verdict.Values!);
+        var divergences = new List<(Sequence Sequence, string Observed)>();
+        foreach (var sequence in sequences)
+        {
+            var cell = verdicts[sequence.CellId];
+            var reference = verdicts[sequence.ReferenceId];
+            var meets = cell.RefusedBy is { } refusedBy
+                ? reference.RefusedBy is { } twin && refusedBy.Overlaps(twin)
+                : reference.Values is { } values && cell.Values!.SequenceEqual(values);
+            if (!meets)
+                divergences.Add((sequence, $"sharpy {Describe(cell)} | desugaring {Describe(reference)}"));
+        }
+
+        var reportDir = ReportDirectory();
+        var divergencePath = Path.Combine(reportDir, "operator-sequence-divergences.txt");
+        File.WriteAllLines(divergencePath, divergences.OrderBy(d => d.Sequence.Key, StringComparer.Ordinal)
+            .Select(d => $"{d.Sequence.Key}  {d.Observed}"));
+
+        var allowlist = LoadAllowlist();
+        static bool Owns(string row) => row.StartsWith(SequenceRowPrefix, StringComparison.Ordinal);
+        var actualByRow = divergences.GroupBy(d => d.Sequence.RowKey, StringComparer.Ordinal)
+            .ToDictionary(g => g.Key, g => g.ToDictionary(d => d.Sequence.Key, d => d.Observed, StringComparer.Ordinal),
+                StringComparer.Ordinal);
+        var problems = PinProblems(actualByRow, allowlist, Owns);
+        // Not a divergence of THIS contract, but never silent: a sequence both forms of which reach Roslyn
+        // (SPY0908 is a net, not an error channel) is listed for the lead to file by class.
+        var iceInBoth = sequences.Where(s => verdicts[s.CellId].RefusedBy is { } a && verdicts[s.ReferenceId].RefusedBy is { } b
+            && a.Contains(DiagnosticCodes.Infrastructure.GeneratedCodeCompilationError)
+            && b.Contains(DiagnosticCodes.Infrastructure.GeneratedCodeCompilationError)).ToList();
+        var icePath = Path.Combine(reportDir, "operator-sequence-spy0908-in-both-forms.txt");
+        File.WriteAllLines(icePath, iceInBoth.Select(s => s.Key).OrderBy(k => k, StringComparer.Ordinal));
+        var ran = sequences.Count(s => verdicts[s.CellId].Values != null && verdicts[s.ReferenceId].Values != null);
+        var refused = sequences.Count(s => verdicts[s.CellId].RefusedBy != null && verdicts[s.ReferenceId].RefusedBy != null);
+        Output.WriteLine($"{payloads.Count} payloads, {sequences.Count} sequences ({sequences.Count(s => s.Operators.Length == 1)} "
+            + $"binary, {sequences.Count(s => s.Operators.Length == 2)} chains): {ran} run in both forms, {refused} are refused in "
+            + $"both ({iceInBoth.Count} of them by SPY0908 in both forms: {icePath}); {divergences.Count} divergent in "
+            + $"{actualByRow.Count} rows; {problems.Count} pin problem line(s). "
+            + $"Lowering kinds recorded: {string.Join(", ", kinds.OrderBy(k => k.ToString(), StringComparer.Ordinal))}. "
+            + $"Every divergence: {divergencePath}");
+
+        // The operand types are closed against the compiler's lowerings.
+        var unreached = Enum.GetValues<Sem.OperatorLoweringKind>()
+            .Where(k => !kinds.Contains(k) && !SequenceExcludedKinds.ContainsKey(k)).ToList();
+        Assert.True(unreached.Count == 0,
+            "no generated sequence records these lowering kinds on a binary operator: [" + string.Join(", ", unreached)
+            + "]: add the pivot that reaches each, or exclude it in SequenceExcludedKinds with its reason");
+        var stale = SequenceExcludedKinds.Keys.Where(kinds.Contains).ToList();
+        Assert.True(stale.Count == 0, "SequenceExcludedKinds excludes kinds a sequence does record: [" + string.Join(", ", stale) + "]");
+        Assert.All(SequenceExcludedKinds, e => Assert.False(string.IsNullOrWhiteSpace(e.Value), $"{e.Key}: no reason"));
+
+        // Positive controls: the instrument sees every answer it distinguishes.
+        bool Agrees(Sequence s) => verdicts[s.CellId].Values is { } v && verdicts[s.ReferenceId].Values is { } r && v.SequenceEqual(r);
+        // A sequence that runs in both forms and traces its operands left to right.
+        Assert.Contains(sequences, s => s.Operators.Length == 1 && Agrees(s)
+            && verdicts[s.CellId].Values!.Take(2).SequenceEqual(new[] { "0", "1" }));
+        // A chain that evaluates its last operand, and one that short-circuits before it.
+        Assert.Contains(sequences, s => s.Operators.Length == 2 && Agrees(s) && verdicts[s.CellId].Values!.Contains("2"));
+        Assert.Contains(sequences, s => s.Operators.Length == 2 && Agrees(s) && !verdicts[s.CellId].Values!.Contains("2")
+            && verdicts[s.CellId].Values!.Take(2).SequenceEqual(new[] { "0", "1" }));
+        // A sequence refused in both forms by the same code.
+        Assert.Contains(sequences, s => verdicts[s.CellId].RefusedBy is { } a && verdicts[s.ReferenceId].RefusedBy is { } b && a.SetEquals(b));
+        // Every reference that ran traced operand 0 first: the desugaring is the order the cell is held to.
+        Assert.All(sequences.Where(s => verdicts[s.ReferenceId].Values is { Count: > 0 }),
+            s => Assert.True(verdicts[s.ReferenceId].Values![0] is "0" or "raised", $"{s.Key}: its desugaring did not evaluate operand 0 first"));
+
+        var proposedPath = Path.Combine(reportDir, "operator-sequence-proposed-allowlist.txt");
+        File.WriteAllText(proposedPath, string.Join("\n", ProposedAllowlist(actualByRow, allowlist, Owns)) + "\n");
+        if (problems.Count > 0)
+        {
+            var problemPath = Path.Combine(reportDir, "operator-sequence-pin-problems.txt");
+            File.WriteAllLines(problemPath, problems);
+            Assert.Fail($"{problems.Count} pin problem line(s) against {AllowlistFileName}: every line is in {problemPath}; "
+                + $"a regenerated allowlist (rows' citations kept) is in {proposedPath}. First lines:\n"
+                + string.Join("\n", problems.Take(30)));
+        }
+    }
+
+    /// <summary>The divergent cells against the allowlist's rows a fact owns (<paramref name="owns"/>: the two facts
+    /// of this class share the file): every row that is missing, stale, or whose pinned cells or verdicts moved.</summary>
+    private static List<string> PinProblems(IReadOnlyDictionary<string, Dictionary<string, string>> actualByRow,
+        IReadOnlyDictionary<string, PinnedRow> allowlist, Func<string, bool> owns)
+    {
         var problems = new List<string>();
-        foreach (var row in actualByRow.Keys.Union(allowlist.Keys).OrderBy(r => r, StringComparer.Ordinal))
+        foreach (var row in actualByRow.Keys.Union(allowlist.Keys.Where(owns)).OrderBy(r => r, StringComparer.Ordinal))
         {
             var actual = actualByRow.GetValueOrDefault(row) ?? new Dictionary<string, string>(StringComparer.Ordinal);
             if (!allowlist.TryGetValue(row, out var pinned))
             {
                 problems.Add($"ROW {row}: not in the allowlist ({actual.Count} divergent cells)");
                 problems.AddRange(actual.OrderBy(a => a.Key, StringComparer.Ordinal).Select(a => $"  added {a.Key} -> {a.Value}"));
+                continue;
+            }
+            if (pinned.Bulk)
+            {
+                // A bulk row keeps no pin lines: its count and digest are checked against the divergent cells.
+                if (actual.Count == 0)
+                    problems.Add($"ROW {row}: no cell diverges any more — delete the row");
+                else if (pinned.Count != actual.Count || pinned.Pin != Digest(actual))
+                    problems.Add($"ROW {row}: bulk header (cells={pinned.Count} pin={pinned.Pin}) does not match its "
+                        + $"{actual.Count} divergent cells (pin={Digest(actual)}): a cell started or stopped diverging, "
+                        + "or its verdict changed; the divergence report lists them");
                 continue;
             }
             if (pinned.Count != pinned.Cells.Count || pinned.Pin != Digest(pinned.Cells))
@@ -1177,62 +1959,7 @@ public class OptionalMembershipDifferentialTests : IntegrationTestBase
             foreach (var key in pinned.Cells.Keys.Where(k => !actual.ContainsKey(k)).OrderBy(k => k, StringComparer.Ordinal))
                 problems.Add($"  {row}: removed {key} (pinned {pinned.Cells[key]}; it now meets its expectation)");
         }
-
-        Output.WriteLine($"{payloads.Count} payloads, {cells.Count} cases: {compared} compared with CPython, {handExpected} "
-            + $"hand-expected (slot mismatches by deviation membership-needle-type-mismatch; literal None by owner ruling A; "
-            + "chain links by #2648); "
-            + $"{divergences.Count} divergent in {actualByRow.Count} rows; allowlist {allowlist.Count} rows; "
-            + $"{problems.Count} pin problem line(s). Every divergence: {divergencePath}");
-
-        // Positive controls: the oracle column reaches every answer the expected map distinguishes.
-        Assert.Contains(cells, c => pythonById[c.Id].Contains("True"));
-        Assert.Contains(cells, c => pythonById[c.Id].Contains("False"));
-        Assert.Contains(cells, c => expectations[c.Id].Compared && c.Form == Form.Optional && pythonById[c.Id].Contains("TypeError"));
-        Assert.Contains(cells, c => c.Form == Form.Plain && c.Position != Position.ChainLink && sharpyById[c.Id].Values != null);
-        // The optional column can pass: a reference payload's T | None needle already runs and prints False for None.
-        Assert.Contains(cells, c => c.Form == Form.Optional && sharpyById[c.Id].Values is { } v
-            && v.Contains("False") && v.SequenceEqual(pythonById[c.Id]) && divergences.All(d => d.Cell != c));
-        // The element-optionality axis discriminates, container by container: a None needle into an optional element
-        // is a member (CPython `True False True` over a member, a non-member and None), so a lift that answers False
-        // for every None needle is red there, and a container whose optional variant lost its None element is red here.
-        // The Sharpy half (the cell runs and agrees today) holds for every element-typed container but the named ones.
-        var trueFalseTrue = new[] { "True", "False", "True" };
-        var controlled = 0;
-        foreach (var container in ElementTypedRoster)
-        {
-            controlled++;
-            var controls = cells.Where(c => c.Container == container && c.OptionalElement && c.Form == Form.Optional
-                && c.Operator == BinaryOperator.In && expectations[c.Id].Compared).ToList();
-            Assert.True(controls.Any(c => pythonById[c.Id].SequenceEqual(trueFalseTrue)),
-                $"{container}OfOptional: no compared T | None needle cell where CPython answers True False True "
-                + "(the optional variant must hold a None element)");
-            if (!OptionalElementControlExcluded.ContainsKey(container))
-                Assert.True(controls.Any(c => pythonById[c.Id].SequenceEqual(trueFalseTrue)
-                        && sharpyById[c.Id].Values is { } v && v.SequenceEqual(trueFalseTrue)),
-                    $"{container}OfOptional: no cell where Sharpy also answers True False True (exempt it in "
-                    + "OptionalElementControlExcluded with a reason and an issue, or fix it)");
-            else
-                Assert.False(controls.Any(c => sharpyById[c.Id].Values is { } v && v.SequenceEqual(trueFalseTrue)),
-                    $"{container} is in OptionalElementControlExcluded but Sharpy now answers True False True: "
-                    + "delete the exemption");
-        }
-        Assert.Equal(ElementTypedRoster.Length, controlled);
-
-        // Written on every run, header included, so copying it over the allowlist is a byte-identical round trip
-        // when nothing moved and a reviewable diff when something did.
-        var proposedPath = Path.Combine(reportDir, "optional-membership-differential-proposed-allowlist.txt");
-        File.WriteAllText(proposedPath, string.Join("\n", ProposedAllowlist(actualByRow, allowlist)) + "\n");
-
-        if (problems.Count > 0)
-        {
-            var problemPath = Path.Combine(reportDir, "optional-membership-differential-pin-problems.txt");
-            File.WriteAllLines(problemPath, problems);
-            Assert.Fail($"{problems.Count} pin problem line(s) against {AllowlistFileName}: every line is in {problemPath}; "
-                + $"a regenerated allowlist (rows' citations kept) is in {proposedPath}. First lines:\n"
-                + string.Join("\n", problems.Take(30))
-                + (declarationOrderProblem != null ? "\nAlso: " + declarationOrderProblem : ""));
-        }
-        Assert.True(declarationOrderProblem == null, declarationOrderProblem);
+        return problems;
     }
 
     /// <summary>The first 16 hex digits of SHA-256 over the row's sorted <c>cell -&gt; verdict</c> lines.</summary>
@@ -1255,18 +1982,37 @@ public class OptionalMembershipDifferentialTests : IntegrationTestBase
         "# them. On a failure the test writes every problem and a regenerated allowlist under .claude/tmp/; every",
         "# divergence (cell, CPython's answer, Sharpy's, the expectation) is written there on every run. Delete a row when",
         "# its last cell passes. Pin lines are comments, so scorecard_metrics.py counts one row per container/needle.",
+        "#",
+        "# A row marked 'bulk' ('<row>  cells=N  pin=HEX  bulk  # citation') carries no pin lines: its count and digest are",
+        "# checked against the divergent cells, which the divergence report lists. The cells of plan P93's three classes",
+        "# have rows of their own: Order/* (#2645: every cell that observes operand order), then by value UserIterable/*",
+        "# (#2653: a class that only iterates) and ChainLink/* (#2648: an `in` link of a comparison chain).",
     };
 
+    /// <summary>A new row with more cells than this is proposed as a <c>bulk</c> row (no pin lines).</summary>
+    private const int BulkRowThreshold = 400;
+
+    /// <summary>The allowlist as it should read: the rows a fact owns from its divergent cells (a kept row keeps its
+    /// citation and its bulk mark), and the other fact's rows as committed.</summary>
     private static IEnumerable<string> ProposedAllowlist(
-        IReadOnlyDictionary<string, Dictionary<string, string>> actualByRow, IReadOnlyDictionary<string, PinnedRow> allowlist)
+        IReadOnlyDictionary<string, Dictionary<string, string>> actualByRow, IReadOnlyDictionary<string, PinnedRow> allowlist,
+        Func<string, bool> owns)
     {
         foreach (var line in AllowlistHeader)
             yield return line;
-        foreach (var (row, cellsInRow) in actualByRow.OrderBy(r => r.Key, StringComparer.Ordinal))
+        var rows = actualByRow.Keys.Union(allowlist.Keys.Where(r => !owns(r))).OrderBy(r => r, StringComparer.Ordinal);
+        foreach (var row in rows)
         {
-            var cite = allowlist.TryGetValue(row, out var old) ? old.Citation : "# see #<open issue>";
+            allowlist.TryGetValue(row, out var old);
+            var cellsInRow = owns(row) ? actualByRow[row] : old!.Cells;
+            var count = owns(row) ? cellsInRow.Count : old!.Count;
+            var pin = owns(row) ? Digest(cellsInRow) : old!.Pin;
+            var cite = old?.Citation ?? "# see #<open issue>";
+            var bulk = old?.Bulk ?? cellsInRow.Count > BulkRowThreshold;
             yield return "";
-            yield return $"{row}  cells={cellsInRow.Count}  pin={Digest(cellsInRow)}  {cite}";
+            yield return $"{row}  cells={count}  pin={pin}  {(bulk ? "bulk  " : "")}{cite}";
+            if (bulk)
+                continue;
             foreach (var (key, verdict) in cellsInRow.OrderBy(c => c.Key, StringComparer.Ordinal))
                 yield return $"#= {key} -> {verdict}";
         }
@@ -1574,7 +2320,8 @@ public class OptionalMembershipDifferentialTests : IntegrationTestBase
     }
 
     /// <summary>The container axis is the spec's "Container kinds" table: every row is mapped, every mapped row
-    /// exists, and every <see cref="Container"/> comes from exactly one row.</summary>
+    /// exists, and every <see cref="Container"/> comes from exactly one row or one owner ruling
+    /// (<see cref="RuledContainerKinds"/>).</summary>
     private static void AssertContainerAxisIsTheSpecTable()
     {
         var spec = PythonInterpreter.FindRepoFile("docs", "language_specification", "membership_operators.md")
@@ -1601,14 +2348,25 @@ public class OptionalMembershipDifferentialTests : IntegrationTestBase
         Assert.True(rows.Count >= 5, $"the spec's Container kinds table was not found ({rows.Count} rows)");
         var mapped = SpecRowMap.Select(m => m.Row).ToList();
         Assert.Equal(rows.OrderBy(r => r, StringComparer.Ordinal), mapped.OrderBy(r => r, StringComparer.Ordinal));
-        var fromRows = SpecRowMap.SelectMany(m => m.Generated).ToList();
+        // A ruled kind is generated before the spec carries its row: none of them is a spec row's container, each
+        // names its ruling and its reason, and the spec table has no `__iter__` row yet (when it gains R-NZ's row,
+        // this is red until that entry moves into SpecRowMap).
+        var ruled = RuledContainerKinds.SelectMany(k => k.Generated).ToList();
+        Assert.All(RuledContainerKinds, k => Assert.True(k.Generated.Length > 0
+            && System.Text.RegularExpressions.Regex.IsMatch(k.Ruling, "^R-[A-Z]+$")
+            && System.Text.RegularExpressions.Regex.IsMatch(k.Why, "#[0-9]+"),
+            $"{k.Ruling}: a ruled container kind needs its containers, its ruling letter and a reason with an issue"));
+        Assert.True(!rows.Any(r => r.Contains("__iter__", StringComparison.Ordinal)),
+            "the spec's Container kinds table now has an `__iter__` row: move R-NZ's containers from "
+            + "RuledContainerKinds into SpecRowMap under that row");
+        var fromRows = SpecRowMap.SelectMany(m => m.Generated).Concat(ruled).ToList();
         Assert.Equal(fromRows.Count, fromRows.Distinct().Count());
         Assert.Equal(Enum.GetValues<Container>().OrderBy(c => c), fromRows.OrderBy(c => c));
     }
 
     /// <summary>A row: its key, the count and digest its header pins, its citation comment, and the pinned cells
     /// (<c>#= cell -&gt; verdict</c> comment lines under it, which <c>scorecard_metrics.py</c> does not count).</summary>
-    private sealed record PinnedRow(int Count, string Pin, string Citation, Dictionary<string, string> Cells);
+    private sealed record PinnedRow(int Count, string Pin, string Citation, Dictionary<string, string> Cells, bool Bulk = false);
 
     private static Dictionary<string, PinnedRow> LoadAllowlist()
     {
@@ -1624,6 +2382,7 @@ public class OptionalMembershipDifferentialTests : IntegrationTestBase
             {
                 var arrow = line.IndexOf(" -> ", StringComparison.Ordinal);
                 Assert.True(current != null && arrow > 2, $"{AllowlistFileName}: a pin line outside a row or without ' -> ': {raw}");
+                Assert.False(current!.Bulk, $"{AllowlistFileName}: a pin line under a bulk row: {raw}");
                 current!.Cells[line[2..arrow].Trim()] = line[(arrow + 4)..].Trim();
                 continue;
             }
@@ -1640,7 +2399,7 @@ public class OptionalMembershipDifferentialTests : IntegrationTestBase
                 && System.Text.RegularExpressions.Regex.IsMatch(citation, @"#[0-9]+"),
                 $"{AllowlistFileName}: a row needs 'cells=N pin=HEX # see #NNN' (an issue number): {raw}");
             current = new PinnedRow(int.Parse(count!["cells=".Length..], CultureInfo.InvariantCulture), pin!["pin=".Length..],
-                citation, new Dictionary<string, string>(StringComparer.Ordinal));
+                citation, new Dictionary<string, string>(StringComparer.Ordinal), parts.Contains("bulk"));
             rows.Add(parts[0], current);
         }
         return rows;

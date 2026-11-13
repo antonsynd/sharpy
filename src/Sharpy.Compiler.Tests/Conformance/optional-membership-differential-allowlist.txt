@@ -7,28 +7,33 @@
 # them. On a failure the test writes every problem and a regenerated allowlist under .claude/tmp/; every
 # divergence (cell, CPython's answer, Sharpy's, the expectation) is written there on every run. Delete a row when
 # its last cell passes. Pin lines are comments, so scorecard_metrics.py counts one row per container/needle.
+#
+# A row marked 'bulk' ('<row>  cells=N  pin=HEX  bulk  # citation') carries no pin lines: its count and digest are
+# checked against the divergent cells, which the divergence report lists. The cells of plan P93's three classes
+# have rows of their own: Order/* (#2645: every cell that observes operand order), then by value UserIterable/*
+# (#2653: a class that only iterates) and ChainLink/* (#2648: an `in` link of a comparison chain).
 
-ArgparseNamespace/NoneNeedle  cells=8  pin=6d340d31dfabfa8f  # see #2674 (owner ruling H, 2026-11-12): the 8 Optional cells of `T: struct` (SPY0220 at the feeder's call, before the membership test) wait on the value-ness work
-#= T: struct/ArgparseNamespace/Optional/in/ChainLink -> sharpy refused SPY0220,SPY0222 | expected refused SPY0222
+ArgparseNamespace/NoneNeedle  cells=6  pin=af058dcf50c151c9  # see #2674 (owner ruling H, 2026-11-12): the 6 Optional cells of `T: struct` (SPY0220 at the feeder's call, before the membership test) wait on the value-ness work
 #= T: struct/ArgparseNamespace/Optional/in/ComprehensionFilter -> sharpy refused SPY0220,SPY0222 | expected refused SPY0222
 #= T: struct/ArgparseNamespace/Optional/in/Expression -> sharpy refused SPY0220,SPY0222 | expected refused SPY0222
 #= T: struct/ArgparseNamespace/Optional/in/IfCondition -> sharpy refused SPY0220,SPY0222 | expected refused SPY0222
-#= T: struct/ArgparseNamespace/Optional/not in/ChainLink -> sharpy refused SPY0220,SPY0222 | expected refused SPY0222
 #= T: struct/ArgparseNamespace/Optional/not in/ComprehensionFilter -> sharpy refused SPY0220,SPY0222 | expected refused SPY0222
 #= T: struct/ArgparseNamespace/Optional/not in/Expression -> sharpy refused SPY0220,SPY0222 | expected refused SPY0222
 #= T: struct/ArgparseNamespace/Optional/not in/IfCondition -> sharpy refused SPY0220,SPY0222 | expected refused SPY0222
 
-Bytes/NoneNeedle  cells=8  pin=6f18180ff0644ccd  # see #2674 (owner ruling H, 2026-11-12): the 8 Optional cells of `T: struct` (SPY0220 at the feeder's call, before the membership test) wait on the value-ness work
-#= T: struct/Bytes/Optional/in/ChainLink -> sharpy refused SPY0220,SPY0222 | expected refused SPY0222
+Bytes/NoneNeedle  cells=6  pin=45df7f844b74e640  # see #2674 (owner ruling H, 2026-11-12): the 6 Optional cells of `T: struct` (SPY0220 at the feeder's call, before the membership test) wait on the value-ness work
 #= T: struct/Bytes/Optional/in/ComprehensionFilter -> sharpy refused SPY0220,SPY0222 | expected refused SPY0222
 #= T: struct/Bytes/Optional/in/Expression -> sharpy refused SPY0220,SPY0222 | expected refused SPY0222
 #= T: struct/Bytes/Optional/in/IfCondition -> sharpy refused SPY0220,SPY0222 | expected refused SPY0222
-#= T: struct/Bytes/Optional/not in/ChainLink -> sharpy refused SPY0220,SPY0222 | expected refused SPY0222
 #= T: struct/Bytes/Optional/not in/ComprehensionFilter -> sharpy refused SPY0220,SPY0222 | expected refused SPY0222
 #= T: struct/Bytes/Optional/not in/Expression -> sharpy refused SPY0220,SPY0222 | expected refused SPY0222
 #= T: struct/Bytes/Optional/not in/IfCondition -> sharpy refused SPY0220,SPY0222 | expected refused SPY0222
 
-ChainMap/NoneNeedle  cells=26  pin=63b917abd3bceae3  # see #2674 (owner ruling H, 2026-11-12): the 26 Optional cells of `Color`, `GS[int]`, `Self@SS` (6 each, SPY0908) and `T: struct` (8, SPY0220) wait on the value-ness work
+ChainLink/NoneNeedle  cells=2814  pin=37a0bcad5849554a  bulk  # see #2648 (plan P93): by value, an `in` / `not in` link of a comparison chain is refused by code generation (SPY0519), or by an earlier stage's check when one speaks first; a link gets its binary twin's verdict. Cells whose expression twin is itself known-red stay red for the twin's issue when the link lowers (#2651 `CounterOfOptional`, #2674 the value-ness payloads)
+
+ChainLink/Plain  cells=1868  pin=89dab9eaa7f78715  bulk  # see #2648 (plan P93): by value, an `in` / `not in` link of a comparison chain is refused by code generation (SPY0519) where its expression twin runs or is refused by another code; cells whose twin is known-red stay red for the twin's issue when the link lowers (#2651)
+
+ChainMap/NoneNeedle  cells=24  pin=7f7b0f30437a9622  # see #2674 (owner ruling H, 2026-11-12): the 24 Optional cells of `Color`, `GS[int]`, `Self@SS` (6 each, SPY0908) and `T: struct` (6, SPY0220) wait on the value-ness work
 #= Color/ChainMap/Optional/in/ComprehensionFilter -> sharpy refused SPY0908 | expected python True False False
 #= Color/ChainMap/Optional/in/Expression -> sharpy refused SPY0908 | expected python True False False
 #= Color/ChainMap/Optional/in/IfCondition -> sharpy refused SPY0908 | expected python True False False
@@ -47,16 +52,14 @@ ChainMap/NoneNeedle  cells=26  pin=63b917abd3bceae3  # see #2674 (owner ruling H
 #= Self@SS/ChainMap/Optional/not in/ComprehensionFilter -> sharpy refused SPY0908 | expected python False True True
 #= Self@SS/ChainMap/Optional/not in/Expression -> sharpy refused SPY0908 | expected python False True True
 #= Self@SS/ChainMap/Optional/not in/IfCondition -> sharpy refused SPY0908 | expected python False True True
-#= T: struct/ChainMap/Optional/in/ChainLink -> sharpy refused SPY0220 | expected refused SPY0519
 #= T: struct/ChainMap/Optional/in/ComprehensionFilter -> sharpy refused SPY0220 | expected python True False False
 #= T: struct/ChainMap/Optional/in/Expression -> sharpy refused SPY0220 | expected python True False False
 #= T: struct/ChainMap/Optional/in/IfCondition -> sharpy refused SPY0220 | expected python True False False
-#= T: struct/ChainMap/Optional/not in/ChainLink -> sharpy refused SPY0220 | expected refused SPY0519
 #= T: struct/ChainMap/Optional/not in/ComprehensionFilter -> sharpy refused SPY0220 | expected python False True True
 #= T: struct/ChainMap/Optional/not in/Expression -> sharpy refused SPY0220 | expected python False True True
 #= T: struct/ChainMap/Optional/not in/IfCondition -> sharpy refused SPY0220 | expected python False True True
 
-ContainsDunder/NoneNeedle  cells=26  pin=b2b37bc8d9dffa86  # see #2674 (owner ruling H, 2026-11-12): the 26 Optional cells of `Color`, `GS[int]`, `Self@SS` (6 each, SPY0908) and `T: struct` (8, SPY0220) wait on the value-ness work
+ContainsDunder/NoneNeedle  cells=24  pin=712447efd0b8956a  # see #2674 (owner ruling H, 2026-11-12): the 24 Optional cells of `Color`, `GS[int]`, `Self@SS` (6 each, SPY0908) and `T: struct` (6, SPY0220) wait on the value-ness work
 #= Color/ContainsDunder/Optional/in/ComprehensionFilter -> sharpy refused SPY0908 | expected python True False False
 #= Color/ContainsDunder/Optional/in/Expression -> sharpy refused SPY0908 | expected python True False False
 #= Color/ContainsDunder/Optional/in/IfCondition -> sharpy refused SPY0908 | expected python True False False
@@ -75,16 +78,14 @@ ContainsDunder/NoneNeedle  cells=26  pin=b2b37bc8d9dffa86  # see #2674 (owner ru
 #= Self@SS/ContainsDunder/Optional/not in/ComprehensionFilter -> sharpy refused SPY0908 | expected python False True True
 #= Self@SS/ContainsDunder/Optional/not in/Expression -> sharpy refused SPY0908 | expected python False True True
 #= Self@SS/ContainsDunder/Optional/not in/IfCondition -> sharpy refused SPY0908 | expected python False True True
-#= T: struct/ContainsDunder/Optional/in/ChainLink -> sharpy refused SPY0220 | expected refused SPY0519
 #= T: struct/ContainsDunder/Optional/in/ComprehensionFilter -> sharpy refused SPY0220 | expected python True False False
 #= T: struct/ContainsDunder/Optional/in/Expression -> sharpy refused SPY0220 | expected python True False False
 #= T: struct/ContainsDunder/Optional/in/IfCondition -> sharpy refused SPY0220 | expected python True False False
-#= T: struct/ContainsDunder/Optional/not in/ChainLink -> sharpy refused SPY0220 | expected refused SPY0519
 #= T: struct/ContainsDunder/Optional/not in/ComprehensionFilter -> sharpy refused SPY0220 | expected python False True True
 #= T: struct/ContainsDunder/Optional/not in/Expression -> sharpy refused SPY0220 | expected python False True True
 #= T: struct/ContainsDunder/Optional/not in/IfCondition -> sharpy refused SPY0220 | expected python False True True
 
-Counter/NoneNeedle  cells=26  pin=a363973d0f884355  # see #2674 (owner ruling H, 2026-11-12): the 26 Optional cells of `Color`, `GS[int]`, `Self@SS` (6 each, SPY0908) and `T: struct` (8, SPY0220) wait on the value-ness work
+Counter/NoneNeedle  cells=24  pin=09c27123db9a5624  # see #2674 (owner ruling H, 2026-11-12): the 24 Optional cells of `Color`, `GS[int]`, `Self@SS` (6 each, SPY0908) and `T: struct` (6, SPY0220) wait on the value-ness work
 #= Color/Counter/Optional/in/ComprehensionFilter -> sharpy refused SPY0908 | expected python True False False
 #= Color/Counter/Optional/in/Expression -> sharpy refused SPY0908 | expected python True False False
 #= Color/Counter/Optional/in/IfCondition -> sharpy refused SPY0908 | expected python True False False
@@ -103,11 +104,9 @@ Counter/NoneNeedle  cells=26  pin=a363973d0f884355  # see #2674 (owner ruling H,
 #= Self@SS/Counter/Optional/not in/ComprehensionFilter -> sharpy refused SPY0908 | expected python False True True
 #= Self@SS/Counter/Optional/not in/Expression -> sharpy refused SPY0908 | expected python False True True
 #= Self@SS/Counter/Optional/not in/IfCondition -> sharpy refused SPY0908 | expected python False True True
-#= T: struct/Counter/Optional/in/ChainLink -> sharpy refused SPY0220 | expected refused SPY0519
 #= T: struct/Counter/Optional/in/ComprehensionFilter -> sharpy refused SPY0220 | expected python True False False
 #= T: struct/Counter/Optional/in/Expression -> sharpy refused SPY0220 | expected python True False False
 #= T: struct/Counter/Optional/in/IfCondition -> sharpy refused SPY0220 | expected python True False False
-#= T: struct/Counter/Optional/not in/ChainLink -> sharpy refused SPY0220 | expected refused SPY0519
 #= T: struct/Counter/Optional/not in/ComprehensionFilter -> sharpy refused SPY0220 | expected python False True True
 #= T: struct/Counter/Optional/not in/Expression -> sharpy refused SPY0220 | expected python False True True
 #= T: struct/Counter/Optional/not in/IfCondition -> sharpy refused SPY0220 | expected python False True True
@@ -650,7 +649,7 @@ CounterOfOptional/Plain  cells=180  pin=05409c98aae87860  # #2651 (outside plan-
 #= uint8/CounterOfOptional/Plain/not in/Expression -> sharpy values other other | expected python False True
 #= uint8/CounterOfOptional/Plain/not in/IfCondition -> sharpy values other other | expected python False True
 
-DefaultDict/NoneNeedle  cells=26  pin=8434bed8382a80d4  # see #2674 (owner ruling H, 2026-11-12): the 26 Optional cells of `Color`, `GS[int]`, `Self@SS` (6 each, SPY0908) and `T: struct` (8, SPY0220) wait on the value-ness work
+DefaultDict/NoneNeedle  cells=24  pin=6e7fd58b3a37fe33  # see #2674 (owner ruling H, 2026-11-12): the 24 Optional cells of `Color`, `GS[int]`, `Self@SS` (6 each, SPY0908) and `T: struct` (6, SPY0220) wait on the value-ness work
 #= Color/DefaultDict/Optional/in/ComprehensionFilter -> sharpy refused SPY0908 | expected python True False False
 #= Color/DefaultDict/Optional/in/Expression -> sharpy refused SPY0908 | expected python True False False
 #= Color/DefaultDict/Optional/in/IfCondition -> sharpy refused SPY0908 | expected python True False False
@@ -669,16 +668,14 @@ DefaultDict/NoneNeedle  cells=26  pin=8434bed8382a80d4  # see #2674 (owner rulin
 #= Self@SS/DefaultDict/Optional/not in/ComprehensionFilter -> sharpy refused SPY0908 | expected python False True True
 #= Self@SS/DefaultDict/Optional/not in/Expression -> sharpy refused SPY0908 | expected python False True True
 #= Self@SS/DefaultDict/Optional/not in/IfCondition -> sharpy refused SPY0908 | expected python False True True
-#= T: struct/DefaultDict/Optional/in/ChainLink -> sharpy refused SPY0220 | expected refused SPY0519
 #= T: struct/DefaultDict/Optional/in/ComprehensionFilter -> sharpy refused SPY0220 | expected python True False False
 #= T: struct/DefaultDict/Optional/in/Expression -> sharpy refused SPY0220 | expected python True False False
 #= T: struct/DefaultDict/Optional/in/IfCondition -> sharpy refused SPY0220 | expected python True False False
-#= T: struct/DefaultDict/Optional/not in/ChainLink -> sharpy refused SPY0220 | expected refused SPY0519
 #= T: struct/DefaultDict/Optional/not in/ComprehensionFilter -> sharpy refused SPY0220 | expected python False True True
 #= T: struct/DefaultDict/Optional/not in/Expression -> sharpy refused SPY0220 | expected python False True True
 #= T: struct/DefaultDict/Optional/not in/IfCondition -> sharpy refused SPY0220 | expected python False True True
 
-Deque/NoneNeedle  cells=26  pin=11586beafafaf20b  # see #2674 (owner ruling H, 2026-11-12): the 26 Optional cells of `Color`, `GS[int]`, `Self@SS` (6 each, SPY0908) and `T: struct` (8, SPY0220) wait on the value-ness work
+Deque/NoneNeedle  cells=24  pin=bf7e0c2064cd66fd  # see #2674 (owner ruling H, 2026-11-12): the 24 Optional cells of `Color`, `GS[int]`, `Self@SS` (6 each, SPY0908) and `T: struct` (6, SPY0220) wait on the value-ness work
 #= Color/Deque/Optional/in/ComprehensionFilter -> sharpy refused SPY0908 | expected python True False False
 #= Color/Deque/Optional/in/Expression -> sharpy refused SPY0908 | expected python True False False
 #= Color/Deque/Optional/in/IfCondition -> sharpy refused SPY0908 | expected python True False False
@@ -697,16 +694,14 @@ Deque/NoneNeedle  cells=26  pin=11586beafafaf20b  # see #2674 (owner ruling H, 2
 #= Self@SS/Deque/Optional/not in/ComprehensionFilter -> sharpy refused SPY0908 | expected python False True True
 #= Self@SS/Deque/Optional/not in/Expression -> sharpy refused SPY0908 | expected python False True True
 #= Self@SS/Deque/Optional/not in/IfCondition -> sharpy refused SPY0908 | expected python False True True
-#= T: struct/Deque/Optional/in/ChainLink -> sharpy refused SPY0220 | expected refused SPY0519
 #= T: struct/Deque/Optional/in/ComprehensionFilter -> sharpy refused SPY0220 | expected python True False False
 #= T: struct/Deque/Optional/in/Expression -> sharpy refused SPY0220 | expected python True False False
 #= T: struct/Deque/Optional/in/IfCondition -> sharpy refused SPY0220 | expected python True False False
-#= T: struct/Deque/Optional/not in/ChainLink -> sharpy refused SPY0220 | expected refused SPY0519
 #= T: struct/Deque/Optional/not in/ComprehensionFilter -> sharpy refused SPY0220 | expected python False True True
 #= T: struct/Deque/Optional/not in/Expression -> sharpy refused SPY0220 | expected python False True True
 #= T: struct/Deque/Optional/not in/IfCondition -> sharpy refused SPY0220 | expected python False True True
 
-Dict/NoneNeedle  cells=26  pin=448de0f6f34aab49  # see #2674 (owner ruling H, 2026-11-12): the 26 Optional cells of `Color`, `GS[int]`, `Self@SS` (6 each, SPY0908) and `T: struct` (8, SPY0220) wait on the value-ness work
+Dict/NoneNeedle  cells=24  pin=e1998d2b4b109c5c  # see #2674 (owner ruling H, 2026-11-12): the 24 Optional cells of `Color`, `GS[int]`, `Self@SS` (6 each, SPY0908) and `T: struct` (6, SPY0220) wait on the value-ness work
 #= Color/Dict/Optional/in/ComprehensionFilter -> sharpy refused SPY0908 | expected python True False False
 #= Color/Dict/Optional/in/Expression -> sharpy refused SPY0908 | expected python True False False
 #= Color/Dict/Optional/in/IfCondition -> sharpy refused SPY0908 | expected python True False False
@@ -725,16 +720,14 @@ Dict/NoneNeedle  cells=26  pin=448de0f6f34aab49  # see #2674 (owner ruling H, 20
 #= Self@SS/Dict/Optional/not in/ComprehensionFilter -> sharpy refused SPY0908 | expected python False True True
 #= Self@SS/Dict/Optional/not in/Expression -> sharpy refused SPY0908 | expected python False True True
 #= Self@SS/Dict/Optional/not in/IfCondition -> sharpy refused SPY0908 | expected python False True True
-#= T: struct/Dict/Optional/in/ChainLink -> sharpy refused SPY0220 | expected refused SPY0519
 #= T: struct/Dict/Optional/in/ComprehensionFilter -> sharpy refused SPY0220 | expected python True False False
 #= T: struct/Dict/Optional/in/Expression -> sharpy refused SPY0220 | expected python True False False
 #= T: struct/Dict/Optional/in/IfCondition -> sharpy refused SPY0220 | expected python True False False
-#= T: struct/Dict/Optional/not in/ChainLink -> sharpy refused SPY0220 | expected refused SPY0519
 #= T: struct/Dict/Optional/not in/ComprehensionFilter -> sharpy refused SPY0220 | expected python False True True
 #= T: struct/Dict/Optional/not in/Expression -> sharpy refused SPY0220 | expected python False True True
 #= T: struct/Dict/Optional/not in/IfCondition -> sharpy refused SPY0220 | expected python False True True
 
-DictKeys/NoneNeedle  cells=26  pin=75d7e209a79435ba  # see #2674 (owner ruling H, 2026-11-12): the 26 Optional cells of `Color`, `GS[int]`, `Self@SS` (6 each, SPY0908) and `T: struct` (8, SPY0220) wait on the value-ness work
+DictKeys/NoneNeedle  cells=24  pin=b52161274a0f28b2  # see #2674 (owner ruling H, 2026-11-12): the 24 Optional cells of `Color`, `GS[int]`, `Self@SS` (6 each, SPY0908) and `T: struct` (6, SPY0220) wait on the value-ness work
 #= Color/DictKeys/Optional/in/ComprehensionFilter -> sharpy refused SPY0908 | expected python True False False
 #= Color/DictKeys/Optional/in/Expression -> sharpy refused SPY0908 | expected python True False False
 #= Color/DictKeys/Optional/in/IfCondition -> sharpy refused SPY0908 | expected python True False False
@@ -753,16 +746,14 @@ DictKeys/NoneNeedle  cells=26  pin=75d7e209a79435ba  # see #2674 (owner ruling H
 #= Self@SS/DictKeys/Optional/not in/ComprehensionFilter -> sharpy refused SPY0908 | expected python False True True
 #= Self@SS/DictKeys/Optional/not in/Expression -> sharpy refused SPY0908 | expected python False True True
 #= Self@SS/DictKeys/Optional/not in/IfCondition -> sharpy refused SPY0908 | expected python False True True
-#= T: struct/DictKeys/Optional/in/ChainLink -> sharpy refused SPY0220 | expected refused SPY0519
 #= T: struct/DictKeys/Optional/in/ComprehensionFilter -> sharpy refused SPY0220 | expected python True False False
 #= T: struct/DictKeys/Optional/in/Expression -> sharpy refused SPY0220 | expected python True False False
 #= T: struct/DictKeys/Optional/in/IfCondition -> sharpy refused SPY0220 | expected python True False False
-#= T: struct/DictKeys/Optional/not in/ChainLink -> sharpy refused SPY0220 | expected refused SPY0519
 #= T: struct/DictKeys/Optional/not in/ComprehensionFilter -> sharpy refused SPY0220 | expected python False True True
 #= T: struct/DictKeys/Optional/not in/Expression -> sharpy refused SPY0220 | expected python False True True
 #= T: struct/DictKeys/Optional/not in/IfCondition -> sharpy refused SPY0220 | expected python False True True
 
-DictValues/NoneNeedle  cells=26  pin=a6a466960b15edf5  # see #2674 (owner ruling H, 2026-11-12): the 26 Optional cells of `Color`, `GS[int]`, `Self@SS` (6 each, SPY0908) and `T: struct` (8, SPY0220) wait on the value-ness work
+DictValues/NoneNeedle  cells=24  pin=e95525cb6726ab6a  # see #2674 (owner ruling H, 2026-11-12): the 24 Optional cells of `Color`, `GS[int]`, `Self@SS` (6 each, SPY0908) and `T: struct` (6, SPY0220) wait on the value-ness work
 #= Color/DictValues/Optional/in/ComprehensionFilter -> sharpy refused SPY0908 | expected python True False False
 #= Color/DictValues/Optional/in/Expression -> sharpy refused SPY0908 | expected python True False False
 #= Color/DictValues/Optional/in/IfCondition -> sharpy refused SPY0908 | expected python True False False
@@ -781,26 +772,22 @@ DictValues/NoneNeedle  cells=26  pin=a6a466960b15edf5  # see #2674 (owner ruling
 #= Self@SS/DictValues/Optional/not in/ComprehensionFilter -> sharpy refused SPY0908 | expected python False True True
 #= Self@SS/DictValues/Optional/not in/Expression -> sharpy refused SPY0908 | expected python False True True
 #= Self@SS/DictValues/Optional/not in/IfCondition -> sharpy refused SPY0908 | expected python False True True
-#= T: struct/DictValues/Optional/in/ChainLink -> sharpy refused SPY0220 | expected refused SPY0519
 #= T: struct/DictValues/Optional/in/ComprehensionFilter -> sharpy refused SPY0220 | expected python True False False
 #= T: struct/DictValues/Optional/in/Expression -> sharpy refused SPY0220 | expected python True False False
 #= T: struct/DictValues/Optional/in/IfCondition -> sharpy refused SPY0220 | expected python True False False
-#= T: struct/DictValues/Optional/not in/ChainLink -> sharpy refused SPY0220 | expected refused SPY0519
 #= T: struct/DictValues/Optional/not in/ComprehensionFilter -> sharpy refused SPY0220 | expected python False True True
 #= T: struct/DictValues/Optional/not in/Expression -> sharpy refused SPY0220 | expected python False True True
 #= T: struct/DictValues/Optional/not in/IfCondition -> sharpy refused SPY0220 | expected python False True True
 
-EmailMessage/NoneNeedle  cells=8  pin=b901e94d0302dbf4  # see #2674 (owner ruling H, 2026-11-12): the 8 Optional cells of `T: struct` (SPY0220 at the feeder's call, before the membership test) wait on the value-ness work
-#= T: struct/EmailMessage/Optional/in/ChainLink -> sharpy refused SPY0220,SPY0222 | expected refused SPY0222
+EmailMessage/NoneNeedle  cells=6  pin=ccf1ef26491a2f1d  # see #2674 (owner ruling H, 2026-11-12): the 6 Optional cells of `T: struct` (SPY0220 at the feeder's call, before the membership test) wait on the value-ness work
 #= T: struct/EmailMessage/Optional/in/ComprehensionFilter -> sharpy refused SPY0220,SPY0222 | expected refused SPY0222
 #= T: struct/EmailMessage/Optional/in/Expression -> sharpy refused SPY0220,SPY0222 | expected refused SPY0222
 #= T: struct/EmailMessage/Optional/in/IfCondition -> sharpy refused SPY0220,SPY0222 | expected refused SPY0222
-#= T: struct/EmailMessage/Optional/not in/ChainLink -> sharpy refused SPY0220,SPY0222 | expected refused SPY0222
 #= T: struct/EmailMessage/Optional/not in/ComprehensionFilter -> sharpy refused SPY0220,SPY0222 | expected refused SPY0222
 #= T: struct/EmailMessage/Optional/not in/Expression -> sharpy refused SPY0220,SPY0222 | expected refused SPY0222
 #= T: struct/EmailMessage/Optional/not in/IfCondition -> sharpy refused SPY0220,SPY0222 | expected refused SPY0222
 
-FrozenDict/NoneNeedle  cells=26  pin=814a0c0882a24662  # see #2674 (owner ruling H, 2026-11-12): the 26 Optional cells of `Color`, `GS[int]`, `Self@SS` (6 each, SPY0908) and `T: struct` (8, SPY0220) wait on the value-ness work
+FrozenDict/NoneNeedle  cells=24  pin=0063c2cdab4dafd3  # see #2674 (owner ruling H, 2026-11-12): the 24 Optional cells of `Color`, `GS[int]`, `Self@SS` (6 each, SPY0908) and `T: struct` (6, SPY0220) wait on the value-ness work
 #= Color/FrozenDict/Optional/in/ComprehensionFilter -> sharpy refused SPY0908 | expected python True False False
 #= Color/FrozenDict/Optional/in/Expression -> sharpy refused SPY0908 | expected python True False False
 #= Color/FrozenDict/Optional/in/IfCondition -> sharpy refused SPY0908 | expected python True False False
@@ -819,16 +806,14 @@ FrozenDict/NoneNeedle  cells=26  pin=814a0c0882a24662  # see #2674 (owner ruling
 #= Self@SS/FrozenDict/Optional/not in/ComprehensionFilter -> sharpy refused SPY0908 | expected python False True True
 #= Self@SS/FrozenDict/Optional/not in/Expression -> sharpy refused SPY0908 | expected python False True True
 #= Self@SS/FrozenDict/Optional/not in/IfCondition -> sharpy refused SPY0908 | expected python False True True
-#= T: struct/FrozenDict/Optional/in/ChainLink -> sharpy refused SPY0220 | expected refused SPY0519
 #= T: struct/FrozenDict/Optional/in/ComprehensionFilter -> sharpy refused SPY0220 | expected python True False False
 #= T: struct/FrozenDict/Optional/in/Expression -> sharpy refused SPY0220 | expected python True False False
 #= T: struct/FrozenDict/Optional/in/IfCondition -> sharpy refused SPY0220 | expected python True False False
-#= T: struct/FrozenDict/Optional/not in/ChainLink -> sharpy refused SPY0220 | expected refused SPY0519
 #= T: struct/FrozenDict/Optional/not in/ComprehensionFilter -> sharpy refused SPY0220 | expected python False True True
 #= T: struct/FrozenDict/Optional/not in/Expression -> sharpy refused SPY0220 | expected python False True True
 #= T: struct/FrozenDict/Optional/not in/IfCondition -> sharpy refused SPY0220 | expected python False True True
 
-FrozenSet/NoneNeedle  cells=26  pin=b3b147a8fadf2406  # see #2674 (owner ruling H, 2026-11-12): the 26 Optional cells of `Color`, `GS[int]`, `Self@SS` (6 each, SPY0908) and `T: struct` (8, SPY0220) wait on the value-ness work
+FrozenSet/NoneNeedle  cells=24  pin=3ac0c8bf3256620e  # see #2674 (owner ruling H, 2026-11-12): the 24 Optional cells of `Color`, `GS[int]`, `Self@SS` (6 each, SPY0908) and `T: struct` (6, SPY0220) wait on the value-ness work
 #= Color/FrozenSet/Optional/in/ComprehensionFilter -> sharpy refused SPY0908 | expected python True False False
 #= Color/FrozenSet/Optional/in/Expression -> sharpy refused SPY0908 | expected python True False False
 #= Color/FrozenSet/Optional/in/IfCondition -> sharpy refused SPY0908 | expected python True False False
@@ -847,36 +832,56 @@ FrozenSet/NoneNeedle  cells=26  pin=b3b147a8fadf2406  # see #2674 (owner ruling 
 #= Self@SS/FrozenSet/Optional/not in/ComprehensionFilter -> sharpy refused SPY0908 | expected python False True True
 #= Self@SS/FrozenSet/Optional/not in/Expression -> sharpy refused SPY0908 | expected python False True True
 #= Self@SS/FrozenSet/Optional/not in/IfCondition -> sharpy refused SPY0908 | expected python False True True
-#= T: struct/FrozenSet/Optional/in/ChainLink -> sharpy refused SPY0220 | expected refused SPY0519
 #= T: struct/FrozenSet/Optional/in/ComprehensionFilter -> sharpy refused SPY0220 | expected python True False False
 #= T: struct/FrozenSet/Optional/in/Expression -> sharpy refused SPY0220 | expected python True False False
 #= T: struct/FrozenSet/Optional/in/IfCondition -> sharpy refused SPY0220 | expected python True False False
-#= T: struct/FrozenSet/Optional/not in/ChainLink -> sharpy refused SPY0220 | expected refused SPY0519
 #= T: struct/FrozenSet/Optional/not in/ComprehensionFilter -> sharpy refused SPY0220 | expected python False True True
 #= T: struct/FrozenSet/Optional/not in/Expression -> sharpy refused SPY0220 | expected python False True True
 #= T: struct/FrozenSet/Optional/not in/IfCondition -> sharpy refused SPY0220 | expected python False True True
 
-IPv4Network/NoneNeedle  cells=8  pin=f4faff703c0f65a2  # see #2674 (owner ruling H, 2026-11-12): the 8 Optional cells of `T: struct` (SPY0220 at the feeder's call, before the membership test) wait on the value-ness work
-#= T: struct/IPv4Network/Optional/in/ChainLink -> sharpy refused SPY0220,SPY0222 | expected refused SPY0222
+GetItemLen/NoneNeedle  cells=24  pin=b20e9e2e38ac4a47  # see #2653 (plan P93, owner ruling R-OA 2026-11-12): 18 literal-None cells of the type-parameter payloads are refused by the needle check alone (SPY0222: a generic class's `__getitem__` resolves a needle slot) where the container's refusal (SPY0320) is due; the 6 Optional cells of `T: struct` (SPY0220 at the feeder's call) wait on #2674
+#= T/GetItemLen/NoneLiteral/in/ComprehensionFilter -> sharpy refused SPY0222 | expected refused SPY0320
+#= T/GetItemLen/NoneLiteral/in/Expression -> sharpy refused SPY0222 | expected refused SPY0320
+#= T/GetItemLen/NoneLiteral/in/IfCondition -> sharpy refused SPY0222 | expected refused SPY0320
+#= T/GetItemLen/NoneLiteral/not in/ComprehensionFilter -> sharpy refused SPY0222 | expected refused SPY0320
+#= T/GetItemLen/NoneLiteral/not in/Expression -> sharpy refused SPY0222 | expected refused SPY0320
+#= T/GetItemLen/NoneLiteral/not in/IfCondition -> sharpy refused SPY0222 | expected refused SPY0320
+#= T: class/GetItemLen/NoneLiteral/in/ComprehensionFilter -> sharpy refused SPY0222 | expected refused SPY0320
+#= T: class/GetItemLen/NoneLiteral/in/Expression -> sharpy refused SPY0222 | expected refused SPY0320
+#= T: class/GetItemLen/NoneLiteral/in/IfCondition -> sharpy refused SPY0222 | expected refused SPY0320
+#= T: class/GetItemLen/NoneLiteral/not in/ComprehensionFilter -> sharpy refused SPY0222 | expected refused SPY0320
+#= T: class/GetItemLen/NoneLiteral/not in/Expression -> sharpy refused SPY0222 | expected refused SPY0320
+#= T: class/GetItemLen/NoneLiteral/not in/IfCondition -> sharpy refused SPY0222 | expected refused SPY0320
+#= T: struct/GetItemLen/NoneLiteral/in/ComprehensionFilter -> sharpy refused SPY0222 | expected refused SPY0320
+#= T: struct/GetItemLen/NoneLiteral/in/Expression -> sharpy refused SPY0222 | expected refused SPY0320
+#= T: struct/GetItemLen/NoneLiteral/in/IfCondition -> sharpy refused SPY0222 | expected refused SPY0320
+#= T: struct/GetItemLen/NoneLiteral/not in/ComprehensionFilter -> sharpy refused SPY0222 | expected refused SPY0320
+#= T: struct/GetItemLen/NoneLiteral/not in/Expression -> sharpy refused SPY0222 | expected refused SPY0320
+#= T: struct/GetItemLen/NoneLiteral/not in/IfCondition -> sharpy refused SPY0222 | expected refused SPY0320
+#= T: struct/GetItemLen/Optional/in/ComprehensionFilter -> sharpy refused SPY0220 | expected refused SPY0320
+#= T: struct/GetItemLen/Optional/in/Expression -> sharpy refused SPY0220 | expected refused SPY0320
+#= T: struct/GetItemLen/Optional/in/IfCondition -> sharpy refused SPY0220 | expected refused SPY0320
+#= T: struct/GetItemLen/Optional/not in/ComprehensionFilter -> sharpy refused SPY0220 | expected refused SPY0320
+#= T: struct/GetItemLen/Optional/not in/Expression -> sharpy refused SPY0220 | expected refused SPY0320
+#= T: struct/GetItemLen/Optional/not in/IfCondition -> sharpy refused SPY0220 | expected refused SPY0320
+
+IPv4Network/NoneNeedle  cells=6  pin=6ecc2063ad251162  # see #2674 (owner ruling H, 2026-11-12): the 6 Optional cells of `T: struct` (SPY0220 at the feeder's call, before the membership test) wait on the value-ness work
 #= T: struct/IPv4Network/Optional/in/ComprehensionFilter -> sharpy refused SPY0220,SPY0222 | expected refused SPY0222
 #= T: struct/IPv4Network/Optional/in/Expression -> sharpy refused SPY0220,SPY0222 | expected refused SPY0222
 #= T: struct/IPv4Network/Optional/in/IfCondition -> sharpy refused SPY0220,SPY0222 | expected refused SPY0222
-#= T: struct/IPv4Network/Optional/not in/ChainLink -> sharpy refused SPY0220,SPY0222 | expected refused SPY0222
 #= T: struct/IPv4Network/Optional/not in/ComprehensionFilter -> sharpy refused SPY0220,SPY0222 | expected refused SPY0222
 #= T: struct/IPv4Network/Optional/not in/Expression -> sharpy refused SPY0220,SPY0222 | expected refused SPY0222
 #= T: struct/IPv4Network/Optional/not in/IfCondition -> sharpy refused SPY0220,SPY0222 | expected refused SPY0222
 
-IPv6Network/NoneNeedle  cells=8  pin=13ea203addaba5fb  # see #2674 (owner ruling H, 2026-11-12): the 8 Optional cells of `T: struct` (SPY0220 at the feeder's call, before the membership test) wait on the value-ness work
-#= T: struct/IPv6Network/Optional/in/ChainLink -> sharpy refused SPY0220,SPY0222 | expected refused SPY0222
+IPv6Network/NoneNeedle  cells=6  pin=ce5ecbfbc1531547  # see #2674 (owner ruling H, 2026-11-12): the 6 Optional cells of `T: struct` (SPY0220 at the feeder's call, before the membership test) wait on the value-ness work
 #= T: struct/IPv6Network/Optional/in/ComprehensionFilter -> sharpy refused SPY0220,SPY0222 | expected refused SPY0222
 #= T: struct/IPv6Network/Optional/in/Expression -> sharpy refused SPY0220,SPY0222 | expected refused SPY0222
 #= T: struct/IPv6Network/Optional/in/IfCondition -> sharpy refused SPY0220,SPY0222 | expected refused SPY0222
-#= T: struct/IPv6Network/Optional/not in/ChainLink -> sharpy refused SPY0220,SPY0222 | expected refused SPY0222
 #= T: struct/IPv6Network/Optional/not in/ComprehensionFilter -> sharpy refused SPY0220,SPY0222 | expected refused SPY0222
 #= T: struct/IPv6Network/Optional/not in/Expression -> sharpy refused SPY0220,SPY0222 | expected refused SPY0222
 #= T: struct/IPv6Network/Optional/not in/IfCondition -> sharpy refused SPY0220,SPY0222 | expected refused SPY0222
 
-List/NoneNeedle  cells=26  pin=7c3d6b902f7e6cf1  # see #2674 (owner ruling H, 2026-11-12): the 26 Optional cells of `Color`, `GS[int]`, `Self@SS` (6 each, SPY0908) and `T: struct` (8, SPY0220) wait on the value-ness work
+List/NoneNeedle  cells=24  pin=3b26cd37e5ec2fdd  # see #2674 (owner ruling H, 2026-11-12): the 24 Optional cells of `Color`, `GS[int]`, `Self@SS` (6 each, SPY0908) and `T: struct` (6, SPY0220) wait on the value-ness work
 #= Color/List/Optional/in/ComprehensionFilter -> sharpy refused SPY0908 | expected python True False False
 #= Color/List/Optional/in/Expression -> sharpy refused SPY0908 | expected python True False False
 #= Color/List/Optional/in/IfCondition -> sharpy refused SPY0908 | expected python True False False
@@ -895,16 +900,18 @@ List/NoneNeedle  cells=26  pin=7c3d6b902f7e6cf1  # see #2674 (owner ruling H, 20
 #= Self@SS/List/Optional/not in/ComprehensionFilter -> sharpy refused SPY0908 | expected python False True True
 #= Self@SS/List/Optional/not in/Expression -> sharpy refused SPY0908 | expected python False True True
 #= Self@SS/List/Optional/not in/IfCondition -> sharpy refused SPY0908 | expected python False True True
-#= T: struct/List/Optional/in/ChainLink -> sharpy refused SPY0220 | expected refused SPY0519
 #= T: struct/List/Optional/in/ComprehensionFilter -> sharpy refused SPY0220 | expected python True False False
 #= T: struct/List/Optional/in/Expression -> sharpy refused SPY0220 | expected python True False False
 #= T: struct/List/Optional/in/IfCondition -> sharpy refused SPY0220 | expected python True False False
-#= T: struct/List/Optional/not in/ChainLink -> sharpy refused SPY0220 | expected refused SPY0519
 #= T: struct/List/Optional/not in/ComprehensionFilter -> sharpy refused SPY0220 | expected python False True True
 #= T: struct/List/Optional/not in/Expression -> sharpy refused SPY0220 | expected python False True True
 #= T: struct/List/Optional/not in/IfCondition -> sharpy refused SPY0220 | expected python False True True
 
-OrderedDict/NoneNeedle  cells=26  pin=da2558752dcae067  # see #2674 (owner ruling H, 2026-11-12): the 26 Optional cells of `Color`, `GS[int]`, `Self@SS` (6 each, SPY0908) and `T: struct` (8, SPY0220) wait on the value-ness work
+Order/NoneNeedle  cells=6806  pin=e726e9ca1af5d235  bulk  # see #2645 (plan P93): the plain `y.Contains(x)` evaluates the container before the needle (a reference `T | None` needle, an optional element, a needle the checker does not lift); the lifted helpers already take the needle first. The order cells of a class that only iterates are refused before that (SPY0320, #2653) and those of a chain link too (SPY0519, #2648); cells whose value twin is known-red stay red for the twin's issue (#2651, #2674)
+
+Order/Plain  cells=8082  pin=7c1857c267cf6861  bulk  # see #2645 (plan P93): the plain `y.Contains(x)` evaluates the container before the needle. The order cells of a class that only iterates are refused before that (SPY0320, #2653) and those of a chain link too (SPY0519, #2648); cells whose value twin is known-red stay red for the twin's issue (#2651)
+
+OrderedDict/NoneNeedle  cells=24  pin=666d68d8ccbed710  # see #2674 (owner ruling H, 2026-11-12): the 24 Optional cells of `Color`, `GS[int]`, `Self@SS` (6 each, SPY0908) and `T: struct` (6, SPY0220) wait on the value-ness work
 #= Color/OrderedDict/Optional/in/ComprehensionFilter -> sharpy refused SPY0908 | expected python True False False
 #= Color/OrderedDict/Optional/in/Expression -> sharpy refused SPY0908 | expected python True False False
 #= Color/OrderedDict/Optional/in/IfCondition -> sharpy refused SPY0908 | expected python True False False
@@ -923,26 +930,283 @@ OrderedDict/NoneNeedle  cells=26  pin=da2558752dcae067  # see #2674 (owner rulin
 #= Self@SS/OrderedDict/Optional/not in/ComprehensionFilter -> sharpy refused SPY0908 | expected python False True True
 #= Self@SS/OrderedDict/Optional/not in/Expression -> sharpy refused SPY0908 | expected python False True True
 #= Self@SS/OrderedDict/Optional/not in/IfCondition -> sharpy refused SPY0908 | expected python False True True
-#= T: struct/OrderedDict/Optional/in/ChainLink -> sharpy refused SPY0220 | expected refused SPY0519
 #= T: struct/OrderedDict/Optional/in/ComprehensionFilter -> sharpy refused SPY0220 | expected python True False False
 #= T: struct/OrderedDict/Optional/in/Expression -> sharpy refused SPY0220 | expected python True False False
 #= T: struct/OrderedDict/Optional/in/IfCondition -> sharpy refused SPY0220 | expected python True False False
-#= T: struct/OrderedDict/Optional/not in/ChainLink -> sharpy refused SPY0220 | expected refused SPY0519
 #= T: struct/OrderedDict/Optional/not in/ComprehensionFilter -> sharpy refused SPY0220 | expected python False True True
 #= T: struct/OrderedDict/Optional/not in/Expression -> sharpy refused SPY0220 | expected python False True True
 #= T: struct/OrderedDict/Optional/not in/IfCondition -> sharpy refused SPY0220 | expected python False True True
 
-Range/NoneNeedle  cells=8  pin=d7a8ddfdbc566ffc  # see #2674 (owner ruling H, 2026-11-12): the 8 Optional cells of `T: struct` (SPY0220 at the feeder's call, before the membership test) wait on the value-ness work
-#= T: struct/Range/Optional/in/ChainLink -> sharpy refused SPY0220,SPY0222 | expected refused SPY0222
+Range/NoneNeedle  cells=6  pin=0b6d3710503e4681  # see #2674 (owner ruling H, 2026-11-12): the 6 Optional cells of `T: struct` (SPY0220 at the feeder's call, before the membership test) wait on the value-ness work
 #= T: struct/Range/Optional/in/ComprehensionFilter -> sharpy refused SPY0220,SPY0222 | expected refused SPY0222
 #= T: struct/Range/Optional/in/Expression -> sharpy refused SPY0220,SPY0222 | expected refused SPY0222
 #= T: struct/Range/Optional/in/IfCondition -> sharpy refused SPY0220,SPY0222 | expected refused SPY0222
-#= T: struct/Range/Optional/not in/ChainLink -> sharpy refused SPY0220,SPY0222 | expected refused SPY0222
 #= T: struct/Range/Optional/not in/ComprehensionFilter -> sharpy refused SPY0220,SPY0222 | expected refused SPY0222
 #= T: struct/Range/Optional/not in/Expression -> sharpy refused SPY0220,SPY0222 | expected refused SPY0222
 #= T: struct/Range/Optional/not in/IfCondition -> sharpy refused SPY0220,SPY0222 | expected refused SPY0222
 
-Set/NoneNeedle  cells=26  pin=a6be667c74b9f10b  # see #2674 (owner ruling H, 2026-11-12): the 26 Optional cells of `Color`, `GS[int]`, `Self@SS` (6 each, SPY0908) and `T: struct` (8, SPY0220) wait on the value-ness work
+Sequence/Binary  cells=257  pin=ea5d06047491b41f  # see #2645 (plan P93): an operator emitted as a call on its right operand evaluates it first: `in` / `not in` on the plain path, and `int * str` (the string on the right)
+#= Color/Optional/in -> sharpy prints 1 0 True | desugaring prints 0 1 True
+#= Color/Optional/not in -> sharpy prints 1 0 False | desugaring prints 0 1 False
+#= Color/Plain/in -> sharpy prints 1 0 True | desugaring prints 0 1 True
+#= Color/Plain/not in -> sharpy prints 1 0 False | desugaring prints 0 1 False
+#= Color/Tagged/in -> sharpy prints 1 0 True | desugaring prints 0 1 True
+#= Color/Tagged/not in -> sharpy prints 1 0 False | desugaring prints 0 1 False
+#= Color/TaggedLeft/in -> sharpy prints 1 0 True | desugaring prints 0 1 True
+#= Color/TaggedLeft/not in -> sharpy prints 1 0 False | desugaring prints 0 1 False
+#= D/Optional/in -> sharpy prints 1 0 True | desugaring prints 0 1 True
+#= D/Optional/not in -> sharpy prints 1 0 False | desugaring prints 0 1 False
+#= D/Plain/in -> sharpy prints 1 0 True | desugaring prints 0 1 True
+#= D/Plain/not in -> sharpy prints 1 0 False | desugaring prints 0 1 False
+#= D/Tagged/in -> sharpy prints 1 0 True | desugaring prints 0 1 True
+#= D/Tagged/not in -> sharpy prints 1 0 False | desugaring prints 0 1 False
+#= D/TaggedLeft/in -> sharpy prints 1 0 True | desugaring prints 0 1 True
+#= D/TaggedLeft/not in -> sharpy prints 1 0 False | desugaring prints 0 1 False
+#= GK[int]/Optional/in -> sharpy prints 1 0 True | desugaring prints 0 1 True
+#= GK[int]/Optional/not in -> sharpy prints 1 0 False | desugaring prints 0 1 False
+#= GK[int]/Plain/in -> sharpy prints 1 0 True | desugaring prints 0 1 True
+#= GK[int]/Plain/not in -> sharpy prints 1 0 False | desugaring prints 0 1 False
+#= GK[int]/Tagged/in -> sharpy prints 1 0 True | desugaring prints 0 1 True
+#= GK[int]/Tagged/not in -> sharpy prints 1 0 False | desugaring prints 0 1 False
+#= GK[int]/TaggedLeft/in -> sharpy prints 1 0 True | desugaring prints 0 1 True
+#= GK[int]/TaggedLeft/not in -> sharpy prints 1 0 False | desugaring prints 0 1 False
+#= GS[int]/Optional/in -> sharpy prints 1 0 True | desugaring prints 0 1 True
+#= GS[int]/Optional/not in -> sharpy prints 1 0 False | desugaring prints 0 1 False
+#= GS[int]/Plain/in -> sharpy prints 1 0 True | desugaring prints 0 1 True
+#= GS[int]/Plain/not in -> sharpy prints 1 0 False | desugaring prints 0 1 False
+#= GS[int]/Tagged/in -> sharpy prints 1 0 True | desugaring prints 0 1 True
+#= GS[int]/Tagged/not in -> sharpy prints 1 0 False | desugaring prints 0 1 False
+#= GS[int]/TaggedLeft/in -> sharpy prints 1 0 True | desugaring prints 0 1 True
+#= GS[int]/TaggedLeft/not in -> sharpy prints 1 0 False | desugaring prints 0 1 False
+#= IFace/Optional/in -> sharpy prints 1 0 True | desugaring prints 0 1 True
+#= IFace/Optional/not in -> sharpy prints 1 0 False | desugaring prints 0 1 False
+#= IFace/Plain/in -> sharpy prints 1 0 True | desugaring prints 0 1 True
+#= IFace/Plain/not in -> sharpy prints 1 0 False | desugaring prints 0 1 False
+#= IFace/Tagged/in -> sharpy prints 1 0 True | desugaring prints 0 1 True
+#= IFace/Tagged/not in -> sharpy prints 1 0 False | desugaring prints 0 1 False
+#= IPv4Address/Optional/in -> sharpy prints 1 0 True | desugaring prints 0 1 True
+#= IPv4Address/Optional/not in -> sharpy prints 1 0 False | desugaring prints 0 1 False
+#= IPv4Address/Plain/in -> sharpy prints 1 0 True | desugaring prints 0 1 True
+#= IPv4Address/Plain/not in -> sharpy prints 1 0 False | desugaring prints 0 1 False
+#= IPv4Address/Tagged/in -> sharpy prints 1 0 True | desugaring prints 0 1 True
+#= IPv4Address/Tagged/not in -> sharpy prints 1 0 False | desugaring prints 0 1 False
+#= IPv4Address/TaggedLeft/in -> sharpy prints 1 0 True | desugaring prints 0 1 True
+#= IPv4Address/TaggedLeft/not in -> sharpy prints 1 0 False | desugaring prints 0 1 False
+#= IPv6Address/Optional/in -> sharpy prints 1 0 True | desugaring prints 0 1 True
+#= IPv6Address/Optional/not in -> sharpy prints 1 0 False | desugaring prints 0 1 False
+#= IPv6Address/Plain/in -> sharpy prints 1 0 True | desugaring prints 0 1 True
+#= IPv6Address/Plain/not in -> sharpy prints 1 0 False | desugaring prints 0 1 False
+#= IPv6Address/Tagged/in -> sharpy prints 1 0 True | desugaring prints 0 1 True
+#= IPv6Address/Tagged/not in -> sharpy prints 1 0 False | desugaring prints 0 1 False
+#= IPv6Address/TaggedLeft/in -> sharpy prints 1 0 True | desugaring prints 0 1 True
+#= IPv6Address/TaggedLeft/not in -> sharpy prints 1 0 False | desugaring prints 0 1 False
+#= K/Optional/in -> sharpy prints 1 0 True | desugaring prints 0 1 True
+#= K/Optional/not in -> sharpy prints 1 0 False | desugaring prints 0 1 False
+#= K/Plain/in -> sharpy prints 1 0 True | desugaring prints 0 1 True
+#= K/Plain/not in -> sharpy prints 1 0 False | desugaring prints 0 1 False
+#= K/Tagged/in -> sharpy prints 1 0 True | desugaring prints 0 1 True
+#= K/Tagged/not in -> sharpy prints 1 0 False | desugaring prints 0 1 False
+#= K/TaggedLeft/in -> sharpy prints 1 0 True | desugaring prints 0 1 True
+#= K/TaggedLeft/not in -> sharpy prints 1 0 False | desugaring prints 0 1 False
+#= SP/Optional/in -> sharpy prints 1 0 True | desugaring prints 0 1 True
+#= SP/Optional/not in -> sharpy prints 1 0 False | desugaring prints 0 1 False
+#= SP/Plain/in -> sharpy prints 1 0 True | desugaring prints 0 1 True
+#= SP/Plain/not in -> sharpy prints 1 0 False | desugaring prints 0 1 False
+#= SP/Tagged/in -> sharpy prints 1 0 True | desugaring prints 0 1 True
+#= SP/Tagged/not in -> sharpy prints 1 0 False | desugaring prints 0 1 False
+#= SP/TaggedLeft/in -> sharpy prints 1 0 True | desugaring prints 0 1 True
+#= SP/TaggedLeft/not in -> sharpy prints 1 0 False | desugaring prints 0 1 False
+#= T/Optional/in -> sharpy prints 1 0 True | desugaring prints 0 1 True
+#= T/Optional/not in -> sharpy prints 1 0 False | desugaring prints 0 1 False
+#= T/Plain/in -> sharpy prints 1 0 True | desugaring prints 0 1 True
+#= T/Plain/not in -> sharpy prints 1 0 False | desugaring prints 0 1 False
+#= T/Tagged/in -> sharpy prints 1 0 True | desugaring prints 0 1 True
+#= T/Tagged/not in -> sharpy prints 1 0 False | desugaring prints 0 1 False
+#= T/TaggedLeft/in -> sharpy prints 1 0 True | desugaring prints 0 1 True
+#= T/TaggedLeft/not in -> sharpy prints 1 0 False | desugaring prints 0 1 False
+#= T: IComparable[T]/Optional/in -> sharpy prints 1 0 True | desugaring prints 0 1 True
+#= T: IComparable[T]/Optional/not in -> sharpy prints 1 0 False | desugaring prints 0 1 False
+#= T: IComparable[T]/Plain/in -> sharpy prints 1 0 True | desugaring prints 0 1 True
+#= T: IComparable[T]/Plain/not in -> sharpy prints 1 0 False | desugaring prints 0 1 False
+#= T: IComparable[T]/Tagged/in -> sharpy prints 1 0 True | desugaring prints 0 1 True
+#= T: IComparable[T]/Tagged/not in -> sharpy prints 1 0 False | desugaring prints 0 1 False
+#= T: IComparable[T]/TaggedLeft/in -> sharpy prints 1 0 True | desugaring prints 0 1 True
+#= T: IComparable[T]/TaggedLeft/not in -> sharpy prints 1 0 False | desugaring prints 0 1 False
+#= T: class/Optional/in -> sharpy prints 1 0 True | desugaring prints 0 1 True
+#= T: class/Optional/not in -> sharpy prints 1 0 False | desugaring prints 0 1 False
+#= T: class/Plain/in -> sharpy prints 1 0 True | desugaring prints 0 1 True
+#= T: class/Plain/not in -> sharpy prints 1 0 False | desugaring prints 0 1 False
+#= T: class/Tagged/in -> sharpy prints 1 0 True | desugaring prints 0 1 True
+#= T: class/Tagged/not in -> sharpy prints 1 0 False | desugaring prints 0 1 False
+#= T: class/TaggedLeft/in -> sharpy prints 1 0 True | desugaring prints 0 1 True
+#= T: class/TaggedLeft/not in -> sharpy prints 1 0 False | desugaring prints 0 1 False
+#= T: struct/Optional/in -> sharpy prints 1 0 True | desugaring prints 0 1 True
+#= T: struct/Optional/not in -> sharpy prints 1 0 False | desugaring prints 0 1 False
+#= T: struct/Plain/in -> sharpy prints 1 0 True | desugaring prints 0 1 True
+#= T: struct/Plain/not in -> sharpy prints 1 0 False | desugaring prints 0 1 False
+#= T: struct/Tagged/in -> sharpy prints 1 0 True | desugaring prints 0 1 True
+#= T: struct/Tagged/not in -> sharpy prints 1 0 False | desugaring prints 0 1 False
+#= T: struct/TaggedLeft/in -> sharpy prints 1 0 True | desugaring prints 0 1 True
+#= T: struct/TaggedLeft/not in -> sharpy prints 1 0 False | desugaring prints 0 1 False
+#= Tone/Optional/in -> sharpy prints 1 0 True | desugaring prints 0 1 True
+#= Tone/Optional/not in -> sharpy prints 1 0 False | desugaring prints 0 1 False
+#= Tone/Plain/in -> sharpy prints 1 0 True | desugaring prints 0 1 True
+#= Tone/Plain/in/str on the right -> sharpy prints 1 0 True | desugaring prints 0 1 True
+#= Tone/Plain/not in -> sharpy prints 1 0 False | desugaring prints 0 1 False
+#= Tone/Plain/not in/str on the right -> sharpy prints 1 0 False | desugaring prints 0 1 False
+#= Tone/Tagged/in -> sharpy prints 1 0 True | desugaring prints 0 1 True
+#= Tone/Tagged/not in -> sharpy prints 1 0 False | desugaring prints 0 1 False
+#= Tone/TaggedLeft/in -> sharpy prints 1 0 True | desugaring prints 0 1 True
+#= Tone/TaggedLeft/not in -> sharpy prints 1 0 False | desugaring prints 0 1 False
+#= U/Optional/in -> sharpy prints 1 0 True | desugaring prints 0 1 True
+#= U/Optional/not in -> sharpy prints 1 0 False | desugaring prints 0 1 False
+#= U/Plain/in -> sharpy prints 1 0 True | desugaring prints 0 1 True
+#= U/Plain/not in -> sharpy prints 1 0 False | desugaring prints 0 1 False
+#= U/Tagged/in -> sharpy prints 1 0 True | desugaring prints 0 1 True
+#= U/Tagged/not in -> sharpy prints 1 0 False | desugaring prints 0 1 False
+#= U/TaggedLeft/in -> sharpy prints 1 0 True | desugaring prints 0 1 True
+#= U/TaggedLeft/not in -> sharpy prints 1 0 False | desugaring prints 0 1 False
+#= bool/Optional/in -> sharpy prints 1 0 True | desugaring prints 0 1 True
+#= bool/Optional/not in -> sharpy prints 1 0 False | desugaring prints 0 1 False
+#= bool/Plain/in -> sharpy prints 1 0 True | desugaring prints 0 1 True
+#= bool/Plain/not in -> sharpy prints 1 0 False | desugaring prints 0 1 False
+#= bool/Tagged/in -> sharpy prints 1 0 True | desugaring prints 0 1 True
+#= bool/Tagged/not in -> sharpy prints 1 0 False | desugaring prints 0 1 False
+#= bool/TaggedLeft/in -> sharpy prints 1 0 True | desugaring prints 0 1 True
+#= bool/TaggedLeft/not in -> sharpy prints 1 0 False | desugaring prints 0 1 False
+#= bytes/Optional/in -> sharpy prints 1 0 True | desugaring prints 0 1 True
+#= bytes/Optional/not in -> sharpy prints 1 0 False | desugaring prints 0 1 False
+#= bytes/Plain/in -> sharpy prints 1 0 True | desugaring prints 0 1 True
+#= bytes/Plain/in/int on the left -> sharpy prints 1 0 False | desugaring prints 0 1 False
+#= bytes/Plain/not in -> sharpy prints 1 0 False | desugaring prints 0 1 False
+#= bytes/Plain/not in/int on the left -> sharpy prints 1 0 True | desugaring prints 0 1 True
+#= bytes/Tagged/in -> sharpy prints 1 0 True | desugaring prints 0 1 True
+#= bytes/Tagged/not in -> sharpy prints 1 0 False | desugaring prints 0 1 False
+#= bytes/TaggedLeft/in -> sharpy prints 1 0 True | desugaring prints 0 1 True
+#= bytes/TaggedLeft/not in -> sharpy prints 1 0 False | desugaring prints 0 1 False
+#= decimal/Optional/in -> sharpy prints 1 0 True | desugaring prints 0 1 True
+#= decimal/Optional/not in -> sharpy prints 1 0 False | desugaring prints 0 1 False
+#= decimal/Plain/in -> sharpy prints 1 0 True | desugaring prints 0 1 True
+#= decimal/Plain/not in -> sharpy prints 1 0 False | desugaring prints 0 1 False
+#= decimal/Tagged/in -> sharpy prints 1 0 True | desugaring prints 0 1 True
+#= decimal/Tagged/not in -> sharpy prints 1 0 False | desugaring prints 0 1 False
+#= decimal/TaggedLeft/in -> sharpy prints 1 0 True | desugaring prints 0 1 True
+#= decimal/TaggedLeft/not in -> sharpy prints 1 0 False | desugaring prints 0 1 False
+#= float32/Optional/in -> sharpy prints 1 0 True | desugaring prints 0 1 True
+#= float32/Optional/not in -> sharpy prints 1 0 False | desugaring prints 0 1 False
+#= float32/Plain/in -> sharpy prints 1 0 True | desugaring prints 0 1 True
+#= float32/Plain/not in -> sharpy prints 1 0 False | desugaring prints 0 1 False
+#= float32/Tagged/in -> sharpy prints 1 0 True | desugaring prints 0 1 True
+#= float32/Tagged/not in -> sharpy prints 1 0 False | desugaring prints 0 1 False
+#= float32/TaggedLeft/in -> sharpy prints 1 0 True | desugaring prints 0 1 True
+#= float32/TaggedLeft/not in -> sharpy prints 1 0 False | desugaring prints 0 1 False
+#= float64/Optional/in -> sharpy prints 1 0 True | desugaring prints 0 1 True
+#= float64/Optional/not in -> sharpy prints 1 0 False | desugaring prints 0 1 False
+#= float64/Plain/in -> sharpy prints 1 0 True | desugaring prints 0 1 True
+#= float64/Plain/not in -> sharpy prints 1 0 False | desugaring prints 0 1 False
+#= float64/Tagged/in -> sharpy prints 1 0 True | desugaring prints 0 1 True
+#= float64/Tagged/not in -> sharpy prints 1 0 False | desugaring prints 0 1 False
+#= float64/TaggedLeft/in -> sharpy prints 1 0 True | desugaring prints 0 1 True
+#= float64/TaggedLeft/not in -> sharpy prints 1 0 False | desugaring prints 0 1 False
+#= int16/Optional/in -> sharpy prints 1 0 True | desugaring prints 0 1 True
+#= int16/Optional/not in -> sharpy prints 1 0 False | desugaring prints 0 1 False
+#= int16/Plain/*/str on the right -> sharpy prints 1 0 ab | desugaring prints 0 1 ab
+#= int16/Plain/in -> sharpy prints 1 0 True | desugaring prints 0 1 True
+#= int16/Plain/not in -> sharpy prints 1 0 False | desugaring prints 0 1 False
+#= int16/Tagged/in -> sharpy prints 1 0 True | desugaring prints 0 1 True
+#= int16/Tagged/not in -> sharpy prints 1 0 False | desugaring prints 0 1 False
+#= int16/TaggedLeft/in -> sharpy prints 1 0 True | desugaring prints 0 1 True
+#= int16/TaggedLeft/not in -> sharpy prints 1 0 False | desugaring prints 0 1 False
+#= int32/Optional/in -> sharpy prints 1 0 True | desugaring prints 0 1 True
+#= int32/Optional/not in -> sharpy prints 1 0 False | desugaring prints 0 1 False
+#= int32/Plain/*/str on the right -> sharpy prints 1 0 ab | desugaring prints 0 1 ab
+#= int32/Plain/in -> sharpy prints 1 0 True | desugaring prints 0 1 True
+#= int32/Plain/not in -> sharpy prints 1 0 False | desugaring prints 0 1 False
+#= int32/Tagged/in -> sharpy prints 1 0 True | desugaring prints 0 1 True
+#= int32/Tagged/not in -> sharpy prints 1 0 False | desugaring prints 0 1 False
+#= int32/TaggedLeft/in -> sharpy prints 1 0 True | desugaring prints 0 1 True
+#= int32/TaggedLeft/not in -> sharpy prints 1 0 False | desugaring prints 0 1 False
+#= int64/Optional/in -> sharpy prints 1 0 True | desugaring prints 0 1 True
+#= int64/Optional/not in -> sharpy prints 1 0 False | desugaring prints 0 1 False
+#= int64/Plain/*/str on the right -> sharpy prints 1 0 ab | desugaring prints 0 1 ab
+#= int64/Plain/in -> sharpy prints 1 0 True | desugaring prints 0 1 True
+#= int64/Plain/not in -> sharpy prints 1 0 False | desugaring prints 0 1 False
+#= int64/Tagged/in -> sharpy prints 1 0 True | desugaring prints 0 1 True
+#= int64/Tagged/not in -> sharpy prints 1 0 False | desugaring prints 0 1 False
+#= int64/TaggedLeft/in -> sharpy prints 1 0 True | desugaring prints 0 1 True
+#= int64/TaggedLeft/not in -> sharpy prints 1 0 False | desugaring prints 0 1 False
+#= int8/Optional/in -> sharpy prints 1 0 True | desugaring prints 0 1 True
+#= int8/Optional/not in -> sharpy prints 1 0 False | desugaring prints 0 1 False
+#= int8/Plain/*/str on the right -> sharpy prints 1 0 ab | desugaring prints 0 1 ab
+#= int8/Plain/in -> sharpy prints 1 0 True | desugaring prints 0 1 True
+#= int8/Plain/not in -> sharpy prints 1 0 False | desugaring prints 0 1 False
+#= int8/Tagged/in -> sharpy prints 1 0 True | desugaring prints 0 1 True
+#= int8/Tagged/not in -> sharpy prints 1 0 False | desugaring prints 0 1 False
+#= int8/TaggedLeft/in -> sharpy prints 1 0 True | desugaring prints 0 1 True
+#= int8/TaggedLeft/not in -> sharpy prints 1 0 False | desugaring prints 0 1 False
+#= str/Optional/in -> sharpy prints 1 0 True | desugaring prints 0 1 True
+#= str/Optional/not in -> sharpy prints 1 0 False | desugaring prints 0 1 False
+#= str/Plain/*/int on the left -> sharpy prints 1 0 aa | desugaring prints 0 1 aa
+#= str/Plain/*/int64 on the left -> sharpy prints 1 0 aa | desugaring prints 0 1 aa
+#= str/Plain/in -> sharpy prints 1 0 True | desugaring prints 0 1 True
+#= str/Plain/in/str on the left -> sharpy prints 1 0 False | desugaring prints 0 1 False
+#= str/Plain/in/str on the right -> sharpy prints 1 0 True | desugaring prints 0 1 True
+#= str/Plain/not in -> sharpy prints 1 0 False | desugaring prints 0 1 False
+#= str/Plain/not in/str on the left -> sharpy prints 1 0 True | desugaring prints 0 1 True
+#= str/Plain/not in/str on the right -> sharpy prints 1 0 False | desugaring prints 0 1 False
+#= str/Tagged/in -> sharpy prints 1 0 True | desugaring prints 0 1 True
+#= str/Tagged/not in -> sharpy prints 1 0 False | desugaring prints 0 1 False
+#= str/TaggedLeft/in -> sharpy prints 1 0 True | desugaring prints 0 1 True
+#= str/TaggedLeft/not in -> sharpy prints 1 0 False | desugaring prints 0 1 False
+#= tuple[int, int]/Optional/in -> sharpy prints 1 0 True | desugaring prints 0 1 True
+#= tuple[int, int]/Optional/not in -> sharpy prints 1 0 False | desugaring prints 0 1 False
+#= tuple[int, int]/Plain/in -> sharpy prints 1 0 True | desugaring prints 0 1 True
+#= tuple[int, int]/Plain/in/int on the left -> sharpy prints 1 0 True | desugaring prints 0 1 True
+#= tuple[int, int]/Plain/not in -> sharpy prints 1 0 False | desugaring prints 0 1 False
+#= tuple[int, int]/Plain/not in/int on the left -> sharpy prints 1 0 False | desugaring prints 0 1 False
+#= tuple[int, int]/Tagged/in -> sharpy prints 1 0 True | desugaring prints 0 1 True
+#= tuple[int, int]/Tagged/not in -> sharpy prints 1 0 False | desugaring prints 0 1 False
+#= tuple[int, int]/TaggedLeft/in -> sharpy prints 1 0 True | desugaring prints 0 1 True
+#= tuple[int, int]/TaggedLeft/not in -> sharpy prints 1 0 False | desugaring prints 0 1 False
+#= uint16/Optional/in -> sharpy prints 1 0 True | desugaring prints 0 1 True
+#= uint16/Optional/not in -> sharpy prints 1 0 False | desugaring prints 0 1 False
+#= uint16/Plain/*/str on the right -> sharpy prints 1 0 ab | desugaring prints 0 1 ab
+#= uint16/Plain/in -> sharpy prints 1 0 True | desugaring prints 0 1 True
+#= uint16/Plain/not in -> sharpy prints 1 0 False | desugaring prints 0 1 False
+#= uint16/Tagged/in -> sharpy prints 1 0 True | desugaring prints 0 1 True
+#= uint16/Tagged/not in -> sharpy prints 1 0 False | desugaring prints 0 1 False
+#= uint16/TaggedLeft/in -> sharpy prints 1 0 True | desugaring prints 0 1 True
+#= uint16/TaggedLeft/not in -> sharpy prints 1 0 False | desugaring prints 0 1 False
+#= uint32/Optional/in -> sharpy prints 1 0 True | desugaring prints 0 1 True
+#= uint32/Optional/not in -> sharpy prints 1 0 False | desugaring prints 0 1 False
+#= uint32/Plain/*/str on the right -> sharpy prints 1 0 ab | desugaring prints 0 1 ab
+#= uint32/Plain/in -> sharpy prints 1 0 True | desugaring prints 0 1 True
+#= uint32/Plain/not in -> sharpy prints 1 0 False | desugaring prints 0 1 False
+#= uint32/Tagged/in -> sharpy prints 1 0 True | desugaring prints 0 1 True
+#= uint32/Tagged/not in -> sharpy prints 1 0 False | desugaring prints 0 1 False
+#= uint32/TaggedLeft/in -> sharpy prints 1 0 True | desugaring prints 0 1 True
+#= uint32/TaggedLeft/not in -> sharpy prints 1 0 False | desugaring prints 0 1 False
+#= uint64/Optional/in -> sharpy prints 1 0 True | desugaring prints 0 1 True
+#= uint64/Optional/not in -> sharpy prints 1 0 False | desugaring prints 0 1 False
+#= uint64/Plain/in -> sharpy prints 1 0 True | desugaring prints 0 1 True
+#= uint64/Plain/not in -> sharpy prints 1 0 False | desugaring prints 0 1 False
+#= uint64/Tagged/in -> sharpy prints 1 0 True | desugaring prints 0 1 True
+#= uint64/Tagged/not in -> sharpy prints 1 0 False | desugaring prints 0 1 False
+#= uint64/TaggedLeft/in -> sharpy prints 1 0 True | desugaring prints 0 1 True
+#= uint64/TaggedLeft/not in -> sharpy prints 1 0 False | desugaring prints 0 1 False
+#= uint8/Optional/in -> sharpy prints 1 0 True | desugaring prints 0 1 True
+#= uint8/Optional/not in -> sharpy prints 1 0 False | desugaring prints 0 1 False
+#= uint8/Plain/*/str on the right -> sharpy prints 1 0 ab | desugaring prints 0 1 ab
+#= uint8/Plain/in -> sharpy prints 1 0 True | desugaring prints 0 1 True
+#= uint8/Plain/not in -> sharpy prints 1 0 False | desugaring prints 0 1 False
+#= uint8/Tagged/in -> sharpy prints 1 0 True | desugaring prints 0 1 True
+#= uint8/Tagged/not in -> sharpy prints 1 0 False | desugaring prints 0 1 False
+#= uint8/TaggedLeft/in -> sharpy prints 1 0 True | desugaring prints 0 1 True
+#= uint8/TaggedLeft/not in -> sharpy prints 1 0 False | desugaring prints 0 1 False
+
+Sequence/Chain  cells=6248  pin=87a48378aa1accaa  bulk  # see #2648 (plan P93): a chain with an `in`, `not in`, `is` or `is not` link is refused by code generation (SPY0519) where its desugaring runs or is refused by another code, and a chain whose link the binary form refuses (SPY0402, SPY0320) compiles or reaches Roslyn: a link gets its binary twin's verdict
+
+Set/NoneNeedle  cells=24  pin=677ac81edfe12515  # see #2674 (owner ruling H, 2026-11-12): the 24 Optional cells of `Color`, `GS[int]`, `Self@SS` (6 each, SPY0908) and `T: struct` (6, SPY0220) wait on the value-ness work
 #= Color/Set/Optional/in/ComprehensionFilter -> sharpy refused SPY0908 | expected python True False False
 #= Color/Set/Optional/in/Expression -> sharpy refused SPY0908 | expected python True False False
 #= Color/Set/Optional/in/IfCondition -> sharpy refused SPY0908 | expected python True False False
@@ -961,26 +1225,22 @@ Set/NoneNeedle  cells=26  pin=a6be667c74b9f10b  # see #2674 (owner ruling H, 202
 #= Self@SS/Set/Optional/not in/ComprehensionFilter -> sharpy refused SPY0908 | expected python False True True
 #= Self@SS/Set/Optional/not in/Expression -> sharpy refused SPY0908 | expected python False True True
 #= Self@SS/Set/Optional/not in/IfCondition -> sharpy refused SPY0908 | expected python False True True
-#= T: struct/Set/Optional/in/ChainLink -> sharpy refused SPY0220 | expected refused SPY0519
 #= T: struct/Set/Optional/in/ComprehensionFilter -> sharpy refused SPY0220 | expected python True False False
 #= T: struct/Set/Optional/in/Expression -> sharpy refused SPY0220 | expected python True False False
 #= T: struct/Set/Optional/in/IfCondition -> sharpy refused SPY0220 | expected python True False False
-#= T: struct/Set/Optional/not in/ChainLink -> sharpy refused SPY0220 | expected refused SPY0519
 #= T: struct/Set/Optional/not in/ComprehensionFilter -> sharpy refused SPY0220 | expected python False True True
 #= T: struct/Set/Optional/not in/Expression -> sharpy refused SPY0220 | expected python False True True
 #= T: struct/Set/Optional/not in/IfCondition -> sharpy refused SPY0220 | expected python False True True
 
-Str/NoneNeedle  cells=8  pin=5740c2ed319de176  # see #2674 (owner ruling H, 2026-11-12): the 8 Optional cells of `T: struct` (SPY0220 at the feeder's call, before the membership test) wait on the value-ness work
-#= T: struct/Str/Optional/in/ChainLink -> sharpy refused SPY0220,SPY0222 | expected refused SPY0222
+Str/NoneNeedle  cells=6  pin=1e159dadc91116d4  # see #2674 (owner ruling H, 2026-11-12): the 6 Optional cells of `T: struct` (SPY0220 at the feeder's call, before the membership test) wait on the value-ness work
 #= T: struct/Str/Optional/in/ComprehensionFilter -> sharpy refused SPY0220,SPY0222 | expected refused SPY0222
 #= T: struct/Str/Optional/in/Expression -> sharpy refused SPY0220,SPY0222 | expected refused SPY0222
 #= T: struct/Str/Optional/in/IfCondition -> sharpy refused SPY0220,SPY0222 | expected refused SPY0222
-#= T: struct/Str/Optional/not in/ChainLink -> sharpy refused SPY0220,SPY0222 | expected refused SPY0222
 #= T: struct/Str/Optional/not in/ComprehensionFilter -> sharpy refused SPY0220,SPY0222 | expected refused SPY0222
 #= T: struct/Str/Optional/not in/Expression -> sharpy refused SPY0220,SPY0222 | expected refused SPY0222
 #= T: struct/Str/Optional/not in/IfCondition -> sharpy refused SPY0220,SPY0222 | expected refused SPY0222
 
-Tuple/NoneNeedle  cells=26  pin=4041250adbd882a7  # see #2674 (owner ruling H, 2026-11-12): the 26 Optional cells of `Color`, `GS[int]`, `Self@SS` (6 each, SPY0908) and `T: struct` (8, SPY0220) wait on the value-ness work
+Tuple/NoneNeedle  cells=24  pin=cd48dc274482bf90  # see #2674 (owner ruling H, 2026-11-12): the 24 Optional cells of `Color`, `GS[int]`, `Self@SS` (6 each, SPY0908) and `T: struct` (6, SPY0220) wait on the value-ness work
 #= Color/Tuple/Optional/in/ComprehensionFilter -> sharpy refused SPY0908 | expected python True False False
 #= Color/Tuple/Optional/in/Expression -> sharpy refused SPY0908 | expected python True False False
 #= Color/Tuple/Optional/in/IfCondition -> sharpy refused SPY0908 | expected python True False False
@@ -999,11 +1259,13 @@ Tuple/NoneNeedle  cells=26  pin=4041250adbd882a7  # see #2674 (owner ruling H, 2
 #= Self@SS/Tuple/Optional/not in/ComprehensionFilter -> sharpy refused SPY0908 | expected python False True True
 #= Self@SS/Tuple/Optional/not in/Expression -> sharpy refused SPY0908 | expected python False True True
 #= Self@SS/Tuple/Optional/not in/IfCondition -> sharpy refused SPY0908 | expected python False True True
-#= T: struct/Tuple/Optional/in/ChainLink -> sharpy refused SPY0220 | expected refused SPY0519
 #= T: struct/Tuple/Optional/in/ComprehensionFilter -> sharpy refused SPY0220 | expected python True False False
 #= T: struct/Tuple/Optional/in/Expression -> sharpy refused SPY0220 | expected python True False False
 #= T: struct/Tuple/Optional/in/IfCondition -> sharpy refused SPY0220 | expected python True False False
-#= T: struct/Tuple/Optional/not in/ChainLink -> sharpy refused SPY0220 | expected refused SPY0519
 #= T: struct/Tuple/Optional/not in/ComprehensionFilter -> sharpy refused SPY0220 | expected python False True True
 #= T: struct/Tuple/Optional/not in/Expression -> sharpy refused SPY0220 | expected python False True True
 #= T: struct/Tuple/Optional/not in/IfCondition -> sharpy refused SPY0220 | expected python False True True
+
+UserIterable/NoneNeedle  cells=1664  pin=72f1d969e5291cd3  bulk  # see #2653 (plan P93, owner ruling R-NZ 2026-11-12): by value, a class with `__iter__` and no `__contains__`, plain or generic, is refused (SPY0320), in an expression and as a chain link (#2648 once it is accepted); the value-ness payloads wait on #2674
+
+UserIterable/Plain  cells=976  pin=753aa85e9c4cda1b  bulk  # see #2653 (plan P93, owner ruling R-NZ 2026-11-12): by value, a class with `__iter__` and no `__contains__`, plain or generic, is refused (SPY0320), in an expression and as a chain link (#2648 once it is accepted)
