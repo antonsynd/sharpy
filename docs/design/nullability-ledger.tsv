@@ -28,8 +28,8 @@ int | None	eq_None	value	[False]	refused SPY0222	[False]	gap: refused today
 int | None	eq_None	none	[True]	refused SPY0222	[True]	gap: refused today
 int | None	eq_value	value	[True]	[True]	[True]	ok
 int | None	eq_value	none	[False]	[False]	[False]	ok
-int | None	in_list	value	[True]	refused SPY0222	[True]	gap: refused today
-int | None	in_list	none	[False]	refused SPY0222	[False]	gap: refused today
+int | None	in_list	value	[True]	[True]	[True]	ok
+int | None	in_list	none	[False]	[False]	[False]	ok
 int | None	dict_key	value	[1]	[1]	[1]	ok
 int | None	dict_key	none	[1]	[1]	[1]	ok
 int | None	qdot	value	[5]	[5]	[5]	ok
