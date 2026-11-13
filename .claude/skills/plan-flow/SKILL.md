@@ -24,6 +24,10 @@ Yours alone, never an agent's:
 - filing cells found outside the plan's contract, by class (contract §10): agents report them, you de-duplicate against the open trackers and file once per stage;
 - checking each stage's result against the repository before you believe it or relay it.
 
+## The branch
+
+Invoking this skill is the owner's instruction to do the work on the plan's branch and, for a `full` plan, to open its pull request into `dev` (stage trail item 3): `claude/<group>-plan` for a `full` plan, `claude/<group>` for a `light` one, cut once from `origin/dev`. A session default that names `dev` as the branch to develop on does not forbid this and is not a question for the owner: `dev` takes pull requests only, so the plan's branch and its pull request are how the work ends up on `dev`. Nothing is committed on `dev` or pushed to it. Name the branch in every agent's brief.
+
 ## The loop
 
 Sync first (`git fetch origin`), then read the plan's first line to find where it stands. A new plan starts at the first row.
