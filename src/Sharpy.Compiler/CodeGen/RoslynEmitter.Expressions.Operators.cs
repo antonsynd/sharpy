@@ -73,6 +73,49 @@ internal partial class RoslynEmitter
         }
     }
 
+    /// <summary>
+    /// The lowering of one <c>is</c> / <c>is not</c> between two values (neither the None literal),
+    /// read from the kind the checker recorded (<c>TypeChecker.ClassifyEnumIdentity</c>, #2669) — the
+    /// ONE emission the binary operator and the enum-member type-test spelling
+    /// (<see cref="GenerateTypeCheck"/>) share:
+    /// <list type="bullet">
+    /// <item><see cref="OperatorLoweringKind.EnumIdentityEquals"/> — the native <c>l == r</c> /
+    /// <c>l != r</c> of one int-backed enum type (lifted over <c>E?</c>);</item>
+    /// <item><see cref="OperatorLoweringKind.EnumIdentityObjectEquals"/> — <c>object.Equals(l, r)</c>,
+    /// negated for <c>is not</c>;</item>
+    /// <item>anything else — <c>object.ReferenceEquals(l, r)</c>, negated for <c>is not</c>.</item>
+    /// </list>
+    /// Each operand syntax is spliced exactly once in every arm.
+    /// </summary>
+    private static ExpressionSyntax GenerateIdentityComparison(
+        OperatorLoweringKind kind, ExpressionSyntax left, ExpressionSyntax right, bool negated)
+    {
+        if (kind == OperatorLoweringKind.EnumIdentityEquals)
+        {
+            return Binary(negated ? SyntaxKind.NotEqualsExpression : SyntaxKind.EqualsExpression, left, right);
+        }
+
+        var comparer = kind == OperatorLoweringKind.EnumIdentityObjectEquals ? "Equals" : "ReferenceEquals";
+        ExpressionSyntax call = InvocationExpression(
+            MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression,
+                PredefinedType(Token(SyntaxKind.ObjectKeyword)),
+                IdentifierName(comparer)))
+            .AddArgumentListArguments(
+                Argument(left),
+                Argument(right));
+        return negated ? Prefix(SyntaxKind.LogicalNotExpression, call) : call;
+    }
+
+    /// <summary>
+    /// Whether <paramref name="kind"/> is one of the identity lowerings the checker records for an
+    /// <c>is</c> with an enum operand (#2669): the comparison is then a VALUE comparison, which a
+    /// reference assertion (<c>Xunit.Assert.Same</c>) cannot observe.
+    /// </summary>
+    private static bool IsEnumIdentityLowering(OperatorLoweringKind kind)
+        => kind is OperatorLoweringKind.EnumIdentityEquals
+            or OperatorLoweringKind.EnumIdentityObjectEquals
+            or OperatorLoweringKind.EnumMemberReferenceIdentity;
+
     private ExpressionSyntax GenerateBinaryOp(BinaryOp binOp)
     {
         // `and` emits a plain `left && right` (kind mapped below). Narrowing of RHS reads
@@ -209,26 +252,13 @@ internal partial class RoslynEmitter
                 // `None is x` on an Optional to ReferenceEquals on a boxed struct: always false.
                 if (NoneTestSubject(binOp, left, right) is { } isNoneSubject)
                     return GenerateNoneTest(binOp, isNoneSubject, negated: false);
-                return InvocationExpression(
-                    MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression,
-                        PredefinedType(Token(SyntaxKind.ObjectKeyword)),
-                        IdentifierName("ReferenceEquals")))
-                    .AddArgumentListArguments(
-                        Argument(left),
-                        Argument(right));
+                return GenerateIdentityComparison(OperatorLoweringOf(binOp).Kind, left, right, negated: false);
 
             case BinaryOperator.IsNot:
                 // Mirror of the Is arm (#2171): `None is not x` is `x is not None`.
                 if (NoneTestSubject(binOp, left, right) is { } isNotNoneSubject)
                     return GenerateNoneTest(binOp, isNotNoneSubject, negated: true);
-                return Prefix(SyntaxKind.LogicalNotExpression,
-                    InvocationExpression(
-                        MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression,
-                            PredefinedType(Token(SyntaxKind.ObjectKeyword)),
-                            IdentifierName("ReferenceEquals")))
-                        .AddArgumentListArguments(
-                            Argument(left),
-                            Argument(right)));
+                return GenerateIdentityComparison(OperatorLoweringOf(binOp).Kind, left, right, negated: true);
 
             case BinaryOperator.Multiply:
                 {
@@ -1275,6 +1305,18 @@ internal partial class RoslynEmitter
         // annotation. That distinction is why it is written this way (Critical Rule 2): mapping the
         // annotation directly is what emitted the unspellable open generic `Box<T>` (CS0305 →
         // SPY0908, #1235) back when this arm was live.
+        //
+        // The one LIVE path (#2669): a type test the checker resolved as an identity comparison
+        // against an enum member (`x is Color.RED`) — it recorded an identity lowering on the node
+        // and type-checked the expression reading of the name, so this is the binary `is` emission
+        // over (value, member), operands generated left to right.
+        var identityKind = OperatorLoweringOf(check).Kind;
+        if (check.IdentityOperand is { } identityOperand && IsEnumIdentityLowering(identityKind))
+        {
+            var identityOperands = GenerateExpressionsInOrder(new[] { check.Value, identityOperand });
+            return GenerateIdentityComparison(identityKind, identityOperands[0], identityOperands[1], negated: false);
+        }
+
         var value = GenerateExpression(check.Value);
         var checkType = MapClassifiedTypeOperand(check.CheckType);
 

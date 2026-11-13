@@ -615,7 +615,8 @@ public static partial class DiagnosticExplanations
             "Validation",
             "The 'is' operator (identity/reference equality) is used with a value type. " +
             "Value types are compared by value, not by reference, so 'is' may not behave as expected. " +
-            "Use '==' for value comparison instead.",
+            "Use '==' for value comparison instead. An enum operand is exempt: enum members are " +
+            "singletons, so 'is' on an enum compares the members by value and never draws this warning.",
             "x: int = 42\nif x is 42: ...",
             "Use '==' instead of 'is' for value types:\nif x == 42: ...");
         // ── Validation warnings: Deprecated usage (SPY0466) ──────────────

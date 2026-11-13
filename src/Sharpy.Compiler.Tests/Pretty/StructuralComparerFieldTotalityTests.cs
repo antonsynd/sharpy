@@ -55,6 +55,9 @@ public class StructuralComparerFieldTotalityTests
         ["ImportAlias.NameParts"] = DottedSpelling,
         ["FromImportStatement.ModuleParts"] = DottedSpelling,
         ["TypeAnnotation.NameParts"] = DottedSpelling,
+        ["TypeCheck.IdentityOperand"] = "a second reading of CheckType's own tokens (#2669), built by the parser from the same dotted name: "
+            + "it is a function of CheckType (compared) and of whether the node heads a comparison (the parent's shape, compared), so two "
+            + "trees that agree on those agree on it; hand-built and unparsed-then-reparsed nodes legitimately differ in having it at all",
         ["FromImportStatement.ReExportedSymbols"] = "semantic-analysis output (symbols), written after parsing — the Rule-3 smell beside ResolvedModulePath",
         ["FromImportStatement.ResolvedModulePath"] = "semantic-analysis output written onto the node after parsing (a Rule-3 smell, ledgered), not a syntax fact the formatter could drop",
     };

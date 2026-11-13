@@ -304,7 +304,14 @@ internal partial class RoslynEmitter
         }
 
         // assert a is b → Xunit.Assert.Same(b, a)
-        if (test is BinaryOp { Operator: BinaryOperator.Is } isSame)
+        //
+        // Not when the checker recorded an enum identity lowering (#2669): `is` on an int-backed enum
+        // is value equality, and Assert.Same / Assert.NotSame box both operands — Same could never
+        // pass, NotSame could never fail. Such a test reaches the fallback below,
+        // Xunit.Assert.True(<the ordinary `is` lowering>), so the test host asserts exactly what
+        // `sharpyc run` computes.
+        if (test is BinaryOp { Operator: BinaryOperator.Is } isSame
+            && !IsEnumIdentityLowering(OperatorLoweringOf(isSame).Kind))
         {
             var ordered = GenerateExpressionsInOrder(new Expression[] { isSame.Left, isSame.Right });
             return ExpressionStatement(InvocationExpression(
@@ -315,7 +322,8 @@ internal partial class RoslynEmitter
         }
 
         // assert a is not b → Xunit.Assert.NotSame(b, a)
-        if (test is BinaryOp { Operator: BinaryOperator.IsNot } isNotSame)
+        if (test is BinaryOp { Operator: BinaryOperator.IsNot } isNotSame
+            && !IsEnumIdentityLowering(OperatorLoweringOf(isNotSame).Kind))
         {
             var ordered = GenerateExpressionsInOrder(new Expression[] { isNotSame.Left, isNotSame.Right });
             return ExpressionStatement(InvocationExpression(

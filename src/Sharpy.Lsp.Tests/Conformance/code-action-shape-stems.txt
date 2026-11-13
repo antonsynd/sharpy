@@ -8,10 +8,10 @@
 # GENERATED, HUMAN-REVIEWED: bash build_tools/regenerate_corpus_pins.sh rewrites the rows and the `# total` lines; review
 # the diff (a new stem's rows are its own; a moved row of an existing stem is a finding until explained). A new key's cite row in
 # code-action-shape-allowlist.txt is written by hand (the loader names it), and so is a drained key's deletion.
-# total stems identity keys=14 rows=2062
-# total stems crlf keys=8 rows=275
-# total stems cr keys=8 rows=286
-# total stems comment keys=7 rows=281
+# total stems identity keys=14 rows=2064
+# total stems crlf keys=8 rows=277
+# total stems cr keys=8 rows=288
+# total stems comment keys=7 rows=282
 extract-method identity diagnostics Formatting/module_docstring_then_statement # #2294
 extract-method identity diagnostics abstract_class_interface_stubs # #2294
 extract-method identity diagnostics access_modifiers/access_modifiers # #2294
@@ -281,6 +281,7 @@ extract-method identity diagnostics dict_view_values_operator_refused_1496 # #22
 extract-method identity diagnostics enums/enum_comparison_and_assignment_0000 # #2294
 extract-method identity diagnostics enums/enum_comprehension # #2294
 extract-method identity diagnostics enums/enum_cross_compare # #2294
+extract-method identity diagnostics enums/enum_identity_is_2669 # #2294
 extract-method identity diagnostics enums/enum_method_name_collision # #2294
 extract-method identity diagnostics enums/enum_to_int_coercion # #2294
 extract-method identity diagnostics errors/abstract_instantiation # #2294
@@ -1610,6 +1611,7 @@ remove-annotation identity diagnostics const_ref_shadowed_by_local_refused # #22
 remove-annotation identity diagnostics dataclasses/dataclass_default_mutable_list_admitted_1769 # #2296
 remove-annotation identity diagnostics deferred_overload_user_generic_1589 # #2296
 remove-annotation identity diagnostics diagnostics/member_enclosing_type_collision_1871 # #2296
+remove-annotation identity diagnostics enums/enum_identity_is_2669 # #2296
 remove-annotation identity diagnostics errors/class_attribute_bare_coalesce_store # #2296
 remove-annotation identity diagnostics errors/dataclass_default_some_refused_1769 # #2296
 remove-annotation identity diagnostics errors/element_store_reports_seam_1759 # #2296
@@ -2108,6 +2110,7 @@ extract-method crlf diagnostics decorators/deprecated_super_init # #2294
 extract-method crlf diagnostics definite_assignment/struct_field_assigned_before_try_ok_1664 # #2294
 extract-method crlf diagnostics dict_iterable_acceptance_empty # #2294
 extract-method crlf diagnostics enums/enum_cross_compare # #2294
+extract-method crlf diagnostics enums/enum_cross_type_equality_2670 # #2294
 extract-method crlf diagnostics enums/enum_hex_values # #2294
 extract-method crlf diagnostics errors/duplicate_class_field # #2294
 extract-method crlf diagnostics errors/interface_override_missing # #2294
@@ -2276,6 +2279,7 @@ inline-variable crlf diagnostics basics/arithmetic_operators_0015 # #2296
 inline-variable crlf diagnostics basics/decimal_literal_exponent_forms # #2296
 inline-variable crlf diagnostics basics/escaped_wildcard_binds_2166 # #2296
 inline-variable crlf diagnostics builtins/constructor_reference_families_1272 # #2296
+inline-variable crlf diagnostics enums/enum_cross_type_equality_2670 # #2296
 inline-variable crlf diagnostics if_elif_else_variable_scoping # #2296
 inline-variable crlf diagnostics interop/bcl_property_on_builtin_receiver_mistyped # #2296
 inline-variable crlf diagnostics interop/clr_char_member_wrong_slot_refused_1705 # #2296
@@ -2386,6 +2390,7 @@ extract-method cr diagnostics dataclass_multiword_keyword_argument_1504 # #2294
 extract-method cr diagnostics decorators/bracket_attr_custom_on_method # #2294
 extract-method cr diagnostics decorators/bracket_attr_custom_on_struct # #2294
 extract-method cr diagnostics definite_assignment/struct_field_assigned_before_try_ok_1664 # #2294
+extract-method cr diagnostics enums/enum_cross_type_equality_2670 # #2294
 extract-method cr diagnostics errors/invalid_cast # #2294
 extract-method cr diagnostics errors/property_subsumption_refused_d4 # #2294
 extract-method cr diagnostics errors/tuple_negative_index # #2294
@@ -2607,6 +2612,7 @@ wrap-try cr diagnostics collections/list_comprehension_0029 # #2296
 wrap-try cr diagnostics collections/list_literal_0004 # #2296
 wrap-try cr diagnostics collections/list_literal_0017 # #2296
 wrap-try cr diagnostics decorators/deprecated_pipe_forward # #2296
+wrap-try cr diagnostics enums/enum_cross_type_equality_2670 # #2296
 wrap-try cr diagnostics errors/interface_conflict_iterable # #2296
 wrap-try cr diagnostics errors/super_init_called_twice # #2296
 wrap-try cr diagnostics events/event_abstract_stub_paren_ellipsis_0001 # #2296
@@ -2846,6 +2852,7 @@ extract-variable comment parse events/event_with_lambda_subscribe_0059 # #2294
 extract-variable comment parse functions/operator_sections # #2294
 extract-variable comment parse indirect_callee/bound_callable_ref # #2294
 inline-variable comment diagnostics basics/escaped_wildcard_binds_2166 # #2296
+inline-variable comment diagnostics enums/enum_cross_type_equality_2670 # #2296
 inline-variable comment diagnostics if_elif_else_variable_scoping # #2296
 inline-variable comment diagnostics operators/operator_lowering_pow_float32_2443 # #2296
 inline-variable comment diagnostics pattern_matching/class_pattern_capture_not_last_ok_1624 # #2296

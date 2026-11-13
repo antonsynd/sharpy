@@ -23,6 +23,7 @@ public class GetChildNodesCompletenessTests
     ///
     /// TypeAnnotation-typed properties are exempt: TypeAnnotation derives from Node (#1235)
     /// but is deliberately excluded from GetChildNodes traversal (Types.cs:17-24).
+    /// <see cref="NotTraversed"/> names the other properties that are not children, each with why.
     /// </summary>
     [Fact]
     public void AllNodeTypedPropertiesAreYieldedByGetChildNodes()
@@ -73,6 +74,14 @@ public class GetChildNodesCompletenessTests
 
             foreach (var prop in nodeProps)
             {
+                if (NotTraversed.ContainsKey($"{type.Name}.{prop}"))
+                {
+                    // The exemption is exact: a listed property that IS yielded is a stale row.
+                    if (Regex.IsMatch(activeCode, $@"\b{Regex.Escape(prop)}\b"))
+                        failures.Add($"{type.Name}.{prop} is listed in NotTraversed but GetChildNodes() yields it");
+                    continue;
+                }
+
                 if (!Regex.IsMatch(activeCode, $@"\b{Regex.Escape(prop)}\b"))
                 {
                     failures.Add(
@@ -87,6 +96,19 @@ public class GetChildNodesCompletenessTests
         Assert.True(failures.Count == 0,
             $"GetChildNodes completeness failures:\n{string.Join("\n", failures)}");
     }
+
+    /// <summary>
+    /// Node-typed properties that are deliberately NOT children, <c>Type.Property</c> → why. A row
+    /// here is the same kind of decision as the TypeAnnotation exemption: a generic walker must not
+    /// meet the node.
+    /// </summary>
+    private static readonly Dictionary<string, string> NotTraversed = new(StringComparer.Ordinal)
+    {
+        ["TypeCheck.IdentityOperand"] =
+            "the expression reading of CheckType's own tokens (#2669): the type checker checks it only when the "
+            + "name is an enum member and refuses the node (SPY0349) otherwise, so a walker that descended into it "
+            + "would meet an expression nothing type-checked; like CheckType itself it is reached only by name",
+    };
 
     private static List<string> GetNodeTypedPropertyNames(Type type)
     {

@@ -123,6 +123,13 @@ internal class TypeInferenceService
         if (left is TypeParameterType || right is TypeParameterType)
             return BinaryOpLowering.EqualityComparerDefault;
 
+        // `==` / `!=` between two DIFFERENT enum types (#2670, owner ruling 2026-11-12: False, as
+        // CPython): C# has no operator for two unrelated enums (CS0019), and two string-backed enums
+        // would compare their backing strings through the implicit conversion. The null-safe static
+        // Equals evaluates both operands once and answers False for members of different enums.
+        if (IsCrossEnumEquality(op, left, right))
+            return BinaryOpLowering.EqualsCallStatic;
+
         if (IsTupleEquality(op, left, right) || IsClrEqualsFallback(op, left, right))
         {
             // Value types (tuples, structs) use left.Equals(right) to avoid boxing; reference types
@@ -135,6 +142,38 @@ internal class TypeInferenceService
         }
 
         return BinaryOpLowering.NativeOperator;
+    }
+
+    /// <summary>
+    /// True when <c>==</c>/<c>!=</c> compares members of two DIFFERENT enum types, either operand
+    /// possibly <c>E | None</c> (#2670). Inference admits every enum pair (<see cref="IsEnumType"/>
+    /// on both sides); this is the part of that set the native operator cannot answer: two
+    /// int-backed enums (CS0019), an int-backed against a string-backed one (CS0019), and two
+    /// string-backed enums (which C# would compare by backing string, True for equal values where
+    /// CPython answers False). Erring toward "different" is safe — <c>object.Equals</c> on two
+    /// members of the SAME enum is still their equality — but it boxes, so "same" is asked of
+    /// <see cref="TypeHierarchyService.IsSameEnumDeclaration"/>: import clones and the two symbols
+    /// of one CLR enum (an imported name against a CLR member's type) are one enum and keep the
+    /// native operator, as does an operand whose symbol cannot be found.
+    /// </summary>
+    private bool IsCrossEnumEquality(BinaryOperator op, SemanticType left, SemanticType right)
+    {
+        if (op is not (BinaryOperator.Equal or BinaryOperator.NotEqual))
+            return false;
+
+        return EnumSymbolOf(UnwrapNullable(left)) is { } leftEnum
+            && EnumSymbolOf(UnwrapNullable(right)) is { } rightEnum
+            && !TypeHierarchyService.IsSameEnumDeclaration(leftEnum, rightEnum);
+    }
+
+    /// <summary>The enum <paramref name="type"/> names, by the same two routes as <see cref="IsEnumType"/>, or null.</summary>
+    private TypeSymbol? EnumSymbolOf(SemanticType type)
+    {
+        if (TypeChecker.OperandView(type) is not UserDefinedType udt)
+            return null;
+
+        var symbol = udt.Symbol ?? (udt.Name != null ? _symbolTable.Lookup(udt.Name) as TypeSymbol : null);
+        return symbol is { TypeKind: TypeKind.Enum } ? symbol : null;
     }
 
     private SemanticType? InferBinaryOpTypeUncached(BinaryOperator op, SemanticType left, SemanticType right)

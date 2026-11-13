@@ -1098,6 +1098,21 @@ public record TypeCheck : Expression
     public Expression Value { get; init; } = null!;
     public TypeAnnotation CheckType { get; init; } = null!;
 
+    /// <summary>
+    /// The expression reading of <see cref="CheckType"/>, when it has one (#2669): for a plain dotted
+    /// name with no type arguments and no suffix (<c>x is Color.RED</c>, <c>x is mod.Color.RED</c>)
+    /// the parser also builds the member-access chain the same tokens spell, because "an uppercase
+    /// name after <c>is</c>" cannot tell an enum member from a nested or qualified type. Null for
+    /// every other spelling, and for a <see cref="TypeCheck"/> that heads a longer comparison
+    /// (<c>x is Color.RED == y</c>), which has no single-comparison reading.
+    /// <para>A syntax fact, derived from the same tokens as <see cref="CheckType"/>: the unparser and
+    /// the structural comparer read <see cref="CheckType"/> alone. It is deliberately NOT a child node
+    /// (<see cref="GetChildNodes"/>): the type checker decides which reading holds, checks this
+    /// expression only when the name is an enum member, and refuses the node (SPY0349) otherwise — a
+    /// generic walker must never meet an expression nothing type-checked.</para>
+    /// </summary>
+    public Expression? IdentityOperand { get; init; }
+
     /// <inheritdoc/>
     public override void ValidateInvariants()
     {

@@ -491,13 +491,16 @@ public partial class Parser
                 Advance(); // skip 'is'
                 var typeStartLine = Current.Line;
                 var typeStartColumn = Current.Column;
+                var typeStartPosition = _position;
                 var typeAnnotation = ParseTypeAnnotation();
+                var identityOperand = TryBuildDottedNameExpression(typeStartPosition, _position);
                 var endLine = Previous.Line;
                 var endColumn = Previous.Column;
                 left = new TypeCheck
                 {
                     Value = left,
                     CheckType = typeAnnotation,
+                    IdentityOperand = identityOperand,
                     LineStart = startLine,
                     ColumnStart = startColumn,
                     LineEnd = endLine,
@@ -546,6 +549,12 @@ public partial class Parser
         if (operators.Count == 0)
             return left;
 
+        // A type test that heads a longer comparison (`x is Color.RED == y`) has no single-comparison
+        // reading, so it carries no identity operand: the checker keeps refusing it (SPY0349) rather
+        // than comparing the BOOL of the first link against the next operand (#2669).
+        if (ReferenceEquals(operands[0], left) && left is TypeCheck { IdentityOperand: not null } chainHead)
+            operands[0] = chainHead with { IdentityOperand = null };
+
         if (operators.Count == 1)
         {
             // Single comparison - use BinaryOp
@@ -576,6 +585,61 @@ public partial class Parser
             ColumnEnd = operands[^1].ColumnEnd,
             Span = CombineSpans(operands[0].Span, operands[^1].Span)
         };
+    }
+
+    /// <summary>
+    /// The expression the tokens in <c>[start, end)</c> spell when they are exactly a plain dotted name
+    /// of two or more identifiers (<c>Color.RED</c>, <c>mod.Color.RED</c>) — an <see cref="Identifier"/>
+    /// under one <see cref="MemberAccess"/> per further segment, positioned on those tokens — or null
+    /// for any other run (a single name, type arguments, a <c>?</c> / <c>| None</c> suffix, a keyword
+    /// or backtick-escaped segment). Built for <see cref="TypeCheck.IdentityOperand"/> (#2669): the
+    /// run was already consumed as a type annotation, so nothing is re-parsed and no diagnostic can
+    /// be reported from here.
+    /// </summary>
+    private Expression? TryBuildDottedNameExpression(int start, int end)
+    {
+        var count = end - start;
+        if (count < 3 || count % 2 == 0)
+            return null;
+
+        for (var i = 0; i < count; i++)
+        {
+            var token = _tokens[start + i];
+            var expected = i % 2 == 0 ? TokenType.Identifier : TokenType.Dot;
+            if (token.Type != expected || token.IsBacktickEscaped)
+                return null;
+        }
+
+        var first = _tokens[start];
+        Expression expr = new Identifier
+        {
+            Name = first.Value,
+            LineStart = first.Line,
+            ColumnStart = first.Column,
+            LineEnd = first.Line,
+            ColumnEnd = first.Column + first.Length,
+            Span = GetSpanFromToken(first)
+        };
+
+        for (var i = 2; i < count; i += 2)
+        {
+            var member = _tokens[start + i];
+            expr = new MemberAccess
+            {
+                Object = expr,
+                Member = member.Value,
+                MemberNameLineStart = member.Line,
+                MemberNameColumnStart = member.Column,
+                MemberNameColumnEnd = member.Column + member.Length,
+                LineStart = expr.LineStart,
+                ColumnStart = expr.ColumnStart,
+                LineEnd = member.Line,
+                ColumnEnd = member.Column + member.Length,
+                Span = CombineSpans(expr.Span, GetSpanFromToken(member))
+            };
+        }
+
+        return expr;
     }
 
     private bool IsComparisonOperator(TokenType type) => type switch

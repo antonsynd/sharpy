@@ -284,7 +284,7 @@ deviations:
   code: null
   spec_ref: docs/language_specification/identity_operators.md
   existing_diagnostic: null
-  planned_diagnostic: SPY0465
+  planned_diagnostic: null
 - id: enum-value-type-consistency
   category: types
   audience: python

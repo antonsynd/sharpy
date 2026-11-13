@@ -1255,29 +1255,29 @@ deviations:
     category: operators
     audience: python
     severity: none
-    python_behavior: "Enum members are singletons, so `c is d` is `True` when both names hold the same member; `is` is the idiomatic enum comparison."
-    sharpy_behavior: "An int-backed enum is a .NET value type (owner ruling 2026-11-12, #2635 ruling E). `c is d` on two enum-typed variables boxes each operand and prints `False`, with no diagnostic today; SPY0465 will warn here once plan-4e2867 makes enums value types at every reader. A string-backed enum is a reference type and `c is d` prints `True` there, as in Python; the deviation is int-backed only. `c is Color.RED` (a member named directly) is refused, SPY0349. Use `==`. Axiom precedence: .NET (1) > Python (2)."
+    python_behavior: "Enum members are singletons, so `is` between any two references to the same member is `True`, whatever the static types."
+    sharpy_behavior: "`is` / `is not` with an operand statically typed as an enum compares by member, as Python does (#2669): `c is d`, `c is Color.RED`, `oc is c` on `Color | None`, and `o is c` with `o: object`. The residue: when BOTH operands are typed `object` (or an interface) and hold int-backed enum members, the compiler cannot see an enum, `is` lowers to reference equality on two boxes, and the answer is `False`. String-backed enums are reference types and are unaffected. Axiom precedence: .NET (1) > Python (2)."
     spec_ref: docs/language_specification/identity_operators.md
     existing_diagnostic: null
-    planned_diagnostic: SPY0465
+    planned_diagnostic: null
     example:
       python: |
         from enum import Enum
         class Color(Enum):
             RED = 1
-        c = Color.RED
-        d = Color.RED
-        print(c is d)   # True
-        print(c == d)   # True
+        o = Color.RED
+        p = Color.RED
+        print(o is p)   # True
       sharpy: |
         enum Color:
             RED = 1
 
         def main():
+            o: object = Color.RED
+            p: object = Color.RED
+            print(o is p)          # False: two boxes
             c: Color = Color.RED
-            d: Color = Color.RED
-            print(c is d)   # False: each operand is boxed
-            print(c == d)   # True
+            print(o is c)          # True: one operand is typed as the enum
 
   - id: dunder-direct-invocation
     code: SPY0427
