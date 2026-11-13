@@ -1601,26 +1601,35 @@ internal partial class TypeChecker
     /// </list>
     /// <para>The literal <c>None</c> is never lifted: it is refused (SPY0222) unless a slot is
     /// itself optional.</para>
+    ///
+    /// <para>"Fits a slot" is ONE question at all three steps: the store seam's
+    /// (<see cref="IsArgumentAssignable"/>) for every container, and for a CLR-backed one the CLR
+    /// call seam's as well (<see cref="ClrContainsTakesNeedle"/>), so <c>x in y</c> takes the
+    /// needles <c>y.Contains(x)</c> takes (#2647).</para>
     /// </summary>
     /// <returns>The lowering kind of this membership test; <see cref="OperatorLoweringKind.Native"/>
     /// when nothing special applies, the container is oblivious, or the needle was refused.</returns>
     private OperatorLoweringKind ClassifyMembership(
         Node diagnosticNode, Expression needle, SemanticType needleType, SemanticType containerType)
     {
-        var slots = ResolveMembershipSlots(containerType);
+        var slots = ResolveMembershipSlots(containerType, out var clrFormals);
         if (slots.Count == 0)
             return OperatorLoweringKind.Native;
 
         // The lift asks a TYPE question of the needle's underlying type, so no expression is
         // passed: the constant and conditional shapes of the store seam belong to the plain path.
+        bool FitsASlot(SemanticType type, Expression? node)
+            => slots.Any(slot => IsArgumentAssignable(type, slot, node))
+               || ClrContainsTakesNeedle(type, node, clrFormals);
+
         var lifted = needleType as NullableType;
         bool LiftFitsASlot()
-            => lifted != null && slots.Any(slot => IsArgumentAssignable(lifted.UnderlyingType, slot));
+            => lifted != null && FitsASlot(lifted.UnderlyingType, null);
 
         if (lifted != null && IsSubsequenceContainer(containerType) && LiftFitsASlot())
             return OperatorLoweringKind.MembershipNoneRaises;
 
-        if (slots.Any(slot => IsArgumentAssignable(needleType, slot, needle)))
+        if (FitsASlot(needleType, needle))
             return OperatorLoweringKind.Native;
 
         if (LiftFitsASlot())
@@ -1657,6 +1666,38 @@ internal partial class TypeChecker
     }
 
     /// <summary>
+    /// The CLR half of "the needle fits a slot": whether a <c>Contains</c> overload of a CLR-backed
+    /// container takes a needle the store seam refused.
+    ///
+    /// <para>A CLR-backed container (<paramref name="clrFormals"/> non-empty: the formals of its
+    /// <c>Contains</c> overloads) is asked what a written <c>y.Contains(x)</c> is asked —
+    /// <see cref="ClrFormalVerdict"/>, THE acceptance answer of the CLR call seam — so a needle C#
+    /// converts into the formal is taken here as it is there: <c>Point in RectangleF</c> binds
+    /// <c>Contains(PointF)</c> through <c>Point</c>'s <c>op_Implicit</c> (#2647). No conversion
+    /// rule lives here.</para>
+    ///
+    /// <para>That verdict is "accepted, or nothing here can say it is not", and membership wants
+    /// only the first half: a needle refused here is SPY0222, one waved through reaches Roslyn. So
+    /// it is asked only of a needle that HAS a CLR type of its own, where each of its arms is a
+    /// fact about that type (an inbound <c>op_Implicit</c> from it, CLR assignability from it).
+    /// Without one — a user class, a string enum — the verdict's <c>op_Implicit</c> arm reads "the
+    /// formal converts from SOMETHING" (<c>PointF</c> does, from <c>Vector2</c>) and would take
+    /// every such needle; those stay with the store seam. So does the literal <c>None</c>, which
+    /// has no CLR type and would be C#'s null literal to that verdict, applicable to every
+    /// reference formal (ruling A). The formal carries no
+    /// <see cref="System.Reflection.ParameterInfo"/>, so its declared nullability is not applied.</para>
+    /// </summary>
+    private bool ClrContainsTakesNeedle(
+        SemanticType needleType, Expression? needle, IReadOnlyList<Type> clrFormals)
+    {
+        if (clrFormals.Count == 0 || TryGetClrType(needleType) == null)
+            return false;
+
+        return clrFormals.Any(clrFormal => ClrFormalVerdict(
+            new ClrFormal(Parameter: null, clrFormal, IsParamsElement: false), needleType, needle).Accepted);
+    }
+
+    /// <summary>
     /// The slot SET a membership needle is checked against: the one element type
     /// <see cref="ResolveMembershipElementType"/> resolves, or — for a CLR-backed non-generic
     /// container no arm of it decides (#2647: <c>bytes</c>, the IP networks, argparse
@@ -1677,25 +1718,34 @@ internal partial class TypeChecker
     /// The declared nullability of the parameter is deliberately not applied: the literal
     /// <c>None</c> is refused here whatever the receiver does with a null.</para>
     /// </summary>
-    private IReadOnlyList<SemanticType> ResolveMembershipSlots(SemanticType containerType)
+    /// <param name="clrFormals">The CLR parameter types the slots of a CLR-backed container were
+    /// mapped from, in slot order — what <see cref="ClrContainsTakesNeedle"/> puts to the CLR call
+    /// seam. Empty for every other container, and whenever the slot set is.</param>
+    private IReadOnlyList<SemanticType> ResolveMembershipSlots(
+        SemanticType containerType, out IReadOnlyList<Type> clrFormals)
     {
+        clrFormals = Array.Empty<Type>();
+
         if (containerType is NullableType nullable)
-            return ResolveMembershipSlots(nullable.UnderlyingType);
+            return ResolveMembershipSlots(nullable.UnderlyingType, out clrFormals);
 
         if (ResolveMembershipElementType(containerType) is { } elementType)
             return new[] { elementType };
 
         if (containerType is UserDefinedType { Symbol.ClrType: { } clrType })
         {
-            var clrSlots = Discovery.ClrTypeHelper.GetContainsParameterTypes(clrType)
+            var containsFormals = Discovery.ClrTypeHelper.GetContainsParameterTypes(clrType);
+            var clrSlots = containsFormals
                 .Select(_bclGenericMethodBridge.MapClrParameterTypeToSemanticType)
                 .ToList();
 
             // A slot the bridge cannot name makes the whole set unknowable: stay oblivious rather
             // than refuse a needle that overload would have taken.
-            return clrSlots.Any(slot => slot is UnknownType or UnmappedClrType)
-                ? Array.Empty<SemanticType>()
-                : clrSlots;
+            if (clrSlots.Any(slot => slot is UnknownType or UnmappedClrType))
+                return Array.Empty<SemanticType>();
+
+            clrFormals = containsFormals;
+            return clrSlots;
         }
 
         return Array.Empty<SemanticType>();

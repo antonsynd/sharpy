@@ -18,6 +18,7 @@ public class OptionalNeedleMembershipTests
     private const string Prelude =
         "from email import EmailMessage\n"
         + "from ipaddress import IPv4Address, IPv4Network\n"
+        + "from System.Drawing import Point, PointF, Rectangle, RectangleF\n"
         + "\n"
         + "enum Tone:\n    A = \"a\"\n    B = \"b\"\n"
         + "\n"
@@ -34,7 +35,13 @@ public class OptionalNeedleMembershipTests
         var source = Prelude + "def main() -> None:\n" + body + $"    b: bool = {expression}\n    print(b)\n";
         var options = new CompilerOptions
         {
-            References = new[] { Sharpy.TestInfrastructure.SharpyCoreReference.Location, SharpyStdlibReference.Location },
+            // System.Drawing.Primitives is not among the default references here (`sharpyc run`
+            // compiles against the whole shared framework); the RectangleF rows import from it.
+            References = new[]
+            {
+                Sharpy.TestInfrastructure.SharpyCoreReference.Location, SharpyStdlibReference.Location,
+                typeof(System.Drawing.PointF).Assembly.Location,
+            },
             OutputType = "exe",
             WarningsAsErrors = false,
         };
@@ -94,6 +101,16 @@ public class OptionalNeedleMembershipTests
         { "", "bytes([1]) in bytes([1, 2])", OperatorLoweringKind.Native },
         { "", "IPv4Address(\"10.0.0.1\") in IPv4Network(\"10.0.0.0/8\")", OperatorLoweringKind.Native },
         { "", "\"subject\" in EmailMessage()", OperatorLoweringKind.Native },
+
+        // D3 (#2647): a CLR-backed container takes the needles its written `y.Contains(x)` takes.
+        // RectangleF declares Contains(PointF) and Contains(RectangleF); C# reaches both from the
+        // integer types by op_Implicit, and the CLR call seam's verdict says so here.
+        { "rf: RectangleF = RectangleF(0.0f, 0.0f, 10.0f, 10.0f)", "Point(1, 1) in rf", OperatorLoweringKind.Native },
+        { "rf: RectangleF = RectangleF(0.0f, 0.0f, 10.0f, 10.0f)", "Point(1, 1) not in rf", OperatorLoweringKind.Native },
+        { "rf: RectangleF = RectangleF(0.0f, 0.0f, 10.0f, 10.0f)", "Rectangle(1, 1, 2, 2) in rf", OperatorLoweringKind.Native },
+        { "rf: RectangleF = RectangleF(0.0f, 0.0f, 10.0f, 10.0f)", "PointF(1.0f, 1.0f) in rf", OperatorLoweringKind.Native },
+        { "r: Rectangle = Rectangle(0, 0, 10, 10)", "Point(1, 1) in r", OperatorLoweringKind.Native },
+        { "r: Rectangle = Rectangle(0, 0, 10, 10)", "Rectangle(1, 1, 2, 2) in r", OperatorLoweringKind.Native },
     };
 
     [Theory]
@@ -122,6 +139,15 @@ public class OptionalNeedleMembershipTests
         { "", "\"a\" in bytes([1])" },
         { "", "\"x\" in IPv4Network(\"10.0.0.0/8\")" },
         { "", "1 in EmailMessage()" },
+
+        // D3: the CLR call seam's verdict is asked only where it is a fact about the needle's own
+        // CLR type. No op_Implicit reaches PointF or RectangleF from these, and a needle with no
+        // CLR type at all (IBag) is not waved through on "PointF converts from something".
+        { "rf: RectangleF = RectangleF(0.0f, 0.0f, 10.0f, 10.0f)", "\"x\" in rf" },
+        { "rf: RectangleF = RectangleF(0.0f, 0.0f, 10.0f, 10.0f)", "1 in rf" },
+        { "rf: RectangleF = RectangleF(0.0f, 0.0f, 10.0f, 10.0f)", "IBag() in rf" },
+        { "rf: RectangleF = RectangleF(0.0f, 0.0f, 10.0f, 10.0f)", "None in rf" },
+        { "r: Rectangle = Rectangle(0, 0, 10, 10); pf: PointF = PointF(1.0f, 1.0f)", "pf in r" },
 
         // Ruling B: bool, float and decimal needles into range/bytes stay refused.
         { "", "True in range(3)" },
