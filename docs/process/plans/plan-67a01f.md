@@ -1,4 +1,4 @@
-<!-- DRAFT, not verified: written by /create-plan on 2026-11-13 @ 9fce3ecc4; no /verify-plan pass has stamped this text. -->
+<!-- DRAFT, not verified: written by /create-plan on 2026-11-13 @ 9fce3ecc4; revised by /create-plan on 2026-11-13 @ 907aad013 before the first pass; no /verify-plan pass has stamped this text. -->
 
 # Membership operator totality: user iterables, chain links, operand order
 
@@ -8,7 +8,7 @@ Three class trackers, one group (charter §3.20w): #2645 `f() in g()` evaluates 
 
 ## Current State
 
-Product @ 7be6704c4 (`run`); oracle CPython 3.15.2; stage 0 @ 9fce3ecc4.
+Product @ 7be6704c4 (`run`); oracle CPython 3.15.2; stage 0 @ 9fce3ecc4, its scorecard baseline @ 907aad013.
 
 - **Order.** `n() in c()` prints `container`, `needle` for every plain-path container (list, tuple, dict, set, range, `str`, `bytes`, a `__contains__` class); `not in` too; a lifted `T | None` needle goes first. `n() * s()` with the `str` on the right also evaluates right first. The other operators hold (38 probed, then the generator).
 - **Chain.** `x == x in [a, c]`, `c is d is e`, `a < x is not None`: SPY0519 from `RoslynEmitter.Expressions.Operators.cs:784`. The checker's chain site runs a subset of the binary site's checks and both validators visit `BinaryOp` only: `x == x in k` (`k` no container) is SPY0519 where the binary twin is SPY0320; `a == c == a` over a class without `__eq__` compiles (prints `False`, as CPython) where `a == c` is SPY0402; over a struct it reaches Roslyn (SPY0908). `c is Color.RED is d` is SPY0349: `Parser.Expressions.cs:556` drops the head's identity operand.
@@ -23,7 +23,7 @@ Product @ 7be6704c4 (`run`); oracle CPython 3.15.2; stage 0 @ 9fce3ecc4.
 - **Gates:** 1
 - **Filing:** cells outside the contract go to the findings ledger; the lead files by class (contract §10); trackers named at the end of this plan
 - **Override:** none
-- **Unruled (owner):** Q1 under D3; the scorecard baseline 541 → 550 for stage 0's nine rows (contract §11)
+- **Scorecard baseline:** `allowlist_rows_outside_seed` 541 → 550 for stage 0's nine rows, raised @ 907aad013 (contract §11) — owner, 2026-11-13, #2645 comment 6865268833: "Raise baseline to 550 (Recommended)"; the allowlist is not registered as a seed harness
 
 ## Defect Class
 
@@ -33,19 +33,19 @@ Product @ 7be6704c4 (`run`); oracle CPython 3.15.2; stage 0 @ 9fce3ecc4.
 - **Sibling cells this plan must also cover:** none; see Generator.
 - **Lane / reach:** silent-wrong · program (#2645); false-refusal · probe (#2648); false-refusal · program (#2653). **Fidelity-scope row:** COMPARED ("value of an expression"; "which programs run vs. are refused": `expressions.md` › Expression Evaluation Order, `operator_precedence.md` › Comparison chaining).
 - **Standing harness that should have caught it:** `OptionalMembershipDifferentialTests` (P92): its chain cells expected SPY0519, it observed no order and generated no user iterable. Stage 0 extends it.
-- **Generator:** stage 0 @ 9fce3ecc4, three facts of `OptionalMembershipDifferentialTests`, 3 passed (10.1 min; the longest fact 3 m 56 s).
+- **Generator:** stage 0 @ 9fce3ecc4 (tip 907aad013 adds the scorecard baseline, no test code), three facts of `OptionalMembershipDifferentialTests`, 3 passed (10.1 min; the longest fact 3 m 56 s).
   - The membership matrix: P92's six axes plus the container kinds `IterDunder`, `GenericIterDunder`, `GetItemLen` (`RuledContainerKinds`: R-NZ, R-OA; red when the spec gains the row, until it moves to `SpecRowMap`) and the observation {value, order}: 31 payloads, 50024 cases (35552 compared, 14472 hand-expected). `OptionalNeedle_EveryContainerOperatorPosition_MatchesCPython` runs the 29960 value cases, `Membership_EveryContainerOperatorPosition_EvaluatesItsOperandsLeftToRight` the 20064 order cases. A chain link expects its expression twin's expectation; `GetItemLen` expects SPY0320. Known red 23146: `Order/*` 14888, `UserIterable/*` 2640, `ChainLink/*` 4682, `GetItemLen/NoneNeedle` 24; kept: 21 container rows 378 (#2674), `CounterOfOptional/*` 534 (#2651).
   - `OperatorSequences_OverEffectfulOperands_AreTheirDesugaring`: payload × form (5) × {every spelled `BinaryOperator`: 25 of 27; every ordered pair of `ComparisonOperator` links: 100}, plus pivot types on either side in the plain form; operand types closed against `OperatorLoweringKind` by reflection (27 recorded, 9 excluded with reasons). An expression over traced operands must print what its desugaring prints and be refused by a code its desugaring is refused by. 32 payloads, 29600 sequences; 4707 run in both forms, 19729 are refused in both. Known red 6505: `Sequence/Binary` 257, `Sequence/Chain` 6248.
   - Excluded axes, each with its reason in the test: the literal-`None` needle has no order observation; `@` and `|>`; a `Self` payload's sequences are generated, a constrained type parameter only in the sequence fact. Not enumerable, hand fixtures: the operand SPELLING after `is` (D4) and a literal-only needle (D2).
   - Turned green (inferred from each D against the verdicts measured at stage 0; no product change was applied): D1 `UserIterable/*` and 18 `GetItemLen` cells; D2 `Order/*` (with D1 and D3 for its user-iterable and chain cells), `Sequence/Binary`; D3 `ChainLink/*`, `Sequence/Chain`. Cells whose value or expression twin is red for #2651 / #2674 stay, re-pinned and cited to that issue alone (T7 measures the count).
-- **Owner rulings:** R-NZ (#2653 comment 6826244591: "accept as CPython, record it as a ruling"); R-OA (comment 6826280413: "maybe let's say no on __getitem__ with __len__"); R-OE (charter §4: one group on P92's generator).
+- **Owner rulings:** R-NZ (#2653 comment 6826244591: "accept as CPython, record it as a ruling"); R-OA (comment 6826280413: "maybe let's say no on __getitem__ with __len__"); R-OE (charter §4: one group on P92's generator); chain links, unlettered until the next batching call (#2648 comment 6865267508, 2026-11-13: "Refuse, as the twin (Recommended)").
 
 ## Adversarial Review (pre-mortem)
 
 - **Alternative root cause:** `ProtocolMembership.Has(__contains__)` could answer yes for a class that iterates. Rejected: its other readers ask whether the dunder exists, and R-OA needs the no.
 - **Alternative layer:** a Core helper that takes the needle first for every `in` (P92's shape) costs a delegate call per test and moves every snapshot; a synthesized `Contains` on each iterable class changes its public C# surface (Axiom 1) where LINQ already answers.
 - **How the fix could be inert:** the checker accepts an `in` link and no validator visits it (12 chains reach Roslyn today); the binary arm is fixed and the link keeps its own copy (D3 leaves one).
-- **Before/after by direction:** D1 and D2 refuse nothing new. D3: SPY0519 → the twin's value or code; **worked → refused** for a chain whose `==` / `!=` link the binary form refuses (class without `__eq__`, interface, generic class, delegate, union: 36 generator cells print CPython's answer today) — Q1.
+- **Before/after by direction:** D1 and D2 refuse nothing new. D3: SPY0519 → the twin's value or code; **worked → refused** for a chain whose `==` / `!=` link the binary form refuses (class without `__eq__`, interface, generic class, delegate, union: 36 generator cells print CPython's answer today): the owner ruled it refused, as the twin (Owner rulings).
 - **Blast radius:** Compiler.Tests (fixtures, Differential, GapDiscovery, `SinkPushingTotalityTests`, `OperatorLoweringCorpusCensusTests`, the Pretty / unparse round trips for the new AST field), Stdlib.Tests, Cli.Tests, LSP `FrontEndParityTests`.
 - **Generated artifacts touched:** spy-stdlib and spy-test C# (D2), stdlib docs, the oracle ledger (D5): regenerated at T1 and after T6.
 
@@ -65,7 +65,7 @@ Product @ 7be6704c4 (`run`); oracle CPython 3.15.2; stage 0 @ 9fce3ecc4.
   - Checker: the part of `CheckBinaryOp` that decides a comparison, identity or membership operator becomes one link routine, called by the binary site and by each link of `CheckComparisonChain` (`:1387`). It returns the link's facts: `ClassifyMembership`, `ClassifyComparisonLowering`, `ClassifyNoneTest`, `ClassifyEnumIdentity`, the void-comparand gate. The binary site records them as today; the chain in its `ComparisonLinkLowering` (`_comparisonChainLowerings` is in `MergeFrom`).
   - Validators: `OperatorValidator` and `ProtocolValidator` validate an operator site (operator, left, right); `VisitBinaryOp` passes one and a new `VisitComparisonChain` passes each link.
   - Emitter: `BuildLink` in `GenerateComparisonChain` (`:728`) emits through the binary arm's emitters (`GenerateMembershipTest`, `GenerateNoneTest`, `GenerateIdentityComparison`, `GenerateLoweredComparison`), which take the recorded kind and the operand nodes instead of a `BinaryOp`. `MapComparisonOperator` loses its `SyntaxKind.None` arm and the chain its SPY0519.
-  - **Unruled, Q1:** by this decision `a == c == a` over a class without `__eq__` becomes SPY0402. The charter states the rule ("a link gets its binary twin's verdict") without an R-letter; contract §3 needs the owner's word before T3.
+  - **Ruled (owner, 2026-11-13, #2648 comment 6865267508: "Refuse, as the twin (Recommended)"):** a link the binary form refuses is refused with the same code, so `a == c == a` over a class without `__eq__` becomes SPY0402 as `a == c` is: a deliberate worked → refused change (contract §3), listed by direction at T1.
   - P82 tranche 4 moves `_comparisonChainLowerings` to the IR after this lands and reads this shape.
   - **Predicate:** `CheckBinaryOp` and `CheckComparisonChain` call the link routine and no classifier of their own; `CodeGen/` holds no `UnsupportedOperator` for a chain.
 - **D4. A chain head spelled like a type.** Parser and Semantic. When a comparison operator follows a `TypeCheck` head that has an `IdentityOperand`, `ParseComparison` builds the chain over `[Value, IdentityOperand, …]` with `Is` first and records the head's `TypeAnnotation` on the chain (a new `ComparisonChain` field). The link routine gives link 0 `CheckTypeCheck`'s rule (`:2487`), shared: an enum member is an identity link, anything else SPY0349 with the same steer. A head with no dotted-name reading stays as it is. #2681 (P16) later replaces the spelling rule at both sites.
@@ -92,7 +92,7 @@ Product @ 7be6704c4 (`run`); oracle CPython 3.15.2; stage 0 @ 9fce3ecc4.
 #### Tasks
 
 - **T1. Probe and regenerate** — each D's predicate by `run` at the base; spy-stdlib, spy-test, stdlib-docs and oracle-ledger regeneration (§7); the spy-stdlib sites D2 will move, counted.
-  - Acceptance: base behaviour recorded @ sha; Q1 answered and recorded in Scope.
+  - Acceptance: base behaviour recorded @ sha; the chains D3's ruling turns from working to refused listed by direction (contract §3).
 - **T2. Parser** (D4) — `Parser.Expressions.cs`, `Parser/Ast/Expression.cs`, the Pretty and dump visitors of `ComparisonChain`.
   - Acceptance: M4's fixture parses to a three-operand chain; the round-trip tests pass.
 - **T3. Checker** (D1, D3, D4) — `TypeChecker.Expressions.Operators.cs`, `ProtocolMembership.cs`.
@@ -126,3 +126,7 @@ Product @ 7be6704c4 (`run`); oracle CPython 3.15.2; stage 0 @ 9fce3ecc4.
 - #2674 — value-ness
 - #2680 — enum comparison
 - #2681 — `x is A.B` decided by spelling
+
+## Revision log
+
+- @ 907aad013 — revised before the first pass: the owner's two rulings of 2026-11-13 recorded. D3's unruled question is decided (a chain link is refused as its binary twin is; #2648 comment 6865267508) and stage 0's scorecard baseline is raised 541 → 550 (#2645 comment 6865268833). No decision, predicate, mutation or count changed.
