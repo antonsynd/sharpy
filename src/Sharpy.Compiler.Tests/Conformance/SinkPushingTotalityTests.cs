@@ -98,6 +98,11 @@ public class SinkPushingTotalityTests
         ["GenerateWhileWithElse/WhileStatement"] = "reached only when the test hoists nothing; see GenerateWhile",
         ["GenerateWhileWithElse/IfStatement"] = "the for/while-else completion flag test, not a user expression",
 
+        // --- Membership with an optional needle (#2635): both operands are generated OUTSIDE the lambda and
+        // passed as arguments, evaluated once each, needle first. ---
+        ["GenerateMembershipTest/ParenthesizedLambdaExpression"] = "the static `(container, needle) => container.Contains(needle)` handed to Builtins.ContainsOptional/ContainsNoneRaises: its body reads only its own parameters, no user operand",
+        ["GenerateStringEnumClass/ConditionalAccessExpression"] = "the generated string enum's own `implicit operator string` body (`value?.Value`, #2635 D8), not a user expression",
+
         // --- try / except / finally / with: the bodies are already generated STATEMENTS at their
         // own statement boundaries, so nothing conditional is left to sink. ---
         ["GenerateCatchClauses/CatchClause"] = "handler bodies are generated statements",
