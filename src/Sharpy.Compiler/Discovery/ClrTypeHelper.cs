@@ -647,6 +647,33 @@ internal static class ClrTypeHelper
             .Any(m => m.Name == "Contains");
 
     /// <summary>
+    /// The needle slots of a CLR container (#2647): the parameter type of every public instance
+    /// non-generic single-argument <c>Contains</c> overload of <paramref name="clrType"/>, distinct
+    /// and in a stable order (by full name) so a diagnostic never depends on reflection order.
+    /// The whole SET is the answer — <c>Bytes</c> declares <c>Contains(int)</c> and
+    /// <c>Contains(Bytes)</c>, and a caller that takes the first one refuses the other's needle.
+    /// </summary>
+    internal static ImmutableArray<Type> GetContainsParameterTypes(Type clrType)
+        => clrType.GetMethods(BindingFlags.Public | BindingFlags.Instance)
+            .Where(m => m.Name == "Contains" && !m.IsGenericMethodDefinition)
+            .Select(m => m.GetParameters())
+            .Where(p => p.Length == 1 && !p[0].ParameterType.IsByRef && !p[0].ParameterType.IsPointer)
+            .Select(p => p[0].ParameterType)
+            .Distinct()
+            .OrderBy(t => t.FullName ?? t.Name, StringComparer.Ordinal)
+            .ToImmutableArray();
+
+    /// <summary>
+    /// Whether <paramref name="clrType"/> is a SUBSEQUENCE container: one of its
+    /// <see cref="GetContainsParameterTypes"/> slots is the type itself
+    /// (<c>string.Contains(string)</c>, <c>Bytes.Contains(Bytes)</c>). Python's <c>in</c> on such a
+    /// container is a substring test that raises <c>TypeError</c> for a <c>None</c> needle instead
+    /// of answering <c>False</c> (#2635). Decided by reflection, never by the type's name.
+    /// </summary>
+    internal static bool HasContainsOfOwnType(Type clrType)
+        => GetContainsParameterTypes(clrType).Contains(clrType);
+
+    /// <summary>
     /// Gets the element type if the given type is <c>Sharpy.Iterator&lt;T&gt;</c>
     /// or extends <c>Sharpy.Iterator&lt;T&gt;</c>. Returns <c>null</c> otherwise.
     /// </summary>

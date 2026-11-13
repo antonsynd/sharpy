@@ -74,7 +74,11 @@ internal partial class TypeChecker
             if (needleType is UnknownType)
                 return SemanticType.Unknown;
 
-            ClassifyMembership(binOp, binOp.Left, needleType, containerType);
+            // The membership kind is the checker's fact (#2635, Rule 2): the emitter's In/NotIn arm
+            // reads it and never tests a type. Nothing below this return writes the node again.
+            var membershipKind = ClassifyMembership(binOp, binOp.Left, needleType, containerType);
+            if (membershipKind != OperatorLoweringKind.Native)
+                _semanticInfo.SetOperatorLowering(binOp, new OperatorLowering(membershipKind));
             return SemanticType.Bool;
         }
 
@@ -1479,8 +1483,8 @@ internal partial class TypeChecker
             // #1750 (R-U): in/not in links go through the same needle check as the binary form.
             if (binaryOp is BinaryOperator.In or BinaryOperator.NotIn)
             {
-                ClassifyMembership(chain, chain.Operands[i], leftType, rightType);
-                links.Add(new ComparisonLinkLowering(OperatorLoweringKind.Native, null));
+                links.Add(new ComparisonLinkLowering(
+                    ClassifyMembership(chain, chain.Operands[i], leftType, rightType), null));
                 continue;
             }
 
@@ -1576,20 +1580,55 @@ internal partial class TypeChecker
     }
 
     /// <summary>
-    /// The needle-vs-element check for <c>in</c>/<c>not in</c> (#1750, R-U). Resolves the
-    /// container's element type and checks the needle against it via the store seam's argument
-    /// arm. A container without a resolvable element type is oblivious — the container-presence
-    /// check (SPY0320) in <see cref="Validation.ProtocolValidator"/> handles that stage.
+    /// The needle-vs-slot check for <c>in</c>/<c>not in</c> (#1750, R-U), shared by the binary site
+    /// and every chain link, and the ONE place a membership lowering kind is decided (#2635). A
+    /// container without a resolvable slot is oblivious — the container-presence check (SPY0320) in
+    /// <see cref="Validation.ProtocolValidator"/> handles that stage.
+    ///
+    /// <para>Decided in this order, and the order is load-bearing:</para>
+    /// <list type="number">
+    /// <item>A SUBSEQUENCE container (<see cref="IsSubsequenceContainer"/>: <c>str</c>,
+    /// <c>bytes</c>) with a <c>T | None</c> needle whose <c>T</c> fits a slot records
+    /// <see cref="OperatorLoweringKind.MembershipNoneRaises"/>. First, because <c>str | None</c>
+    /// is assignable to a <c>str</c> slot and the next step would return early.</item>
+    /// <item>The plain path: the needle is assignable to a slot as it stands
+    /// (<see cref="OperatorLoweringKind.Native"/>). Before the lift, so <c>int | None</c> into
+    /// <c>list[int | None]</c> stays an equality scan that can FIND <c>None</c>.</item>
+    /// <item>The lift: a <c>T | None</c> needle whose <c>T</c> fits a slot is accepted. A
+    /// value-type nullable records <see cref="OperatorLoweringKind.MembershipNoneIsFalse"/> (a CLR
+    /// <c>Contains(T)</c> takes no <c>T?</c>); a reference needle records nothing — the receiver's
+    /// own <c>Contains(null)</c> answers.</item>
+    /// </list>
+    /// <para>The literal <c>None</c> is never lifted: it is refused (SPY0222) unless a slot is
+    /// itself optional.</para>
     /// </summary>
-    private void ClassifyMembership(
+    /// <returns>The lowering kind of this membership test; <see cref="OperatorLoweringKind.Native"/>
+    /// when nothing special applies, the container is oblivious, or the needle was refused.</returns>
+    private OperatorLoweringKind ClassifyMembership(
         Node diagnosticNode, Expression needle, SemanticType needleType, SemanticType containerType)
     {
-        var elementType = ResolveMembershipElementType(containerType);
-        if (elementType == null)
-            return;
+        var slots = ResolveMembershipSlots(containerType);
+        if (slots.Count == 0)
+            return OperatorLoweringKind.Native;
 
-        if (IsArgumentAssignable(needleType, elementType, needle))
-            return;
+        // The lift asks a TYPE question of the needle's underlying type, so no expression is
+        // passed: the constant and conditional shapes of the store seam belong to the plain path.
+        var lifted = needleType as NullableType;
+        bool LiftFitsASlot()
+            => lifted != null && slots.Any(slot => IsArgumentAssignable(lifted.UnderlyingType, slot));
+
+        if (lifted != null && IsSubsequenceContainer(containerType) && LiftFitsASlot())
+            return OperatorLoweringKind.MembershipNoneRaises;
+
+        if (slots.Any(slot => IsArgumentAssignable(needleType, slot, needle)))
+            return OperatorLoweringKind.Native;
+
+        if (LiftFitsASlot())
+        {
+            return lifted!.IsValueType
+                ? OperatorLoweringKind.MembershipNoneIsFalse
+                : OperatorLoweringKind.Native;
+        }
 
         var opSpelling = diagnosticNode is BinaryOp binOp
             ? GetOperatorSymbol(binOp.Operator)
@@ -1598,19 +1637,87 @@ internal partial class TypeChecker
         var message = $"Type '{needleType.GetDisplayName()}' does not support operator " +
             $"'{opSpelling}' with operand of type '{containerType.GetDisplayName()}'";
 
+        // The steer names ONE slot: the first whose cast cures the needle, else the first.
         var needleSpelling = SpellOperand(needle, "x");
-        var steer = MembershipNeedleSteer(needleType, elementType, needleSpelling);
-        steer ??= DescribeOptionalArgument(needleType, elementType, "needle");
+        var steerSlot = slots.FirstOrDefault(
+            slot => MembershipNeedleSteer(needleType, slot, needleSpelling) != null) ?? slots[0];
+        var steer = MembershipNeedleSteer(needleType, steerSlot, needleSpelling);
+        steer ??= DescribeOptionalArgument(needleType, steerSlot, "needle");
 
         if (steer.Length > 0)
             message += steer;
 
         // The NEEDLE is the refused value and the container's element type is its slot, so
         // `(n or "z") in xs` names the #1819 rule like every other refused-value position.
-        ReportValueTypeMismatch(message, needle, elementType,
+        ReportValueTypeMismatch(message, needle, steerSlot,
             needle.LineStart, needle.ColumnStart,
             code: DiagnosticCodes.Semantic.InvalidBinaryOperation,
             span: diagnosticNode.Span);
+        return OperatorLoweringKind.Native;
+    }
+
+    /// <summary>
+    /// The slot SET a membership needle is checked against: the one element type
+    /// <see cref="ResolveMembershipElementType"/> resolves, or — for a CLR-backed non-generic
+    /// container no arm of it decides (#2647: <c>bytes</c>, the IP networks, argparse
+    /// <c>Namespace</c>, <c>EmailMessage</c>) — the parameter type of EVERY public single-argument
+    /// <c>Contains</c> overload of its CLR type, so <c>bytes</c> takes an <c>int</c> and a
+    /// <c>bytes</c> needle. Empty when the container is oblivious.
+    ///
+    /// <para>A sibling of <see cref="ResolveMembershipElementType"/>, not an arm of it: that method
+    /// stays silent for these containers, so the site pushes no single slot onto the needle's store
+    /// (a conditional <c>bytes</c> needle would be refused against the <c>int</c> slot).</para>
+    ///
+    /// <para>Each CLR parameter type maps through the checker's <see cref="Discovery.ClrTypeBridge"/>
+    /// (<c>MapClrParameterTypeToSemanticType</c>), the same instance that types every reflected
+    /// member signature. For a registered Sharpy type (<c>Sharpy.Bytes</c>, <c>IPv4Address</c>) it
+    /// yields a <see cref="UserDefinedType"/> carrying that CLR type, which the registered type is
+    /// assignable to by CLR identity (<see cref="UserDefinedType.IsAssignableTo"/>, #890).
+    /// <see cref="TypeResolver.ClrTypeToSemanticType"/> knows primitives only and would drop them.
+    /// The declared nullability of the parameter is deliberately not applied: the literal
+    /// <c>None</c> is refused here whatever the receiver does with a null.</para>
+    /// </summary>
+    private IReadOnlyList<SemanticType> ResolveMembershipSlots(SemanticType containerType)
+    {
+        if (containerType is NullableType nullable)
+            return ResolveMembershipSlots(nullable.UnderlyingType);
+
+        if (ResolveMembershipElementType(containerType) is { } elementType)
+            return new[] { elementType };
+
+        if (containerType is UserDefinedType { Symbol.ClrType: { } clrType })
+        {
+            var clrSlots = Discovery.ClrTypeHelper.GetContainsParameterTypes(clrType)
+                .Select(_bclGenericMethodBridge.MapClrParameterTypeToSemanticType)
+                .ToList();
+
+            // A slot the bridge cannot name makes the whole set unknowable: stay oblivious rather
+            // than refuse a needle that overload would have taken.
+            return clrSlots.Any(slot => slot is UnknownType or UnmappedClrType)
+                ? Array.Empty<SemanticType>()
+                : clrSlots;
+        }
+
+        return Array.Empty<SemanticType>();
+    }
+
+    /// <summary>
+    /// Whether <c>in</c> on <paramref name="containerType"/> is a SUBSEQUENCE test — its CLR type
+    /// has a public <c>Contains</c> taking the type itself (<c>string.Contains(string)</c>,
+    /// <c>Bytes.Contains(Bytes)</c>). Read by reflection through
+    /// <see cref="Discovery.ClrTypeHelper.HasContainsOfOwnType"/>, never from the type's name.
+    /// </summary>
+    private static bool IsSubsequenceContainer(SemanticType containerType)
+    {
+        var clrType = containerType switch
+        {
+            NullableType nullable => (nullable.UnderlyingType as BuiltinType)?.ClrType
+                ?? (nullable.UnderlyingType as UserDefinedType)?.Symbol?.ClrType,
+            BuiltinType builtin => builtin.ClrType,
+            UserDefinedType userDefined => userDefined.Symbol?.ClrType,
+            _ => null
+        };
+        return clrType != null && Discovery.ClrTypeHelper.HasContainsOfOwnType(clrType);
     }
 
     /// <summary>
