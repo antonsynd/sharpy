@@ -177,6 +177,10 @@ public class OptionalMembershipDifferentialTests : IntegrationTestBase
     /// map itself, so only this pins a payload against silent deletion.</summary>
     private const int CompositePayloadCount = 7;
 
+    /// <summary>The (payload, form) pairs <see cref="OptionalElementExcluded"/> removes from the optional-element
+    /// variant: all three forms of <c>T: struct</c> and the literal-None form of <c>T</c>.</summary>
+    private const int OptionalElementExcludedForms = 4;
+
     /// <summary>The declaration keyword of each <see cref="TypeKind"/>: a generated payload's Sharpy declaration must
     /// declare its key's kind.</summary>
     private static readonly Dictionary<TypeKind, string> TypeKindKeyword = new()
@@ -222,25 +226,26 @@ public class OptionalMembershipDifferentialTests : IntegrationTestBase
     };
 
     /// <summary>
-    /// The second structural exclusion: payloads generated without the optional-element variants, each with the
-    /// reason (a defect outside the membership seam that refuses every such cell before its test is reached), the
-    /// program that shows it and the one error code that program must still be refused with.
-    /// <see cref="AssertOptionalElementExclusionsStillHold"/> compiles each: an exclusion whose program is no
-    /// longer refused that way is red until it is deleted (its cells then join the product).
+    /// The second structural exclusion: payloads generated without some optional-element cells, each with the
+    /// forms it loses (the forms a defect outside the membership seam refuses before the test is reached; every
+    /// other form of the variant is generated), the reason, the program that shows it and the one error code that
+    /// program must still be refused with. <see cref="AssertOptionalElementExclusionsStillHold"/> compiles each:
+    /// an exclusion whose program is no longer refused that way is red until it is deleted (its cells then join
+    /// the product).
     /// </summary>
-    private static readonly Dictionary<string, (string Why, string Program, string RefusedBy)> OptionalElementExcluded =
+    private static readonly Dictionary<string, (Form[] Forms, string Why, string Program, string RefusedBy)> OptionalElementExcluded =
         new(StringComparer.Ordinal)
         {
-            ["T: struct"] = ("`Container[T | None]` closed over a value type is `Container[T]` at the call "
+            ["T: struct"] = (Enum.GetValues<Form>(), "`Container[T | None]` closed over a value type is `Container[T]` at the call "
                 + "(TypeSubstitution drops the `| None` of a type parameter bound to a value type, #1797), so no container "
                 + "with a None element reaches a `[T: struct]` cell: SPY0220 at the store, not at the membership test "
                 + "(the value-ness work tracked by #2674; owner ruling H, 2026-11-12, moved it out of #2635)",
                 "def c[T: struct](x: T, xs: list[T | None]) -> bool:\n    return x in xs\n\n"
                 + "def main() -> None:\n    ys: list[int | None] = [1, None]\n    print(c[int](1, ys))\n",
                 DiagnosticCodes.Semantic.TypeMismatch),
-            ["T"] = ("the literal `None` has no emission at an unconstrained `T | None` (CS1503 `<null>` to `T?`, "
-                + "SPY0908): a defect of unconstrained generics tracked by #2672, which would turn every "
-                + "literal-None cell of the variant red",
+            ["T"] = (new[] { Form.NoneLiteral }, "the literal `None` has no emission at an unconstrained `T | None` "
+                + "(CS1503 `<null>` to `T?`, SPY0908): a defect of unconstrained generics tracked by #2672, which "
+                + "refuses the literal-None cells of the variant; its plain and `T | None` needle cells are generated",
                 KDeclaration + "\ndef c[T](xs: list[T | None]) -> bool:\n    return None in xs\n\n"
                 + "def main() -> None:\n    ys: list[K | None] = [K(1), None]\n    print(c[K](ys))\n",
                 DiagnosticCodes.Infrastructure.GeneratedCodeCompilationError),
@@ -530,7 +535,7 @@ public class OptionalMembershipDifferentialTests : IntegrationTestBase
     private static Container[] Containers() => SpecRowMap.SelectMany(m => m.Generated).OrderBy(c => c).ToArray();
 
     /// <summary>The full product of the axes; the two structural exclusions are an optional element on a fixed-slot
-    /// container, which has no spelling, and on a payload named in <see cref="OptionalElementExcluded"/>. A needle
+    /// container, which has no spelling, and the forms <see cref="OptionalElementExcluded"/> names for a payload. A needle
     /// the container's slot cannot hold is a CELL (its expectation is the spec's refusal), never a skip.</summary>
     private static List<Cell> GenerateCells(IReadOnlyList<Payload> payloads)
     {
@@ -538,13 +543,16 @@ public class OptionalMembershipDifferentialTests : IntegrationTestBase
         var cells = new List<Cell>();
         foreach (var payload in payloads)
             foreach (var container in containers)
-                foreach (var optionalElement in IsElementTyped(container) && !OptionalElementExcluded.ContainsKey(payload.Name)
-                             ? new[] { false, true }
-                             : new[] { false })
+                foreach (var optionalElement in IsElementTyped(container) ? new[] { false, true } : new[] { false })
                     foreach (var form in Enum.GetValues<Form>())
+                    {
+                        if (optionalElement && OptionalElementExcluded.TryGetValue(payload.Name, out var excluded)
+                            && excluded.Forms.Contains(form))
+                            continue;
                         foreach (var op in Operators)
                             foreach (var position in Enum.GetValues<Position>())
                                 cells.Add(new Cell(cells.Count, payload, container, optionalElement, form, op, position));
+                    }
         return cells;
     }
 
@@ -761,9 +769,9 @@ public class OptionalMembershipDifferentialTests : IntegrationTestBase
         Add("from email import EmailMessage");
         Add("from ipaddress import IPv4Address, IPv4Network, IPv6Address, IPv6Network");
         Add("");
-        // A Self payload's cells are in its declaration, so the __contains__ classes go above it: a literal None
-        // tested against a __contains__ class declared BELOW the test is not refused today (probed at the base with a
-        // plain class too), and declaration order is not an axis here.
+        // A Self payload's cells are in its declaration, so the __contains__ classes go above it: an argument checked
+        // against a __contains__ class declared BELOW the test is not refused today but reaches Roslyn (#2249: a
+        // later-declared class's member types are not there at the check), and declaration order is not an axis here.
         if (method)
             AddBags();
         if ((python ? payload.PythonDeclaration : payload.SharpyDeclaration) is { } declaration)
@@ -1035,16 +1043,21 @@ public class OptionalMembershipDifferentialTests : IntegrationTestBase
         var formCount = Enum.GetValues<Form>().Length;
         var positionCount = Enum.GetValues<Position>().Length;
         var containerVariants = containerCount + elementTypedCount;
-        // A payload in OptionalElementExcluded has the containers but no optional-element variant of any.
-        var payloadContainers = payloadCount * containerVariants - OptionalElementExcluded.Count * elementTypedCount;
-        var expectedCount = payloadContainers * Operators.Length * formCount * positionCount;
+        // OptionalElementExcluded removes whole forms of a payload's optional-element variant. The number of
+        // (payload, form) pairs it removes is pinned here, not read from the table the generator reads, so an entry
+        // added or widened there is red until this count is raised with it.
+        Assert.True(OptionalElementExcluded.Values.Sum(e => e.Forms.Distinct().Count()) == OptionalElementExcludedForms,
+            $"OptionalElementExcluded removes {OptionalElementExcluded.Values.Sum(e => e.Forms.Distinct().Count())} "
+            + $"(payload, form) pairs; {OptionalElementExcludedForms} are pinned");
+        var expectedCount = (payloadCount * containerVariants * formCount - OptionalElementExcludedForms * elementTypedCount)
+            * Operators.Length * positionCount;
         Assert.Equal(2, Operators.Length);
         Assert.Equal(payloadCount, payloads.Count);
         Assert.True(expectedCount == cells.Count,
             $"the generator made {cells.Count} cells; the axes give {expectedCount} ({payloadCount} payloads x "
             + $"{containerVariants} container variants ({containerCount} containers, {elementTypedCount} with an optional "
-            + $"element, less {OptionalElementExcluded.Count} payloads without that variant) x {Operators.Length} operators "
-            + $"x {formCount} forms x {positionCount} positions): "
+            + $"element) x {formCount} forms, less {OptionalElementExcludedForms} excluded (payload, form) pairs of the "
+            + $"optional-element variant, x {Operators.Length} operators x {positionCount} positions): "
             + "a cell was dropped or invented");
 
         // CPython: one program per payload × container (the runner passes a program as one argv string, which the OS
@@ -1441,7 +1454,7 @@ public class OptionalMembershipDifferentialTests : IntegrationTestBase
     private void AssertOptionalElementExclusionsStillHold()
     {
         var names = GeneratePayloads().Select(p => p.Name).ToHashSet(StringComparer.Ordinal);
-        foreach (var (name, (_, program, refusedBy)) in OptionalElementExcluded)
+        foreach (var (name, (_, _, program, refusedBy)) in OptionalElementExcluded)
         {
             Assert.True(names.Contains(name), $"OptionalElementExcluded names {name}, which is not a payload");
             var run = CompileAndExecute(program, "optional_element_exclusion.spy", executionTimeoutMs: 120_000);

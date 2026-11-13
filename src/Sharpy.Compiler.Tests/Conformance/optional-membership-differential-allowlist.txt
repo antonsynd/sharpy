@@ -1934,7 +1934,7 @@ Counter/NoneNeedle  cells=218  pin=0df80dd6431e8ec0  # see #2635 (value payloads
 #= uint8/Counter/Optional/not in/Expression -> sharpy refused SPY0222 | expected python False True True
 #= uint8/Counter/Optional/not in/IfCondition -> sharpy refused SPY0222 | expected python False True True
 
-CounterOfOptional/NoneNeedle  cells=348  pin=ba74953f5fca88eb  # #2651 (outside plan-4e2867's contract): Counter[T | None] with a None element throws ArgumentNullException at construction
+CounterOfOptional/NoneNeedle  cells=354  pin=96c6796939ac2a13  # #2651 (outside plan-4e2867's contract): Counter[T | None] with a None element throws ArgumentNullException at construction
 #= Color/CounterOfOptional/NoneLiteral/in/ComprehensionFilter -> sharpy values other | expected python True
 #= Color/CounterOfOptional/NoneLiteral/in/Expression -> sharpy values other | expected python True
 #= Color/CounterOfOptional/NoneLiteral/in/IfCondition -> sharpy values other | expected python True
@@ -2067,6 +2067,12 @@ CounterOfOptional/NoneNeedle  cells=348  pin=ba74953f5fca88eb  # #2651 (outside 
 #= Self@SS/CounterOfOptional/Optional/not in/ComprehensionFilter -> sharpy values other other other | expected python False True False
 #= Self@SS/CounterOfOptional/Optional/not in/Expression -> sharpy values other other other | expected python False True False
 #= Self@SS/CounterOfOptional/Optional/not in/IfCondition -> sharpy values other other other | expected python False True False
+#= T/CounterOfOptional/Optional/in/ComprehensionFilter -> sharpy values other other other | expected python True False True
+#= T/CounterOfOptional/Optional/in/Expression -> sharpy values other other other | expected python True False True
+#= T/CounterOfOptional/Optional/in/IfCondition -> sharpy values other other other | expected python True False True
+#= T/CounterOfOptional/Optional/not in/ComprehensionFilter -> sharpy values other other other | expected python False True False
+#= T/CounterOfOptional/Optional/not in/Expression -> sharpy values other other other | expected python False True False
+#= T/CounterOfOptional/Optional/not in/IfCondition -> sharpy values other other other | expected python False True False
 #= T: class/CounterOfOptional/NoneLiteral/in/ComprehensionFilter -> sharpy values other | expected python True
 #= T: class/CounterOfOptional/NoneLiteral/in/Expression -> sharpy values other | expected python True
 #= T: class/CounterOfOptional/NoneLiteral/in/IfCondition -> sharpy values other | expected python True
@@ -2284,7 +2290,7 @@ CounterOfOptional/NoneNeedle  cells=348  pin=ba74953f5fca88eb  # #2651 (outside 
 #= uint8/CounterOfOptional/Optional/not in/Expression -> sharpy values other other other | expected python False True False
 #= uint8/CounterOfOptional/Optional/not in/IfCondition -> sharpy values other other other | expected python False True False
 
-CounterOfOptional/Plain  cells=174  pin=dcbbbd7f73a15415  # #2651 (outside plan-4e2867's contract): Counter[T | None] with a None element throws ArgumentNullException at construction
+CounterOfOptional/Plain  cells=180  pin=05409c98aae87860  # #2651 (outside plan-4e2867's contract): Counter[T | None] with a None element throws ArgumentNullException at construction
 #= Color/CounterOfOptional/Plain/in/ComprehensionFilter -> sharpy values other other | expected python True False
 #= Color/CounterOfOptional/Plain/in/Expression -> sharpy values other other | expected python True False
 #= Color/CounterOfOptional/Plain/in/IfCondition -> sharpy values other other | expected python True False
@@ -2351,6 +2357,12 @@ CounterOfOptional/Plain  cells=174  pin=dcbbbd7f73a15415  # #2651 (outside plan-
 #= Self@SS/CounterOfOptional/Plain/not in/ComprehensionFilter -> sharpy values other other | expected python False True
 #= Self@SS/CounterOfOptional/Plain/not in/Expression -> sharpy values other other | expected python False True
 #= Self@SS/CounterOfOptional/Plain/not in/IfCondition -> sharpy values other other | expected python False True
+#= T/CounterOfOptional/Plain/in/ComprehensionFilter -> sharpy values other other | expected python True False
+#= T/CounterOfOptional/Plain/in/Expression -> sharpy values other other | expected python True False
+#= T/CounterOfOptional/Plain/in/IfCondition -> sharpy values other other | expected python True False
+#= T/CounterOfOptional/Plain/not in/ComprehensionFilter -> sharpy values other other | expected python False True
+#= T/CounterOfOptional/Plain/not in/Expression -> sharpy values other other | expected python False True
+#= T/CounterOfOptional/Plain/not in/IfCondition -> sharpy values other other | expected python False True
 #= T: class/CounterOfOptional/Plain/in/ComprehensionFilter -> sharpy values other other | expected python True False
 #= T: class/CounterOfOptional/Plain/in/Expression -> sharpy values other other | expected python True False
 #= T: class/CounterOfOptional/Plain/in/IfCondition -> sharpy values other other | expected python True False
