@@ -4,8 +4,10 @@ extern alias SharpyStdlib;
 using System.Globalization;
 using System.Reflection;
 using Sharpy.Compiler.Diagnostics;
+using Sharpy.Compiler.Logging;
 using Sharpy.Compiler.Parser.Ast;
 using Sharpy.Compiler.Semantic.Registry;
+using Sem = Sharpy.Compiler.Semantic;
 using TypeKind = Sharpy.Compiler.Semantic.TypeKind;
 using Sharpy.TestInfrastructure.Integration;
 using Sharpy.TestInfrastructure.Oracles;
@@ -22,9 +24,10 @@ namespace Sharpy.Compiler.Tests.Properties.Differential;
 /// <c>bytes</c> container) — owner rulings 2026-11-12. Never SPY0222, SPY0908 or a CLR exception. The literal
 /// <c>None</c> into a non-optional slot is refused (SPY0222) by owner ruling A, 2026-11-12, and accepted into an
 /// optional element type (the element-optionality axis).
-/// <para><b>Generated, never listed.</b> The full product of six axes, with one structural exclusion (an optional
-/// element exists only where the element type is the payload); the count is asserted from the axis sizes, not the
-/// generator:</para>
+/// <para><b>Generated, never listed.</b> The full product of six axes, with two structural exclusions (an optional
+/// element exists only where the element type is the payload, and not for a payload
+/// <see cref="OptionalElementExcluded"/> names with the defect that refuses it); the count is asserted from the axis
+/// sizes, not the generator:</para>
 /// <list type="bullet">
 /// <item><b>payload</b> — the image of <see cref="PrimitiveCatalog.GetAllPrimitives"/> (one canonical name per
 /// CLR type) minus <see cref="ExcludedPrimitives"/>, each excluded with its reason, plus a value-typed
@@ -34,7 +37,13 @@ namespace Sharpy.Compiler.Tests.Properties.Differential;
 /// <see cref="AssertCompositeAxisIsTheTypeKindImage"/>, plus
 /// <see cref="SlotPayloads"/>: every fixed needle slot of the container axis (a single-argument public
 /// <c>Contains</c> parameter, read by reflection) that is not a catalog primitive — asserted both ways by
-/// <see cref="AssertPayloadAxisIsTheCatalogAndTheSlots"/>;</item>
+/// <see cref="AssertPayloadAxisIsTheCatalogAndTheSlots"/>, plus <see cref="ScopedPayloads"/>: a constructed generic
+/// type, a type parameter and <c>Self</c>. The whole axis is closed against the compiler's type model,
+/// <see cref="SemanticTypeCensus"/>: every sealed <c>SemanticType</c> record, and a record that carries a definition
+/// once per kind of definition (a generic struct and a generic class; a <c>struct</c>-constrained, a
+/// <c>class</c>-constrained and an unconstrained type parameter; <c>Self</c> in a struct and in a class), is generated
+/// or excluded with its reason, and each payload's key is the one the checker gives it
+/// (<see cref="AssertPayloadAxisIsTheSemanticTypeCensus"/>);</item>
 /// <item><b>container</b> — the closed set of the spec's "Container kinds" table
 /// (<c>membership_operators.md</c>), read from the spec and mapped row by row (<see cref="SpecRowMap"/>); the CLR
 /// row is closed against the reflection census of public single-argument <c>Contains</c> in Sharpy.Core and
@@ -87,7 +96,27 @@ public class OptionalMembershipDifferentialTests : IntegrationTestBase
     /// has no <c>struct</c>, <c>interface</c>, <c>union</c> or <c>delegate</c>: its twin is a plain class or function
     /// with the same constructor spelling, and every member test compares the very object it stored).</summary>
     private sealed record Payload(string Name, PayloadKind Kind, string Member, string Other, string NonMember, Type? ClrType,
-        string? SharpyDeclaration = null, string? PythonDeclaration = null);
+        string? SharpyDeclaration = null, string? PythonDeclaration = null)
+    {
+        /// <summary>A type-parameter payload: the clause its generic cells declare (<c>[T: struct]</c>). The payload
+        /// type is spelled <c>T</c> inside them; <c>Name</c> is only the cell key.</summary>
+        public string TypeParameters { get; init; } = "";
+
+        /// <summary>A type-parameter payload: the type its generic cells are closed over.</summary>
+        public string? Binding { get; init; }
+
+        /// <summary>A <c>Self</c> payload: the declared type whose methods the cells and their driver are. The
+        /// payload type is spelled <c>Self</c> in them and by this name in the helpers, which are not its methods.</summary>
+        public string? SelfOf { get; init; }
+
+        public bool IsTypeParameter => TypeParameters.Length > 0;
+
+        /// <summary>The payload type as a cell's signature spells it.</summary>
+        public string CellSpelling => IsTypeParameter ? "T" : SelfOf != null ? "Self" : Name;
+
+        /// <summary>The payload type outside its scope: in the helpers and in <c>main</c>.</summary>
+        public string OuterSpelling => Binding ?? SelfOf ?? Name;
+    }
 
     private const string PlainClassTwin = "    def __init__(self, v):\n        self.v = v\n";
 
@@ -148,6 +177,10 @@ public class OptionalMembershipDifferentialTests : IntegrationTestBase
     /// map itself, so only this pins a payload against silent deletion.</summary>
     private const int CompositePayloadCount = 7;
 
+    /// <summary>The (payload, form) pairs <see cref="OptionalElementExcluded"/> removes from the optional-element
+    /// variant: all three forms of <c>T: struct</c> and the literal-None form of <c>T</c>.</summary>
+    private const int OptionalElementExcludedForms = 4;
+
     /// <summary>The declaration keyword of each <see cref="TypeKind"/>: a generated payload's Sharpy declaration must
     /// declare its key's kind.</summary>
     private static readonly Dictionary<TypeKind, string> TypeKindKeyword = new()
@@ -159,6 +192,132 @@ public class OptionalMembershipDifferentialTests : IntegrationTestBase
         [TypeKind.Union] = "union ",
         [TypeKind.Delegate] = "delegate ",
     };
+
+    private const string KDeclaration = "class K:\n    v: int\n    def __init__(self, v: int):\n        self.v = v\n";
+
+    /// <summary>
+    /// The payloads whose type is not a bare name of a declared type: a constructed generic type, a type parameter
+    /// and <c>Self</c>, each by the kind of the definition it carries (<see cref="SemanticTypeCensus"/> says which
+    /// are generated and why the others are not). A type parameter and <c>Self</c> have a spelling only inside the
+    /// scope that declares them, so their cells are generic functions and methods (<see cref="ProgramFor"/>).
+    /// </summary>
+    private static readonly Payload[] ScopedPayloads =
+    {
+        new("GK[int]", PayloadKind.UserType, "GK[int](1)", "GK[int](2)", "GK[int](5)", null,
+            "class GK[T]:\n    v: T\n    def __init__(self, v: T):\n        self.v = v\n",
+            "class GK[T]:\n" + PlainClassTwin),
+        new("GS[int]", PayloadKind.UserType, "GS[int](1)", "GS[int](2)", "GS[int](5)", null,
+            "struct GS[T]:\n    v: T\n    def __init__(self, v: T):\n        self.v = v\n",
+            "class GS[T]:\n" + PlainClassTwin),
+        new("T", PayloadKind.UserType, "K(1)", "K(2)", "K(5)", null, KDeclaration, "class K:\n" + PlainClassTwin)
+        { TypeParameters = "[T]", Binding = "K" },
+        new("T: class", PayloadKind.UserType, "K(1)", "K(2)", "K(5)", null, KDeclaration, "class K:\n" + PlainClassTwin)
+        { TypeParameters = "[T: class]", Binding = "K" },
+        new("T: struct", PayloadKind.UserType, "1", "2", "5", null)
+        { TypeParameters = "[T: struct]", Binding = "int" },
+        new("Self@SK", PayloadKind.UserType, "SK(1)", "SK(2)", "SK(5)", null,
+            "class SK:\n    v: int\n    def __init__(self, v: int):\n        self.v = v\n",
+            "class SK:\n" + PlainClassTwin)
+        { SelfOf = "SK" },
+        new("Self@SS", PayloadKind.UserType, "SS(1)", "SS(2)", "SS(5)", null,
+            "struct SS:\n    v: int\n    def __init__(self, v: int):\n        self.v = v\n",
+            "class SS:\n" + PlainClassTwin)
+        { SelfOf = "SS" },
+    };
+
+    /// <summary>
+    /// The second structural exclusion: payloads generated without some optional-element cells, each with the
+    /// forms it loses (the forms a defect outside the membership seam refuses before the test is reached; every
+    /// other form of the variant is generated), the reason, the program that shows it and the one error code that
+    /// program must still be refused with. <see cref="AssertOptionalElementExclusionsStillHold"/> compiles each:
+    /// an exclusion whose program is no longer refused that way is red until it is deleted (its cells then join
+    /// the product).
+    /// </summary>
+    private static readonly Dictionary<string, (Form[] Forms, string Why, string Program, string RefusedBy)> OptionalElementExcluded =
+        new(StringComparer.Ordinal)
+        {
+            ["T: struct"] = (Enum.GetValues<Form>(), "`Container[T | None]` closed over a value type is `Container[T]` at the call "
+                + "(TypeSubstitution drops the `| None` of a type parameter bound to a value type, #1797), so no container "
+                + "with a None element reaches a `[T: struct]` cell: SPY0220 at the store, not at the membership test "
+                + "(the value-ness work tracked by #2674; owner ruling H, 2026-11-12, moved it out of #2635)",
+                "def c[T: struct](x: T, xs: list[T | None]) -> bool:\n    return x in xs\n\n"
+                + "def main() -> None:\n    ys: list[int | None] = [1, None]\n    print(c[int](1, ys))\n",
+                DiagnosticCodes.Semantic.TypeMismatch),
+            ["T"] = (new[] { Form.NoneLiteral }, "the literal `None` has no emission at an unconstrained `T | None` "
+                + "(CS1503 `<null>` to `T?`, SPY0908): a defect of unconstrained generics tracked by #2672, which "
+                + "refuses the literal-None cells of the variant; its plain and `T | None` needle cells are generated",
+                KDeclaration + "\ndef c[T](xs: list[T | None]) -> bool:\n    return None in xs\n\n"
+                + "def main() -> None:\n    ys: list[K | None] = [K(1), None]\n    print(c[K](ys))\n",
+                DiagnosticCodes.Infrastructure.GeneratedCodeCompilationError),
+        };
+
+    /// <summary>
+    /// The payload axis against the compiler's type model: one entry per census key
+    /// (<see cref="SemanticTypeCensusKeys"/>, by reflection) — every sealed <c>SemanticType</c> record, and a record
+    /// that carries a definition (a <c>TypeSymbol</c> it can be told to hold) once per <see cref="TypeKind"/> of that
+    /// definition; a type parameter, whose symbol is only where it was declared, once per constraint clause the
+    /// parser has and once unconstrained. Each entry says how many payloads the axis generates at that key, or why
+    /// none. <see cref="AssertPayloadAxisIsTheSemanticTypeCensus"/> asserts the keys both ways and MEASURES each
+    /// payload's key: it compiles a probe and reads the type the checker gave the <c>T | None</c> needle
+    /// (<see cref="MeasuredCensusKey"/>), so an entry cannot claim a payload the compiler types otherwise. A record
+    /// excluded as a whole takes one entry under its bare name.
+    /// </summary>
+    private static readonly Dictionary<string, (int Payloads, string? Excluded)> SemanticTypeCensus = new(StringComparer.Ordinal)
+    {
+        ["BuiltinType"] = (13, null),
+        ["ConstructorReferenceType"] = (0, TransientCarrier),
+        ["FunctionType"] = (0, "a function type is a delegate to C#, a reference type whatever D7 decides: its declared "
+            + "twin is the `D` payload (probed at the base: `((int) -> int) | None in list[(int) -> int]` prints False for None)"),
+        ["GenericFunctionType"] = (0, TransientCarrier),
+        ["GenericType/Class"] = (1, null),
+        ["GenericType/Delegate"] = (0, ReferenceTwin + "`D` (probed at the base with `delegate GD[T](v: T) -> T`: False for None)"),
+        ["GenericType/Enum"] = (0, "no spelling: an enum declares no type parameters (SPY0104)"),
+        ["GenericType/Interface"] = (0, ReferenceTwin + "`IFace` (probed at the base with `interface IG[T]`: False for None)"),
+        ["GenericType/Struct"] = (1, null),
+        ["GenericType/Union"] = (0, ReferenceTwin + "`U` (probed at the base with `union GU[T]`: False for None)"),
+        ["LiteralStringType"] = (0, "a compile-time subtype of str that emits as `string` (its record): the `str` payload "
+            + "at run time (probed at the base: `LiteralString | None in list[str]` prints False for None)"),
+        ["ModuleType"] = (0, "a module is not a value: no annotation spells its type"),
+        ["NullableType"] = (0, "the needle form axis: `T | None` is the wrapper every payload of this axis is under"),
+        ["OptionalType"] = (0, "`T?` is the tagged Optional, the other absence type: python has no twin, and its needle is "
+            + "a typed SPY0222 with its own steer"),
+        ["ResultType"] = (0, "python has no Result type"),
+        ["SelfType/Class"] = (1, null),
+        ["SelfType/Delegate"] = (0, "no spelling: a delegate declares no members (SPY0100)"),
+        ["SelfType/Enum"] = (0, "no spelling: an enum declares no methods (SPY0101)"),
+        ["SelfType/Interface"] = (0, "no spelling: `Self` cannot appear in a parameter of an interface member (SPY0497), "
+            + "so no `Self | None` needle exists there"),
+        ["SelfType/Struct"] = (1, null),
+        ["SelfType/Union"] = (0, ReferenceTwin + "`U` (probed at the base with a `Self | None` parameter of a union method: False for None)"),
+        ["TaskType"] = (0, "an awaitable: python's twin is a coroutine object, which is not a value two programs can compare"),
+        ["TupleType"] = (1, null),
+        ["TypeParameterType/ClassConstraint"] = (1, null),
+        ["TypeParameterType/NewConstraint"] = (0, UnconstrainedTwin + " (probed at the base with `[T: new()]`: False for None)"),
+        ["TypeParameterType/NotnullConstraint"] = (0, UnconstrainedTwin + " (probed at the base with `[T: notnull]`: False for None)"),
+        ["TypeParameterType/StructConstraint"] = (1, null),
+        ["TypeParameterType/TypeConstraint"] = (0, UnconstrainedTwin + " (probed at the base with `[T: IFace]`: False for None)"),
+        ["TypeParameterType/Unconstrained"] = (1, null),
+        ["UnionType"] = (0, "a placeholder record no annotation resolves to (only the symbol-cache reader builds one): "
+            + "`union U` is a UserDefinedType/Union, measured here"),
+        ["UnknownType"] = (0, "the error type: no annotation of a program that compiles resolves to it"),
+        ["UnmappedClrType"] = (0, "a CLR type the bridge could not map: it displays and assigns as `object`, the excluded "
+            + "`object` primitive's reason"),
+        ["UserDefinedType/Class"] = (3, null),
+        ["UserDefinedType/Delegate"] = (1, null),
+        ["UserDefinedType/Enum"] = (2, null),
+        ["UserDefinedType/Interface"] = (1, null),
+        ["UserDefinedType/Struct"] = (2, null),
+        ["UserDefinedType/Union"] = (1, null),
+        ["VoidType"] = (0, "None itself: the needle form axis"),
+    };
+
+    private const string TransientCarrier = "a transient checker carrier: no binding ever has this type (its record says so)";
+
+    private const string ReferenceTwin = "a class to C# whether generic or not, so a reference type whatever D7 decides: "
+        + "the declared twin is the payload ";
+
+    private const string UnconstrainedTwin = "the constraint says nothing about value-ness, so `T | None` is the "
+        + "unconstrained `T?` annotation: the `T` payload's twin";
 
     /// <summary>
     /// The fixed needle slots of the container axis that are not catalog primitives, keyed by CLR full name: the
@@ -365,6 +524,7 @@ public class OptionalMembershipDifferentialTests : IntegrationTestBase
         foreach (var kind in Enum.GetValues<TypeKind>())
             if (TypeKindPayloads.TryGetValue(kind, out var entry))
                 payloads.AddRange(entry.Generated);
+        payloads.AddRange(ScopedPayloads);
         var types = SharpyTypesByName.Value;
         foreach (var (clrName, slot) in SlotPayloads.OrderBy(s => s.Key, StringComparer.Ordinal))
             payloads.Add(new Payload(slot.Name, PayloadKind.Slot, slot.Member, slot.Other, slot.NonMember,
@@ -374,9 +534,9 @@ public class OptionalMembershipDifferentialTests : IntegrationTestBase
 
     private static Container[] Containers() => SpecRowMap.SelectMany(m => m.Generated).OrderBy(c => c).ToArray();
 
-    /// <summary>The full product of the axes; the one structural exclusion is an optional element on a fixed-slot
-    /// container, which has no spelling. A needle the container's slot cannot hold is a CELL (its expectation is the
-    /// spec's refusal), never a skip.</summary>
+    /// <summary>The full product of the axes; the two structural exclusions are an optional element on a fixed-slot
+    /// container, which has no spelling, and the forms <see cref="OptionalElementExcluded"/> names for a payload. A needle
+    /// the container's slot cannot hold is a CELL (its expectation is the spec's refusal), never a skip.</summary>
     private static List<Cell> GenerateCells(IReadOnlyList<Payload> payloads)
     {
         var containers = Containers();
@@ -385,15 +545,20 @@ public class OptionalMembershipDifferentialTests : IntegrationTestBase
             foreach (var container in containers)
                 foreach (var optionalElement in IsElementTyped(container) ? new[] { false, true } : new[] { false })
                     foreach (var form in Enum.GetValues<Form>())
+                    {
+                        if (optionalElement && OptionalElementExcluded.TryGetValue(payload.Name, out var excluded)
+                            && excluded.Forms.Contains(form))
+                            continue;
                         foreach (var op in Operators)
                             foreach (var position in Enum.GetValues<Position>())
                                 cells.Add(new Cell(cells.Count, payload, container, optionalElement, form, op, position));
+                    }
         return cells;
     }
 
     /// <summary>The container expression. An optional element types <c>a</c>, <c>c</c> and <c>z</c> as
     /// <c>T | None</c> and adds <c>z</c> (always <c>None</c>) as an element, so <c>None</c> is a member.</summary>
-    private static string ContainerSource(Cell cell)
+    private static string ContainerSource(Cell cell, string bagArguments = "")
     {
         var o = cell.OptionalElement;
         var items = o ? "a, c, z" : "a, c";
@@ -406,7 +571,7 @@ public class OptionalMembershipDifferentialTests : IntegrationTestBase
             Container.Dict => o ? "{a: 0, c: 1, z: 2}" : "{a: 0, c: 1}",
             Container.DictKeys => o ? "{a: 0, c: 1, z: 2}.keys()" : "{a: 0, c: 1}.keys()",
             Container.DictValues => o ? "{0: a, 1: c, 2: z}.values()" : "{0: a, 1: c}.values()",
-            Container.ContainsDunder => o ? "OBag(a, c, z)" : "Bag(a, c)",
+            Container.ContainsDunder => o ? $"OBag{bagArguments}(a, c, z)" : $"Bag{bagArguments}(a, c)",
             Container.Str => "\"ab\"",
             Container.Bytes => "bytes([1, 2])",
             Container.Range => "range(1, 3)",
@@ -425,8 +590,45 @@ public class OptionalMembershipDifferentialTests : IntegrationTestBase
 
     private sealed record Program(string Source, Dictionary<int, int> CellByLine);
 
+    /// <summary>A type-parameter payload's container, as its generic cell receives it: the parameter's type over
+    /// the element <paramref name="e"/> (<c>T</c> or <c>T | None</c>), the expression the cell tests, and the argument
+    /// the feeder builds over the binding. A fixed-slot container does not depend on <c>T</c>: no parameter.</summary>
+    private static (string? Parameter, string Test, string? Argument) GenericContainer(Cell cell, string e, string bagArguments)
+    {
+        var o = cell.OptionalElement;
+        var source = ContainerSource(cell, bagArguments);
+        return cell.Container switch
+        {
+            Container.Tuple => (o ? $"tuple[{e}, {e}, {e}]" : $"tuple[{e}, {e}]", "xs", source),
+            Container.List => ($"list[{e}]", "xs", source),
+            Container.Set => ($"set[{e}]", "xs", source),
+            Container.FrozenSet => ($"frozenset[{e}]", "xs", source),
+            Container.Dict => ($"dict[{e}, int]", "xs", source),
+            Container.DictKeys => ($"dict[{e}, int]", "xs.keys()", ContainerSource(cell with { Container = Container.Dict })),
+            Container.DictValues => ($"dict[int, {e}]", "xs.values()", o ? "{0: a, 1: c, 2: z}" : "{0: a, 1: c}"),
+            Container.ContainsDunder => (o ? "OBag[T]" : "Bag[T]", "xs", source),
+            Container.Counter => ($"Counter[{e}]", "xs", source),
+            Container.OrderedDict => ($"OrderedDict[{e}, int]", "xs", source),
+            Container.ChainMap => ($"ChainMap[{e}, int]", "xs", source),
+            Container.DefaultDict => ($"defaultdict[{e}, int]", "xs", source),
+            Container.FrozenDict => ($"frozendict[{e}, int]", "xs", source),
+            Container.Deque => ($"deque[{e}]", "xs", source),
+            Container.Str or Container.Bytes or Container.Range or Container.IPv4Network or Container.IPv6Network
+                or Container.ArgparseNamespace or Container.EmailMessage => (null, source, null),
+            _ => throw new InvalidOperationException(cell.Container.ToString()),
+        };
+    }
+
     /// <summary>One program per payload over the cells still active; every line of a cell's function and of its
-    /// driver loop is attributed to it, so a refusal anywhere in either removes that cell alone.</summary>
+    /// driver loop is attributed to it, so a refusal anywhere in either removes that cell alone.
+    /// <para>A payload whose type has a spelling only inside a scope is laid out in that scope.
+    /// A type parameter: the cell <c>c</c><i>N</i> is a generic function over the payload's clause that takes the
+    /// needle and the container (<c>x: T | None, xs: list[T]</c>); its feeder <c>f</c><i>N</i> has the signature of
+    /// a bare payload's cell over the binding, builds the container the same way and calls
+    /// <c>c</c><i>N</i><c>[Binding]</c>; the driver calls the feeder. The <c>__contains__</c> classes are generic
+    /// over their element, so <c>Bag[T]</c>'s slot is <c>T</c>. <c>Self</c>: the cells and the driver are methods of
+    /// the payload's declaration; the helpers, which are not, spell the declared type. Python's twin is the same
+    /// code without clauses and type-argument lists.</para></summary>
     private static Program ProgramFor(Payload payload, IReadOnlyList<Cell> cells, bool python = false)
     {
         var lines = new List<string>();
@@ -438,32 +640,156 @@ public class OptionalMembershipDifferentialTests : IntegrationTestBase
                 cellByLine[lines.Count] = id;
         }
 
-        var p = payload.Name;
+        var p = payload.OuterSpelling;
+        var t = payload.CellSpelling;
+        var generic = payload.IsTypeParameter;
+        var method = payload.SelfOf != null;
+        var scope = method ? "    " : "";
+        var self = method ? "self, " : "";
+        // The __contains__ classes: over the payload type, or (a type parameter) generic over their element.
+        var bagClause = generic && !python ? "[E]" : "";
+        var bagElement = generic ? "E" : p;
+        var bagArguments = generic && !python ? $"[{p}]" : "";
+
+        void AddTest(string indent, Cell cell, string needle, string container)
+        {
+            var op = OperatorSpelling(cell.Operator);
+            var test = $"{needle} {op} {container}";
+            // A located first statement: code the emitter hoists above the test (a comprehension) carries no
+            // #line of its own, and a Roslyn error there maps to the last located line — this cell's, not the
+            // previous function's.
+            Add($"{indent}cell: int = {cell.Id}", cell.Id);
+            switch (cell.Position)
+            {
+                case Position.Expression:
+                    Add($"{indent}return {test}", cell.Id);
+                    break;
+                case Position.IfCondition:
+                    Add($"{indent}if {test}:", cell.Id);
+                    Add($"{indent}    return True", cell.Id);
+                    Add($"{indent}return False", cell.Id);
+                    break;
+                case Position.ComprehensionFilter:
+                    Add($"{indent}return len([0 for _ in [0] if {test}]) == 1", cell.Id);
+                    break;
+                case Position.ChainLink:
+                    // The first link reads the needle twice; the literal None's spelling is `None is None` (Sharpy has
+                    // no `None == None`), so the cell tests the chain arm's needle decision, not `==`.
+                    Add(cell.Form == Form.NoneLiteral
+                        ? $"{indent}return None is None {op} {container}"
+                        : $"{indent}return x == x {op} {container}", cell.Id);
+                    break;
+            }
+        }
+
+        void AddCells()
+        {
+            foreach (var cell in cells)
+            {
+                var needle = cell.Form == Form.NoneLiteral ? "None" : "x";
+                // The feeder's (a bare payload's cell's) parameters: over the binding for a type parameter.
+                var f = generic ? p : t;
+                var elements = cell.OptionalElement ? $"a: {f} | None, c: {f} | None, z: {f} | None" : $"a: {f}, c: {f}";
+                var parameters = cell.Form switch
+                {
+                    Form.Plain => $"x: {f}, {elements}",
+                    Form.Optional => $"x: {f} | None, {elements}",
+                    _ => elements,
+                };
+                if (!generic)
+                {
+                    Add($"{scope}def c{cell.Id}({self}{parameters}) -> bool:", cell.Id);
+                    AddTest(scope + "    ", cell, needle, ContainerSource(cell));
+                    Add("");
+                    continue;
+                }
+                var (parameter, test, argument) = GenericContainer(cell, cell.OptionalElement ? "T | None" : "T", bagArguments);
+                var received = new[]
+                {
+                    cell.Form == Form.Plain ? "x: T" : cell.Form == Form.Optional ? "x: T | None" : null,
+                    parameter != null ? $"xs: {parameter}" : null,
+                }.OfType<string>();
+                var passed = new[] { cell.Form == Form.NoneLiteral ? null : "x", argument }.OfType<string>();
+                Add($"def c{cell.Id}{(python ? "" : payload.TypeParameters)}({string.Join(", ", received)}) -> bool:", cell.Id);
+                AddTest("    ", cell, needle, test);
+                Add($"def f{cell.Id}({parameters}) -> bool:", cell.Id);
+                Add($"    return c{cell.Id}{(python ? "" : $"[{p}]")}({string.Join(", ", passed)})", cell.Id);
+                Add("");
+            }
+        }
+
+        // The driver's body: a member, a non-member and (for a T | None needle) None through every cell. `e` is the
+        // payload type as the driver's scope spells it; `callee` prefixes a cell's number.
+        void AddDriverBody(string indent, string e, string callee)
+        {
+            Add($"{indent}plain: list[{e}] = [a, n]");
+            Add($"{indent}optional: list[{e} | None] = [a, n, None]");
+            foreach (var cell in cells)
+            {
+                var id = cell.Id.ToString(CultureInfo.InvariantCulture);
+                var elements = cell.OptionalElement ? "a, c, None" : "a, c";
+                var (loop, call) = cell.Form switch
+                {
+                    Form.Plain => ($"{indent}for v in plain:", $"{callee}{id}(v, {elements})"),
+                    Form.Optional => ($"{indent}for v in optional:", $"{callee}{id}(v, {elements})"),
+                    _ => ($"{indent}for v in [0]:", $"{callee}{id}({elements})"),
+                };
+                Add(loop, cell.Id);
+                Add($"{indent}    try:", cell.Id);
+                Add($"{indent}        print({id}, {call})", cell.Id);
+                Add($"{indent}    except TypeError:", cell.Id);
+                Add($"{indent}        print({id}, \"TypeError\")", cell.Id);
+                Add($"{indent}    except AttributeError:", cell.Id);
+                Add($"{indent}        print({id}, \"AttributeError\")", cell.Id);
+                Add($"{indent}    except Exception:", cell.Id);
+                Add($"{indent}        print({id}, \"other\")", cell.Id);
+            }
+        }
+
+        void AddBags()
+        {
+            Add($"class Bag{bagClause}:");
+            Add($"    items: list[{bagElement}]");
+            Add($"    def __init__(self, a: {bagElement}, c: {bagElement}):");
+            Add("        self.items = [a, c]");
+            Add($"    def __contains__(self, item: {bagElement}) -> bool:");
+            Add("        return item in self.items");
+            Add("");
+            Add($"class OBag{bagClause}:");
+            Add($"    items: list[{bagElement} | None]");
+            Add($"    def __init__(self, a: {bagElement} | None, c: {bagElement} | None, z: {bagElement} | None):");
+            Add("        self.items = [a, c, z]");
+            Add($"    def __contains__(self, item: {bagElement} | None) -> bool:");
+            Add("        return item in self.items");
+            Add("");
+        }
+
         Add("from argparse import ArgumentParser, Namespace");
         Add("from collections import ChainMap, Counter, OrderedDict, defaultdict, deque");
         Add("from email import EmailMessage");
         Add("from ipaddress import IPv4Address, IPv4Network, IPv6Address, IPv6Network");
         Add("");
+        // A Self payload's cells are in its declaration, so the __contains__ classes go above it: an argument checked
+        // against a __contains__ class declared BELOW the test is not refused today but reaches Roslyn (#2249: a
+        // later-declared class's member types are not there at the check), and declaration order is not an axis here.
+        if (method)
+            AddBags();
         if ((python ? payload.PythonDeclaration : payload.SharpyDeclaration) is { } declaration)
         {
             foreach (var line in declaration.TrimEnd('\n').Split('\n'))
                 Add(line);
+            if (method)
+            {
+                // A Self payload: the cells and the driver are methods of the declaration just opened.
+                Add("");
+                AddCells();
+                Add($"    def drive(self, a: {t}, c: {t}, n: {t}) -> None:");
+                AddDriverBody("        ", t, "self.c");
+            }
             Add("");
         }
-        Add("class Bag:");
-        Add($"    items: list[{p}]");
-        Add($"    def __init__(self, a: {p}, c: {p}):");
-        Add("        self.items = [a, c]");
-        Add($"    def __contains__(self, item: {p}) -> bool:");
-        Add("        return item in self.items");
-        Add("");
-        Add("class OBag:");
-        Add($"    items: list[{p} | None]");
-        Add($"    def __init__(self, a: {p} | None, c: {p} | None, z: {p} | None):");
-        Add("        self.items = [a, c, z]");
-        Add($"    def __contains__(self, item: {p} | None) -> bool:");
-        Add("        return item in self.items");
-        Add("");
+        if (!method)
+            AddBags();
         // The CLR row's generic containers, each over `a, c` (element T) and `a, c, z` (element T | None, z = None).
         foreach (var optional in new[] { false, true })
         {
@@ -516,74 +842,17 @@ public class OptionalMembershipDifferentialTests : IntegrationTestBase
         Add("    return m");
         Add("");
 
-        foreach (var cell in cells)
-        {
-            var op = OperatorSpelling(cell.Operator);
-            var needle = cell.Form == Form.NoneLiteral ? "None" : "x";
-            var elements = cell.OptionalElement ? $"a: {p} | None, c: {p} | None, z: {p} | None" : $"a: {p}, c: {p}";
-            var parameters = cell.Form switch
-            {
-                Form.Plain => $"x: {p}, {elements}",
-                Form.Optional => $"x: {p} | None, {elements}",
-                _ => elements,
-            };
-            var container = ContainerSource(cell);
-            var test = $"{needle} {op} {container}";
-            Add($"def c{cell.Id}({parameters}) -> bool:", cell.Id);
-            // A located first statement: code the emitter hoists above the test (a comprehension) carries no
-            // #line of its own, and a Roslyn error there maps to the last located line — this cell's, not the
-            // previous function's.
-            Add($"    cell: int = {cell.Id}", cell.Id);
-            switch (cell.Position)
-            {
-                case Position.Expression:
-                    Add($"    return {test}", cell.Id);
-                    break;
-                case Position.IfCondition:
-                    Add($"    if {test}:", cell.Id);
-                    Add("        return True", cell.Id);
-                    Add("    return False", cell.Id);
-                    break;
-                case Position.ComprehensionFilter:
-                    Add($"    return len([0 for _ in [0] if {test}]) == 1", cell.Id);
-                    break;
-                case Position.ChainLink:
-                    // The first link reads the needle twice; the literal None's spelling is `None is None` (Sharpy has
-                    // no `None == None`), so the cell tests the chain arm's needle decision, not `==`.
-                    Add(cell.Form == Form.NoneLiteral
-                        ? $"    return None is None {op} {container}"
-                        : $"    return x == x {op} {container}", cell.Id);
-                    break;
-            }
-            Add("");
-        }
+        if (!method)
+            AddCells();
 
         Add("def main() -> None:");
         Add($"    a: {p} = {payload.Member}");
         Add($"    c: {p} = {payload.Other}");
         Add($"    n: {p} = {payload.NonMember}");
-        Add($"    plain: list[{p}] = [a, n]");
-        Add($"    optional: list[{p} | None] = [a, n, None]");
-        foreach (var cell in cells)
-        {
-            var id = cell.Id.ToString(CultureInfo.InvariantCulture);
-            var elements = cell.OptionalElement ? "a, c, None" : "a, c";
-            var (loop, call) = cell.Form switch
-            {
-                Form.Plain => ("    for v in plain:", $"c{id}(v, {elements})"),
-                Form.Optional => ("    for v in optional:", $"c{id}(v, {elements})"),
-                _ => ("    for v in [0]:", $"c{id}({elements})"),
-            };
-            Add(loop, cell.Id);
-            Add("        try:", cell.Id);
-            Add($"            print({id}, {call})", cell.Id);
-            Add("        except TypeError:", cell.Id);
-            Add($"            print({id}, \"TypeError\")", cell.Id);
-            Add("        except AttributeError:", cell.Id);
-            Add($"            print({id}, \"AttributeError\")", cell.Id);
-            Add("        except Exception:", cell.Id);
-            Add($"            print({id}, \"other\")", cell.Id);
-        }
+        if (method)
+            Add("    a.drive(a, c, n)");
+        else
+            AddDriverBody("    ", p, generic ? "f" : "c");
         Add("    print(\"done\")");
         return new Program(string.Join("\n", lines) + "\n", cellByLine);
     }
@@ -753,6 +1022,8 @@ public class OptionalMembershipDifferentialTests : IntegrationTestBase
         AssertClrRowIsTheContainsCensus();
         AssertPayloadAxisIsTheCatalogAndTheSlots();
         AssertCompositeAxisIsTheTypeKindImage();
+        AssertPayloadAxisIsTheSemanticTypeCensus();
+        AssertOptionalElementExclusionsStillHold();
         AssertEveryExclusionHasAReason();
         // The generator's element-typed predicate is the literal roster, container by container.
         Assert.Equal(ElementTypedRoster.OrderBy(c => c), Containers().Where(IsElementTyped).OrderBy(c => c));
@@ -760,25 +1031,33 @@ public class OptionalMembershipDifferentialTests : IntegrationTestBase
         var payloads = GeneratePayloads();
         var cells = GenerateCells(payloads);
 
-        // Totality: the cell count is the product of the axis sizes, each from its own source (the catalog minus its
-        // named exclusions plus the tuple plus the TypeKind map's payloads plus the reflected slot types; the spec
-        // table's containers, doubled for the literal element-typed roster; the enums). Never from the generator's loops
-        // or its predicates, so a cell the generator drops (or invents) is red; the TypeKind map both sides read is
-        // pinned by CompositePayloadCount.
-        var payloadCount = CanonicalPrimitives().Count - ExcludedPrimitives.Count + 1
-            + TypeKindPayloads.Values.Sum(v => v.Generated.Length) + RequiredSlotPayloadTypes().Count;
+        // Totality: the cell count is the product of the axis sizes, each from its own source (the payload counts the
+        // SemanticType census pins, key by key; the spec table's containers, doubled for the literal element-typed
+        // roster; the enums). Never from the generator's loops or its predicates, so a cell the generator drops (or
+        // invents) is red. The census's count is itself checked against the catalog, the TypeKind map and the slots.
+        var payloadCount = SemanticTypeCensus.Values.Sum(v => v.Payloads);
+        Assert.Equal(payloadCount, CanonicalPrimitives().Count - ExcludedPrimitives.Count + 1
+            + CompositePayloadCount + ScopedPayloads.Length + RequiredSlotPayloadTypes().Count);
         var containerCount = SpecRowMap.Sum(m => m.Generated.Length);
         var elementTypedCount = ElementTypedRoster.Length;
         var formCount = Enum.GetValues<Form>().Length;
         var positionCount = Enum.GetValues<Position>().Length;
         var containerVariants = containerCount + elementTypedCount;
-        var expectedCount = payloadCount * containerVariants * Operators.Length * formCount * positionCount;
+        // OptionalElementExcluded removes whole forms of a payload's optional-element variant. The number of
+        // (payload, form) pairs it removes is pinned here, not read from the table the generator reads, so an entry
+        // added or widened there is red until this count is raised with it.
+        Assert.True(OptionalElementExcluded.Values.Sum(e => e.Forms.Distinct().Count()) == OptionalElementExcludedForms,
+            $"OptionalElementExcluded removes {OptionalElementExcluded.Values.Sum(e => e.Forms.Distinct().Count())} "
+            + $"(payload, form) pairs; {OptionalElementExcludedForms} are pinned");
+        var expectedCount = (payloadCount * containerVariants * formCount - OptionalElementExcludedForms * elementTypedCount)
+            * Operators.Length * positionCount;
         Assert.Equal(2, Operators.Length);
         Assert.Equal(payloadCount, payloads.Count);
         Assert.True(expectedCount == cells.Count,
             $"the generator made {cells.Count} cells; the axes give {expectedCount} ({payloadCount} payloads x "
             + $"{containerVariants} container variants ({containerCount} containers, {elementTypedCount} with an optional "
-            + $"element) x {Operators.Length} operators x {formCount} forms x {positionCount} positions): "
+            + $"element) x {formCount} forms, less {OptionalElementExcludedForms} excluded (payload, form) pairs of the "
+            + $"optional-element variant, x {Operators.Length} operators x {positionCount} positions): "
             + "a cell was dropped or invented");
 
         // CPython: one program per payload × container (the runner passes a program as one argv string, which the OS
@@ -1047,6 +1326,146 @@ public class OptionalMembershipDifferentialTests : IntegrationTestBase
         Assert.Equal(names.Count, names.Distinct(StringComparer.Ordinal).Count());
     }
 
+    /// <summary>The settable <c>TypeSymbol</c> property a <c>SemanticType</c> record declares: the definition it
+    /// carries (<c>UserDefinedType.Symbol</c>, <c>GenericType.GenericDefinition</c>, <c>SelfType.DeclaringType</c>),
+    /// or none.</summary>
+    private static PropertyInfo? DefinitionOf(Type record) =>
+        record.GetProperties(BindingFlags.Public | BindingFlags.Instance | BindingFlags.DeclaredOnly)
+            .SingleOrDefault(p => p.PropertyType == typeof(Sem.TypeSymbol) && p.SetMethod != null);
+
+    private static IReadOnlyList<Type> SemanticTypeRecords() =>
+        typeof(Sem.SemanticType).Assembly.GetTypes()
+            .Where(t => t.IsSubclassOf(typeof(Sem.SemanticType)) && !t.IsAbstract)
+            .OrderBy(t => t.Name, StringComparer.Ordinal)
+            .ToList();
+
+    private const string Unconstrained = "Unconstrained";
+
+    /// <summary>The definition axis of a record: the <see cref="TypeKind"/> members for a record that carries a
+    /// definition, the parser's constraint clauses (and none) for a type parameter, nothing for the others.</summary>
+    private static IReadOnlyList<string> DefinitionAxis(Type record)
+    {
+        if (record == typeof(Sem.TypeParameterType))
+            return typeof(ConstraintClause).Assembly.GetTypes()
+                .Where(t => t.IsSubclassOf(typeof(ConstraintClause)) && !t.IsAbstract)
+                .Select(t => t.Name).Append(Unconstrained).OrderBy(n => n, StringComparer.Ordinal).ToList();
+        return DefinitionOf(record) != null
+            ? Enum.GetValues<TypeKind>().Select(k => k.ToString()).ToList()
+            : Array.Empty<string>();
+    }
+
+    /// <summary>The key of a type the checker produced: its record, and for a record with a definition axis the
+    /// value on it (the definition's kind; a type parameter's constraint clauses).</summary>
+    private static string CensusKey(Sem.SemanticType type)
+    {
+        var record = type.GetType();
+        if (type is Sem.TypeParameterType parameter)
+            return record.Name + "/" + (parameter.Constraints.IsDefaultOrEmpty
+                ? Unconstrained
+                : string.Join("+", parameter.Constraints.Select(c => c.GetType().Name).OrderBy(n => n, StringComparer.Ordinal)));
+        return DefinitionOf(record) is { } definition
+            ? record.Name + "/" + ((definition.GetValue(type) as Sem.TypeSymbol)?.TypeKind.ToString() ?? "no definition")
+            : record.Name;
+    }
+
+    private static IEnumerable<Node> Descendants(Node node) =>
+        node.GetChildNodes().SelectMany(child => Descendants(child).Prepend(child));
+
+    /// <summary>Compiles a probe that declares the payload and reads a <c>T | None</c> parameter of it the way a cell
+    /// does (a generic function for a type parameter, a method for <c>Self</c>), and returns the census key of the
+    /// type the checker recorded under the <c>| None</c>.</summary>
+    private static string MeasuredCensusKey(Payload payload)
+    {
+        var source = "from ipaddress import IPv4Address, IPv6Address\n\n"
+            + (payload.SharpyDeclaration is { } declaration ? declaration.TrimEnd('\n') + "\n" : "")
+            + (payload.SelfOf != null
+                ? "    def census_probe(self, x: Self | None) -> bool:\n        return x is None\n"
+                : $"\ndef census_probe{payload.TypeParameters}(x: {payload.CellSpelling} | None) -> bool:\n    return x is None\n")
+            + "\ndef main() -> None:\n    pass\n";
+        var options = new CompilerOptions
+        {
+            References = new[] { Sharpy.TestInfrastructure.SharpyCoreReference.Location, SharpyStdlibReference.Location },
+            OutputType = "exe",
+            WarningsAsErrors = false,
+        };
+        var result = new Compiler(options, NullLogger.Instance).Compile(source, "census_probe.spy");
+        var errors = result.Diagnostics.GetErrors().Select(d => $"[{d.Code}] {d.Message}").ToList();
+        Assert.True(errors.Count == 0 && result.Module != null && result.SemanticInfo != null,
+            $"payload {payload.Name}: its census probe does not compile: " + string.Join("; ", errors) + "\n" + source);
+        var probe = Descendants(result.Module!).OfType<FunctionDef>().Single(f => f.Name == "census_probe");
+        var needle = Descendants(probe).OfType<Identifier>().Single(i => i.Name == "x");
+        var type = result.SemanticInfo!.GetExpressionType(needle);
+        Assert.True(type is Sem.NullableType,
+            $"payload {payload.Name}: the checker typed its `{payload.CellSpelling} | None` needle as "
+            + $"{type?.GetType().Name ?? "nothing"} ({type?.GetDisplayName()}), not as a NullableType");
+        return CensusKey(((Sem.NullableType)type!).UnderlyingType);
+    }
+
+    /// <summary>The census keys, by reflection: a record with a definition axis once per value on it, unless
+    /// <see cref="SemanticTypeCensus"/> excludes the record as a whole (its bare name, with a reason); every other
+    /// record by its name.</summary>
+    private static IReadOnlyList<string> SemanticTypeCensusKeys() =>
+        SemanticTypeRecords().SelectMany(record =>
+        {
+            var axis = DefinitionAxis(record);
+            return axis.Count == 0 || SemanticTypeCensus.TryGetValue(record.Name, out var whole) && whole.Excluded != null
+                ? new[] { record.Name }
+                : axis.Select(value => record.Name + "/" + value);
+        }).OrderBy(k => k, StringComparer.Ordinal).ToList();
+
+    /// <summary>The payload axis is closed against the compiler's type model: <see cref="SemanticTypeCensus"/>'s keys
+    /// are exactly the reflected census keys; every key generates payloads or names its reason, never both; every
+    /// payload's MEASURED key is a generating key; and every generating key has exactly the payloads it pins.</summary>
+    private static void AssertPayloadAxisIsTheSemanticTypeCensus()
+    {
+        Assert.All(SemanticTypeRecords(), record => Assert.True(record.IsSealed, $"{record.Name}: a SemanticType record that is not sealed"));
+        // A type parameter is a definition carrier too (its declaring type); its axis is the constraint, named above.
+        Assert.NotNull(DefinitionOf(typeof(Sem.TypeParameterType)));
+        var census = SemanticTypeCensusKeys();
+        var mapped = SemanticTypeCensus.Keys.OrderBy(k => k, StringComparer.Ordinal).ToList();
+        Assert.True(census.SequenceEqual(mapped),
+            "the SemanticType census (each sealed record; a record with a definition once per kind of definition) has no "
+            + "entry for [" + string.Join(", ", census.Except(mapped)) + "] and SemanticTypeCensus names ["
+            + string.Join(", ", mapped.Except(census)) + "], which the census has not: generate or exclude (with a reason) each key");
+        foreach (var (key, (count, excluded)) in SemanticTypeCensus)
+            Assert.True((count > 0) != (excluded != null), $"{key}: payloads or an exclusion reason, exactly one");
+
+        var payloads = GeneratePayloads();
+        var measured = payloads.ToDictionary(p => p.Name, MeasuredCensusKey, StringComparer.Ordinal);
+        var table = string.Join("; ", measured.OrderBy(m => m.Value, StringComparer.Ordinal).Select(m => $"{m.Key} = {m.Value}"));
+        foreach (var (name, key) in measured)
+            Assert.True(SemanticTypeCensus.TryGetValue(key, out var entry) && entry.Excluded == null,
+                $"payload {name} is a {key} to the checker, which SemanticTypeCensus "
+                + (SemanticTypeCensus.ContainsKey(key) ? "excludes" : "does not name") + $". Measured: {table}");
+        foreach (var (key, (count, _)) in SemanticTypeCensus.Where(e => e.Value.Excluded == null))
+        {
+            var at = measured.Where(m => m.Value == key).Select(m => m.Key).OrderBy(n => n, StringComparer.Ordinal).ToList();
+            Assert.True(at.Count == count,
+                $"{key}: SemanticTypeCensus pins {count} payload(s); the checker types [{string.Join(", ", at)}] so. Measured: {table}");
+        }
+        // A scoped payload states its scope: a type parameter names its binding, and is not also Self.
+        Assert.All(payloads, p => Assert.True((p.IsTypeParameter == (p.Binding != null)) && !(p.IsTypeParameter && p.SelfOf != null),
+            $"payload {p.Name}: an inconsistent scope"));
+    }
+
+    /// <summary>Each payload generated without optional-element variants is a payload of the axis, and the defect
+    /// that excludes them is still there: its program is refused by exactly the named code. When the defect is fixed
+    /// this is red until the entry is deleted, and the variants' cells join the product.</summary>
+    private void AssertOptionalElementExclusionsStillHold()
+    {
+        var names = GeneratePayloads().Select(p => p.Name).ToHashSet(StringComparer.Ordinal);
+        foreach (var (name, (_, _, program, refusedBy)) in OptionalElementExcluded)
+        {
+            Assert.True(names.Contains(name), $"OptionalElementExcluded names {name}, which is not a payload");
+            var run = CompileAndExecute(program, "optional_element_exclusion.spy", executionTimeoutMs: 120_000);
+            var codes = run.RawDiagnostics.Where(d => d.IsError).Select(d => d.Code ?? "?").Distinct().OrderBy(c => c, StringComparer.Ordinal).ToList();
+            Assert.True(!RanToCompletion(run) && codes.Count == 1 && codes[0] == refusedBy,
+                $"{name}: its optional-element exclusion says the program below is refused by {refusedBy}; it "
+                + (RanToCompletion(run) ? "now runs" : "is refused by " + string.Join(",", codes))
+                + ": delete the entry from OptionalElementExcluded (the variants' cells then join the product)\n" + program);
+        }
+    }
+
     /// <summary>The CLR row is the census: the roster's keys are exactly the public types of Sharpy.Core and
     /// Sharpy.Stdlib with a public instance single-argument <c>Contains</c>; each generates one container or names why
     /// not; and every container of the CLR row comes from the roster.</summary>
@@ -1081,6 +1500,11 @@ public class OptionalMembershipDifferentialTests : IntegrationTestBase
         Assert.All(ExcludedPrimitives, e => Assert.False(Blank(e.Value), $"primitive {e.Key}: no reason"));
         Assert.All(TypeKindPayloads.Where(e => e.Value.Generated.Length == 0),
             e => Assert.False(Blank(e.Value.Excluded), $"TypeKind {e.Key}: no exclusion reason"));
+        Assert.All(OptionalElementExcluded, e => Assert.True(
+            !Blank(e.Value.Why) && System.Text.RegularExpressions.Regex.IsMatch(e.Value.Why, "#[0-9]+"),
+            $"{e.Key}: an optional-element exclusion needs a reason and an issue"));
+        Assert.All(SemanticTypeCensus.Where(e => e.Value.Payloads == 0),
+            e => Assert.False(Blank(e.Value.Excluded), $"SemanticType census key {e.Key}: no exclusion reason"));
         Assert.All(ClrContainerRoster.Where(r => r.Value.Generated == null),
             r => Assert.False(Blank(r.Value.Excluded), $"census type {r.Key}: no exclusion reason"));
         Assert.All(SpecRowMap.Where(m => m.Excluded != null || m.Generated.Length == 0),
