@@ -1,0 +1,43 @@
+# A `T | None` needle into a subsequence container (`str`, `bytes`) raises TypeError for None at
+# run time, as Python does, for `in` and `not in` alike (#2635, plan-4e2867 D2); a held value
+# asks the container.
+
+enum Tone:
+    A = "a"
+
+def str_cell(x: str | None) -> str:
+    try:
+        return str(x in "abc") + " " + str(x not in "abc")
+    except TypeError:
+        return "TypeError"
+
+def str_not_in_cell(x: str | None) -> str:
+    try:
+        return str(x not in "abc")
+    except TypeError:
+        return "TypeError"
+
+def bytes_cell(b: bytes | None) -> str:
+    try:
+        return str(b in bytes([1, 2]))
+    except TypeError:
+        return "TypeError"
+
+def byte_value_cell(i: int | None) -> str:
+    try:
+        return str(i in bytes([1, 2])) + " " + str(i not in bytes([1, 2]))
+    except TypeError:
+        return "TypeError"
+
+def tone_cell(t: Tone | None) -> str:
+    try:
+        return str(t in "abc")
+    except TypeError:
+        return "TypeError"
+
+def main():
+    print(str_cell(None), "|", str_cell("a"), "|", str_cell("z"))
+    print(str_not_in_cell(None), "|", str_not_in_cell("z"))
+    print(bytes_cell(None), "|", bytes_cell(bytes([1])), "|", bytes_cell(bytes([9])))
+    print(byte_value_cell(None), "|", byte_value_cell(1), "|", byte_value_cell(9))
+    print(tone_cell(None), "|", tone_cell(Tone.A))

@@ -227,22 +227,12 @@ internal partial class RoslynEmitter
                 return GenerateMatMulCall(left, right);
 
             case BinaryOperator.In:
-                {
-                    // x in y → y.Contains(x); apply the iterable projection so tuple/dict
-                    // containers are bridged to an IEnumerable with Contains (#1771).
-                    var projectedRight = ApplyIterableProjection(binOp.Right, right);
-                    return InvocationExpression(Member(projectedRight, "Contains"))
-                        .AddArgumentListArguments(Argument(left));
-                }
+                // x in y → y.Contains(x), or the recorded None-needle helper around that same test.
+                return GenerateMembershipTest(binOp, left, right);
 
             case BinaryOperator.NotIn:
-                {
-                    // x not in y → !y.Contains(x)
-                    var projectedRight = ApplyIterableProjection(binOp.Right, right);
-                    return Prefix(SyntaxKind.LogicalNotExpression,
-                        InvocationExpression(Member(projectedRight, "Contains"))
-                            .AddArgumentListArguments(Argument(left)));
-                }
+                // x not in y → !(x in y): the helper raises (or answers) before the negation.
+                return Prefix(SyntaxKind.LogicalNotExpression, GenerateMembershipTest(binOp, left, right));
 
             case BinaryOperator.Is:
                 // `x is None` and `None is x` are one test (#2171): the subject is the operand on the
@@ -332,6 +322,70 @@ internal partial class RoslynEmitter
         // The parser groups by Python precedence; C# ranks `&`/`|`/`^` below `==` where Python ranks
         // them above, so `a & b == c` must print as `(a & b) == c` — the seam decides per edge.
         return Binary(kind, left, right);
+    }
+
+    /// <summary>
+    /// The membership test of <c>x in y</c> (the caller negates it for <c>not in</c>), selected by
+    /// the operator lowering <c>TypeChecker.ClassifyMembership</c> recorded on the node (#2635,
+    /// plan-4e2867 D1/D2). The emitter decides nothing: it switches on the recorded kind.
+    /// <list type="bullet">
+    /// <item><see cref="OperatorLoweringKind.MembershipNoneIsFalse"/> →
+    /// <c>global::Sharpy.Builtins.ContainsOptional(x, y, static (c, n) =&gt; c.Contains(n))</c>.</item>
+    /// <item><see cref="OperatorLoweringKind.MembershipNoneRaises"/> →
+    /// <c>global::Sharpy.Builtins.ContainsNoneRaises(x, y, static (c, n) =&gt; c.Contains(n))</c>.</item>
+    /// <item>anything else → <c>y.Contains(x)</c>.</item>
+    /// </list>
+    /// The lambda body is <see cref="GenerateContainsCall"/> over the lambda's own parameters — the
+    /// ONE spelling of the container test, so the helper form and the plain form cannot drift (the
+    /// tuple array bridge and the dict key view of #1771 apply inside the lambda, to its container
+    /// parameter). The needle is argument 1 and the container argument 2, so a helper cell
+    /// evaluates <c>x</c> before <c>y</c>, as Python does (D4). The lambda is <c>static</c>: it
+    /// captures nothing, so it allocates no closure.
+    /// </summary>
+    private ExpressionSyntax GenerateMembershipTest(BinaryOp binOp, ExpressionSyntax needle, ExpressionSyntax container)
+    {
+        string helper;
+        switch (OperatorLoweringOf(binOp).Kind)
+        {
+            case OperatorLoweringKind.MembershipNoneIsFalse:
+                helper = "ContainsOptional";
+                break;
+            case OperatorLoweringKind.MembershipNoneRaises:
+                helper = "ContainsNoneRaises";
+                break;
+            default:
+                return GenerateContainsCall(binOp.Right, container, needle);
+        }
+
+        // Synthesized, counter-suffixed names (the `__callable_p_N` convention): no user identifier
+        // is spelled with a leading double underscore and a numeric suffix the emitter hands out.
+        var containerParam = GenerateTempVarName("in_container");
+        var needleParam = GenerateTempVarName("in_needle");
+        var test = ParenthesizedLambdaExpression(
+                ParameterList(SeparatedList(new[]
+                {
+                    Parameter(Identifier(containerParam)),
+                    Parameter(Identifier(needleParam))
+                })),
+                GenerateContainsCall(binOp.Right, IdentifierName(containerParam), IdentifierName(needleParam)))
+            .WithModifiers(TokenList(Token(SyntaxKind.StaticKeyword)));
+
+        return InvocationExpression(MakeGlobalQualifiedName("Sharpy", "Builtins", helper))
+            .AddArgumentListArguments(Argument(needle), Argument(container), Argument(test));
+    }
+
+    /// <summary>
+    /// <c>container.Contains(needle)</c>, with the iterable projection recorded on the container's
+    /// AST node applied to <paramref name="container"/> so tuple/dict containers are bridged to an
+    /// <c>IEnumerable</c> with <c>Contains</c> (#1771). Shared by the plain membership test and the
+    /// None-needle helper's lambda (<see cref="GenerateMembershipTest"/>).
+    /// </summary>
+    private ExpressionSyntax GenerateContainsCall(
+        Expression containerNode, ExpressionSyntax container, ExpressionSyntax needle)
+    {
+        var projected = ApplyIterableProjection(containerNode, container);
+        return InvocationExpression(Member(projected, "Contains"))
+            .AddArgumentListArguments(Argument(needle));
     }
 
     /// <summary>
