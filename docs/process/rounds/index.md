@@ -128,7 +128,7 @@
 
 ## Open items pending owner confirmation
 
-two at call 44 — whether R-OX's "strictly about reference equality" leaves the enum-by-member rule (R-OM) standing (read: yes; on any other value type `is` is always `False` with SPY0465), and the owner's verbatim words for R-OP if they are wanted in §4.
+one at call 44 — the owner's verbatim words for R-OP, wanted in §4 (owner 2026-11-13: "sure?") and being read from the session that wrote `docs/design/nullability.md`; R-OX's question is answered: the enum-by-member rule (R-OM) stands (owner 2026-11-13, quoted on the R-OX row).
 
 ## Unparsed
 
