@@ -90,9 +90,15 @@ namespace Sharpy.Compiler.Tests.Properties.Differential;
 /// <c>ChainLink/*</c> (#2648), <c>UserIterable/*</c> (#2653).</para>
 /// <para>Skips when no python3 ≥ 3.15 answers, except under <c>SHARPY_REQUIRE_PYTHON_ORACLE=1</c> (CI).</para>
 /// </summary>
-public class OptionalMembershipDifferentialTests : IntegrationTestBase
+/// <remarks>The generator is this abstract base; its seven facts are declared by four test classes, one per CI
+/// shard bucket, so that no shard job runs them all (they take about 22 minutes together):
+/// <see cref="OptionalMembershipDifferentialTests"/> (the value matrix and the left-operand forms),
+/// <c>CodeGen.MembershipDifferentialOrderTests</c> (the order matrix and the hoisting last operand),
+/// <c>Semantic.MembershipDifferentialSequenceTests</c> (the operator sequences and their statement positions) and
+/// <c>Differential.MembershipDifferentialTripleTests</c> (three chain links).</remarks>
+public abstract class MembershipOperatorDifferentialBase : IntegrationTestBase
 {
-    public OptionalMembershipDifferentialTests(ITestOutputHelper output) : base(output) => MuteCompilePath = true;
+    protected MembershipOperatorDifferentialBase(ITestOutputHelper output) : base(output) => MuteCompilePath = true;
 
     private const string AllowlistFileName = "optional-membership-differential-allowlist.txt";
 
@@ -1360,14 +1366,12 @@ public class OptionalMembershipDifferentialTests : IntegrationTestBase
         + "int8 = int16 = int32 = int64 = uint8 = uint16 = uint32 = uint64 = int\nfloat32 = float64 = float\n"
         + "import email, email.message\nemail.EmailMessage = email.message.EmailMessage\n";
 
-    [SkippableFact]
-    public void OptionalNeedle_EveryContainerOperatorPosition_MatchesCPython() => RunMembershipMatrix(Observation.Value);
+    protected void RunValueMatrix() => RunMembershipMatrix(Observation.Value);
 
     /// <summary>The same matrix by its order observation (#2645): every cell traces its operands, and CPython's
     /// trace (the needle before the container, a chain's head operand before both) is part of the compared output.
     /// A fact of its own so that neither half of the matrix runs for longer than CI's per-test hang limit.</summary>
-    [SkippableFact]
-    public void Membership_EveryContainerOperatorPosition_EvaluatesItsOperandsLeftToRight() => RunMembershipMatrix(Observation.Order);
+    protected void RunOrderMatrix() => RunMembershipMatrix(Observation.Order);
 
     /// <summary>The membership matrix over the cells of one observation. The axes and the totality count are the
     /// whole product's in both facts; each fact runs, compares and pins its own half (the order half owns the
@@ -1631,7 +1635,7 @@ public class OptionalMembershipDifferentialTests : IntegrationTestBase
     // The operator-sequence matrix (#2645 evaluation order, #2648 chain links)
     // ---------------------------------------------------------------------------------------------------------
 
-    /// <summary>The allowlist rows <see cref="OperatorSequences_OverEffectfulOperands_AreTheirDesugaring"/> owns.</summary>
+    /// <summary>The allowlist rows <see cref="RunSequences"/> owns.</summary>
     private const string SequenceRowPrefix = "Sequence/";
 
     /// <summary>How a sequence's operands are typed: the payload; <c>T | None</c>; the tagged <c>T?</c>, on both
@@ -2138,25 +2142,21 @@ public class OptionalMembershipDifferentialTests : IntegrationTestBase
     /// <para><b>Known red.</b> The <c>Sequence/Binary</c> and <c>Sequence/Chain</c> rows of the allowlist; each
     /// other family's rows carry its own prefix.</para>
     /// </summary>
-    [Fact]
-    public void OperatorSequences_OverEffectfulOperands_AreTheirDesugaring() => RunSequenceFamily(SequenceFamily.Main);
+    protected void RunSequences() => RunSequenceFamily(SequenceFamily.Main);
 
     /// <summary>The same contract where the sequence is not an assignment's right side but an <c>if</c> condition or
     /// a comprehension filter: every spelled binary operator and every ordered pair of chain links, in the plain
     /// form. A fact of its own for CI's per-test limit; rows <c>SequencePosition/*</c>.</summary>
-    [Fact]
-    public void OperatorSequences_InEveryStatementPosition_AreTheirDesugaring() => RunSequenceFamily(SequenceFamily.Position);
+    protected void RunSequencePositions() => RunSequenceFamily(SequenceFamily.Position);
 
     /// <summary>The same contract for a chain whose LAST operand hoists statements (a comprehension): every ordered
     /// pair of chain links, in every form. A fact of its own for CI's per-test limit; rows <c>SequenceHoist/*</c>.</summary>
-    [Fact]
-    public void OperatorSequences_WithAHoistingLastOperand_AreTheirDesugaring() => RunSequenceFamily(SequenceFamily.HoistLast);
+    protected void RunSequencesWithAHoistingLastOperand() => RunSequenceFamily(SequenceFamily.HoistLast);
 
     /// <summary>The same contract for a chain of three links (a middle link, both of whose operands are read
     /// twice): every ordered triple of chain links, in the plain form. A fact of its own for CI's per-test limit;
     /// rows <c>SequenceTriple/*</c>.</summary>
-    [Fact]
-    public void OperatorSequences_OfThreeChainLinks_AreTheirDesugaring() => RunSequenceFamily(SequenceFamily.Triple);
+    protected void RunSequencesOfThreeChainLinks() => RunSequenceFamily(SequenceFamily.Triple);
 
     private void RunSequenceFamily(SequenceFamily family)
     {
@@ -2729,8 +2729,7 @@ public class OptionalMembershipDifferentialTests : IntegrationTestBase
     /// (<c>Chain</c>, #2648), and the two forms that reach Roslyn as a left operand (<c>Ellipsis</c>, #1931;
     /// <c>Float32</c>, #2644).</para>
     /// </summary>
-    [Fact]
-    public void Membership_EveryLeftOperandForm_IsItsDesugaring()
+    protected void RunLeftOperandForms()
     {
         AssertLeftFormAxisIsTheExpressionCensus();
         var cells = GenerateLeftCells();
@@ -3453,4 +3452,16 @@ public class OptionalMembershipDifferentialTests : IntegrationTestBase
         }
         return rows;
     }
+}
+
+/// <summary>The value matrix and the left-operand forms of <see cref="MembershipOperatorDifferentialBase"/>.</summary>
+public sealed class OptionalMembershipDifferentialTests : MembershipOperatorDifferentialBase
+{
+    public OptionalMembershipDifferentialTests(ITestOutputHelper output) : base(output) { }
+
+    [SkippableFact]
+    public void OptionalNeedle_EveryContainerOperatorPosition_MatchesCPython() => RunValueMatrix();
+
+    [Fact]
+    public void Membership_EveryLeftOperandForm_IsItsDesugaring() => RunLeftOperandForms();
 }
