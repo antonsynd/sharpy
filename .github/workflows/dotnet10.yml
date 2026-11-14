@@ -202,9 +202,9 @@ env:
     FullyQualifiedName!~Sharpy.Compiler.Tests.Semantic.&\
     FullyQualifiedName!~Sharpy.Compiler.Tests.Properties.&\
     FullyQualifiedName!~Sharpy.Compiler.Tests.Conformance."
-  # 8: Properties.Differential (#2690): the CPython-differential suites that are not sweeps
-  # (the DifferentialExecution and FormatSpecDifferential sweeps leave by the main filter), out
-  # of shard 5.
+  # 8: Properties.Differential (#2690), out of shard 5: the CPython-differential suites and the
+  # other classes of that namespace (NullabilityLedgerTests), less the two sweeps the main
+  # filter takes out (DifferentialExecution, FormatSpecDifferential).
   COMPILER_SHARD_8: "FullyQualifiedName~Sharpy.Compiler.Tests.Properties.Differential."
   # 9: CodeGen (#2690), out of shard 2. `Properties.CodeGen.` is not matched: the token starts
   # at `Sharpy.Compiler.Tests.`.
