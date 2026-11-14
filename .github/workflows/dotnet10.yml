@@ -40,7 +40,8 @@
 
 # Hang limits (#2458, W0.4): every job has a `timeout-minutes` at least 2x its slowest duration
 # over the 20 mainline push runs before it (42372810738 back to 40623113848; for `compiler`, 2x
-# the ~11 min projected for the class-split shard 6), never under 5, in place of the 6-hour
+# the ~11 min projected for the class-split shard 6 at first, and since #2690 the 40 given at the
+# end of this paragraph), never under 5, in place of the 6-hour
 # default; every test run has `--blame-hang-timeout 10m`, so a test silent for 10 min aborts the
 # run red ("The active test run was aborted") long before the job limit. The longest single test,
 # NameResolutionDifferential_Sweep, took 372 s in 42372810738. No dump is taken
