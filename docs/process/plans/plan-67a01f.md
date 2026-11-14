@@ -1,4 +1,4 @@
-<!-- DRAFT, not verified: written by /create-plan on 2026-11-13 @ 9fce3ecc4; revised by /create-plan on 2026-11-14 @ e335aa80c after pass 1; no /verify-plan pass has stamped this text. -->
+<!-- DRAFT, not verified: written by /create-plan on 2026-11-13 @ 9fce3ecc4; revised by /create-plan on 2026-11-14 @ 0133f5337 after pass 1; no /verify-plan pass has stamped this text. -->
 
 # Membership operator totality: user iterables, chain links, operand order
 
@@ -8,7 +8,7 @@ Three class trackers, one group (charter §3.20w): #2645 `f() in g()` evaluates 
 
 ## Current State
 
-Product @ 7be6704c4 (`run`); oracle CPython 3.15.2; stage 0 @ e335aa80c.
+Product @ 7be6704c4 (`run`); oracle CPython 3.15.2; stage 0 @ 0133f5337.
 
 - **Order.** `n() in c()` prints `container`, `needle` for every plain-path container; `not in` too; a lifted `T | None` needle goes first. `x in [(x := 5), 2]` prints `True` (CPython `False`). `n() * s()` with the `str` on the right also evaluates right first.
 - **Chain.** `x == x in [a, c]`, `c is d is e`, `a < x is not None`: SPY0519 from `RoslynEmitter.Expressions.Operators.cs:784`. The chain site runs a subset of the binary site's checks and both validators visit `BinaryOp` only, so a link's verdict is not its twin's (SPY0519 for SPY0320, `False` for SPY0402, Roslyn for a struct). `c is Color.RED is d` is SPY0349: `Parser.Expressions.cs:556` drops the head's identity operand.
@@ -21,9 +21,9 @@ Product @ 7be6704c4 (`run`); oracle CPython 3.15.2; stage 0 @ e335aa80c.
 - **Alone:** yes — D2 changes the emitted form of `in` where an operand has an evaluation (0 of 178 `.expected.cs` snapshots: 3 hold `.Contains(`, each with a literal or a name; spy-stdlib C# is measured at T1)
 - **Gates:** 1
 - **Filing:** cells outside the contract go to the findings ledger; the lead files by class (contract §10); trackers named at the end of this plan
-- **Budget:** verify cost: the seven facts and one whole-solution gate; the sibling-cell prober: the generator's matrix plus at most two axis changes (contract §10)
+- **Budget:** verify cost: the stage-0 facts and one whole-solution gate; the sibling-cell prober: the generator's matrix plus at most two axis changes (contract §10)
 - **Override:** none
-- **Scorecard baseline:** `allowlist_rows_outside_seed` 541 → 550 @ 907aad013 (owner, 2026-11-13, #2645 comment 6865268833: "Raise baseline to 550 (Recommended)") → 586 @ 3833e96e1, the measured count of one row per fact and cause (owner, 2026-11-14, comment 6870463430); not a seed harness
+- **Scorecard baseline:** `allowlist_rows_outside_seed` 541 → 550 @ 907aad013 (owner, 2026-11-13, #2645 comment 6865268833: "Raise baseline to 550 (Recommended)") → 586 @ 3833e96e1 → 606 @ 0133f5337, each the count of one row per fact and cause (owner, comments 6870463430, 6873755292); not a seed harness
 
 ## Defect Class
 
@@ -33,19 +33,19 @@ Product @ 7be6704c4 (`run`); oracle CPython 3.15.2; stage 0 @ e335aa80c.
 - **Sibling cells this plan must also cover:** none; see Generator.
 - **Lane / reach:** silent-wrong · program (#2645); false-refusal · probe (#2648); false-refusal · program (#2653). **Fidelity-scope row:** COMPARED ("value of an expression"; "which programs run vs. are refused": `expressions.md` › Expression Evaluation Order, `operator_precedence.md` › Comparison chaining).
 - **Standing harness that should have caught it:** `OptionalMembershipDifferentialTests` (P92): its chain cells expected SPY0519, it observed no order and generated no user iterable. Stage 0 extends it.
-- **Generator:** stage 0, seven facts of `MembershipOperatorDifferentialBase` in four shard classes, 7 passed / 0 failed / 0 skipped @ e335aa80c (14.5 min locally; CI's longest fact 5 m 57 s, shard 13 min of 25); 67283 known-red cells in 68 rows.
-  - Cases: 57320 membership cells by value and by order (four `__iter__` shapes); 92650 operator sequences (33150 binary and two-link, every `BinaryOpLowering` recorded; 8500 in further positions; 17000 with a hoisting last operand; 34000 of three links); 2520 left-operand cells (45 forms × 7 right operands, 4 hoisting).
-  - Known red, one fact and one cause a row: order alone 8442; chains 6422 by value + 4970 by order, 35232 sequences, 616 left-operand; user iterables 5220 + 3660; binary order 405 sequences, 552 left-operand; `GetItemLen` 24 + 6; `LeftForm/Ellipsis` 42 (#1931), `LeftForm/Float32` 42 (#2644). A bulk portion is one cause at its census count (`BulkCensus`); any other cell is a pin line.
-  - Excluded axes, in the test: the literal-`None` needle's order; `@`, `|>`. Not crossed (cost; put to the owner): three links, further positions and pivots outside the plain form; a sequence's hoisting last operand beyond a comprehension; a generic host beyond the producer shape. Not enumerable, fixtures: the operand SPELLING after `is` (D4), a class's other members (D1).
-  - Turned green: D1 the `UserIterable` rows and 18 `GetItemLen` cells; D2 the order-alone and `…/Binary` rows; D3 the chain rows; twin-red cells (#2651, #2674) stay, as pin lines. Measured @ 1304d2af1 on a restored prototype of D1 and D2's bind: order alone → 0, `UserIterable` → 96 (#2674), `Sequence/Binary` → its 11 `*` cells; D3, D4 and the `*` overload are inferred.
-- **Owner rulings:** R-NZ (#2653 comment 6826244591, 2026-11-12: "accept as CPython, record it as a ruling"); R-OA (comment 6826280413: "maybe let's say no on __getitem__ with __len__"); R-OE (charter §4: one group on P92's generator). Unlettered until the next batching call, 2026-11-13: a chain link is refused as its twin (#2648 comment 6865267508: "Refuse, as the twin (Recommended)") and reaches Roslyn where its twin does (comment 6867353616: "Same as the twin (Recommended)"); #2645 comment 6867355702: bulk rows "Accept, pin the residue (Recommended)", the extended generator's allowlist "Accept the shared file (Recommended)", the left-operand form "Close the axis (Recommended)". 2026-11-14: the `__iter__` shape (#2653 comment 6870461621: "Widen the main matrix"); #2645 comment 6870463430: finding 5's four axes "Generate all four", rows "One row per fact and cause, 580", the two crashing left-operand forms "Known-red rows, baseline 552".
+- **Generator:** stage 0, 26 facts of `MembershipOperatorDifferentialBase` in 15 shard classes, 26 passed / 0 failed / 0 skipped @ 0133f5337 on CI, @ dfb8331c3 locally (42.6 min; CI's longest fact 6 m 56 s, shard job 18 of 25 min); 157347 known-red cells in 88 rows.
+  - Cases: 74344 membership cells by value and order (12 iterating classes: shapes × producer types × hosts); 343400 operator sequences in every form: 33150 main, 29750 pivots, 42500 in further positions, 68000 behind four hoist kinds, 170000 of three links; 2520 left-operand cells.
+  - Known red, one fact and one cause a row: the matrix 46378 cells in 58 rows, sequences 109717 in 26, left-operand 1252 in 4.
+  - Excluded, in the test: the literal-`None` needle's order; `@`, `|>`; a pivot side repeating a generated cell. Chain length is {two, three links} (comment 6873755292). Not built (put to the owner): three links behind a hoist (in @ 53ad47620, out @ 6f00cfa18: a shard job ran 24 m 25 s of 25); the blocks crossed with one another. Not enumerable, fixtures: the operand SPELLING after `is` (D4), a class's other members (D1).
+  - Turned green: Phase 1's rows. Measured on a restored prototype of D1 and D2's bind: @ 1304d2af1 order alone → 0, `UserIterable` → 96 (#2674), `Sequence/Binary` → its 11 `*` cells; @ dfb8331c3 `LeftForm/Binary` 552 → 36, SPY0908: a conditional or a lambda typed by its slot, beside a hoisting container (the 18 tuple-literal cells run). Inferred: those 36 (D2's hoist ahead of a container that hoists as it is built), D3, D4, the `*` overload.
+- **Owner rulings:** R-NZ (#2653 comment 6826244591, 2026-11-12: "accept as CPython, record it as a ruling"); R-OA (comment 6826280413: "maybe let's say no on __getitem__ with __len__"); R-OE (charter §4: one group on P92's generator). Unlettered, 2026-11-13: a chain link is refused as its twin (#2648 comment 6865267508: "Refuse, as the twin (Recommended)") and reaches Roslyn where its twin does (comment 6867353616: "Same as the twin (Recommended)"); #2645 comment 6867355702: bulk rows "Accept, pin the residue (Recommended)", the extended generator's allowlist "Accept the shared file (Recommended)", the left-operand form "Close the axis (Recommended)". 2026-11-14: the `__iter__` shape (#2653 comment 6870461621: "Widen the main matrix"); #2645 comment 6870463430: finding 5's four axes "Generate all four", rows "One row per fact and cause, 580", the two crashing left-operand forms "Known-red rows, baseline 552". Second batch: comment 6873755292, "Yes, 586 (Recommended)", "Cross everything", CI time "Accept, and track a CI shard issue"; #2653 comment 6873754974, "Generate all three".
 
 ## Adversarial Review (pre-mortem)
 
 - **Alternative root cause:** `ProtocolMembership.Has(__contains__)` could answer yes for a class that iterates. Rejected: its other readers ask whether the dunder exists, and R-OA needs the no.
 - **Alternative layer:** a Core helper taking the needle first for every `in` costs a delegate call per test and still needs the slot's type; a synthesized `Contains` changes a class's public C# surface (Axiom 1).
 - **How the fix could be inert:** no validator visits an accepted `in` link; the link keeps its own copy of the binary arm; `b.Contains(x)` binds a user's `contains` (D1 names LINQ); a tuple container hoists above the bind (D2).
-- **Before/after by direction:** D1: SPY0320 → runs. D2: nothing running is refused; SPY0908 → runs for #2644's conditional of constants into a wider slot and a slot-typed needle beside a hoisting container (54 cells). D3: SPY0519 → the twin's value or code; **worked → refused** (SPY0402) where the binary form refuses the `==` / `!=` link (160 sequences print); **refused → SPY0908** where the twin reaches Roslyn (1400 sequences). Both ruled, listed at T1.
+- **Before/after by direction:** D1: SPY0320 → runs. D2: nothing running is refused; SPY0908 → runs for #2644's conditional of constants into a wider slot and a slot-typed needle beside a hoisting container (54 cells). D3: SPY0519 → the twin's value or code; **worked → refused** (SPY0402) where the binary form refuses the `==` / `!=` link (296 sequences print); **refused → SPY0908** where the twin reaches Roslyn (8852 sequences). Both ruled, listed at T1.
 - **Blast radius:** Compiler.Tests (fixtures, Differential, GapDiscovery, `SinkPushingTotalityTests`, `OperatorLoweringCorpusCensusTests`, the Pretty / unparse round trips), Stdlib.Tests, Cli.Tests, LSP `FrontEndParityTests`, the warm/cold harness.
 - **Generated artifacts touched:** spy-stdlib and spy-test C# (D2), stdlib docs, the oracle ledger (D5): regenerated at T1 and after T6.
 
@@ -59,7 +59,7 @@ Product @ 7be6704c4 (`run`); oracle CPython 3.15.2; stage 0 @ e335aa80c.
   - **Predicate:** `1 in IterBag(1, 2)` and `1 in GIterBag[int]([1, 2])` print `True`, as does a member of a class that also declares `contains` (returning `False`); `1 in SeqBag(1, 2)` and `1 in LB()` (`__iter__ -> list[int]`) are SPY0320; `None` into a generic `SeqBag[T]` is SPY0320, not SPY0222.
 - **D2. The left operand is evaluated first (#2645).** Membership: a checker fact, the emitter's splice. String repeat: rung 2.
   - `ClassifyMembership` records, keyed on the needle node, the type the needle is bound as (a new `SemanticInfo` dictionary, in `MergeFrom`): the first slot `IsArgumentAssignable` takes it into, or the needle's own type when that is `T | None`, so the cast below never unwraps (#2674's value-type needles keep their SPY0908). No record, and today's emission: a container with no slot (#2249), a needle only the CLR call seam takes.
-  - One emitter helper binds a recorded needle before a form that reads its right operand first: `((Slot)x) is var t && y.Contains(t)`, negated whole for `not in`. The cast gives C# the type the argument position gave (`is var` alone cannot type a tuple of narrower literals, a `None` arm, a lambda, a function name). Where the container hoists (a tuple's array bridge; a comprehension, a spread, `?`: today's untyped capture is SPY0908 for a slot-typed needle), the needle is hoisted first, into a local of that type. `GenerateMembershipTest` (`:345`) uses the helper; D3's membership link is the same call, and a chain's capture of a membership needle casts the same way. The reflected comparison (`:622`) keeps its plain `is var`: its left operand is typed alone.
+  - One emitter helper binds a recorded needle before a form that reads its right operand first: `((Slot)x) is var t && y.Contains(t)`, negated whole for `not in`. The cast gives C# the type the argument position gave (`is var` alone cannot type a tuple of narrower literals, a `None` arm, a lambda, a function name). Where the container hoists (a tuple's array bridge; a comprehension, a spread, `?`), the needle is hoisted first, into a local of that type. `GenerateMembershipTest` (`:345`) uses the helper; D3's membership link is the same call, and a chain's capture of a membership needle casts the same way. The reflected comparison (`:622`) keeps its plain `is var`: its left operand is typed alone.
   - Not bound: a literal-only left operand (a literal, or operators over literals: no evaluation), or two trivial operands (`IsTrivialExpression`). A bare name is bound when the container is not trivial.
   - `StringRepeatStrRight` (`:260`) emits a Core overload that takes the count first, `StringHelpers.Repeat(count, str)` for `int` and `long`, beside the existing `(str, count)` pair.
   - **Predicate:** no emission in `RoslynEmitter.Expressions.Operators.cs` places the right operand's syntax, or a statement it hoists, before a non-trivial left operand's, outside the helper and the slot-less case above.
@@ -80,7 +80,7 @@ Product @ 7be6704c4 (`run`); oracle CPython 3.15.2; stage 0 @ e335aa80c.
 **Goal:** the P93 row families drain to their #2651 / #2674 cells.
 
 **Acceptance (class-level, measurable):**
-- Matrix/sweep that goes green: the seven facts, their P93 rows drained as below; no `BulkCensus` entry left.
+- Matrix/sweep that goes green: the stage-0 facts, their P93 rows drained as below; no `BulkCensus` entry left.
 - Guard mutation:
   - M1: `IterationMembershipElement` ignores `__iter__` → `UserIterable/*` red; accepts `__getitem__` → the `GetItemLen` cells red (positive control: each SPY0320 at the restored tree); drops its producer gate → the `__iter__ -> list[int]` fixture red (SPY0908). `GenerateContainsCall` emits `y.Contains(x)` for the record → the `contains` fixture red (`False`).
   - M2, each removed → red: the bind → the order-alone rows and the membership cells of the `…/Binary` rows; its cast → the `@slot` left-operand cells (SPY0908); the hoist ahead of a tuple → the `Tuple` order cells; the bare-name arm → the `Identifier/Rebind` cells; the count-first overload → its `*` cells.
@@ -88,7 +88,7 @@ Product @ 7be6704c4 (`run`); oracle CPython 3.15.2; stage 0 @ e335aa80c.
   - M4: the parser drops the head's identity operand again → the D4 fixture red.
   - M5: a slot from `__getitem__` restored → the 18 `GetItemLen` literal-`None` cells red (SPY0222).
 - Allowlist entries that drain: the order-alone and `…/Binary` rows whole; the chain, `UserIterable` and `GetItemLen` rows to pin lines cited to #2651, #2674 or a twin's tracker; `LeftForm/Ellipsis` and `LeftForm/Float32` stay; `scorecard_metrics.py --lower`.
-- Execution evidence the close-out will cite: the seven facts @ sha, the D5 spec blocks (`check_spec_blocks.sh`), the whole-solution gate.
+- Execution evidence the close-out will cite: the stage-0 facts @ sha, the D5 spec blocks (`check_spec_blocks.sh`), the whole-solution gate.
 
 #### Tasks
 
@@ -103,7 +103,7 @@ Product @ 7be6704c4 (`run`); oracle CPython 3.15.2; stage 0 @ e335aa80c.
 - **T5. Core** (D2) — `src/Sharpy.Core/StringHelpers.cs` (C# 9 safe) and its Core.Tests.
 - **T6. Emitter** (D1–D3) — `RoslynEmitter.Expressions.Operators.cs`; sink rows for the new `is var` sites; regeneration again.
   - Acceptance: M1 (emitter half), M2, M3 (emitter half).
-- **T7. Spec, deviation, fixtures, drain** (D5) — the spec edits, the `deviations.yaml` row, the fixtures below, the `SpecRowMap` move, #2653's two `OptionalElementControlExcluded` entries deleted, each drained portion's `BulkCensus` entry deleted, its residue pinned and re-cited, `--lower`.
+- **T7. Spec, deviation, fixtures, drain** (D5) — the spec edits, the `deviations.yaml` row, the fixtures below, the `SpecRowMap` move, #2653's `OptionalElementControlExcluded` entries deleted, each drained portion's `BulkCensus` entry deleted, its residue pinned and re-cited, `--lower`.
   - Acceptance: the Phase 1 sweep bullet; the leftover count measured.
 
 ## Testing Strategy
@@ -132,4 +132,4 @@ Product @ 7be6704c4 (`run`); oracle CPython 3.15.2; stage 0 @ e335aa80c.
 ## Revision log
 
 - @ 907aad013 — revised before the first pass: the owner's two rulings of 2026-11-13 recorded. D3's unruled question is decided (a chain link is refused as its binary twin is; #2648 comment 6865267508) and stage 0's scorecard baseline is raised 541 → 550 (#2645 comment 6865268833). No decision, predicate, mutation or count changed.
-- @ 7cf933cec — revised after the 1st pass (NEEDS REVISION, Dimension 4, Dimension 6, Dimension 7): stage 0 @ 1304d2af1 answers findings 1, 2 (the axis), 4 and the bulk ruling; @ 3833e96e1, by the 2026-11-14 rulings, finding 5's four axes and the `__iter__` shape are generated, one row per fact and cause; @ e335aa80c four shard classes. D1: the synthesized `IEnumerable[T]`, LINQ named (finding 3). D2: a recorded binding type, cast, tuple hoist (finding 2). D3: both direction changes ruled (finding 6). D4: `Unknown` for a refused head. M1–M3 split.
+- @ 7cf933cec — revised after the 1st pass (NEEDS REVISION, Dimension 4, Dimension 6, Dimension 7): stage 0 @ 1304d2af1 answers findings 1, 2 (the axis), 4 and the bulk ruling; @ 3833e96e1, by the 2026-11-14 rulings, finding 5's four axes and the `__iter__` shape are generated, one row per fact and cause; @ 0133f5337, the second batch: producer types, hosts, forms, hoist kinds, 26 facts. D1: the synthesized `IEnumerable[T]`, LINQ named (finding 3). D2: a recorded binding type, cast, tuple hoist (finding 2). D3: both direction changes ruled (finding 6). D4: `Unknown` for a refused head. M1–M3 split.
