@@ -1698,7 +1698,8 @@ public abstract class MembershipOperatorDifferentialBase : IntegrationTestBase
     // The operator-sequence matrix (#2645 evaluation order, #2648 chain links)
     // ---------------------------------------------------------------------------------------------------------
 
-    /// <summary>The allowlist rows the main sequence fact owns (<see cref="SequenceBlock.Main"/>).</summary>
+    /// <summary>The prefix of the allowlist rows of the one-operator fact and the two-link fact
+    /// (<see cref="SequenceBlock.Operators"/>, <see cref="SequenceBlock.Pairs"/>), a cause each.</summary>
     private const string SequenceRowPrefix = "Sequence/";
 
     /// <summary>How a sequence's operands are typed: the payload; <c>T | None</c>; the tagged <c>T?</c>, on both
@@ -1863,8 +1864,8 @@ public abstract class MembershipOperatorDifferentialBase : IntegrationTestBase
     /// <summary>Why no chain of a fact can show a control today, or null where one must.</summary>
     private static string? ChainControlExcluded(SequenceFact fact, ChainControl control)
     {
-        if (fact.Block == SequenceBlock.Pivot)
-            return "a pivot sequence is one operator: the block has no chain";
+        if (fact.Block is SequenceBlock.Pivot or SequenceBlock.Operators)
+            return "the block's sequences are one operator: it has no chain";
         if (fact.First == LinkKind.Test)
             return "#2648: a chain whose first link is a test is refused by code generation (SPY0519), so none runs";
         if (fact.Form == SequenceForm.NoneLast && control == ChainControl.EvaluatesLastOperand)
@@ -1918,8 +1919,11 @@ public abstract class MembershipOperatorDifferentialBase : IntegrationTestBase
     /// chains, statement positions and pivots over every operand form; the hoisting last operand over every hoist
     /// kind and for three links.
     /// <list type="bullet">
-    /// <item><see cref="Main"/> — every spelled binary operator and every ordered pair of chain links, in every
-    /// form, and the plain form's pivots: an assignment's right side, nothing hoisting;</item>
+    /// <item><see cref="Operators"/> — every spelled binary operator in every form, and the plain form's pivots:
+    /// an assignment's right side (the <c>Sequence/Binary</c> row);</item>
+    /// <item><see cref="Pairs"/> — every ordered pair of chain links in every form: an assignment's right side,
+    /// nothing hoisting (the <c>Sequence/Chain</c> row). One fact with <see cref="Operators"/> until it ran 8 m
+    /// 13 s of CI's 10-minute per-test limit;</item>
     /// <item><see cref="Pivot"/> — every binary operator with each pivot in every OTHER form
     /// (<see cref="PivotSidesOf"/>);</item>
     /// <item><see cref="Position"/> — every binary operator and every pair of links in every further statement
@@ -1934,14 +1938,15 @@ public abstract class MembershipOperatorDifferentialBase : IntegrationTestBase
     /// blocks with one another (three links in the further positions; a hoisting last operand there), are not
     /// generated: reported to the owner with their measured cost.
     /// </summary>
-    private enum SequenceBlock { Main, Pivot, Position, HoistLast, Triple }
+    private enum SequenceBlock { Operators, Pairs, Pivot, Position, HoistLast, Triple }
 
     private enum SliceAxis { None, Form, Hoist, FormAndFirstLink }
 
     /// <summary>The axis a block's facts slice it by. No default arm.</summary>
     private static SliceAxis SliceAxisOf(SequenceBlock block) => block switch
     {
-        SequenceBlock.Main => SliceAxis.None,
+        SequenceBlock.Operators => SliceAxis.None,
+        SequenceBlock.Pairs => SliceAxis.None,
         SequenceBlock.Pivot => SliceAxis.None,
         SequenceBlock.Position => SliceAxis.Form,
         SequenceBlock.HoistLast => SliceAxis.Hoist,
@@ -1959,7 +1964,8 @@ public abstract class MembershipOperatorDifferentialBase : IntegrationTestBase
 
         public string RowPrefix => Block switch
         {
-            SequenceBlock.Main => SequenceRowPrefix,
+            SequenceBlock.Operators => SequenceRowPrefix,
+            SequenceBlock.Pairs => SequenceRowPrefix,
             SequenceBlock.Pivot => "SequencePivot/",
             SequenceBlock.Position => $"SequencePosition/{Slice}/",
             SequenceBlock.HoistLast => $"SequenceHoist/{Slice}/",
@@ -1969,7 +1975,8 @@ public abstract class MembershipOperatorDifferentialBase : IntegrationTestBase
 
         public string Name => Block switch
         {
-            SequenceBlock.Main => "OperatorSequences_OverEffectfulOperands_AreTheirDesugaring",
+            SequenceBlock.Operators => "OperatorSequences_OfOneOperator_AreTheirDesugaring",
+            SequenceBlock.Pairs => "OperatorSequences_OfTwoChainLinks_AreTheirDesugaring",
             SequenceBlock.Pivot => "OperatorSequences_WithAPivotOperandInEveryOtherForm_AreTheirDesugaring",
             SequenceBlock.Position => $"OperatorSequences_InEveryStatementPosition_{Slice}_AreTheirDesugaring",
             SequenceBlock.HoistLast => $"OperatorSequences_WithAHoistingLastOperand_{Slice}_AreTheirDesugaring",
@@ -1977,9 +1984,28 @@ public abstract class MembershipOperatorDifferentialBase : IntegrationTestBase
             _ => throw new InvalidOperationException(Block.ToString()),
         };
 
-        /// <summary>The report files' stem: the row prefix in kebab case.</summary>
+        /// <summary>The causes a sequence of this fact can have (<see cref="Sequence.Cause"/>): a one-operator
+        /// sequence is <c>Binary</c>, a chain is <c>Chain</c>. No default arm.</summary>
+        public string[] Causes => Block switch
+        {
+            SequenceBlock.Operators => new[] { "Binary" },
+            SequenceBlock.Pairs => new[] { "Chain" },
+            SequenceBlock.Pivot => new[] { "Binary" },
+            SequenceBlock.Position => new[] { "Binary", "Chain" },
+            SequenceBlock.HoistLast => new[] { "Chain" },
+            SequenceBlock.Triple => new[] { "Chain" },
+            _ => throw new InvalidOperationException(Block.ToString()),
+        };
+
+        /// <summary>The rows this fact owns: its prefix and one of its causes (two facts share the prefix
+        /// <c>Sequence/</c>, a cause each).</summary>
+        public bool Owns(string row) => row.StartsWith(RowPrefix, StringComparison.Ordinal)
+            && Causes.Contains(row[RowPrefix.Length..], StringComparer.Ordinal);
+
+        /// <summary>The report files' stem: the row prefix in kebab case, and the block where two share a prefix.</summary>
         public string Report => "operator-" + System.Text.RegularExpressions.Regex
-            .Replace(RowPrefix.TrimEnd('/'), "(?<!^)(?<!/)([A-Z])", "-$1").Replace('/', '-').ToLowerInvariant();
+            .Replace(RowPrefix.TrimEnd('/'), "(?<!^)(?<!/)([A-Z])", "-$1").Replace('/', '-').ToLowerInvariant()
+            + (Block is SequenceBlock.Operators or SequenceBlock.Pairs ? "-" + Block.ToString().ToLowerInvariant() : "");
     }
 
     /// <summary>Every fact of the sequence matrix: each block, once or once per value of its slice axis.</summary>
@@ -2019,13 +2045,13 @@ public abstract class MembershipOperatorDifferentialBase : IntegrationTestBase
     /// </summary>
     private static (bool[] Sides, string? Excluded) PivotSidesOf(SequenceForm form) => form switch
     {
-        SequenceForm.Plain => (Array.Empty<bool>(), "the main fact generates the plain form's pivots, on both sides"),
+        SequenceForm.Plain => (Array.Empty<bool>(), "the one-operator fact generates the plain form's pivots, on both sides"),
         SequenceForm.Optional => (new[] { false, true }, null),
         SequenceForm.Tagged => (new[] { false, true }, null),
         SequenceForm.TaggedLeft => (Array.Empty<bool>(), "the form leaves the SECOND payload operand untagged, and a pivot "
             + "sequence has no second payload operand: its cells are the Tagged form's"),
         SequenceForm.NoneLast => (new[] { true }, "a pivot on the right is the last operand, which the form replaces by the "
-            + "literal `None`: that cell is the form's own no-pivot sequence, which the main fact generates"),
+            + "literal `None`: that cell is the form's own no-pivot sequence, which the one-operator fact generates"),
         _ => throw new InvalidOperationException($"SequenceForm.{form} has no pivot sides: give them or exclude them with a reason"),
     };
 
@@ -2051,7 +2077,7 @@ public abstract class MembershipOperatorDifferentialBase : IntegrationTestBase
             foreach (var form in forms)
                 switch (fact.Block)
                 {
-                    case SequenceBlock.Main:
+                    case SequenceBlock.Operators:
                         foreach (var op in binary)
                         {
                             Add(payload, form, new[] { op });
@@ -2061,6 +2087,8 @@ public abstract class MembershipOperatorDifferentialBase : IntegrationTestBase
                                 foreach (var onLeft in new[] { false, true })
                                     Add(payload, form, new[] { op }, pivot: pivot, onLeft: onLeft);
                         }
+                        break;
+                    case SequenceBlock.Pairs:
                         foreach (var first in links)
                             foreach (var second in links)
                                 Add(payload, form, new[] { first, second });
@@ -2400,7 +2428,7 @@ public abstract class MembershipOperatorDifferentialBase : IntegrationTestBase
     /// the operand types are closed against <c>OperatorLoweringKind</c> (<see cref="SequenceExcludedKinds"/>).</para>
     /// <para><b>Blocks and facts</b> (<see cref="SequenceBlock"/>, <see cref="SequenceFacts"/>): this contract is
     /// held by every fact of the sequence matrix, each over its own product and its own rows; a test method declares
-    /// a fact by its name. The operand types of the main block are also closed against <c>BinaryOpLowering</c>, the
+    /// a fact by its name. The operand types of the one-operator block are also closed against <c>BinaryOpLowering</c>, the
     /// equality strategy (<see cref="SequenceExcludedEqualities"/>).</para>
     /// <para><b>Known red.</b> The rows of the fact's prefix (<see cref="SequenceFact.RowPrefix"/>), one per cause:
     /// <c>…/Binary</c> and <c>…/Chain</c>.</para>
@@ -2506,9 +2534,11 @@ public abstract class MembershipOperatorDifferentialBase : IntegrationTestBase
         var firstLinkCount = fact.First is { } firstKind ? comparisonOperators.Count(o => LinkKindOf(o) == firstKind) : linkCount;
         var (expectedCount, product) = block switch
         {
-            SequenceBlock.Main => (payloadCount * (formCount * (binaryCount + pairs) + binaryCount * Pivots.Length * 2),
-                $"{payloadCount} payloads x ({formCount} forms x ({binaryCount} binary operators + {linkCount} x {linkCount} chain link "
-                + $"pairs) + {binaryCount} binary operators x {Pivots.Length} pivots x 2 sides)"),
+            SequenceBlock.Operators => (payloadCount * (formCount * binaryCount + binaryCount * Pivots.Length * 2),
+                $"{payloadCount} payloads x ({formCount} forms x {binaryCount} binary operators + {binaryCount} binary operators x "
+                + $"{Pivots.Length} pivots x 2 sides)"),
+            SequenceBlock.Pairs => (payloadCount * formCount * pairs,
+                $"{payloadCount} payloads x {formCount} forms x {linkCount} x {linkCount} chain link pairs"),
             SequenceBlock.Pivot => (payloadCount * binaryCount * Pivots.Length * SequencePivotFormSides,
                 $"{payloadCount} payloads x {binaryCount} binary operators x {Pivots.Length} pivots x {SequencePivotFormSides} "
                 + "(form, side) pairs of the other forms"),
@@ -2524,6 +2554,7 @@ public abstract class MembershipOperatorDifferentialBase : IntegrationTestBase
         };
         Assert.True(expectedCount == sequences.Count,
             $"the generator made {sequences.Count} sequences; the axes give {expectedCount} ({product}): a sequence was dropped or invented");
+        Assert.All(sequences, s => Assert.True(fact.Causes.Contains(s.Cause), $"{s.Key}: its cause {s.Cause} is not one of the fact's"));
         Assert.All(sequences, s => Assert.True(s.Hoist == (fact.Hoist ?? SequenceHoist.None) && (fact.Form == null || s.Form == fact.Form)
             && (fact.First == null || LinkKindOf(Enum.Parse<ComparisonOperator>(s.Operators[0].ToString())) == fact.First),
             $"{s.Key}: not in the fact's slice"));
@@ -2541,7 +2572,7 @@ public abstract class MembershipOperatorDifferentialBase : IntegrationTestBase
                 "operator_sequence.spy", harnessFailures, out var ranSource);
             foreach (var (id, verdict) in payloadVerdicts)
                 verdicts[id] = verdict;
-            if (ranSource != null && block == SequenceBlock.Main)
+            if (ranSource != null && block == SequenceBlock.Operators)
             {
                 var (ranKinds, ranEqualities) = KindsOnBinaryOperators(payload.Name, ranSource);
                 kinds.UnionWith(ranKinds);
@@ -2575,11 +2606,11 @@ public abstract class MembershipOperatorDifferentialBase : IntegrationTestBase
         var actualByRow = divergences.GroupBy(d => rowPrefix + d.Sequence.Cause, StringComparer.Ordinal)
             .ToDictionary(g => g.Key, g => g.ToDictionary(d => d.Sequence.Key, d => d.Observed, StringComparer.Ordinal),
                 StringComparer.Ordinal);
-        var problems = PinProblems(actualByRow, allowlist, RowsOf(rowPrefix));
+        var problems = PinProblems(actualByRow, allowlist, fact.Owns);
         // Written on every run and before any control is asserted: the regenerated allowlist is what a red run
         // leaves to work from.
         var proposedPath = Path.Combine(reportDir, $"{report}-proposed-allowlist.txt");
-        File.WriteAllText(proposedPath, string.Join("\n", ProposedAllowlist(actualByRow, allowlist, RowsOf(rowPrefix))) + "\n");
+        File.WriteAllText(proposedPath, string.Join("\n", ProposedAllowlist(actualByRow, allowlist, fact.Owns)) + "\n");
         // Not a divergence of THIS contract, but never silent: a sequence both forms of which reach Roslyn
         // (SPY0908 is a net, not an error channel) is listed for the lead to file by class.
         var iceInBoth = sequences.Where(s => verdicts[s.CellId].RefusedBy is { } a && verdicts[s.ReferenceId].RefusedBy is { } b
@@ -2597,7 +2628,7 @@ public abstract class MembershipOperatorDifferentialBase : IntegrationTestBase
             + $"strategies: {string.Join(", ", equalities.OrderBy(k => k.ToString(), StringComparer.Ordinal))}. "
             + $"Every divergence: {divergencePath}");
 
-        if (block == SequenceBlock.Main)
+        if (block == SequenceBlock.Operators)
         {
             // The operand types are closed against the compiler's lowerings, both enumerations.
             var unreached = Enum.GetValues<Sem.OperatorLoweringKind>()
@@ -2623,7 +2654,7 @@ public abstract class MembershipOperatorDifferentialBase : IntegrationTestBase
         // Positive controls: the instrument sees every answer it distinguishes.
         bool Agrees(Sequence s) => verdicts[s.CellId].Values is { } v && verdicts[s.ReferenceId].Values is { } r && v.SequenceEqual(r);
         var last = (sequences[0].Operators.Length == 1 ? 2 : sequences.Max(s => s.Operators.Length)).ToString(CultureInfo.InvariantCulture);
-        if (block is SequenceBlock.Main or SequenceBlock.Pivot)
+        if (block is SequenceBlock.Operators or SequenceBlock.Pivot)
         {
             // A sequence that runs in both forms and traces its operands left to right.
             Assert.Contains(sequences, s => s.Operators.Length == 1 && Agrees(s)
@@ -3199,7 +3230,7 @@ public abstract class MembershipOperatorDifferentialBase : IntegrationTestBase
                 owners.Add(($"the {observation} matrix, {(plainNeedle ? "plain needles" : "needles that can be None")}",
                     MatrixRows(observation, plainNeedle)));
         owners.Add(("the left-operand forms", RowsOf(LeftFormRowPrefix)));
-        owners.AddRange(SequenceFacts().Select(f => (f.Name, RowsOf(f.RowPrefix))));
+        owners.AddRange(SequenceFacts().Select(f => (f.Name, (Func<string, bool>)f.Owns)));
         return owners;
     }
 
