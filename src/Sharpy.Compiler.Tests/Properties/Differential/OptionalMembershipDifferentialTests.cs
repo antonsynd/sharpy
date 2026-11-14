@@ -1927,18 +1927,16 @@ public abstract class MembershipOperatorDifferentialBase : IntegrationTestBase
     /// <item><see cref="HoistLast"/> — every pair of links in every form, the last operand hoisting, a fact per
     /// hoist kind;</item>
     /// <item><see cref="Triple"/> — every ordered triple of links (a link's place in a chain is first, middle or
-    /// last: three links have all three), a fact per form and kind of first link;</item>
-    /// <item><see cref="TripleHoist"/> — every ordered triple of links in the plain form, the last operand
-    /// hoisting, a fact per hoist kind and kind of first link.</item>
+    /// last: three links have all three), a fact per form and kind of first link.</item>
     /// </list>
     /// Chain length is the closed set {two links, three links}: it has no last value, and the owner's ruling keeps
-    /// the set until a larger bound is named. The products of the blocks with one another (three links in the
-    /// further positions; a hoisting last operand there; three links by hoist kind in the other forms) are not
+    /// the set until a larger bound is named. Three links with a hoisting last operand, and the products of the
+    /// blocks with one another (three links in the further positions; a hoisting last operand there), are not
     /// generated: reported to the owner with their measured cost.
     /// </summary>
-    private enum SequenceBlock { Main, Pivot, Position, HoistLast, Triple, TripleHoist }
+    private enum SequenceBlock { Main, Pivot, Position, HoistLast, Triple }
 
-    private enum SliceAxis { None, Form, Hoist, FormAndFirstLink, HoistAndFirstLink }
+    private enum SliceAxis { None, Form, Hoist, FormAndFirstLink }
 
     /// <summary>The axis a block's facts slice it by. No default arm.</summary>
     private static SliceAxis SliceAxisOf(SequenceBlock block) => block switch
@@ -1948,7 +1946,6 @@ public abstract class MembershipOperatorDifferentialBase : IntegrationTestBase
         SequenceBlock.Position => SliceAxis.Form,
         SequenceBlock.HoistLast => SliceAxis.Hoist,
         SequenceBlock.Triple => SliceAxis.FormAndFirstLink,
-        SequenceBlock.TripleHoist => SliceAxis.HoistAndFirstLink,
         _ => throw new InvalidOperationException($"SequenceBlock.{block} has no slice axis"),
     };
 
@@ -1967,7 +1964,6 @@ public abstract class MembershipOperatorDifferentialBase : IntegrationTestBase
             SequenceBlock.Position => $"SequencePosition/{Slice}/",
             SequenceBlock.HoistLast => $"SequenceHoist/{Slice}/",
             SequenceBlock.Triple => $"SequenceTriple/{Slice}/{First}First/",
-            SequenceBlock.TripleHoist => $"SequenceTripleHoist/{Slice}/{First}First/",
             _ => throw new InvalidOperationException(Block.ToString()),
         };
 
@@ -1978,7 +1974,6 @@ public abstract class MembershipOperatorDifferentialBase : IntegrationTestBase
             SequenceBlock.Position => $"OperatorSequences_InEveryStatementPosition_{Slice}_AreTheirDesugaring",
             SequenceBlock.HoistLast => $"OperatorSequences_WithAHoistingLastOperand_{Slice}_AreTheirDesugaring",
             SequenceBlock.Triple => $"OperatorSequences_OfThreeChainLinks_{Slice}_{First}First_AreTheirDesugaring",
-            SequenceBlock.TripleHoist => $"OperatorSequences_OfThreeChainLinksAndAHoistingLastOperand_{Slice}_{First}First_AreTheirDesugaring",
             _ => throw new InvalidOperationException(Block.ToString()),
         };
 
@@ -2009,11 +2004,6 @@ public abstract class MembershipOperatorDifferentialBase : IntegrationTestBase
                     foreach (var form in Enum.GetValues<SequenceForm>())
                         foreach (var first in Enum.GetValues<LinkKind>())
                             facts.Add(new SequenceFact(block, form, null, first));
-                    break;
-                case SliceAxis.HoistAndFirstLink:
-                    foreach (var hoist in Enum.GetValues<SequenceHoist>().Where(h => h != SequenceHoist.None))
-                        foreach (var first in Enum.GetValues<LinkKind>())
-                            facts.Add(new SequenceFact(block, null, hoist, first));
                     break;
                 default:
                     throw new InvalidOperationException(SliceAxisOf(block).ToString());
@@ -2097,14 +2087,6 @@ public abstract class MembershipOperatorDifferentialBase : IntegrationTestBase
                                 Add(payload, form, new[] { first, second });
                         break;
                     case SequenceBlock.Triple:
-                        foreach (var first in firstLinks)
-                            foreach (var second in links)
-                                foreach (var third in links)
-                                    Add(payload, form, new[] { first, second, third });
-                        break;
-                    case SequenceBlock.TripleHoist:
-                        if (form != SequenceForm.Plain)
-                            break;
                         foreach (var first in firstLinks)
                             foreach (var second in links)
                                 foreach (var third in links)
@@ -2515,8 +2497,7 @@ public abstract class MembershipOperatorDifferentialBase : IntegrationTestBase
             SliceAxis.None => fact.Form == null && fact.Hoist == null && fact.First == null,
             SliceAxis.Form => fact.Form != null && fact.Hoist == null && fact.First == null,
             SliceAxis.Hoist => fact.Form == null && fact.Hoist is { } h && h != SequenceHoist.None && fact.First == null,
-            SliceAxis.FormAndFirstLink => fact.Form != null && fact.Hoist == null && fact.First != null,
-            _ => fact.Form == null && fact.Hoist is { } k && k != SequenceHoist.None && fact.First != null,
+            _ => fact.Form != null && fact.Hoist == null && fact.First != null,
         }, $"{fact.Name}: its slice is not a value of {SliceAxisOf(block)}");
         // The first links of a kind, from the enumeration: the kinds partition the links.
         var comparisonOperators = Enum.GetValues<ComparisonOperator>();
@@ -2539,9 +2520,6 @@ public abstract class MembershipOperatorDifferentialBase : IntegrationTestBase
             SequenceBlock.Triple => (payloadCount * firstLinkCount * pairs,
                 $"{payloadCount} payloads x {firstLinkCount} first links ({fact.First}) x {linkCount} x {linkCount} chain link "
                 + $"triples, in the form {fact.Form}"),
-            SequenceBlock.TripleHoist => (payloadCount * firstLinkCount * pairs,
-                $"{payloadCount} payloads x {firstLinkCount} first links ({fact.First}) x {linkCount} x {linkCount} chain link "
-                + $"triples, in the plain form, behind {fact.Hoist}"),
             _ => throw new InvalidOperationException(block.ToString()),
         };
         Assert.True(expectedCount == sequences.Count,
@@ -3287,14 +3265,6 @@ public abstract class MembershipOperatorDifferentialBase : IntegrationTestBase
         ["SequenceTriple/Tagged/ComparisonFirst/Chain"] = 2560,
         ["SequenceTriple/Tagged/TestFirst/Chain"] = 9216,
         ["SequenceTriple/TaggedLeft/TestFirst/Chain"] = 3080,
-        ["SequenceTripleHoist/Comprehension/ComparisonFirst/Chain"] = 8336,
-        ["SequenceTripleHoist/Comprehension/TestFirst/Chain"] = 11344,
-        ["SequenceTripleHoist/QuestionMark/ComparisonFirst/Chain"] = 8336,
-        ["SequenceTripleHoist/QuestionMark/TestFirst/Chain"] = 11344,
-        ["SequenceTripleHoist/Spread/ComparisonFirst/Chain"] = 8336,
-        ["SequenceTripleHoist/Spread/TestFirst/Chain"] = 11344,
-        ["SequenceTripleHoist/Walrus/ComparisonFirst/Chain"] = 8336,
-        ["SequenceTripleHoist/Walrus/TestFirst/Chain"] = 11344,
         ["UserIterable/NoneNeedle"] = 7620,
         ["UserIterable/Plain"] = 4392,
     };
@@ -3394,9 +3364,8 @@ public abstract class MembershipOperatorDifferentialBase : IntegrationTestBase
         "# A row is '<row>  cells=N  pin=HEX  [bulk=M:HEX]  # citation': ONE fact's cells of ONE cause, citing its open",
         "# issue (owner ruling 2026-11-14, #2645). The row's prefix names its fact: Order/ the order observation,",
         "# Sequence/ the operator sequences, SequencePivot/ their pivots in the other forms, SequencePosition/<form>/,",
-        "# SequenceHoist/<hoist>/, SequenceTriple/<form>/<kind of first link>/ and SequenceTripleHoist/<hoist>/<kind of",
-        "# first link>/ their further statement positions, hoisting last operand, three-link chains and three-link",
-        "# chains with a hoisting last operand, LeftForm/ the left-operand forms; any other row is the",
+        "# SequenceHoist/<hoist>/ and SequenceTriple/<form>/<kind of first link>/ their further statement",
+        "# positions, hoisting last operand and three-link chains, LeftForm/ the left-operand forms; any other row is the",
         "# value matrix's, and a matrix row's last segment (Plain, NoneNeedle) names its needle group, a fact each.",
         "# The '#= <cell> -> <observed",
         "# verdict>' lines under a row pin its EXACT divergent cells: a pinned cell that starts passing, a cell that",
