@@ -1,4 +1,4 @@
-<!-- DRAFT, not verified: written by /create-plan on 2026-11-13 @ 9fce3ecc4; revised by /create-plan on 2026-11-14 @ 3833e96e1 after pass 1; no /verify-plan pass has stamped this text. -->
+<!-- DRAFT, not verified: written by /create-plan on 2026-11-13 @ 9fce3ecc4; revised by /create-plan on 2026-11-14 @ e335aa80c after pass 1; no /verify-plan pass has stamped this text. -->
 
 # Membership operator totality: user iterables, chain links, operand order
 
@@ -8,7 +8,7 @@ Three class trackers, one group (charter §3.20w): #2645 `f() in g()` evaluates 
 
 ## Current State
 
-Product @ 7be6704c4 (`run`); oracle CPython 3.15.2; stage 0 @ 3833e96e1 (after 9fce3ecc4 and 1304d2af1).
+Product @ 7be6704c4 (`run`); oracle CPython 3.15.2; stage 0 @ e335aa80c.
 
 - **Order.** `n() in c()` prints `container`, `needle` for every plain-path container; `not in` too; a lifted `T | None` needle goes first. `x in [(x := 5), 2]` prints `True` (CPython `False`). `n() * s()` with the `str` on the right also evaluates right first.
 - **Chain.** `x == x in [a, c]`, `c is d is e`, `a < x is not None`: SPY0519 from `RoslynEmitter.Expressions.Operators.cs:784`. The chain site runs a subset of the binary site's checks and both validators visit `BinaryOp` only, so a link's verdict is not its twin's (SPY0519 for SPY0320, `False` for SPY0402, Roslyn for a struct). `c is Color.RED is d` is SPY0349: `Parser.Expressions.cs:556` drops the head's identity operand.
@@ -21,7 +21,7 @@ Product @ 7be6704c4 (`run`); oracle CPython 3.15.2; stage 0 @ 3833e96e1 (after 9
 - **Alone:** yes — D2 changes the emitted form of `in` where an operand has an evaluation (0 of 178 `.expected.cs` snapshots: 3 hold `.Contains(`, each with a literal or a name; spy-stdlib C# is measured at T1)
 - **Gates:** 1
 - **Filing:** cells outside the contract go to the findings ledger; the lead files by class (contract §10); trackers named at the end of this plan
-- **Budget:** verify cost: the seven facts (about 22 min locally) and one whole-solution gate; the sibling-cell prober: the generator's matrix plus at most two axis changes (contract §10)
+- **Budget:** verify cost: the seven facts and one whole-solution gate; the sibling-cell prober: the generator's matrix plus at most two axis changes (contract §10)
 - **Override:** none
 - **Scorecard baseline:** `allowlist_rows_outside_seed` 541 → 550 @ 907aad013 (owner, 2026-11-13, #2645 comment 6865268833: "Raise baseline to 550 (Recommended)") → 586 @ 3833e96e1, the measured count of one row per fact and cause (owner, 2026-11-14, comment 6870463430); not a seed harness
 
@@ -33,7 +33,7 @@ Product @ 7be6704c4 (`run`); oracle CPython 3.15.2; stage 0 @ 3833e96e1 (after 9
 - **Sibling cells this plan must also cover:** none; see Generator.
 - **Lane / reach:** silent-wrong · program (#2645); false-refusal · probe (#2648); false-refusal · program (#2653). **Fidelity-scope row:** COMPARED ("value of an expression"; "which programs run vs. are refused": `expressions.md` › Expression Evaluation Order, `operator_precedence.md` › Comparison chaining).
 - **Standing harness that should have caught it:** `OptionalMembershipDifferentialTests` (P92): its chain cells expected SPY0519, it observed no order and generated no user iterable. Stage 0 extends it.
-- **Generator:** stage 0 @ 3833e96e1, seven facts of `OptionalMembershipDifferentialTests`, 7 passed / 0 failed / 0 skipped @ 3833e96e1 (22 min locally; the longest fact 5 m 46 s); 67283 known-red cells in 68 rows.
+- **Generator:** stage 0, seven facts of `MembershipOperatorDifferentialBase` in four shard classes, 7 passed / 0 failed / 0 skipped @ e335aa80c (14.5 min locally; CI's longest fact 5 m 57 s, shard 13 min of 25); 67283 known-red cells in 68 rows.
   - Cases: 57320 membership cells by value and by order (four `__iter__` shapes); 92650 operator sequences (33150 binary and two-link, every `BinaryOpLowering` recorded; 8500 in further positions; 17000 with a hoisting last operand; 34000 of three links); 2520 left-operand cells (45 forms × 7 right operands, 4 hoisting).
   - Known red, one fact and one cause a row: order alone 8442; chains 6422 by value + 4970 by order, 35232 sequences, 616 left-operand; user iterables 5220 + 3660; binary order 405 sequences, 552 left-operand; `GetItemLen` 24 + 6; `LeftForm/Ellipsis` 42 (#1931), `LeftForm/Float32` 42 (#2644). A bulk portion is one cause at its census count (`BulkCensus`); any other cell is a pin line.
   - Excluded axes, in the test: the literal-`None` needle's order; `@`, `|>`. Not crossed (cost; put to the owner): three links, further positions and pivots outside the plain form; a sequence's hoisting last operand beyond a comprehension; a generic host beyond the producer shape. Not enumerable, fixtures: the operand SPELLING after `is` (D4), a class's other members (D1).
@@ -132,4 +132,4 @@ Product @ 7be6704c4 (`run`); oracle CPython 3.15.2; stage 0 @ 3833e96e1 (after 9
 ## Revision log
 
 - @ 907aad013 — revised before the first pass: the owner's two rulings of 2026-11-13 recorded. D3's unruled question is decided (a chain link is refused as its binary twin is; #2648 comment 6865267508) and stage 0's scorecard baseline is raised 541 → 550 (#2645 comment 6865268833). No decision, predicate, mutation or count changed.
-- @ 7cf933cec — revised after the 1st pass (NEEDS REVISION, Dimension 4, Dimension 6, Dimension 7): stage 0 @ 1304d2af1 answers findings 1, 2 (the axis), 4 and the bulk ruling; @ 3833e96e1, by the 2026-11-14 rulings, finding 5's four axes and the `__iter__` shape are generated, one row per fact and cause. D1: the synthesized `IEnumerable[T]`, LINQ named (finding 3). D2: a recorded binding type, cast, tuple hoist (finding 2). D3: both direction changes ruled (finding 6). D4: `Unknown` for a refused head. M1–M3 split.
+- @ 7cf933cec — revised after the 1st pass (NEEDS REVISION, Dimension 4, Dimension 6, Dimension 7): stage 0 @ 1304d2af1 answers findings 1, 2 (the axis), 4 and the bulk ruling; @ 3833e96e1, by the 2026-11-14 rulings, finding 5's four axes and the `__iter__` shape are generated, one row per fact and cause; @ e335aa80c four shard classes. D1: the synthesized `IEnumerable[T]`, LINQ named (finding 3). D2: a recorded binding type, cast, tuple hoist (finding 2). D3: both direction changes ruled (finding 6). D4: `Unknown` for a refused head. M1–M3 split.
