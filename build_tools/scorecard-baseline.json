@@ -1,6 +1,6 @@
 {
   "procedure_bytes": 133151,
   "claude_md_bytes": 8708,
-  "allowlist_rows_outside_seed": 550,
+  "allowlist_rows_outside_seed": 586,
   "allowlist_rows_seed": 2604
 }
