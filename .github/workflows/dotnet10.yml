@@ -8,15 +8,19 @@
 #   changes ─┬─ format                       whitespace-clean gate (needs no build, so beside it)
 #            └─ build ─┬─ test-fast          CLI + Core + Stdlib (one step each)
 #                      ├─ lsp (matrix 1..N)  LSP tests, sharded by namespace and sweep twin
-#                      ├─ compiler (1..7)    the pre-#2178 "Test Compiler" step, sharded by namespace/class
+#                      ├─ compiler (1..9)    the pre-#2178 "Test Compiler" step, sharded by namespace/class
 #                      ├─ sweep (matrix 2)   one job per long GapDiscovery sweep
 #                      ├─ sweeps-quick       the five short GapDiscovery sweeps, one step each
 #                      ├─ stdlib-spy-gates   .spy native compile + generated-C# staleness gates
 #                      └─ shard-partition    proves each suite's shards partition its main filter
 #
 # Job count: the account runs at most 20 jobs at once, and `windows` plus CodeQL's csharp analysis
-# are still running when `build` finishes, so the fan-out under `build` is kept at 18. At 22
+# are still running when `build` finishes, so the fan-out under `build` was kept at 18. At 22
 # (run 38983789798) four jobs queued 31-86 s, and the last-started LSP shard set the wall clock.
+# It is 20 since #2690 (Compiler shards 8 and 9), so the last jobs can queue again: the owner's
+# ruling of 2026-11-14 (#2645, comment 6882571713) takes a shard over the queue, because a
+# Compiler shard job (11-17 min once the P93 membership generator is in) sets the wall clock
+# either way, and the 4-5 min LSP shards no longer do.
 #   windows (needs changes)                  debug-info guard + README hello world on win-x64
 #   ci-summary (needs all, always runs)      fails unless every job succeeded and every expected
 #                                            trx reports tests; skipped when nothing relevant changed.
@@ -134,13 +138,14 @@ env:
   # (CiFilterCoverageConformanceTests).
   COMPILER_MAIN_FILTER: "Category!=Benchmark&FullyQualifiedName!~InteropConformance&FullyQualifiedName!~MetamorphicCorpus&FullyQualifiedName!~DifferentialExecution&FullyQualifiedName!~FormatSpecDifferential&FullyQualifiedName!~FormatterEmitInvariance&FullyQualifiedName!~NameResolutionDifferential&(Category!=GapDiscovery|FullyQualifiedName!~InProcessIsolation)"
   # Compiler shard buckets (#2178). Shard n runs COMPILER_MAIN_FILTER&COMPILER_SHARD_<n>.
-  # PARTITION INVARIANT: shards 1–6 are positive namespace or class buckets (shard 5 excludes the
-  # buckets of shards 4 and 6 by negation); shard 7 is "everything else"
-  # — the negation of every other bucket (`!~Properties.` negates shards 4–6, whose buckets are all
-  # inside `Properties.`). The `shard-partition` job re-proves on every run, by `--list-tests`, that
+  # PARTITION INVARIANT: shards 1–6, 8 and 9 are positive namespace or class buckets (shard 5
+  # excludes the buckets of shards 4, 6 and 8 by negation); shard 7 is "everything else"
+  # — the negation of every other bucket (`!~Properties.` negates shards 4–6 and 8, whose buckets
+  # are all inside `Properties.`). The `shard-partition` job re-proves on every run, by `--list-tests`, that
   # the shards' union equals the main filter's list with no overlap, and `ci-summary` requires one
   # trx per COMPILER_SHARD_<n>. Adding a shard: add COMPILER_SHARD_<n>, add <n> to the `compiler`
-  # matrix, and add its bucket's negation to the last shard.
+  # matrix, and add its bucket's negation to the "everything else" shard (7; the highest number is
+  # no longer the last bucket), unless a negation there already covers it.
   # First balanced on per-shard trx spans of PR run 37378225480 @ 86825825e (#2179). Re-balanced
   # (#2458, W0.4 of the 2026-11-06 remediation; the shard-5 cost cut itself is R-IX, #2324) on the
   # last 20 mainline push runs (42372810738 back to 40623113848), test-step medians in s: 1 fixtures
@@ -149,6 +154,13 @@ env:
   # alone in the PropertySerial phase: ErrorCompletenessPropertyTests (87 tests of 4–14 s, serial
   # within the class). So that class is shard 6 on its own, the rest of `Properties.` stays in 5,
   # and the old shards 1 and 6 (142 + 205 s) share shard 1, keeping the job count at seven.
+  # Nine since #2690: shard 8 (`Properties.Differential.`, out of 5) and shard 9 (`CodeGen.`, out
+  # of 2) are two buckets that already held tests, each now a job of its own. The P93 stage-0
+  # generator (plan-67a01f, PR #2688) adds about 64 test-minutes a run over 27 facts, and 8 more
+  # facts (about 30 test-minutes) were taken out because a shard job reached 24:25 of 25 min
+  # (#2690, comment 6880014989). A class joins a shard by its namespace, so the two new buckets
+  # are where those facts can go without sharing a job with the suite that was there before.
+  # Not re-balanced here: no mainline run has measured this layout.
   # Letter terms name only class initials that exist today: CiFilterCoverageConformanceTests
   # fails on a filter substring that matches no test. A new class whose initial has no term
   # falls through to shard 7 (Integration), so it is still run exactly once.
@@ -157,29 +169,29 @@ env:
   # suites; the sweeps are excluded by the main filter).
   COMPILER_SHARD_1: "(FullyQualifiedName~Sharpy.Compiler.Tests.Integration.FileBasedIntegrationTests.|\
     FullyQualifiedName~Sharpy.Compiler.Tests.Conformance.)"
-  # 2: Integration classes whose name starts P, S, T, U or V, plus CodeGen.
+  # 2: Integration classes whose name starts P, S, T, U or V (CodeGen is shard 9 since #2690).
   COMPILER_SHARD_2: "(FullyQualifiedName~Sharpy.Compiler.Tests.Integration.P|\
     FullyQualifiedName~Sharpy.Compiler.Tests.Integration.S|\
     FullyQualifiedName~Sharpy.Compiler.Tests.Integration.T|\
     FullyQualifiedName~Sharpy.Compiler.Tests.Integration.U|\
-    FullyQualifiedName~Sharpy.Compiler.Tests.Integration.V|\
-    FullyQualifiedName~Sharpy.Compiler.Tests.CodeGen.)"
+    FullyQualifiedName~Sharpy.Compiler.Tests.Integration.V)"
   # 3: Semantic (all of it, sub-namespaces included, e.g. Semantic.Validation).
   COMPILER_SHARD_3: "FullyQualifiedName~Sharpy.Compiler.Tests.Semantic."
   # 4: Properties.Parser (includes CPythonDifferentialParseTests, which needs the pinned python,
   # and AmbiguityHotspotPropertyTests — the two longest classes of the old Properties shard).
   COMPILER_SHARD_4: "FullyQualifiedName~Sharpy.Compiler.Tests.Properties.Parser."
-  # 5: the rest of Properties (exactly `Properties.` minus shards 4 and 6), including the rest of
-  # the run-alone PropertySerial phase.
+  # 5: the rest of Properties (exactly `Properties.` minus shards 4, 6 and 8), including the rest
+  # of the run-alone PropertySerial phase.
   COMPILER_SHARD_5: "FullyQualifiedName~Sharpy.Compiler.Tests.Properties.&\
     FullyQualifiedName!~Sharpy.Compiler.Tests.Properties.Parser.&\
-    FullyQualifiedName!~Sharpy.Compiler.Tests.Properties.Semantic.ErrorCompletenessPropertyTests."
+    FullyQualifiedName!~Sharpy.Compiler.Tests.Properties.Semantic.ErrorCompletenessPropertyTests.&\
+    FullyQualifiedName!~Sharpy.Compiler.Tests.Properties.Differential."
   # 6: ErrorCompletenessPropertyTests alone (570 s of shard 5's 942 s in run 42372810738); the
   # trailing dot keeps a class whose name merely starts the same out of it.
   COMPILER_SHARD_6: "FullyQualifiedName~Sharpy.Compiler.Tests.Properties.Semantic.ErrorCompletenessPropertyTests."
   # 7: everything else — Integration classes outside shards 1–2, Parser, Lexer, Project,
   # Infrastructure, root-namespace tests, and any namespace added later. The negation of every
-  # bucket above.
+  # other bucket (shards 8 and 9 below are inside `Properties.` and `CodeGen.`, negated here).
   COMPILER_SHARD_7: "FullyQualifiedName!~Sharpy.Compiler.Tests.Integration.FileBasedIntegrationTests.&\
     FullyQualifiedName!~Sharpy.Compiler.Tests.Integration.P&\
     FullyQualifiedName!~Sharpy.Compiler.Tests.Integration.S&\
@@ -190,6 +202,13 @@ env:
     FullyQualifiedName!~Sharpy.Compiler.Tests.Semantic.&\
     FullyQualifiedName!~Sharpy.Compiler.Tests.Properties.&\
     FullyQualifiedName!~Sharpy.Compiler.Tests.Conformance."
+  # 8: Properties.Differential (#2690), out of shard 5: the CPython-differential suites and the
+  # other classes of that namespace (NullabilityLedgerTests), less the two sweeps the main
+  # filter takes out (DifferentialExecution, FormatSpecDifferential).
+  COMPILER_SHARD_8: "FullyQualifiedName~Sharpy.Compiler.Tests.Properties.Differential."
+  # 9: CodeGen (#2690), out of shard 2. `Properties.CodeGen.` is not matched: the token starts
+  # at `Sharpy.Compiler.Tests.`.
+  COMPILER_SHARD_9: "FullyQualifiedName~Sharpy.Compiler.Tests.CodeGen."
 
   # The LSP step's filter before it was sharded. Shard n runs LSP_MAIN_FILTER&LSP_SHARD_<n>; the
   # same PARTITION INVARIANT as the Compiler shards holds (the `shard-partition` job re-proves it by
@@ -533,7 +552,7 @@ jobs:
       fail-fast: false
       matrix:
         # One entry per COMPILER_SHARD_<n> in the workflow env above.
-        shard: [1, 2, 3, 4, 5, 6, 7]
+        shard: [1, 2, 3, 4, 5, 6, 7, 8, 9]
 
     steps:
     - uses: actions/checkout@v7
