@@ -1925,8 +1925,8 @@ public abstract class MembershipOperatorDifferentialBase : IntegrationTestBase
     /// <item><see cref="Pairs"/> — every ordered pair of chain links in every form: an assignment's right side,
     /// nothing hoisting (the <c>Sequence/Chain</c> row). One fact with <see cref="Operators"/> until it ran 8 m
     /// 13 s of CI's 10-minute per-test limit;</item>
-    /// <item><see cref="Pivot"/> — every binary operator with each pivot in every OTHER form
-    /// (<see cref="PivotSidesOf"/>);</item>
+    /// <item><see cref="Pivot"/> — every binary operator with each pivot on both sides in every OTHER form
+    /// (<see cref="PivotSidesOf"/>; owner ruling 2026-11-14, #2645 comment 6885522237);</item>
     /// <item><see cref="Position"/> — every binary operator and every pair of links in every further statement
     /// position, a fact per form;</item>
     /// <item><see cref="HoistLast"/> — every pair of links in every form, the last operand hoisting, a fact per
@@ -2052,29 +2052,25 @@ public abstract class MembershipOperatorDifferentialBase : IntegrationTestBase
 
     /// <summary>
     /// The sides a pivot takes in each form in the <see cref="SequenceBlock.Pivot"/> block (true: the pivot is the
-    /// left operand), and why a side is not generated there. A pivot sequence holds one payload operand and the
-    /// pivot, so a form that differs from another only in the second payload operand has no cell of its own. The
-    /// two exclusions outside the plain form stand by the owner's ruling of 2026-11-14 (#2645 comment 6882571713:
-    /// "Accept, verifier checks them"); each reason says what the excluded cell shares with a generated one (its
-    /// expression, operand types and values) and what its program would not (a declaration the expression does
-    /// not read). No default arm.
+    /// left operand), and why a side is not generated there. Every form but the plain one takes both sides (owner
+    /// ruling 2026-11-14, #2645 comment 6885522237: "Generate the two cells"): a pivot sequence holds one payload
+    /// operand and the pivot, so the tagged-left form's expression is the tagged form's in a program whose
+    /// parameter <c>c</c> is untagged, and the none-last form's pivot on the right is replaced by the literal
+    /// <c>None</c> beside a pivot local that is declared and not read. Neither is the same program as another
+    /// cell's, so both are cells. No default arm.
     /// </summary>
     private static (bool[] Sides, string? Excluded) PivotSidesOf(SequenceForm form) => form switch
     {
         SequenceForm.Plain => (Array.Empty<bool>(), "the one-operator fact generates the plain form's pivots, on both sides"),
         SequenceForm.Optional => (new[] { false, true }, null),
         SequenceForm.Tagged => (new[] { false, true }, null),
-        SequenceForm.TaggedLeft => (Array.Empty<bool>(), "the form leaves the SECOND payload operand untagged, and a pivot "
-            + "sequence has no second payload operand: its expression over `a: T?` and the pivot is the Tagged form's (the "
-            + "program would differ only in the type of the parameter `c`, which a pivot sequence does not read)"),
-        SequenceForm.NoneLast => (new[] { true }, "a pivot on the right is the last operand, which the form replaces by the "
-            + "literal `None`: the expression is the form's own no-pivot sequence, which the one-operator fact generates "
-            + "(the program would differ only in a pivot local that is declared and not read)"),
+        SequenceForm.TaggedLeft => (new[] { false, true }, null),
+        SequenceForm.NoneLast => (new[] { false, true }, null),
         _ => throw new InvalidOperationException($"SequenceForm.{form} has no pivot sides: give them or exclude them with a reason"),
     };
 
     /// <summary>How many (form, side) pairs <see cref="PivotSidesOf"/> generates, as a literal.</summary>
-    private const int SequencePivotFormSides = 5;
+    private const int SequencePivotFormSides = 8;
 
     /// <summary>The full product of a fact (<see cref="SequenceBlock"/>).</summary>
     private static List<Sequence> GenerateSequences(IReadOnlyList<Payload> payloads, SequenceFact fact)
