@@ -72,17 +72,22 @@ namespace Sharpy.Compiler.Tests.Properties.Differential;
 /// refused by SPY0222 under the deviation <c>membership-needle-type-mismatch</c> (owner ruling B for bool, float and
 /// decimal into an <c>int</c> slot), the literal <c>None</c> into a non-optional slot (SPY0222, ruling A), and a
 /// class with only <c>__getitem__</c> and <c>__len__</c> (SPY0320, owner ruling R-OA) — are counted apart in the
-/// summary line. A chain link expects what its expression twin expects (#2648: a link gets its binary twin's
-/// verdict), and an order cell what its value twin expects. One program per payload is compiled;
-/// cells refused at compile time are attributed by line, removed and the rest recompiled until it runs.</para>
-/// <para><b>Known red.</b> <c>optional-membership-differential-allowlist.txt</c> (Conformance): one row per
-/// <c>container/form</c>, each pinning its exact divergent cells and their observed Sharpy verdicts (<c>cells=</c>,
-/// <c>pin=</c> and one <c>#= cell -&gt; verdict</c> line per cell; a <c>bulk</c> row keeps the count and the digest
-/// and leaves the lines to the divergence report). A cell that starts or stops diverging inside a
-/// row, or whose wrong answer changes, fails the test; the problems and a regenerated allowlist are written under
-/// <c>.claude/tmp/</c>, and every divergence always is. The cells of the three classes plan P93 drains have rows
-/// of their own (<see cref="Cell.RowKey"/>): <c>Order/*</c> (#2645), <c>UserIterable/*</c> (#2653),
-/// <c>ChainLink/*</c> (#2648).</para>
+/// summary line. An order cell expects what its value twin expects. A chain link is its binary twins (#2648, owner
+/// rulings 2026-11-13: "Refuse, as the twin", "Same as the twin"): the cell <c>x == x in c</c> expects what the
+/// expression <c>x in c</c> expects, unless its head link <c>x == x</c> is refused as a binary expression — MEASURED
+/// per payload, form and observation (<see cref="HeadTwin"/>), never listed — and then it is refused by the head's
+/// codes (<see cref="Expect"/>). One program per payload is compiled; cells refused at compile time are attributed
+/// by line, removed and the rest recompiled until it runs.</para>
+/// <para><b>Known red.</b> <c>optional-membership-differential-allowlist.txt</c> (Conformance): one row per class
+/// of cause, pinning its exact divergent cells and their observed Sharpy verdicts. A row holds one PART per fact
+/// that has cells in it (<see cref="PinnedPart"/>: the row line is its first fact's, a <c>#@ Part</c> line opens
+/// another's), each with one <c>#= cell -&gt; verdict</c> line per cell; the cells of the row's ONE cause
+/// (<see cref="BulkCauseOf"/>) may instead be a bulk portion, a count and a digest, while that portion is whole
+/// (<see cref="BulkCensus"/>; owner ruling 2026-11-13, #2645: "Accept, pin the residue"). A cell that starts or
+/// stops diverging, or whose wrong answer changes, fails the test; the problems and a regenerated allowlist are
+/// written under <c>.claude/tmp/</c>, and every divergence always is. The rows of the classes plan P93 drains
+/// (<see cref="Cell.RowKey"/>): <c>Order/*</c> (#2645: the cells whose order alone diverges),
+/// <c>ChainLink/*</c> (#2648), <c>UserIterable/*</c> (#2653).</para>
 /// <para>Skips when no python3 ≥ 3.15 answers, except under <c>SHARPY_REQUIRE_PYTHON_ORACLE=1</c> (CI).</para>
 /// </summary>
 public class OptionalMembershipDifferentialTests : IntegrationTestBase
@@ -559,8 +564,12 @@ public class OptionalMembershipDifferentialTests : IntegrationTestBase
     /// (#2645: CPython evaluates the needle before the container).</summary>
     private enum Observation { Value, Order }
 
-    /// <summary>The allowlist rows of the order observation, which its own fact owns.</summary>
+    /// <summary>The allowlist rows of the cells whose operand order alone diverges (the order fact's).</summary>
     private const string OrderRowPrefix = "Order/";
+
+    /// <summary>The allowlist rows of a chain link, and of a user class that only iterates.</summary>
+    private const string ChainLinkRowPrefix = "ChainLink/";
+    private const string UserIterableRowPrefix = "UserIterable/";
 
     /// <summary>The forms the order observation leaves out, each with its reason.</summary>
     private static readonly Dictionary<Form, string> OrderExcludedForms = new()
@@ -581,12 +590,13 @@ public class OptionalMembershipDifferentialTests : IntegrationTestBase
         /// <c>None</c> share one row, as they share the rulings; an optional element has its own row, since a defect
         /// that only an optional element shows is a different class). Rows pin their exact cells, so the key's
         /// coarseness hides nothing.
-        /// <para>The cells of the three classes plan P93 drains have rows of their own: every order cell (#2645; the
-        /// order fact owns those rows), then by value a user class that only iterates (#2653), then a chain link
-        /// (#2648).</para></summary>
-        public string RowKey => (Observation == Observation.Order ? OrderRowPrefix
-            : IsUserIterable(Container) ? "UserIterable/"
-            : Position == Position.ChainLink ? "ChainLink/"
+        /// <para>The classes plan P93 drains have rows of their own, keyed by cause: a cell whose operand ORDER alone
+        /// diverges (<paramref name="orderAlone"/>: it ran and gave CPython's answers, #2645); then a chain link
+        /// (#2648); then a user class that only iterates (#2653). An order cell that diverges for another reason is
+        /// a cell of its value twin's row, in the order fact's part of it.</para></summary>
+        public string RowKey(bool orderAlone) => (orderAlone ? OrderRowPrefix
+            : Position == Position.ChainLink ? ChainLinkRowPrefix
+            : IsUserIterable(Container) ? UserIterableRowPrefix
             : ContainerName + "/") + (Form == Form.Plain ? "Plain" : "NoneNeedle");
     }
 
@@ -668,6 +678,32 @@ public class OptionalMembershipDifferentialTests : IntegrationTestBase
         return cells;
     }
 
+    /// <summary>
+    /// The head link of a chain-link cell as a binary expression of its own: <c>x == x</c> over the payload in the
+    /// cell's needle form (<c>None is None</c> for the literal), traced as the cell traces it when the observation
+    /// is the order. One per payload, form and observation, compiled in the payload's program (never called): its
+    /// verdict is what the chain's head link must get (<see cref="Expect"/>), so the nine payloads whose
+    /// <c>==</c> the binary form refuses, and the ones that reach Roslyn, are measured and not listed.
+    /// </summary>
+    private sealed record HeadTwin(int Id, Payload Payload, Form Form, Observation Observation);
+
+    /// <summary>One head twin per payload, form and observation of the form, numbered after the cells.</summary>
+    private static List<HeadTwin> GenerateHeadTwins(IReadOnlyList<Payload> payloads, int firstId)
+    {
+        var twins = new List<HeadTwin>();
+        foreach (var payload in payloads)
+            foreach (var form in Enum.GetValues<Form>())
+                foreach (var observation in ObservationsOf(form))
+                    twins.Add(new HeadTwin(firstId + twins.Count, payload, form, observation));
+        return twins;
+    }
+
+    /// <summary>The head link of a chain-link cell, the one spelling its cell and its twin share.</summary>
+    private static string HeadLink(Form form, Observation observation, int id) => form == Form.NoneLiteral
+        // The literal None's spelling is `None is None` (Sharpy has no `None == None`).
+        ? "None is None"
+        : observation == Observation.Order ? $"tr({id}, \"h\", x) == tr({id}, \"n\", x)" : "x == x";
+
     /// <summary>The container expression. An optional element types <c>a</c>, <c>c</c> and <c>z</c> as
     /// <c>T | None</c> and adds <c>z</c> (always <c>None</c>) as an element, so <c>None</c> is a member.</summary>
     private static string ContainerSource(Cell cell, string bagArguments = "")
@@ -747,7 +783,8 @@ public class OptionalMembershipDifferentialTests : IntegrationTestBase
     /// over their element, so <c>Bag[T]</c>'s slot is <c>T</c>. <c>Self</c>: the cells and the driver are methods of
     /// the payload's declaration; the helpers, which are not, spell the declared type. Python's twin is the same
     /// code without clauses and type-argument lists.</para></summary>
-    private static Program ProgramFor(Payload payload, IReadOnlyList<Cell> cells, bool python = false)
+    private static Program ProgramFor(Payload payload, IReadOnlyList<Cell> cells, bool python = false,
+        IReadOnlyList<HeadTwin>? twins = null)
     {
         var lines = new List<string>();
         var cellByLine = new Dictionary<int, int>();
@@ -797,11 +834,8 @@ public class OptionalMembershipDifferentialTests : IntegrationTestBase
                     Add($"{indent}return len([0 for _ in [0] if {test}]) == 1", cell.Id);
                     break;
                 case Position.ChainLink:
-                    // The first link reads the needle twice; the literal None's spelling is `None is None` (Sharpy has
-                    // no `None == None`), so the cell tests the chain arm's needle decision, not `==`.
-                    Add(cell.Form == Form.NoneLiteral
-                        ? $"{indent}return None is None {op} {container}"
-                        : $"{indent}return {Traced("h", "x")} == {needle} {op} {container}", cell.Id);
+                    // The first link reads the needle twice: the head link, then the membership link.
+                    Add($"{indent}return {HeadLink(cell.Form, cell.Observation, cell.Id)} {op} {container}", cell.Id);
                     break;
             }
         }
@@ -838,6 +872,20 @@ public class OptionalMembershipDifferentialTests : IntegrationTestBase
                 AddTest("    ", cell, needle, test);
                 Add($"def f{cell.Id}({parameters}) -> bool:", cell.Id);
                 Add($"    return c{cell.Id}{(python ? "" : $"[{p}]")}({string.Join(", ", passed)})", cell.Id);
+                Add("");
+            }
+            // The head twins: a chain cell's head link alone, in the scope and over the needle its cell has.
+            foreach (var twin in twins ?? Array.Empty<HeadTwin>())
+            {
+                var x = twin.Form switch
+                {
+                    Form.Plain => $"x: {t}",
+                    Form.Optional => $"x: {t} | None",
+                    _ => null,
+                };
+                var received = string.Join(", ", new[] { method ? "self" : null, x }.OfType<string>());
+                Add($"{scope}def h{twin.Id}{(x != null ? payload.TypeParameters : "")}({received}) -> bool:", twin.Id);
+                Add($"{scope}    return {HeadLink(twin.Form, twin.Observation, twin.Id)}", twin.Id);
                 Add("");
             }
         }
@@ -1055,9 +1103,11 @@ public class OptionalMembershipDifferentialTests : IntegrationTestBase
     private sealed record SharpyVerdict(IReadOnlyList<string>? Values, IReadOnlySet<string>? RefusedBy);
 
     /// <summary>Compiles the payload's program, removing each cell a refusal is attributed to, until it runs.</summary>
-    private Dictionary<int, SharpyVerdict> RunSharpy(Payload payload, IReadOnlyList<Cell> cells, List<string> harnessFailures)
-        => RunRounds(payload.Name, cells.Select(c => c.Id).ToList(),
-            active => ProgramFor(payload, cells.Where(c => active.Contains(c.Id)).ToList()), "optional_membership.spy",
+    private Dictionary<int, SharpyVerdict> RunSharpy(Payload payload, IReadOnlyList<Cell> cells,
+        IReadOnlyList<HeadTwin> twins, List<string> harnessFailures)
+        => RunRounds(payload.Name, cells.Select(c => c.Id).Concat(twins.Select(t => t.Id)).ToList(),
+            active => ProgramFor(payload, cells.Where(c => active.Contains(c.Id)).ToList(),
+                twins: twins.Where(t => active.Contains(t.Id)).ToList()), "optional_membership.spy",
             harnessFailures, out _);
 
     /// <summary>Compiles a program over the cells still active (<paramref name="programFor"/>), removing each cell a
@@ -1123,16 +1173,22 @@ public class OptionalMembershipDifferentialTests : IntegrationTestBase
     {
         public bool Compared => Values;
 
-        /// <summary>Codes that may accompany the refusal. Empty for every expectation but a ruled refusal: there
-        /// the one expected code must be among the codes and nothing outside this set may be.</summary>
+        /// <summary>Codes that may accompany the refusal. Empty for every expectation but a ruled refusal (and a
+        /// chain link that inherits one): there an expected code must be among the codes and nothing outside
+        /// <see cref="RefusedBy"/> and this set may be.</summary>
         public IReadOnlySet<string> Tolerated { get; init; } = NoCodes;
 
         /// <summary>Whether a refusal by <paramref name="codes"/> is the expected one: exactly one of
         /// <see cref="RefusedBy"/>, or — with <see cref="Tolerated"/> codes — one of them and otherwise only
         /// tolerated ones.</summary>
-        public bool MeetsRefusal(IReadOnlySet<string> codes) => Tolerated.Count == 0
+        public bool MeetsRefusal(IReadOnlySet<string> codes) => Tolerated.Count == 0 && !AnyOf
             ? codes.Count == 1 && RefusedBy.Contains(codes.Single())
             : codes.Any(RefusedBy.Contains) && codes.All(c => RefusedBy.Contains(c) || Tolerated.Contains(c));
+
+        /// <summary>A chain link whose head link is refused: the refusal is one or more of <see cref="RefusedBy"/>
+        /// (the head's measured codes, and the membership link's when that is refused too: both links are checked,
+        /// and which codes one compile reports is the pipeline's), and nothing else.</summary>
+        public bool AnyOf { get; init; }
 
         public string Describe() => (Values ? "python's values" : "")
             + (RefusedBy.Count > 0 ? "refused by " + string.Join("|", RefusedBy.OrderBy(c => c, StringComparer.Ordinal)) : "")
@@ -1170,15 +1226,34 @@ public class OptionalMembershipDifferentialTests : IntegrationTestBase
     /// SPY0222. HAND-EXPECTED, by the deviation <c>membership-needle-type-mismatch</c> in <c>docs/deviations.yaml</c>:
     /// a typed needle the slot cannot hold (<see cref="SlotHolds"/>) is refused by SPY0222. HAND-EXPECTED, by owner
     /// ruling R-OA (2026-11-12): every cell of a class with only <c>__getitem__</c> and <c>__len__</c> is refused by
-    /// SPY0320. A chain link and an order cell take their twin's expectation.
+    /// SPY0320. An order cell takes its value twin's expectation. A chain link <c>x == x in c</c> takes its binary
+    /// twins': the membership link's is this rule's answer for <c>x in c</c>; the head link's is MEASURED
+    /// (<paramref name="heads"/>: the verdict of <see cref="HeadTwin"/> for the cell's payload, form and
+    /// observation). A head that runs leaves the membership link's expectation; a head that is refused refuses the
+    /// chain by its codes — an internal error included (owner rulings 2026-11-13, #2648: "Refuse, as the twin";
+    /// "Same as the twin", so a chain whose head reaches Roslyn is a cell of the head's tracker, listed in the
+    /// summary) — and by the membership link's when that is refused too.
     /// </summary>
-    private static Expectation Expect(Cell cell)
+    private static Expectation Expect(Cell cell, IReadOnlyDictionary<(string Payload, Form Form, Observation Observation), SharpyVerdict> heads)
     {
-        // An order cell expects what its value twin expects (its trace is part of the compared output), and a chain
-        // link what its expression twin expects: a link gets its binary twin's verdict (#2648), so a twin that runs
-        // is compared with CPython's answer for the chain and a refused twin is refused by the same code.
-        if (cell.Observation != Observation.Value || cell.Position == Position.ChainLink)
-            return Expect(cell with { Observation = Observation.Value, Position = Position.Expression });
+        if (cell.Position == Position.ChainLink)
+        {
+            var link = Expect(cell with { Position = Position.Expression }, heads);
+            if (heads[(cell.Payload.Name, cell.Form, cell.Observation)].RefusedBy is not { } head)
+                return link;
+            var headCodes = string.Join(",", head.OrderBy(c => c, StringComparer.Ordinal));
+            return new Expectation(false, link.Values ? head : head.Concat(link.RefusedBy).ToHashSet(StringComparer.Ordinal),
+                $"a chain link takes its binary twin's verdict (owner rulings 2026-11-13, #2648): the head link is refused "
+                + $"by {headCodes} as a binary expression (measured)" + (link.Values ? "" : "; the membership link: " + link.Why))
+            {
+                Tolerated = link.Tolerated,
+                AnyOf = true,
+            };
+        }
+
+        // An order cell expects what its value twin expects (its trace is part of the compared output).
+        if (cell.Observation != Observation.Value)
+            return Expect(cell with { Observation = Observation.Value }, heads);
 
         if (IsRefusedByRuling(cell.Container))
         {
@@ -1287,11 +1362,20 @@ public class OptionalMembershipDifferentialTests : IntegrationTestBase
             + $"{positionCount} positions): a cell was dropped or invented");
         Assert.Equal(allCells.Count, allCells.Select(c => c.Key).Distinct(StringComparer.Ordinal).Count());
 
-        // This fact's half of the product, and the rows it owns.
+        // The head twins: one per payload and observed form, from the same axis sizes.
+        var allTwins = GenerateHeadTwins(payloads, allCells.Count);
+        Assert.True(allTwins.Count == payloadCount * observedFormCount,
+            $"the generator made {allTwins.Count} head twins; the axes give {payloadCount * observedFormCount} "
+            + $"({payloadCount} payloads x {observedFormCount} observed forms): a head twin was dropped or invented");
+        Assert.All(allCells.Where(c => c.Position == Position.ChainLink), c => Assert.True(
+            allTwins.Count(t => t.Payload == c.Payload && t.Form == c.Form && t.Observation == c.Observation) == 1,
+            $"{c.Key}: a chain link without exactly one head twin"));
+
+        // This fact's half of the product, and its part of the rows.
         var cells = allCells.Where(c => c.Observation == observation).ToList();
+        var twins = allTwins.Where(t => t.Observation == observation).ToList();
         Assert.NotEmpty(cells);
-        bool Owns(string row) => !row.StartsWith(SequenceRowPrefix, StringComparison.Ordinal)
-            && row.StartsWith(OrderRowPrefix, StringComparison.Ordinal) == (observation == Observation.Order);
+        var part = observation == Observation.Value ? ValuePart : OrderPart;
         var report = observation == Observation.Value ? "optional-membership-differential" : "membership-order-differential";
 
         // CPython: one program per payload × container (the runner passes a program as one argv string, which the OS
@@ -1313,14 +1397,21 @@ public class OptionalMembershipDifferentialTests : IntegrationTestBase
         var harnessFailures = new List<string>();
         var sharpyById = new Dictionary<int, SharpyVerdict>();
         foreach (var payload in payloads)
-            foreach (var (id, verdict) in RunSharpy(payload, cells.Where(c => c.Payload == payload).ToList(), harnessFailures))
+            foreach (var (id, verdict) in RunSharpy(payload, cells.Where(c => c.Payload == payload).ToList(),
+                         twins.Where(t => t.Payload == payload).ToList(), harnessFailures))
                 sharpyById[id] = verdict;
         Assert.True(harnessFailures.Count == 0, "harness: " + string.Join("\n", harnessFailures));
-        Assert.Equal(cells.Count, sharpyById.Count);
+        Assert.Equal(cells.Count + twins.Count, sharpyById.Count);
 
-        var expectations = cells.ToDictionary(c => c.Id, Expect);
+        // The head link's verdict, measured: what the head of every chain cell of that payload and form must get.
+        var heads = twins.ToDictionary(t => (t.Payload.Name, t.Form, t.Observation), t => sharpyById[t.Id]);
+        var expectations = cells.ToDictionary(c => c.Id, c => Expect(c, heads));
 
-        var divergences = new List<(Cell Cell, string Observed, string Detail)>();
+        // The answers of a cell without its trace: an order cell that ran and gave CPython's answers diverges by
+        // its operand order alone.
+        static IEnumerable<string> Answers(IEnumerable<string> values) => values.Where(v => v is not ("n" or "c" or "h"));
+
+        var divergences = new List<(Cell Cell, string Row, string Observed, string Detail)>();
         foreach (var cell in cells)
         {
             var python = pythonById[cell.Id];
@@ -1340,7 +1431,10 @@ public class OptionalMembershipDifferentialTests : IntegrationTestBase
                 ? "python " + string.Join(" ", python)
                 : "refused " + string.Join("|", expected.RefusedBy.OrderBy(c => c, StringComparer.Ordinal));
             var pinned = $"sharpy {observed} | expected {expectedShort}";
-            divergences.Add((cell, pinned, $"python [{string.Join(" ", python)}] sharpy [{observed}]: expected {expected.Describe()}"));
+            var orderAlone = cell.Observation == Observation.Order && expected.Values && sharpy.Values is { } ran
+                && Answers(ran).SequenceEqual(Answers(python));
+            divergences.Add((cell, cell.RowKey(orderAlone), pinned,
+                $"python [{string.Join(" ", python)}] sharpy [{observed}]: expected {expected.Describe()}"));
         }
 
         var compared = expectations.Values.Count(e => e.Compared);
@@ -1351,15 +1445,29 @@ public class OptionalMembershipDifferentialTests : IntegrationTestBase
             .Select(d => $"{d.Cell.Key}  {d.Detail}"));
 
         var allowlist = LoadAllowlist();
-        var actualByRow = divergences.GroupBy(d => d.Cell.RowKey, StringComparer.Ordinal)
+        var actualByRow = divergences.GroupBy(d => d.Row, StringComparer.Ordinal)
             .ToDictionary(g => g.Key, g => g.ToDictionary(d => d.Cell.Key, d => d.Observed, StringComparer.Ordinal),
                 StringComparer.Ordinal);
-        var problems = PinProblems(actualByRow, allowlist, Owns);
+        var problems = PinProblems(actualByRow, allowlist, part);
+
+        // A chain link whose head link is refused expects the head's codes. Where the head reaches Roslyn the chain
+        // is to reach it too (owner ruling 2026-11-13, #2648: "Same as the twin"): never silent, those cells are
+        // listed for the lead, by direction, as cells of the head's tracker.
+        var chainCells = cells.Where(c => c.Position == Position.ChainLink).ToList();
+        var headRefused = chainCells.Where(c => heads[(c.Payload.Name, c.Form, c.Observation)].RefusedBy != null).ToList();
+        var headIce = headRefused.Where(c => heads[(c.Payload.Name, c.Form, c.Observation)].RefusedBy!
+            .Contains(DiagnosticCodes.Infrastructure.GeneratedCodeCompilationError)).ToList();
+        var headIcePath = Path.Combine(reportDir, $"{report}-chain-head-spy0908.txt");
+        File.WriteAllLines(headIcePath, headIce.Select(c => c.Key).OrderBy(k => k, StringComparer.Ordinal));
 
         Output.WriteLine($"{observation}: {payloads.Count} payloads, {cells.Count} of {allCells.Count} cases: {compared} compared with CPython, {handExpected} "
             + $"hand-expected (slot mismatches by deviation membership-needle-type-mismatch; literal None by owner ruling A; "
-            + "__getitem__ + __len__ classes by owner ruling R-OA); "
-            + $"{divergences.Count} divergent in {actualByRow.Count} rows; allowlist {allowlist.Count} rows; "
+            + "__getitem__ + __len__ classes by owner ruling R-OA; chain links whose head link is refused, by its "
+            + $"measured twin: {headRefused.Count} of {chainCells.Count} chain cells, {headIce.Count} of them where the head "
+            + $"reaches Roslyn: {headIcePath}); head twins refused: "
+            + string.Join("; ", twins.Where(t => sharpyById[t.Id].RefusedBy != null).Select(t => $"{t.Payload.Name}/{t.Form} "
+                + string.Join(",", sharpyById[t.Id].RefusedBy!.OrderBy(c => c, StringComparer.Ordinal))))
+            + $"; {divergences.Count} divergent in {actualByRow.Count} rows; allowlist {allowlist.Count} rows; "
             + $"{problems.Count} pin problem line(s). Every divergence: {divergencePath}");
 
         // Positive controls: the oracle column reaches every answer the expected map distinguishes.
@@ -1367,6 +1475,13 @@ public class OptionalMembershipDifferentialTests : IntegrationTestBase
         Assert.Contains(cells, c => pythonById[c.Id].Contains("False"));
         Assert.Contains(cells, c => expectations[c.Id].Compared && c.Form == Form.Optional && pythonById[c.Id].Contains("TypeError"));
         Assert.Contains(cells, c => c.Form == Form.Plain && c.Position != Position.ChainLink && sharpyById[c.Id].Values != null);
+        // The head twin distinguishes: some head link runs, and some is refused by the operator validator's code —
+        // a chain cell of each kind exists, and a refused head's cell expects exactly the head's codes.
+        Assert.Contains(twins, t => sharpyById[t.Id].Values != null);
+        Assert.Contains(twins, t => sharpyById[t.Id].RefusedBy is { Count: 1 } by && by.Contains(DiagnosticCodes.Validation.UnsupportedOperator));
+        Assert.All(headRefused, c => Assert.True(!expectations[c.Id].Values && heads[(c.Payload.Name, c.Form, c.Observation)].RefusedBy!
+            .All(expectations[c.Id].RefusedBy.Contains), $"{c.Key}: its head link is refused and the cell does not expect the head's codes"));
+        Assert.Contains(chainCells, c => expectations[c.Id].Values);
         // The optional column can pass: a T | None needle's cell already runs, prints False for None and agrees (by
         // value a reference payload's; by order a lifted one's, whose helper takes the needle first).
         var divergent = divergences.Select(d => d.Cell.Id).ToHashSet();
@@ -1426,7 +1541,7 @@ public class OptionalMembershipDifferentialTests : IntegrationTestBase
         // Written on every run, header included, so copying it over the allowlist is a byte-identical round trip
         // when nothing moved and a reviewable diff when something did.
         var proposedPath = Path.Combine(reportDir, $"{report}-proposed-allowlist.txt");
-        File.WriteAllText(proposedPath, string.Join("\n", ProposedAllowlist(actualByRow, allowlist, Owns)) + "\n");
+        File.WriteAllText(proposedPath, string.Join("\n", ProposedAllowlist(actualByRow, allowlist, part)) + "\n");
 
         if (problems.Count > 0)
         {
@@ -1517,15 +1632,30 @@ public class OptionalMembershipDifferentialTests : IntegrationTestBase
     /// as the unconstrained one's twin (<see cref="SemanticTypeCensus"/>, <c>TypeParameterType/TypeConstraint</c>:
     /// the constraint says nothing about a needle), but an ordering operator is decided BY the constraint (the
     /// <c>TypeParameterCompareTo</c> lowering), so the sequence matrix generates it.
+    /// <para>The primitives the membership matrix leaves out (<see cref="ExcludedPrimitives"/>) are left out for a
+    /// needle slot and a python twin, and a sequence has neither: <c>object</c> and <c>char</c> are generated here
+    /// (<c>o == p == o</c> over <c>object</c> is #2648's own cell), and <c>void</c> has this matrix's own reason
+    /// (<see cref="SequenceExcludedPrimitives"/>). The fact asserts the three sets agree.</para>
     /// </summary>
     private static readonly Payload[] SequenceOnlyPayloads =
     {
         new("T: IComparable[T]", PayloadKind.UserType, "1", "2", "5", null)
         { TypeParameters = "[T: IComparable[T]]", Binding = "int" },
+        new("object", PayloadKind.UserType, "\"a\"", "\"b\"", "\"z\"", typeof(object)),
+        // A `char` has no literal: it is an element of a `str` (primitive_types.md).
+        new("char", PayloadKind.UserType, "\"ab\"[0]", "\"ab\"[1]", "\"z\"[0]", typeof(char)),
     };
 
     /// <summary>How many payloads <see cref="SequenceOnlyPayloads"/> adds, as a literal (the generator reads the array).</summary>
-    private const int SequenceOnlyPayloadCount = 1;
+    private const int SequenceOnlyPayloadCount = 3;
+
+    /// <summary>The primitives of <see cref="ExcludedPrimitives"/> the sequence matrix leaves out too, each with the
+    /// sequence matrix's own reason; every other one is a <see cref="SequenceOnlyPayloads"/> entry.</summary>
+    private static readonly Dictionary<string, string> SequenceExcludedPrimitives = new(StringComparer.Ordinal)
+    {
+        ["void"] = "a `None`-typed operand has one value, the literal `None`, which has no evaluation to order: the "
+            + "NoneLast form places it as the last operand of every sequence",
+    };
 
     /// <summary>The <see cref="BinaryOperator"/> of a chain link, by name: every <see cref="ComparisonOperator"/> has
     /// one (a link is a binary operation), and a new one fails here.</summary>
@@ -1814,6 +1944,17 @@ public class OptionalMembershipDifferentialTests : IntegrationTestBase
         var formCount = Enum.GetValues<SequenceForm>().Length;
         var payloadCount = SemanticTypeCensus.Values.Sum(v => v.Payloads) + SequenceOnlyPayloadCount;
         Assert.Equal(payloadCount, payloads.Count);
+        // The membership matrix's excluded primitives are each a payload here or excluded for this matrix's own
+        // reason: never by a reason about a needle slot or a python twin.
+        var sequenceOnlyPrimitives = SequenceOnlyPayloads.Select(p => p.Name).Where(ExcludedPrimitives.ContainsKey).ToList();
+        Assert.True(ExcludedPrimitives.Keys.OrderBy(n => n, StringComparer.Ordinal).SequenceEqual(
+                sequenceOnlyPrimitives.Concat(SequenceExcludedPrimitives.Keys).OrderBy(n => n, StringComparer.Ordinal)),
+            "every primitive the membership matrix excludes [" + string.Join(", ", ExcludedPrimitives.Keys) + "] is a "
+            + "sequence-only payload [" + string.Join(", ", sequenceOnlyPrimitives) + "] or in SequenceExcludedPrimitives ["
+            + string.Join(", ", SequenceExcludedPrimitives.Keys) + "] with the sequence matrix's own reason, never both");
+        Assert.All(SequenceExcludedPrimitives, e => Assert.False(string.IsNullOrWhiteSpace(e.Value), $"{e.Key}: no reason"));
+        Assert.All(SequenceOnlyPayloads.Where(p => ExcludedPrimitives.ContainsKey(p.Name)), p => Assert.True(
+            PrimitiveCatalog.GetByName(p.Name)?.ClrType == p.ClrType, $"{p.Name}: not the catalog's primitive of that name"));
         Assert.Equal(payloads.Count, payloads.Select(p => p.Name).Distinct(StringComparer.Ordinal).Count());
         var expectedCount = payloadCount * (formCount * (binaryCount + linkCount * linkCount) + binaryCount * Pivots.Length * 2);
         Assert.True(expectedCount == sequences.Count,
@@ -1860,11 +2001,10 @@ public class OptionalMembershipDifferentialTests : IntegrationTestBase
             .Select(d => $"{d.Sequence.Key}  {d.Observed}"));
 
         var allowlist = LoadAllowlist();
-        static bool Owns(string row) => row.StartsWith(SequenceRowPrefix, StringComparison.Ordinal);
         var actualByRow = divergences.GroupBy(d => d.Sequence.RowKey, StringComparer.Ordinal)
             .ToDictionary(g => g.Key, g => g.ToDictionary(d => d.Sequence.Key, d => d.Observed, StringComparer.Ordinal),
                 StringComparer.Ordinal);
-        var problems = PinProblems(actualByRow, allowlist, Owns);
+        var problems = PinProblems(actualByRow, allowlist, SequencePart);
         // Not a divergence of THIS contract, but never silent: a sequence both forms of which reach Roslyn
         // (SPY0908 is a net, not an error channel) is listed for the lead to file by class.
         var iceInBoth = sequences.Where(s => verdicts[s.CellId].RefusedBy is { } a && verdicts[s.ReferenceId].RefusedBy is { } b
@@ -1907,7 +2047,7 @@ public class OptionalMembershipDifferentialTests : IntegrationTestBase
             s => Assert.True(verdicts[s.ReferenceId].Values![0] is "0" or "raised", $"{s.Key}: its desugaring did not evaluate operand 0 first"));
 
         var proposedPath = Path.Combine(reportDir, "operator-sequence-proposed-allowlist.txt");
-        File.WriteAllText(proposedPath, string.Join("\n", ProposedAllowlist(actualByRow, allowlist, Owns)) + "\n");
+        File.WriteAllText(proposedPath, string.Join("\n", ProposedAllowlist(actualByRow, allowlist, SequencePart)) + "\n");
         if (problems.Count > 0)
         {
             var problemPath = Path.Combine(reportDir, "operator-sequence-pin-problems.txt");
@@ -1918,51 +2058,645 @@ public class OptionalMembershipDifferentialTests : IntegrationTestBase
         }
     }
 
-    /// <summary>The divergent cells against the allowlist's rows a fact owns (<paramref name="owns"/>: the two facts
-    /// of this class share the file): every row that is missing, stale, or whose pinned cells or verdicts moved.</summary>
+    // ---------------------------------------------------------------------------------------------------------
+    // The left-operand form matrix (#2645; owner ruling 2026-11-13, #2645 comment 6867355702: "Close the axis")
+    // ---------------------------------------------------------------------------------------------------------
+
+    /// <summary>How the left operand's emitted type is decided: the expression's own (a call, a name of that type),
+    /// or only by the slot it is checked against (a tuple of literals narrower than the slot, a conditional with a
+    /// <c>None</c> arm, a lambda, a function name, the literal <c>None</c>): the form a binding of the left operand
+    /// ahead of the container cannot type without the slot.</summary>
+    private enum Typing { Own, BySlot }
+
+    /// <summary>The right operand: a name (no evaluation), a traced call, or a call whose argument REBINDS the
+    /// variable the left operand reads (<c>keep((a := c), xs)</c>), so that an operand with no call of its own —
+    /// a bare name — still shows which side was evaluated first, by its value. A closed literal set: what the
+    /// emitter can branch on in a right operand is whether it has an evaluation and whether that evaluation
+    /// changes what the left operand reads.</summary>
+    private enum ContainerForm { Name, Call, Rebind }
+
+    /// <summary>
+    /// A left-operand form. <see cref="Needle"/> is the operand over <c>@</c>, the traced read of the local
+    /// <c>a</c> (a form that cannot hold a call, a bare name, reads <c>a</c> itself); <see cref="A"/> is the type of
+    /// <c>a</c> and of <c>c</c>, the value the Rebind container assigns to it; <see cref="Slot"/> is the container's
+    /// element type, which the reference declares its bound operand by; <see cref="Members"/> builds the container
+    /// (it holds the operand's value over <see cref="AValue"/> and not over <see cref="CValue"/>) and
+    /// <see cref="Head"/> the head operand of the chain position.
+    /// </summary>
+    private sealed record LeftForm(string Needle, string A, string AValue, string CValue, string Slot, string Members, string Head)
+    {
+        /// <summary>The form awaits: its functions are <c>async</c> and their calls awaited.</summary>
+        public bool Async { get; init; }
+
+        /// <summary>The form returns early (<c>?</c>): its functions return this type, and end by returning <c>a</c>.</summary>
+        public string? Returns { get; init; }
+    }
+
+    private static LeftForm IntForm(string needle, string a = "1", string c = "5") =>
+        new(needle, "int", a, c, "int", "[1, 2]", "1");
+
+    private const string NoSlotTyping = "the form's type is its own: no slot gives it another";
+
+    /// <summary>
+    /// The left-operand forms: one entry per <c>Expression</c> record of the parser that can stand as a left
+    /// operand, each by its own type and typed by its slot — a spelling, or the reason there is none.
+    /// <see cref="AssertLeftFormAxisIsTheExpressionCensus"/> asserts the keys, with those of
+    /// <see cref="LeftFormUnspellable"/>, are exactly the non-abstract subclasses of <c>Expression</c> (by
+    /// reflection), and the fact MEASURES each spelling: the left operand of every generated cell parses to its
+    /// entry's record.
+    /// </summary>
+    private static readonly Dictionary<Type, (LeftForm? Own, string? OwnExcluded, LeftForm? BySlot, string? BySlotExcluded)> LeftForms = new()
+    {
+        [typeof(IntegerLiteral)] = (IntForm("1"), null,
+            new("1", "int", "1", "5", "uint64", "[1, 2]", "1"), null),
+        [typeof(FloatLiteral)] = (new("1.5", "int", "1", "5", "float", "[1.5, 2.5]", "1.5"), null,
+            null, "typed by a `float32` slot it reaches Roslyn in every position (LeftFormTypingRefused): no order to observe"),
+        [typeof(StringLiteral)] = (new("\"a\"", "int", "1", "5", "str", "[\"a\", \"b\"]", "\"a\""), null, null, NoSlotTyping),
+        [typeof(BytesLiteralExpression)] = (new("b\"a\"", "int", "1", "5", "bytes", "[b\"a\", b\"b\"]", "b\"a\""), null, null, NoSlotTyping),
+        [typeof(FStringLiteral)] = (new("f\"{@}\"", "str", "\"a\"", "\"z\"", "str", "[\"a\", \"b\"]", "\"a\""), null, null, NoSlotTyping),
+        [typeof(TStringLiteral)] = (new("t\"{@}\"", "str", "\"a\"", "\"z\"", "Template", "[t\"a\"]", "t\"a\""), null, null, NoSlotTyping),
+        [typeof(BooleanLiteral)] = (new("True", "int", "1", "5", "bool", "[True]", "True"), null, null, NoSlotTyping),
+        [typeof(NoneLiteral)] = (null, "the literal None has no type of its own",
+            new("None", "int", "1", "5", "int | None", "[1, None]", "None"), null),
+        [typeof(ListLiteral)] = (new("[@, 2]", "int", "1", "5", "list[int]", "[[1, 2], [3]]", "[1, 2]"), null,
+            new("[@, 2]", "int", "1", "5", "list[int64]", "[[1, 2], [3]]", "[1, 2]"), null),
+        [typeof(DictLiteral)] = (new("{@: 1}", "int", "1", "5", "dict[int, int]", "[{1: 1}]", "{1: 1}"), null,
+            new("{@: 1}", "int", "1", "5", "dict[int64, int64]", "[{1: 1}]", "{1: 1}"), null),
+        [typeof(SetLiteral)] = (new("{@, 2}", "int", "1", "5", "set[int]", "[{1, 2}]", "{1, 2}"), null,
+            new("{@, 2}", "int", "1", "5", "set[int64]", "[{1, 2}]", "{1, 2}"), null),
+        [typeof(TupleLiteral)] = (new("(@, 2)", "int", "1", "5", "tuple[int, int]", "[(1, 2), (3, 4)]", "(1, 2)"), null,
+            new("(@, 2)", "int", "1", "5", "tuple[int, uint64]", "[(1, 2), (3, 4)]", "(1, 2)"), null),
+        [typeof(ListComprehension)] = (new("[w for w in [@, 2]]", "int", "1", "5", "list[int]", "[[1, 2], [3]]", "[1, 2]"), null,
+            null, "a comprehension's element type is its own element expression's"),
+        [typeof(GeneratorExpression)] = (new("(w for w in [@, 2])", "int", "1", "5", "Iterator[int]", "[iter([1, 2])]", "iter([1, 2])"), null,
+            null, "a comprehension's element type is its own element expression's"),
+        [typeof(SetComprehension)] = (new("{w for w in [@, 2]}", "int", "1", "5", "set[int]", "[{1, 2}]", "{1, 2}"), null,
+            null, "a comprehension's element type is its own element expression's"),
+        [typeof(DictComprehension)] = (new("{w: 1 for w in [@]}", "int", "1", "5", "dict[int, int]", "[{1: 1}]", "{1: 1}"), null,
+            null, "a comprehension's element type is its own element expression's"),
+        [typeof(DictSpreadComprehension)] = (new("{**d for d in [@]}", "dict[int, int]", "{1: 1}", "{5: 5}", "dict[int, int]", "[{1: 1}]", "{1: 1}"), null,
+            null, "a comprehension's element type is its own element expression's"),
+        // A bare name has no call to trace: it reads `a` itself, and the Rebind container shows the order.
+        [typeof(Identifier)] = (IntForm("a"), null,
+            new("f1", "int", "1", "5", "(int) -> int", "[f1, f2]", "f1"), null),
+        [typeof(MemberAccess)] = (new("@.v", "Box", "Box(1)", "Box(5)", "int", "[1, 2]", "1"), null, null, NoSlotTyping),
+        [typeof(IndexAccess)] = (new("@[0]", "list[int]", "[1]", "[5]", "int", "[1, 2]", "1"), null, null, NoSlotTyping),
+        [typeof(SliceAccess)] = (new("@[0:1]", "list[int]", "[1]", "[5]", "list[int]", "[[1], [2]]", "[1]"), null, null, NoSlotTyping),
+        // A subscript with a slice dimension (one with indices alone parses to an IndexAccess over a tuple).
+        [typeof(MultiAxisAccess)] = (new("@[0:1, 0]", "ndarray[float]", "array([[1.0, 2.0], [3.0, 4.0]])", "array([[5.0, 6.0], [7.0, 8.0]])",
+            "ndarray[float]", "[array([1.0])]", "array([1.0])"), null, null, NoSlotTyping),
+        [typeof(FunctionCall)] = (IntForm("@"), null, null, NoSlotTyping),
+        [typeof(UnaryOp)] = (IntForm("-@", "-1", "-5"), null, null, NoSlotTyping),
+        [typeof(QuestionMarkExpression)] = (new("@?", "int?", "Some(1)", "Some(5)", "int", "[1, 2]", "1") { Returns = "int?" }, null,
+            null, NoSlotTyping),
+        [typeof(BinaryOp)] = (IntForm("@ + 1", "0", "4"), null, null, NoSlotTyping),
+        [typeof(ComparisonChain)] = (new("(0 < @ < 3)", "int", "1", "5", "bool", "[True]", "True"), null, null, NoSlotTyping),
+        [typeof(ConditionalExpression)] = (IntForm("(@ if len(xs) > 0 else 2)"), null,
+            new("(@ if len(xs) > 0 else None)", "int", "1", "5", "int | None", "[1, None]", "1"), null),
+        [typeof(LambdaExpression)] = (null, "a lambda has no type of its own: its parameters are typed by its slot",
+            new("(lambda w: w)", "int", "1", "5", "(int) -> int", "[f1, f2]", "f1"), null),
+        [typeof(TypeCoercion)] = (new("(@ as! int64)", "int", "1", "5", "int64", "[1, 2]", "1"), null, null, NoSlotTyping),
+        [typeof(TypeCheck)] = (new("(@ is Color.RED)", "Color", "Color.RED", "Color.GREEN", "bool", "[True]", "True"), null, null, NoSlotTyping),
+        [typeof(Parenthesized)] = (IntForm("(@)"), null, null, NoSlotTyping),
+        [typeof(WalrusExpression)] = (IntForm("(w := @)"), null, null, NoSlotTyping),
+        [typeof(TryExpression)] = (new("(try @)", "int", "1", "5", "Result[int, Exception]", "[ok(1), ok(2)]", "ok(1)"), null, null, NoSlotTyping),
+        [typeof(MaybeExpression)] = (new("(maybe @)", "int | None", "1", "5", "int?", "[Some(1), Some(2)]", "Some(1)"), null, null, NoSlotTyping),
+        [typeof(AwaitExpression)] = (IntForm("await g(@)") with { Async = true }, null, null, NoSlotTyping),
+    };
+
+    /// <summary>How many forms <see cref="LeftForms"/> generates, as a literal: the totality count reads the map the
+    /// generator reads, so only this pins a form against silent deletion.</summary>
+    private const int LeftFormCount = 43;
+
+    /// <summary>
+    /// The <c>Expression</c> records that cannot stand as a left operand, each with its reason, the program that
+    /// shows it and the one code that program must still be refused by (<see cref="AssertLeftFormAxisIsTheExpressionCensus"/>
+    /// compiles each: an entry whose program is no longer refused that way is red until the form is generated).
+    /// </summary>
+    private static readonly Dictionary<Type, (string Why, string Program, string RefusedBy)> LeftFormUnspellable = new()
+    {
+        [typeof(ModifiedArgument)] = ("`ref` / `out` / `in` marks a call-site argument: it parses only inside an argument list",
+            "def main() -> None:\n    a: int = 1\n    xs: list[int] = [1]\n    v = ref a in xs\n    print(v)\n",
+            DiagnosticCodes.Parser.ExpectedEndOfStatement),
+        [typeof(StarExpression)] = ("`*rest` is an unpacking target, never an operand",
+            "def main() -> None:\n    a: list[int] = [1]\n    xs: list[list[int]] = [[1]]\n    v = *a in xs\n    print(v)\n",
+            DiagnosticCodes.Parser.UnexpectedToken),
+        [typeof(SpreadElement)] = ("`*expr` is an element of a collection literal (`[*a, 2]` is the ListLiteral form), never "
+            + "an operand: the parser builds no spread outside one",
+            "def main() -> None:\n    a: list[int] = [1]\n    xs: list[list[int]] = [[1]]\n    v = *a in xs\n    print(v)\n",
+            DiagnosticCodes.Parser.UnexpectedToken),
+        [typeof(SuperExpression)] = ("`super()` is only the receiver of a method call",
+            "class B:\n    @virtual\n    def m(self, xs: list[B]) -> bool:\n        return False\n\n"
+            + "class D(B):\n    @override\n    def m(self, xs: list[B]) -> bool:\n        return super() in xs\n\n"
+            + "def main() -> None:\n    print(D().m([B()]))\n",
+            DiagnosticCodes.Semantic.InvalidSuperUsage),
+        [typeof(EllipsisLiteral)] = ("`...` is not a value: in a value position it reaches Roslyn today (CS8115, a throw "
+            + "expression), as an operand and as an assigned value alike, so there is no evaluation to order",
+            "def main() -> None:\n    xs: list[int | None] = [1, None]\n    print(... in xs)\n",
+            DiagnosticCodes.Infrastructure.GeneratedCodeCompilationError),
+        [typeof(MatchExpression)] = ("a match expression is a statement's whole right side: its arms start their own lines, "
+            + "so it cannot be an operand, even in parentheses",
+            "def main() -> None:\n    a: int = 1\n    xs: list[int] = [1]\n    v = (match a:\n        case 1: 1\n        case _: 2) in xs\n    print(v)\n",
+            DiagnosticCodes.Parser.ExpectedNewline),
+    };
+
+    /// <summary>
+    /// A typing of a form that <see cref="LeftForms"/> leaves out because every cell of it is refused before any
+    /// operand is evaluated: the reason, the program that shows it and the one code it must still be refused by
+    /// (compiled by <see cref="AssertLeftFormAxisIsTheExpressionCensus"/>; red when that changes, until the
+    /// typing is generated).
+    /// </summary>
+    private static readonly Dictionary<(Type Kind, Typing Typing), (string Why, string Program, string RefusedBy)> LeftFormTypingRefused = new()
+    {
+        [(typeof(FloatLiteral), Typing.BySlot)] = ("a float literal needle into a `float32` slot is accepted by the checker and "
+            + "refused by C# (CS1503 `double` to `float`), where `t: float32 = 1.5` then `t in xs` runs",
+            "def main() -> None:\n    xs: list[float32] = [1.5, 2.5]\n    print(1.5 in xs)\n",
+            DiagnosticCodes.Infrastructure.GeneratedCodeCompilationError),
+    };
+
+    private static IReadOnlyList<Type> ExpressionRecords() =>
+        typeof(Expression).Assembly.GetTypes()
+            .Where(t => t.IsSubclassOf(typeof(Expression)) && !t.IsAbstract)
+            .OrderBy(t => t.Name, StringComparer.Ordinal)
+            .ToList();
+
+    /// <summary>The left-operand form axis is closed against the parser's expression model: every non-abstract
+    /// subclass of <c>Expression</c> is a key of <see cref="LeftForms"/> or of <see cref="LeftFormUnspellable"/>,
+    /// never both, and every key is such a record; each typing of a form has a spelling or a reason, exactly one;
+    /// and every unspellable form's program is still refused by its code.</summary>
+    private void AssertLeftFormAxisIsTheExpressionCensus()
+    {
+        var census = ExpressionRecords().Select(t => t.Name).ToList();
+        var mapped = LeftForms.Keys.Concat(LeftFormUnspellable.Keys).Select(t => t.Name).OrderBy(n => n, StringComparer.Ordinal).ToList();
+        Assert.True(census.SequenceEqual(mapped),
+            "the Expression records have no left-operand form entry for [" + string.Join(", ", census.Except(mapped))
+            + "] and the maps name [" + string.Join(", ", mapped.Except(census)) + "], which are not Expression records (or are "
+            + "named twice): spell each form in LeftForms or exclude it in LeftFormUnspellable with its program");
+        foreach (var (kind, (own, ownExcluded, bySlot, bySlotExcluded)) in LeftForms)
+        {
+            Assert.True((own != null) != (ownExcluded != null) && (bySlot != null) != (bySlotExcluded != null),
+                $"{kind.Name}: each typing has a spelling or an exclusion reason, exactly one");
+            Assert.True(own != null || bySlot != null, $"{kind.Name}: a form with no spelling belongs in LeftFormUnspellable");
+            Assert.False(string.IsNullOrWhiteSpace(ownExcluded ?? bySlotExcluded ?? "-"), $"{kind.Name}: a blank exclusion reason");
+        }
+        Assert.True(LeftForms.Values.Sum(v => (v.Own != null ? 1 : 0) + (v.BySlot != null ? 1 : 0)) == LeftFormCount,
+            $"LeftForms generates {LeftForms.Values.Sum(v => (v.Own != null ? 1 : 0) + (v.BySlot != null ? 1 : 0))} forms; "
+            + $"{nameof(LeftFormCount)} says {LeftFormCount}: a form was dropped or added without the literal");
+        Assert.All(LeftFormTypingRefused, e => Assert.True(LeftForms.TryGetValue(e.Key.Kind, out var entry)
+            && (e.Key.Typing == Typing.Own ? entry.Own : entry.BySlot) == null,
+            $"{e.Key.Kind.Name}/{e.Key.Typing}: LeftFormTypingRefused names a typing LeftForms generates, or no form"));
+        foreach (var (kind, (why, program, refusedBy)) in LeftFormUnspellable.Select(e => (e.Key.Name, e.Value))
+                     .Concat(LeftFormTypingRefused.Select(e => ($"{e.Key.Kind.Name}/{e.Key.Typing}", e.Value))))
+        {
+            Assert.False(string.IsNullOrWhiteSpace(why), $"{kind}: no reason");
+            var run = CompileAndExecute(program, "left_form_unspellable.spy", executionTimeoutMs: 120_000);
+            var codes = run.RawDiagnostics.Where(d => d.IsError).Select(d => d.Code ?? "?").Distinct().OrderBy(c => c, StringComparer.Ordinal).ToList();
+            Assert.True(!RanToCompletion(run) && codes.Count == 1 && codes[0] == refusedBy,
+                $"{kind}: its exclusion says the program below is refused by {refusedBy}; it "
+                + (RanToCompletion(run) ? "now runs" : "is refused by " + string.Join(",", codes))
+                + ": spell the form in LeftForms (its cells then join the product)\n" + program);
+        }
+    }
+
+    /// <summary>A left-operand cell: a form, by its own type or by its slot, against a container form, under a
+    /// membership operator, in a position. Its cell (<see cref="CellId"/>) is the expression; its reference
+    /// (<see cref="ReferenceId"/>) the desugaring, the left operand bound first to a name of the slot's type.</summary>
+    private sealed record LeftCell(int Id, Type Kind, Typing Typing, LeftForm Form, ContainerForm Container, BinaryOperator Operator, Position Position)
+    {
+        public int CellId => Id * 2;
+        public int ReferenceId => Id * 2 + 1;
+        public string FormName => Kind.Name + (Typing == Typing.BySlot ? "@slot" : "");
+        public string Key => $"{FormName}/{Container}/{OperatorSpelling(Operator)}/{Position}";
+        public string RowKey => SequenceRowPrefix + (Position == Position.ChainLink ? "Chain" : "Binary");
+    }
+
+    private static List<LeftCell> GenerateLeftCells()
+    {
+        var cells = new List<LeftCell>();
+        foreach (var (kind, entry) in LeftForms.OrderBy(e => e.Key.Name, StringComparer.Ordinal))
+            foreach (var (typing, form) in new[] { (Typing.Own, entry.Own), (Typing.BySlot, entry.BySlot) })
+            {
+                if (form == null)
+                    continue;
+                foreach (var container in Enum.GetValues<ContainerForm>())
+                    foreach (var op in Operators)
+                        foreach (var position in Enum.GetValues<Position>())
+                            cells.Add(new LeftCell(cells.Count, kind, typing, form, container, op, position));
+            }
+        return cells;
+    }
+
+    private const string LeftFormPrelude =
+        "from numpy import ndarray, array\n\n"
+        + "def tr[V](cell: int, operand: int, v: V) -> V:\n    print(cell, operand)\n    return v\n\n"
+        // The Rebind container: its first argument is evaluated for its effect, its second is the container.
+        + "def keep[V, W](v: V, xs: W) -> W:\n    return xs\n\n"
+        + "enum Color:\n    RED = 1\n    GREEN = 2\n\n"
+        + "class Box:\n    v: int\n    def __init__(self, v: int):\n        self.v = v\n\n"
+        + "def f1(v: int) -> int:\n    return v\n\n"
+        + "def f2(v: int) -> int:\n    return v + 1\n\n"
+        + "async def g(v: int) -> int:\n    return v\n\n"
+        + "def ok(v: int) -> Result[int, Exception]:\n    return Ok(v)\n\n";
+
+    /// <summary>One program over the functions still active. A cell evaluates <c>needle op container</c> in its
+    /// position (a chain link after a traced head operand, <c>tr(h) == needle op container</c>); its reference binds
+    /// the head, then the needle to a name declared by the slot's type, then applies the operator to the name (a
+    /// chain: the head link first, the membership link only when it holds). Both print their value. <c>main</c> declares each form's
+    /// operands once and calls every function of the form over them.</summary>
+    private static Program LeftFormProgramFor(IReadOnlyList<LeftCell> cells, IReadOnlySet<int> active)
+    {
+        var lines = new List<string>();
+        var cellByLine = new Dictionary<int, int>();
+        void Add(string line, int? id = null)
+        {
+            lines.Add(line);
+            if (id is { } cell)
+                cellByLine[lines.Count] = cell;
+        }
+
+        foreach (var line in LeftFormPrelude.TrimEnd('\n').Split('\n'))
+            Add(line);
+        Add("");
+
+        void AddFunction(LeftCell cell, bool reference)
+        {
+            var id = reference ? cell.ReferenceId : cell.CellId;
+            if (!active.Contains(id))
+                return;
+            var form = cell.Form;
+            var op = OperatorSpelling(cell.Operator);
+            var needle = form.Needle.Replace("@", $"tr({id}, 0, a)", StringComparison.Ordinal);
+            var container = cell.Container switch
+            {
+                ContainerForm.Name => "xs",
+                ContainerForm.Call => $"tr({id}, 1, xs)",
+                _ => "keep((a := c), xs)",
+            };
+            var chain = cell.Position == Position.ChainLink;
+            Add($"{(form.Async ? "async " : "")}def e{id}(pa: {form.A}, c: {form.A}, h: {form.Slot}, xs: list[{form.Slot}]) -> {form.Returns ?? "None"}:", id);
+            // A local, so that the Rebind container's walrus rebinds it (one that names a parameter makes every
+            // earlier read of the parameter SPY0600).
+            Add($"    a: {form.A} = pa", id);
+            if (!reference)
+            {
+                var test = $"{needle} {op} {container}";
+                switch (cell.Position)
+                {
+                    case Position.Expression:
+                        Add($"    v = {test}", id);
+                        break;
+                    case Position.IfCondition:
+                        Add("    v = False", id);
+                        Add($"    if {test}:", id);
+                        Add("        v = True", id);
+                        break;
+                    case Position.ComprehensionFilter:
+                        Add($"    v = len([0 for _ in [0] if {test}]) == 1", id);
+                        break;
+                    case Position.ChainLink:
+                        Add($"    v = tr({id}, 9, h) == {test}", id);
+                        break;
+                }
+            }
+            else
+            {
+                if (chain)
+                    Add($"    t9 = tr({id}, 9, h)", id);
+                Add($"    t0: {form.Slot} = {needle}", id);
+                if (chain)
+                {
+                    // The head link reads the bound operand; an operand with no evaluation (no traced read: a
+                    // literal, a name, a lambda) is spelled in place there, so the link keeps the literal's typing
+                    // (`h == None` is refused where `h == t0` over `t0: int | None` is not).
+                    Add($"    v = t9 == {(form.Needle.Contains('@') ? "t0" : needle)}", id);
+                    Add("    if v:", id);
+                    Add($"        v = t0 {op} {container}", id);
+                }
+                else
+                {
+                    Add($"    v = t0 {op} {container}", id);
+                }
+            }
+            Add($"    print({id}, v)", id);
+            if (form.Returns != null)
+                Add("    return a", id);
+            Add("");
+        }
+
+        foreach (var cell in cells)
+        {
+            AddFunction(cell, reference: false);
+            AddFunction(cell, reference: true);
+        }
+
+        Add("async def main() -> None:");
+        foreach (var group in cells.GroupBy(c => (c.Kind, c.Typing)))
+        {
+            var k = group.First().Id;
+            var form = group.First().Form;
+            Add($"    a{k}: {form.A} = {form.AValue}");
+            Add($"    c{k}: {form.A} = {form.CValue}");
+            Add($"    h{k}: {form.Slot} = {form.Head}");
+            Add($"    xs{k}: list[{form.Slot}] = {form.Members}");
+            foreach (var cell in group)
+                foreach (var id in new[] { cell.CellId, cell.ReferenceId })
+                {
+                    if (!active.Contains(id))
+                        continue;
+                    var call = $"{(form.Async ? "await " : "")}e{id}(a{k}, c{k}, h{k}, xs{k})";
+                    Add("    try:", id);
+                    Add(form.Returns != null ? $"        print({id}, \"returned\", {call})" : $"        {call}", id);
+                    Add("    except Exception:", id);
+                    Add($"        print({id}, \"raised\")", id);
+                }
+        }
+        Add("    print(\"done\")");
+        return new Program(string.Join("\n", lines) + "\n", cellByLine);
+    }
+
+    /// <summary>The left operand of the membership test of a cell's function, as the parser built it: the left
+    /// operand of the first <c>in</c> / <c>not in</c> operator, or the operand before that link of a chain.</summary>
+    private static Expression? ParsedLeftOperand(FunctionDef function)
+    {
+        foreach (var node in Descendants(function))
+        {
+            if (node is BinaryOp { Operator: BinaryOperator.In or BinaryOperator.NotIn } binary)
+                return binary.Left;
+            if (node is ComparisonChain chain)
+                for (var i = 0; i < chain.Operators.Length; i++)
+                    if (chain.Operators[i] is ComparisonOperator.In or ComparisonOperator.NotIn)
+                        return chain.Operands[i];
+        }
+        return null;
+    }
+
+    /// <summary>
+    /// The left operand of a membership test is evaluated before the right one whatever its FORM (#2645): for every
+    /// expression record of the parser that can stand as a left operand, by its own type and typed by its slot,
+    /// <c>needle op container</c> prints what its DESUGARING prints — the needle bound first to a name declared by
+    /// the slot's type, then the operator applied to the name — and is refused exactly when the desugaring is, by a
+    /// code the desugaring is refused by. Owner ruling 2026-11-13 (#2645 comment 6867355702, "Close the axis"): the
+    /// form is generated from the compiler's own expression node kinds, each covered or excluded with its reason.
+    /// <para><b>Generated, never listed.</b> form (<see cref="LeftForms"/>: the image of the <c>Expression</c>
+    /// records by reflection, less <see cref="LeftFormUnspellable"/>, each by <see cref="Typing"/>) × right operand
+    /// (<see cref="ContainerForm"/>) × the membership operators × <see cref="Position"/>. The count is asserted
+    /// from the enumerations, and each cell's left operand is MEASURED to parse to its form's record.</para>
+    /// <para><b>Known red.</b> This fact's part (<c>#@ LeftForm</c>) of the <c>Sequence/Binary</c> and
+    /// <c>Sequence/Chain</c> rows: the same two causes as the operator sequences'.</para>
+    /// </summary>
+    [Fact]
+    public void Membership_EveryLeftOperandForm_IsItsDesugaring()
+    {
+        AssertLeftFormAxisIsTheExpressionCensus();
+        var cells = GenerateLeftCells();
+
+        // Totality: from the enumerations and the pinned form count, never from the generator's loops.
+        var expectedCount = LeftFormCount * Enum.GetValues<ContainerForm>().Length * Operators.Length * Enum.GetValues<Position>().Length;
+        Assert.True(expectedCount == cells.Count,
+            $"the generator made {cells.Count} left-operand cells; the axes give {expectedCount} ({LeftFormCount} forms x "
+            + $"{Enum.GetValues<ContainerForm>().Length} container forms x {Operators.Length} operators x "
+            + $"{Enum.GetValues<Position>().Length} positions): a cell was dropped or invented");
+        Assert.Equal(cells.Count, cells.Select(c => c.Key).Distinct(StringComparer.Ordinal).Count());
+
+        // Every cell's left operand IS its form: the parser's record for it, parentheses aside.
+        var all = cells.SelectMany(c => new[] { c.CellId, c.ReferenceId }).ToHashSet();
+        var options = new CompilerOptions
+        {
+            References = new[] { Sharpy.TestInfrastructure.SharpyCoreReference.Location, SharpyStdlibReference.Location },
+            OutputType = "exe",
+            WarningsAsErrors = false,
+        };
+        var parsed = new Compiler(options, NullLogger.Instance).Compile(LeftFormProgramFor(cells, all).Source, "left_operand_form.spy").Module;
+        Assert.True(parsed != null, "the left-operand form program does not parse");
+        var functions = Descendants(parsed!).OfType<FunctionDef>().ToDictionary(f => f.Name, StringComparer.Ordinal);
+        foreach (var cell in cells)
+        {
+            var operand = ParsedLeftOperand(functions[$"e{cell.CellId}"]);
+            while (operand is Parenthesized parenthesized && cell.Kind != typeof(Parenthesized))
+                operand = parenthesized.Expression;
+            Assert.True(operand?.GetType() == cell.Kind,
+                $"{cell.Key}: its left operand parses to {operand?.GetType().Name ?? "nothing"}, not to {cell.Kind.Name}");
+        }
+
+        var harnessFailures = new List<string>();
+        var verdicts = RunRounds("left operand forms", all.OrderBy(id => id).ToList(), active => LeftFormProgramFor(cells, active),
+            "left_operand_form.spy", harnessFailures, out _);
+        Assert.True(harnessFailures.Count == 0, "harness: " + string.Join("\n", harnessFailures));
+        Assert.Equal(cells.Count * 2, verdicts.Count);
+
+        static string Describe(SharpyVerdict verdict) => verdict.RefusedBy is { } by
+            ? "refused " + string.Join(",", by.OrderBy(c => c, StringComparer.Ordinal))
+            : "prints " + string.Join(" ", verdict.Values!);
+        var divergences = new List<(LeftCell Cell, string Observed)>();
+        foreach (var cell in cells)
+        {
+            var own = verdicts[cell.CellId];
+            var reference = verdicts[cell.ReferenceId];
+            var meets = own.RefusedBy is { } refusedBy
+                ? reference.RefusedBy is { } twin && refusedBy.Overlaps(twin)
+                : reference.Values is { } values && own.Values!.SequenceEqual(values);
+            if (!meets)
+                divergences.Add((cell, $"sharpy {Describe(own)} | desugaring {Describe(reference)}"));
+        }
+
+        var reportDir = ReportDirectory();
+        var divergencePath = Path.Combine(reportDir, "left-operand-form-divergences.txt");
+        File.WriteAllLines(divergencePath, divergences.OrderBy(d => d.Cell.Key, StringComparer.Ordinal).Select(d => $"{d.Cell.Key}  {d.Observed}"));
+
+        var allowlist = LoadAllowlist();
+        var actualByRow = divergences.GroupBy(d => d.Cell.RowKey, StringComparer.Ordinal)
+            .ToDictionary(g => g.Key, g => g.ToDictionary(d => d.Cell.Key, d => d.Observed, StringComparer.Ordinal),
+                StringComparer.Ordinal);
+        var problems = PinProblems(actualByRow, allowlist, LeftFormPart);
+        // Never silent: a cell both forms of which reach Roslyn is listed for the lead to file by class.
+        var iceInBoth = cells.Where(c => verdicts[c.CellId].RefusedBy is { } a && verdicts[c.ReferenceId].RefusedBy is { } b
+            && a.Contains(DiagnosticCodes.Infrastructure.GeneratedCodeCompilationError)
+            && b.Contains(DiagnosticCodes.Infrastructure.GeneratedCodeCompilationError)).ToList();
+        var icePath = Path.Combine(reportDir, "left-operand-form-spy0908-in-both-forms.txt");
+        File.WriteAllLines(icePath, iceInBoth.Select(c => c.Key).OrderBy(k => k, StringComparer.Ordinal));
+        bool Agrees(LeftCell c) => verdicts[c.CellId].Values is { } v && verdicts[c.ReferenceId].Values is { } r && v.SequenceEqual(r);
+        Output.WriteLine($"{LeftFormCount} forms of {LeftForms.Count} expression records ({LeftFormUnspellable.Count} unspellable), "
+            + $"{cells.Count} cells: {cells.Count(Agrees)} run in both forms and agree, "
+            + $"{cells.Count(c => verdicts[c.CellId].RefusedBy != null && verdicts[c.ReferenceId].RefusedBy != null)} are refused in both "
+            + $"({iceInBoth.Count} of them by SPY0908 in both forms: {icePath}); {divergences.Count} divergent in "
+            + $"{actualByRow.Count} rows; {problems.Count} pin problem line(s). Every divergence: {divergencePath}");
+
+        // Positive controls: the instrument sees every answer it distinguishes.
+        // Every reference that ran evaluated its left operand before its container, and a chain's head before both.
+        static bool InOrder(IReadOnlyList<string> trace, string first, string second) =>
+            !trace.Contains(first) || !trace.Contains(second)
+            || trace.Select((v, i) => (v, i)).First(t => t.v == first).i < trace.Select((v, i) => (v, i)).First(t => t.v == second).i;
+        Assert.All(cells.Where(c => verdicts[c.ReferenceId].Values != null), c => Assert.True(
+            InOrder(verdicts[c.ReferenceId].Values!, "0", "1") && InOrder(verdicts[c.ReferenceId].Values!, "9", "0")
+            && InOrder(verdicts[c.ReferenceId].Values!, "9", "1"), $"{c.Key}: its desugaring did not evaluate left to right"));
+        // A cell that runs in both forms, traces both operands and agrees; and one whose reference shows the
+        // rebinding container did not change what the left operand had read.
+        Assert.Contains(cells, c => Agrees(c) && verdicts[c.CellId].Values!.Take(2).SequenceEqual(new[] { "0", "1" }));
+        Assert.Contains(cells, c => c.Kind == typeof(Identifier) && c.Typing == Typing.Own && c.Container == ContainerForm.Rebind
+            && c.Operator == BinaryOperator.In && c.Position == Position.Expression
+            && verdicts[c.ReferenceId].Values is { } r && r.SequenceEqual(new[] { "True" }));
+        // A form typed by its slot runs in its desugaring: the reference's declared name takes it.
+        Assert.Contains(cells, c => c.Typing == Typing.BySlot && c.Kind == typeof(TupleLiteral) && verdicts[c.ReferenceId].Values != null);
+        // A cell refused in both forms by the same code.
+        Assert.Contains(cells, c => verdicts[c.CellId].RefusedBy is { } a && verdicts[c.ReferenceId].RefusedBy is { } b && a.SetEquals(b));
+
+        var proposedPath = Path.Combine(reportDir, "left-operand-form-proposed-allowlist.txt");
+        File.WriteAllText(proposedPath, string.Join("\n", ProposedAllowlist(actualByRow, allowlist, LeftFormPart)) + "\n");
+        if (problems.Count > 0)
+        {
+            var problemPath = Path.Combine(reportDir, "left-operand-form-pin-problems.txt");
+            File.WriteAllLines(problemPath, problems);
+            Assert.Fail($"{problems.Count} pin problem line(s) against {AllowlistFileName}: every line is in {problemPath}; "
+                + $"a regenerated allowlist (rows' citations kept) is in {proposedPath}. First lines:\n"
+                + string.Join("\n", problems.Take(30)));
+        }
+    }
+
+    // ---------------------------------------------------------------------------------------------------------
+    // The allowlist: rows by cause, a part per fact, a bulk portion per cause
+    // ---------------------------------------------------------------------------------------------------------
+
+    /// <summary>The facts' parts of a row. A row's first part is on the row line (<see cref="PrimaryPartOf"/>);
+    /// another fact's part of the same row follows under a <c>#@ Part</c> line.</summary>
+    private const string ValuePart = "Value";
+    private const string OrderPart = "Order";
+    private const string SequencePart = "Sequence";
+    private const string LeftFormPart = "LeftForm";
+
+    /// <summary>The parts in the order a row lists them.</summary>
+    private static readonly string[] Parts = { ValuePart, OrderPart, SequencePart, LeftFormPart };
+
+    /// <summary>The part the row line itself carries: the fact the row's prefix names, else the value fact.</summary>
+    private static string PrimaryPartOf(string row) => row.StartsWith(OrderRowPrefix, StringComparison.Ordinal) ? OrderPart
+        : row.StartsWith(SequenceRowPrefix, StringComparison.Ordinal) ? SequencePart
+        : ValuePart;
+
+    /// <summary>
+    /// The ONE cause the bulk portion of a row may hold, as a predicate on a cell's pinned verdict, or null for a
+    /// row that has no bulk portion (owner ruling 2026-11-13, #2645 comment 6867355702: "Accept, pin the residue":
+    /// a bulk row is a valid known-red row while all its cells share one cause; the cells that remain once a fix
+    /// drains it are written as individual pin lines). Every cell of a row that is not of its cause is a pin line.
+    /// <list type="bullet">
+    /// <item><c>Order/*</c> — the operand order alone diverges: every cell of the row, by <see cref="Cell.RowKey"/>
+    /// (#2645);</item>
+    /// <item><c>ChainLink/*</c>, <c>Sequence/Chain</c> — code generation refuses the chain (SPY0519, #2648);</item>
+    /// <item><c>UserIterable/*</c> — the protocol validator refuses the class that only iterates (SPY0320,
+    /// #2653).</item>
+    /// </list>
+    /// </summary>
+    private static Func<string, bool>? BulkCauseOf(string row)
+    {
+        static Func<string, bool> RefusedBy(string code) => verdict => verdict.StartsWith($"sharpy refused {code} |", StringComparison.Ordinal);
+        if (row.StartsWith(OrderRowPrefix, StringComparison.Ordinal))
+            return _ => true;
+        if (row.StartsWith(ChainLinkRowPrefix, StringComparison.Ordinal) || row == SequenceRowPrefix + "Chain")
+            return RefusedBy(DiagnosticCodes.CodeGen.UnsupportedOperator);
+        if (row.StartsWith(UserIterableRowPrefix, StringComparison.Ordinal))
+            return RefusedBy(DiagnosticCodes.Semantic.ProtocolMissingMethod);
+        return null;
+    }
+
+    /// <summary>
+    /// The bulk portions: a row's part, and the number of cells of the row's one cause at which the portion is
+    /// WHOLE. A portion is written as a count and a digest only at exactly this count; at any other count (a fix
+    /// drained some of it) every cell of the part is a pin line and this entry is red until it is deleted. A part
+    /// with no entry here is pin lines only. The counts are measurements the facts re-take on every run.
+    /// </summary>
+    private static readonly Dictionary<(string Row, string Part), int> BulkCensus = new()
+    {
+        [("ChainLink/NoneNeedle", OrderPart)] = 2078,
+        [("ChainLink/NoneNeedle", ValuePart)] = 3176,
+        [("ChainLink/Plain", OrderPart)] = 2112,
+        [("ChainLink/Plain", ValuePart)] = 2112,
+        [("Order/NoneNeedle", OrderPart)] = 3384,
+        [("Order/Plain", OrderPart)] = 5058,
+        [("Sequence/Chain", SequencePart)] = 6580,
+        [("UserIterable/NoneNeedle", OrderPart)] = 720,
+        [("UserIterable/NoneNeedle", ValuePart)] = 1236,
+        [("UserIterable/Plain", OrderPart)] = 732,
+        [("UserIterable/Plain", ValuePart)] = 732,
+    };
+
+    /// <summary>How a part's divergent cells are written: the bulk portion (the cells of the row's one cause, when
+    /// the census says that portion is whole) and the pin lines (every other cell; every cell when it is not).</summary>
+    private static (Dictionary<string, string> Lines, Dictionary<string, string>? Bulk) Layout(
+        string row, string part, IReadOnlyDictionary<string, string> cells)
+    {
+        if (BulkCauseOf(row) is { } cause && BulkCensus.TryGetValue((row, part), out var whole))
+        {
+            var bulk = cells.Where(c => cause(c.Value)).ToDictionary(c => c.Key, c => c.Value, StringComparer.Ordinal);
+            if (bulk.Count == whole && whole > 0)
+                return (cells.Where(c => !cause(c.Value)).ToDictionary(c => c.Key, c => c.Value, StringComparer.Ordinal), bulk);
+        }
+        return (cells.ToDictionary(c => c.Key, c => c.Value, StringComparer.Ordinal), null);
+    }
+
+    /// <summary>The divergent cells of one fact against its part of the allowlist's rows: every part that is
+    /// missing or stale, whose pinned cells or verdicts moved, or whose bulk portion is not whole.</summary>
     private static List<string> PinProblems(IReadOnlyDictionary<string, Dictionary<string, string>> actualByRow,
-        IReadOnlyDictionary<string, PinnedRow> allowlist, Func<string, bool> owns)
+        IReadOnlyDictionary<string, PinnedRow> allowlist, string part)
     {
         var problems = new List<string>();
-        foreach (var row in actualByRow.Keys.Union(allowlist.Keys.Where(owns)).OrderBy(r => r, StringComparer.Ordinal))
+        var pinnedRows = allowlist.Where(r => r.Value.Parts.ContainsKey(part)).Select(r => r.Key);
+        foreach (var row in actualByRow.Keys.Union(pinnedRows).OrderBy(r => r, StringComparer.Ordinal))
         {
             var actual = actualByRow.GetValueOrDefault(row) ?? new Dictionary<string, string>(StringComparer.Ordinal);
-            if (!allowlist.TryGetValue(row, out var pinned))
+            var name = $"{row} [{part}]";
+            if (!allowlist.TryGetValue(row, out var pinnedRow) || !pinnedRow.Parts.TryGetValue(part, out var pinned))
             {
-                problems.Add($"ROW {row}: not in the allowlist ({actual.Count} divergent cells)");
+                problems.Add($"ROW {name}: not in the allowlist ({actual.Count} divergent cells)");
                 problems.AddRange(actual.OrderBy(a => a.Key, StringComparer.Ordinal).Select(a => $"  added {a.Key} -> {a.Value}"));
                 continue;
             }
-            if (pinned.Bulk)
+            if (actual.Count == 0)
+                problems.Add($"ROW {name}: no cell diverges any more — delete this part of the row");
+            var (lines, bulk) = Layout(row, part, actual);
+            if (pinned.Bulk is { } pinnedBulk)
             {
-                // A bulk row keeps no pin lines: its count and digest are checked against the divergent cells.
-                if (actual.Count == 0)
-                    problems.Add($"ROW {row}: no cell diverges any more — delete the row");
-                else if (pinned.Count != actual.Count || pinned.Pin != Digest(actual))
-                    problems.Add($"ROW {row}: bulk header (cells={pinned.Count} pin={pinned.Pin}) does not match its "
-                        + $"{actual.Count} divergent cells (pin={Digest(actual)}): a cell started or stopped diverging, "
-                        + "or its verdict changed; the divergence report lists them");
-                continue;
+                // A bulk portion keeps no pin lines: it is whole (its census count, every cell of the row's one
+                // cause) with the pinned digest, or it is not bulk.
+                if (bulk == null)
+                    problems.Add($"ROW {name}: its bulk portion (bulk={pinnedBulk.Count}:{pinnedBulk.Pin}) is not whole: "
+                        + $"{(BulkCauseOf(row) is { } cause ? actual.Count(a => cause(a.Value)) : 0)} cell(s) of the row's cause "
+                        + $"diverge and BulkCensus says {(BulkCensus.TryGetValue((row, part), out var whole) ? whole.ToString(CultureInfo.InvariantCulture) : "nothing")}. "
+                        + "A drained portion is pin lines: take the proposed allowlist and delete the census entry");
+                else if (pinnedBulk.Count != bulk.Count || pinnedBulk.Pin != Digest(bulk))
+                    problems.Add($"ROW {name}: bulk portion (bulk={pinnedBulk.Count}:{pinnedBulk.Pin}) does not match its "
+                        + $"{bulk.Count} divergent cells (pin={Digest(bulk)}): the count is wrong or a verdict changed; the divergence report lists them");
+            }
+            else if (bulk != null)
+            {
+                problems.Add($"ROW {name}: BulkCensus says its {bulk.Count} cells of the row's cause are a bulk portion, and the "
+                    + "allowlist pins none: take the proposed allowlist");
             }
             if (pinned.Count != pinned.Cells.Count || pinned.Pin != Digest(pinned.Cells))
-                problems.Add($"ROW {row}: its header (cells={pinned.Count} pin={pinned.Pin}) does not match its "
+                problems.Add($"ROW {name}: its header (cells={pinned.Count} pin={pinned.Pin}) does not match its "
                     + $"{pinned.Cells.Count} pin lines (pin={Digest(pinned.Cells)})");
-            if (actual.Count == 0)
-                problems.Add($"ROW {row}: no cell diverges any more — delete the row");
-            foreach (var (key, verdict) in actual.OrderBy(a => a.Key, StringComparer.Ordinal))
+            foreach (var (key, verdict) in lines.OrderBy(a => a.Key, StringComparer.Ordinal))
             {
                 if (!pinned.Cells.TryGetValue(key, out var was))
-                    problems.Add($"  {row}: added {key} -> {verdict} (a cell outside the pin now diverges)");
+                    problems.Add($"  {name}: added {key} -> {verdict} (a cell outside the pin now diverges)");
                 else if (was != verdict)
-                    problems.Add($"  {row}: changed {key}: {was} -> {verdict}");
+                    problems.Add($"  {name}: changed {key}: {was} -> {verdict}");
             }
-            foreach (var key in pinned.Cells.Keys.Where(k => !actual.ContainsKey(k)).OrderBy(k => k, StringComparer.Ordinal))
-                problems.Add($"  {row}: removed {key} (pinned {pinned.Cells[key]}; it now meets its expectation)");
+            foreach (var key in pinned.Cells.Keys.Where(k => !lines.ContainsKey(k)).OrderBy(k => k, StringComparer.Ordinal))
+                problems.Add(actual.ContainsKey(key)
+                    ? $"  {name}: {key} is pinned as a line and is a cell of the bulk portion"
+                    : $"  {name}: removed {key} (pinned {pinned.Cells[key]}; it now meets its expectation)");
+        }
+        // A census entry names a portion that is whole: one that is drained, or gone, is red until it is deleted.
+        foreach (var ((row, _), whole) in BulkCensus.Where(e => e.Key.Part == part).OrderBy(e => e.Key.Row, StringComparer.Ordinal))
+        {
+            var ofCause = BulkCauseOf(row) is { } cause && actualByRow.TryGetValue(row, out var actual) ? actual.Count(a => cause(a.Value)) : -1;
+            if (ofCause != whole)
+                problems.Add($"BulkCensus [{row}, {part}] = {whole}: "
+                    + (ofCause < 0 ? "the row has no bulk cause or no divergent cell" : $"{ofCause} cell(s) of the row's cause diverge")
+                    + ". A portion that is not whole is not bulk: its cells are pin lines (the proposed allowlist) and the entry is deleted");
         }
         return problems;
     }
 
-    /// <summary>The first 16 hex digits of SHA-256 over the row's sorted <c>cell -&gt; verdict</c> lines.</summary>
+    /// <summary>The first 16 hex digits of SHA-256 over the sorted <c>cell -&gt; verdict</c> lines.</summary>
     private static string Digest(IReadOnlyDictionary<string, string> cells)
     {
         var text = string.Concat(cells.OrderBy(c => c.Key, StringComparer.Ordinal).Select(c => $"{c.Key} -> {c.Value}\n"));
@@ -1973,48 +2707,66 @@ public class OptionalMembershipDifferentialTests : IntegrationTestBase
     /// <summary>The allowlist's header, emitted verbatim by <see cref="ProposedAllowlist"/>.</summary>
     private static readonly string[] AllowlistHeader =
     {
-        "# Optional-needle membership differential allowlist (OptionalMembershipDifferentialTests).",
+        "# Membership operator differential allowlist (OptionalMembershipDifferentialTests, four facts).",
         "#",
-        "# A row is '<container>/<needle>  cells=N  pin=HEX  # citation', needle = Plain | NoneNeedle (a T | None needle and",
-        "# the literal None share a row). The '#= <cell> -> <observed Sharpy verdict>' lines under a row pin its EXACT",
-        "# divergent cells: a pinned cell that starts passing, a cell of the row that starts diverging, or a pinned verdict",
-        "# that changes fails the test, and the row's cells= and pin= (a SHA-256 prefix over its sorted pin lines) must match",
-        "# them. On a failure the test writes every problem and a regenerated allowlist under .claude/tmp/; every",
-        "# divergence (cell, CPython's answer, Sharpy's, the expectation) is written there on every run. Delete a row when",
-        "# its last cell passes. Pin lines are comments, so scorecard_metrics.py counts one row per container/needle.",
+        "# A row is '<class>/<needle or kind>  cells=N  pin=HEX  [bulk=M:HEX]  # citation': one class of cause, citing its",
+        "# open issue. The '#= <cell> -> <observed verdict>' lines under it pin its EXACT divergent cells: a pinned cell",
+        "# that starts passing, a cell that starts diverging, or a pinned verdict that changes fails the test, and cells=",
+        "# and pin= (a SHA-256 prefix over the sorted pin lines) must match them. Each fact pins its own PART of a row:",
+        "# the row line is the part of the row's first fact, and a '#@ <Part>  cells=N  pin=HEX  [bulk=M:HEX]' line opens",
+        "# another fact's part of the same row (Order: the order observation; LeftForm: the left-operand forms). Pin",
+        "# lines and part lines are comments, so scorecard_metrics.py counts one row per class.",
         "#",
-        "# A row marked 'bulk' ('<row>  cells=N  pin=HEX  bulk  # citation') carries no pin lines: its count and digest are",
-        "# checked against the divergent cells, which the divergence report lists. The cells of plan P93's three classes",
-        "# have rows of their own: Order/* (#2645: every cell that observes operand order), then by value UserIterable/*",
-        "# (#2653: a class that only iterates) and ChainLink/* (#2648: an `in` link of a comparison chain).",
+        "# 'bulk=M:HEX' is a bulk portion: M cells that share the row's ONE cause (BulkCauseOf in the test), kept as a",
+        "# count and a digest while the portion is whole (BulkCensus in the test; owner ruling 2026-11-13, #2645). A cell",
+        "# of the row with any other verdict is a pin line, and once a fix drains a portion every cell that remains is.",
+        "# On a failure the test writes every problem and a regenerated allowlist under .claude/tmp/; every divergence",
+        "# is written there on every run. Delete a part when its last cell passes, and the row with its last part.",
     };
 
-    /// <summary>A new row with more cells than this is proposed as a <c>bulk</c> row (no pin lines).</summary>
-    private const int BulkRowThreshold = 400;
-
-    /// <summary>The allowlist as it should read: the rows a fact owns from its divergent cells (a kept row keeps its
-    /// citation and its bulk mark), and the other fact's rows as committed.</summary>
+    /// <summary>The allowlist as it should read: this fact's part of every row from its divergent cells
+    /// (<see cref="Layout"/>), every other part and every citation as committed.</summary>
     private static IEnumerable<string> ProposedAllowlist(
         IReadOnlyDictionary<string, Dictionary<string, string>> actualByRow, IReadOnlyDictionary<string, PinnedRow> allowlist,
-        Func<string, bool> owns)
+        string part)
     {
+        static string Header(Dictionary<string, string> lines, Dictionary<string, string>? bulk) =>
+            $"cells={lines.Count}  pin={Digest(lines)}" + (bulk != null ? $"  bulk={bulk.Count}:{Digest(bulk)}" : "");
         foreach (var line in AllowlistHeader)
             yield return line;
-        var rows = actualByRow.Keys.Union(allowlist.Keys.Where(r => !owns(r))).OrderBy(r => r, StringComparer.Ordinal);
-        foreach (var row in rows)
+        foreach (var row in actualByRow.Keys.Union(allowlist.Keys).OrderBy(r => r, StringComparer.Ordinal))
         {
             allowlist.TryGetValue(row, out var old);
-            var cellsInRow = owns(row) ? actualByRow[row] : old!.Cells;
-            var count = owns(row) ? cellsInRow.Count : old!.Count;
-            var pin = owns(row) ? Digest(cellsInRow) : old!.Pin;
-            var cite = old?.Citation ?? "# see #<open issue>";
-            var bulk = old?.Bulk ?? cellsInRow.Count > BulkRowThreshold;
-            yield return "";
-            yield return $"{row}  cells={count}  pin={pin}  {(bulk ? "bulk  " : "")}{cite}";
-            if (bulk)
+            // Each part of the row: its header and its pin lines.
+            var parts = new Dictionary<string, (string Header, Dictionary<string, string> Lines)>();
+            foreach (var p in Parts)
+            {
+                if (p == part)
+                {
+                    if (actualByRow.TryGetValue(row, out var actual) && actual.Count > 0)
+                    {
+                        var (lines, bulk) = Layout(row, p, actual);
+                        parts[p] = (Header(lines, bulk), lines);
+                    }
+                }
+                else if (old != null && old.Parts.TryGetValue(p, out var kept))
+                {
+                    parts[p] = ($"cells={kept.Count}  pin={kept.Pin}" + (kept.Bulk is { } b ? $"  bulk={b.Count}:{b.Pin}" : ""), kept.Cells);
+                }
+            }
+            if (parts.Count == 0)
                 continue;
-            foreach (var (key, verdict) in cellsInRow.OrderBy(c => c.Key, StringComparer.Ordinal))
-                yield return $"#= {key} -> {verdict}";
+            var primary = PrimaryPartOf(row);
+            var cite = old?.Citation ?? "# see #<open issue>";
+            yield return "";
+            yield return $"{row}  {(parts.TryGetValue(primary, out var first) ? first.Header : $"cells=0  pin={Digest(new Dictionary<string, string>())}")}  {cite}";
+            foreach (var p in Parts.Where(parts.ContainsKey).OrderBy(p => p == primary ? 0 : 1))
+            {
+                if (p != primary)
+                    yield return $"#@ {p}  {parts[p].Header}";
+                foreach (var (key, verdict) in parts[p].Lines.OrderBy(c => c.Key, StringComparer.Ordinal))
+                    yield return $"#= {key} -> {verdict}";
+            }
         }
     }
 
@@ -2364,9 +3116,13 @@ public class OptionalMembershipDifferentialTests : IntegrationTestBase
         Assert.Equal(Enum.GetValues<Container>().OrderBy(c => c), fromRows.OrderBy(c => c));
     }
 
-    /// <summary>A row: its key, the count and digest its header pins, its citation comment, and the pinned cells
-    /// (<c>#= cell -&gt; verdict</c> comment lines under it, which <c>scorecard_metrics.py</c> does not count).</summary>
-    private sealed record PinnedRow(int Count, string Pin, string Citation, Dictionary<string, string> Cells, bool Bulk = false);
+    /// <summary>A fact's part of a row: the count and digest its header pins, its pinned cells (<c>#= cell -&gt;
+    /// verdict</c> comment lines), and its bulk portion (a count and a digest, no lines), if it has one.</summary>
+    private sealed record PinnedPart(int Count, string Pin, Dictionary<string, string> Cells, (int Count, string Pin)? Bulk);
+
+    /// <summary>A row: its citation comment and the parts the facts pin in it (<c>scorecard_metrics.py</c> counts
+    /// the row line; part lines and pin lines are comments).</summary>
+    private sealed record PinnedRow(string Citation, Dictionary<string, PinnedPart> Parts);
 
     private static Dictionary<string, PinnedRow> LoadAllowlist()
     {
@@ -2374,16 +3130,43 @@ public class OptionalMembershipDifferentialTests : IntegrationTestBase
         var path = PythonInterpreter.FindRepoFile("src", "Sharpy.Compiler.Tests", "Conformance", AllowlistFileName);
         if (path == null || !File.Exists(path))
             return rows;
+
+        // `cells=N pin=HEX [bulk=M:HEX]`, the header of a row line or of a part line.
+        static PinnedPart? ParsePart(string[] tokens, string raw)
+        {
+            var count = tokens.FirstOrDefault(t => t.StartsWith("cells=", StringComparison.Ordinal));
+            var pin = tokens.FirstOrDefault(t => t.StartsWith("pin=", StringComparison.Ordinal));
+            var bulk = tokens.FirstOrDefault(t => t.StartsWith("bulk=", StringComparison.Ordinal))?["bulk=".Length..].Split(':');
+            Assert.True(count != null && pin != null && bulk is null or { Length: 2 } && !tokens.Contains("bulk"),
+                $"{AllowlistFileName}: a row or part needs 'cells=N pin=HEX [bulk=M:HEX]': {raw}");
+            var cells = int.Parse(count!["cells=".Length..], CultureInfo.InvariantCulture);
+            // An absent part: a row line whose own fact pins nothing in the row.
+            if (cells == 0 && bulk == null)
+                return null;
+            return new PinnedPart(cells, pin!["pin=".Length..], new Dictionary<string, string>(StringComparer.Ordinal),
+                bulk != null ? (int.Parse(bulk[0], CultureInfo.InvariantCulture), bulk[1]) : null);
+        }
+
         PinnedRow? current = null;
+        PinnedPart? currentPart = null;
         foreach (var raw in File.ReadAllLines(path))
         {
             var line = raw.Trim();
             if (line.StartsWith("#=", StringComparison.Ordinal))
             {
                 var arrow = line.IndexOf(" -> ", StringComparison.Ordinal);
-                Assert.True(current != null && arrow > 2, $"{AllowlistFileName}: a pin line outside a row or without ' -> ': {raw}");
-                Assert.False(current!.Bulk, $"{AllowlistFileName}: a pin line under a bulk row: {raw}");
-                current!.Cells[line[2..arrow].Trim()] = line[(arrow + 4)..].Trim();
+                Assert.True(currentPart != null && arrow > 2, $"{AllowlistFileName}: a pin line outside a part or without ' -> ': {raw}");
+                currentPart!.Cells[line[2..arrow].Trim()] = line[(arrow + 4)..].Trim();
+                continue;
+            }
+            if (line.StartsWith("#@", StringComparison.Ordinal))
+            {
+                var tokens = line[2..].Split(' ', StringSplitOptions.RemoveEmptyEntries);
+                Assert.True(current != null && tokens.Length > 0 && Parts.Contains(tokens[0]) && !current.Parts.ContainsKey(tokens[0]),
+                    $"{AllowlistFileName}: a part line outside a row, or naming an unknown or repeated part: {raw}");
+                currentPart = ParsePart(tokens, raw);
+                Assert.True(currentPart != null, $"{AllowlistFileName}: an empty part: {raw}");
+                current!.Parts[tokens[0]] = currentPart!;
                 continue;
             }
             var hash = line.IndexOf('#', StringComparison.Ordinal);
@@ -2393,15 +3176,15 @@ public class OptionalMembershipDifferentialTests : IntegrationTestBase
             if (line.Length == 0)
                 continue;
             var parts = line.Split(' ', StringSplitOptions.RemoveEmptyEntries);
-            var count = parts.FirstOrDefault(t => t.StartsWith("cells=", StringComparison.Ordinal));
-            var pin = parts.FirstOrDefault(t => t.StartsWith("pin=", StringComparison.Ordinal));
-            Assert.True(count != null && pin != null
-                && System.Text.RegularExpressions.Regex.IsMatch(citation, @"#[0-9]+"),
+            Assert.True(System.Text.RegularExpressions.Regex.IsMatch(citation, @"#[0-9]+"),
                 $"{AllowlistFileName}: a row needs 'cells=N pin=HEX # see #NNN' (an issue number): {raw}");
-            current = new PinnedRow(int.Parse(count!["cells=".Length..], CultureInfo.InvariantCulture), pin!["pin=".Length..],
-                citation, new Dictionary<string, string>(StringComparer.Ordinal), parts.Contains("bulk"));
+            current = new PinnedRow(citation, new Dictionary<string, PinnedPart>(StringComparer.Ordinal));
+            currentPart = ParsePart(parts, raw);
+            if (currentPart != null)
+                current.Parts[PrimaryPartOf(parts[0])] = currentPart;
             rows.Add(parts[0], current);
         }
+        Assert.All(rows, r => Assert.True(r.Value.Parts.Count > 0, $"{AllowlistFileName}: row {r.Key} pins nothing"));
         return rows;
     }
 }
