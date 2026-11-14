@@ -3,6 +3,7 @@ extern alias SharpyStdlib;
 
 using System.Globalization;
 using System.Reflection;
+using System.Runtime.CompilerServices;
 using Sharpy.Compiler.Diagnostics;
 using Sharpy.Compiler.Logging;
 using Sharpy.Compiler.Parser.Ast;
@@ -51,8 +52,9 @@ namespace Sharpy.Compiler.Tests.Properties.Differential;
 /// Sharpy.Stdlib (<see cref="ClrContainerRoster"/>, <see cref="AssertClrRowIsTheContainsCensus"/>), and its
 /// "any <c>IEnumerable[T]</c>" arm by one representative, <c>deque[T]</c> (<see cref="EnumerableArm"/>); plus the
 /// kinds an owner ruling decides before the spec table carries them (<see cref="RuledContainerKinds"/>, #2653: a
-/// user class that only iterates, plain and generic, answers by iteration; one with only <c>__getitem__</c> and
-/// <c>__len__</c> stays refused);</item>
+/// user class that only iterates answers by iteration, by every shape of <c>__iter__</c>, every producer type the
+/// compiler recognizes and both hosts, plain and generic (<see cref="IterKinds"/>); one with only
+/// <c>__getitem__</c> and <c>__len__</c> stays refused);</item>
 /// <item><b>element optionality</b> — <c>T</c> or <c>T | None</c> for every container whose element type is the
 /// payload (the container then also holds a <c>None</c> element); a fixed-slot container has no such spelling;</item>
 /// <item><b>needle form</b> — the plain <c>T</c> (the control twin), <c>T | None</c>, and the literal
@@ -90,12 +92,12 @@ namespace Sharpy.Compiler.Tests.Properties.Differential;
 /// <c>ChainLink/*</c> (#2648), <c>UserIterable/*</c> (#2653).</para>
 /// <para>Skips when no python3 ≥ 3.15 answers, except under <c>SHARPY_REQUIRE_PYTHON_ORACLE=1</c> (CI).</para>
 /// </summary>
-/// <remarks>The generator is this abstract base; its seven facts are declared by four test classes, one per CI
-/// shard bucket, so that no shard job runs them all (they take about 22 minutes together):
-/// <see cref="OptionalMembershipDifferentialTests"/> (the value matrix and the left-operand forms),
-/// <c>CodeGen.MembershipDifferentialOrderTests</c> (the order matrix and the hoisting last operand),
-/// <c>Semantic.MembershipDifferentialSequenceTests</c> (the operator sequences and their statement positions) and
-/// <c>Differential.MembershipDifferentialTripleTests</c> (three chain links).</remarks>
+/// <remarks>The generator is this abstract base. Its facts — the membership matrix by observation and needle group
+/// (four), the left-operand forms, and the facts of the sequence matrix (<see cref="SequenceFacts"/>) — are
+/// declared by test classes named <c>MembershipDifferential…Tests</c>, spread over the namespaces that are CI's
+/// compiler shard buckets, so that no shard job runs them all and no fact runs near the per-test limit. A class
+/// declares a sequence fact by its name alone (<see cref="RunSequenceFact(string)"/>), and every sequence fact
+/// is declared exactly once (<see cref="AssertEverySequenceFactIsDeclaredOnce"/>).</remarks>
 public abstract class MembershipOperatorDifferentialBase : IntegrationTestBase
 {
     protected MembershipOperatorDifferentialBase(ITestOutputHelper output) : base(output) => MuteCompilePath = true;
@@ -398,6 +400,8 @@ public abstract class MembershipOperatorDifferentialBase : IntegrationTestBase
         Tuple, List, Set, FrozenSet, Dict, DictKeys, DictValues, ContainsDunder, Str, Bytes, Range,
         Counter, OrderedDict, ChainMap, DefaultDict, FrozenDict, IPv4Network, IPv6Network, ArgparseNamespace, EmailMessage,
         Deque, IterDunder, GenericIterDunder, GetItemLen, IterGenerator, IterNext, IterInherited,
+        IterEnumerator, GenericIterEnumerator, IterEnumerable, GenericIterEnumerable,
+        GenericIterGenerator, GenericIterNext, GenericIterInherited,
     }
 
     /// <summary>
@@ -437,11 +441,15 @@ public abstract class MembershipOperatorDifferentialBase : IntegrationTestBase
     /// </summary>
     private static readonly (string Ruling, Container[] Generated, bool Refused, string Why)[] RuledContainerKinds =
     {
-        ("R-NZ", new[] { Container.IterDunder, Container.GenericIterDunder, Container.IterGenerator, Container.IterNext,
-                Container.IterInherited }, false,
+        ("R-NZ", new[]
+            {
+                Container.IterDunder, Container.GenericIterDunder, Container.IterEnumerator, Container.GenericIterEnumerator,
+                Container.IterEnumerable, Container.GenericIterEnumerable, Container.IterGenerator, Container.GenericIterGenerator,
+                Container.IterNext, Container.GenericIterNext, Container.IterInherited, Container.GenericIterInherited,
+            }, false,
             "a user class with `__iter__` and no `__contains__` answers `in` / `not in` by iteration (#2653); "
-            + "the class is declared over the payload (IterDunder) and as a generic class constructed over it "
-            + "(GenericIterDunder: a GenericType to the checker), and by every shape of `__iter__` (IterShapes)"),
+            + "by every shape of `__iter__`, every producer type the compiler recognizes and both hosts, a class "
+            + "declared over the payload and a generic class constructed over it (a GenericType to the checker): IterKinds"),
         ("R-OA", new[] { Container.GetItemLen }, true,
             "a class with only `__len__` + `__getitem__` stays refused for `in` (SPY0320): the index need not be an "
             + "integer, and an integer index need not be dense (#2653)"),
@@ -450,32 +458,47 @@ public abstract class MembershipOperatorDifferentialBase : IntegrationTestBase
     /// <summary>How a class comes to iterate: its <c>__iter__</c> returns a producer (<c>Iterator[T]</c>), is a
     /// generator, returns the object itself beside a <c>__next__</c>, or is inherited. The closed set of the owner's
     /// ruling of 2026-11-14 (#2653 comment 6870461621, "Widen the main matrix"): the four shapes the design for a
-    /// class that only iterates branches on.</summary>
+    /// class that only iterates branches on. Crossed with the producer types and the hosts by <see cref="IterKinds"/>.</summary>
     private enum IterShape { Producer, Generator, NextPair, Inherited }
 
-    /// <summary>The containers generated for each <see cref="IterShape"/>. <see cref="AssertContainerAxisIsTheSpecTable"/>
-    /// asserts every shape has one and that they are exactly R-NZ's containers.</summary>
-    private static readonly Dictionary<IterShape, Container[]> IterShapes = new()
+    /// <summary>
+    /// The containers of the classes that only iterate (R-NZ), as a full product: every <see cref="IterShape"/>
+    /// (the producer shape once per producer type of the compiler's own roster,
+    /// <c>IterableElementDecider.ProducerElementRoster</c>, read by reflection) on a class declared over the
+    /// payload and on a generic class constructed over it. Owner rulings of 2026-11-14, second batch: #2653 comment
+    /// 6873754974 ("Generate all three": every name on the roster is a generated container kind, none is excluded
+    /// by a reason) and #2645 comment 6873755292 ("Cross everything": every shape on a plain and on a generic
+    /// host). <see cref="Bag"/> is the class the programs declare for it (a plain host's optional-element twin is
+    /// <c>O</c> + the name). <see cref="AssertContainerAxisIsTheSpecTable"/> asserts the table is exactly that
+    /// product and its containers exactly R-NZ's.
+    /// </summary>
+    private static readonly (IterShape Shape, string? Producer, bool GenericHost, Container Container, string Bag)[] IterKinds =
     {
-        [IterShape.Producer] = new[] { Container.IterDunder, Container.GenericIterDunder },
-        [IterShape.Generator] = new[] { Container.IterGenerator },
-        [IterShape.NextPair] = new[] { Container.IterNext },
-        [IterShape.Inherited] = new[] { Container.IterInherited },
+        (IterShape.Producer, "Iterator", false, Container.IterDunder, "IterBag"),
+        (IterShape.Producer, "Iterator", true, Container.GenericIterDunder, "GIterBag"),
+        (IterShape.Producer, "IEnumerator", false, Container.IterEnumerator, "EnrBag"),
+        (IterShape.Producer, "IEnumerator", true, Container.GenericIterEnumerator, "GEnrBag"),
+        (IterShape.Producer, "IEnumerable", false, Container.IterEnumerable, "EnbBag"),
+        (IterShape.Producer, "IEnumerable", true, Container.GenericIterEnumerable, "GEnbBag"),
+        (IterShape.Generator, null, false, Container.IterGenerator, "GenBag"),
+        (IterShape.Generator, null, true, Container.GenericIterGenerator, "GGenBag"),
+        (IterShape.NextPair, null, false, Container.IterNext, "NextBag"),
+        (IterShape.NextPair, null, true, Container.GenericIterNext, "GNextBag"),
+        (IterShape.Inherited, null, false, Container.IterInherited, "InhBag"),
+        (IterShape.Inherited, null, true, Container.GenericIterInherited, "GInhBag"),
     };
 
-    /// <summary>
-    /// The producer shape against the compiler's own roster of producer types
-    /// (<c>IterableElementDecider.ProducerElementRoster</c>, read by reflection): the name the generated producer
-    /// class returns, or why a roster name has no class of its own.
-    /// </summary>
-    private static readonly Dictionary<string, (bool Generated, string? Excluded)> ProducerRoster = new(StringComparer.Ordinal)
+    /// <summary>The hosts of the host axis, as a literal: a class declared over the payload, a generic class.</summary>
+    private const int IterHostCount = 2;
+
+    /// <summary>The <see cref="IterKinds"/> entry of a container, or null for any other container.</summary>
+    private static (IterShape Shape, string? Producer, bool GenericHost, Container Container, string Bag)? IterKindOf(Container container)
     {
-        ["Iterator"] = (true, null),
-        ["IEnumerator"] = (false, "the decider asks one question of the three names (is the return type's name on the roster, "
-            + "with one type argument) and synthesis writes the same `IEnumerable[T]`: `Iterator[T]` stands for the roster"),
-        ["IEnumerable"] = (false, "the decider asks one question of the three names (is the return type's name on the roster, "
-            + "with one type argument) and synthesis writes the same `IEnumerable[T]`: `Iterator[T]` stands for the roster"),
-    };
+        foreach (var kind in IterKinds)
+            if (kind.Container == container)
+                return kind;
+        return null;
+    }
 
     /// <summary>The containers a ruling refuses (<see cref="RuledContainerKinds"/>): every cell expects SPY0320.</summary>
     private static bool IsRefusedByRuling(Container container) =>
@@ -507,6 +530,8 @@ public abstract class MembershipOperatorDifferentialBase : IntegrationTestBase
         Container.DictValues, Container.ContainsDunder, Container.Counter, Container.OrderedDict, Container.ChainMap,
         Container.DefaultDict, Container.FrozenDict, Container.Deque, Container.IterDunder, Container.GenericIterDunder,
         Container.GetItemLen, Container.IterGenerator, Container.IterNext, Container.IterInherited,
+        Container.IterEnumerator, Container.GenericIterEnumerator, Container.IterEnumerable, Container.GenericIterEnumerable,
+        Container.GenericIterGenerator, Container.GenericIterNext, Container.GenericIterInherited,
     };
 
     /// <summary>Element-typed containers exempt from the Sharpy half of the optional-element control (a compared
@@ -520,6 +545,15 @@ public abstract class MembershipOperatorDifferentialBase : IntegrationTestBase
         [Container.IterGenerator] = "#2653: a class whose `__iter__` is a generator is refused (SPY0320) until R-NZ lands",
         [Container.IterNext] = "#2653: a class with `__iter__` and `__next__` is refused (SPY0320) until R-NZ lands",
         [Container.IterInherited] = "#2653: a class that inherits `__iter__` is refused (SPY0320) until R-NZ lands",
+        [Container.IterEnumerator] = "#2653: a class whose `__iter__` returns `IEnumerator[T]` is refused (SPY0320) until R-NZ lands",
+        [Container.GenericIterEnumerator] = "#2653: a generic class whose `__iter__` returns `IEnumerator[T]` is refused "
+            + "(SPY0320) until R-NZ lands",
+        [Container.IterEnumerable] = "#2653: a class whose `__iter__` returns `IEnumerable[T]` is refused (SPY0320) until R-NZ lands",
+        [Container.GenericIterEnumerable] = "#2653: a generic class whose `__iter__` returns `IEnumerable[T]` is refused "
+            + "(SPY0320) until R-NZ lands",
+        [Container.GenericIterGenerator] = "#2653: a generic class whose `__iter__` is a generator is refused (SPY0320) until R-NZ lands",
+        [Container.GenericIterNext] = "#2653: a generic class with `__iter__` and `__next__` is refused (SPY0320) until R-NZ lands",
+        [Container.GenericIterInherited] = "#2653: a generic class that inherits `__iter__` is refused (SPY0320) until R-NZ lands",
     };
 
     /// <summary>
@@ -760,12 +794,11 @@ public abstract class MembershipOperatorDifferentialBase : IntegrationTestBase
             Container.DictKeys => o ? "{a: 0, c: 1, z: 2}.keys()" : "{a: 0, c: 1}.keys()",
             Container.DictValues => o ? "{0: a, 1: c, 2: z}.values()" : "{0: a, 1: c}.values()",
             Container.ContainsDunder => o ? $"OBag{bagArguments}(a, c, z)" : $"Bag{bagArguments}(a, c)",
-            Container.IterDunder => o ? $"OIterBag{bagArguments}(a, c, z)" : $"IterBag{bagArguments}(a, c)",
             Container.GetItemLen => o ? $"OSeqBag{bagArguments}(a, c, z)" : $"SeqBag{bagArguments}(a, c)",
-            Container.IterGenerator => o ? $"OGenBag{bagArguments}(a, c, z)" : $"GenBag{bagArguments}(a, c)",
-            Container.IterNext => o ? $"ONextBag{bagArguments}(a, c, z)" : $"NextBag{bagArguments}(a, c)",
-            Container.IterInherited => o ? $"OInhBag{bagArguments}(a, c, z)" : $"InhBag{bagArguments}(a, c)",
-            Container.GenericIterDunder => $"make_GIter{(o ? "_o" : "")}({items})",
+            // A class that only iterates: constructed over the elements, or (a generic host) by its helper.
+            _ when IterKindOf(cell.Container) is { GenericHost: false } kind
+                => o ? $"O{kind.Bag}{bagArguments}(a, c, z)" : $"{kind.Bag}{bagArguments}(a, c)",
+            _ when IterKindOf(cell.Container) is { GenericHost: true } kind => $"make_{kind.Bag}{(o ? "_o" : "")}({items})",
             Container.Str => "\"ab\"",
             Container.Bytes => "bytes([1, 2])",
             Container.Range => "range(1, 3)",
@@ -801,12 +834,9 @@ public abstract class MembershipOperatorDifferentialBase : IntegrationTestBase
             Container.DictKeys => ($"dict[{e}, int]", "xs.keys()", ContainerSource(cell with { Container = Container.Dict })),
             Container.DictValues => ($"dict[int, {e}]", "xs.values()", o ? "{0: a, 1: c, 2: z}" : "{0: a, 1: c}"),
             Container.ContainsDunder => (o ? "OBag[T]" : "Bag[T]", "xs", source),
-            Container.IterDunder => (o ? "OIterBag[T]" : "IterBag[T]", "xs", source),
             Container.GetItemLen => (o ? "OSeqBag[T]" : "SeqBag[T]", "xs", source),
-            Container.IterGenerator => (o ? "OGenBag[T]" : "GenBag[T]", "xs", source),
-            Container.IterNext => (o ? "ONextBag[T]" : "NextBag[T]", "xs", source),
-            Container.IterInherited => (o ? "OInhBag[T]" : "InhBag[T]", "xs", source),
-            Container.GenericIterDunder => ($"GIterBag[{e}]", "xs", source),
+            _ when IterKindOf(cell.Container) is { GenericHost: false } kind => (o ? $"O{kind.Bag}[T]" : $"{kind.Bag}[T]", "xs", source),
+            _ when IterKindOf(cell.Container) is { GenericHost: true } kind => ($"{kind.Bag}[{e}]", "xs", source),
             Container.Counter => ($"Counter[{e}]", "xs", source),
             Container.OrderedDict => ($"OrderedDict[{e}, int]", "xs", source),
             Container.ChainMap => ($"ChainMap[{e}, int]", "xs", source),
@@ -980,59 +1010,69 @@ public abstract class MembershipOperatorDifferentialBase : IntegrationTestBase
             Add($"    def __contains__(self, item: {bagElement} | None) -> bool:");
             Add("        return item in self.items");
             Add("");
-            // The ruled kinds (#2653). A class that only iterates, over the payload and over `T | None`:
-            foreach (var (name, element, parameters, items) in new[]
+            // The ruled kinds (#2653). A class that only iterates, by every kind of IterKinds: over the payload and
+            // over `T | None` (the plain hosts), and as a generic class (python has no type-parameter clause to
+            // drop there: one class). An IEnumerable[T] producer returns an iterator too: `__iter__` is emitted as
+            // GetEnumerator, whatever producer type it names.
+            void AddIterClass(string name, string clause, string element, string parameters, string items, string arguments,
+                (IterShape Shape, string? Producer, bool GenericHost, Container Container, string Bag) kind, string inherits)
+            {
+                if (kind.Shape == IterShape.Inherited)
                 {
-                    ("IterBag", bagElement, $"a: {bagElement}, c: {bagElement}", "[a, c]"),
-                    ("OIterBag", $"{bagElement} | None",
+                    Add($"class {name}{clause}({inherits}):");
+                    Add($"    def __init__(self, {parameters}):");
+                    Add($"        super().__init__({arguments})");
+                    Add("");
+                    return;
+                }
+                Add($"class {name}{clause}:");
+                Add($"    items: list[{element}]");
+                if (kind.Shape == IterShape.NextPair)
+                    Add("    at: int");
+                Add($"    def __init__(self, {parameters}):");
+                Add($"        self.items = {items}");
+                switch (kind.Shape)
+                {
+                    case IterShape.Producer:
+                        Add($"    def __iter__(self) -> {kind.Producer}[{element}]:");
+                        Add("        return iter(self.items)");
+                        break;
+                    case IterShape.Generator:
+                        Add($"    def __iter__(self) -> {element}:");
+                        Add("        for v in self.items:");
+                        Add("            yield v");
+                        break;
+                    case IterShape.NextPair:
+                        Add("        self.at = 0");
+                        Add("    def __iter__(self) -> Self:");
+                        Add("        return self");
+                        Add($"    def __next__(self) -> {element}:");
+                        Add("        if self.at >= len(self.items):");
+                        Add("            raise StopIteration()");
+                        Add("        self.at += 1");
+                        Add("        return self.items[self.at - 1]");
+                        break;
+                    default:
+                        throw new InvalidOperationException(kind.Shape.ToString());
+                }
+                Add("");
+            }
+            // The class an inherited `__iter__` comes from: the first producer kind of the same host.
+            string InheritedFrom(bool genericHost) => IterKinds.First(k => k.Shape == IterShape.Producer && k.GenericHost == genericHost).Bag;
+            foreach (var (stem, element, parameters, items) in new[]
+                {
+                    ("", bagElement, $"a: {bagElement}, c: {bagElement}", "[a, c]"),
+                    ("O", $"{bagElement} | None",
                         $"a: {bagElement} | None, c: {bagElement} | None, z: {bagElement} | None", "[a, c, z]"),
                 })
             {
-                Add($"class {name}{bagClause}:");
-                Add($"    items: list[{element}]");
-                Add($"    def __init__(self, {parameters}):");
-                Add($"        self.items = {items}");
-                Add($"    def __iter__(self) -> Iterator[{element}]:");
-                Add("        return iter(self.items)");
-                Add("");
-                // The other shapes of `__iter__` (IterShapes): a generator, the `__next__` pair, an inherited one.
-                var stem = name.Replace("IterBag", "", StringComparison.Ordinal);
-                var arguments = items.Trim('[', ']');
-                Add($"class {stem}GenBag{bagClause}:");
-                Add($"    items: list[{element}]");
-                Add($"    def __init__(self, {parameters}):");
-                Add($"        self.items = {items}");
-                Add($"    def __iter__(self) -> {element}:");
-                Add("        for v in self.items:");
-                Add("            yield v");
-                Add("");
-                Add($"class {stem}NextBag{bagClause}:");
-                Add($"    items: list[{element}]");
-                Add("    at: int");
-                Add($"    def __init__(self, {parameters}):");
-                Add($"        self.items = {items}");
-                Add("        self.at = 0");
-                Add("    def __iter__(self) -> Self:");
-                Add("        return self");
-                Add($"    def __next__(self) -> {element}:");
-                Add("        if self.at >= len(self.items):");
-                Add("            raise StopIteration()");
-                Add("        self.at += 1");
-                Add("        return self.items[self.at - 1]");
-                Add("");
-                Add($"class {stem}InhBag{bagClause}({name}{(generic && !python ? "[E]" : "")}):");
-                Add($"    def __init__(self, {parameters}):");
-                Add($"        super().__init__({arguments})");
-                Add("");
+                foreach (var kind in IterKinds.Where(k => !k.GenericHost))
+                    AddIterClass(stem + kind.Bag, bagClause, element, parameters, items, items.Trim('[', ']'), kind,
+                        $"{stem}{InheritedFrom(false)}{(generic && !python ? "[E]" : "")}");
             }
-            // The same class as a generic one (python has no type-parameter clause to drop here: one class).
-            Add($"class GIterBag{(python ? "" : "[G]")}:");
-            Add("    items: list[G]");
-            Add("    def __init__(self, items: list[G]):");
-            Add("        self.items = items");
-            Add("    def __iter__(self) -> Iterator[G]:");
-            Add("        return iter(self.items)");
-            Add("");
+            foreach (var kind in IterKinds.Where(k => k.GenericHost))
+                AddIterClass(kind.Bag, python ? "" : "[G]", "G", "items: list[G]", "items", "items", kind,
+                    $"{InheritedFrom(true)}{(python ? "" : "[G]")}");
             // A class with only the legacy sequence protocol (owner ruling R-OA: refused).
             foreach (var (name, element, parameters, items) in new[]
                 {
@@ -1100,10 +1140,13 @@ public abstract class MembershipOperatorDifferentialBase : IntegrationTestBase
             Add($"    xs: list[{e}] = [{items}]");
             Add($"    r: deque[{e}] = deque(xs)");
             Add("    return r");
-            Add($"def make_GIter{suffix}({sig}) -> GIterBag[{e}]:");
-            Add($"    xs: list[{e}] = [{items}]");
-            Add($"    r: GIterBag[{e}] = GIterBag(xs)");
-            Add("    return r");
+            foreach (var kind in IterKinds.Where(k => k.GenericHost))
+            {
+                Add($"def make_{kind.Bag}{suffix}({sig}) -> {kind.Bag}[{e}]:");
+                Add($"    xs: list[{e}] = [{items}]");
+                Add($"    r: {kind.Bag}[{e}] = {kind.Bag}(xs)");
+                Add("    return r");
+            }
             Add($"def make_OrderedDict{suffix}({sig}) -> OrderedDict[{e}, int]:");
             Add($"    d: dict[{e}, int] = {dict}");
             Add($"    r: OrderedDict[{e}, int] = OrderedDict(d)");
@@ -1175,6 +1218,9 @@ public abstract class MembershipOperatorDifferentialBase : IntegrationTestBase
     /// <summary>Compile rounds per payload: checker refusals, then codegen refusals, then Roslyn's (SPY0908).</summary>
     private const int MaxRounds = 40;
 
+    /// <summary>The internal-error lines (SPY0908) a compile round prints before it only counts them.</summary>
+    private const int MaxInternalErrorLines = 3;
+
     private sealed record SharpyVerdict(IReadOnlyList<string>? Values, IReadOnlySet<string>? RefusedBy);
 
     /// <summary>Compiles the payload's program, removing each cell a refusal is attributed to, until it runs.</summary>
@@ -1210,6 +1256,9 @@ public abstract class MembershipOperatorDifferentialBase : IntegrationTestBase
 
             var refused = new Dictionary<int, HashSet<string>>();
             var unattributed = new List<string>();
+            // The first internal errors of a round are printed, the rest counted: a fact's output has a ceiling
+            // (#2438), and every cell's codes are in its verdict.
+            var internalErrors = 0;
             foreach (var d in run.RawDiagnostics.Where(d => d.IsError))
             {
                 if (d.Line is { } line && program.CellByLine.TryGetValue(line, out var id))
@@ -1217,7 +1266,7 @@ public abstract class MembershipOperatorDifferentialBase : IntegrationTestBase
                     if (!refused.TryGetValue(id, out var codes))
                         refused[id] = codes = new HashSet<string>(StringComparer.Ordinal);
                     codes.Add(d.Code ?? "?");
-                    if (d.Code == DiagnosticCodes.Infrastructure.GeneratedCodeCompilationError)
+                    if (d.Code == DiagnosticCodes.Infrastructure.GeneratedCodeCompilationError && internalErrors++ < MaxInternalErrorLines)
                         Output.WriteLine($"  {name} c{id} line {line}: {d.Message}");
                 }
                 else
@@ -1235,7 +1284,8 @@ public abstract class MembershipOperatorDifferentialBase : IntegrationTestBase
                 verdicts[id] = new SharpyVerdict(null, codes);
             active.ExceptWith(refused.Keys);
             Output.WriteLine($"{name}: round {round} removed {refused.Count} cell(s) ("
-                + string.Join(",", refused.Values.SelectMany(c => c).Distinct().OrderBy(c => c, StringComparer.Ordinal)) + ")");
+                + string.Join(",", refused.Values.SelectMany(c => c).Distinct().OrderBy(c => c, StringComparer.Ordinal)) + ")"
+                + (internalErrors > MaxInternalErrorLines ? $"; {internalErrors} internal error lines, the first {MaxInternalErrorLines} printed" : ""));
         }
         harnessFailures.Add($"{name}: still refusing after {MaxRounds} rounds");
         return verdicts;
@@ -1366,17 +1416,20 @@ public abstract class MembershipOperatorDifferentialBase : IntegrationTestBase
         + "int8 = int16 = int32 = int64 = uint8 = uint16 = uint32 = uint64 = int\nfloat32 = float64 = float\n"
         + "import email, email.message\nemail.EmailMessage = email.message.EmailMessage\n";
 
-    protected void RunValueMatrix() => RunMembershipMatrix(Observation.Value);
+    /// <summary>The matrix by value: the cells of a plain needle (the control twins), or of a needle that can be
+    /// <c>None</c> (<c>T | None</c> and the literal).</summary>
+    protected void RunValueMatrix(bool plainNeedle) => RunMembershipMatrix(Observation.Value, plainNeedle);
 
     /// <summary>The same matrix by its order observation (#2645): every cell traces its operands, and CPython's
-    /// trace (the needle before the container, a chain's head operand before both) is part of the compared output.
-    /// A fact of its own so that neither half of the matrix runs for longer than CI's per-test hang limit.</summary>
-    protected void RunOrderMatrix() => RunMembershipMatrix(Observation.Order);
+    /// trace (the needle before the container, a chain's head operand before both) is part of the compared output.</summary>
+    protected void RunOrderMatrix(bool plainNeedle) => RunMembershipMatrix(Observation.Order, plainNeedle);
 
-    /// <summary>The membership matrix over the cells of one observation. The axes and the totality count are the
-    /// whole product's in both facts; each fact runs, compares and pins its own half (the order half owns the
-    /// <c>Order/*</c> rows).</summary>
-    private void RunMembershipMatrix(Observation observation)
+    /// <summary>The membership matrix over the cells of one observation and one needle group: a plain needle, or
+    /// one that can be <c>None</c> — the split every row already has (<see cref="Cell.RowKey"/> ends in
+    /// <c>Plain</c> or <c>NoneNeedle</c>), so each of the four facts owns whole rows and none runs near CI's
+    /// per-test limit. The axes and the totality count are the whole product's in every fact; each fact runs,
+    /// compares and pins its own part (the order facts own the <c>Order/*</c> rows).</summary>
+    private void RunMembershipMatrix(Observation observation, bool plainNeedle)
     {
         // The oracle minor is the repository's .python-version pin (3.15).
         var oracle = PythonBatchOracle.Over(PythonInterpreter.RequireOrSkip(minMinor: 15));
@@ -1444,12 +1497,17 @@ public abstract class MembershipOperatorDifferentialBase : IntegrationTestBase
             allTwins.Count(t => t.Payload == c.Payload && t.Form == c.Form && t.Observation == c.Observation) == 1,
             $"{c.Key}: a chain link without exactly one head twin"));
 
-        // This fact's half of the product, and its part of the rows.
-        var cells = allCells.Where(c => c.Observation == observation).ToList();
-        var twins = allTwins.Where(t => t.Observation == observation).ToList();
+        // This fact's part of the product, and its part of the rows: one observation, one needle group.
+        var cells = allCells.Where(c => c.Observation == observation && (c.Form == Form.Plain) == plainNeedle).ToList();
+        var twins = allTwins.Where(t => t.Observation == observation && (t.Form == Form.Plain) == plainNeedle).ToList();
         Assert.NotEmpty(cells);
-        var owns = RowsOf(observation == Observation.Value ? null : OrderRowPrefix);
-        var report = observation == Observation.Value ? "optional-membership-differential" : "membership-order-differential";
+        // The four facts partition the product: a cell is in exactly one (observation, needle group).
+        Assert.Equal(allCells.Count, Enum.GetValues<Observation>().Sum(o => new[] { false, true }.Sum(
+            plain => allCells.Count(c => c.Observation == o && (c.Form == Form.Plain) == plain))));
+        var needleRows = plainNeedle ? "/Plain" : "/NoneNeedle";
+        var owns = MatrixRows(observation, plainNeedle);
+        var report = (observation == Observation.Value ? "optional-membership-differential" : "membership-order-differential")
+            + (plainNeedle ? "-plain" : "-none-needle");
 
         // CPython: one program per payload × container (the runner passes a program as one argv string, which the OS
         // caps at 128 KiB), one batch.
@@ -1536,7 +1594,7 @@ public abstract class MembershipOperatorDifferentialBase : IntegrationTestBase
         var headIcePath = Path.Combine(reportDir, $"{report}-chain-head-spy0908.txt");
         File.WriteAllLines(headIcePath, headIce.Select(c => c.Key).OrderBy(k => k, StringComparer.Ordinal));
 
-        Output.WriteLine($"{observation}: {payloads.Count} payloads, {cells.Count} of {allCells.Count} cases: {compared} compared with CPython, {handExpected} "
+        Output.WriteLine($"{observation}{needleRows}: {payloads.Count} payloads, {cells.Count} of {allCells.Count} cases: {compared} compared with CPython, {handExpected} "
             + $"hand-expected (slot mismatches by deviation membership-needle-type-mismatch; literal None by owner ruling A; "
             + "__getitem__ + __len__ classes by owner ruling R-OA; chain links whose head link is refused, by its "
             + $"measured twin: {headRefused.Count} of {chainCells.Count} chain cells, {headIce.Count} of them where the head "
@@ -1549,20 +1607,25 @@ public abstract class MembershipOperatorDifferentialBase : IntegrationTestBase
         // Positive controls: the oracle column reaches every answer the expected map distinguishes.
         Assert.Contains(cells, c => pythonById[c.Id].Contains("True"));
         Assert.Contains(cells, c => pythonById[c.Id].Contains("False"));
-        Assert.Contains(cells, c => expectations[c.Id].Compared && c.Form == Form.Optional && pythonById[c.Id].Contains("TypeError"));
-        Assert.Contains(cells, c => c.Form == Form.Plain && c.Position != Position.ChainLink && sharpyById[c.Id].Values != null);
-        // The head twin distinguishes: some head link runs, and some is refused by the operator validator's code —
-        // a chain cell of each kind exists, and a refused head's cell expects exactly the head's codes.
+        if (plainNeedle)
+            Assert.Contains(cells, c => c.Position != Position.ChainLink && sharpyById[c.Id].Values != null);
+        else
+            Assert.Contains(cells, c => expectations[c.Id].Compared && c.Form == Form.Optional && pythonById[c.Id].Contains("TypeError"));
+        // The head twin distinguishes: some head link runs, and some is refused (a plain needle's by the operator
+        // validator's code) — a chain cell of each kind exists, and a refused head's cell expects exactly the
+        // head's codes.
         Assert.Contains(twins, t => sharpyById[t.Id].Values != null);
-        Assert.Contains(twins, t => sharpyById[t.Id].RefusedBy is { Count: 1 } by && by.Contains(DiagnosticCodes.Validation.UnsupportedOperator));
+        Assert.Contains(twins, t => sharpyById[t.Id].RefusedBy is { Count: 1 } by
+            && (!plainNeedle || by.Contains(DiagnosticCodes.Validation.UnsupportedOperator)));
         Assert.All(headRefused, c => Assert.True(!expectations[c.Id].Values && heads[(c.Payload.Name, c.Form, c.Observation)].RefusedBy!
             .All(expectations[c.Id].RefusedBy.Contains), $"{c.Key}: its head link is refused and the cell does not expect the head's codes"));
         Assert.Contains(chainCells, c => expectations[c.Id].Values);
         // The optional column can pass: a T | None needle's cell already runs, prints False for None and agrees (by
         // value a reference payload's; by order a lifted one's, whose helper takes the needle first).
         var divergent = divergences.Select(d => d.Cell.Id).ToHashSet();
-        Assert.Contains(cells, c => c.Form == Form.Optional && sharpyById[c.Id].Values is { } v
-            && v.Contains("False") && v.SequenceEqual(pythonById[c.Id]) && !divergent.Contains(c.Id));
+        if (!plainNeedle)
+            Assert.Contains(cells, c => c.Form == Form.Optional && sharpyById[c.Id].Values is { } v
+                && v.Contains("False") && v.SequenceEqual(pythonById[c.Id]) && !divergent.Contains(c.Id));
         // A ruled refusal is a refusal of something CPython answers, and Sharpy refuses it today.
         var refusedCells = cells.Where(c => IsRefusedByRuling(c.Container)).ToList();
         Assert.NotEmpty(refusedCells);
@@ -1582,7 +1645,7 @@ public abstract class MembershipOperatorDifferentialBase : IntegrationTestBase
             Assert.All(cells.Where(c => c.Position == Position.ChainLink), c => Assert.True(Before(pythonById[c.Id], "h", "n"),
                 $"{c.Key}: CPython's trace [{string.Join(" ", pythonById[c.Id])}] does not show the chain's head operand first"));
         }
-        else
+        else if (!plainNeedle)
         {
             // The element-optionality axis discriminates, container by container: a None needle into an optional
             // element is a member (CPython `True False True` over a member, a non-member and None), so a lift that
@@ -1635,7 +1698,7 @@ public abstract class MembershipOperatorDifferentialBase : IntegrationTestBase
     // The operator-sequence matrix (#2645 evaluation order, #2648 chain links)
     // ---------------------------------------------------------------------------------------------------------
 
-    /// <summary>The allowlist rows <see cref="RunSequences"/> owns.</summary>
+    /// <summary>The allowlist rows the main sequence fact owns (<see cref="SequenceBlock.Main"/>).</summary>
     private const string SequenceRowPrefix = "Sequence/";
 
     /// <summary>How a sequence's operands are typed: the payload; <c>T | None</c>; the tagged <c>T?</c>, on both
@@ -1751,15 +1814,15 @@ public abstract class MembershipOperatorDifferentialBase : IntegrationTestBase
         /// <summary>Where in a statement the sequence stands (<see cref="SequencePosition"/>).</summary>
         public SequencePosition Position { get; init; } = SequencePosition.Assignment;
 
-        /// <summary>The last operand is wrapped in a hoist producer (a comprehension), so a chain's last operand
-        /// hoists statements and the chain takes its imperative path.</summary>
-        public bool HoistLast { get; init; }
+        /// <summary>The hoist producer the last operand stands behind (<see cref="SequenceHoist"/>): a chain's
+        /// last operand then hoists statements and the chain takes its imperative path.</summary>
+        public SequenceHoist Hoist { get; init; } = SequenceHoist.None;
 
         public int CellId => Id * 2;
         public int ReferenceId => Id * 2 + 1;
         public string Key => $"{Payload.Name}/{Form}/{string.Join(",", Operators.Select(o => SpellingOf(o).Spelling))}"
             + (Pivot is { } p ? $"/{Pivots[p].Type} on the {(PivotOnLeft ? "left" : "right")}" : "")
-            + (Position == SequencePosition.Assignment ? "" : $"/{Position}") + (HoistLast ? "/HoistLast" : "");
+            + (Position == SequencePosition.Assignment ? "" : $"/{Position}") + (Hoist == SequenceHoist.None ? "" : $"/HoistLast:{Hoist}");
         public string Cause => Operators.Length == 1 ? "Binary" : "Chain";
     }
 
@@ -1778,30 +1841,217 @@ public abstract class MembershipOperatorDifferentialBase : IntegrationTestBase
         _ => throw new InvalidOperationException($"Position.{position} has no sequence position: map it or exclude it with a reason"),
     };
 
-    /// <summary>The families of sequences, a fact each (so that none runs near CI's per-test limit) and a row
-    /// prefix each (one fact a row). <see cref="Main"/>: every spelled binary operator and every ordered pair of
-    /// chain links, in every form, with the pivots. <see cref="Position"/>: the same operators and pairs in every
-    /// further statement position, in the plain form.
-    /// <see cref="HoistLast"/>: every pair of chain links in every form, the last operand hoisting.
-    /// <see cref="Triple"/>: every ordered triple of chain links, in the plain form (a link's place in a chain is
-    /// first, middle or last: three links have all three).</summary>
-    private enum SequenceFamily { Main, Position, HoistLast, Triple }
+    /// <summary>The two kinds of chain link: a value comparison, or a test (membership, identity) — the links a
+    /// chain is refused for today (#2648). The facts of three-link chains are sliced by the kind of their FIRST
+    /// link, so that none runs near CI's per-test limit.</summary>
+    private enum LinkKind { Comparison, Test }
 
-    /// <summary>The full product of a family (<see cref="SequenceFamily"/>).</summary>
-    private static List<Sequence> GenerateSequences(IReadOnlyList<Payload> payloads, SequenceFamily family)
+    /// <summary>The kind of each chain link. No default arm.</summary>
+    private static LinkKind LinkKindOf(ComparisonOperator op) => op switch
+    {
+        ComparisonOperator.Equal or ComparisonOperator.NotEqual or ComparisonOperator.LessThan
+            or ComparisonOperator.LessThanOrEqual or ComparisonOperator.GreaterThan or ComparisonOperator.GreaterThanOrEqual
+            => LinkKind.Comparison,
+        ComparisonOperator.In or ComparisonOperator.NotIn or ComparisonOperator.Is or ComparisonOperator.IsNot => LinkKind.Test,
+        _ => throw new InvalidOperationException($"ComparisonOperator.{op} has no link kind"),
+    };
+
+    /// <summary>The positive controls of a fact's chains: one that evaluates its last operand, one that
+    /// short-circuits before it.</summary>
+    private enum ChainControl { EvaluatesLastOperand, ShortCircuits }
+
+    /// <summary>Why no chain of a fact can show a control today, or null where one must.</summary>
+    private static string? ChainControlExcluded(SequenceFact fact, ChainControl control)
+    {
+        if (fact.Block == SequenceBlock.Pivot)
+            return "a pivot sequence is one operator: the block has no chain";
+        if (fact.First == LinkKind.Test)
+            return "#2648: a chain whose first link is a test is refused by code generation (SPY0519), so none runs";
+        if (fact.Form == SequenceForm.NoneLast && control == ChainControl.EvaluatesLastOperand)
+            return "the form's last operand is the literal `None`, which is not traced";
+        if (fact.Form == SequenceForm.TaggedLeft)
+            return "every chain of the form has a link between a tagged `T?` operand and a plain `T` one, which the "
+                + "checker refuses in both forms (SPY0222), or a test link (SPY0519): none runs";
+        return null;
+    }
+
+    /// <summary>The hoist producer a sequence's LAST operand stands behind: none, or one of the emitter's hoist
+    /// producers. The image of the left-operand fact's <see cref="ContainerForm"/> (<see cref="SequenceHoistOf"/>):
+    /// owner ruling 2026-11-14, #2645 comment 6873755292 ("Cross everything": the hoisting last operand over every
+    /// hoist kind).</summary>
+    private enum SequenceHoist { None, Comprehension, Spread, QuestionMark, Walrus }
+
+    /// <summary>The sequence hoist of each <see cref="ContainerForm"/>, or why it is none. No default arm.</summary>
+    private static (SequenceHoist? Generated, string? Excluded) SequenceHoistOf(ContainerForm form) => form switch
+    {
+        ContainerForm.Name => (null, "a name has no evaluation: nothing to hoist"),
+        ContainerForm.Call => (null, "a traced call is what every sequence operand already is: SequenceHoist.None"),
+        ContainerForm.Rebind => (null, "a rebinding argument changes what the LEFT operand reads: the left-operand fact's axis"),
+        ContainerForm.Comprehension => (SequenceHoist.Comprehension, null),
+        ContainerForm.Spread => (SequenceHoist.Spread, null),
+        ContainerForm.QuestionMark => (SequenceHoist.QuestionMark, null),
+        ContainerForm.Walrus => (SequenceHoist.Walrus, null),
+        _ => throw new InvalidOperationException($"ContainerForm.{form} has no sequence hoist: map it or exclude it with a reason"),
+    };
+
+    /// <summary>How many <see cref="ContainerForm"/> members <see cref="SequenceHoistOf"/> excludes, as a literal.</summary>
+    private const int SequenceExcludedContainerForms = 3;
+
+    /// <summary>The operand behind its hoist producer: the same value, as the first element of a comprehension over
+    /// it or of a spread of it, unwrapped by <c>?</c> from the Optional the prelude's <c>some</c> wraps it in (the
+    /// function then returns an Optional), or bound by a walrus.</summary>
+    private static string Hoisted(SequenceHoist hoist, string operand) => hoist switch
+    {
+        SequenceHoist.None => operand,
+        SequenceHoist.Comprehension => $"[q for q in [{operand}]][0]",
+        SequenceHoist.Spread => $"[*[{operand}]][0]",
+        SequenceHoist.QuestionMark => $"some({operand})?",
+        SequenceHoist.Walrus => $"(w := {operand})",
+        _ => throw new InvalidOperationException(hoist.ToString()),
+    };
+
+    /// <summary>
+    /// The blocks of the sequence matrix. A block is a product of the axes (payload × operators × form × statement
+    /// position × the last operand's hoist × pivot); a FACT is a block, or one slice of it by its form or by its
+    /// hoist kind (<see cref="SliceAxisOf"/>), so that no fact runs near CI's per-test limit and each owns its rows
+    /// (one fact a row). Owner ruling 2026-11-14, #2645 comment 6873755292 ("Cross everything"): three-link
+    /// chains, statement positions and pivots over every operand form; the hoisting last operand over every hoist
+    /// kind and for three links.
+    /// <list type="bullet">
+    /// <item><see cref="Main"/> — every spelled binary operator and every ordered pair of chain links, in every
+    /// form, and the plain form's pivots: an assignment's right side, nothing hoisting;</item>
+    /// <item><see cref="Pivot"/> — every binary operator with each pivot in every OTHER form
+    /// (<see cref="PivotSidesOf"/>);</item>
+    /// <item><see cref="Position"/> — every binary operator and every pair of links in every further statement
+    /// position, a fact per form;</item>
+    /// <item><see cref="HoistLast"/> — every pair of links in every form, the last operand hoisting, a fact per
+    /// hoist kind;</item>
+    /// <item><see cref="Triple"/> — every ordered triple of links (a link's place in a chain is first, middle or
+    /// last: three links have all three), a fact per form and kind of first link.</item>
+    /// </list>
+    /// Chain length is the closed set {two links, three links}: it has no last value, and the owner's ruling keeps
+    /// the set until a larger bound is named. Three links with a hoisting last operand, and the products of the
+    /// blocks with one another (three links in the further positions; a hoisting last operand there), are not
+    /// generated: reported to the owner with their measured cost.
+    /// </summary>
+    private enum SequenceBlock { Main, Pivot, Position, HoistLast, Triple }
+
+    private enum SliceAxis { None, Form, Hoist, FormAndFirstLink }
+
+    /// <summary>The axis a block's facts slice it by. No default arm.</summary>
+    private static SliceAxis SliceAxisOf(SequenceBlock block) => block switch
+    {
+        SequenceBlock.Main => SliceAxis.None,
+        SequenceBlock.Pivot => SliceAxis.None,
+        SequenceBlock.Position => SliceAxis.Form,
+        SequenceBlock.HoistLast => SliceAxis.Hoist,
+        SequenceBlock.Triple => SliceAxis.FormAndFirstLink,
+        _ => throw new InvalidOperationException($"SequenceBlock.{block} has no slice axis"),
+    };
+
+    /// <summary>One fact of the sequence matrix: a block and its slice. <see cref="Name"/> is the name of the test
+    /// method that declares it (<see cref="RunSequenceFact"/> finds the fact by its caller's name, and
+    /// <see cref="AssertEverySequenceFactIsDeclaredOnce"/> holds the declarations to the generated set);
+    /// <see cref="RowPrefix"/> is the prefix of the allowlist rows it owns.</summary>
+    private sealed record SequenceFact(SequenceBlock Block, SequenceForm? Form, SequenceHoist? Hoist, LinkKind? First = null)
+    {
+        private string Slice => Form?.ToString() ?? Hoist?.ToString() ?? "";
+
+        public string RowPrefix => Block switch
+        {
+            SequenceBlock.Main => SequenceRowPrefix,
+            SequenceBlock.Pivot => "SequencePivot/",
+            SequenceBlock.Position => $"SequencePosition/{Slice}/",
+            SequenceBlock.HoistLast => $"SequenceHoist/{Slice}/",
+            SequenceBlock.Triple => $"SequenceTriple/{Slice}/{First}First/",
+            _ => throw new InvalidOperationException(Block.ToString()),
+        };
+
+        public string Name => Block switch
+        {
+            SequenceBlock.Main => "OperatorSequences_OverEffectfulOperands_AreTheirDesugaring",
+            SequenceBlock.Pivot => "OperatorSequences_WithAPivotOperandInEveryOtherForm_AreTheirDesugaring",
+            SequenceBlock.Position => $"OperatorSequences_InEveryStatementPosition_{Slice}_AreTheirDesugaring",
+            SequenceBlock.HoistLast => $"OperatorSequences_WithAHoistingLastOperand_{Slice}_AreTheirDesugaring",
+            SequenceBlock.Triple => $"OperatorSequences_OfThreeChainLinks_{Slice}_{First}First_AreTheirDesugaring",
+            _ => throw new InvalidOperationException(Block.ToString()),
+        };
+
+        /// <summary>The report files' stem: the row prefix in kebab case.</summary>
+        public string Report => "operator-" + System.Text.RegularExpressions.Regex
+            .Replace(RowPrefix.TrimEnd('/'), "(?<!^)(?<!/)([A-Z])", "-$1").Replace('/', '-').ToLowerInvariant();
+    }
+
+    /// <summary>Every fact of the sequence matrix: each block, once or once per value of its slice axis.</summary>
+    private static List<SequenceFact> SequenceFacts()
+    {
+        var facts = new List<SequenceFact>();
+        foreach (var block in Enum.GetValues<SequenceBlock>())
+            switch (SliceAxisOf(block))
+            {
+                case SliceAxis.None:
+                    facts.Add(new SequenceFact(block, null, null));
+                    break;
+                case SliceAxis.Form:
+                    foreach (var form in Enum.GetValues<SequenceForm>())
+                        facts.Add(new SequenceFact(block, form, null));
+                    break;
+                case SliceAxis.Hoist:
+                    foreach (var hoist in Enum.GetValues<SequenceHoist>().Where(h => h != SequenceHoist.None))
+                        facts.Add(new SequenceFact(block, null, hoist));
+                    break;
+                case SliceAxis.FormAndFirstLink:
+                    foreach (var form in Enum.GetValues<SequenceForm>())
+                        foreach (var first in Enum.GetValues<LinkKind>())
+                            facts.Add(new SequenceFact(block, form, null, first));
+                    break;
+                default:
+                    throw new InvalidOperationException(SliceAxisOf(block).ToString());
+            }
+        return facts;
+    }
+
+    /// <summary>
+    /// The sides a pivot takes in each form in the <see cref="SequenceBlock.Pivot"/> block (true: the pivot is the
+    /// left operand), and why a side is not generated there. A pivot sequence holds one payload operand and the
+    /// pivot, so a form that differs from another only in the second payload operand has no cell of its own. No
+    /// default arm.
+    /// </summary>
+    private static (bool[] Sides, string? Excluded) PivotSidesOf(SequenceForm form) => form switch
+    {
+        SequenceForm.Plain => (Array.Empty<bool>(), "the main fact generates the plain form's pivots, on both sides"),
+        SequenceForm.Optional => (new[] { false, true }, null),
+        SequenceForm.Tagged => (new[] { false, true }, null),
+        SequenceForm.TaggedLeft => (Array.Empty<bool>(), "the form leaves the SECOND payload operand untagged, and a pivot "
+            + "sequence has no second payload operand: its cells are the Tagged form's"),
+        SequenceForm.NoneLast => (new[] { true }, "a pivot on the right is the last operand, which the form replaces by the "
+            + "literal `None`: that cell is the form's own no-pivot sequence, which the main fact generates"),
+        _ => throw new InvalidOperationException($"SequenceForm.{form} has no pivot sides: give them or exclude them with a reason"),
+    };
+
+    /// <summary>How many (form, side) pairs <see cref="PivotSidesOf"/> generates, as a literal.</summary>
+    private const int SequencePivotFormSides = 5;
+
+    /// <summary>The full product of a fact (<see cref="SequenceBlock"/>).</summary>
+    private static List<Sequence> GenerateSequences(IReadOnlyList<Payload> payloads, SequenceFact fact)
     {
         var binary = Enum.GetValues<BinaryOperator>().Where(o => SpellingOf(o).Spelling != null).ToList();
         var links = Enum.GetValues<ComparisonOperator>().Select(LinkOperator).ToList();
+        // The first links of the fact's slice: every link, or those of one kind.
+        var firstLinks = Enum.GetValues<ComparisonOperator>().Where(o => fact.First == null || LinkKindOf(o) == fact.First)
+            .Select(LinkOperator).ToList();
         var positions = Enum.GetValues<Position>().Select(p => SequencePositionOf(p).Generated).OfType<SequencePosition>().ToList();
+        var forms = fact.Form is { } only ? new[] { only } : Enum.GetValues<SequenceForm>();
+        var hoist = fact.Hoist ?? SequenceHoist.None;
         var sequences = new List<Sequence>();
         void Add(Payload payload, SequenceForm form, BinaryOperator[] ops, SequencePosition position = SequencePosition.Assignment,
-            int? pivot = null, bool onLeft = false, bool hoistLast = false) =>
-            sequences.Add(new Sequence(sequences.Count, payload, form, ops, pivot, onLeft) { Position = position, HoistLast = hoistLast });
+            int? pivot = null, bool onLeft = false) =>
+            sequences.Add(new Sequence(sequences.Count, payload, form, ops, pivot, onLeft) { Position = position, Hoist = hoist });
         foreach (var payload in payloads)
-            foreach (var form in Enum.GetValues<SequenceForm>())
-                switch (family)
+            foreach (var form in forms)
+                switch (fact.Block)
                 {
-                    case SequenceFamily.Main:
+                    case SequenceBlock.Main:
                         foreach (var op in binary)
                         {
                             Add(payload, form, new[] { op });
@@ -1815,9 +2065,13 @@ public abstract class MembershipOperatorDifferentialBase : IntegrationTestBase
                             foreach (var second in links)
                                 Add(payload, form, new[] { first, second });
                         break;
-                    case SequenceFamily.Position:
-                        if (form != SequenceForm.Plain)
-                            break;
+                    case SequenceBlock.Pivot:
+                        foreach (var op in binary)
+                            for (var pivot = 0; pivot < Pivots.Length; pivot++)
+                                foreach (var onLeft in PivotSidesOf(form).Sides)
+                                    Add(payload, form, new[] { op }, pivot: pivot, onLeft: onLeft);
+                        break;
+                    case SequenceBlock.Position:
                         foreach (var position in positions.Where(p => p != SequencePosition.Assignment))
                         {
                             foreach (var op in binary)
@@ -1827,19 +2081,19 @@ public abstract class MembershipOperatorDifferentialBase : IntegrationTestBase
                                     Add(payload, form, new[] { first, second }, position);
                         }
                         break;
-                    case SequenceFamily.HoistLast:
+                    case SequenceBlock.HoistLast:
                         foreach (var first in links)
                             foreach (var second in links)
-                                Add(payload, form, new[] { first, second }, hoistLast: true);
+                                Add(payload, form, new[] { first, second });
                         break;
-                    case SequenceFamily.Triple:
-                        if (form != SequenceForm.Plain)
-                            break;
-                        foreach (var first in links)
+                    case SequenceBlock.Triple:
+                        foreach (var first in firstLinks)
                             foreach (var second in links)
                                 foreach (var third in links)
                                     Add(payload, form, new[] { first, second, third });
                         break;
+                    default:
+                        throw new InvalidOperationException(fact.Block.ToString());
                 }
         return sequences;
     }
@@ -1854,12 +2108,12 @@ public abstract class MembershipOperatorDifferentialBase : IntegrationTestBase
     /// operand one list deeper than its left), a pivot local on one side, or the literal <c>None</c> last.</summary>
     private static string[] SequenceOperands(Sequence sequence)
     {
-        if (sequence.Pivot != null)
-            return sequence.PivotOnLeft ? new[] { "p", "a" } : new[] { "a", "p" };
         var operands = new List<string> { SequenceOperand(0, false) };
         var depth = 0;
         var alternate = false;
-        foreach (var op in sequence.Operators)
+        if (sequence.Pivot != null)
+            operands = sequence.PivotOnLeft ? new List<string> { "p", "a" } : new List<string> { "a", "p" };
+        foreach (var op in sequence.Pivot != null ? Array.Empty<BinaryOperator>() : sequence.Operators)
         {
             if (op is BinaryOperator.In or BinaryOperator.NotIn)
             {
@@ -1912,13 +2166,14 @@ public abstract class MembershipOperatorDifferentialBase : IntegrationTestBase
             var second = sequence.Form == SequenceForm.TaggedLeft ? payload.CellSpelling : type;
             var operands = SequenceOperands(sequence);
             var ops = sequence.Operators.Select(o => SpellingOf(o).Spelling!).ToArray();
-            // The last operand of a HoistLast sequence is the first element of a comprehension over it: the same
-            // value, behind a hoist producer.
+            // The last operand of a hoisting sequence stands behind its hoist producer: the same value.
             string Traced(int i)
             {
                 var operand = operands[i] == "None" ? "None" : $"tr({id}, {i}, {operands[i]})";
-                return sequence.HoistLast && i == operands.Length - 1 ? $"[q for q in [{operand}]][0]" : operand;
+                return i == operands.Length - 1 ? Hoisted(sequence.Hoist, operand) : operand;
             }
+            // `?` returns early from its function, which then returns an Optional.
+            var propagates = sequence.Hoist == SequenceHoist.QuestionMark;
             // The value in its statement position: assigned, or tested by an `if` or a comprehension filter.
             void AddInPosition(string indent, string value)
             {
@@ -1937,7 +2192,7 @@ public abstract class MembershipOperatorDifferentialBase : IntegrationTestBase
                         break;
                 }
             }
-            Add($"{scope}def e{id}{payload.TypeParameters}({self}a: {type}, c: {second}) -> None:", id);
+            Add($"{scope}def e{id}{payload.TypeParameters}({self}a: {type}, c: {second}) -> {(propagates ? "int?" : "None")}:", id);
             // A located first statement: code the emitter hoists above the expression (a comprehension) carries no
             // #line of its own, and a Roslyn error there maps to the last located line — this function's.
             Add($"{scope}    sid: int = {id}", id);
@@ -1973,6 +2228,8 @@ public abstract class MembershipOperatorDifferentialBase : IntegrationTestBase
                 AddInPosition(scope + "    ", "r");
             }
             Add($"{scope}    print({id}, v)", id);
+            if (propagates)
+                Add($"{scope}    return None()", id);
             Add("");
         }
 
@@ -2000,7 +2257,8 @@ public abstract class MembershipOperatorDifferentialBase : IntegrationTestBase
                         SequenceForm.TaggedLeft => "Some(a), c",
                         _ => "a, c",
                     };
-                    Add($"{indent}    {callee}{id}{(payload.IsTypeParameter ? $"[{payload.Binding}]" : "")}({arguments})", id);
+                    Add($"{indent}    {(sequence.Hoist == SequenceHoist.QuestionMark ? "_ = " : "")}{callee}{id}"
+                        + $"{(payload.IsTypeParameter ? $"[{payload.Binding}]" : "")}({arguments})", id);
                     Add($"{indent}except Exception:", id);
                     Add($"{indent}    print({id}, \"raised\")", id);
                 }
@@ -2011,6 +2269,10 @@ public abstract class MembershipOperatorDifferentialBase : IntegrationTestBase
         Add("def tr[V](cell: int, operand: int, v: V) -> V:");
         Add("    print(cell, operand)");
         Add("    return v");
+        Add("");
+        // The Optional a `?` hoist unwraps (SequenceHoist.QuestionMark): `Some(x)?` alone has no type to infer.
+        Add("def some[V](v: V) -> V?:");
+        Add("    return Some(v)");
         Add("");
         foreach (var line in PivotDeclarations.TrimEnd('\n').Split('\n'))
             Add(line);
@@ -2136,39 +2398,47 @@ public abstract class MembershipOperatorDifferentialBase : IntegrationTestBase
     /// and every ordered pair of <see cref="ComparisonOperator"/> links; in the plain form each binary operator also
     /// takes each pivot type on each side (<see cref="Pivots"/>). The count is asserted from the enumerations, and
     /// the operand types are closed against <c>OperatorLoweringKind</c> (<see cref="SequenceExcludedKinds"/>).</para>
-    /// <para><b>Families</b> (<see cref="SequenceFamily"/>), a fact each: this one; the further statement positions;
-    /// a hoisting last operand; three chain links. The operand types of this one are also closed against
-    /// <c>BinaryOpLowering</c>, the equality strategy (<see cref="SequenceExcludedEqualities"/>).</para>
-    /// <para><b>Known red.</b> The <c>Sequence/Binary</c> and <c>Sequence/Chain</c> rows of the allowlist; each
-    /// other family's rows carry its own prefix.</para>
+    /// <para><b>Blocks and facts</b> (<see cref="SequenceBlock"/>, <see cref="SequenceFacts"/>): this contract is
+    /// held by every fact of the sequence matrix, each over its own product and its own rows; a test method declares
+    /// a fact by its name. The operand types of the main block are also closed against <c>BinaryOpLowering</c>, the
+    /// equality strategy (<see cref="SequenceExcludedEqualities"/>).</para>
+    /// <para><b>Known red.</b> The rows of the fact's prefix (<see cref="SequenceFact.RowPrefix"/>), one per cause:
+    /// <c>…/Binary</c> and <c>…/Chain</c>.</para>
     /// </summary>
-    protected void RunSequences() => RunSequenceFamily(SequenceFamily.Main);
+    protected void RunSequenceFact([CallerMemberName] string name = "")
+    {
+        var facts = SequenceFacts();
+        Assert.True(facts.Count(f => f.Name == name) == 1,
+            $"`{name}` is not the name of a sequence fact; the facts are: " + string.Join(", ", facts.Select(f => f.Name)));
+        AssertEverySequenceFactIsDeclaredOnce();
+        RunSequenceFact(facts.Single(f => f.Name == name));
+    }
 
-    /// <summary>The same contract where the sequence is not an assignment's right side but an <c>if</c> condition or
-    /// a comprehension filter: every spelled binary operator and every ordered pair of chain links, in the plain
-    /// form. A fact of its own for CI's per-test limit; rows <c>SequencePosition/*</c>.</summary>
-    protected void RunSequencePositions() => RunSequenceFamily(SequenceFamily.Position);
+    /// <summary>The test methods of this generator's classes that declare a sequence fact are exactly the generated
+    /// facts, each once: a fact no class declares would never run, and its rows would go stale unseen.</summary>
+    private static void AssertEverySequenceFactIsDeclaredOnce()
+    {
+        var declared = typeof(MembershipOperatorDifferentialBase).Assembly.GetTypes()
+            .Where(t => !t.IsAbstract && typeof(MembershipOperatorDifferentialBase).IsAssignableFrom(t))
+            .SelectMany(t => t.GetMethods(BindingFlags.Public | BindingFlags.Instance | BindingFlags.DeclaredOnly))
+            .Where(m => m.GetCustomAttributes(typeof(FactAttribute), true).Length > 0
+                && m.Name.StartsWith("OperatorSequences_", StringComparison.Ordinal))
+            .Select(m => m.Name).OrderBy(n => n, StringComparer.Ordinal).ToList();
+        var generated = SequenceFacts().Select(f => f.Name).OrderBy(n => n, StringComparer.Ordinal).ToList();
+        Assert.True(declared.SequenceEqual(generated),
+            "the sequence facts the test classes declare are not the generated facts, each once. Declared and not "
+            + "generated: [" + string.Join(", ", declared.Except(generated)) + "]; generated and not declared: ["
+            + string.Join(", ", generated.Except(declared)) + "]; declared more than once: ["
+            + string.Join(", ", declared.GroupBy(n => n).Where(g => g.Count() > 1).Select(g => g.Key)) + "]");
+    }
 
-    /// <summary>The same contract for a chain whose LAST operand hoists statements (a comprehension): every ordered
-    /// pair of chain links, in every form. A fact of its own for CI's per-test limit; rows <c>SequenceHoist/*</c>.</summary>
-    protected void RunSequencesWithAHoistingLastOperand() => RunSequenceFamily(SequenceFamily.HoistLast);
-
-    /// <summary>The same contract for a chain of three links (a middle link, both of whose operands are read
-    /// twice): every ordered triple of chain links, in the plain form. A fact of its own for CI's per-test limit;
-    /// rows <c>SequenceTriple/*</c>.</summary>
-    protected void RunSequencesOfThreeChainLinks() => RunSequenceFamily(SequenceFamily.Triple);
-
-    private void RunSequenceFamily(SequenceFamily family)
+    private void RunSequenceFact(SequenceFact fact)
     {
         var payloads = GeneratePayloads().Concat(SequenceOnlyPayloads).ToList();
-        var sequences = GenerateSequences(payloads, family);
-        var (rowPrefix, report) = family switch
-        {
-            SequenceFamily.Main => (SequenceRowPrefix, "operator-sequence"),
-            SequenceFamily.Position => (PositionRowPrefix, "operator-sequence-position"),
-            SequenceFamily.HoistLast => (HoistRowPrefix, "operator-sequence-hoist"),
-            _ => (TripleRowPrefix, "operator-sequence-triple"),
-        };
+        var sequences = GenerateSequences(payloads, fact);
+        var rowPrefix = fact.RowPrefix;
+        var report = fact.Report;
+        var block = fact.Block;
 
         // Totality: from the enumerations, never from the generator's loops.
         var operators = Enum.GetValues<BinaryOperator>();
@@ -2204,20 +2474,59 @@ public abstract class MembershipOperatorDifferentialBase : IntegrationTestBase
         Assert.All(SequenceOnlyPayloads.Where(p => ExcludedPrimitives.ContainsKey(p.Name)), p => Assert.True(
             PrimitiveCatalog.GetByName(p.Name)?.ClrType == p.ClrType, $"{p.Name}: not the catalog's primitive of that name"));
         var pairs = linkCount * linkCount;
-        var (expectedCount, product) = family switch
+        // The hoist kinds are the image of the left-operand fact's ContainerForm, less the pinned exclusions.
+        var containerForms = Enum.GetValues<ContainerForm>();
+        Assert.All(containerForms, f => Assert.True((SequenceHoistOf(f).Generated != null) != (SequenceHoistOf(f).Excluded != null)
+            && (SequenceHoistOf(f).Excluded ?? "-").Trim().Length > 0, $"{f}: a sequence hoist or an exclusion reason, exactly one"));
+        Assert.True(containerForms.Count(f => SequenceHoistOf(f).Excluded != null) == SequenceExcludedContainerForms,
+            $"SequenceHoistOf excludes {containerForms.Count(f => SequenceHoistOf(f).Excluded != null)} container forms; "
+            + $"{SequenceExcludedContainerForms} are pinned");
+        Assert.Equal(Enum.GetValues<SequenceHoist>().Where(h => h != SequenceHoist.None).OrderBy(h => h),
+            containerForms.Select(f => SequenceHoistOf(f).Generated).OfType<SequenceHoist>().OrderBy(h => h));
+        // The pivot sides of each form: both, or the reason one is left out; the generated total is pinned.
+        var sequenceForms = Enum.GetValues<SequenceForm>();
+        Assert.All(sequenceForms, f => Assert.True(PivotSidesOf(f).Sides.Distinct().Count() == PivotSidesOf(f).Sides.Length
+            && (PivotSidesOf(f).Sides.Length == 2) == (PivotSidesOf(f).Excluded == null)
+            && (PivotSidesOf(f).Excluded ?? "-").Trim().Length > 0, $"{f}: both pivot sides, or the reason a side is left out"));
+        Assert.True(sequenceForms.Sum(f => PivotSidesOf(f).Sides.Length) == SequencePivotFormSides,
+            $"PivotSidesOf generates {sequenceForms.Sum(f => PivotSidesOf(f).Sides.Length)} (form, side) pairs; {SequencePivotFormSides} are pinned");
+        // The fact is one of the facts, and its slice is a value of its block's slice axis.
+        Assert.Contains(fact, SequenceFacts());
+        Assert.True(SliceAxisOf(block) switch
         {
-            SequenceFamily.Main => (payloadCount * (formCount * (binaryCount + pairs) + binaryCount * Pivots.Length * 2),
+            SliceAxis.None => fact.Form == null && fact.Hoist == null && fact.First == null,
+            SliceAxis.Form => fact.Form != null && fact.Hoist == null && fact.First == null,
+            SliceAxis.Hoist => fact.Form == null && fact.Hoist is { } h && h != SequenceHoist.None && fact.First == null,
+            _ => fact.Form != null && fact.Hoist == null && fact.First != null,
+        }, $"{fact.Name}: its slice is not a value of {SliceAxisOf(block)}");
+        // The first links of a kind, from the enumeration: the kinds partition the links.
+        var comparisonOperators = Enum.GetValues<ComparisonOperator>();
+        Assert.Equal(linkCount, Enum.GetValues<LinkKind>().Sum(k => comparisonOperators.Count(o => LinkKindOf(o) == k)));
+        Assert.All(Enum.GetValues<LinkKind>(), k => Assert.Contains(comparisonOperators, o => LinkKindOf(o) == k));
+        var firstLinkCount = fact.First is { } firstKind ? comparisonOperators.Count(o => LinkKindOf(o) == firstKind) : linkCount;
+        var (expectedCount, product) = block switch
+        {
+            SequenceBlock.Main => (payloadCount * (formCount * (binaryCount + pairs) + binaryCount * Pivots.Length * 2),
                 $"{payloadCount} payloads x ({formCount} forms x ({binaryCount} binary operators + {linkCount} x {linkCount} chain link "
                 + $"pairs) + {binaryCount} binary operators x {Pivots.Length} pivots x 2 sides)"),
-            SequenceFamily.Position => (payloadCount * (positionCount - 1) * (binaryCount + pairs),
+            SequenceBlock.Pivot => (payloadCount * binaryCount * Pivots.Length * SequencePivotFormSides,
+                $"{payloadCount} payloads x {binaryCount} binary operators x {Pivots.Length} pivots x {SequencePivotFormSides} "
+                + "(form, side) pairs of the other forms"),
+            SequenceBlock.Position => (payloadCount * (positionCount - 1) * (binaryCount + pairs),
                 $"{payloadCount} payloads x {positionCount - 1} further statement positions x ({binaryCount} binary operators + "
-                + $"{linkCount} x {linkCount} chain link pairs)"),
-            SequenceFamily.HoistLast => (payloadCount * formCount * pairs,
-                $"{payloadCount} payloads x {formCount} forms x {linkCount} x {linkCount} chain link pairs"),
-            _ => (payloadCount * pairs * linkCount, $"{payloadCount} payloads x {linkCount} x {linkCount} x {linkCount} chain link triples"),
+                + $"{linkCount} x {linkCount} chain link pairs), in the form {fact.Form}"),
+            SequenceBlock.HoistLast => (payloadCount * formCount * pairs,
+                $"{payloadCount} payloads x {formCount} forms x {linkCount} x {linkCount} chain link pairs, behind {fact.Hoist}"),
+            SequenceBlock.Triple => (payloadCount * firstLinkCount * pairs,
+                $"{payloadCount} payloads x {firstLinkCount} first links ({fact.First}) x {linkCount} x {linkCount} chain link "
+                + $"triples, in the form {fact.Form}"),
+            _ => throw new InvalidOperationException(block.ToString()),
         };
         Assert.True(expectedCount == sequences.Count,
             $"the generator made {sequences.Count} sequences; the axes give {expectedCount} ({product}): a sequence was dropped or invented");
+        Assert.All(sequences, s => Assert.True(s.Hoist == (fact.Hoist ?? SequenceHoist.None) && (fact.Form == null || s.Form == fact.Form)
+            && (fact.First == null || LinkKindOf(Enum.Parse<ComparisonOperator>(s.Operators[0].ToString())) == fact.First),
+            $"{s.Key}: not in the fact's slice"));
         Assert.Equal(sequences.Count, sequences.Select(s => s.Key).Distinct(StringComparer.Ordinal).Count());
 
         var harnessFailures = new List<string>();
@@ -2232,7 +2541,7 @@ public abstract class MembershipOperatorDifferentialBase : IntegrationTestBase
                 "operator_sequence.spy", harnessFailures, out var ranSource);
             foreach (var (id, verdict) in payloadVerdicts)
                 verdicts[id] = verdict;
-            if (ranSource != null && family == SequenceFamily.Main)
+            if (ranSource != null && block == SequenceBlock.Main)
             {
                 var (ranKinds, ranEqualities) = KindsOnBinaryOperators(payload.Name, ranSource);
                 kinds.UnionWith(ranKinds);
@@ -2267,6 +2576,10 @@ public abstract class MembershipOperatorDifferentialBase : IntegrationTestBase
             .ToDictionary(g => g.Key, g => g.ToDictionary(d => d.Sequence.Key, d => d.Observed, StringComparer.Ordinal),
                 StringComparer.Ordinal);
         var problems = PinProblems(actualByRow, allowlist, RowsOf(rowPrefix));
+        // Written on every run and before any control is asserted: the regenerated allowlist is what a red run
+        // leaves to work from.
+        var proposedPath = Path.Combine(reportDir, $"{report}-proposed-allowlist.txt");
+        File.WriteAllText(proposedPath, string.Join("\n", ProposedAllowlist(actualByRow, allowlist, RowsOf(rowPrefix))) + "\n");
         // Not a divergence of THIS contract, but never silent: a sequence both forms of which reach Roslyn
         // (SPY0908 is a net, not an error channel) is listed for the lead to file by class.
         var iceInBoth = sequences.Where(s => verdicts[s.CellId].RefusedBy is { } a && verdicts[s.ReferenceId].RefusedBy is { } b
@@ -2276,7 +2589,7 @@ public abstract class MembershipOperatorDifferentialBase : IntegrationTestBase
         File.WriteAllLines(icePath, iceInBoth.Select(s => s.Key).OrderBy(k => k, StringComparer.Ordinal));
         var ran = sequences.Count(s => verdicts[s.CellId].Values != null && verdicts[s.ReferenceId].Values != null);
         var refused = sequences.Count(s => verdicts[s.CellId].RefusedBy != null && verdicts[s.ReferenceId].RefusedBy != null);
-        Output.WriteLine($"{family}: {payloads.Count} payloads, {sequences.Count} sequences ({sequences.Count(s => s.Operators.Length == 1)} "
+        Output.WriteLine($"{fact.Name}: {payloads.Count} payloads, {sequences.Count} sequences ({sequences.Count(s => s.Operators.Length == 1)} "
             + $"binary, {sequences.Count(s => s.Operators.Length > 1)} chains): {ran} run in both forms, {refused} are refused in "
             + $"both ({iceInBoth.Count} of them by SPY0908 in both forms: {icePath}); {divergences.Count} divergent in "
             + $"{actualByRow.Count} rows; {problems.Count} pin problem line(s). "
@@ -2284,7 +2597,7 @@ public abstract class MembershipOperatorDifferentialBase : IntegrationTestBase
             + $"strategies: {string.Join(", ", equalities.OrderBy(k => k.ToString(), StringComparer.Ordinal))}. "
             + $"Every divergence: {divergencePath}");
 
-        if (family == SequenceFamily.Main)
+        if (block == SequenceBlock.Main)
         {
             // The operand types are closed against the compiler's lowerings, both enumerations.
             var unreached = Enum.GetValues<Sem.OperatorLoweringKind>()
@@ -2310,30 +2623,40 @@ public abstract class MembershipOperatorDifferentialBase : IntegrationTestBase
         // Positive controls: the instrument sees every answer it distinguishes.
         bool Agrees(Sequence s) => verdicts[s.CellId].Values is { } v && verdicts[s.ReferenceId].Values is { } r && v.SequenceEqual(r);
         var last = (sequences[0].Operators.Length == 1 ? 2 : sequences.Max(s => s.Operators.Length)).ToString(CultureInfo.InvariantCulture);
-        if (family == SequenceFamily.Main)
+        if (block is SequenceBlock.Main or SequenceBlock.Pivot)
         {
             // A sequence that runs in both forms and traces its operands left to right.
             Assert.Contains(sequences, s => s.Operators.Length == 1 && Agrees(s)
                 && verdicts[s.CellId].Values!.Take(2).SequenceEqual(new[] { "0", "1" }));
         }
-        if (family == SequenceFamily.Position)
+        if (block == SequenceBlock.Position)
         {
             // Each further position holds a sequence that runs in both forms and agrees.
             Assert.All(Enum.GetValues<SequencePosition>().Where(p => p != SequencePosition.Assignment),
                 p => Assert.Contains(sequences, s => s.Position == p && Agrees(s)));
         }
-        // A chain that evaluates its last operand, and one that short-circuits before it.
-        Assert.Contains(sequences, s => s.Operators.Length > 1 && Agrees(s) && verdicts[s.CellId].Values!.Contains(last));
-        Assert.Contains(sequences, s => s.Operators.Length > 1 && Agrees(s) && !verdicts[s.CellId].Values!.Contains(last)
-            && verdicts[s.CellId].Values!.Take(2).SequenceEqual(new[] { "0", "1" }));
+        // A chain that evaluates its last operand, and one that short-circuits before it: shown by every fact
+        // but those ChainControlExcluded names, and an excluded control that a chain does show is red.
+        var controlProblems = new List<string>();
+        foreach (var control in Enum.GetValues<ChainControl>())
+        {
+            var shown = sequences.Any(s => s.Operators.Length > 1 && Agrees(s) && (control == ChainControl.EvaluatesLastOperand
+                ? verdicts[s.CellId].Values!.Contains(last)
+                : !verdicts[s.CellId].Values!.Contains(last) && verdicts[s.CellId].Values!.Take(2).SequenceEqual(new[] { "0", "1" })));
+            var excluded = ChainControlExcluded(fact, control);
+            Assert.True(excluded == null || excluded.Trim().Length > 0, $"{control}: an exclusion without a reason");
+            if (shown != (excluded == null))
+                controlProblems.Add(shown
+                    ? $"{control}: ChainControlExcluded says no chain of this fact can show it ({excluded}) and one does: delete the exclusion"
+                    : $"{control}: no chain of this fact shows it: the instrument does not see it (fix it, or exclude it in ChainControlExcluded with its reason)");
+        }
+        Assert.True(controlProblems.Count == 0, $"{fact.Name}: " + string.Join("; ", controlProblems));
         // A sequence refused in both forms by the same code.
         Assert.Contains(sequences, s => verdicts[s.CellId].RefusedBy is { } a && verdicts[s.ReferenceId].RefusedBy is { } b && a.SetEquals(b));
         // Every reference that ran traced operand 0 first: the desugaring is the order the cell is held to.
         Assert.All(sequences.Where(s => verdicts[s.ReferenceId].Values is { Count: > 0 }),
             s => Assert.True(verdicts[s.ReferenceId].Values![0] is "0" or "raised", $"{s.Key}: its desugaring did not evaluate operand 0 first"));
 
-        var proposedPath = Path.Combine(reportDir, $"{report}-proposed-allowlist.txt");
-        File.WriteAllText(proposedPath, string.Join("\n", ProposedAllowlist(actualByRow, allowlist, RowsOf(rowPrefix))) + "\n");
         if (problems.Count > 0)
         {
             var problemPath = Path.Combine(reportDir, $"{report}-pin-problems.txt");
@@ -2846,18 +3169,39 @@ public abstract class MembershipOperatorDifferentialBase : IntegrationTestBase
 
     /// <summary>The row prefixes of the facts other than the value matrix's: a row belongs to exactly one fact
     /// (owner ruling 2026-11-14, #2645 comment 6870463430: "One row per fact and cause").</summary>
-    private const string PositionRowPrefix = "SequencePosition/";
-    private const string HoistRowPrefix = "SequenceHoist/";
-    private const string TripleRowPrefix = "SequenceTriple/";
     private const string LeftFormRowPrefix = "LeftForm/";
 
     private static readonly string[] FactRowPrefixes =
-        { OrderRowPrefix, SequenceRowPrefix, PositionRowPrefix, HoistRowPrefix, TripleRowPrefix, LeftFormRowPrefix };
+        new[] { OrderRowPrefix, LeftFormRowPrefix }.Concat(SequenceFacts().Select(f => f.RowPrefix)).ToArray();
 
     /// <summary>The rows a fact owns: those of its prefix, or (the value matrix) those of no other fact's.</summary>
     private static Func<string, bool> RowsOf(string? prefix) => prefix != null
         ? row => row.StartsWith(prefix, StringComparison.Ordinal)
         : row => !FactRowPrefixes.Any(p => row.StartsWith(p, StringComparison.Ordinal));
+
+    /// <summary>The rows a matrix fact owns: its observation's (<c>Order/</c> or none) of its needle group, the
+    /// last segment of every matrix row (<see cref="Cell.RowKey"/>).</summary>
+    private static Func<string, bool> MatrixRows(Observation observation, bool plainNeedle)
+    {
+        var observationRows = RowsOf(observation == Observation.Value ? null : OrderRowPrefix);
+        var needleRows = plainNeedle ? "/Plain" : "/NoneNeedle";
+        return row => observationRows(row) && row.EndsWith(needleRows, StringComparison.Ordinal);
+    }
+
+    /// <summary>Every fact of the generator and the rows it owns. A row of the allowlist that no fact owns would
+    /// never be checked, and one two facts own would be checked against half its cells:
+    /// <see cref="LoadAllowlist"/> holds every row to exactly one.</summary>
+    private static List<(string Fact, Func<string, bool> Owns)> RowOwners()
+    {
+        var owners = new List<(string Fact, Func<string, bool> Owns)>();
+        foreach (var observation in Enum.GetValues<Observation>())
+            foreach (var plainNeedle in new[] { true, false })
+                owners.Add(($"the {observation} matrix, {(plainNeedle ? "plain needles" : "needles that can be None")}",
+                    MatrixRows(observation, plainNeedle)));
+        owners.Add(("the left-operand forms", RowsOf(LeftFormRowPrefix)));
+        owners.AddRange(SequenceFacts().Select(f => (f.Name, RowsOf(f.RowPrefix))));
+        return owners;
+    }
 
     /// <summary>
     /// The ONE cause the bulk portion of a row may hold, as a predicate on a cell's pinned verdict, or null for a
@@ -2893,21 +3237,36 @@ public abstract class MembershipOperatorDifferentialBase : IntegrationTestBase
     /// </summary>
     private static readonly Dictionary<string, int> BulkCensus = new(StringComparer.Ordinal)
     {
-        ["ChainLink/NoneNeedle"] = 3884,
-        ["ChainLink/Plain"] = 2478,
+        ["ChainLink/NoneNeedle"] = 5304,
+        ["ChainLink/Plain"] = 3332,
         ["LeftForm/Chain"] = 574,
-        ["Order/ChainLink/NoneNeedle"] = 2438,
-        ["Order/ChainLink/Plain"] = 2478,
+        ["Order/ChainLink/NoneNeedle"] = 3278,
+        ["Order/ChainLink/Plain"] = 3332,
         ["Order/NoneNeedle"] = 3384,
         ["Order/Plain"] = 5058,
-        ["Order/UserIterable/NoneNeedle"] = 1800,
-        ["Order/UserIterable/Plain"] = 1830,
+        ["Order/UserIterable/NoneNeedle"] = 4320,
+        ["Order/UserIterable/Plain"] = 4392,
         ["Sequence/Chain"] = 6580,
-        ["SequenceHoist/Chain"] = 5288,
-        ["SequencePosition/Chain"] = 3472,
-        ["SequenceTriple/Chain"] = 19680,
-        ["UserIterable/NoneNeedle"] = 3360,
-        ["UserIterable/Plain"] = 1830,
+        ["SequenceHoist/Comprehension/Chain"] = 5288,
+        ["SequenceHoist/QuestionMark/Chain"] = 5288,
+        ["SequenceHoist/Spread/Chain"] = 5288,
+        ["SequenceHoist/Walrus/Chain"] = 5288,
+        ["SequencePosition/NoneLast/Chain"] = 2584,
+        ["SequencePosition/Optional/Chain"] = 3472,
+        ["SequencePosition/Plain/Chain"] = 3472,
+        ["SequencePosition/Tagged/Chain"] = 2560,
+        ["SequencePosition/TaggedLeft/Chain"] = 1072,
+        ["SequenceTriple/NoneLast/ComparisonFirst/Chain"] = 6072,
+        ["SequenceTriple/NoneLast/TestFirst/Chain"] = 6976,
+        ["SequenceTriple/Optional/ComparisonFirst/Chain"] = 8336,
+        ["SequenceTriple/Optional/TestFirst/Chain"] = 11344,
+        ["SequenceTriple/Plain/ComparisonFirst/Chain"] = 8336,
+        ["SequenceTriple/Plain/TestFirst/Chain"] = 11344,
+        ["SequenceTriple/Tagged/ComparisonFirst/Chain"] = 2560,
+        ["SequenceTriple/Tagged/TestFirst/Chain"] = 9216,
+        ["SequenceTriple/TaggedLeft/TestFirst/Chain"] = 3080,
+        ["UserIterable/NoneNeedle"] = 7620,
+        ["UserIterable/Plain"] = 4392,
     };
 
     /// <summary>How a row's divergent cells are written: the bulk portion (the cells of the row's one cause, when
@@ -3004,9 +3363,11 @@ public abstract class MembershipOperatorDifferentialBase : IntegrationTestBase
         "#",
         "# A row is '<row>  cells=N  pin=HEX  [bulk=M:HEX]  # citation': ONE fact's cells of ONE cause, citing its open",
         "# issue (owner ruling 2026-11-14, #2645). The row's prefix names its fact: Order/ the order observation,",
-        "# Sequence/ the operator sequences, SequencePosition/, SequenceHoist/ and SequenceTriple/ their further statement",
+        "# Sequence/ the operator sequences, SequencePivot/ their pivots in the other forms, SequencePosition/<form>/,",
+        "# SequenceHoist/<hoist>/ and SequenceTriple/<form>/<kind of first link>/ their further statement",
         "# positions, hoisting last operand and three-link chains, LeftForm/ the left-operand forms; any other row is the",
-        "# value matrix's. The '#= <cell> -> <observed",
+        "# value matrix's, and a matrix row's last segment (Plain, NoneNeedle) names its needle group, a fact each.",
+        "# The '#= <cell> -> <observed",
         "# verdict>' lines under a row pin its EXACT divergent cells: a pinned cell that starts passing, a cell that",
         "# starts diverging, or a pinned verdict that changes fails the test, and cells= and pin= (a SHA-256 prefix over",
         "# the sorted pin lines) must match them. Pin lines are comments, so scorecard_metrics.py counts one row each.",
@@ -3391,20 +3752,28 @@ public abstract class MembershipOperatorDifferentialBase : IntegrationTestBase
         Assert.True(!rows.Any(r => r.Contains("__iter__", StringComparison.Ordinal)),
             "the spec's Container kinds table now has an `__iter__` row: move R-NZ's containers from "
             + "RuledContainerKinds into SpecRowMap under that row");
-        // The `__iter__` shape axis: every shape of the ruling generates a container, the shapes' containers are
-        // exactly R-NZ's, and the producer shape is closed against the compiler's roster of producer types.
-        Assert.Equal(Enum.GetValues<IterShape>().OrderBy(v => v), IterShapes.Keys.OrderBy(v => v));
-        Assert.All(IterShapes, e => Assert.True(e.Value.Length > 0, $"{e.Key}: no container"));
-        Assert.Equal(RuledContainerKinds.Single(k => k.Ruling == "R-NZ").Generated.OrderBy(c => c),
-            IterShapes.Values.SelectMany(v => v).OrderBy(c => c));
+        // The `__iter__` axes: the table is the full product of the shapes (the producer shape once per producer
+        // type of the compiler's roster, none excluded) and the hosts, each kind with a container of its own, and
+        // those containers are exactly R-NZ's. From the enumeration, the roster and the host literal: never from
+        // the table itself.
         var deciderRoster = (string[])typeof(Sem.SemanticInfo).Assembly.GetType("Sharpy.Compiler.Semantic.IterableElementDecider")!
             .GetField("ProducerElementRoster", BindingFlags.Public | BindingFlags.Static)!.GetValue(null)!;
-        Assert.True(deciderRoster.OrderBy(n => n, StringComparer.Ordinal).SequenceEqual(ProducerRoster.Keys.OrderBy(n => n, StringComparer.Ordinal)),
-            "IterableElementDecider.ProducerElementRoster is [" + string.Join(", ", deciderRoster) + "]; ProducerRoster names ["
-            + string.Join(", ", ProducerRoster.Keys) + "]: generate or exclude (with a reason) each producer type");
-        Assert.All(ProducerRoster, e => Assert.True(e.Value.Generated != (e.Value.Excluded != null)
-            && (e.Value.Excluded ?? "-").Trim().Length > 0, $"{e.Key}: generated or an exclusion reason, exactly one"));
-        Assert.Contains(ProducerRoster, e => e.Value.Generated);
+        Assert.NotEmpty(deciderRoster);
+        var iterProduct = new List<string>();
+        foreach (var shape in Enum.GetValues<IterShape>())
+            foreach (var producer in shape == IterShape.Producer ? deciderRoster : new string?[] { null })
+                foreach (var genericHost in new[] { false, true })
+                    iterProduct.Add($"{shape}/{producer ?? "-"}/{(genericHost ? "generic" : "plain")}");
+        Assert.Equal((Enum.GetValues<IterShape>().Length - 1 + deciderRoster.Length) * IterHostCount, iterProduct.Count);
+        var iterTable = IterKinds.Select(k => $"{k.Shape}/{k.Producer ?? "-"}/{(k.GenericHost ? "generic" : "plain")}").ToList();
+        Assert.True(iterProduct.OrderBy(k => k, StringComparer.Ordinal).SequenceEqual(iterTable.OrderBy(k => k, StringComparer.Ordinal)),
+            "IterKinds is [" + string.Join(", ", iterTable) + "]; the shapes, IterableElementDecider.ProducerElementRoster ["
+            + string.Join(", ", deciderRoster) + "] and the two hosts give [" + string.Join(", ", iterProduct)
+            + "]: every `__iter__` shape and every producer type is generated on a plain and on a generic host");
+        Assert.Equal(IterKinds.Length, IterKinds.Select(k => k.Container).Distinct().Count());
+        Assert.Equal(IterKinds.Length, IterKinds.Select(k => k.Bag).Distinct(StringComparer.Ordinal).Count());
+        Assert.Equal(RuledContainerKinds.Single(k => k.Ruling == "R-NZ").Generated.OrderBy(c => c),
+            IterKinds.Select(k => k.Container).OrderBy(c => c));
         var fromRows = SpecRowMap.SelectMany(m => m.Generated).Concat(ruled).ToList();
         Assert.Equal(fromRows.Count, fromRows.Distinct().Count());
         Assert.Equal(Enum.GetValues<Container>().OrderBy(c => c), fromRows.OrderBy(c => c));
@@ -3450,18 +3819,22 @@ public abstract class MembershipOperatorDifferentialBase : IntegrationTestBase
                 bulk != null ? (int.Parse(bulk[0], CultureInfo.InvariantCulture), bulk[1]) : null);
             rows.Add(tokens[0], current);
         }
+        var owners = RowOwners();
+        Assert.All(rows.Keys, row => Assert.True(owners.Count(o => o.Owns(row)) == 1,
+            $"{AllowlistFileName}: the row {row} is owned by {owners.Count(o => o.Owns(row))} facts ["
+            + string.Join("; ", owners.Where(o => o.Owns(row)).Select(o => o.Fact)) + "]: a row is one fact's (one fact and one cause a row)"));
         return rows;
     }
 }
 
-/// <summary>The value matrix and the left-operand forms of <see cref="MembershipOperatorDifferentialBase"/>.</summary>
+/// <summary>The value matrix and its needle groups: two facts of <see cref="MembershipOperatorDifferentialBase"/>.</summary>
 public sealed class OptionalMembershipDifferentialTests : MembershipOperatorDifferentialBase
 {
     public OptionalMembershipDifferentialTests(ITestOutputHelper output) : base(output) { }
 
     [SkippableFact]
-    public void OptionalNeedle_EveryContainerOperatorPosition_MatchesCPython() => RunValueMatrix();
+    public void PlainNeedle_EveryContainerOperatorPosition_MatchesCPython() => RunValueMatrix(plainNeedle: true);
 
-    [Fact]
-    public void Membership_EveryLeftOperandForm_IsItsDesugaring() => RunLeftOperandForms();
+    [SkippableFact]
+    public void OptionalNeedle_EveryContainerOperatorPosition_MatchesCPython() => RunValueMatrix(plainNeedle: false);
 }

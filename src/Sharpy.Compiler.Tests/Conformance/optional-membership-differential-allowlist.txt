@@ -2,9 +2,11 @@
 #
 # A row is '<row>  cells=N  pin=HEX  [bulk=M:HEX]  # citation': ONE fact's cells of ONE cause, citing its open
 # issue (owner ruling 2026-11-14, #2645). The row's prefix names its fact: Order/ the order observation,
-# Sequence/ the operator sequences, SequencePosition/, SequenceHoist/ and SequenceTriple/ their further statement
+# Sequence/ the operator sequences, SequencePivot/ their pivots in the other forms, SequencePosition/<form>/,
+# SequenceHoist/<hoist>/ and SequenceTriple/<form>/<kind of first link>/ their further statement
 # positions, hoisting last operand and three-link chains, LeftForm/ the left-operand forms; any other row is the
-# value matrix's. The '#= <cell> -> <observed
+# value matrix's, and a matrix row's last segment (Plain, NoneNeedle) names its needle group, a fact each.
+# The '#= <cell> -> <observed
 # verdict>' lines under a row pin its EXACT divergent cells: a pinned cell that starts passing, a cell that
 # starts diverging, or a pinned verdict that changes fails the test, and cells= and pin= (a SHA-256 prefix over
 # the sorted pin lines) must match them. Pin lines are comments, so scorecard_metrics.py counts one row each.
@@ -31,7 +33,7 @@ Bytes/NoneNeedle  cells=6  pin=45df7f844b74e640  # see #2674 (owner ruling H, 20
 #= T: struct/Bytes/Optional/not in/Expression -> sharpy refused SPY0220,SPY0222 | expected refused SPY0222
 #= T: struct/Bytes/Optional/not in/IfCondition -> sharpy refused SPY0220,SPY0222 | expected refused SPY0222
 
-ChainLink/NoneNeedle  cells=60  pin=09f1e6f3637bbf9e  bulk=3884:b69e71049b5f3211  # see #2648 (plan P93): an `in` / `not in` link of a comparison chain is refused by code generation (SPY0519: the bulk portion) where its binary twins run or are refused by another code. A chain link takes its binary twins' verdict (owner rulings 2026-11-13): the membership link's by rule, the head link's as measured. Pin lines: cells an earlier stage refuses first, the `T: struct` Optional cells (SPY0220 at the feeder's call, #2674; their head link reaches Roslyn) and the literal-None cells of a `__getitem__` + `__len__` class over a type parameter (SPY0222 from the needle check where SPY0320 is due, #2653).
+ChainLink/NoneNeedle  cells=74  pin=cd31ee9de7d374c4  bulk=5304:b9daac6b3f285be8  # see #2648 (plan P93): an `in` / `not in` link of a comparison chain is refused by code generation (SPY0519: the bulk portion) where its binary twins run or are refused by another code. A chain link takes its binary twins' verdict (owner rulings 2026-11-13): the membership link's by rule, the head link's as measured. Pin lines: cells an earlier stage refuses first, the `T: struct` Optional cells (SPY0220 at the feeder's call, #2674; their head link reaches Roslyn) and the literal-None cells of a `__getitem__` + `__len__` class over a type parameter (SPY0222 from the needle check where SPY0320 is due, #2653).
 #= T/GetItemLen/NoneLiteral/in/ChainLink -> sharpy refused SPY0222 | expected refused SPY0320
 #= T/GetItemLen/NoneLiteral/not in/ChainLink -> sharpy refused SPY0222 | expected refused SPY0320
 #= T: class/GetItemLen/NoneLiteral/in/ChainLink -> sharpy refused SPY0222 | expected refused SPY0320
@@ -64,6 +66,16 @@ ChainLink/NoneNeedle  cells=60  pin=09f1e6f3637bbf9e  bulk=3884:b69e71049b5f3211
 #= T: struct/FrozenSet/Optional/not in/ChainLink -> sharpy refused SPY0220 | expected refused SPY0908
 #= T: struct/GenericIterDunder/Optional/in/ChainLink -> sharpy refused SPY0220 | expected refused SPY0908
 #= T: struct/GenericIterDunder/Optional/not in/ChainLink -> sharpy refused SPY0220 | expected refused SPY0908
+#= T: struct/GenericIterEnumerable/Optional/in/ChainLink -> sharpy refused SPY0220 | expected refused SPY0908
+#= T: struct/GenericIterEnumerable/Optional/not in/ChainLink -> sharpy refused SPY0220 | expected refused SPY0908
+#= T: struct/GenericIterEnumerator/Optional/in/ChainLink -> sharpy refused SPY0220 | expected refused SPY0908
+#= T: struct/GenericIterEnumerator/Optional/not in/ChainLink -> sharpy refused SPY0220 | expected refused SPY0908
+#= T: struct/GenericIterGenerator/Optional/in/ChainLink -> sharpy refused SPY0220 | expected refused SPY0908
+#= T: struct/GenericIterGenerator/Optional/not in/ChainLink -> sharpy refused SPY0220 | expected refused SPY0908
+#= T: struct/GenericIterInherited/Optional/in/ChainLink -> sharpy refused SPY0220 | expected refused SPY0908
+#= T: struct/GenericIterInherited/Optional/not in/ChainLink -> sharpy refused SPY0220 | expected refused SPY0908
+#= T: struct/GenericIterNext/Optional/in/ChainLink -> sharpy refused SPY0220 | expected refused SPY0908
+#= T: struct/GenericIterNext/Optional/not in/ChainLink -> sharpy refused SPY0220 | expected refused SPY0908
 #= T: struct/GetItemLen/NoneLiteral/in/ChainLink -> sharpy refused SPY0222 | expected refused SPY0320
 #= T: struct/GetItemLen/NoneLiteral/not in/ChainLink -> sharpy refused SPY0222 | expected refused SPY0320
 #= T: struct/GetItemLen/Optional/in/ChainLink -> sharpy refused SPY0220 | expected refused SPY0320|SPY0908
@@ -74,6 +86,10 @@ ChainLink/NoneNeedle  cells=60  pin=09f1e6f3637bbf9e  bulk=3884:b69e71049b5f3211
 #= T: struct/IPv6Network/Optional/not in/ChainLink -> sharpy refused SPY0220,SPY0222 | expected refused SPY0222|SPY0908
 #= T: struct/IterDunder/Optional/in/ChainLink -> sharpy refused SPY0220 | expected refused SPY0908
 #= T: struct/IterDunder/Optional/not in/ChainLink -> sharpy refused SPY0220 | expected refused SPY0908
+#= T: struct/IterEnumerable/Optional/in/ChainLink -> sharpy refused SPY0220 | expected refused SPY0908
+#= T: struct/IterEnumerable/Optional/not in/ChainLink -> sharpy refused SPY0220 | expected refused SPY0908
+#= T: struct/IterEnumerator/Optional/in/ChainLink -> sharpy refused SPY0220 | expected refused SPY0908
+#= T: struct/IterEnumerator/Optional/not in/ChainLink -> sharpy refused SPY0220 | expected refused SPY0908
 #= T: struct/IterGenerator/Optional/in/ChainLink -> sharpy refused SPY0220 | expected refused SPY0908
 #= T: struct/IterGenerator/Optional/not in/ChainLink -> sharpy refused SPY0220 | expected refused SPY0908
 #= T: struct/IterInherited/Optional/in/ChainLink -> sharpy refused SPY0220 | expected refused SPY0908
@@ -93,7 +109,7 @@ ChainLink/NoneNeedle  cells=60  pin=09f1e6f3637bbf9e  bulk=3884:b69e71049b5f3211
 #= T: struct/Tuple/Optional/in/ChainLink -> sharpy refused SPY0220 | expected refused SPY0908
 #= T: struct/Tuple/Optional/not in/ChainLink -> sharpy refused SPY0220 | expected refused SPY0908
 
-ChainLink/Plain  cells=0  pin=e3b0c44298fc1c14  bulk=2478:adf0c038a5faa5b1  # see #2648 (plan P93): an `in` / `not in` link of a comparison chain is refused by code generation (SPY0519: the bulk portion) where its binary twins run or are refused by another code. A chain link takes its binary twins' verdict (owner rulings 2026-11-13): the membership link's by rule, the head link's as measured.
+ChainLink/Plain  cells=0  pin=e3b0c44298fc1c14  bulk=3332:054ea138bc2e8fda  # see #2648 (plan P93): an `in` / `not in` link of a comparison chain is refused by code generation (SPY0519: the bulk portion) where its binary twins run or are refused by another code. A chain link takes its binary twins' verdict (owner rulings 2026-11-13): the membership link's by rule, the head link's as measured.
 
 ChainMap/NoneNeedle  cells=24  pin=7f7b0f30437a9622  # see #2674 (owner ruling H, 2026-11-12): the 24 Optional cells of `Color`, `GS[int]`, `Self@SS` (6 each, SPY0908) and `T: struct` (6, SPY0220) wait on the value-ness work
 #= Color/ChainMap/Optional/in/ComprehensionFilter -> sharpy refused SPY0908 | expected python True False False
@@ -1671,7 +1687,7 @@ Order/Bytes/NoneNeedle  cells=6  pin=864440cbbe20cf68  # see #2674 (owner ruling
 #= T: struct/Bytes/Optional/not in/Expression/Order -> sharpy refused SPY0220,SPY0222 | expected refused SPY0222
 #= T: struct/Bytes/Optional/not in/IfCondition/Order -> sharpy refused SPY0220,SPY0222 | expected refused SPY0222
 
-Order/ChainLink/NoneNeedle  cells=54  pin=981f7f1ce97a75dd  bulk=2438:d96f3259bdde0a93  # see #2648 (plan P93): an `in` / `not in` link of a comparison chain is refused by code generation (SPY0519: the bulk portion) where its binary twins run or are refused by another code. A chain link takes its binary twins' verdict (owner rulings 2026-11-13): the membership link's by rule, the head link's as measured. Pin lines: cells an earlier stage refuses first, the `T: struct` Optional cells (SPY0220 at the feeder's call, #2674; their head link reaches Roslyn) and the literal-None cells of a `__getitem__` + `__len__` class over a type parameter (SPY0222 from the needle check where SPY0320 is due, #2653). Here by the order observation: the cells whose value twin diverges too.
+Order/ChainLink/NoneNeedle  cells=68  pin=9abe9bcbe26cd1b6  bulk=3278:f7b346fbcd5cdfce  # see #2648 (plan P93): an `in` / `not in` link of a comparison chain is refused by code generation (SPY0519: the bulk portion) where its binary twins run or are refused by another code. A chain link takes its binary twins' verdict (owner rulings 2026-11-13): the membership link's by rule, the head link's as measured. Pin lines: cells an earlier stage refuses first, the `T: struct` Optional cells (SPY0220 at the feeder's call, #2674; their head link reaches Roslyn) and the literal-None cells of a `__getitem__` + `__len__` class over a type parameter (SPY0222 from the needle check where SPY0320 is due, #2653). Here by the order observation: the cells whose value twin diverges too.
 #= T: struct/ArgparseNamespace/Optional/in/ChainLink/Order -> sharpy refused SPY0220,SPY0222 | expected refused SPY0222|SPY0908
 #= T: struct/ArgparseNamespace/Optional/not in/ChainLink/Order -> sharpy refused SPY0220,SPY0222 | expected refused SPY0222|SPY0908
 #= T: struct/Bytes/Optional/in/ChainLink/Order -> sharpy refused SPY0220,SPY0222 | expected refused SPY0222|SPY0908
@@ -1700,6 +1716,16 @@ Order/ChainLink/NoneNeedle  cells=54  pin=981f7f1ce97a75dd  bulk=2438:d96f3259bd
 #= T: struct/FrozenSet/Optional/not in/ChainLink/Order -> sharpy refused SPY0220 | expected refused SPY0908
 #= T: struct/GenericIterDunder/Optional/in/ChainLink/Order -> sharpy refused SPY0220 | expected refused SPY0908
 #= T: struct/GenericIterDunder/Optional/not in/ChainLink/Order -> sharpy refused SPY0220 | expected refused SPY0908
+#= T: struct/GenericIterEnumerable/Optional/in/ChainLink/Order -> sharpy refused SPY0220 | expected refused SPY0908
+#= T: struct/GenericIterEnumerable/Optional/not in/ChainLink/Order -> sharpy refused SPY0220 | expected refused SPY0908
+#= T: struct/GenericIterEnumerator/Optional/in/ChainLink/Order -> sharpy refused SPY0220 | expected refused SPY0908
+#= T: struct/GenericIterEnumerator/Optional/not in/ChainLink/Order -> sharpy refused SPY0220 | expected refused SPY0908
+#= T: struct/GenericIterGenerator/Optional/in/ChainLink/Order -> sharpy refused SPY0220 | expected refused SPY0908
+#= T: struct/GenericIterGenerator/Optional/not in/ChainLink/Order -> sharpy refused SPY0220 | expected refused SPY0908
+#= T: struct/GenericIterInherited/Optional/in/ChainLink/Order -> sharpy refused SPY0220 | expected refused SPY0908
+#= T: struct/GenericIterInherited/Optional/not in/ChainLink/Order -> sharpy refused SPY0220 | expected refused SPY0908
+#= T: struct/GenericIterNext/Optional/in/ChainLink/Order -> sharpy refused SPY0220 | expected refused SPY0908
+#= T: struct/GenericIterNext/Optional/not in/ChainLink/Order -> sharpy refused SPY0220 | expected refused SPY0908
 #= T: struct/GetItemLen/Optional/in/ChainLink/Order -> sharpy refused SPY0220 | expected refused SPY0320|SPY0908
 #= T: struct/GetItemLen/Optional/not in/ChainLink/Order -> sharpy refused SPY0220 | expected refused SPY0320|SPY0908
 #= T: struct/IPv4Network/Optional/in/ChainLink/Order -> sharpy refused SPY0220,SPY0222 | expected refused SPY0222|SPY0908
@@ -1708,6 +1734,10 @@ Order/ChainLink/NoneNeedle  cells=54  pin=981f7f1ce97a75dd  bulk=2438:d96f3259bd
 #= T: struct/IPv6Network/Optional/not in/ChainLink/Order -> sharpy refused SPY0220,SPY0222 | expected refused SPY0222|SPY0908
 #= T: struct/IterDunder/Optional/in/ChainLink/Order -> sharpy refused SPY0220 | expected refused SPY0908
 #= T: struct/IterDunder/Optional/not in/ChainLink/Order -> sharpy refused SPY0220 | expected refused SPY0908
+#= T: struct/IterEnumerable/Optional/in/ChainLink/Order -> sharpy refused SPY0220 | expected refused SPY0908
+#= T: struct/IterEnumerable/Optional/not in/ChainLink/Order -> sharpy refused SPY0220 | expected refused SPY0908
+#= T: struct/IterEnumerator/Optional/in/ChainLink/Order -> sharpy refused SPY0220 | expected refused SPY0908
+#= T: struct/IterEnumerator/Optional/not in/ChainLink/Order -> sharpy refused SPY0220 | expected refused SPY0908
 #= T: struct/IterGenerator/Optional/in/ChainLink/Order -> sharpy refused SPY0220 | expected refused SPY0908
 #= T: struct/IterGenerator/Optional/not in/ChainLink/Order -> sharpy refused SPY0220 | expected refused SPY0908
 #= T: struct/IterInherited/Optional/in/ChainLink/Order -> sharpy refused SPY0220 | expected refused SPY0908
@@ -1727,7 +1757,7 @@ Order/ChainLink/NoneNeedle  cells=54  pin=981f7f1ce97a75dd  bulk=2438:d96f3259bd
 #= T: struct/Tuple/Optional/in/ChainLink/Order -> sharpy refused SPY0220 | expected refused SPY0908
 #= T: struct/Tuple/Optional/not in/ChainLink/Order -> sharpy refused SPY0220 | expected refused SPY0908
 
-Order/ChainLink/Plain  cells=0  pin=e3b0c44298fc1c14  bulk=2478:edeebc408f3b7c27  # see #2648 (plan P93): an `in` / `not in` link of a comparison chain is refused by code generation (SPY0519: the bulk portion) where its binary twins run or are refused by another code. A chain link takes its binary twins' verdict (owner rulings 2026-11-13): the membership link's by rule, the head link's as measured. Here by the order observation: the cells whose value twin diverges too.
+Order/ChainLink/Plain  cells=0  pin=e3b0c44298fc1c14  bulk=3332:919b45bef8d7fc6f  # see #2648 (plan P93): an `in` / `not in` link of a comparison chain is refused by code generation (SPY0519: the bulk portion) where its binary twins run or are refused by another code. A chain link takes its binary twins' verdict (owner rulings 2026-11-13): the membership link's by rule, the head link's as measured. Here by the order observation: the cells whose value twin diverges too.
 
 Order/ChainMap/NoneNeedle  cells=24  pin=fe2eb970835c39f3  # see #2674 (owner ruling H, 2026-11-12): the 24 Optional cells of `Color`, `GS[int]`, `Self@SS` (6 each, SPY0908) and `T: struct` (6, SPY0220) wait on the value-ness work. Here by the order observation: the cells whose value twin diverges too.
 #= Color/ChainMap/Optional/in/ComprehensionFilter/Order -> sharpy refused SPY0908 | expected python n c True n c False n c False
@@ -2509,19 +2539,61 @@ Order/Tuple/NoneNeedle  cells=24  pin=f7c8f07857c57778  # see #2674 (owner rulin
 #= T: struct/Tuple/Optional/not in/Expression/Order -> sharpy refused SPY0220 | expected python n c False n c True n c True
 #= T: struct/Tuple/Optional/not in/IfCondition/Order -> sharpy refused SPY0220 | expected python n c False n c True n c True
 
-Order/UserIterable/NoneNeedle  cells=30  pin=3e921c8f689bec4a  bulk=1800:d35d776f40bffd73  # see #2653 (plan P93, owner ruling R-NZ 2026-11-12): a class that only iterates (any shape of `__iter__`, plain or generic) is refused outside a chain (SPY0320: the bulk portion). Pin lines: the Optional cells of `T: struct` (SPY0220 at the feeder's call, #2674). Here by the order observation: the cells whose value twin diverges too.
+Order/UserIterable/NoneNeedle  cells=72  pin=3ff6c2d8aa9c2fb6  bulk=4320:6e151177dad2dd5f  # see #2653 (plan P93, owner ruling R-NZ 2026-11-12): a class that only iterates (any shape of `__iter__`, plain or generic) is refused outside a chain (SPY0320: the bulk portion). Pin lines: the Optional cells of `T: struct` (SPY0220 at the feeder's call, #2674). Here by the order observation: the cells whose value twin diverges too.
 #= T: struct/GenericIterDunder/Optional/in/ComprehensionFilter/Order -> sharpy refused SPY0220 | expected python n c True n c False n c False
 #= T: struct/GenericIterDunder/Optional/in/Expression/Order -> sharpy refused SPY0220 | expected python n c True n c False n c False
 #= T: struct/GenericIterDunder/Optional/in/IfCondition/Order -> sharpy refused SPY0220 | expected python n c True n c False n c False
 #= T: struct/GenericIterDunder/Optional/not in/ComprehensionFilter/Order -> sharpy refused SPY0220 | expected python n c False n c True n c True
 #= T: struct/GenericIterDunder/Optional/not in/Expression/Order -> sharpy refused SPY0220 | expected python n c False n c True n c True
 #= T: struct/GenericIterDunder/Optional/not in/IfCondition/Order -> sharpy refused SPY0220 | expected python n c False n c True n c True
+#= T: struct/GenericIterEnumerable/Optional/in/ComprehensionFilter/Order -> sharpy refused SPY0220 | expected python n c True n c False n c False
+#= T: struct/GenericIterEnumerable/Optional/in/Expression/Order -> sharpy refused SPY0220 | expected python n c True n c False n c False
+#= T: struct/GenericIterEnumerable/Optional/in/IfCondition/Order -> sharpy refused SPY0220 | expected python n c True n c False n c False
+#= T: struct/GenericIterEnumerable/Optional/not in/ComprehensionFilter/Order -> sharpy refused SPY0220 | expected python n c False n c True n c True
+#= T: struct/GenericIterEnumerable/Optional/not in/Expression/Order -> sharpy refused SPY0220 | expected python n c False n c True n c True
+#= T: struct/GenericIterEnumerable/Optional/not in/IfCondition/Order -> sharpy refused SPY0220 | expected python n c False n c True n c True
+#= T: struct/GenericIterEnumerator/Optional/in/ComprehensionFilter/Order -> sharpy refused SPY0220 | expected python n c True n c False n c False
+#= T: struct/GenericIterEnumerator/Optional/in/Expression/Order -> sharpy refused SPY0220 | expected python n c True n c False n c False
+#= T: struct/GenericIterEnumerator/Optional/in/IfCondition/Order -> sharpy refused SPY0220 | expected python n c True n c False n c False
+#= T: struct/GenericIterEnumerator/Optional/not in/ComprehensionFilter/Order -> sharpy refused SPY0220 | expected python n c False n c True n c True
+#= T: struct/GenericIterEnumerator/Optional/not in/Expression/Order -> sharpy refused SPY0220 | expected python n c False n c True n c True
+#= T: struct/GenericIterEnumerator/Optional/not in/IfCondition/Order -> sharpy refused SPY0220 | expected python n c False n c True n c True
+#= T: struct/GenericIterGenerator/Optional/in/ComprehensionFilter/Order -> sharpy refused SPY0220 | expected python n c True n c False n c False
+#= T: struct/GenericIterGenerator/Optional/in/Expression/Order -> sharpy refused SPY0220 | expected python n c True n c False n c False
+#= T: struct/GenericIterGenerator/Optional/in/IfCondition/Order -> sharpy refused SPY0220 | expected python n c True n c False n c False
+#= T: struct/GenericIterGenerator/Optional/not in/ComprehensionFilter/Order -> sharpy refused SPY0220 | expected python n c False n c True n c True
+#= T: struct/GenericIterGenerator/Optional/not in/Expression/Order -> sharpy refused SPY0220 | expected python n c False n c True n c True
+#= T: struct/GenericIterGenerator/Optional/not in/IfCondition/Order -> sharpy refused SPY0220 | expected python n c False n c True n c True
+#= T: struct/GenericIterInherited/Optional/in/ComprehensionFilter/Order -> sharpy refused SPY0220 | expected python n c True n c False n c False
+#= T: struct/GenericIterInherited/Optional/in/Expression/Order -> sharpy refused SPY0220 | expected python n c True n c False n c False
+#= T: struct/GenericIterInherited/Optional/in/IfCondition/Order -> sharpy refused SPY0220 | expected python n c True n c False n c False
+#= T: struct/GenericIterInherited/Optional/not in/ComprehensionFilter/Order -> sharpy refused SPY0220 | expected python n c False n c True n c True
+#= T: struct/GenericIterInherited/Optional/not in/Expression/Order -> sharpy refused SPY0220 | expected python n c False n c True n c True
+#= T: struct/GenericIterInherited/Optional/not in/IfCondition/Order -> sharpy refused SPY0220 | expected python n c False n c True n c True
+#= T: struct/GenericIterNext/Optional/in/ComprehensionFilter/Order -> sharpy refused SPY0220 | expected python n c True n c False n c False
+#= T: struct/GenericIterNext/Optional/in/Expression/Order -> sharpy refused SPY0220 | expected python n c True n c False n c False
+#= T: struct/GenericIterNext/Optional/in/IfCondition/Order -> sharpy refused SPY0220 | expected python n c True n c False n c False
+#= T: struct/GenericIterNext/Optional/not in/ComprehensionFilter/Order -> sharpy refused SPY0220 | expected python n c False n c True n c True
+#= T: struct/GenericIterNext/Optional/not in/Expression/Order -> sharpy refused SPY0220 | expected python n c False n c True n c True
+#= T: struct/GenericIterNext/Optional/not in/IfCondition/Order -> sharpy refused SPY0220 | expected python n c False n c True n c True
 #= T: struct/IterDunder/Optional/in/ComprehensionFilter/Order -> sharpy refused SPY0220 | expected python n c True n c False n c False
 #= T: struct/IterDunder/Optional/in/Expression/Order -> sharpy refused SPY0220 | expected python n c True n c False n c False
 #= T: struct/IterDunder/Optional/in/IfCondition/Order -> sharpy refused SPY0220 | expected python n c True n c False n c False
 #= T: struct/IterDunder/Optional/not in/ComprehensionFilter/Order -> sharpy refused SPY0220 | expected python n c False n c True n c True
 #= T: struct/IterDunder/Optional/not in/Expression/Order -> sharpy refused SPY0220 | expected python n c False n c True n c True
 #= T: struct/IterDunder/Optional/not in/IfCondition/Order -> sharpy refused SPY0220 | expected python n c False n c True n c True
+#= T: struct/IterEnumerable/Optional/in/ComprehensionFilter/Order -> sharpy refused SPY0220 | expected python n c True n c False n c False
+#= T: struct/IterEnumerable/Optional/in/Expression/Order -> sharpy refused SPY0220 | expected python n c True n c False n c False
+#= T: struct/IterEnumerable/Optional/in/IfCondition/Order -> sharpy refused SPY0220 | expected python n c True n c False n c False
+#= T: struct/IterEnumerable/Optional/not in/ComprehensionFilter/Order -> sharpy refused SPY0220 | expected python n c False n c True n c True
+#= T: struct/IterEnumerable/Optional/not in/Expression/Order -> sharpy refused SPY0220 | expected python n c False n c True n c True
+#= T: struct/IterEnumerable/Optional/not in/IfCondition/Order -> sharpy refused SPY0220 | expected python n c False n c True n c True
+#= T: struct/IterEnumerator/Optional/in/ComprehensionFilter/Order -> sharpy refused SPY0220 | expected python n c True n c False n c False
+#= T: struct/IterEnumerator/Optional/in/Expression/Order -> sharpy refused SPY0220 | expected python n c True n c False n c False
+#= T: struct/IterEnumerator/Optional/in/IfCondition/Order -> sharpy refused SPY0220 | expected python n c True n c False n c False
+#= T: struct/IterEnumerator/Optional/not in/ComprehensionFilter/Order -> sharpy refused SPY0220 | expected python n c False n c True n c True
+#= T: struct/IterEnumerator/Optional/not in/Expression/Order -> sharpy refused SPY0220 | expected python n c False n c True n c True
+#= T: struct/IterEnumerator/Optional/not in/IfCondition/Order -> sharpy refused SPY0220 | expected python n c False n c True n c True
 #= T: struct/IterGenerator/Optional/in/ComprehensionFilter/Order -> sharpy refused SPY0220 | expected python n c True n c False n c False
 #= T: struct/IterGenerator/Optional/in/Expression/Order -> sharpy refused SPY0220 | expected python n c True n c False n c False
 #= T: struct/IterGenerator/Optional/in/IfCondition/Order -> sharpy refused SPY0220 | expected python n c True n c False n c False
@@ -2541,7 +2613,7 @@ Order/UserIterable/NoneNeedle  cells=30  pin=3e921c8f689bec4a  bulk=1800:d35d776
 #= T: struct/IterNext/Optional/not in/Expression/Order -> sharpy refused SPY0220 | expected python n c False n c True n c True
 #= T: struct/IterNext/Optional/not in/IfCondition/Order -> sharpy refused SPY0220 | expected python n c False n c True n c True
 
-Order/UserIterable/Plain  cells=0  pin=e3b0c44298fc1c14  bulk=1830:7a4f71d8dfa2a2c9  # see #2653 (plan P93, owner ruling R-NZ 2026-11-12): a class that only iterates (any shape of `__iter__`, plain or generic) is refused outside a chain (SPY0320: the bulk portion). Here by the order observation: the cells whose value twin diverges too.
+Order/UserIterable/Plain  cells=0  pin=e3b0c44298fc1c14  bulk=4392:ad7fd87b9ad7118d  # see #2653 (plan P93, owner ruling R-NZ 2026-11-12): a class that only iterates (any shape of `__iter__`, plain or generic) is refused outside a chain (SPY0320: the bulk portion). Here by the order observation: the cells whose value twin diverges too.
 
 OrderedDict/NoneNeedle  cells=24  pin=666d68d8ccbed710  # see #2674 (owner ruling H, 2026-11-12): the 24 Optional cells of `Color`, `GS[int]`, `Self@SS` (6 each, SPY0908) and `T: struct` (6, SPY0220) wait on the value-ness work
 #= Color/OrderedDict/Optional/in/ComprehensionFilter -> sharpy refused SPY0908 | expected python True False False
@@ -2910,41 +2982,327 @@ Sequence/Chain  cells=52  pin=b2c35431a3267261  bulk=6580:5ded1f2588260732  # se
 #= object/Plain/==,!= -> sharpy prints 0 1 False | desugaring refused SPY0402
 #= object/Plain/==,== -> sharpy prints 0 1 False | desugaring refused SPY0402
 
-SequenceHoist/Chain  cells=32  pin=8b6b28fd668ef6bd  bulk=5288:456b67745f77f70e  # see #2648 (plan P93): the same refusal (SPY0519: the bulk portion) for a chain whose last operand hoists statements, and the same pin lines: a chain whose `==` / `!=` link the binary form refuses (SPY0402) compiles or reaches Roslyn
-#= D/Plain/!=,!=/HoistLast -> sharpy prints 0 1 2 True | desugaring refused SPY0402
-#= D/Plain/!=,==/HoistLast -> sharpy prints 0 1 2 False | desugaring refused SPY0402
-#= D/Plain/==,!=/HoistLast -> sharpy prints 0 1 False | desugaring refused SPY0402
-#= D/Plain/==,==/HoistLast -> sharpy prints 0 1 False | desugaring refused SPY0402
-#= GK[int]/Plain/!=,!=/HoistLast -> sharpy prints 0 1 2 True | desugaring refused SPY0402
-#= GK[int]/Plain/!=,==/HoistLast -> sharpy prints 0 1 2 False | desugaring refused SPY0402
-#= GK[int]/Plain/==,!=/HoistLast -> sharpy prints 0 1 False | desugaring refused SPY0402
-#= GK[int]/Plain/==,==/HoistLast -> sharpy prints 0 1 False | desugaring refused SPY0402
-#= GS[int]/Plain/!=,!=/HoistLast -> sharpy refused SPY0908 | desugaring refused SPY0402
-#= GS[int]/Plain/!=,==/HoistLast -> sharpy refused SPY0908 | desugaring refused SPY0402
-#= GS[int]/Plain/==,!=/HoistLast -> sharpy refused SPY0908 | desugaring refused SPY0402
-#= GS[int]/Plain/==,==/HoistLast -> sharpy refused SPY0908 | desugaring refused SPY0402
-#= IFace/Plain/!=,!=/HoistLast -> sharpy prints 0 1 2 True | desugaring refused SPY0402
-#= IFace/Plain/!=,==/HoistLast -> sharpy prints 0 1 2 False | desugaring refused SPY0402
-#= IFace/Plain/==,!=/HoistLast -> sharpy prints 0 1 False | desugaring refused SPY0402
-#= IFace/Plain/==,==/HoistLast -> sharpy prints 0 1 False | desugaring refused SPY0402
-#= K/Plain/!=,!=/HoistLast -> sharpy prints 0 1 2 True | desugaring refused SPY0402
-#= K/Plain/!=,==/HoistLast -> sharpy prints 0 1 2 False | desugaring refused SPY0402
-#= K/Plain/==,!=/HoistLast -> sharpy prints 0 1 False | desugaring refused SPY0402
-#= K/Plain/==,==/HoistLast -> sharpy prints 0 1 False | desugaring refused SPY0402
-#= SP/Plain/!=,!=/HoistLast -> sharpy refused SPY0908 | desugaring refused SPY0402
-#= SP/Plain/!=,==/HoistLast -> sharpy refused SPY0908 | desugaring refused SPY0402
-#= SP/Plain/==,!=/HoistLast -> sharpy refused SPY0908 | desugaring refused SPY0402
-#= SP/Plain/==,==/HoistLast -> sharpy refused SPY0908 | desugaring refused SPY0402
-#= U/Plain/!=,!=/HoistLast -> sharpy prints 0 1 2 True | desugaring refused SPY0402
-#= U/Plain/!=,==/HoistLast -> sharpy prints 0 1 2 False | desugaring refused SPY0402
-#= U/Plain/==,!=/HoistLast -> sharpy prints 0 1 False | desugaring refused SPY0402
-#= U/Plain/==,==/HoistLast -> sharpy prints 0 1 False | desugaring refused SPY0402
-#= object/Plain/!=,!=/HoistLast -> sharpy prints 0 1 2 True | desugaring refused SPY0402
-#= object/Plain/!=,==/HoistLast -> sharpy prints 0 1 2 False | desugaring refused SPY0402
-#= object/Plain/==,!=/HoistLast -> sharpy prints 0 1 False | desugaring refused SPY0402
-#= object/Plain/==,==/HoistLast -> sharpy prints 0 1 False | desugaring refused SPY0402
+SequenceHoist/Comprehension/Chain  cells=32  pin=2b2198cb0feeabd3  bulk=5288:b650783d460421e6  # see #2648 (plan P93): a chain with an `in`, `not in`, `is` or `is not` link is refused by code generation (SPY0519: the bulk portion) where its desugaring runs or is refused by another code, for a chain whose last operand hoists statements behind a comprehension. Pin lines: a chain whose `==` / `!=` link the binary form refuses (SPY0402) compiles or reaches Roslyn. A link gets its binary twin's verdict
+#= D/Plain/!=,!=/HoistLast:Comprehension -> sharpy prints 0 1 2 True | desugaring refused SPY0402
+#= D/Plain/!=,==/HoistLast:Comprehension -> sharpy prints 0 1 2 False | desugaring refused SPY0402
+#= D/Plain/==,!=/HoistLast:Comprehension -> sharpy prints 0 1 False | desugaring refused SPY0402
+#= D/Plain/==,==/HoistLast:Comprehension -> sharpy prints 0 1 False | desugaring refused SPY0402
+#= GK[int]/Plain/!=,!=/HoistLast:Comprehension -> sharpy prints 0 1 2 True | desugaring refused SPY0402
+#= GK[int]/Plain/!=,==/HoistLast:Comprehension -> sharpy prints 0 1 2 False | desugaring refused SPY0402
+#= GK[int]/Plain/==,!=/HoistLast:Comprehension -> sharpy prints 0 1 False | desugaring refused SPY0402
+#= GK[int]/Plain/==,==/HoistLast:Comprehension -> sharpy prints 0 1 False | desugaring refused SPY0402
+#= GS[int]/Plain/!=,!=/HoistLast:Comprehension -> sharpy refused SPY0908 | desugaring refused SPY0402
+#= GS[int]/Plain/!=,==/HoistLast:Comprehension -> sharpy refused SPY0908 | desugaring refused SPY0402
+#= GS[int]/Plain/==,!=/HoistLast:Comprehension -> sharpy refused SPY0908 | desugaring refused SPY0402
+#= GS[int]/Plain/==,==/HoistLast:Comprehension -> sharpy refused SPY0908 | desugaring refused SPY0402
+#= IFace/Plain/!=,!=/HoistLast:Comprehension -> sharpy prints 0 1 2 True | desugaring refused SPY0402
+#= IFace/Plain/!=,==/HoistLast:Comprehension -> sharpy prints 0 1 2 False | desugaring refused SPY0402
+#= IFace/Plain/==,!=/HoistLast:Comprehension -> sharpy prints 0 1 False | desugaring refused SPY0402
+#= IFace/Plain/==,==/HoistLast:Comprehension -> sharpy prints 0 1 False | desugaring refused SPY0402
+#= K/Plain/!=,!=/HoistLast:Comprehension -> sharpy prints 0 1 2 True | desugaring refused SPY0402
+#= K/Plain/!=,==/HoistLast:Comprehension -> sharpy prints 0 1 2 False | desugaring refused SPY0402
+#= K/Plain/==,!=/HoistLast:Comprehension -> sharpy prints 0 1 False | desugaring refused SPY0402
+#= K/Plain/==,==/HoistLast:Comprehension -> sharpy prints 0 1 False | desugaring refused SPY0402
+#= SP/Plain/!=,!=/HoistLast:Comprehension -> sharpy refused SPY0908 | desugaring refused SPY0402
+#= SP/Plain/!=,==/HoistLast:Comprehension -> sharpy refused SPY0908 | desugaring refused SPY0402
+#= SP/Plain/==,!=/HoistLast:Comprehension -> sharpy refused SPY0908 | desugaring refused SPY0402
+#= SP/Plain/==,==/HoistLast:Comprehension -> sharpy refused SPY0908 | desugaring refused SPY0402
+#= U/Plain/!=,!=/HoistLast:Comprehension -> sharpy prints 0 1 2 True | desugaring refused SPY0402
+#= U/Plain/!=,==/HoistLast:Comprehension -> sharpy prints 0 1 2 False | desugaring refused SPY0402
+#= U/Plain/==,!=/HoistLast:Comprehension -> sharpy prints 0 1 False | desugaring refused SPY0402
+#= U/Plain/==,==/HoistLast:Comprehension -> sharpy prints 0 1 False | desugaring refused SPY0402
+#= object/Plain/!=,!=/HoistLast:Comprehension -> sharpy prints 0 1 2 True | desugaring refused SPY0402
+#= object/Plain/!=,==/HoistLast:Comprehension -> sharpy prints 0 1 2 False | desugaring refused SPY0402
+#= object/Plain/==,!=/HoistLast:Comprehension -> sharpy prints 0 1 False | desugaring refused SPY0402
+#= object/Plain/==,==/HoistLast:Comprehension -> sharpy prints 0 1 False | desugaring refused SPY0402
 
-SequencePosition/Binary  cells=128  pin=ac6be79f70a64a2a  # see #2645 (plan P93): an operator emitted as a call on its right operand evaluates it first (`in` / `not in`, `int * str`), as an `if` condition and as a comprehension filter
+SequenceHoist/QuestionMark/Chain  cells=32  pin=97f519e431c2387c  bulk=5288:2168b32274eebb61  # see #2648 (plan P93): a chain with an `in`, `not in`, `is` or `is not` link is refused by code generation (SPY0519: the bulk portion) where its desugaring runs or is refused by another code, for a chain whose last operand hoists statements behind `?`. Pin lines: a chain whose `==` / `!=` link the binary form refuses (SPY0402) compiles or reaches Roslyn. A link gets its binary twin's verdict
+#= D/Plain/!=,!=/HoistLast:QuestionMark -> sharpy prints 0 1 2 True | desugaring refused SPY0402
+#= D/Plain/!=,==/HoistLast:QuestionMark -> sharpy prints 0 1 2 False | desugaring refused SPY0402
+#= D/Plain/==,!=/HoistLast:QuestionMark -> sharpy prints 0 1 False | desugaring refused SPY0402
+#= D/Plain/==,==/HoistLast:QuestionMark -> sharpy prints 0 1 False | desugaring refused SPY0402
+#= GK[int]/Plain/!=,!=/HoistLast:QuestionMark -> sharpy prints 0 1 2 True | desugaring refused SPY0402
+#= GK[int]/Plain/!=,==/HoistLast:QuestionMark -> sharpy prints 0 1 2 False | desugaring refused SPY0402
+#= GK[int]/Plain/==,!=/HoistLast:QuestionMark -> sharpy prints 0 1 False | desugaring refused SPY0402
+#= GK[int]/Plain/==,==/HoistLast:QuestionMark -> sharpy prints 0 1 False | desugaring refused SPY0402
+#= GS[int]/Plain/!=,!=/HoistLast:QuestionMark -> sharpy refused SPY0908 | desugaring refused SPY0402
+#= GS[int]/Plain/!=,==/HoistLast:QuestionMark -> sharpy refused SPY0908 | desugaring refused SPY0402
+#= GS[int]/Plain/==,!=/HoistLast:QuestionMark -> sharpy refused SPY0908 | desugaring refused SPY0402
+#= GS[int]/Plain/==,==/HoistLast:QuestionMark -> sharpy refused SPY0908 | desugaring refused SPY0402
+#= IFace/Plain/!=,!=/HoistLast:QuestionMark -> sharpy prints 0 1 2 True | desugaring refused SPY0402
+#= IFace/Plain/!=,==/HoistLast:QuestionMark -> sharpy prints 0 1 2 False | desugaring refused SPY0402
+#= IFace/Plain/==,!=/HoistLast:QuestionMark -> sharpy prints 0 1 False | desugaring refused SPY0402
+#= IFace/Plain/==,==/HoistLast:QuestionMark -> sharpy prints 0 1 False | desugaring refused SPY0402
+#= K/Plain/!=,!=/HoistLast:QuestionMark -> sharpy prints 0 1 2 True | desugaring refused SPY0402
+#= K/Plain/!=,==/HoistLast:QuestionMark -> sharpy prints 0 1 2 False | desugaring refused SPY0402
+#= K/Plain/==,!=/HoistLast:QuestionMark -> sharpy prints 0 1 False | desugaring refused SPY0402
+#= K/Plain/==,==/HoistLast:QuestionMark -> sharpy prints 0 1 False | desugaring refused SPY0402
+#= SP/Plain/!=,!=/HoistLast:QuestionMark -> sharpy refused SPY0908 | desugaring refused SPY0402
+#= SP/Plain/!=,==/HoistLast:QuestionMark -> sharpy refused SPY0908 | desugaring refused SPY0402
+#= SP/Plain/==,!=/HoistLast:QuestionMark -> sharpy refused SPY0908 | desugaring refused SPY0402
+#= SP/Plain/==,==/HoistLast:QuestionMark -> sharpy refused SPY0908 | desugaring refused SPY0402
+#= U/Plain/!=,!=/HoistLast:QuestionMark -> sharpy prints 0 1 2 True | desugaring refused SPY0402
+#= U/Plain/!=,==/HoistLast:QuestionMark -> sharpy prints 0 1 2 False | desugaring refused SPY0402
+#= U/Plain/==,!=/HoistLast:QuestionMark -> sharpy prints 0 1 False | desugaring refused SPY0402
+#= U/Plain/==,==/HoistLast:QuestionMark -> sharpy prints 0 1 False | desugaring refused SPY0402
+#= object/Plain/!=,!=/HoistLast:QuestionMark -> sharpy prints 0 1 2 True | desugaring refused SPY0402
+#= object/Plain/!=,==/HoistLast:QuestionMark -> sharpy prints 0 1 2 False | desugaring refused SPY0402
+#= object/Plain/==,!=/HoistLast:QuestionMark -> sharpy prints 0 1 False | desugaring refused SPY0402
+#= object/Plain/==,==/HoistLast:QuestionMark -> sharpy prints 0 1 False | desugaring refused SPY0402
+
+SequenceHoist/Spread/Chain  cells=32  pin=39d82b0874af4527  bulk=5288:0a8b2431d80da1ff  # see #2648 (plan P93): a chain with an `in`, `not in`, `is` or `is not` link is refused by code generation (SPY0519: the bulk portion) where its desugaring runs or is refused by another code, for a chain whose last operand hoists statements behind a spread. Pin lines: a chain whose `==` / `!=` link the binary form refuses (SPY0402) compiles or reaches Roslyn. A link gets its binary twin's verdict
+#= D/Plain/!=,!=/HoistLast:Spread -> sharpy prints 0 1 2 True | desugaring refused SPY0402
+#= D/Plain/!=,==/HoistLast:Spread -> sharpy prints 0 1 2 False | desugaring refused SPY0402
+#= D/Plain/==,!=/HoistLast:Spread -> sharpy prints 0 1 False | desugaring refused SPY0402
+#= D/Plain/==,==/HoistLast:Spread -> sharpy prints 0 1 False | desugaring refused SPY0402
+#= GK[int]/Plain/!=,!=/HoistLast:Spread -> sharpy prints 0 1 2 True | desugaring refused SPY0402
+#= GK[int]/Plain/!=,==/HoistLast:Spread -> sharpy prints 0 1 2 False | desugaring refused SPY0402
+#= GK[int]/Plain/==,!=/HoistLast:Spread -> sharpy prints 0 1 False | desugaring refused SPY0402
+#= GK[int]/Plain/==,==/HoistLast:Spread -> sharpy prints 0 1 False | desugaring refused SPY0402
+#= GS[int]/Plain/!=,!=/HoistLast:Spread -> sharpy refused SPY0908 | desugaring refused SPY0402
+#= GS[int]/Plain/!=,==/HoistLast:Spread -> sharpy refused SPY0908 | desugaring refused SPY0402
+#= GS[int]/Plain/==,!=/HoistLast:Spread -> sharpy refused SPY0908 | desugaring refused SPY0402
+#= GS[int]/Plain/==,==/HoistLast:Spread -> sharpy refused SPY0908 | desugaring refused SPY0402
+#= IFace/Plain/!=,!=/HoistLast:Spread -> sharpy prints 0 1 2 True | desugaring refused SPY0402
+#= IFace/Plain/!=,==/HoistLast:Spread -> sharpy prints 0 1 2 False | desugaring refused SPY0402
+#= IFace/Plain/==,!=/HoistLast:Spread -> sharpy prints 0 1 False | desugaring refused SPY0402
+#= IFace/Plain/==,==/HoistLast:Spread -> sharpy prints 0 1 False | desugaring refused SPY0402
+#= K/Plain/!=,!=/HoistLast:Spread -> sharpy prints 0 1 2 True | desugaring refused SPY0402
+#= K/Plain/!=,==/HoistLast:Spread -> sharpy prints 0 1 2 False | desugaring refused SPY0402
+#= K/Plain/==,!=/HoistLast:Spread -> sharpy prints 0 1 False | desugaring refused SPY0402
+#= K/Plain/==,==/HoistLast:Spread -> sharpy prints 0 1 False | desugaring refused SPY0402
+#= SP/Plain/!=,!=/HoistLast:Spread -> sharpy refused SPY0908 | desugaring refused SPY0402
+#= SP/Plain/!=,==/HoistLast:Spread -> sharpy refused SPY0908 | desugaring refused SPY0402
+#= SP/Plain/==,!=/HoistLast:Spread -> sharpy refused SPY0908 | desugaring refused SPY0402
+#= SP/Plain/==,==/HoistLast:Spread -> sharpy refused SPY0908 | desugaring refused SPY0402
+#= U/Plain/!=,!=/HoistLast:Spread -> sharpy prints 0 1 2 True | desugaring refused SPY0402
+#= U/Plain/!=,==/HoistLast:Spread -> sharpy prints 0 1 2 False | desugaring refused SPY0402
+#= U/Plain/==,!=/HoistLast:Spread -> sharpy prints 0 1 False | desugaring refused SPY0402
+#= U/Plain/==,==/HoistLast:Spread -> sharpy prints 0 1 False | desugaring refused SPY0402
+#= object/Plain/!=,!=/HoistLast:Spread -> sharpy prints 0 1 2 True | desugaring refused SPY0402
+#= object/Plain/!=,==/HoistLast:Spread -> sharpy prints 0 1 2 False | desugaring refused SPY0402
+#= object/Plain/==,!=/HoistLast:Spread -> sharpy prints 0 1 False | desugaring refused SPY0402
+#= object/Plain/==,==/HoistLast:Spread -> sharpy prints 0 1 False | desugaring refused SPY0402
+
+SequenceHoist/Walrus/Chain  cells=32  pin=5d49aca9c4b10f7b  bulk=5288:6b76d414864650b9  # see #2648 (plan P93): a chain with an `in`, `not in`, `is` or `is not` link is refused by code generation (SPY0519: the bulk portion) where its desugaring runs or is refused by another code, for a chain whose last operand hoists statements behind a walrus. Pin lines: a chain whose `==` / `!=` link the binary form refuses (SPY0402) compiles or reaches Roslyn. A link gets its binary twin's verdict
+#= D/Plain/!=,!=/HoistLast:Walrus -> sharpy prints 0 1 2 True | desugaring refused SPY0402
+#= D/Plain/!=,==/HoistLast:Walrus -> sharpy prints 0 1 2 False | desugaring refused SPY0402
+#= D/Plain/==,!=/HoistLast:Walrus -> sharpy prints 0 1 False | desugaring refused SPY0402
+#= D/Plain/==,==/HoistLast:Walrus -> sharpy prints 0 1 False | desugaring refused SPY0402
+#= GK[int]/Plain/!=,!=/HoistLast:Walrus -> sharpy prints 0 1 2 True | desugaring refused SPY0402
+#= GK[int]/Plain/!=,==/HoistLast:Walrus -> sharpy prints 0 1 2 False | desugaring refused SPY0402
+#= GK[int]/Plain/==,!=/HoistLast:Walrus -> sharpy prints 0 1 False | desugaring refused SPY0402
+#= GK[int]/Plain/==,==/HoistLast:Walrus -> sharpy prints 0 1 False | desugaring refused SPY0402
+#= GS[int]/Plain/!=,!=/HoistLast:Walrus -> sharpy refused SPY0908 | desugaring refused SPY0402
+#= GS[int]/Plain/!=,==/HoistLast:Walrus -> sharpy refused SPY0908 | desugaring refused SPY0402
+#= GS[int]/Plain/==,!=/HoistLast:Walrus -> sharpy refused SPY0908 | desugaring refused SPY0402
+#= GS[int]/Plain/==,==/HoistLast:Walrus -> sharpy refused SPY0908 | desugaring refused SPY0402
+#= IFace/Plain/!=,!=/HoistLast:Walrus -> sharpy prints 0 1 2 True | desugaring refused SPY0402
+#= IFace/Plain/!=,==/HoistLast:Walrus -> sharpy prints 0 1 2 False | desugaring refused SPY0402
+#= IFace/Plain/==,!=/HoistLast:Walrus -> sharpy prints 0 1 False | desugaring refused SPY0402
+#= IFace/Plain/==,==/HoistLast:Walrus -> sharpy prints 0 1 False | desugaring refused SPY0402
+#= K/Plain/!=,!=/HoistLast:Walrus -> sharpy prints 0 1 2 True | desugaring refused SPY0402
+#= K/Plain/!=,==/HoistLast:Walrus -> sharpy prints 0 1 2 False | desugaring refused SPY0402
+#= K/Plain/==,!=/HoistLast:Walrus -> sharpy prints 0 1 False | desugaring refused SPY0402
+#= K/Plain/==,==/HoistLast:Walrus -> sharpy prints 0 1 False | desugaring refused SPY0402
+#= SP/Plain/!=,!=/HoistLast:Walrus -> sharpy refused SPY0908 | desugaring refused SPY0402
+#= SP/Plain/!=,==/HoistLast:Walrus -> sharpy refused SPY0908 | desugaring refused SPY0402
+#= SP/Plain/==,!=/HoistLast:Walrus -> sharpy refused SPY0908 | desugaring refused SPY0402
+#= SP/Plain/==,==/HoistLast:Walrus -> sharpy refused SPY0908 | desugaring refused SPY0402
+#= U/Plain/!=,!=/HoistLast:Walrus -> sharpy prints 0 1 2 True | desugaring refused SPY0402
+#= U/Plain/!=,==/HoistLast:Walrus -> sharpy prints 0 1 2 False | desugaring refused SPY0402
+#= U/Plain/==,!=/HoistLast:Walrus -> sharpy prints 0 1 False | desugaring refused SPY0402
+#= U/Plain/==,==/HoistLast:Walrus -> sharpy prints 0 1 False | desugaring refused SPY0402
+#= object/Plain/!=,!=/HoistLast:Walrus -> sharpy prints 0 1 2 True | desugaring refused SPY0402
+#= object/Plain/!=,==/HoistLast:Walrus -> sharpy prints 0 1 2 False | desugaring refused SPY0402
+#= object/Plain/==,!=/HoistLast:Walrus -> sharpy prints 0 1 False | desugaring refused SPY0402
+#= object/Plain/==,==/HoistLast:Walrus -> sharpy prints 0 1 False | desugaring refused SPY0402
+
+SequencePivot/Binary  cells=8  pin=c73d396f866028be  # see #2645 (plan P93): an operator emitted as a call on its right operand evaluates it first (`in` / `not in` on the plain path, `int * str` with the string on the right), with a pivot operand of another type, in every form but the plain one
+#= bytes/Optional/in/int on the left -> sharpy prints 1 0 False | desugaring prints 0 1 False
+#= bytes/Optional/not in/int on the left -> sharpy prints 1 0 True | desugaring prints 0 1 True
+#= char/Optional/in/str on the left -> sharpy prints 1 0 False | desugaring prints 0 1 False
+#= char/Optional/not in/str on the left -> sharpy prints 1 0 True | desugaring prints 0 1 True
+#= str/Optional/in/str on the left -> sharpy prints 1 0 False | desugaring prints 0 1 False
+#= str/Optional/not in/str on the left -> sharpy prints 1 0 True | desugaring prints 0 1 True
+#= tuple[int, int]/Optional/in/int on the left -> sharpy prints 1 0 True | desugaring prints 0 1 True
+#= tuple[int, int]/Optional/not in/int on the left -> sharpy prints 1 0 False | desugaring prints 0 1 False
+
+SequencePosition/NoneLast/Chain  cells=40  pin=11e39d55207a1ab8  bulk=2584:a366c32f320f39b5  # see #2648 (plan P93): a chain with an `in`, `not in`, `is` or `is not` link is refused by code generation (SPY0519: the bulk portion) where its desugaring runs or is refused by another code, as an `if` condition and as a comprehension filter, in the form whose last operand is the literal `None`. Pin lines: a chain whose `==` / `!=` link the binary form refuses (SPY0402) compiles or reaches Roslyn. A link gets its binary twin's verdict
+#= D/NoneLast/!=,!=/ComprehensionFilter -> sharpy prints 0 1 True | desugaring refused SPY0402
+#= D/NoneLast/!=,!=/IfCondition -> sharpy prints 0 1 True | desugaring refused SPY0402
+#= D/NoneLast/!=,==/ComprehensionFilter -> sharpy prints 0 1 False | desugaring refused SPY0402
+#= D/NoneLast/!=,==/IfCondition -> sharpy prints 0 1 False | desugaring refused SPY0402
+#= D/NoneLast/==,!=/ComprehensionFilter -> sharpy prints 0 1 False | desugaring refused SPY0402
+#= D/NoneLast/==,!=/IfCondition -> sharpy prints 0 1 False | desugaring refused SPY0402
+#= D/NoneLast/==,==/ComprehensionFilter -> sharpy prints 0 1 False | desugaring refused SPY0402
+#= D/NoneLast/==,==/IfCondition -> sharpy prints 0 1 False | desugaring refused SPY0402
+#= GK[int]/NoneLast/!=,!=/ComprehensionFilter -> sharpy prints 0 1 True | desugaring refused SPY0402
+#= GK[int]/NoneLast/!=,!=/IfCondition -> sharpy prints 0 1 True | desugaring refused SPY0402
+#= GK[int]/NoneLast/!=,==/ComprehensionFilter -> sharpy prints 0 1 False | desugaring refused SPY0402
+#= GK[int]/NoneLast/!=,==/IfCondition -> sharpy prints 0 1 False | desugaring refused SPY0402
+#= GK[int]/NoneLast/==,!=/ComprehensionFilter -> sharpy prints 0 1 False | desugaring refused SPY0402
+#= GK[int]/NoneLast/==,!=/IfCondition -> sharpy prints 0 1 False | desugaring refused SPY0402
+#= GK[int]/NoneLast/==,==/ComprehensionFilter -> sharpy prints 0 1 False | desugaring refused SPY0402
+#= GK[int]/NoneLast/==,==/IfCondition -> sharpy prints 0 1 False | desugaring refused SPY0402
+#= GS[int]/NoneLast/!=,!=/ComprehensionFilter -> sharpy refused SPY0908 | desugaring refused SPY0402
+#= GS[int]/NoneLast/!=,!=/IfCondition -> sharpy refused SPY0908 | desugaring refused SPY0402
+#= GS[int]/NoneLast/!=,==/ComprehensionFilter -> sharpy refused SPY0908 | desugaring refused SPY0402
+#= GS[int]/NoneLast/!=,==/IfCondition -> sharpy refused SPY0908 | desugaring refused SPY0402
+#= GS[int]/NoneLast/==,!=/ComprehensionFilter -> sharpy refused SPY0908 | desugaring refused SPY0402
+#= GS[int]/NoneLast/==,!=/IfCondition -> sharpy refused SPY0908 | desugaring refused SPY0402
+#= GS[int]/NoneLast/==,==/ComprehensionFilter -> sharpy refused SPY0908 | desugaring refused SPY0402
+#= GS[int]/NoneLast/==,==/IfCondition -> sharpy refused SPY0908 | desugaring refused SPY0402
+#= IFace/NoneLast/!=,!=/ComprehensionFilter -> sharpy prints 0 1 True | desugaring refused SPY0402
+#= IFace/NoneLast/!=,!=/IfCondition -> sharpy prints 0 1 True | desugaring refused SPY0402
+#= IFace/NoneLast/!=,==/ComprehensionFilter -> sharpy prints 0 1 False | desugaring refused SPY0402
+#= IFace/NoneLast/!=,==/IfCondition -> sharpy prints 0 1 False | desugaring refused SPY0402
+#= IFace/NoneLast/==,!=/ComprehensionFilter -> sharpy prints 0 1 False | desugaring refused SPY0402
+#= IFace/NoneLast/==,!=/IfCondition -> sharpy prints 0 1 False | desugaring refused SPY0402
+#= IFace/NoneLast/==,==/ComprehensionFilter -> sharpy prints 0 1 False | desugaring refused SPY0402
+#= IFace/NoneLast/==,==/IfCondition -> sharpy prints 0 1 False | desugaring refused SPY0402
+#= K/NoneLast/!=,!=/ComprehensionFilter -> sharpy prints 0 1 True | desugaring refused SPY0402
+#= K/NoneLast/!=,!=/IfCondition -> sharpy prints 0 1 True | desugaring refused SPY0402
+#= K/NoneLast/!=,==/ComprehensionFilter -> sharpy prints 0 1 False | desugaring refused SPY0402
+#= K/NoneLast/!=,==/IfCondition -> sharpy prints 0 1 False | desugaring refused SPY0402
+#= K/NoneLast/==,!=/ComprehensionFilter -> sharpy prints 0 1 False | desugaring refused SPY0402
+#= K/NoneLast/==,!=/IfCondition -> sharpy prints 0 1 False | desugaring refused SPY0402
+#= K/NoneLast/==,==/ComprehensionFilter -> sharpy prints 0 1 False | desugaring refused SPY0402
+#= K/NoneLast/==,==/IfCondition -> sharpy prints 0 1 False | desugaring refused SPY0402
+
+SequencePosition/Optional/Binary  cells=128  pin=a2c2b0c9dcb4a6ce  # see #2645 (plan P93): an operator emitted as a call on its right operand evaluates it first (`in` / `not in` on the plain path, `int * str` with the string on the right), as an `if` condition and as a comprehension filter, in the `T | None` form
+#= Color/Optional/in/ComprehensionFilter -> sharpy prints 1 0 True | desugaring prints 0 1 True
+#= Color/Optional/in/IfCondition -> sharpy prints 1 0 True | desugaring prints 0 1 True
+#= Color/Optional/not in/ComprehensionFilter -> sharpy prints 1 0 False | desugaring prints 0 1 False
+#= Color/Optional/not in/IfCondition -> sharpy prints 1 0 False | desugaring prints 0 1 False
+#= D/Optional/in/ComprehensionFilter -> sharpy prints 1 0 True | desugaring prints 0 1 True
+#= D/Optional/in/IfCondition -> sharpy prints 1 0 True | desugaring prints 0 1 True
+#= D/Optional/not in/ComprehensionFilter -> sharpy prints 1 0 False | desugaring prints 0 1 False
+#= D/Optional/not in/IfCondition -> sharpy prints 1 0 False | desugaring prints 0 1 False
+#= GK[int]/Optional/in/ComprehensionFilter -> sharpy prints 1 0 True | desugaring prints 0 1 True
+#= GK[int]/Optional/in/IfCondition -> sharpy prints 1 0 True | desugaring prints 0 1 True
+#= GK[int]/Optional/not in/ComprehensionFilter -> sharpy prints 1 0 False | desugaring prints 0 1 False
+#= GK[int]/Optional/not in/IfCondition -> sharpy prints 1 0 False | desugaring prints 0 1 False
+#= GS[int]/Optional/in/ComprehensionFilter -> sharpy prints 1 0 True | desugaring prints 0 1 True
+#= GS[int]/Optional/in/IfCondition -> sharpy prints 1 0 True | desugaring prints 0 1 True
+#= GS[int]/Optional/not in/ComprehensionFilter -> sharpy prints 1 0 False | desugaring prints 0 1 False
+#= GS[int]/Optional/not in/IfCondition -> sharpy prints 1 0 False | desugaring prints 0 1 False
+#= IFace/Optional/in/ComprehensionFilter -> sharpy prints 1 0 True | desugaring prints 0 1 True
+#= IFace/Optional/in/IfCondition -> sharpy prints 1 0 True | desugaring prints 0 1 True
+#= IFace/Optional/not in/ComprehensionFilter -> sharpy prints 1 0 False | desugaring prints 0 1 False
+#= IFace/Optional/not in/IfCondition -> sharpy prints 1 0 False | desugaring prints 0 1 False
+#= IPv4Address/Optional/in/ComprehensionFilter -> sharpy prints 1 0 True | desugaring prints 0 1 True
+#= IPv4Address/Optional/in/IfCondition -> sharpy prints 1 0 True | desugaring prints 0 1 True
+#= IPv4Address/Optional/not in/ComprehensionFilter -> sharpy prints 1 0 False | desugaring prints 0 1 False
+#= IPv4Address/Optional/not in/IfCondition -> sharpy prints 1 0 False | desugaring prints 0 1 False
+#= IPv6Address/Optional/in/ComprehensionFilter -> sharpy prints 1 0 True | desugaring prints 0 1 True
+#= IPv6Address/Optional/in/IfCondition -> sharpy prints 1 0 True | desugaring prints 0 1 True
+#= IPv6Address/Optional/not in/ComprehensionFilter -> sharpy prints 1 0 False | desugaring prints 0 1 False
+#= IPv6Address/Optional/not in/IfCondition -> sharpy prints 1 0 False | desugaring prints 0 1 False
+#= K/Optional/in/ComprehensionFilter -> sharpy prints 1 0 True | desugaring prints 0 1 True
+#= K/Optional/in/IfCondition -> sharpy prints 1 0 True | desugaring prints 0 1 True
+#= K/Optional/not in/ComprehensionFilter -> sharpy prints 1 0 False | desugaring prints 0 1 False
+#= K/Optional/not in/IfCondition -> sharpy prints 1 0 False | desugaring prints 0 1 False
+#= SP/Optional/in/ComprehensionFilter -> sharpy prints 1 0 True | desugaring prints 0 1 True
+#= SP/Optional/in/IfCondition -> sharpy prints 1 0 True | desugaring prints 0 1 True
+#= SP/Optional/not in/ComprehensionFilter -> sharpy prints 1 0 False | desugaring prints 0 1 False
+#= SP/Optional/not in/IfCondition -> sharpy prints 1 0 False | desugaring prints 0 1 False
+#= T/Optional/in/ComprehensionFilter -> sharpy prints 1 0 True | desugaring prints 0 1 True
+#= T/Optional/in/IfCondition -> sharpy prints 1 0 True | desugaring prints 0 1 True
+#= T/Optional/not in/ComprehensionFilter -> sharpy prints 1 0 False | desugaring prints 0 1 False
+#= T/Optional/not in/IfCondition -> sharpy prints 1 0 False | desugaring prints 0 1 False
+#= T: IComparable[T]/Optional/in/ComprehensionFilter -> sharpy prints 1 0 True | desugaring prints 0 1 True
+#= T: IComparable[T]/Optional/in/IfCondition -> sharpy prints 1 0 True | desugaring prints 0 1 True
+#= T: IComparable[T]/Optional/not in/ComprehensionFilter -> sharpy prints 1 0 False | desugaring prints 0 1 False
+#= T: IComparable[T]/Optional/not in/IfCondition -> sharpy prints 1 0 False | desugaring prints 0 1 False
+#= T: class/Optional/in/ComprehensionFilter -> sharpy prints 1 0 True | desugaring prints 0 1 True
+#= T: class/Optional/in/IfCondition -> sharpy prints 1 0 True | desugaring prints 0 1 True
+#= T: class/Optional/not in/ComprehensionFilter -> sharpy prints 1 0 False | desugaring prints 0 1 False
+#= T: class/Optional/not in/IfCondition -> sharpy prints 1 0 False | desugaring prints 0 1 False
+#= T: struct/Optional/in/ComprehensionFilter -> sharpy prints 1 0 True | desugaring prints 0 1 True
+#= T: struct/Optional/in/IfCondition -> sharpy prints 1 0 True | desugaring prints 0 1 True
+#= T: struct/Optional/not in/ComprehensionFilter -> sharpy prints 1 0 False | desugaring prints 0 1 False
+#= T: struct/Optional/not in/IfCondition -> sharpy prints 1 0 False | desugaring prints 0 1 False
+#= Tone/Optional/in/ComprehensionFilter -> sharpy prints 1 0 True | desugaring prints 0 1 True
+#= Tone/Optional/in/IfCondition -> sharpy prints 1 0 True | desugaring prints 0 1 True
+#= Tone/Optional/not in/ComprehensionFilter -> sharpy prints 1 0 False | desugaring prints 0 1 False
+#= Tone/Optional/not in/IfCondition -> sharpy prints 1 0 False | desugaring prints 0 1 False
+#= U/Optional/in/ComprehensionFilter -> sharpy prints 1 0 True | desugaring prints 0 1 True
+#= U/Optional/in/IfCondition -> sharpy prints 1 0 True | desugaring prints 0 1 True
+#= U/Optional/not in/ComprehensionFilter -> sharpy prints 1 0 False | desugaring prints 0 1 False
+#= U/Optional/not in/IfCondition -> sharpy prints 1 0 False | desugaring prints 0 1 False
+#= bool/Optional/in/ComprehensionFilter -> sharpy prints 1 0 True | desugaring prints 0 1 True
+#= bool/Optional/in/IfCondition -> sharpy prints 1 0 True | desugaring prints 0 1 True
+#= bool/Optional/not in/ComprehensionFilter -> sharpy prints 1 0 False | desugaring prints 0 1 False
+#= bool/Optional/not in/IfCondition -> sharpy prints 1 0 False | desugaring prints 0 1 False
+#= bytes/Optional/in/ComprehensionFilter -> sharpy prints 1 0 True | desugaring prints 0 1 True
+#= bytes/Optional/in/IfCondition -> sharpy prints 1 0 True | desugaring prints 0 1 True
+#= bytes/Optional/not in/ComprehensionFilter -> sharpy prints 1 0 False | desugaring prints 0 1 False
+#= bytes/Optional/not in/IfCondition -> sharpy prints 1 0 False | desugaring prints 0 1 False
+#= char/Optional/in/ComprehensionFilter -> sharpy prints 1 0 True | desugaring prints 0 1 True
+#= char/Optional/in/IfCondition -> sharpy prints 1 0 True | desugaring prints 0 1 True
+#= char/Optional/not in/ComprehensionFilter -> sharpy prints 1 0 False | desugaring prints 0 1 False
+#= char/Optional/not in/IfCondition -> sharpy prints 1 0 False | desugaring prints 0 1 False
+#= decimal/Optional/in/ComprehensionFilter -> sharpy prints 1 0 True | desugaring prints 0 1 True
+#= decimal/Optional/in/IfCondition -> sharpy prints 1 0 True | desugaring prints 0 1 True
+#= decimal/Optional/not in/ComprehensionFilter -> sharpy prints 1 0 False | desugaring prints 0 1 False
+#= decimal/Optional/not in/IfCondition -> sharpy prints 1 0 False | desugaring prints 0 1 False
+#= float32/Optional/in/ComprehensionFilter -> sharpy prints 1 0 True | desugaring prints 0 1 True
+#= float32/Optional/in/IfCondition -> sharpy prints 1 0 True | desugaring prints 0 1 True
+#= float32/Optional/not in/ComprehensionFilter -> sharpy prints 1 0 False | desugaring prints 0 1 False
+#= float32/Optional/not in/IfCondition -> sharpy prints 1 0 False | desugaring prints 0 1 False
+#= float64/Optional/in/ComprehensionFilter -> sharpy prints 1 0 True | desugaring prints 0 1 True
+#= float64/Optional/in/IfCondition -> sharpy prints 1 0 True | desugaring prints 0 1 True
+#= float64/Optional/not in/ComprehensionFilter -> sharpy prints 1 0 False | desugaring prints 0 1 False
+#= float64/Optional/not in/IfCondition -> sharpy prints 1 0 False | desugaring prints 0 1 False
+#= int16/Optional/in/ComprehensionFilter -> sharpy prints 1 0 True | desugaring prints 0 1 True
+#= int16/Optional/in/IfCondition -> sharpy prints 1 0 True | desugaring prints 0 1 True
+#= int16/Optional/not in/ComprehensionFilter -> sharpy prints 1 0 False | desugaring prints 0 1 False
+#= int16/Optional/not in/IfCondition -> sharpy prints 1 0 False | desugaring prints 0 1 False
+#= int32/Optional/in/ComprehensionFilter -> sharpy prints 1 0 True | desugaring prints 0 1 True
+#= int32/Optional/in/IfCondition -> sharpy prints 1 0 True | desugaring prints 0 1 True
+#= int32/Optional/not in/ComprehensionFilter -> sharpy prints 1 0 False | desugaring prints 0 1 False
+#= int32/Optional/not in/IfCondition -> sharpy prints 1 0 False | desugaring prints 0 1 False
+#= int64/Optional/in/ComprehensionFilter -> sharpy prints 1 0 True | desugaring prints 0 1 True
+#= int64/Optional/in/IfCondition -> sharpy prints 1 0 True | desugaring prints 0 1 True
+#= int64/Optional/not in/ComprehensionFilter -> sharpy prints 1 0 False | desugaring prints 0 1 False
+#= int64/Optional/not in/IfCondition -> sharpy prints 1 0 False | desugaring prints 0 1 False
+#= int8/Optional/in/ComprehensionFilter -> sharpy prints 1 0 True | desugaring prints 0 1 True
+#= int8/Optional/in/IfCondition -> sharpy prints 1 0 True | desugaring prints 0 1 True
+#= int8/Optional/not in/ComprehensionFilter -> sharpy prints 1 0 False | desugaring prints 0 1 False
+#= int8/Optional/not in/IfCondition -> sharpy prints 1 0 False | desugaring prints 0 1 False
+#= object/Optional/in/ComprehensionFilter -> sharpy prints 1 0 True | desugaring prints 0 1 True
+#= object/Optional/in/IfCondition -> sharpy prints 1 0 True | desugaring prints 0 1 True
+#= object/Optional/not in/ComprehensionFilter -> sharpy prints 1 0 False | desugaring prints 0 1 False
+#= object/Optional/not in/IfCondition -> sharpy prints 1 0 False | desugaring prints 0 1 False
+#= str/Optional/in/ComprehensionFilter -> sharpy prints 1 0 True | desugaring prints 0 1 True
+#= str/Optional/in/IfCondition -> sharpy prints 1 0 True | desugaring prints 0 1 True
+#= str/Optional/not in/ComprehensionFilter -> sharpy prints 1 0 False | desugaring prints 0 1 False
+#= str/Optional/not in/IfCondition -> sharpy prints 1 0 False | desugaring prints 0 1 False
+#= tuple[int, int]/Optional/in/ComprehensionFilter -> sharpy prints 1 0 True | desugaring prints 0 1 True
+#= tuple[int, int]/Optional/in/IfCondition -> sharpy prints 1 0 True | desugaring prints 0 1 True
+#= tuple[int, int]/Optional/not in/ComprehensionFilter -> sharpy prints 1 0 False | desugaring prints 0 1 False
+#= tuple[int, int]/Optional/not in/IfCondition -> sharpy prints 1 0 False | desugaring prints 0 1 False
+#= uint16/Optional/in/ComprehensionFilter -> sharpy prints 1 0 True | desugaring prints 0 1 True
+#= uint16/Optional/in/IfCondition -> sharpy prints 1 0 True | desugaring prints 0 1 True
+#= uint16/Optional/not in/ComprehensionFilter -> sharpy prints 1 0 False | desugaring prints 0 1 False
+#= uint16/Optional/not in/IfCondition -> sharpy prints 1 0 False | desugaring prints 0 1 False
+#= uint32/Optional/in/ComprehensionFilter -> sharpy prints 1 0 True | desugaring prints 0 1 True
+#= uint32/Optional/in/IfCondition -> sharpy prints 1 0 True | desugaring prints 0 1 True
+#= uint32/Optional/not in/ComprehensionFilter -> sharpy prints 1 0 False | desugaring prints 0 1 False
+#= uint32/Optional/not in/IfCondition -> sharpy prints 1 0 False | desugaring prints 0 1 False
+#= uint64/Optional/in/ComprehensionFilter -> sharpy prints 1 0 True | desugaring prints 0 1 True
+#= uint64/Optional/in/IfCondition -> sharpy prints 1 0 True | desugaring prints 0 1 True
+#= uint64/Optional/not in/ComprehensionFilter -> sharpy prints 1 0 False | desugaring prints 0 1 False
+#= uint64/Optional/not in/IfCondition -> sharpy prints 1 0 False | desugaring prints 0 1 False
+#= uint8/Optional/in/ComprehensionFilter -> sharpy prints 1 0 True | desugaring prints 0 1 True
+#= uint8/Optional/in/IfCondition -> sharpy prints 1 0 True | desugaring prints 0 1 True
+#= uint8/Optional/not in/ComprehensionFilter -> sharpy prints 1 0 False | desugaring prints 0 1 False
+#= uint8/Optional/not in/IfCondition -> sharpy prints 1 0 False | desugaring prints 0 1 False
+
+SequencePosition/Optional/Chain  cells=0  pin=e3b0c44298fc1c14  bulk=3472:88a78a7020614191  # see #2648 (plan P93): a chain with an `in`, `not in`, `is` or `is not` link is refused by code generation (SPY0519: the bulk portion) where its desugaring runs or is refused by another code, as an `if` condition and as a comprehension filter, in the `T | None` form. Pin lines: a chain whose `==` / `!=` link the binary form refuses (SPY0402) compiles or reaches Roslyn. A link gets its binary twin's verdict
+
+SequencePosition/Plain/Binary  cells=128  pin=ac6be79f70a64a2a  # see #2645 (plan P93): an operator emitted as a call on its right operand evaluates it first (`in` / `not in` on the plain path, `int * str` with the string on the right), as an `if` condition and as a comprehension filter, in the plain form
 #= Color/Plain/in/ComprehensionFilter -> sharpy prints 1 0 True | desugaring prints 0 1 True
 #= Color/Plain/in/IfCondition -> sharpy prints 1 0 True | desugaring prints 0 1 True
 #= Color/Plain/not in/ComprehensionFilter -> sharpy prints 1 0 False | desugaring prints 0 1 False
@@ -3074,7 +3432,7 @@ SequencePosition/Binary  cells=128  pin=ac6be79f70a64a2a  # see #2645 (plan P93)
 #= uint8/Plain/not in/ComprehensionFilter -> sharpy prints 1 0 False | desugaring prints 0 1 False
 #= uint8/Plain/not in/IfCondition -> sharpy prints 1 0 False | desugaring prints 0 1 False
 
-SequencePosition/Chain  cells=64  pin=bb61860baa2ee211  bulk=3472:5da885928394fc54  # see #2648 (plan P93): the same refusal (SPY0519: the bulk portion) for a chain that is an `if` condition or a comprehension filter, and the same pin lines: a chain whose `==` / `!=` link the binary form refuses (SPY0402) compiles or reaches Roslyn
+SequencePosition/Plain/Chain  cells=64  pin=bb61860baa2ee211  bulk=3472:5da885928394fc54  # see #2648 (plan P93): a chain with an `in`, `not in`, `is` or `is not` link is refused by code generation (SPY0519: the bulk portion) where its desugaring runs or is refused by another code, as an `if` condition and as a comprehension filter, in the plain form. Pin lines: a chain whose `==` / `!=` link the binary form refuses (SPY0402) compiles or reaches Roslyn. A link gets its binary twin's verdict
 #= D/Plain/!=,!=/ComprehensionFilter -> sharpy prints 0 1 2 True | desugaring refused SPY0402
 #= D/Plain/!=,!=/IfCondition -> sharpy prints 0 1 2 True | desugaring refused SPY0402
 #= D/Plain/!=,==/ComprehensionFilter -> sharpy prints 0 1 2 False | desugaring refused SPY0402
@@ -3140,7 +3498,311 @@ SequencePosition/Chain  cells=64  pin=bb61860baa2ee211  bulk=3472:5da885928394fc
 #= object/Plain/==,==/ComprehensionFilter -> sharpy prints 0 1 False | desugaring refused SPY0402
 #= object/Plain/==,==/IfCondition -> sharpy prints 0 1 False | desugaring refused SPY0402
 
-SequenceTriple/Chain  cells=64  pin=16cfb064a883d70d  bulk=19680:d20242b948d77a3b  # see #2648 (plan P93): the same refusal (SPY0519: the bulk portion) for a chain of three links, and the same pin lines: a chain whose `==` / `!=` links the binary form refuses (SPY0402) compiles or reaches Roslyn
+SequencePosition/Tagged/Binary  cells=128  pin=df6826a26ec49f3c  # see #2645 (plan P93): an operator emitted as a call on its right operand evaluates it first (`in` / `not in` on the plain path, `int * str` with the string on the right), as an `if` condition and as a comprehension filter, in the tagged `T?` form
+#= Color/Tagged/in/ComprehensionFilter -> sharpy prints 1 0 True | desugaring prints 0 1 True
+#= Color/Tagged/in/IfCondition -> sharpy prints 1 0 True | desugaring prints 0 1 True
+#= Color/Tagged/not in/ComprehensionFilter -> sharpy prints 1 0 False | desugaring prints 0 1 False
+#= Color/Tagged/not in/IfCondition -> sharpy prints 1 0 False | desugaring prints 0 1 False
+#= D/Tagged/in/ComprehensionFilter -> sharpy prints 1 0 True | desugaring prints 0 1 True
+#= D/Tagged/in/IfCondition -> sharpy prints 1 0 True | desugaring prints 0 1 True
+#= D/Tagged/not in/ComprehensionFilter -> sharpy prints 1 0 False | desugaring prints 0 1 False
+#= D/Tagged/not in/IfCondition -> sharpy prints 1 0 False | desugaring prints 0 1 False
+#= GK[int]/Tagged/in/ComprehensionFilter -> sharpy prints 1 0 True | desugaring prints 0 1 True
+#= GK[int]/Tagged/in/IfCondition -> sharpy prints 1 0 True | desugaring prints 0 1 True
+#= GK[int]/Tagged/not in/ComprehensionFilter -> sharpy prints 1 0 False | desugaring prints 0 1 False
+#= GK[int]/Tagged/not in/IfCondition -> sharpy prints 1 0 False | desugaring prints 0 1 False
+#= GS[int]/Tagged/in/ComprehensionFilter -> sharpy prints 1 0 True | desugaring prints 0 1 True
+#= GS[int]/Tagged/in/IfCondition -> sharpy prints 1 0 True | desugaring prints 0 1 True
+#= GS[int]/Tagged/not in/ComprehensionFilter -> sharpy prints 1 0 False | desugaring prints 0 1 False
+#= GS[int]/Tagged/not in/IfCondition -> sharpy prints 1 0 False | desugaring prints 0 1 False
+#= IFace/Tagged/in/ComprehensionFilter -> sharpy prints 1 0 True | desugaring prints 0 1 True
+#= IFace/Tagged/in/IfCondition -> sharpy prints 1 0 True | desugaring prints 0 1 True
+#= IFace/Tagged/not in/ComprehensionFilter -> sharpy prints 1 0 False | desugaring prints 0 1 False
+#= IFace/Tagged/not in/IfCondition -> sharpy prints 1 0 False | desugaring prints 0 1 False
+#= IPv4Address/Tagged/in/ComprehensionFilter -> sharpy prints 1 0 True | desugaring prints 0 1 True
+#= IPv4Address/Tagged/in/IfCondition -> sharpy prints 1 0 True | desugaring prints 0 1 True
+#= IPv4Address/Tagged/not in/ComprehensionFilter -> sharpy prints 1 0 False | desugaring prints 0 1 False
+#= IPv4Address/Tagged/not in/IfCondition -> sharpy prints 1 0 False | desugaring prints 0 1 False
+#= IPv6Address/Tagged/in/ComprehensionFilter -> sharpy prints 1 0 True | desugaring prints 0 1 True
+#= IPv6Address/Tagged/in/IfCondition -> sharpy prints 1 0 True | desugaring prints 0 1 True
+#= IPv6Address/Tagged/not in/ComprehensionFilter -> sharpy prints 1 0 False | desugaring prints 0 1 False
+#= IPv6Address/Tagged/not in/IfCondition -> sharpy prints 1 0 False | desugaring prints 0 1 False
+#= K/Tagged/in/ComprehensionFilter -> sharpy prints 1 0 True | desugaring prints 0 1 True
+#= K/Tagged/in/IfCondition -> sharpy prints 1 0 True | desugaring prints 0 1 True
+#= K/Tagged/not in/ComprehensionFilter -> sharpy prints 1 0 False | desugaring prints 0 1 False
+#= K/Tagged/not in/IfCondition -> sharpy prints 1 0 False | desugaring prints 0 1 False
+#= SP/Tagged/in/ComprehensionFilter -> sharpy prints 1 0 True | desugaring prints 0 1 True
+#= SP/Tagged/in/IfCondition -> sharpy prints 1 0 True | desugaring prints 0 1 True
+#= SP/Tagged/not in/ComprehensionFilter -> sharpy prints 1 0 False | desugaring prints 0 1 False
+#= SP/Tagged/not in/IfCondition -> sharpy prints 1 0 False | desugaring prints 0 1 False
+#= T/Tagged/in/ComprehensionFilter -> sharpy prints 1 0 True | desugaring prints 0 1 True
+#= T/Tagged/in/IfCondition -> sharpy prints 1 0 True | desugaring prints 0 1 True
+#= T/Tagged/not in/ComprehensionFilter -> sharpy prints 1 0 False | desugaring prints 0 1 False
+#= T/Tagged/not in/IfCondition -> sharpy prints 1 0 False | desugaring prints 0 1 False
+#= T: IComparable[T]/Tagged/in/ComprehensionFilter -> sharpy prints 1 0 True | desugaring prints 0 1 True
+#= T: IComparable[T]/Tagged/in/IfCondition -> sharpy prints 1 0 True | desugaring prints 0 1 True
+#= T: IComparable[T]/Tagged/not in/ComprehensionFilter -> sharpy prints 1 0 False | desugaring prints 0 1 False
+#= T: IComparable[T]/Tagged/not in/IfCondition -> sharpy prints 1 0 False | desugaring prints 0 1 False
+#= T: class/Tagged/in/ComprehensionFilter -> sharpy prints 1 0 True | desugaring prints 0 1 True
+#= T: class/Tagged/in/IfCondition -> sharpy prints 1 0 True | desugaring prints 0 1 True
+#= T: class/Tagged/not in/ComprehensionFilter -> sharpy prints 1 0 False | desugaring prints 0 1 False
+#= T: class/Tagged/not in/IfCondition -> sharpy prints 1 0 False | desugaring prints 0 1 False
+#= T: struct/Tagged/in/ComprehensionFilter -> sharpy prints 1 0 True | desugaring prints 0 1 True
+#= T: struct/Tagged/in/IfCondition -> sharpy prints 1 0 True | desugaring prints 0 1 True
+#= T: struct/Tagged/not in/ComprehensionFilter -> sharpy prints 1 0 False | desugaring prints 0 1 False
+#= T: struct/Tagged/not in/IfCondition -> sharpy prints 1 0 False | desugaring prints 0 1 False
+#= Tone/Tagged/in/ComprehensionFilter -> sharpy prints 1 0 True | desugaring prints 0 1 True
+#= Tone/Tagged/in/IfCondition -> sharpy prints 1 0 True | desugaring prints 0 1 True
+#= Tone/Tagged/not in/ComprehensionFilter -> sharpy prints 1 0 False | desugaring prints 0 1 False
+#= Tone/Tagged/not in/IfCondition -> sharpy prints 1 0 False | desugaring prints 0 1 False
+#= U/Tagged/in/ComprehensionFilter -> sharpy prints 1 0 True | desugaring prints 0 1 True
+#= U/Tagged/in/IfCondition -> sharpy prints 1 0 True | desugaring prints 0 1 True
+#= U/Tagged/not in/ComprehensionFilter -> sharpy prints 1 0 False | desugaring prints 0 1 False
+#= U/Tagged/not in/IfCondition -> sharpy prints 1 0 False | desugaring prints 0 1 False
+#= bool/Tagged/in/ComprehensionFilter -> sharpy prints 1 0 True | desugaring prints 0 1 True
+#= bool/Tagged/in/IfCondition -> sharpy prints 1 0 True | desugaring prints 0 1 True
+#= bool/Tagged/not in/ComprehensionFilter -> sharpy prints 1 0 False | desugaring prints 0 1 False
+#= bool/Tagged/not in/IfCondition -> sharpy prints 1 0 False | desugaring prints 0 1 False
+#= bytes/Tagged/in/ComprehensionFilter -> sharpy prints 1 0 True | desugaring prints 0 1 True
+#= bytes/Tagged/in/IfCondition -> sharpy prints 1 0 True | desugaring prints 0 1 True
+#= bytes/Tagged/not in/ComprehensionFilter -> sharpy prints 1 0 False | desugaring prints 0 1 False
+#= bytes/Tagged/not in/IfCondition -> sharpy prints 1 0 False | desugaring prints 0 1 False
+#= char/Tagged/in/ComprehensionFilter -> sharpy prints 1 0 True | desugaring prints 0 1 True
+#= char/Tagged/in/IfCondition -> sharpy prints 1 0 True | desugaring prints 0 1 True
+#= char/Tagged/not in/ComprehensionFilter -> sharpy prints 1 0 False | desugaring prints 0 1 False
+#= char/Tagged/not in/IfCondition -> sharpy prints 1 0 False | desugaring prints 0 1 False
+#= decimal/Tagged/in/ComprehensionFilter -> sharpy prints 1 0 True | desugaring prints 0 1 True
+#= decimal/Tagged/in/IfCondition -> sharpy prints 1 0 True | desugaring prints 0 1 True
+#= decimal/Tagged/not in/ComprehensionFilter -> sharpy prints 1 0 False | desugaring prints 0 1 False
+#= decimal/Tagged/not in/IfCondition -> sharpy prints 1 0 False | desugaring prints 0 1 False
+#= float32/Tagged/in/ComprehensionFilter -> sharpy prints 1 0 True | desugaring prints 0 1 True
+#= float32/Tagged/in/IfCondition -> sharpy prints 1 0 True | desugaring prints 0 1 True
+#= float32/Tagged/not in/ComprehensionFilter -> sharpy prints 1 0 False | desugaring prints 0 1 False
+#= float32/Tagged/not in/IfCondition -> sharpy prints 1 0 False | desugaring prints 0 1 False
+#= float64/Tagged/in/ComprehensionFilter -> sharpy prints 1 0 True | desugaring prints 0 1 True
+#= float64/Tagged/in/IfCondition -> sharpy prints 1 0 True | desugaring prints 0 1 True
+#= float64/Tagged/not in/ComprehensionFilter -> sharpy prints 1 0 False | desugaring prints 0 1 False
+#= float64/Tagged/not in/IfCondition -> sharpy prints 1 0 False | desugaring prints 0 1 False
+#= int16/Tagged/in/ComprehensionFilter -> sharpy prints 1 0 True | desugaring prints 0 1 True
+#= int16/Tagged/in/IfCondition -> sharpy prints 1 0 True | desugaring prints 0 1 True
+#= int16/Tagged/not in/ComprehensionFilter -> sharpy prints 1 0 False | desugaring prints 0 1 False
+#= int16/Tagged/not in/IfCondition -> sharpy prints 1 0 False | desugaring prints 0 1 False
+#= int32/Tagged/in/ComprehensionFilter -> sharpy prints 1 0 True | desugaring prints 0 1 True
+#= int32/Tagged/in/IfCondition -> sharpy prints 1 0 True | desugaring prints 0 1 True
+#= int32/Tagged/not in/ComprehensionFilter -> sharpy prints 1 0 False | desugaring prints 0 1 False
+#= int32/Tagged/not in/IfCondition -> sharpy prints 1 0 False | desugaring prints 0 1 False
+#= int64/Tagged/in/ComprehensionFilter -> sharpy prints 1 0 True | desugaring prints 0 1 True
+#= int64/Tagged/in/IfCondition -> sharpy prints 1 0 True | desugaring prints 0 1 True
+#= int64/Tagged/not in/ComprehensionFilter -> sharpy prints 1 0 False | desugaring prints 0 1 False
+#= int64/Tagged/not in/IfCondition -> sharpy prints 1 0 False | desugaring prints 0 1 False
+#= int8/Tagged/in/ComprehensionFilter -> sharpy prints 1 0 True | desugaring prints 0 1 True
+#= int8/Tagged/in/IfCondition -> sharpy prints 1 0 True | desugaring prints 0 1 True
+#= int8/Tagged/not in/ComprehensionFilter -> sharpy prints 1 0 False | desugaring prints 0 1 False
+#= int8/Tagged/not in/IfCondition -> sharpy prints 1 0 False | desugaring prints 0 1 False
+#= object/Tagged/in/ComprehensionFilter -> sharpy prints 1 0 True | desugaring prints 0 1 True
+#= object/Tagged/in/IfCondition -> sharpy prints 1 0 True | desugaring prints 0 1 True
+#= object/Tagged/not in/ComprehensionFilter -> sharpy prints 1 0 False | desugaring prints 0 1 False
+#= object/Tagged/not in/IfCondition -> sharpy prints 1 0 False | desugaring prints 0 1 False
+#= str/Tagged/in/ComprehensionFilter -> sharpy prints 1 0 True | desugaring prints 0 1 True
+#= str/Tagged/in/IfCondition -> sharpy prints 1 0 True | desugaring prints 0 1 True
+#= str/Tagged/not in/ComprehensionFilter -> sharpy prints 1 0 False | desugaring prints 0 1 False
+#= str/Tagged/not in/IfCondition -> sharpy prints 1 0 False | desugaring prints 0 1 False
+#= tuple[int, int]/Tagged/in/ComprehensionFilter -> sharpy prints 1 0 True | desugaring prints 0 1 True
+#= tuple[int, int]/Tagged/in/IfCondition -> sharpy prints 1 0 True | desugaring prints 0 1 True
+#= tuple[int, int]/Tagged/not in/ComprehensionFilter -> sharpy prints 1 0 False | desugaring prints 0 1 False
+#= tuple[int, int]/Tagged/not in/IfCondition -> sharpy prints 1 0 False | desugaring prints 0 1 False
+#= uint16/Tagged/in/ComprehensionFilter -> sharpy prints 1 0 True | desugaring prints 0 1 True
+#= uint16/Tagged/in/IfCondition -> sharpy prints 1 0 True | desugaring prints 0 1 True
+#= uint16/Tagged/not in/ComprehensionFilter -> sharpy prints 1 0 False | desugaring prints 0 1 False
+#= uint16/Tagged/not in/IfCondition -> sharpy prints 1 0 False | desugaring prints 0 1 False
+#= uint32/Tagged/in/ComprehensionFilter -> sharpy prints 1 0 True | desugaring prints 0 1 True
+#= uint32/Tagged/in/IfCondition -> sharpy prints 1 0 True | desugaring prints 0 1 True
+#= uint32/Tagged/not in/ComprehensionFilter -> sharpy prints 1 0 False | desugaring prints 0 1 False
+#= uint32/Tagged/not in/IfCondition -> sharpy prints 1 0 False | desugaring prints 0 1 False
+#= uint64/Tagged/in/ComprehensionFilter -> sharpy prints 1 0 True | desugaring prints 0 1 True
+#= uint64/Tagged/in/IfCondition -> sharpy prints 1 0 True | desugaring prints 0 1 True
+#= uint64/Tagged/not in/ComprehensionFilter -> sharpy prints 1 0 False | desugaring prints 0 1 False
+#= uint64/Tagged/not in/IfCondition -> sharpy prints 1 0 False | desugaring prints 0 1 False
+#= uint8/Tagged/in/ComprehensionFilter -> sharpy prints 1 0 True | desugaring prints 0 1 True
+#= uint8/Tagged/in/IfCondition -> sharpy prints 1 0 True | desugaring prints 0 1 True
+#= uint8/Tagged/not in/ComprehensionFilter -> sharpy prints 1 0 False | desugaring prints 0 1 False
+#= uint8/Tagged/not in/IfCondition -> sharpy prints 1 0 False | desugaring prints 0 1 False
+
+SequencePosition/Tagged/Chain  cells=0  pin=e3b0c44298fc1c14  bulk=2560:3c40e053a0ac0c14  # see #2648 (plan P93): a chain with an `in`, `not in`, `is` or `is not` link is refused by code generation (SPY0519: the bulk portion) where its desugaring runs or is refused by another code, as an `if` condition and as a comprehension filter, in the tagged `T?` form. Pin lines: a chain whose `==` / `!=` link the binary form refuses (SPY0402) compiles or reaches Roslyn. A link gets its binary twin's verdict
+
+SequencePosition/TaggedLeft/Binary  cells=120  pin=322a0144cd42f4d7  # see #2645 (plan P93): an operator emitted as a call on its right operand evaluates it first (`in` / `not in` on the plain path, `int * str` with the string on the right), as an `if` condition and as a comprehension filter, in the form tagged on its first operand alone
+#= Color/TaggedLeft/in/ComprehensionFilter -> sharpy prints 1 0 True | desugaring prints 0 1 True
+#= Color/TaggedLeft/in/IfCondition -> sharpy prints 1 0 True | desugaring prints 0 1 True
+#= Color/TaggedLeft/not in/ComprehensionFilter -> sharpy prints 1 0 False | desugaring prints 0 1 False
+#= Color/TaggedLeft/not in/IfCondition -> sharpy prints 1 0 False | desugaring prints 0 1 False
+#= D/TaggedLeft/in/ComprehensionFilter -> sharpy prints 1 0 True | desugaring prints 0 1 True
+#= D/TaggedLeft/in/IfCondition -> sharpy prints 1 0 True | desugaring prints 0 1 True
+#= D/TaggedLeft/not in/ComprehensionFilter -> sharpy prints 1 0 False | desugaring prints 0 1 False
+#= D/TaggedLeft/not in/IfCondition -> sharpy prints 1 0 False | desugaring prints 0 1 False
+#= GK[int]/TaggedLeft/in/ComprehensionFilter -> sharpy prints 1 0 True | desugaring prints 0 1 True
+#= GK[int]/TaggedLeft/in/IfCondition -> sharpy prints 1 0 True | desugaring prints 0 1 True
+#= GK[int]/TaggedLeft/not in/ComprehensionFilter -> sharpy prints 1 0 False | desugaring prints 0 1 False
+#= GK[int]/TaggedLeft/not in/IfCondition -> sharpy prints 1 0 False | desugaring prints 0 1 False
+#= GS[int]/TaggedLeft/in/ComprehensionFilter -> sharpy prints 1 0 True | desugaring prints 0 1 True
+#= GS[int]/TaggedLeft/in/IfCondition -> sharpy prints 1 0 True | desugaring prints 0 1 True
+#= GS[int]/TaggedLeft/not in/ComprehensionFilter -> sharpy prints 1 0 False | desugaring prints 0 1 False
+#= GS[int]/TaggedLeft/not in/IfCondition -> sharpy prints 1 0 False | desugaring prints 0 1 False
+#= IPv4Address/TaggedLeft/in/ComprehensionFilter -> sharpy prints 1 0 True | desugaring prints 0 1 True
+#= IPv4Address/TaggedLeft/in/IfCondition -> sharpy prints 1 0 True | desugaring prints 0 1 True
+#= IPv4Address/TaggedLeft/not in/ComprehensionFilter -> sharpy prints 1 0 False | desugaring prints 0 1 False
+#= IPv4Address/TaggedLeft/not in/IfCondition -> sharpy prints 1 0 False | desugaring prints 0 1 False
+#= IPv6Address/TaggedLeft/in/ComprehensionFilter -> sharpy prints 1 0 True | desugaring prints 0 1 True
+#= IPv6Address/TaggedLeft/in/IfCondition -> sharpy prints 1 0 True | desugaring prints 0 1 True
+#= IPv6Address/TaggedLeft/not in/ComprehensionFilter -> sharpy prints 1 0 False | desugaring prints 0 1 False
+#= IPv6Address/TaggedLeft/not in/IfCondition -> sharpy prints 1 0 False | desugaring prints 0 1 False
+#= K/TaggedLeft/in/ComprehensionFilter -> sharpy prints 1 0 True | desugaring prints 0 1 True
+#= K/TaggedLeft/in/IfCondition -> sharpy prints 1 0 True | desugaring prints 0 1 True
+#= K/TaggedLeft/not in/ComprehensionFilter -> sharpy prints 1 0 False | desugaring prints 0 1 False
+#= K/TaggedLeft/not in/IfCondition -> sharpy prints 1 0 False | desugaring prints 0 1 False
+#= SP/TaggedLeft/in/ComprehensionFilter -> sharpy prints 1 0 True | desugaring prints 0 1 True
+#= SP/TaggedLeft/in/IfCondition -> sharpy prints 1 0 True | desugaring prints 0 1 True
+#= SP/TaggedLeft/not in/ComprehensionFilter -> sharpy prints 1 0 False | desugaring prints 0 1 False
+#= SP/TaggedLeft/not in/IfCondition -> sharpy prints 1 0 False | desugaring prints 0 1 False
+#= T/TaggedLeft/in/ComprehensionFilter -> sharpy prints 1 0 True | desugaring prints 0 1 True
+#= T/TaggedLeft/in/IfCondition -> sharpy prints 1 0 True | desugaring prints 0 1 True
+#= T/TaggedLeft/not in/ComprehensionFilter -> sharpy prints 1 0 False | desugaring prints 0 1 False
+#= T/TaggedLeft/not in/IfCondition -> sharpy prints 1 0 False | desugaring prints 0 1 False
+#= T: IComparable[T]/TaggedLeft/in/ComprehensionFilter -> sharpy prints 1 0 True | desugaring prints 0 1 True
+#= T: IComparable[T]/TaggedLeft/in/IfCondition -> sharpy prints 1 0 True | desugaring prints 0 1 True
+#= T: IComparable[T]/TaggedLeft/not in/ComprehensionFilter -> sharpy prints 1 0 False | desugaring prints 0 1 False
+#= T: IComparable[T]/TaggedLeft/not in/IfCondition -> sharpy prints 1 0 False | desugaring prints 0 1 False
+#= T: class/TaggedLeft/in/ComprehensionFilter -> sharpy prints 1 0 True | desugaring prints 0 1 True
+#= T: class/TaggedLeft/in/IfCondition -> sharpy prints 1 0 True | desugaring prints 0 1 True
+#= T: class/TaggedLeft/not in/ComprehensionFilter -> sharpy prints 1 0 False | desugaring prints 0 1 False
+#= T: class/TaggedLeft/not in/IfCondition -> sharpy prints 1 0 False | desugaring prints 0 1 False
+#= T: struct/TaggedLeft/in/ComprehensionFilter -> sharpy prints 1 0 True | desugaring prints 0 1 True
+#= T: struct/TaggedLeft/in/IfCondition -> sharpy prints 1 0 True | desugaring prints 0 1 True
+#= T: struct/TaggedLeft/not in/ComprehensionFilter -> sharpy prints 1 0 False | desugaring prints 0 1 False
+#= T: struct/TaggedLeft/not in/IfCondition -> sharpy prints 1 0 False | desugaring prints 0 1 False
+#= Tone/TaggedLeft/in/ComprehensionFilter -> sharpy prints 1 0 True | desugaring prints 0 1 True
+#= Tone/TaggedLeft/in/IfCondition -> sharpy prints 1 0 True | desugaring prints 0 1 True
+#= Tone/TaggedLeft/not in/ComprehensionFilter -> sharpy prints 1 0 False | desugaring prints 0 1 False
+#= Tone/TaggedLeft/not in/IfCondition -> sharpy prints 1 0 False | desugaring prints 0 1 False
+#= U/TaggedLeft/in/ComprehensionFilter -> sharpy prints 1 0 True | desugaring prints 0 1 True
+#= U/TaggedLeft/in/IfCondition -> sharpy prints 1 0 True | desugaring prints 0 1 True
+#= U/TaggedLeft/not in/ComprehensionFilter -> sharpy prints 1 0 False | desugaring prints 0 1 False
+#= U/TaggedLeft/not in/IfCondition -> sharpy prints 1 0 False | desugaring prints 0 1 False
+#= bool/TaggedLeft/in/ComprehensionFilter -> sharpy prints 1 0 True | desugaring prints 0 1 True
+#= bool/TaggedLeft/in/IfCondition -> sharpy prints 1 0 True | desugaring prints 0 1 True
+#= bool/TaggedLeft/not in/ComprehensionFilter -> sharpy prints 1 0 False | desugaring prints 0 1 False
+#= bool/TaggedLeft/not in/IfCondition -> sharpy prints 1 0 False | desugaring prints 0 1 False
+#= bytes/TaggedLeft/in/ComprehensionFilter -> sharpy prints 1 0 True | desugaring prints 0 1 True
+#= bytes/TaggedLeft/in/IfCondition -> sharpy prints 1 0 True | desugaring prints 0 1 True
+#= bytes/TaggedLeft/not in/ComprehensionFilter -> sharpy prints 1 0 False | desugaring prints 0 1 False
+#= bytes/TaggedLeft/not in/IfCondition -> sharpy prints 1 0 False | desugaring prints 0 1 False
+#= char/TaggedLeft/in/ComprehensionFilter -> sharpy prints 1 0 True | desugaring prints 0 1 True
+#= char/TaggedLeft/in/IfCondition -> sharpy prints 1 0 True | desugaring prints 0 1 True
+#= char/TaggedLeft/not in/ComprehensionFilter -> sharpy prints 1 0 False | desugaring prints 0 1 False
+#= char/TaggedLeft/not in/IfCondition -> sharpy prints 1 0 False | desugaring prints 0 1 False
+#= decimal/TaggedLeft/in/ComprehensionFilter -> sharpy prints 1 0 True | desugaring prints 0 1 True
+#= decimal/TaggedLeft/in/IfCondition -> sharpy prints 1 0 True | desugaring prints 0 1 True
+#= decimal/TaggedLeft/not in/ComprehensionFilter -> sharpy prints 1 0 False | desugaring prints 0 1 False
+#= decimal/TaggedLeft/not in/IfCondition -> sharpy prints 1 0 False | desugaring prints 0 1 False
+#= float32/TaggedLeft/in/ComprehensionFilter -> sharpy prints 1 0 True | desugaring prints 0 1 True
+#= float32/TaggedLeft/in/IfCondition -> sharpy prints 1 0 True | desugaring prints 0 1 True
+#= float32/TaggedLeft/not in/ComprehensionFilter -> sharpy prints 1 0 False | desugaring prints 0 1 False
+#= float32/TaggedLeft/not in/IfCondition -> sharpy prints 1 0 False | desugaring prints 0 1 False
+#= float64/TaggedLeft/in/ComprehensionFilter -> sharpy prints 1 0 True | desugaring prints 0 1 True
+#= float64/TaggedLeft/in/IfCondition -> sharpy prints 1 0 True | desugaring prints 0 1 True
+#= float64/TaggedLeft/not in/ComprehensionFilter -> sharpy prints 1 0 False | desugaring prints 0 1 False
+#= float64/TaggedLeft/not in/IfCondition -> sharpy prints 1 0 False | desugaring prints 0 1 False
+#= int16/TaggedLeft/in/ComprehensionFilter -> sharpy prints 1 0 True | desugaring prints 0 1 True
+#= int16/TaggedLeft/in/IfCondition -> sharpy prints 1 0 True | desugaring prints 0 1 True
+#= int16/TaggedLeft/not in/ComprehensionFilter -> sharpy prints 1 0 False | desugaring prints 0 1 False
+#= int16/TaggedLeft/not in/IfCondition -> sharpy prints 1 0 False | desugaring prints 0 1 False
+#= int32/TaggedLeft/in/ComprehensionFilter -> sharpy prints 1 0 True | desugaring prints 0 1 True
+#= int32/TaggedLeft/in/IfCondition -> sharpy prints 1 0 True | desugaring prints 0 1 True
+#= int32/TaggedLeft/not in/ComprehensionFilter -> sharpy prints 1 0 False | desugaring prints 0 1 False
+#= int32/TaggedLeft/not in/IfCondition -> sharpy prints 1 0 False | desugaring prints 0 1 False
+#= int64/TaggedLeft/in/ComprehensionFilter -> sharpy prints 1 0 True | desugaring prints 0 1 True
+#= int64/TaggedLeft/in/IfCondition -> sharpy prints 1 0 True | desugaring prints 0 1 True
+#= int64/TaggedLeft/not in/ComprehensionFilter -> sharpy prints 1 0 False | desugaring prints 0 1 False
+#= int64/TaggedLeft/not in/IfCondition -> sharpy prints 1 0 False | desugaring prints 0 1 False
+#= int8/TaggedLeft/in/ComprehensionFilter -> sharpy prints 1 0 True | desugaring prints 0 1 True
+#= int8/TaggedLeft/in/IfCondition -> sharpy prints 1 0 True | desugaring prints 0 1 True
+#= int8/TaggedLeft/not in/ComprehensionFilter -> sharpy prints 1 0 False | desugaring prints 0 1 False
+#= int8/TaggedLeft/not in/IfCondition -> sharpy prints 1 0 False | desugaring prints 0 1 False
+#= str/TaggedLeft/in/ComprehensionFilter -> sharpy prints 1 0 True | desugaring prints 0 1 True
+#= str/TaggedLeft/in/IfCondition -> sharpy prints 1 0 True | desugaring prints 0 1 True
+#= str/TaggedLeft/not in/ComprehensionFilter -> sharpy prints 1 0 False | desugaring prints 0 1 False
+#= str/TaggedLeft/not in/IfCondition -> sharpy prints 1 0 False | desugaring prints 0 1 False
+#= tuple[int, int]/TaggedLeft/in/ComprehensionFilter -> sharpy prints 1 0 True | desugaring prints 0 1 True
+#= tuple[int, int]/TaggedLeft/in/IfCondition -> sharpy prints 1 0 True | desugaring prints 0 1 True
+#= tuple[int, int]/TaggedLeft/not in/ComprehensionFilter -> sharpy prints 1 0 False | desugaring prints 0 1 False
+#= tuple[int, int]/TaggedLeft/not in/IfCondition -> sharpy prints 1 0 False | desugaring prints 0 1 False
+#= uint16/TaggedLeft/in/ComprehensionFilter -> sharpy prints 1 0 True | desugaring prints 0 1 True
+#= uint16/TaggedLeft/in/IfCondition -> sharpy prints 1 0 True | desugaring prints 0 1 True
+#= uint16/TaggedLeft/not in/ComprehensionFilter -> sharpy prints 1 0 False | desugaring prints 0 1 False
+#= uint16/TaggedLeft/not in/IfCondition -> sharpy prints 1 0 False | desugaring prints 0 1 False
+#= uint32/TaggedLeft/in/ComprehensionFilter -> sharpy prints 1 0 True | desugaring prints 0 1 True
+#= uint32/TaggedLeft/in/IfCondition -> sharpy prints 1 0 True | desugaring prints 0 1 True
+#= uint32/TaggedLeft/not in/ComprehensionFilter -> sharpy prints 1 0 False | desugaring prints 0 1 False
+#= uint32/TaggedLeft/not in/IfCondition -> sharpy prints 1 0 False | desugaring prints 0 1 False
+#= uint64/TaggedLeft/in/ComprehensionFilter -> sharpy prints 1 0 True | desugaring prints 0 1 True
+#= uint64/TaggedLeft/in/IfCondition -> sharpy prints 1 0 True | desugaring prints 0 1 True
+#= uint64/TaggedLeft/not in/ComprehensionFilter -> sharpy prints 1 0 False | desugaring prints 0 1 False
+#= uint64/TaggedLeft/not in/IfCondition -> sharpy prints 1 0 False | desugaring prints 0 1 False
+#= uint8/TaggedLeft/in/ComprehensionFilter -> sharpy prints 1 0 True | desugaring prints 0 1 True
+#= uint8/TaggedLeft/in/IfCondition -> sharpy prints 1 0 True | desugaring prints 0 1 True
+#= uint8/TaggedLeft/not in/ComprehensionFilter -> sharpy prints 1 0 False | desugaring prints 0 1 False
+#= uint8/TaggedLeft/not in/IfCondition -> sharpy prints 1 0 False | desugaring prints 0 1 False
+
+SequencePosition/TaggedLeft/Chain  cells=0  pin=e3b0c44298fc1c14  bulk=1072:c40f0ee0f6a70582  # see #2648 (plan P93): a chain with an `in`, `not in`, `is` or `is not` link is refused by code generation (SPY0519: the bulk portion) where its desugaring runs or is refused by another code, as an `if` condition and as a comprehension filter, in the form tagged on its first operand alone. Pin lines: a chain whose `==` / `!=` link the binary form refuses (SPY0402) compiles or reaches Roslyn. A link gets its binary twin's verdict
+
+SequenceTriple/NoneLast/ComparisonFirst/Chain  cells=40  pin=98dfeea1eb43467e  bulk=6072:8540038852258b7d  # see #2648 (plan P93): a chain with an `in`, `not in`, `is` or `is not` link is refused by code generation (SPY0519: the bulk portion) where its desugaring runs or is refused by another code, for a chain of three links whose first link is a comparison, in the form whose last operand is the literal `None`. Pin lines: a chain whose `==` / `!=` link the binary form refuses (SPY0402) compiles or reaches Roslyn. A link gets its binary twin's verdict
+#= D/NoneLast/!=,!=,!= -> sharpy prints 0 1 2 True | desugaring refused SPY0402
+#= D/NoneLast/!=,!=,== -> sharpy prints 0 1 2 False | desugaring refused SPY0402
+#= D/NoneLast/!=,==,!= -> sharpy prints 0 1 2 False | desugaring refused SPY0402
+#= D/NoneLast/!=,==,== -> sharpy prints 0 1 2 False | desugaring refused SPY0402
+#= D/NoneLast/==,!=,!= -> sharpy prints 0 1 False | desugaring refused SPY0402
+#= D/NoneLast/==,!=,== -> sharpy prints 0 1 False | desugaring refused SPY0402
+#= D/NoneLast/==,==,!= -> sharpy prints 0 1 False | desugaring refused SPY0402
+#= D/NoneLast/==,==,== -> sharpy prints 0 1 False | desugaring refused SPY0402
+#= GK[int]/NoneLast/!=,!=,!= -> sharpy prints 0 1 2 True | desugaring refused SPY0402
+#= GK[int]/NoneLast/!=,!=,== -> sharpy prints 0 1 2 False | desugaring refused SPY0402
+#= GK[int]/NoneLast/!=,==,!= -> sharpy prints 0 1 2 False | desugaring refused SPY0402
+#= GK[int]/NoneLast/!=,==,== -> sharpy prints 0 1 2 False | desugaring refused SPY0402
+#= GK[int]/NoneLast/==,!=,!= -> sharpy prints 0 1 False | desugaring refused SPY0402
+#= GK[int]/NoneLast/==,!=,== -> sharpy prints 0 1 False | desugaring refused SPY0402
+#= GK[int]/NoneLast/==,==,!= -> sharpy prints 0 1 False | desugaring refused SPY0402
+#= GK[int]/NoneLast/==,==,== -> sharpy prints 0 1 False | desugaring refused SPY0402
+#= GS[int]/NoneLast/!=,!=,!= -> sharpy refused SPY0908 | desugaring refused SPY0402
+#= GS[int]/NoneLast/!=,!=,== -> sharpy refused SPY0908 | desugaring refused SPY0402
+#= GS[int]/NoneLast/!=,==,!= -> sharpy refused SPY0908 | desugaring refused SPY0402
+#= GS[int]/NoneLast/!=,==,== -> sharpy refused SPY0908 | desugaring refused SPY0402
+#= GS[int]/NoneLast/==,!=,!= -> sharpy refused SPY0908 | desugaring refused SPY0402
+#= GS[int]/NoneLast/==,!=,== -> sharpy refused SPY0908 | desugaring refused SPY0402
+#= GS[int]/NoneLast/==,==,!= -> sharpy refused SPY0908 | desugaring refused SPY0402
+#= GS[int]/NoneLast/==,==,== -> sharpy refused SPY0908 | desugaring refused SPY0402
+#= IFace/NoneLast/!=,!=,!= -> sharpy prints 0 1 2 True | desugaring refused SPY0402
+#= IFace/NoneLast/!=,!=,== -> sharpy prints 0 1 2 False | desugaring refused SPY0402
+#= IFace/NoneLast/!=,==,!= -> sharpy prints 0 1 2 False | desugaring refused SPY0402
+#= IFace/NoneLast/!=,==,== -> sharpy prints 0 1 2 False | desugaring refused SPY0402
+#= IFace/NoneLast/==,!=,!= -> sharpy prints 0 1 False | desugaring refused SPY0402
+#= IFace/NoneLast/==,!=,== -> sharpy prints 0 1 False | desugaring refused SPY0402
+#= IFace/NoneLast/==,==,!= -> sharpy prints 0 1 False | desugaring refused SPY0402
+#= IFace/NoneLast/==,==,== -> sharpy prints 0 1 False | desugaring refused SPY0402
+#= K/NoneLast/!=,!=,!= -> sharpy prints 0 1 2 True | desugaring refused SPY0402
+#= K/NoneLast/!=,!=,== -> sharpy prints 0 1 2 False | desugaring refused SPY0402
+#= K/NoneLast/!=,==,!= -> sharpy prints 0 1 2 False | desugaring refused SPY0402
+#= K/NoneLast/!=,==,== -> sharpy prints 0 1 2 False | desugaring refused SPY0402
+#= K/NoneLast/==,!=,!= -> sharpy prints 0 1 False | desugaring refused SPY0402
+#= K/NoneLast/==,!=,== -> sharpy prints 0 1 False | desugaring refused SPY0402
+#= K/NoneLast/==,==,!= -> sharpy prints 0 1 False | desugaring refused SPY0402
+#= K/NoneLast/==,==,== -> sharpy prints 0 1 False | desugaring refused SPY0402
+
+SequenceTriple/NoneLast/TestFirst/Chain  cells=0  pin=e3b0c44298fc1c14  bulk=6976:1b5726f39c2d8fb1  # see #2648 (plan P93): a chain with an `in`, `not in`, `is` or `is not` link is refused by code generation (SPY0519: the bulk portion) where its desugaring runs or is refused by another code, for a chain of three links whose first link is a test (`in`, `not in`, `is`, `is not`), in the form whose last operand is the literal `None`. Pin lines: a chain whose `==` / `!=` link the binary form refuses (SPY0402) compiles or reaches Roslyn. A link gets its binary twin's verdict
+
+SequenceTriple/Optional/ComparisonFirst/Chain  cells=0  pin=e3b0c44298fc1c14  bulk=8336:74d576a96aa5d163  # see #2648 (plan P93): a chain with an `in`, `not in`, `is` or `is not` link is refused by code generation (SPY0519: the bulk portion) where its desugaring runs or is refused by another code, for a chain of three links whose first link is a comparison, in the `T | None` form. Pin lines: a chain whose `==` / `!=` link the binary form refuses (SPY0402) compiles or reaches Roslyn. A link gets its binary twin's verdict
+
+SequenceTriple/Optional/TestFirst/Chain  cells=0  pin=e3b0c44298fc1c14  bulk=11344:0914e0894de9f5ea  # see #2648 (plan P93): a chain with an `in`, `not in`, `is` or `is not` link is refused by code generation (SPY0519: the bulk portion) where its desugaring runs or is refused by another code, for a chain of three links whose first link is a test (`in`, `not in`, `is`, `is not`), in the `T | None` form. Pin lines: a chain whose `==` / `!=` link the binary form refuses (SPY0402) compiles or reaches Roslyn. A link gets its binary twin's verdict
+
+SequenceTriple/Plain/ComparisonFirst/Chain  cells=64  pin=16cfb064a883d70d  bulk=8336:da98b78289efb97a  # see #2648 (plan P93): a chain with an `in`, `not in`, `is` or `is not` link is refused by code generation (SPY0519: the bulk portion) where its desugaring runs or is refused by another code, for a chain of three links whose first link is a comparison, in the plain form. Pin lines: a chain whose `==` / `!=` link the binary form refuses (SPY0402) compiles or reaches Roslyn. A link gets its binary twin's verdict
 #= D/Plain/!=,!=,!= -> sharpy prints 0 1 2 3 True | desugaring refused SPY0402
 #= D/Plain/!=,!=,== -> sharpy prints 0 1 2 3 False | desugaring refused SPY0402
 #= D/Plain/!=,==,!= -> sharpy prints 0 1 2 False | desugaring refused SPY0402
@@ -3206,6 +3868,400 @@ SequenceTriple/Chain  cells=64  pin=16cfb064a883d70d  bulk=19680:d20242b948d77a3
 #= object/Plain/==,==,!= -> sharpy prints 0 1 False | desugaring refused SPY0402
 #= object/Plain/==,==,== -> sharpy prints 0 1 False | desugaring refused SPY0402
 
+SequenceTriple/Plain/TestFirst/Chain  cells=0  pin=e3b0c44298fc1c14  bulk=11344:e33b11946d5651f3  # see #2648 (plan P93): a chain with an `in`, `not in`, `is` or `is not` link is refused by code generation (SPY0519: the bulk portion) where its desugaring runs or is refused by another code, for a chain of three links whose first link is a test (`in`, `not in`, `is`, `is not`), in the plain form. Pin lines: a chain whose `==` / `!=` link the binary form refuses (SPY0402) compiles or reaches Roslyn. A link gets its binary twin's verdict
+
+SequenceTriple/Tagged/ComparisonFirst/Chain  cells=0  pin=e3b0c44298fc1c14  bulk=2560:fbddde0e66a14b65  # see #2648 (plan P93): a chain with an `in`, `not in`, `is` or `is not` link is refused by code generation (SPY0519: the bulk portion) where its desugaring runs or is refused by another code, for a chain of three links whose first link is a comparison, in the tagged `T?` form. Pin lines: a chain whose `==` / `!=` link the binary form refuses (SPY0402) compiles or reaches Roslyn. A link gets its binary twin's verdict
+
+SequenceTriple/Tagged/TestFirst/Chain  cells=0  pin=e3b0c44298fc1c14  bulk=9216:fdf137899634dc79  # see #2648 (plan P93): a chain with an `in`, `not in`, `is` or `is not` link is refused by code generation (SPY0519: the bulk portion) where its desugaring runs or is refused by another code, for a chain of three links whose first link is a test (`in`, `not in`, `is`, `is not`), in the tagged `T?` form. Pin lines: a chain whose `==` / `!=` link the binary form refuses (SPY0402) compiles or reaches Roslyn. A link gets its binary twin's verdict
+
+SequenceTriple/TaggedLeft/ComparisonFirst/Chain  cells=384  pin=b1807654b2211b0f  # see #2648 (plan P93): a chain with an `in`, `not in`, `is` or `is not` link is refused by code generation (SPY0519: the bulk portion) where its desugaring runs or is refused by another code, for a chain of three links whose first link is a comparison, in the form tagged on its first operand alone. Pin lines: a chain whose `==` / `!=` link the binary form refuses (SPY0402) compiles or reaches Roslyn. A link gets its binary twin's verdict
+#= T/TaggedLeft/!=,!=,in -> sharpy refused SPY0519 | desugaring refused SPY0908
+#= T/TaggedLeft/!=,!=,is -> sharpy refused SPY0519 | desugaring refused SPY0908
+#= T/TaggedLeft/!=,!=,is not -> sharpy refused SPY0519 | desugaring refused SPY0908
+#= T/TaggedLeft/!=,!=,not in -> sharpy refused SPY0519 | desugaring refused SPY0908
+#= T/TaggedLeft/!=,==,in -> sharpy refused SPY0519 | desugaring refused SPY0908
+#= T/TaggedLeft/!=,==,is -> sharpy refused SPY0519 | desugaring refused SPY0908
+#= T/TaggedLeft/!=,==,is not -> sharpy refused SPY0519 | desugaring refused SPY0908
+#= T/TaggedLeft/!=,==,not in -> sharpy refused SPY0519 | desugaring refused SPY0908
+#= T/TaggedLeft/!=,is not,!= -> sharpy refused SPY0519 | desugaring prints 0 1 2 3 True
+#= T/TaggedLeft/!=,is not,== -> sharpy refused SPY0519 | desugaring prints 0 1 2 3 False
+#= T/TaggedLeft/!=,is not,in -> sharpy refused SPY0519 | desugaring prints 0 1 2 3 True
+#= T/TaggedLeft/!=,is not,is -> sharpy refused SPY0519 | desugaring prints 0 1 2 3 False
+#= T/TaggedLeft/!=,is not,is not -> sharpy refused SPY0519 | desugaring prints 0 1 2 3 True
+#= T/TaggedLeft/!=,is not,not in -> sharpy refused SPY0519 | desugaring prints 0 1 2 3 False
+#= T/TaggedLeft/!=,is,!= -> sharpy refused SPY0519 | desugaring prints 0 1 2 False
+#= T/TaggedLeft/!=,is,== -> sharpy refused SPY0519 | desugaring prints 0 1 2 False
+#= T/TaggedLeft/!=,is,in -> sharpy refused SPY0519 | desugaring prints 0 1 2 False
+#= T/TaggedLeft/!=,is,is -> sharpy refused SPY0519 | desugaring prints 0 1 2 False
+#= T/TaggedLeft/!=,is,is not -> sharpy refused SPY0519 | desugaring prints 0 1 2 False
+#= T/TaggedLeft/!=,is,not in -> sharpy refused SPY0519 | desugaring prints 0 1 2 False
+#= T/TaggedLeft/==,!=,in -> sharpy refused SPY0519 | desugaring refused SPY0908
+#= T/TaggedLeft/==,!=,is -> sharpy refused SPY0519 | desugaring refused SPY0908
+#= T/TaggedLeft/==,!=,is not -> sharpy refused SPY0519 | desugaring refused SPY0908
+#= T/TaggedLeft/==,!=,not in -> sharpy refused SPY0519 | desugaring refused SPY0908
+#= T/TaggedLeft/==,==,in -> sharpy refused SPY0519 | desugaring refused SPY0908
+#= T/TaggedLeft/==,==,is -> sharpy refused SPY0519 | desugaring refused SPY0908
+#= T/TaggedLeft/==,==,is not -> sharpy refused SPY0519 | desugaring refused SPY0908
+#= T/TaggedLeft/==,==,not in -> sharpy refused SPY0519 | desugaring refused SPY0908
+#= T/TaggedLeft/==,is not,!= -> sharpy refused SPY0519 | desugaring prints 0 1 False
+#= T/TaggedLeft/==,is not,== -> sharpy refused SPY0519 | desugaring prints 0 1 False
+#= T/TaggedLeft/==,is not,in -> sharpy refused SPY0519 | desugaring prints 0 1 False
+#= T/TaggedLeft/==,is not,is -> sharpy refused SPY0519 | desugaring prints 0 1 False
+#= T/TaggedLeft/==,is not,is not -> sharpy refused SPY0519 | desugaring prints 0 1 False
+#= T/TaggedLeft/==,is not,not in -> sharpy refused SPY0519 | desugaring prints 0 1 False
+#= T/TaggedLeft/==,is,!= -> sharpy refused SPY0519 | desugaring prints 0 1 False
+#= T/TaggedLeft/==,is,== -> sharpy refused SPY0519 | desugaring prints 0 1 False
+#= T/TaggedLeft/==,is,in -> sharpy refused SPY0519 | desugaring prints 0 1 False
+#= T/TaggedLeft/==,is,is -> sharpy refused SPY0519 | desugaring prints 0 1 False
+#= T/TaggedLeft/==,is,is not -> sharpy refused SPY0519 | desugaring prints 0 1 False
+#= T/TaggedLeft/==,is,not in -> sharpy refused SPY0519 | desugaring prints 0 1 False
+#= T: IComparable[T]/TaggedLeft/!=,!=,in -> sharpy refused SPY0519 | desugaring refused SPY0908
+#= T: IComparable[T]/TaggedLeft/!=,!=,is -> sharpy refused SPY0519 | desugaring refused SPY0908
+#= T: IComparable[T]/TaggedLeft/!=,!=,is not -> sharpy refused SPY0519 | desugaring refused SPY0908
+#= T: IComparable[T]/TaggedLeft/!=,!=,not in -> sharpy refused SPY0519 | desugaring refused SPY0908
+#= T: IComparable[T]/TaggedLeft/!=,<,in -> sharpy refused SPY0519 | desugaring refused SPY0908
+#= T: IComparable[T]/TaggedLeft/!=,<,is -> sharpy refused SPY0519 | desugaring refused SPY0908
+#= T: IComparable[T]/TaggedLeft/!=,<,is not -> sharpy refused SPY0519 | desugaring refused SPY0908
+#= T: IComparable[T]/TaggedLeft/!=,<,not in -> sharpy refused SPY0519 | desugaring refused SPY0908
+#= T: IComparable[T]/TaggedLeft/!=,<=,in -> sharpy refused SPY0519 | desugaring refused SPY0908
+#= T: IComparable[T]/TaggedLeft/!=,<=,is -> sharpy refused SPY0519 | desugaring refused SPY0908
+#= T: IComparable[T]/TaggedLeft/!=,<=,is not -> sharpy refused SPY0519 | desugaring refused SPY0908
+#= T: IComparable[T]/TaggedLeft/!=,<=,not in -> sharpy refused SPY0519 | desugaring refused SPY0908
+#= T: IComparable[T]/TaggedLeft/!=,==,in -> sharpy refused SPY0519 | desugaring refused SPY0908
+#= T: IComparable[T]/TaggedLeft/!=,==,is -> sharpy refused SPY0519 | desugaring refused SPY0908
+#= T: IComparable[T]/TaggedLeft/!=,==,is not -> sharpy refused SPY0519 | desugaring refused SPY0908
+#= T: IComparable[T]/TaggedLeft/!=,==,not in -> sharpy refused SPY0519 | desugaring refused SPY0908
+#= T: IComparable[T]/TaggedLeft/!=,>,in -> sharpy refused SPY0519 | desugaring refused SPY0908
+#= T: IComparable[T]/TaggedLeft/!=,>,is -> sharpy refused SPY0519 | desugaring refused SPY0908
+#= T: IComparable[T]/TaggedLeft/!=,>,is not -> sharpy refused SPY0519 | desugaring refused SPY0908
+#= T: IComparable[T]/TaggedLeft/!=,>,not in -> sharpy refused SPY0519 | desugaring refused SPY0908
+#= T: IComparable[T]/TaggedLeft/!=,>=,in -> sharpy refused SPY0519 | desugaring refused SPY0908
+#= T: IComparable[T]/TaggedLeft/!=,>=,is -> sharpy refused SPY0519 | desugaring refused SPY0908
+#= T: IComparable[T]/TaggedLeft/!=,>=,is not -> sharpy refused SPY0519 | desugaring refused SPY0908
+#= T: IComparable[T]/TaggedLeft/!=,>=,not in -> sharpy refused SPY0519 | desugaring refused SPY0908
+#= T: IComparable[T]/TaggedLeft/!=,is not,!= -> sharpy refused SPY0519 | desugaring prints 0 1 2 3 True
+#= T: IComparable[T]/TaggedLeft/!=,is not,< -> sharpy refused SPY0519 | desugaring refused SPY0908
+#= T: IComparable[T]/TaggedLeft/!=,is not,<= -> sharpy refused SPY0519 | desugaring refused SPY0908
+#= T: IComparable[T]/TaggedLeft/!=,is not,== -> sharpy refused SPY0519 | desugaring prints 0 1 2 3 False
+#= T: IComparable[T]/TaggedLeft/!=,is not,> -> sharpy refused SPY0519 | desugaring refused SPY0908
+#= T: IComparable[T]/TaggedLeft/!=,is not,>= -> sharpy refused SPY0519 | desugaring refused SPY0908
+#= T: IComparable[T]/TaggedLeft/!=,is not,in -> sharpy refused SPY0519 | desugaring prints 0 1 2 3 True
+#= T: IComparable[T]/TaggedLeft/!=,is not,is -> sharpy refused SPY0519 | desugaring prints 0 1 2 3 False
+#= T: IComparable[T]/TaggedLeft/!=,is not,is not -> sharpy refused SPY0519 | desugaring prints 0 1 2 3 True
+#= T: IComparable[T]/TaggedLeft/!=,is not,not in -> sharpy refused SPY0519 | desugaring prints 0 1 2 3 False
+#= T: IComparable[T]/TaggedLeft/!=,is,!= -> sharpy refused SPY0519 | desugaring prints 0 1 2 False
+#= T: IComparable[T]/TaggedLeft/!=,is,< -> sharpy refused SPY0519 | desugaring refused SPY0908
+#= T: IComparable[T]/TaggedLeft/!=,is,<= -> sharpy refused SPY0519 | desugaring refused SPY0908
+#= T: IComparable[T]/TaggedLeft/!=,is,== -> sharpy refused SPY0519 | desugaring prints 0 1 2 False
+#= T: IComparable[T]/TaggedLeft/!=,is,> -> sharpy refused SPY0519 | desugaring refused SPY0908
+#= T: IComparable[T]/TaggedLeft/!=,is,>= -> sharpy refused SPY0519 | desugaring refused SPY0908
+#= T: IComparable[T]/TaggedLeft/!=,is,in -> sharpy refused SPY0519 | desugaring prints 0 1 2 False
+#= T: IComparable[T]/TaggedLeft/!=,is,is -> sharpy refused SPY0519 | desugaring prints 0 1 2 False
+#= T: IComparable[T]/TaggedLeft/!=,is,is not -> sharpy refused SPY0519 | desugaring prints 0 1 2 False
+#= T: IComparable[T]/TaggedLeft/!=,is,not in -> sharpy refused SPY0519 | desugaring prints 0 1 2 False
+#= T: IComparable[T]/TaggedLeft/<,!=,in -> sharpy refused SPY0519 | desugaring refused SPY0908
+#= T: IComparable[T]/TaggedLeft/<,!=,is -> sharpy refused SPY0519 | desugaring refused SPY0908
+#= T: IComparable[T]/TaggedLeft/<,!=,is not -> sharpy refused SPY0519 | desugaring refused SPY0908
+#= T: IComparable[T]/TaggedLeft/<,!=,not in -> sharpy refused SPY0519 | desugaring refused SPY0908
+#= T: IComparable[T]/TaggedLeft/<,<,in -> sharpy refused SPY0519 | desugaring refused SPY0908
+#= T: IComparable[T]/TaggedLeft/<,<,is -> sharpy refused SPY0519 | desugaring refused SPY0908
+#= T: IComparable[T]/TaggedLeft/<,<,is not -> sharpy refused SPY0519 | desugaring refused SPY0908
+#= T: IComparable[T]/TaggedLeft/<,<,not in -> sharpy refused SPY0519 | desugaring refused SPY0908
+#= T: IComparable[T]/TaggedLeft/<,<=,in -> sharpy refused SPY0519 | desugaring refused SPY0908
+#= T: IComparable[T]/TaggedLeft/<,<=,is -> sharpy refused SPY0519 | desugaring refused SPY0908
+#= T: IComparable[T]/TaggedLeft/<,<=,is not -> sharpy refused SPY0519 | desugaring refused SPY0908
+#= T: IComparable[T]/TaggedLeft/<,<=,not in -> sharpy refused SPY0519 | desugaring refused SPY0908
+#= T: IComparable[T]/TaggedLeft/<,==,in -> sharpy refused SPY0519 | desugaring refused SPY0908
+#= T: IComparable[T]/TaggedLeft/<,==,is -> sharpy refused SPY0519 | desugaring refused SPY0908
+#= T: IComparable[T]/TaggedLeft/<,==,is not -> sharpy refused SPY0519 | desugaring refused SPY0908
+#= T: IComparable[T]/TaggedLeft/<,==,not in -> sharpy refused SPY0519 | desugaring refused SPY0908
+#= T: IComparable[T]/TaggedLeft/<,>,in -> sharpy refused SPY0519 | desugaring refused SPY0908
+#= T: IComparable[T]/TaggedLeft/<,>,is -> sharpy refused SPY0519 | desugaring refused SPY0908
+#= T: IComparable[T]/TaggedLeft/<,>,is not -> sharpy refused SPY0519 | desugaring refused SPY0908
+#= T: IComparable[T]/TaggedLeft/<,>,not in -> sharpy refused SPY0519 | desugaring refused SPY0908
+#= T: IComparable[T]/TaggedLeft/<,>=,in -> sharpy refused SPY0519 | desugaring refused SPY0908
+#= T: IComparable[T]/TaggedLeft/<,>=,is -> sharpy refused SPY0519 | desugaring refused SPY0908
+#= T: IComparable[T]/TaggedLeft/<,>=,is not -> sharpy refused SPY0519 | desugaring refused SPY0908
+#= T: IComparable[T]/TaggedLeft/<,>=,not in -> sharpy refused SPY0519 | desugaring refused SPY0908
+#= T: IComparable[T]/TaggedLeft/<,is not,!= -> sharpy refused SPY0519 | desugaring refused SPY0908
+#= T: IComparable[T]/TaggedLeft/<,is not,< -> sharpy refused SPY0519 | desugaring refused SPY0908
+#= T: IComparable[T]/TaggedLeft/<,is not,<= -> sharpy refused SPY0519 | desugaring refused SPY0908
+#= T: IComparable[T]/TaggedLeft/<,is not,== -> sharpy refused SPY0519 | desugaring refused SPY0908
+#= T: IComparable[T]/TaggedLeft/<,is not,> -> sharpy refused SPY0519 | desugaring refused SPY0908
+#= T: IComparable[T]/TaggedLeft/<,is not,>= -> sharpy refused SPY0519 | desugaring refused SPY0908
+#= T: IComparable[T]/TaggedLeft/<,is not,in -> sharpy refused SPY0519 | desugaring refused SPY0908
+#= T: IComparable[T]/TaggedLeft/<,is not,is -> sharpy refused SPY0519 | desugaring refused SPY0908
+#= T: IComparable[T]/TaggedLeft/<,is not,is not -> sharpy refused SPY0519 | desugaring refused SPY0908
+#= T: IComparable[T]/TaggedLeft/<,is not,not in -> sharpy refused SPY0519 | desugaring refused SPY0908
+#= T: IComparable[T]/TaggedLeft/<,is,!= -> sharpy refused SPY0519 | desugaring refused SPY0908
+#= T: IComparable[T]/TaggedLeft/<,is,< -> sharpy refused SPY0519 | desugaring refused SPY0908
+#= T: IComparable[T]/TaggedLeft/<,is,<= -> sharpy refused SPY0519 | desugaring refused SPY0908
+#= T: IComparable[T]/TaggedLeft/<,is,== -> sharpy refused SPY0519 | desugaring refused SPY0908
+#= T: IComparable[T]/TaggedLeft/<,is,> -> sharpy refused SPY0519 | desugaring refused SPY0908
+#= T: IComparable[T]/TaggedLeft/<,is,>= -> sharpy refused SPY0519 | desugaring refused SPY0908
+#= T: IComparable[T]/TaggedLeft/<,is,in -> sharpy refused SPY0519 | desugaring refused SPY0908
+#= T: IComparable[T]/TaggedLeft/<,is,is -> sharpy refused SPY0519 | desugaring refused SPY0908
+#= T: IComparable[T]/TaggedLeft/<,is,is not -> sharpy refused SPY0519 | desugaring refused SPY0908
+#= T: IComparable[T]/TaggedLeft/<,is,not in -> sharpy refused SPY0519 | desugaring refused SPY0908
+#= T: IComparable[T]/TaggedLeft/<=,!=,in -> sharpy refused SPY0519 | desugaring refused SPY0908
+#= T: IComparable[T]/TaggedLeft/<=,!=,is -> sharpy refused SPY0519 | desugaring refused SPY0908
+#= T: IComparable[T]/TaggedLeft/<=,!=,is not -> sharpy refused SPY0519 | desugaring refused SPY0908
+#= T: IComparable[T]/TaggedLeft/<=,!=,not in -> sharpy refused SPY0519 | desugaring refused SPY0908
+#= T: IComparable[T]/TaggedLeft/<=,<,in -> sharpy refused SPY0519 | desugaring refused SPY0908
+#= T: IComparable[T]/TaggedLeft/<=,<,is -> sharpy refused SPY0519 | desugaring refused SPY0908
+#= T: IComparable[T]/TaggedLeft/<=,<,is not -> sharpy refused SPY0519 | desugaring refused SPY0908
+#= T: IComparable[T]/TaggedLeft/<=,<,not in -> sharpy refused SPY0519 | desugaring refused SPY0908
+#= T: IComparable[T]/TaggedLeft/<=,<=,in -> sharpy refused SPY0519 | desugaring refused SPY0908
+#= T: IComparable[T]/TaggedLeft/<=,<=,is -> sharpy refused SPY0519 | desugaring refused SPY0908
+#= T: IComparable[T]/TaggedLeft/<=,<=,is not -> sharpy refused SPY0519 | desugaring refused SPY0908
+#= T: IComparable[T]/TaggedLeft/<=,<=,not in -> sharpy refused SPY0519 | desugaring refused SPY0908
+#= T: IComparable[T]/TaggedLeft/<=,==,in -> sharpy refused SPY0519 | desugaring refused SPY0908
+#= T: IComparable[T]/TaggedLeft/<=,==,is -> sharpy refused SPY0519 | desugaring refused SPY0908
+#= T: IComparable[T]/TaggedLeft/<=,==,is not -> sharpy refused SPY0519 | desugaring refused SPY0908
+#= T: IComparable[T]/TaggedLeft/<=,==,not in -> sharpy refused SPY0519 | desugaring refused SPY0908
+#= T: IComparable[T]/TaggedLeft/<=,>,in -> sharpy refused SPY0519 | desugaring refused SPY0908
+#= T: IComparable[T]/TaggedLeft/<=,>,is -> sharpy refused SPY0519 | desugaring refused SPY0908
+#= T: IComparable[T]/TaggedLeft/<=,>,is not -> sharpy refused SPY0519 | desugaring refused SPY0908
+#= T: IComparable[T]/TaggedLeft/<=,>,not in -> sharpy refused SPY0519 | desugaring refused SPY0908
+#= T: IComparable[T]/TaggedLeft/<=,>=,in -> sharpy refused SPY0519 | desugaring refused SPY0908
+#= T: IComparable[T]/TaggedLeft/<=,>=,is -> sharpy refused SPY0519 | desugaring refused SPY0908
+#= T: IComparable[T]/TaggedLeft/<=,>=,is not -> sharpy refused SPY0519 | desugaring refused SPY0908
+#= T: IComparable[T]/TaggedLeft/<=,>=,not in -> sharpy refused SPY0519 | desugaring refused SPY0908
+#= T: IComparable[T]/TaggedLeft/<=,is not,!= -> sharpy refused SPY0519 | desugaring refused SPY0908
+#= T: IComparable[T]/TaggedLeft/<=,is not,< -> sharpy refused SPY0519 | desugaring refused SPY0908
+#= T: IComparable[T]/TaggedLeft/<=,is not,<= -> sharpy refused SPY0519 | desugaring refused SPY0908
+#= T: IComparable[T]/TaggedLeft/<=,is not,== -> sharpy refused SPY0519 | desugaring refused SPY0908
+#= T: IComparable[T]/TaggedLeft/<=,is not,> -> sharpy refused SPY0519 | desugaring refused SPY0908
+#= T: IComparable[T]/TaggedLeft/<=,is not,>= -> sharpy refused SPY0519 | desugaring refused SPY0908
+#= T: IComparable[T]/TaggedLeft/<=,is not,in -> sharpy refused SPY0519 | desugaring refused SPY0908
+#= T: IComparable[T]/TaggedLeft/<=,is not,is -> sharpy refused SPY0519 | desugaring refused SPY0908
+#= T: IComparable[T]/TaggedLeft/<=,is not,is not -> sharpy refused SPY0519 | desugaring refused SPY0908
+#= T: IComparable[T]/TaggedLeft/<=,is not,not in -> sharpy refused SPY0519 | desugaring refused SPY0908
+#= T: IComparable[T]/TaggedLeft/<=,is,!= -> sharpy refused SPY0519 | desugaring refused SPY0908
+#= T: IComparable[T]/TaggedLeft/<=,is,< -> sharpy refused SPY0519 | desugaring refused SPY0908
+#= T: IComparable[T]/TaggedLeft/<=,is,<= -> sharpy refused SPY0519 | desugaring refused SPY0908
+#= T: IComparable[T]/TaggedLeft/<=,is,== -> sharpy refused SPY0519 | desugaring refused SPY0908
+#= T: IComparable[T]/TaggedLeft/<=,is,> -> sharpy refused SPY0519 | desugaring refused SPY0908
+#= T: IComparable[T]/TaggedLeft/<=,is,>= -> sharpy refused SPY0519 | desugaring refused SPY0908
+#= T: IComparable[T]/TaggedLeft/<=,is,in -> sharpy refused SPY0519 | desugaring refused SPY0908
+#= T: IComparable[T]/TaggedLeft/<=,is,is -> sharpy refused SPY0519 | desugaring refused SPY0908
+#= T: IComparable[T]/TaggedLeft/<=,is,is not -> sharpy refused SPY0519 | desugaring refused SPY0908
+#= T: IComparable[T]/TaggedLeft/<=,is,not in -> sharpy refused SPY0519 | desugaring refused SPY0908
+#= T: IComparable[T]/TaggedLeft/==,!=,in -> sharpy refused SPY0519 | desugaring refused SPY0908
+#= T: IComparable[T]/TaggedLeft/==,!=,is -> sharpy refused SPY0519 | desugaring refused SPY0908
+#= T: IComparable[T]/TaggedLeft/==,!=,is not -> sharpy refused SPY0519 | desugaring refused SPY0908
+#= T: IComparable[T]/TaggedLeft/==,!=,not in -> sharpy refused SPY0519 | desugaring refused SPY0908
+#= T: IComparable[T]/TaggedLeft/==,<,in -> sharpy refused SPY0519 | desugaring refused SPY0908
+#= T: IComparable[T]/TaggedLeft/==,<,is -> sharpy refused SPY0519 | desugaring refused SPY0908
+#= T: IComparable[T]/TaggedLeft/==,<,is not -> sharpy refused SPY0519 | desugaring refused SPY0908
+#= T: IComparable[T]/TaggedLeft/==,<,not in -> sharpy refused SPY0519 | desugaring refused SPY0908
+#= T: IComparable[T]/TaggedLeft/==,<=,in -> sharpy refused SPY0519 | desugaring refused SPY0908
+#= T: IComparable[T]/TaggedLeft/==,<=,is -> sharpy refused SPY0519 | desugaring refused SPY0908
+#= T: IComparable[T]/TaggedLeft/==,<=,is not -> sharpy refused SPY0519 | desugaring refused SPY0908
+#= T: IComparable[T]/TaggedLeft/==,<=,not in -> sharpy refused SPY0519 | desugaring refused SPY0908
+#= T: IComparable[T]/TaggedLeft/==,==,in -> sharpy refused SPY0519 | desugaring refused SPY0908
+#= T: IComparable[T]/TaggedLeft/==,==,is -> sharpy refused SPY0519 | desugaring refused SPY0908
+#= T: IComparable[T]/TaggedLeft/==,==,is not -> sharpy refused SPY0519 | desugaring refused SPY0908
+#= T: IComparable[T]/TaggedLeft/==,==,not in -> sharpy refused SPY0519 | desugaring refused SPY0908
+#= T: IComparable[T]/TaggedLeft/==,>,in -> sharpy refused SPY0519 | desugaring refused SPY0908
+#= T: IComparable[T]/TaggedLeft/==,>,is -> sharpy refused SPY0519 | desugaring refused SPY0908
+#= T: IComparable[T]/TaggedLeft/==,>,is not -> sharpy refused SPY0519 | desugaring refused SPY0908
+#= T: IComparable[T]/TaggedLeft/==,>,not in -> sharpy refused SPY0519 | desugaring refused SPY0908
+#= T: IComparable[T]/TaggedLeft/==,>=,in -> sharpy refused SPY0519 | desugaring refused SPY0908
+#= T: IComparable[T]/TaggedLeft/==,>=,is -> sharpy refused SPY0519 | desugaring refused SPY0908
+#= T: IComparable[T]/TaggedLeft/==,>=,is not -> sharpy refused SPY0519 | desugaring refused SPY0908
+#= T: IComparable[T]/TaggedLeft/==,>=,not in -> sharpy refused SPY0519 | desugaring refused SPY0908
+#= T: IComparable[T]/TaggedLeft/==,is not,!= -> sharpy refused SPY0519 | desugaring prints 0 1 False
+#= T: IComparable[T]/TaggedLeft/==,is not,< -> sharpy refused SPY0519 | desugaring refused SPY0908
+#= T: IComparable[T]/TaggedLeft/==,is not,<= -> sharpy refused SPY0519 | desugaring refused SPY0908
+#= T: IComparable[T]/TaggedLeft/==,is not,== -> sharpy refused SPY0519 | desugaring prints 0 1 False
+#= T: IComparable[T]/TaggedLeft/==,is not,> -> sharpy refused SPY0519 | desugaring refused SPY0908
+#= T: IComparable[T]/TaggedLeft/==,is not,>= -> sharpy refused SPY0519 | desugaring refused SPY0908
+#= T: IComparable[T]/TaggedLeft/==,is not,in -> sharpy refused SPY0519 | desugaring prints 0 1 False
+#= T: IComparable[T]/TaggedLeft/==,is not,is -> sharpy refused SPY0519 | desugaring prints 0 1 False
+#= T: IComparable[T]/TaggedLeft/==,is not,is not -> sharpy refused SPY0519 | desugaring prints 0 1 False
+#= T: IComparable[T]/TaggedLeft/==,is not,not in -> sharpy refused SPY0519 | desugaring prints 0 1 False
+#= T: IComparable[T]/TaggedLeft/==,is,!= -> sharpy refused SPY0519 | desugaring prints 0 1 False
+#= T: IComparable[T]/TaggedLeft/==,is,< -> sharpy refused SPY0519 | desugaring refused SPY0908
+#= T: IComparable[T]/TaggedLeft/==,is,<= -> sharpy refused SPY0519 | desugaring refused SPY0908
+#= T: IComparable[T]/TaggedLeft/==,is,== -> sharpy refused SPY0519 | desugaring prints 0 1 False
+#= T: IComparable[T]/TaggedLeft/==,is,> -> sharpy refused SPY0519 | desugaring refused SPY0908
+#= T: IComparable[T]/TaggedLeft/==,is,>= -> sharpy refused SPY0519 | desugaring refused SPY0908
+#= T: IComparable[T]/TaggedLeft/==,is,in -> sharpy refused SPY0519 | desugaring prints 0 1 False
+#= T: IComparable[T]/TaggedLeft/==,is,is -> sharpy refused SPY0519 | desugaring prints 0 1 False
+#= T: IComparable[T]/TaggedLeft/==,is,is not -> sharpy refused SPY0519 | desugaring prints 0 1 False
+#= T: IComparable[T]/TaggedLeft/==,is,not in -> sharpy refused SPY0519 | desugaring prints 0 1 False
+#= T: IComparable[T]/TaggedLeft/>,!=,in -> sharpy refused SPY0519 | desugaring refused SPY0908
+#= T: IComparable[T]/TaggedLeft/>,!=,is -> sharpy refused SPY0519 | desugaring refused SPY0908
+#= T: IComparable[T]/TaggedLeft/>,!=,is not -> sharpy refused SPY0519 | desugaring refused SPY0908
+#= T: IComparable[T]/TaggedLeft/>,!=,not in -> sharpy refused SPY0519 | desugaring refused SPY0908
+#= T: IComparable[T]/TaggedLeft/>,<,in -> sharpy refused SPY0519 | desugaring refused SPY0908
+#= T: IComparable[T]/TaggedLeft/>,<,is -> sharpy refused SPY0519 | desugaring refused SPY0908
+#= T: IComparable[T]/TaggedLeft/>,<,is not -> sharpy refused SPY0519 | desugaring refused SPY0908
+#= T: IComparable[T]/TaggedLeft/>,<,not in -> sharpy refused SPY0519 | desugaring refused SPY0908
+#= T: IComparable[T]/TaggedLeft/>,<=,in -> sharpy refused SPY0519 | desugaring refused SPY0908
+#= T: IComparable[T]/TaggedLeft/>,<=,is -> sharpy refused SPY0519 | desugaring refused SPY0908
+#= T: IComparable[T]/TaggedLeft/>,<=,is not -> sharpy refused SPY0519 | desugaring refused SPY0908
+#= T: IComparable[T]/TaggedLeft/>,<=,not in -> sharpy refused SPY0519 | desugaring refused SPY0908
+#= T: IComparable[T]/TaggedLeft/>,==,in -> sharpy refused SPY0519 | desugaring refused SPY0908
+#= T: IComparable[T]/TaggedLeft/>,==,is -> sharpy refused SPY0519 | desugaring refused SPY0908
+#= T: IComparable[T]/TaggedLeft/>,==,is not -> sharpy refused SPY0519 | desugaring refused SPY0908
+#= T: IComparable[T]/TaggedLeft/>,==,not in -> sharpy refused SPY0519 | desugaring refused SPY0908
+#= T: IComparable[T]/TaggedLeft/>,>,in -> sharpy refused SPY0519 | desugaring refused SPY0908
+#= T: IComparable[T]/TaggedLeft/>,>,is -> sharpy refused SPY0519 | desugaring refused SPY0908
+#= T: IComparable[T]/TaggedLeft/>,>,is not -> sharpy refused SPY0519 | desugaring refused SPY0908
+#= T: IComparable[T]/TaggedLeft/>,>,not in -> sharpy refused SPY0519 | desugaring refused SPY0908
+#= T: IComparable[T]/TaggedLeft/>,>=,in -> sharpy refused SPY0519 | desugaring refused SPY0908
+#= T: IComparable[T]/TaggedLeft/>,>=,is -> sharpy refused SPY0519 | desugaring refused SPY0908
+#= T: IComparable[T]/TaggedLeft/>,>=,is not -> sharpy refused SPY0519 | desugaring refused SPY0908
+#= T: IComparable[T]/TaggedLeft/>,>=,not in -> sharpy refused SPY0519 | desugaring refused SPY0908
+#= T: IComparable[T]/TaggedLeft/>,is not,!= -> sharpy refused SPY0519 | desugaring refused SPY0908
+#= T: IComparable[T]/TaggedLeft/>,is not,< -> sharpy refused SPY0519 | desugaring refused SPY0908
+#= T: IComparable[T]/TaggedLeft/>,is not,<= -> sharpy refused SPY0519 | desugaring refused SPY0908
+#= T: IComparable[T]/TaggedLeft/>,is not,== -> sharpy refused SPY0519 | desugaring refused SPY0908
+#= T: IComparable[T]/TaggedLeft/>,is not,> -> sharpy refused SPY0519 | desugaring refused SPY0908
+#= T: IComparable[T]/TaggedLeft/>,is not,>= -> sharpy refused SPY0519 | desugaring refused SPY0908
+#= T: IComparable[T]/TaggedLeft/>,is not,in -> sharpy refused SPY0519 | desugaring refused SPY0908
+#= T: IComparable[T]/TaggedLeft/>,is not,is -> sharpy refused SPY0519 | desugaring refused SPY0908
+#= T: IComparable[T]/TaggedLeft/>,is not,is not -> sharpy refused SPY0519 | desugaring refused SPY0908
+#= T: IComparable[T]/TaggedLeft/>,is not,not in -> sharpy refused SPY0519 | desugaring refused SPY0908
+#= T: IComparable[T]/TaggedLeft/>,is,!= -> sharpy refused SPY0519 | desugaring refused SPY0908
+#= T: IComparable[T]/TaggedLeft/>,is,< -> sharpy refused SPY0519 | desugaring refused SPY0908
+#= T: IComparable[T]/TaggedLeft/>,is,<= -> sharpy refused SPY0519 | desugaring refused SPY0908
+#= T: IComparable[T]/TaggedLeft/>,is,== -> sharpy refused SPY0519 | desugaring refused SPY0908
+#= T: IComparable[T]/TaggedLeft/>,is,> -> sharpy refused SPY0519 | desugaring refused SPY0908
+#= T: IComparable[T]/TaggedLeft/>,is,>= -> sharpy refused SPY0519 | desugaring refused SPY0908
+#= T: IComparable[T]/TaggedLeft/>,is,in -> sharpy refused SPY0519 | desugaring refused SPY0908
+#= T: IComparable[T]/TaggedLeft/>,is,is -> sharpy refused SPY0519 | desugaring refused SPY0908
+#= T: IComparable[T]/TaggedLeft/>,is,is not -> sharpy refused SPY0519 | desugaring refused SPY0908
+#= T: IComparable[T]/TaggedLeft/>,is,not in -> sharpy refused SPY0519 | desugaring refused SPY0908
+#= T: IComparable[T]/TaggedLeft/>=,!=,in -> sharpy refused SPY0519 | desugaring refused SPY0908
+#= T: IComparable[T]/TaggedLeft/>=,!=,is -> sharpy refused SPY0519 | desugaring refused SPY0908
+#= T: IComparable[T]/TaggedLeft/>=,!=,is not -> sharpy refused SPY0519 | desugaring refused SPY0908
+#= T: IComparable[T]/TaggedLeft/>=,!=,not in -> sharpy refused SPY0519 | desugaring refused SPY0908
+#= T: IComparable[T]/TaggedLeft/>=,<,in -> sharpy refused SPY0519 | desugaring refused SPY0908
+#= T: IComparable[T]/TaggedLeft/>=,<,is -> sharpy refused SPY0519 | desugaring refused SPY0908
+#= T: IComparable[T]/TaggedLeft/>=,<,is not -> sharpy refused SPY0519 | desugaring refused SPY0908
+#= T: IComparable[T]/TaggedLeft/>=,<,not in -> sharpy refused SPY0519 | desugaring refused SPY0908
+#= T: IComparable[T]/TaggedLeft/>=,<=,in -> sharpy refused SPY0519 | desugaring refused SPY0908
+#= T: IComparable[T]/TaggedLeft/>=,<=,is -> sharpy refused SPY0519 | desugaring refused SPY0908
+#= T: IComparable[T]/TaggedLeft/>=,<=,is not -> sharpy refused SPY0519 | desugaring refused SPY0908
+#= T: IComparable[T]/TaggedLeft/>=,<=,not in -> sharpy refused SPY0519 | desugaring refused SPY0908
+#= T: IComparable[T]/TaggedLeft/>=,==,in -> sharpy refused SPY0519 | desugaring refused SPY0908
+#= T: IComparable[T]/TaggedLeft/>=,==,is -> sharpy refused SPY0519 | desugaring refused SPY0908
+#= T: IComparable[T]/TaggedLeft/>=,==,is not -> sharpy refused SPY0519 | desugaring refused SPY0908
+#= T: IComparable[T]/TaggedLeft/>=,==,not in -> sharpy refused SPY0519 | desugaring refused SPY0908
+#= T: IComparable[T]/TaggedLeft/>=,>,in -> sharpy refused SPY0519 | desugaring refused SPY0908
+#= T: IComparable[T]/TaggedLeft/>=,>,is -> sharpy refused SPY0519 | desugaring refused SPY0908
+#= T: IComparable[T]/TaggedLeft/>=,>,is not -> sharpy refused SPY0519 | desugaring refused SPY0908
+#= T: IComparable[T]/TaggedLeft/>=,>,not in -> sharpy refused SPY0519 | desugaring refused SPY0908
+#= T: IComparable[T]/TaggedLeft/>=,>=,in -> sharpy refused SPY0519 | desugaring refused SPY0908
+#= T: IComparable[T]/TaggedLeft/>=,>=,is -> sharpy refused SPY0519 | desugaring refused SPY0908
+#= T: IComparable[T]/TaggedLeft/>=,>=,is not -> sharpy refused SPY0519 | desugaring refused SPY0908
+#= T: IComparable[T]/TaggedLeft/>=,>=,not in -> sharpy refused SPY0519 | desugaring refused SPY0908
+#= T: IComparable[T]/TaggedLeft/>=,is not,!= -> sharpy refused SPY0519 | desugaring refused SPY0908
+#= T: IComparable[T]/TaggedLeft/>=,is not,< -> sharpy refused SPY0519 | desugaring refused SPY0908
+#= T: IComparable[T]/TaggedLeft/>=,is not,<= -> sharpy refused SPY0519 | desugaring refused SPY0908
+#= T: IComparable[T]/TaggedLeft/>=,is not,== -> sharpy refused SPY0519 | desugaring refused SPY0908
+#= T: IComparable[T]/TaggedLeft/>=,is not,> -> sharpy refused SPY0519 | desugaring refused SPY0908
+#= T: IComparable[T]/TaggedLeft/>=,is not,>= -> sharpy refused SPY0519 | desugaring refused SPY0908
+#= T: IComparable[T]/TaggedLeft/>=,is not,in -> sharpy refused SPY0519 | desugaring refused SPY0908
+#= T: IComparable[T]/TaggedLeft/>=,is not,is -> sharpy refused SPY0519 | desugaring refused SPY0908
+#= T: IComparable[T]/TaggedLeft/>=,is not,is not -> sharpy refused SPY0519 | desugaring refused SPY0908
+#= T: IComparable[T]/TaggedLeft/>=,is not,not in -> sharpy refused SPY0519 | desugaring refused SPY0908
+#= T: IComparable[T]/TaggedLeft/>=,is,!= -> sharpy refused SPY0519 | desugaring refused SPY0908
+#= T: IComparable[T]/TaggedLeft/>=,is,< -> sharpy refused SPY0519 | desugaring refused SPY0908
+#= T: IComparable[T]/TaggedLeft/>=,is,<= -> sharpy refused SPY0519 | desugaring refused SPY0908
+#= T: IComparable[T]/TaggedLeft/>=,is,== -> sharpy refused SPY0519 | desugaring refused SPY0908
+#= T: IComparable[T]/TaggedLeft/>=,is,> -> sharpy refused SPY0519 | desugaring refused SPY0908
+#= T: IComparable[T]/TaggedLeft/>=,is,>= -> sharpy refused SPY0519 | desugaring refused SPY0908
+#= T: IComparable[T]/TaggedLeft/>=,is,in -> sharpy refused SPY0519 | desugaring refused SPY0908
+#= T: IComparable[T]/TaggedLeft/>=,is,is -> sharpy refused SPY0519 | desugaring refused SPY0908
+#= T: IComparable[T]/TaggedLeft/>=,is,is not -> sharpy refused SPY0519 | desugaring refused SPY0908
+#= T: IComparable[T]/TaggedLeft/>=,is,not in -> sharpy refused SPY0519 | desugaring refused SPY0908
+#= T: class/TaggedLeft/!=,!=,in -> sharpy refused SPY0519 | desugaring refused SPY0908
+#= T: class/TaggedLeft/!=,!=,is -> sharpy refused SPY0519 | desugaring refused SPY0908
+#= T: class/TaggedLeft/!=,!=,is not -> sharpy refused SPY0519 | desugaring refused SPY0908
+#= T: class/TaggedLeft/!=,!=,not in -> sharpy refused SPY0519 | desugaring refused SPY0908
+#= T: class/TaggedLeft/!=,==,in -> sharpy refused SPY0519 | desugaring refused SPY0908
+#= T: class/TaggedLeft/!=,==,is -> sharpy refused SPY0519 | desugaring refused SPY0908
+#= T: class/TaggedLeft/!=,==,is not -> sharpy refused SPY0519 | desugaring refused SPY0908
+#= T: class/TaggedLeft/!=,==,not in -> sharpy refused SPY0519 | desugaring refused SPY0908
+#= T: class/TaggedLeft/!=,is not,!= -> sharpy refused SPY0519 | desugaring prints 0 1 2 3 True
+#= T: class/TaggedLeft/!=,is not,== -> sharpy refused SPY0519 | desugaring prints 0 1 2 3 False
+#= T: class/TaggedLeft/!=,is not,in -> sharpy refused SPY0519 | desugaring prints 0 1 2 3 True
+#= T: class/TaggedLeft/!=,is not,is -> sharpy refused SPY0519 | desugaring prints 0 1 2 3 False
+#= T: class/TaggedLeft/!=,is not,is not -> sharpy refused SPY0519 | desugaring prints 0 1 2 3 True
+#= T: class/TaggedLeft/!=,is not,not in -> sharpy refused SPY0519 | desugaring prints 0 1 2 3 False
+#= T: class/TaggedLeft/!=,is,!= -> sharpy refused SPY0519 | desugaring prints 0 1 2 False
+#= T: class/TaggedLeft/!=,is,== -> sharpy refused SPY0519 | desugaring prints 0 1 2 False
+#= T: class/TaggedLeft/!=,is,in -> sharpy refused SPY0519 | desugaring prints 0 1 2 False
+#= T: class/TaggedLeft/!=,is,is -> sharpy refused SPY0519 | desugaring prints 0 1 2 False
+#= T: class/TaggedLeft/!=,is,is not -> sharpy refused SPY0519 | desugaring prints 0 1 2 False
+#= T: class/TaggedLeft/!=,is,not in -> sharpy refused SPY0519 | desugaring prints 0 1 2 False
+#= T: class/TaggedLeft/==,!=,in -> sharpy refused SPY0519 | desugaring refused SPY0908
+#= T: class/TaggedLeft/==,!=,is -> sharpy refused SPY0519 | desugaring refused SPY0908
+#= T: class/TaggedLeft/==,!=,is not -> sharpy refused SPY0519 | desugaring refused SPY0908
+#= T: class/TaggedLeft/==,!=,not in -> sharpy refused SPY0519 | desugaring refused SPY0908
+#= T: class/TaggedLeft/==,==,in -> sharpy refused SPY0519 | desugaring refused SPY0908
+#= T: class/TaggedLeft/==,==,is -> sharpy refused SPY0519 | desugaring refused SPY0908
+#= T: class/TaggedLeft/==,==,is not -> sharpy refused SPY0519 | desugaring refused SPY0908
+#= T: class/TaggedLeft/==,==,not in -> sharpy refused SPY0519 | desugaring refused SPY0908
+#= T: class/TaggedLeft/==,is not,!= -> sharpy refused SPY0519 | desugaring prints 0 1 False
+#= T: class/TaggedLeft/==,is not,== -> sharpy refused SPY0519 | desugaring prints 0 1 False
+#= T: class/TaggedLeft/==,is not,in -> sharpy refused SPY0519 | desugaring prints 0 1 False
+#= T: class/TaggedLeft/==,is not,is -> sharpy refused SPY0519 | desugaring prints 0 1 False
+#= T: class/TaggedLeft/==,is not,is not -> sharpy refused SPY0519 | desugaring prints 0 1 False
+#= T: class/TaggedLeft/==,is not,not in -> sharpy refused SPY0519 | desugaring prints 0 1 False
+#= T: class/TaggedLeft/==,is,!= -> sharpy refused SPY0519 | desugaring prints 0 1 False
+#= T: class/TaggedLeft/==,is,== -> sharpy refused SPY0519 | desugaring prints 0 1 False
+#= T: class/TaggedLeft/==,is,in -> sharpy refused SPY0519 | desugaring prints 0 1 False
+#= T: class/TaggedLeft/==,is,is -> sharpy refused SPY0519 | desugaring prints 0 1 False
+#= T: class/TaggedLeft/==,is,is not -> sharpy refused SPY0519 | desugaring prints 0 1 False
+#= T: class/TaggedLeft/==,is,not in -> sharpy refused SPY0519 | desugaring prints 0 1 False
+#= T: struct/TaggedLeft/!=,!=,in -> sharpy refused SPY0519 | desugaring refused SPY0908
+#= T: struct/TaggedLeft/!=,!=,is -> sharpy refused SPY0519 | desugaring refused SPY0908
+#= T: struct/TaggedLeft/!=,!=,is not -> sharpy refused SPY0519 | desugaring refused SPY0908
+#= T: struct/TaggedLeft/!=,!=,not in -> sharpy refused SPY0519 | desugaring refused SPY0908
+#= T: struct/TaggedLeft/!=,==,in -> sharpy refused SPY0519 | desugaring refused SPY0908
+#= T: struct/TaggedLeft/!=,==,is -> sharpy refused SPY0519 | desugaring refused SPY0908
+#= T: struct/TaggedLeft/!=,==,is not -> sharpy refused SPY0519 | desugaring refused SPY0908
+#= T: struct/TaggedLeft/!=,==,not in -> sharpy refused SPY0519 | desugaring refused SPY0908
+#= T: struct/TaggedLeft/!=,is not,!= -> sharpy refused SPY0519 | desugaring prints 0 1 2 3 True
+#= T: struct/TaggedLeft/!=,is not,== -> sharpy refused SPY0519 | desugaring prints 0 1 2 3 False
+#= T: struct/TaggedLeft/!=,is not,in -> sharpy refused SPY0519 | desugaring prints 0 1 2 3 True
+#= T: struct/TaggedLeft/!=,is not,is -> sharpy refused SPY0519 | desugaring prints 0 1 2 3 False
+#= T: struct/TaggedLeft/!=,is not,is not -> sharpy refused SPY0519 | desugaring prints 0 1 2 3 True
+#= T: struct/TaggedLeft/!=,is not,not in -> sharpy refused SPY0519 | desugaring prints 0 1 2 3 False
+#= T: struct/TaggedLeft/!=,is,!= -> sharpy refused SPY0519 | desugaring prints 0 1 2 False
+#= T: struct/TaggedLeft/!=,is,== -> sharpy refused SPY0519 | desugaring prints 0 1 2 False
+#= T: struct/TaggedLeft/!=,is,in -> sharpy refused SPY0519 | desugaring prints 0 1 2 False
+#= T: struct/TaggedLeft/!=,is,is -> sharpy refused SPY0519 | desugaring prints 0 1 2 False
+#= T: struct/TaggedLeft/!=,is,is not -> sharpy refused SPY0519 | desugaring prints 0 1 2 False
+#= T: struct/TaggedLeft/!=,is,not in -> sharpy refused SPY0519 | desugaring prints 0 1 2 False
+#= T: struct/TaggedLeft/==,!=,in -> sharpy refused SPY0519 | desugaring refused SPY0908
+#= T: struct/TaggedLeft/==,!=,is -> sharpy refused SPY0519 | desugaring refused SPY0908
+#= T: struct/TaggedLeft/==,!=,is not -> sharpy refused SPY0519 | desugaring refused SPY0908
+#= T: struct/TaggedLeft/==,!=,not in -> sharpy refused SPY0519 | desugaring refused SPY0908
+#= T: struct/TaggedLeft/==,==,in -> sharpy refused SPY0519 | desugaring refused SPY0908
+#= T: struct/TaggedLeft/==,==,is -> sharpy refused SPY0519 | desugaring refused SPY0908
+#= T: struct/TaggedLeft/==,==,is not -> sharpy refused SPY0519 | desugaring refused SPY0908
+#= T: struct/TaggedLeft/==,==,not in -> sharpy refused SPY0519 | desugaring refused SPY0908
+#= T: struct/TaggedLeft/==,is not,!= -> sharpy refused SPY0519 | desugaring prints 0 1 False
+#= T: struct/TaggedLeft/==,is not,== -> sharpy refused SPY0519 | desugaring prints 0 1 False
+#= T: struct/TaggedLeft/==,is not,in -> sharpy refused SPY0519 | desugaring prints 0 1 False
+#= T: struct/TaggedLeft/==,is not,is -> sharpy refused SPY0519 | desugaring prints 0 1 False
+#= T: struct/TaggedLeft/==,is not,is not -> sharpy refused SPY0519 | desugaring prints 0 1 False
+#= T: struct/TaggedLeft/==,is not,not in -> sharpy refused SPY0519 | desugaring prints 0 1 False
+#= T: struct/TaggedLeft/==,is,!= -> sharpy refused SPY0519 | desugaring prints 0 1 False
+#= T: struct/TaggedLeft/==,is,== -> sharpy refused SPY0519 | desugaring prints 0 1 False
+#= T: struct/TaggedLeft/==,is,in -> sharpy refused SPY0519 | desugaring prints 0 1 False
+#= T: struct/TaggedLeft/==,is,is -> sharpy refused SPY0519 | desugaring prints 0 1 False
+#= T: struct/TaggedLeft/==,is,is not -> sharpy refused SPY0519 | desugaring prints 0 1 False
+#= T: struct/TaggedLeft/==,is,not in -> sharpy refused SPY0519 | desugaring prints 0 1 False
+
+SequenceTriple/TaggedLeft/TestFirst/Chain  cells=0  pin=e3b0c44298fc1c14  bulk=3080:e2858368cb056c98  # see #2648 (plan P93): a chain with an `in`, `not in`, `is` or `is not` link is refused by code generation (SPY0519: the bulk portion) where its desugaring runs or is refused by another code, for a chain of three links whose first link is a test (`in`, `not in`, `is`, `is not`), in the form tagged on its first operand alone. Pin lines: a chain whose `==` / `!=` link the binary form refuses (SPY0402) compiles or reaches Roslyn. A link gets its binary twin's verdict
+
 Set/NoneNeedle  cells=24  pin=677ac81edfe12515  # see #2674 (owner ruling H, 2026-11-12): the 24 Optional cells of `Color`, `GS[int]`, `Self@SS` (6 each, SPY0908) and `T: struct` (6, SPY0220) wait on the value-ness work
 #= Color/Set/Optional/in/ComprehensionFilter -> sharpy refused SPY0908 | expected python True False False
 #= Color/Set/Optional/in/Expression -> sharpy refused SPY0908 | expected python True False False
@@ -3266,19 +4322,61 @@ Tuple/NoneNeedle  cells=24  pin=cd48dc274482bf90  # see #2674 (owner ruling H, 2
 #= T: struct/Tuple/Optional/not in/Expression -> sharpy refused SPY0220 | expected python False True True
 #= T: struct/Tuple/Optional/not in/IfCondition -> sharpy refused SPY0220 | expected python False True True
 
-UserIterable/NoneNeedle  cells=30  pin=498db99299659a7a  bulk=3360:2b7cabde7b215e2f  # see #2653 (plan P93, owner ruling R-NZ 2026-11-12): a class that only iterates (any shape of `__iter__`, plain or generic) is refused outside a chain (SPY0320: the bulk portion). Pin lines: the Optional cells of `T: struct` (SPY0220 at the feeder's call, #2674).
+UserIterable/NoneNeedle  cells=72  pin=002464a890d44a6d  bulk=7620:5fef726f5012be53  # see #2653 (plan P93, owner ruling R-NZ 2026-11-12): a class that only iterates (any shape of `__iter__`, plain or generic) is refused outside a chain (SPY0320: the bulk portion). Pin lines: the Optional cells of `T: struct` (SPY0220 at the feeder's call, #2674).
 #= T: struct/GenericIterDunder/Optional/in/ComprehensionFilter -> sharpy refused SPY0220 | expected python True False False
 #= T: struct/GenericIterDunder/Optional/in/Expression -> sharpy refused SPY0220 | expected python True False False
 #= T: struct/GenericIterDunder/Optional/in/IfCondition -> sharpy refused SPY0220 | expected python True False False
 #= T: struct/GenericIterDunder/Optional/not in/ComprehensionFilter -> sharpy refused SPY0220 | expected python False True True
 #= T: struct/GenericIterDunder/Optional/not in/Expression -> sharpy refused SPY0220 | expected python False True True
 #= T: struct/GenericIterDunder/Optional/not in/IfCondition -> sharpy refused SPY0220 | expected python False True True
+#= T: struct/GenericIterEnumerable/Optional/in/ComprehensionFilter -> sharpy refused SPY0220 | expected python True False False
+#= T: struct/GenericIterEnumerable/Optional/in/Expression -> sharpy refused SPY0220 | expected python True False False
+#= T: struct/GenericIterEnumerable/Optional/in/IfCondition -> sharpy refused SPY0220 | expected python True False False
+#= T: struct/GenericIterEnumerable/Optional/not in/ComprehensionFilter -> sharpy refused SPY0220 | expected python False True True
+#= T: struct/GenericIterEnumerable/Optional/not in/Expression -> sharpy refused SPY0220 | expected python False True True
+#= T: struct/GenericIterEnumerable/Optional/not in/IfCondition -> sharpy refused SPY0220 | expected python False True True
+#= T: struct/GenericIterEnumerator/Optional/in/ComprehensionFilter -> sharpy refused SPY0220 | expected python True False False
+#= T: struct/GenericIterEnumerator/Optional/in/Expression -> sharpy refused SPY0220 | expected python True False False
+#= T: struct/GenericIterEnumerator/Optional/in/IfCondition -> sharpy refused SPY0220 | expected python True False False
+#= T: struct/GenericIterEnumerator/Optional/not in/ComprehensionFilter -> sharpy refused SPY0220 | expected python False True True
+#= T: struct/GenericIterEnumerator/Optional/not in/Expression -> sharpy refused SPY0220 | expected python False True True
+#= T: struct/GenericIterEnumerator/Optional/not in/IfCondition -> sharpy refused SPY0220 | expected python False True True
+#= T: struct/GenericIterGenerator/Optional/in/ComprehensionFilter -> sharpy refused SPY0220 | expected python True False False
+#= T: struct/GenericIterGenerator/Optional/in/Expression -> sharpy refused SPY0220 | expected python True False False
+#= T: struct/GenericIterGenerator/Optional/in/IfCondition -> sharpy refused SPY0220 | expected python True False False
+#= T: struct/GenericIterGenerator/Optional/not in/ComprehensionFilter -> sharpy refused SPY0220 | expected python False True True
+#= T: struct/GenericIterGenerator/Optional/not in/Expression -> sharpy refused SPY0220 | expected python False True True
+#= T: struct/GenericIterGenerator/Optional/not in/IfCondition -> sharpy refused SPY0220 | expected python False True True
+#= T: struct/GenericIterInherited/Optional/in/ComprehensionFilter -> sharpy refused SPY0220 | expected python True False False
+#= T: struct/GenericIterInherited/Optional/in/Expression -> sharpy refused SPY0220 | expected python True False False
+#= T: struct/GenericIterInherited/Optional/in/IfCondition -> sharpy refused SPY0220 | expected python True False False
+#= T: struct/GenericIterInherited/Optional/not in/ComprehensionFilter -> sharpy refused SPY0220 | expected python False True True
+#= T: struct/GenericIterInherited/Optional/not in/Expression -> sharpy refused SPY0220 | expected python False True True
+#= T: struct/GenericIterInherited/Optional/not in/IfCondition -> sharpy refused SPY0220 | expected python False True True
+#= T: struct/GenericIterNext/Optional/in/ComprehensionFilter -> sharpy refused SPY0220 | expected python True False False
+#= T: struct/GenericIterNext/Optional/in/Expression -> sharpy refused SPY0220 | expected python True False False
+#= T: struct/GenericIterNext/Optional/in/IfCondition -> sharpy refused SPY0220 | expected python True False False
+#= T: struct/GenericIterNext/Optional/not in/ComprehensionFilter -> sharpy refused SPY0220 | expected python False True True
+#= T: struct/GenericIterNext/Optional/not in/Expression -> sharpy refused SPY0220 | expected python False True True
+#= T: struct/GenericIterNext/Optional/not in/IfCondition -> sharpy refused SPY0220 | expected python False True True
 #= T: struct/IterDunder/Optional/in/ComprehensionFilter -> sharpy refused SPY0220 | expected python True False False
 #= T: struct/IterDunder/Optional/in/Expression -> sharpy refused SPY0220 | expected python True False False
 #= T: struct/IterDunder/Optional/in/IfCondition -> sharpy refused SPY0220 | expected python True False False
 #= T: struct/IterDunder/Optional/not in/ComprehensionFilter -> sharpy refused SPY0220 | expected python False True True
 #= T: struct/IterDunder/Optional/not in/Expression -> sharpy refused SPY0220 | expected python False True True
 #= T: struct/IterDunder/Optional/not in/IfCondition -> sharpy refused SPY0220 | expected python False True True
+#= T: struct/IterEnumerable/Optional/in/ComprehensionFilter -> sharpy refused SPY0220 | expected python True False False
+#= T: struct/IterEnumerable/Optional/in/Expression -> sharpy refused SPY0220 | expected python True False False
+#= T: struct/IterEnumerable/Optional/in/IfCondition -> sharpy refused SPY0220 | expected python True False False
+#= T: struct/IterEnumerable/Optional/not in/ComprehensionFilter -> sharpy refused SPY0220 | expected python False True True
+#= T: struct/IterEnumerable/Optional/not in/Expression -> sharpy refused SPY0220 | expected python False True True
+#= T: struct/IterEnumerable/Optional/not in/IfCondition -> sharpy refused SPY0220 | expected python False True True
+#= T: struct/IterEnumerator/Optional/in/ComprehensionFilter -> sharpy refused SPY0220 | expected python True False False
+#= T: struct/IterEnumerator/Optional/in/Expression -> sharpy refused SPY0220 | expected python True False False
+#= T: struct/IterEnumerator/Optional/in/IfCondition -> sharpy refused SPY0220 | expected python True False False
+#= T: struct/IterEnumerator/Optional/not in/ComprehensionFilter -> sharpy refused SPY0220 | expected python False True True
+#= T: struct/IterEnumerator/Optional/not in/Expression -> sharpy refused SPY0220 | expected python False True True
+#= T: struct/IterEnumerator/Optional/not in/IfCondition -> sharpy refused SPY0220 | expected python False True True
 #= T: struct/IterGenerator/Optional/in/ComprehensionFilter -> sharpy refused SPY0220 | expected python True False False
 #= T: struct/IterGenerator/Optional/in/Expression -> sharpy refused SPY0220 | expected python True False False
 #= T: struct/IterGenerator/Optional/in/IfCondition -> sharpy refused SPY0220 | expected python True False False
@@ -3298,4 +4396,4 @@ UserIterable/NoneNeedle  cells=30  pin=498db99299659a7a  bulk=3360:2b7cabde7b215
 #= T: struct/IterNext/Optional/not in/Expression -> sharpy refused SPY0220 | expected python False True True
 #= T: struct/IterNext/Optional/not in/IfCondition -> sharpy refused SPY0220 | expected python False True True
 
-UserIterable/Plain  cells=0  pin=e3b0c44298fc1c14  bulk=1830:7593e98a2d278082  # see #2653 (plan P93, owner ruling R-NZ 2026-11-12): a class that only iterates (any shape of `__iter__`, plain or generic) is refused outside a chain (SPY0320: the bulk portion).
+UserIterable/Plain  cells=0  pin=e3b0c44298fc1c14  bulk=4392:57ef6015e1ca0ff8  # see #2653 (plan P93, owner ruling R-NZ 2026-11-12): a class that only iterates (any shape of `__iter__`, plain or generic) is refused outside a chain (SPY0320: the bulk portion).
