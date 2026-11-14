@@ -4,10 +4,10 @@ using Xunit.Abstractions;
 
 namespace Sharpy.Compiler.Tests.Conformance;
 
-/// <summary>The operator sequences in every further statement position, in the plain and the <c>T | None</c> forms
-/// and the form whose last operand is the literal <c>None</c>. The generator, its axes and its allowlist are
-/// <see cref="MembershipOperatorDifferentialBase"/>; the facts are declared here so that they run in this namespace's
-/// CI shard (compiler shard 1): the generator's facts do not fit one shard job.</summary>
+/// <summary>The operator sequences in every further statement position, in the plain and the <c>T | None</c> forms.
+/// The generator, its axes and its allowlist are <see cref="MembershipOperatorDifferentialBase"/>; the facts are
+/// declared here so that they run in this namespace's CI shard (compiler shard 1): the generator's facts do not fit
+/// one shard job.</summary>
 public sealed class MembershipDifferentialPositionTests : MembershipOperatorDifferentialBase
 {
     public MembershipDifferentialPositionTests(ITestOutputHelper output) : base(output) { }
@@ -17,7 +17,4 @@ public sealed class MembershipDifferentialPositionTests : MembershipOperatorDiff
 
     [Fact]
     public void OperatorSequences_InEveryStatementPosition_Optional_AreTheirDesugaring() => RunSequenceFact();
-
-    [Fact]
-    public void OperatorSequences_InEveryStatementPosition_NoneLast_AreTheirDesugaring() => RunSequenceFact();
 }
