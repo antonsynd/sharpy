@@ -40,15 +40,21 @@
 
 # Hang limits (#2458, W0.4): every job has a `timeout-minutes` at least 2x its slowest duration
 # over the 20 mainline push runs before it (42372810738 back to 40623113848; for `compiler`, 2x
-# the ~11 min projected for the class-split shard 6), never under 5, in place of the 6-hour
+# the ~11 min projected for the class-split shard 6 at first, and since #2690 the 40 given at the
+# end of this paragraph), never under 5, in place of the 6-hour
 # default; every test run has `--blame-hang-timeout 10m`, so a test silent for 10 min aborts the
 # run red ("The active test run was aborted") long before the job limit. The longest single test,
 # NameResolutionDifferential_Sweep, took 372 s in 42372810738. No dump is taken
 # (`--blame-hang-dump-type none`): a full one is ~700 MB and nothing uploads it.
 # Coverage-on runs (COVERAGE_ON below) carry their own limit, 2x their coverage-on duration: the
-# covered jobs' `timeout-minutes` read the same predicate (`test-fast` 20/15, `lsp` 30/20,
-# `compiler` 40/25), set from local measurement (#2512: Compiler shard 3 +102%); the first
-# coverage-on push re-measures them.
+# covered jobs' `timeout-minutes` read the same predicate (`test-fast` 20/15, `lsp` 30/20), set
+# from local measurement (#2512: Compiler shard 3 +102%); the first coverage-on push re-measures
+# them. `compiler` was 40/25 and is 40 on every run since #2690: with the P93 membership
+# generator in (plan-67a01f, PR #2688) its slowest PR job ran 12:55, 13:24, 12:30 and 16:40 over
+# four runs, about 1.5x apart on the same code (#2690, comment 6885024983), so 25 was under 2x;
+# the owner's ruling of 2026-11-14 (#2645, comment 6885522237) raises the PR limit to 40. Its
+# coverage-on limit stays 40 and is NOT re-measured with the generator in: no coverage-on run
+# has had it (#2690).
 #
 # This workflow is the default commit gate (docs/design/verification-contract.md section 6). Every
 # PR runs it, and `.claude/scripts/ci-gate` dispatches it at a branch tip with no PR at all, so a
@@ -113,7 +119,8 @@ permissions:
 env:
   # Coverage (#2512, plan-88736c D1/D22): on for a mainline push or a dispatch with `coverage: true`,
   # off on every PR and on ci-gate's default dispatch. The ONE predicate, spelled identically here
-  # and in each covered job's `timeout-minutes` (which cannot read `env`). Read by every covered
+  # and in the `timeout-minutes` of each covered job whose limit differs by it (`test-fast`, `lsp`;
+  # `compiler` is 40 either way), which cannot read `env`. Read by every covered
   # test step (`--collect "Code Coverage" --settings build_tools/coverage.runsettings`), by each
   # job's `coverage_reduce.py --name` step and by ci-summary's `--merge`. Measured, never gated:
   # no threshold. Sweeps and windows are not covered.
@@ -541,7 +548,7 @@ jobs:
     name: Test Compiler (shard ${{ matrix.shard }})
     needs: build
     runs-on: ubuntu-latest
-    timeout-minutes: ${{ (github.event_name == 'push' || inputs.coverage) && 40 || 25 }}
+    timeout-minutes: 40
     env:
       # The numeric-literal twin (Sharpy.Compiler.Tests.Lexer.NumericLiteralTwinTests, #2300) FAILS
       # instead of skipping when no Python 3.12+ interpreter is found: a runner that lost the

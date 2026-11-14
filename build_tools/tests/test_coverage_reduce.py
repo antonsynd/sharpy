@@ -258,12 +258,15 @@ class TestWorkflowSurface:
     def test_one_predicate_in_env_and_every_covered_timeout(self) -> None:
         wf = workflow()
         assert wf["env"]["COVERAGE_ON"] == "${{ " + PREDICATE + " }}"
-        limits = {"test-fast": (20, 15), "lsp": (30, 20), "compiler": (40, 25)}
+        limits = {"test-fast": (20, 15), "lsp": (30, 20)}
         for job, (on, off) in limits.items():
             assert (
                 wf["jobs"][job]["timeout-minutes"]
                 == f"${{{{ {PREDICATE} && {on} || {off} }}}}"
             ), job
+        # `compiler` was (40, 25). Its PR limit is 40 by the owner's ruling of 2026-11-14 (#2645,
+        # comment 6885522237; #2690), so the two limits are one number and no predicate is read.
+        assert wf["jobs"]["compiler"]["timeout-minutes"] == 40
 
     def test_the_dispatch_input_is_a_boolean_defaulting_off(self) -> None:
         # PyYAML reads the `on:` key as True.
