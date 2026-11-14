@@ -94,8 +94,9 @@ namespace Sharpy.Compiler.Tests.Properties.Differential;
 /// </summary>
 /// <remarks>The generator is this abstract base. Its facts — the membership matrix by observation and needle group
 /// (four), the left-operand forms, and the facts of the sequence matrix (<see cref="SequenceFacts"/>) — are
-/// declared by test classes named <c>MembershipDifferential…Tests</c>, spread over the namespaces that are CI's
-/// compiler shard buckets, so that no shard job runs them all and no fact runs near the per-test limit. A class
+/// declared by test classes named <c>MembershipDifferential…Tests</c> (<c>…MembershipTests</c> in the Integration
+/// namespace, where a class joins a shard by its initial), spread over the namespaces that are CI's compiler shard
+/// buckets, so that no shard job runs them all and no fact runs near the per-test limit. A class
 /// declares a sequence fact by its name alone (<see cref="RunSequenceFact(string)"/>), and every sequence fact
 /// is declared exactly once (<see cref="AssertEverySequenceFactIsDeclaredOnce"/>).</remarks>
 public abstract class MembershipOperatorDifferentialBase : IntegrationTestBase
@@ -1931,16 +1932,19 @@ public abstract class MembershipOperatorDifferentialBase : IntegrationTestBase
     /// <item><see cref="HoistLast"/> — every pair of links in every form, the last operand hoisting, a fact per
     /// hoist kind;</item>
     /// <item><see cref="Triple"/> — every ordered triple of links (a link's place in a chain is first, middle or
-    /// last: three links have all three), a fact per form and kind of first link.</item>
+    /// last: three links have all three), a fact per form and kind of first link;</item>
+    /// <item><see cref="TripleHoist"/> — every ordered triple of links in the plain form, the last operand
+    /// hoisting, a fact per hoist kind and kind of first link. Out of the generator between 6f00cfa18 and the
+    /// ninth compiler shard (#2690): a shard job ran 24 m 25 s of its 25 minutes with it in.</item>
     /// </list>
-    /// Chain length is the closed set {two links, three links}: it has no last value, and the owner's ruling keeps
-    /// the set until a larger bound is named. Three links with a hoisting last operand, and the products of the
-    /// blocks with one another (three links in the further positions; a hoisting last operand there), are not
-    /// generated: reported to the owner with their measured cost.
+    /// Ruled out by cost (owner ruling 2026-11-14, #2645 comment 6882571713, "Yes, pairwise is it"): the products
+    /// of the blocks with one another (three links in the further positions; a hoisting last operand there; three
+    /// links by hoist kind in the other forms: about 3.76 million sequences in all), and a chain longer than three
+    /// links. Chain length is the closed set {two links, three links}.
     /// </summary>
-    private enum SequenceBlock { Operators, Pairs, Pivot, Position, HoistLast, Triple }
+    private enum SequenceBlock { Operators, Pairs, Pivot, Position, HoistLast, Triple, TripleHoist }
 
-    private enum SliceAxis { None, Form, Hoist, FormAndFirstLink }
+    private enum SliceAxis { None, Form, Hoist, FormAndFirstLink, HoistAndFirstLink }
 
     /// <summary>The axis a block's facts slice it by. No default arm.</summary>
     private static SliceAxis SliceAxisOf(SequenceBlock block) => block switch
@@ -1951,6 +1955,7 @@ public abstract class MembershipOperatorDifferentialBase : IntegrationTestBase
         SequenceBlock.Position => SliceAxis.Form,
         SequenceBlock.HoistLast => SliceAxis.Hoist,
         SequenceBlock.Triple => SliceAxis.FormAndFirstLink,
+        SequenceBlock.TripleHoist => SliceAxis.HoistAndFirstLink,
         _ => throw new InvalidOperationException($"SequenceBlock.{block} has no slice axis"),
     };
 
@@ -1970,6 +1975,7 @@ public abstract class MembershipOperatorDifferentialBase : IntegrationTestBase
             SequenceBlock.Position => $"SequencePosition/{Slice}/",
             SequenceBlock.HoistLast => $"SequenceHoist/{Slice}/",
             SequenceBlock.Triple => $"SequenceTriple/{Slice}/{First}First/",
+            SequenceBlock.TripleHoist => $"SequenceTripleHoist/{Slice}/{First}First/",
             _ => throw new InvalidOperationException(Block.ToString()),
         };
 
@@ -1981,6 +1987,7 @@ public abstract class MembershipOperatorDifferentialBase : IntegrationTestBase
             SequenceBlock.Position => $"OperatorSequences_InEveryStatementPosition_{Slice}_AreTheirDesugaring",
             SequenceBlock.HoistLast => $"OperatorSequences_WithAHoistingLastOperand_{Slice}_AreTheirDesugaring",
             SequenceBlock.Triple => $"OperatorSequences_OfThreeChainLinks_{Slice}_{First}First_AreTheirDesugaring",
+            SequenceBlock.TripleHoist => $"OperatorSequences_OfThreeChainLinksAndAHoistingLastOperand_{Slice}_{First}First_AreTheirDesugaring",
             _ => throw new InvalidOperationException(Block.ToString()),
         };
 
@@ -1994,6 +2001,7 @@ public abstract class MembershipOperatorDifferentialBase : IntegrationTestBase
             SequenceBlock.Position => new[] { "Binary", "Chain" },
             SequenceBlock.HoistLast => new[] { "Chain" },
             SequenceBlock.Triple => new[] { "Chain" },
+            SequenceBlock.TripleHoist => new[] { "Chain" },
             _ => throw new InvalidOperationException(Block.ToString()),
         };
 
@@ -2031,6 +2039,11 @@ public abstract class MembershipOperatorDifferentialBase : IntegrationTestBase
                         foreach (var first in Enum.GetValues<LinkKind>())
                             facts.Add(new SequenceFact(block, form, null, first));
                     break;
+                case SliceAxis.HoistAndFirstLink:
+                    foreach (var hoist in Enum.GetValues<SequenceHoist>().Where(h => h != SequenceHoist.None))
+                        foreach (var first in Enum.GetValues<LinkKind>())
+                            facts.Add(new SequenceFact(block, null, hoist, first));
+                    break;
                 default:
                     throw new InvalidOperationException(SliceAxisOf(block).ToString());
             }
@@ -2040,8 +2053,11 @@ public abstract class MembershipOperatorDifferentialBase : IntegrationTestBase
     /// <summary>
     /// The sides a pivot takes in each form in the <see cref="SequenceBlock.Pivot"/> block (true: the pivot is the
     /// left operand), and why a side is not generated there. A pivot sequence holds one payload operand and the
-    /// pivot, so a form that differs from another only in the second payload operand has no cell of its own. No
-    /// default arm.
+    /// pivot, so a form that differs from another only in the second payload operand has no cell of its own. The
+    /// two exclusions outside the plain form stand by the owner's ruling of 2026-11-14 (#2645 comment 6882571713:
+    /// "Accept, verifier checks them"); each reason says what the excluded cell shares with a generated one (its
+    /// expression, operand types and values) and what its program would not (a declaration the expression does
+    /// not read). No default arm.
     /// </summary>
     private static (bool[] Sides, string? Excluded) PivotSidesOf(SequenceForm form) => form switch
     {
@@ -2049,9 +2065,11 @@ public abstract class MembershipOperatorDifferentialBase : IntegrationTestBase
         SequenceForm.Optional => (new[] { false, true }, null),
         SequenceForm.Tagged => (new[] { false, true }, null),
         SequenceForm.TaggedLeft => (Array.Empty<bool>(), "the form leaves the SECOND payload operand untagged, and a pivot "
-            + "sequence has no second payload operand: its cells are the Tagged form's"),
+            + "sequence has no second payload operand: its expression over `a: T?` and the pivot is the Tagged form's (the "
+            + "program would differ only in the type of the parameter `c`, which a pivot sequence does not read)"),
         SequenceForm.NoneLast => (new[] { true }, "a pivot on the right is the last operand, which the form replaces by the "
-            + "literal `None`: that cell is the form's own no-pivot sequence, which the one-operator fact generates"),
+            + "literal `None`: the expression is the form's own no-pivot sequence, which the one-operator fact generates "
+            + "(the program would differ only in a pivot local that is declared and not read)"),
         _ => throw new InvalidOperationException($"SequenceForm.{form} has no pivot sides: give them or exclude them with a reason"),
     };
 
@@ -2115,6 +2133,14 @@ public abstract class MembershipOperatorDifferentialBase : IntegrationTestBase
                                 Add(payload, form, new[] { first, second });
                         break;
                     case SequenceBlock.Triple:
+                        foreach (var first in firstLinks)
+                            foreach (var second in links)
+                                foreach (var third in links)
+                                    Add(payload, form, new[] { first, second, third });
+                        break;
+                    case SequenceBlock.TripleHoist:
+                        if (form != SequenceForm.Plain)
+                            break;
                         foreach (var first in firstLinks)
                             foreach (var second in links)
                                 foreach (var third in links)
@@ -2525,7 +2551,8 @@ public abstract class MembershipOperatorDifferentialBase : IntegrationTestBase
             SliceAxis.None => fact.Form == null && fact.Hoist == null && fact.First == null,
             SliceAxis.Form => fact.Form != null && fact.Hoist == null && fact.First == null,
             SliceAxis.Hoist => fact.Form == null && fact.Hoist is { } h && h != SequenceHoist.None && fact.First == null,
-            _ => fact.Form != null && fact.Hoist == null && fact.First != null,
+            SliceAxis.FormAndFirstLink => fact.Form != null && fact.Hoist == null && fact.First != null,
+            _ => fact.Form == null && fact.Hoist is { } k && k != SequenceHoist.None && fact.First != null,
         }, $"{fact.Name}: its slice is not a value of {SliceAxisOf(block)}");
         // The first links of a kind, from the enumeration: the kinds partition the links.
         var comparisonOperators = Enum.GetValues<ComparisonOperator>();
@@ -2550,6 +2577,9 @@ public abstract class MembershipOperatorDifferentialBase : IntegrationTestBase
             SequenceBlock.Triple => (payloadCount * firstLinkCount * pairs,
                 $"{payloadCount} payloads x {firstLinkCount} first links ({fact.First}) x {linkCount} x {linkCount} chain link "
                 + $"triples, in the form {fact.Form}"),
+            SequenceBlock.TripleHoist => (payloadCount * firstLinkCount * pairs,
+                $"{payloadCount} payloads x {firstLinkCount} first links ({fact.First}) x {linkCount} x {linkCount} chain link "
+                + $"triples, in the plain form, behind {fact.Hoist}"),
             _ => throw new InvalidOperationException(block.ToString()),
         };
         Assert.True(expectedCount == sequences.Count,
@@ -3296,6 +3326,14 @@ public abstract class MembershipOperatorDifferentialBase : IntegrationTestBase
         ["SequenceTriple/Tagged/ComparisonFirst/Chain"] = 2560,
         ["SequenceTriple/Tagged/TestFirst/Chain"] = 9216,
         ["SequenceTriple/TaggedLeft/TestFirst/Chain"] = 3080,
+        ["SequenceTripleHoist/Comprehension/ComparisonFirst/Chain"] = 8336,
+        ["SequenceTripleHoist/Comprehension/TestFirst/Chain"] = 11344,
+        ["SequenceTripleHoist/QuestionMark/ComparisonFirst/Chain"] = 8336,
+        ["SequenceTripleHoist/QuestionMark/TestFirst/Chain"] = 11344,
+        ["SequenceTripleHoist/Spread/ComparisonFirst/Chain"] = 8336,
+        ["SequenceTripleHoist/Spread/TestFirst/Chain"] = 11344,
+        ["SequenceTripleHoist/Walrus/ComparisonFirst/Chain"] = 8336,
+        ["SequenceTripleHoist/Walrus/TestFirst/Chain"] = 11344,
         ["UserIterable/NoneNeedle"] = 7620,
         ["UserIterable/Plain"] = 4392,
     };
@@ -3395,8 +3433,9 @@ public abstract class MembershipOperatorDifferentialBase : IntegrationTestBase
         "# A row is '<row>  cells=N  pin=HEX  [bulk=M:HEX]  # citation': ONE fact's cells of ONE cause, citing its open",
         "# issue (owner ruling 2026-11-14, #2645). The row's prefix names its fact: Order/ the order observation,",
         "# Sequence/ the operator sequences, SequencePivot/ their pivots in the other forms, SequencePosition/<form>/,",
-        "# SequenceHoist/<hoist>/ and SequenceTriple/<form>/<kind of first link>/ their further statement",
-        "# positions, hoisting last operand and three-link chains, LeftForm/ the left-operand forms; any other row is the",
+        "# SequenceHoist/<hoist>/, SequenceTriple/<form>/<kind of first link>/ and SequenceTripleHoist/<hoist>/<kind of",
+        "# first link>/ their further statement positions, hoisting last operand, three-link chains and three-link",
+        "# chains with a hoisting last operand, LeftForm/ the left-operand forms; any other row is the",
         "# value matrix's, and a matrix row's last segment (Plain, NoneNeedle) names its needle group, a fact each.",
         "# The '#= <cell> -> <observed",
         "# verdict>' lines under a row pin its EXACT divergent cells: a pinned cell that starts passing, a cell that",
