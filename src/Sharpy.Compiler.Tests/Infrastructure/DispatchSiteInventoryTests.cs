@@ -127,6 +127,8 @@ public class DispatchSiteInventoryTests
         // IrNode rewriters — the IrNode kind set is closed by design; the contract is the
         // TypeAnnotation doc comment ("Deliberately not reachable from Node.GetChildNodes …
         // the lowering-IR rewriter and optimization passes … would silently take their default arms")
+        // P93 D2: the literal-only test is partial on purpose; every other form falls to `false`, the bound (always correct) path.
+        ["CodeGen/RoslynEmitter.Expressions.Operators.cs::RoslynEmitter.IsLiteralOnly"] = "documented-by-design:CodeGen/RoslynEmitter.Expressions.Operators.cs:IsLiteralOnly",
         ["Lowering/IrTreeRewriter.cs::IrTreeRewriter.RewriteNode"] = "documented-by-design:Parser/Ast/Types.cs:TypeAnnotation",
         ["Lowering/Passes/ComprehensionFusionPass.cs::ComprehensionFusionPass.RewriteNode"] = "documented-by-design:Parser/Ast/Types.cs:TypeAnnotation",
         ["Lowering/Passes/ConstFoldPass.cs::ConstFoldPass.RewriteNode"] = "documented-by-design:Parser/Ast/Types.cs:TypeAnnotation",

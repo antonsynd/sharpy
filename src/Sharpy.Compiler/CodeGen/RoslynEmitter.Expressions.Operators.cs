@@ -474,7 +474,8 @@ internal partial class RoslynEmitter
 
     /// <summary>
     /// A literal, or operators over literals (<c>-1</c>, <c>(2 + 3)</c>): an operand with no
-    /// evaluation, whose order beside its container cannot be observed (P93 D2).
+    /// evaluation, whose order beside its container cannot be observed (P93 D2). Deliberately
+    /// partial: every other form answers <c>false</c> and is bound, which is always correct.
     /// </summary>
     private static bool IsLiteralOnly(Expression expr) => expr switch
     {
