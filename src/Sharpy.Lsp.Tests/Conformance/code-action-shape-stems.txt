@@ -8,10 +8,10 @@
 # GENERATED, HUMAN-REVIEWED: bash build_tools/regenerate_corpus_pins.sh rewrites the rows and the `# total` lines; review
 # the diff (a new stem's rows are its own; a moved row of an existing stem is a finding until explained). A new key's cite row in
 # code-action-shape-allowlist.txt is written by hand (the loader names it), and so is a drained key's deletion.
-# total stems identity keys=14 rows=2082
-# total stems crlf keys=8 rows=286
+# total stems identity keys=14 rows=2086
+# total stems crlf keys=8 rows=285
 # total stems cr keys=8 rows=293
-# total stems comment keys=7 rows=289
+# total stems comment keys=7 rows=288
 extract-method identity diagnostics Formatting/module_docstring_then_statement # #2294
 extract-method identity diagnostics abstract_class_interface_stubs # #2294
 extract-method identity diagnostics access_modifiers/access_modifiers # #2294
@@ -1321,6 +1321,8 @@ extract-method identity parse operand_order/index_assign_hoisted_index_1885 # #2
 extract-method identity parse operand_order/index_read_1853 # #2294
 extract-method identity parse operand_order/pipe_operand_order_1853 # #2294
 extract-method identity parse operators/comparison_chain_membership_identity_links_2648 # #2294
+extract-method identity parse operators/comparison_chain_middle_needle_own_type_2648 # #2294
+extract-method identity parse operators/comparison_chain_middle_needle_twin_refused_2648 # #2294
 extract-method identity parse operators/comparison_chain_middle_operand_uncast_2648 # #2294
 extract-method identity parse operators/comparison_chain_mixed_lowerings_1642 # #2294
 extract-method identity parse operators/comparison_chain_strings_1642 # #2294
@@ -1664,6 +1666,8 @@ remove-annotation identity diagnostics name_collision/grid_delegate_vs_module_va
 remove-annotation identity diagnostics name_collision/no_collision_event_split_accessors # #2296
 remove-annotation identity diagnostics nested_validator_lookup_1461 # #2296
 remove-annotation identity diagnostics nullable_none_throws # #2296
+remove-annotation identity diagnostics operators/comparison_chain_middle_needle_own_type_2648 # #2296
+remove-annotation identity diagnostics operators/comparison_chain_middle_needle_twin_refused_2648 # #2296
 remove-annotation identity diagnostics operators/comparison_chain_strings_1642 # #2296
 remove-annotation identity diagnostics operators/operator_lowering_pow_mixed_sign_width_2443 # #2296
 remove-annotation identity diagnostics operators/optional_needle_membership_2635 # #2296
@@ -2367,7 +2371,6 @@ wrap-try crlf diagnostics interop/clr_overload_string_compare_1843 # #2296
 wrap-try crlf diagnostics lambdas/lambda_as_argument_0001 # #2296
 wrap-try crlf diagnostics lambdas/lambda_binding_annotated_param # #2296
 wrap-try crlf diagnostics operators/augassign_collection_rhs_1682 # #2296
-wrap-try crlf diagnostics operators/comparison_chain_middle_operand_uncast_2648 # #2296
 wrap-try crlf diagnostics operators/membership_none_is_false_lowering_2635 # #2296
 wrap-try crlf diagnostics pattern_matching/match_expression_0070 # #2296
 wrap-try crlf diagnostics properties/accessor_param_mixed_auto_custom # #2296
@@ -2946,7 +2949,6 @@ wrap-try comment diagnostics generic_variance/variance_builtin_to_interface_0001
 wrap-try comment diagnostics inheritance/class_inheritance_0031 # #2296
 wrap-try comment diagnostics match_class_pattern_open_generic_filled # #2296
 wrap-try comment diagnostics operand_order/dict_comprehension_operand_order_1853 # #2296
-wrap-try comment diagnostics operators/comparison_chain_middle_operand_uncast_2648 # #2296
 wrap-try comment diagnostics operators/operator_lowering_pow_float32_2443 # #2296
 wrap-try comment diagnostics optional_result/result_type_0016 # #2296
 wrap-try comment diagnostics optional_result/result_unwrap_0002 # #2296
