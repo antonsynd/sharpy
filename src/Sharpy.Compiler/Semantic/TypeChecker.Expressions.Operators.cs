@@ -1787,7 +1787,8 @@ internal partial class TypeChecker
     /// literal, or unary and binary operators over literals (<c>-1</c>, <c>(1 + 1)</c>), parentheses
     /// aside — the shape the binary <c>x in c</c> admits by value. Such a middle is admitted at its slot by
     /// its value where it fits, as the twin <c>1 in xs</c> is; every other middle (a tuple or list literal
-    /// included) by its type alone (R2).
+    /// included) by its type alone (R2). Deliberately partial: every other form answers <c>false</c> and
+    /// is admitted by its type alone, as a named needle is.
     /// </summary>
     private static bool IsConstantNeedle(Expression expr) => expr switch
     {
