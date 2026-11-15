@@ -1649,8 +1649,10 @@ internal partial class TypeChecker
     /// (<see cref="IterableElementDecider.IsRecognizedProducerType"/>) <c>__iter__</c>. No other
     /// <c>__iter__</c> answers (<c>-&gt; list[int]</c> synthesizes nothing, #1915), and
     /// <c>__getitem__</c> + <c>__len__</c> never does (R-OA): Python's legacy sequence protocol is not
-    /// membership in Sharpy. An inherited answer is substituted through each generic base's type
-    /// arguments, then through the host view.</para>
+    /// membership in Sharpy. An answer is typed at the receiver by
+    /// <see cref="SubstituteDunderForHost"/>: through the host view for the host's own declaration,
+    /// through the base clauses' written arguments for an inherited one (<c>class IntBox(Box[int])</c>,
+    /// <c>class Mid[U](Box[U])</c> as <c>Mid[int]</c>).</para>
     /// </summary>
     internal SemanticType? IterationMembershipElement(SemanticType containerType)
     {
@@ -1664,7 +1666,6 @@ internal partial class TypeChecker
             return null;
         }
 
-        Func<SemanticType, SemanticType> substitute = host.Substitute;
         for (var current = host.Definition; current is { ClrType: null }; current = current.BaseType)
         {
             var iter = current.Methods.FirstOrDefault(m => m.Name == DunderNames.Iter);
@@ -1674,27 +1675,44 @@ internal partial class TypeChecker
                 // object]; `__iter__` alone → IEnumerable[the unpeeled generator / producer return].
                 var next = current.Methods.FirstOrDefault(m => m.Name == DunderNames.Next);
                 if (next != null)
-                    return substitute(next.ReturnType is VoidType or UnknownType ? SemanticType.Object : next.ReturnType);
+                {
+                    return SubstituteDunderForHost(host, containerType, current,
+                        next.ReturnType is VoidType or UnknownType ? SemanticType.Object : next.ReturnType);
+                }
 
                 if (iter.IsGenerator || IterableElementDecider.IsRecognizedProducerType(iter.ReturnType))
                 {
                     var element = IterableElementDecider.UnpeelProducerType(iter.ReturnType, iter.IsGenerator);
-                    return element is UnknownType ? null : substitute(element);
+                    return element is UnknownType ? null : SubstituteDunderForHost(host, containerType, current, element);
                 }
-            }
-
-            // Up the chain: a generic base's own type parameters are closed by the arguments this
-            // declaration gave it (`class D(G[int])`), before the host view closes the host's own.
-            if (current.BaseType is { TypeParameters.Count: > 0 } baseDefinition
-                && current.BaseTypeRef is { ResolvedTypeArguments.IsDefaultOrEmpty: false } baseReference)
-            {
-                var outer = substitute;
-                var arguments = baseReference.ResolvedTypeArguments;
-                substitute = t => outer(SubstituteThroughDefinition(t, baseDefinition, arguments));
             }
         }
 
         return null;
+    }
+
+    /// <summary>
+    /// A dunder signature type declared on <paramref name="owner"/> — the host's own declaration or an
+    /// ancestor up its base chain — typed at the receiver <paramref name="containerType"/>. The host's
+    /// own declaration is closed by the host view (<see cref="TryGetGenericHost"/>); an inherited one
+    /// by <see cref="SubstituteMemberForReceiver"/>, whose walk
+    /// (<see cref="GenericInstantiationWalker.EnumerateBaseChain"/>) composes the receiver's own type
+    /// arguments into each base clause's WRITTEN arguments — the one reader of
+    /// <see cref="BaseTypeReference"/>. A source-declared base reference carries its arguments as
+    /// annotations only (<c>ResolvedTypeArguments</c> is filled for CLR bases), so reading
+    /// <c>ResolvedTypeArguments</c> here left <c>class IntBox(Box[int])</c>'s element at <c>Box</c>'s
+    /// open <c>T</c> and refused every needle (SPY0222).
+    /// </summary>
+    private SemanticType SubstituteDunderForHost(
+        GenericHostView host, SemanticType containerType, TypeSymbol owner, SemanticType type)
+    {
+        if (ReferenceEquals(owner, host.Definition))
+            return host.Substitute(type);
+
+        var receiverArguments = containerType is GenericType generic
+            ? generic.TypeArguments
+            : (IReadOnlyList<SemanticType>)Array.Empty<SemanticType>();
+        return SubstituteMemberForReceiver(host.Definition, receiverArguments, owner, type);
     }
 
     private static bool IsComparisonOperator(BinaryOperator op)
@@ -2001,20 +2019,14 @@ internal partial class TypeChecker
 
             // Check regular Methods, walking the BASE CHAIN through the protocol authority so an
             // inherited __contains__ names the needle slot exactly as a declared one does (#1808).
-            var containsMethod = ProtocolMembership.FindDunderInChain(
-                typeSymbol, DunderNames.Contains);
-            if (containsMethod is { } found
-                && found.Parameters.Count(p => p.Name != Shared.PythonNames.Self) < 1)
+            // The owner's type parameters are closed at THIS receiver: an inherited
+            // `__contains__(self, x: T)` on `class IntBag(Bag[int])` takes an `int` (P93 D1).
+            if (ProtocolMembership.FindDunderDeclarationInChain(typeSymbol, DunderNames.Contains)
+                    is (var containsMethod, var containsOwner)
+                && containsMethod.Parameters.FirstOrDefault(p => p.Name != Shared.PythonNames.Self)
+                    is { } containsItem)
             {
-                containsMethod = null;
-            }
-
-            if (containsMethod != null)
-            {
-                var itemParam = containsMethod.Parameters.FirstOrDefault(
-                    p => p.Name != Shared.PythonNames.Self);
-                if (itemParam != null)
-                    return hostView.Substitute(itemParam.Type);
+                return SubstituteDunderForHost(hostView, containerType, containsOwner, containsItem.Type);
             }
 
             // P93 D1 (R-NZ, R-OA): a Sharpy-declared host with no __contains__ answers `in` with the

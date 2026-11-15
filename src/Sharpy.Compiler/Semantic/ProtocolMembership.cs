@@ -81,12 +81,22 @@ internal sealed class ProtocolMembership
     /// inherited <c>__reversed__</c> resolve like a declared one.
     /// </summary>
     public static FunctionSymbol? FindDunderInChain(TypeSymbol? symbol, string dunderName)
+        => FindDunderDeclarationInChain(symbol, dunderName)?.Method;
+
+    /// <summary>
+    /// <see cref="FindDunderInChain"/> with the declaration that OWNS the method: the dunder's
+    /// signature is written in its owner's type-parameter namespace, so a consumer typing it at a
+    /// receiver substitutes through the owner's arguments at that receiver (an inherited
+    /// <c>__contains__(self, x: T)</c> on <c>class IntBag(Bag[int])</c> takes an <c>int</c>).
+    /// </summary>
+    public static (FunctionSymbol Method, TypeSymbol Owner)? FindDunderDeclarationInChain(
+        TypeSymbol? symbol, string dunderName)
     {
         for (var current = symbol; current != null; current = current.BaseType)
         {
             var method = current.Methods.FirstOrDefault(m => m.Name == dunderName);
             if (method != null)
-                return method;
+                return (method, current);
         }
 
         return null;

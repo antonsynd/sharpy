@@ -1,0 +1,134 @@
+# A class inherits `__iter__` or `__contains__` from a generic base and answers `in` at the base clause's
+# written arguments, as CPython does (plan P93 D1, owner ruling R-NZ, #2653). The base's dunder is typed
+# in the BASE's type parameters; the membership slot substitutes them through the derived class's base
+# clause (`IntBox(Box[int])`), through a forwarding clause at the receiver's own arguments
+# (`Mid[U](Box[U])` as `Mid[int]`), and through several levels (`Leaf(Mid[int])`). Under the defect the
+# slot stayed at the base's open `T` and every needle was refused (SPY0222).
+
+class Box[T]:
+    _items: list[T]
+
+    def __init__(self, items: list[T]):
+        self._items = items
+
+    def __iter__(self) -> Iterator[T]:
+        return iter(self._items)
+
+
+class IntBox(Box[int]):
+    def __init__(self, items: list[int]):
+        super().__init__(items)
+
+
+class StrBox(Box[str]):
+    def __init__(self, items: list[str]):
+        super().__init__(items)
+
+
+class Mid[U](Box[U]):
+    def __init__(self, items: list[U]):
+        super().__init__(items)
+
+
+class Leaf(Mid[int]):
+    def __init__(self, items: list[int]):
+        super().__init__(items)
+
+
+class Nest[X](Box[list[X]]):
+    def __init__(self, items: list[list[X]]):
+        super().__init__(items)
+
+
+class GBase[T]:
+    _items: list[T]
+
+    def __init__(self, items: list[T]):
+        self._items = items
+
+    def __iter__(self) -> T:
+        for v in self._items:
+            yield v
+
+
+class GInt(GBase[int]):
+    def __init__(self, items: list[int]):
+        super().__init__(items)
+
+
+class Pair[K, V]:
+    _keys: list[K]
+    _vals: list[V]
+
+    def __init__(self, keys: list[K], vals: list[V]):
+        self._keys = keys
+        self._vals = vals
+
+    def __iter__(self) -> Iterator[V]:
+        return iter(self._vals)
+
+
+class StrKeyed[W](Pair[str, W]):
+    def __init__(self, keys: list[str], vals: list[W]):
+        super().__init__(keys, vals)
+
+
+class Counter[T]:
+    _items: list[T]
+    _i: int
+
+    def __init__(self, items: list[T]):
+        self._items = items
+        self._i = 0
+
+    def __iter__(self) -> Self:
+        return self
+
+    def __next__(self) -> T:
+        if self._i >= len(self._items):
+            raise StopIteration()
+        v = self._items[self._i]
+        self._i += 1
+        return v
+
+
+class IntCounter(Counter[int]):
+    def __init__(self, items: list[int]):
+        super().__init__(items)
+
+
+class Bag[T]:
+    _items: list[T]
+
+    def __init__(self, items: list[T]):
+        self._items = items
+
+    def __contains__(self, item: T) -> bool:
+        print("Bag.__contains__")
+        return item in self._items
+
+    def __iter__(self) -> Iterator[T]:
+        print("Bag.__iter__")
+        return iter(self._items)
+
+
+class IntBag(Bag[int]):
+    def __init__(self, items: list[int]):
+        super().__init__(items)
+
+
+def main():
+    print(2 in IntBox([1, 2]), 3 in IntBox([1, 2]), 3 not in IntBox([1, 2]))
+    print("a" in StrBox(["a", "b"]), "z" in StrBox(["a", "b"]))
+    m: Mid[int] = Mid([3, 4])
+    print(3 in m, 5 in m)
+    print(2 in Leaf([1, 2]), 9 not in Leaf([1, 2]))
+    n: Nest[int] = Nest([[1], [2, 3]])
+    print([2, 3] in n, [4] in n)
+    print(2 in GInt([1, 2]), 7 in GInt([1, 2]))
+    sk: StrKeyed[int] = StrKeyed(["a"], [7])
+    print(7 in sk, 8 in sk)
+    print(3 in IntCounter([1, 2, 3]), 4 in IntCounter([1, 2, 3]))
+    print(1 < 2 in IntBox([2]))
+    print(2 in IntBag([1, 2]))
+    print(5 not in IntBag([1, 2]))

@@ -53,6 +53,44 @@ public class MembershipTotalityCheckerTests
                 for v in self.items:
                     yield v
 
+        class IntGIterBag(GIterBag[int]):
+            def __init__(self) -> None:
+                super().__init__([1, 2])
+
+        class FwdGIterBag[U](GIterBag[U]):
+            def __init__(self, items: list[U]) -> None:
+                super().__init__(items)
+
+        class ListOf[X](GIterBag[list[X]]):
+            def __init__(self, items: list[list[X]]) -> None:
+                super().__init__(items)
+
+        class ProducerBase[K, V]:
+            vals: list[V]
+
+            def __init__(self, vals: list[V]) -> None:
+                self.vals = vals
+
+            def __iter__(self) -> Iterator[V]:
+                return iter(self.vals)
+
+        class StrProducer(ProducerBase[int, str]):
+            def __init__(self) -> None:
+                super().__init__(["a"])
+
+        class GContainsBag[T]:
+            items: list[T]
+
+            def __init__(self, items: list[T]) -> None:
+                self.items = items
+
+            def __contains__(self, item: T) -> bool:
+                return item in self.items
+
+        class IntGContainsBag(GContainsBag[int]):
+            def __init__(self) -> None:
+                super().__init__([1])
+
         class ProducerBag:
             items: list[str]
 
@@ -191,6 +229,10 @@ public class MembershipTotalityCheckerTests
     [InlineData("bag: ProducerBag = ProducerBag()", "\"a\" in bag", "str")]                // producer __iter__, unpeeled
     [InlineData("bag: NextBag = NextBag()", "1.5 in bag", "float64")]                        // __next__ beside __iter__
     [InlineData("bag: SubIterBag = SubIterBag()", "1 in bag", "int32")]                      // inherited __iter__
+    [InlineData("bag: IntGIterBag = IntGIterBag()", "1 in bag", "int32")]                    // inherited from a closed generic base
+    [InlineData("bag: FwdGIterBag[str] = FwdGIterBag[str]([\"a\"])", "\"a\" in bag", "str")] // a base clause forwarding the receiver's own
+    [InlineData("bag: ListOf[int] = ListOf[int]([[1]])", "[1] in bag", "list[int32]")]     // a forwarded argument nested in the clause
+    [InlineData("bag: StrProducer = StrProducer()", "\"a\" in bag", "str")]                  // the clause's SECOND argument, producer unpeeled
     [InlineData("bag: ContainsMethodBag = ContainsMethodBag()", "1 in bag", "int32")]        // a method `contains` is not __contains__
     public void IteratingClass_AnswersMembership_WithItsSynthesizedElement(string declarations, string expression, string element)
     {
@@ -250,6 +292,24 @@ public class MembershipTotalityCheckerTests
         Assert.Contains("does not support operator 'in' with operand of type 'IterBag'", error.Message);
     }
 
+    /// <summary>
+    /// An inherited dunder's slot is the base clause's written argument, not the base's open
+    /// parameter: it refuses a needle that argument does not take, as a declared one does.
+    /// </summary>
+    [Theory]
+    [InlineData("bag: IntGIterBag = IntGIterBag()", "\"a\" in bag", "IntGIterBag")]
+    [InlineData("bag: FwdGIterBag[int] = FwdGIterBag[int]([1])", "\"a\" in bag", "FwdGIterBag[int32]")]
+    [InlineData("bag: IntGContainsBag = IntGContainsBag()", "\"a\" in bag", "IntGContainsBag")]
+    public void InheritedGenericDunder_RefusesANeedleTheClauseArgumentDoesNotTake(
+        string declarations, string expression, string container)
+    {
+        var analysis = Analyze(declarations, expression);
+
+        var error = Assert.Single(analysis.CheckerErrors);
+        Assert.Equal(DiagnosticCodes.Semantic.InvalidBinaryOperation, error.Code);
+        Assert.Contains($"Type 'str' does not support operator 'in' with operand of type '{container}'", error.Message);
+    }
+
     // ---------------------------------------------------------------- D2: the needle's binding type
 
     [Theory]
@@ -260,6 +320,8 @@ public class MembershipTotalityCheckerTests
     [InlineData("xs: list[int | None] = [None]; x: int | None = None", "x in xs", "int32 | None")]
     [InlineData("xs: list[int | None] = [None]", "None in xs", "int32 | None")]       // the literal None, into its slot
     [InlineData("bag: IterBag = IterBag(1, 2)", "1 not in bag", "int32")]              // D1's slot
+    [InlineData("bag: IntGIterBag = IntGIterBag()", "1 in bag", "int32")]              // D1's slot, inherited from GIterBag[int]
+    [InlineData("bag: IntGContainsBag = IntGContainsBag()", "1 in bag", "int32")]      // an inherited __contains__(item: T) at T = int
     public void AcceptedNeedle_RecordsItsBindingType(string declarations, string expression, string binding)
     {
         var analysis = Analyze(declarations, expression);
