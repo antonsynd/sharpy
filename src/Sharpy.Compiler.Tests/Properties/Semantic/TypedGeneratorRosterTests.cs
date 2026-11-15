@@ -1603,6 +1603,7 @@ public class TypedGeneratorRosterTests
         new KnownRedSpecCode("#2324", "collection_types.md", "SPY0227"),
         new KnownRedSpecCode("#2324", "collection_types.md", "SPY0320"),
         new KnownRedSpecCode("#2324", "collection_types.md", "SPY0602"),
+        new KnownRedSpecCode("#2287", "comparison_chaining.md", "SPY0222"),
         new KnownRedSpecCode("#2287", "comparison_chaining.md", "SPY0227"),
         new KnownRedSpecCode("#2287", "comparison_chaining.md", "SPY0320"),
         new KnownRedSpecCode("#2287", "comparison_chaining.md", "SPY0349"),

@@ -65,8 +65,11 @@ link on its left, types it. When the link on its right is a membership test, the
 link's needle: it is converted to the needle slot at that read alone, as a named needle is (owner
 ruling 2026-11-15, plan-67a01f R2). So `t == (1, 2) in ts` compares two `tuple[int, int]`, as
 `t == (1, 2)` does, and then tests `(1, 2)` for membership in `ts`, as `p in ts` does for a
-`p: tuple[int, int]`. Only the head of a chain is read by one link alone, so only a head needle is
-typed by its needle slot, as `x in c` types it.
+`p: tuple[int, int]`. A constant there is admitted at the slot by its type too, never by its
+constant shape: `h == -1 in cs` over `cs: list[int8]` is refused (SPY0222) as `p in cs` is for a
+`p: int`. Only the head of a chain is read by one link alone, so only a head needle is typed by its
+needle slot, as `x in c` types it, and it is checked before the operands after its container, which
+may read a name it binds (`(y := 2) in xs == [y]`).
 
 <!-- spec-sweep: output -->
 ```python
