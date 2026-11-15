@@ -97,6 +97,11 @@ print(2 in xs)            # True — constant 2 converts to uint64
 print(1 in [1, 2, 3])     # True  — same-width, always works
 ```
 
+A needle that is also the middle operand of a comparison chain (`a == x in c`) is typed first by the
+link on its left, as `a == x` types it, and converted to the element slot where the membership link
+reads it, as a named needle is ([comparison chaining](comparison_chaining.md#membership-and-identity-links);
+owner ruling 2026-11-15, plan-67a01f R2).
+
 ### Container kinds
 
 `in` works on every container kind the iteration ring accepts, and the needle is checked against

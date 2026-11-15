@@ -60,6 +60,45 @@ def main():
     print(1 < 2 in n)                # SPY0320, as `2 in n` is
 ```
 
+An operand between two links is read by both, and it is typed as the twin that reads it first, the
+link on its left, types it. When the link on its right is a membership test, the operand is that
+link's needle: it is converted to the needle slot at that read alone, as a named needle is (owner
+ruling 2026-11-15, plan-67a01f R2). So `t == (1, 2) in ts` compares two `tuple[int, int]`, as
+`t == (1, 2)` does, and then tests `(1, 2)` for membership in `ts`, as `p in ts` does for a
+`p: tuple[int, int]`. Only the head of a chain is read by one link alone, so only a head needle is
+typed by its needle slot, as `x in c` types it.
+
+<!-- spec-sweep: output -->
+```python
+def main():
+    t: tuple[int, int] = (1, 2)
+    ts: list[tuple[float, float]] = [(1.0, 2.0)]
+    print(t == (1, 2) in ts)         # True
+    print(t != (1, 2) in ts)         # False
+```
+
+```output
+True
+False
+```
+
+Where the twin on the left cannot type the operand, the chain is refused with that twin's code, and
+where the twin on the right refuses the operand at its own type, with that one's. A conditional
+expression with a `None` arm takes its type from a needle slot (`(f() if c else None) in ys` is
+accepted) but has none of its own beside `==`:
+
+<!-- spec-sweep: error SPY0227 -->
+```python
+def f() -> int:
+    return 1
+
+def main():
+    c: bool = True
+    a: int | None = 1
+    ys: list[int | None] = [1, None]
+    print(a == (f() if c else None) in ys)   # SPY0227, as `a == (f() if c else None)` is
+```
+
 A chain headed by `x is A.B` takes `A.B` as an identity operand when it names an enum member, as
 above. Any other dotted name or class name there is the type test `x is T`, which is refused
 (SPY0349) in a chain as it is alone:
