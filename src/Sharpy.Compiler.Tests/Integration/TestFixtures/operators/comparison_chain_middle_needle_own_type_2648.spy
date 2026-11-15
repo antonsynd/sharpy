@@ -68,3 +68,14 @@ def main() -> None:
     print(xs != [1, 2] in xss)
     print(xs == [1, 2] not in xss)
     print(xs == [2, 1] in xss)
+
+    # a constant middle admitted at a wider slot by its type: compared at int, read as a float
+    f: float = 1.0
+    fs: list[float] = [1.0, 2.0]
+    print(f == 1 in fs)
+    print(f == (0 + 1) in fs)
+    print(f != -1 not in fs)
+
+    # a head needle's walrus binds before the later links read it
+    print((y := 2) in xs == [y])
+    print((z := 3) not in xs != [z])

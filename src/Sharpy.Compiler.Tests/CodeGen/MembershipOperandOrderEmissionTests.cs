@@ -264,6 +264,25 @@ public class MembershipOperandOrderEmissionTests : IntegrationTestBase
         result.GeneratedCSharp.Should().Contain("((global::System.ValueTuple<double, double>)__cmp_");
     }
 
+    /// <summary>D3, R3: a captured middle needle takes its recorded binding's cast at the membership read even
+    /// when it is literal-only (the bind helper's exemption is for an operand read in place, not for a capture,
+    /// which holds the value at its own type). Admitted by type only (int into decimal, float32, int64 | None),
+    /// each runs as CPython prints.</summary>
+    [Fact]
+    public void CapturedLiteralOnlyMiddleNeedle_IsCastAtItsMembershipRead()
+    {
+        var source = "def main() -> None:\n    h: int = 2\n"
+            + "    ls: list[int64 | None] = [2]\n    print(h == (1 + 1) in ls)\n"
+            + "    ds: list[decimal] = [2]\n    print(h == (1 + 1) in ds)\n"
+            + "    fs: list[float32] = [2]\n    print(h != (1 + 2) not in fs)\n";
+        AssertRuns(source, "True", "True", "True");
+
+        var result = CompileAndExecute(source);
+        result.GeneratedCSharp.Should().Contain("ls.Contains((long?)__cmp_");
+        result.GeneratedCSharp.Should().Contain("ds.Contains((decimal)__cmp_");
+        result.GeneratedCSharp.Should().Contain("fs.Contains((float)__cmp_");
+    }
+
     /// <summary>D2: a needle over literals whose operator can raise (<c>//</c>, <c>%</c>, <c>/</c>) is an
     /// evaluation, so it raises before its container is read.</summary>
     [Fact]

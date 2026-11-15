@@ -457,20 +457,24 @@ internal partial class RoslynEmitter
     /// </summary>
     private TypeSyntax? BoundNeedleType(Expression needleNode, Expression containerNode)
     {
-        if (_context.SemanticInfo is not { } info
-            || !info.TryGetMembershipNeedleBinding(needleNode, out var binding))
-        {
-            return null;
-        }
-
         if (IsLiteralOnly(needleNode)
             || (IsTrivialExpression(needleNode) && IsTrivialExpression(containerNode)))
         {
             return null;
         }
 
-        return _typeMapper.MapSemanticType(binding);
+        return RecordedNeedleBindingType(needleNode);
     }
+
+    /// <summary>
+    /// The checker's recorded binding of a membership needle (<see cref="SemanticInfo.TryGetMembershipNeedleBinding"/>),
+    /// spelled by the type mapper, with none of <see cref="BoundNeedleType"/>'s exemptions: the cast a
+    /// chain's captured middle needle takes at its membership read (P93 D3, owner ruling R2).
+    /// </summary>
+    private TypeSyntax? RecordedNeedleBindingType(Expression needleNode)
+        => _context.SemanticInfo is { } info && info.TryGetMembershipNeedleBinding(needleNode, out var binding)
+            ? _typeMapper.MapSemanticType(binding)
+            : null;
 
     /// <summary>
     /// A literal, or operators over literals (<c>-1</c>, <c>(2 + 3)</c>): an operand with no
@@ -963,10 +967,17 @@ internal partial class RoslynEmitter
         // The type each membership link binds its needle as (P93 D2, #2645); null for a link that is
         // not a membership test or whose needle is not bound (BoundNeedleType).
         var needleBindings = new TypeSyntax?[linkCount];
+        // The recorded binding of a membership link's needle with no exemption (RecordedNeedleBindingType):
+        // the cast a CAPTURED middle needle takes at that link's read, literal-only or not, since the
+        // capture holds the value at its own type (owner ruling R2).
+        var captureBindings = new TypeSyntax?[linkCount];
         for (int i = 0; i < linkCount; i++)
         {
             if (chainLowering.Links[i].Shape == ComparisonLinkShape.Membership)
+            {
                 needleBindings[i] = BoundNeedleType(chain.Operands[i], chain.Operands[i + 1]);
+                captureBindings[i] = RecordedNeedleBindingType(chain.Operands[i]);
+            }
         }
 
         // For intermediate operands (indices 1..n-2), decide if they need a temp variable.
@@ -1069,7 +1080,7 @@ internal partial class RoslynEmitter
             // (P93 D3: a link is its binary twin; owner ruling R2: the checker typed it as that twin
             // does). Link i, binding it as a membership needle, takes it through the recorded binding
             // cast here, at the read that is its needle (P93 D2), as it would a named needle.
-            if (i > 0 && tempNames[i] != null && needleBindings[i] is { } capturedBinding)
+            if (i > 0 && tempNames[i] != null && captureBindings[i] is { } capturedBinding)
                 left = Cast(capturedBinding, left);
 
             if (i >= 1 && operandEvals[i + 1].Count > 0)

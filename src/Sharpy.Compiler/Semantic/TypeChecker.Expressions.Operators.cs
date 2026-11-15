@@ -1276,48 +1276,59 @@ internal partial class TypeChecker
                 "a chain head spelled like a type names no enum member (SPY0349); its operand is a type, not a value"));
         }
 
-        // Pass 1: every operand but a head needle, in source order, as the link that reads it first
-        // types it. The RIGHT operand of a link whose left operand's type has a user dunder goes through
-        // the operand seam exactly as the binary form does (#1719) — one decision for `d == v` and for
-        // `a == d == v`; a container (the right operand of an `in` link) is checked plainly, as the
-        // twin `x in c` checks it; and a middle operand that is also the next link's needle is no
-        // exception (R2): `t == (1, 2) in ts` compares the `tuple[int, int]` its twin `t == (1, 2)`
-        // compares.
-        for (int i = 0; i < chain.Operands.Length; i++)
+        // The setup the twin `x in c` gives link `ni`'s container: its protocol-receiver view and the
+        // slot the binary form pushes (MembershipNeedleSlot), which RECORDS the container's facts (a
+        // tuple's array bridge, a Direct projection). Called once per `in` link. The slot it returns is
+        // used only for a head needle: a middle needle is never checked under it (R2).
+        SemanticType? SetUpContainer(int ni)
         {
-            if ((i == 0 && needleIndices.Contains(0)) || operandTypes[i] != null)
-                continue;
-
-            if (i > 0 && !needleIndices.Contains(i - 1)
-                && operandTypes[i - 1] is { } previous && previous is not UnknownType)
-            {
-                var linkOperator = TypeUtils.ComparisonOperatorToBinaryOperator(chain.Operators[i - 1]);
-                (operandTypes[i], operandSlots[i]) = CheckOperatorOperand(
-                    linkOperator, previous, chain.Operands[i], chain.Operands[i - 1]);
-                continue;
-            }
-
-            operandTypes[i] = CheckExpression(chain.Operands[i]);
+            if (operandTypes[ni + 1] is UnknownType)
+                return null;
+            var containerView = ProtocolReceiver(chain.Operands[ni + 1], operandTypes[ni + 1]!);
+            return MembershipNeedleSlot(chain.Operands[ni + 1], containerView);
         }
 
-        // Pass 2, in source order: every `in` link's container takes the twin's setup (the slot the
-        // binary form pushes, MembershipNeedleSlot, with the facts it records on the container: a
-        // tuple's array bridge, a Direct projection) whether or not it is also a needle (`a in b in
-        // c`), and the head needle is checked under its container's slot, as the twin `x in c` checks
-        // it.
-        for (int ni = 0; ni < chain.Operators.Length; ni++)
+        // Pass 1: every operand in source order, as the link that reads it first types it. The RIGHT
+        // operand of a link whose left operand's type has a user dunder goes through the operand seam
+        // exactly as the binary form does (#1719) — one decision for `d == v` and for `a == d == v`; a
+        // container (the right operand of an `in` link) is checked plainly, as the twin `x in c` checks
+        // it; and a middle operand that is also the next link's needle is no exception (R2):
+        // `t == (1, 2) in ts` compares the `tuple[int, int]` its twin `t == (1, 2)` compares. A head
+        // needle is checked as soon as its container is, under that container's slot, as the twin
+        // `x in c` checks it — so before operands 2.., which may read a name it binds
+        // (`(y := 2) in xs == [y]`).
+        var headIsNeedle = needleIndices.Contains(0);
+        for (int i = 0; i < chain.Operands.Length; i++)
         {
-            if (!needleIndices.Contains(ni))
+            if (i == 0 && headIsNeedle)
                 continue;
 
-            SemanticType? elementType = null;
-            if (operandTypes[ni + 1] is not UnknownType)
+            if (operandTypes[i] == null)
             {
-                var containerView = ProtocolReceiver(chain.Operands[ni + 1], operandTypes[ni + 1]!);
-                elementType = MembershipNeedleSlot(chain.Operands[ni + 1], containerView);
+                if (i > 0 && !needleIndices.Contains(i - 1)
+                    && operandTypes[i - 1] is { } previous && previous is not UnknownType)
+                {
+                    var linkOperator = TypeUtils.ComparisonOperatorToBinaryOperator(chain.Operators[i - 1]);
+                    (operandTypes[i], operandSlots[i]) = CheckOperatorOperand(
+                        linkOperator, previous, chain.Operands[i], chain.Operands[i - 1]);
+                }
+                else
+                {
+                    operandTypes[i] = CheckExpression(chain.Operands[i]);
+                }
             }
-            if (ni == 0 && operandTypes[0] == null)
-                operandTypes[0] = CheckMembershipNeedle(chain.Operands[0], elementType);
+
+            if (i == 1 && headIsNeedle)
+                operandTypes[0] = CheckMembershipNeedle(chain.Operands[0], SetUpContainer(0));
+        }
+
+        // Pass 2, in source order: every other `in` link's container takes the twin's setup whether or
+        // not it is also a needle (`a in b in c`); the slot it returns is discarded, since a middle
+        // needle is typed as its left twin types it and admitted at the slot by its type (R2).
+        for (int ni = 1; ni < chain.Operators.Length; ni++)
+        {
+            if (needleIndices.Contains(ni))
+                _ = SetUpContainer(ni);
         }
 
         // Each link through the binary operator's own routine, and its record. Every link gets a
@@ -1331,7 +1342,7 @@ internal partial class TypeChecker
             var link = CheckOperatorLink(
                 OperatorSite.OfLink(chain, i), operandTypes[i]!, operandTypes[i + 1]!, operandSlots[i + 1],
                 headCheckType: i == 0 ? chain.HeadCheckType : null,
-                isChainLink: true);
+                isChainLink: true, middleNeedle: i > 0);
             links.Add(link.Lowering);
             if (link.NoneSlot is { } slot)
                 noneSlots[i, link.NoneOnLeft ? 0 : 1] = slot;
@@ -1392,8 +1403,11 @@ internal partial class TypeChecker
     /// <see cref="ClassifyEnumIdentity"/>, and the value-type <c>is</c> warning; neither site
     /// calls one of them itself.
     /// <para>For a membership link <paramref name="leftType"/> is the needle's type and
-    /// <paramref name="rightType"/> the container's; the needle was already checked under the slot
-    /// <see cref="MembershipNeedleSlot"/> gave it. <paramref name="operandSlot"/> is the user-dunder
+    /// <paramref name="rightType"/> the container's. A binary needle, or a chain's head needle, was
+    /// already checked under the slot <see cref="MembershipNeedleSlot"/> gave it; a chain's MIDDLE
+    /// needle (<paramref name="middleNeedle"/>) was checked as its left link's right operand, its own
+    /// type, and is admitted at the slot by that type alone, never by its constant shape, as a named
+    /// needle is (owner ruling 2026-11-15, plan-67a01f R2). <paramref name="operandSlot"/> is the user-dunder
     /// slot the right operand was admitted into (<see cref="CheckOperatorOperand"/>).
     /// <paramref name="headCheckType"/> is set for link 0 of a chain whose head was spelled like a
     /// type (P93 D4): that link takes <see cref="CheckTypeCheck"/>'s rule
@@ -1403,7 +1417,7 @@ internal partial class TypeChecker
     /// </summary>
     private LinkVerdict CheckOperatorLink(
         OperatorSite site, SemanticType leftType, SemanticType rightType, SemanticType? operandSlot,
-        TypeAnnotation? headCheckType = null, bool isChainLink = false)
+        TypeAnnotation? headCheckType = null, bool isChainLink = false, bool middleNeedle = false)
     {
         var op = site.Operator;
         var shape = LinkShapeOf(site);
@@ -1425,7 +1439,7 @@ internal partial class TypeChecker
         // container answers as `T`.
         if (op is BinaryOperator.In or BinaryOperator.NotIn)
         {
-            var membershipKind = ClassifyMembership(site, leftType, ProtocolReceiverView(rightType));
+            var membershipKind = ClassifyMembership(site, leftType, ProtocolReceiverView(rightType), middleNeedle);
             return new LinkVerdict(SemanticType.Bool, new ComparisonLinkLowering(membershipKind, null, shape));
         }
 
@@ -1800,12 +1814,19 @@ internal partial class TypeChecker
     /// seam takes, or a refused needle; every check records or forgets, so a re-checked lambda body
     /// keeps no stale binding.</para>
     /// </summary>
+    /// <param name="admitByTypeAlone">A chain's middle needle (R2): admitted at a slot by its type,
+    /// never by the store seam's value shapes.</param>
     /// <returns>The lowering kind of this membership test; <see cref="OperatorLoweringKind.Native"/>
     /// when nothing special applies, the container is oblivious, or the needle was refused.</returns>
     private OperatorLoweringKind ClassifyMembership(
-        OperatorSite site, SemanticType needleType, SemanticType containerType)
+        OperatorSite site, SemanticType needleType, SemanticType containerType, bool admitByTypeAlone = false)
     {
         var needle = site.Left;
+        // The node the store seam reads a value SHAPE from (an in-range constant, a conditional of
+        // admitted arms). None for a chain's middle needle (R2): it is read as a named needle is, so
+        // `h == -1 in cs` over `cs: list[int8]` is refused as `p in cs` (p: int) is, never admitted by
+        // the constant shape of a value the chain captured at `int`.
+        var shapeNode = admitByTypeAlone ? null : needle;
         var slots = ResolveMembershipSlots(containerType, out var clrFormals);
         if (slots.Count == 0)
         {
@@ -1834,14 +1855,14 @@ internal partial class TypeChecker
         // the store seam takes it into.
         OperatorLoweringKind Accept(OperatorLoweringKind kind)
         {
-            _semanticInfo.SetMembershipNeedleBinding(needle, lifted ?? FirstSlotTaking(needleType, needle));
+            _semanticInfo.SetMembershipNeedleBinding(needle, lifted ?? FirstSlotTaking(needleType, shapeNode));
             return kind;
         }
 
         if (lifted != null && IsSubsequenceContainer(containerType) && LiftFitsASlot())
             return Accept(OperatorLoweringKind.MembershipNoneRaises);
 
-        if (FitsASlot(needleType, needle))
+        if (FitsASlot(needleType, shapeNode))
             return Accept(OperatorLoweringKind.Native);
 
         if (LiftFitsASlot())
