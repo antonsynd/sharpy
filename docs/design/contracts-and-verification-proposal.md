@@ -35,12 +35,13 @@ def isqrt(n: int) -> int:
 
 This looks right and is wrong in both the body and the contract. Runtime `+ - *` on `int` wraps
 ([arithmetic_operators.md](../language_specification/arithmetic_operators.md)), which gives four
-separate defects (figures from simulating 32-bit wraparound):
+separate defects (figures from simulating 32-bit wraparound; the first two rows give the smallest
+failing input, and many but not all larger inputs fail the same way):
 
 | Input | What goes wrong |
 |---|---|
-| from `n = 46340` | `hi * hi` wraps, so the invariant is false on entry although the state is fine. |
-| from `n = 92681` | `mid * mid` wraps negative and the search goes the wrong way: `isqrt(92681)` returns 65536, not 304. |
+| `n = 46340` (smallest) | `hi * hi` wraps, so the invariant is false on entry although the state is fine. |
+| `n = 92681` (smallest) | `mid * mid` wraps negative and the search goes the wrong way: the result is 65536, not 304. |
 | `n = 92681` | The postcondition *accepts* that wrong answer, because `r * r` wraps to 0. |
 | `n >= 2147395600` | `(r + 1) * (r + 1)` wraps, so the postcondition rejects the correct answer 46340. |
 
@@ -77,19 +78,23 @@ not function-wrapping decorators. Contract expressions are ordinary Sharpy expre
 themselves be pure. Their typing rules:
 
 - `@requires(expr)`: `expr` is `bool`, in the function's parameter scope.
-- `@ensures(lambda r: expr)`: a one-parameter lambda. The decorator is the inference context
-  ([lambdas.md](../language_specification/lambdas.md)): `r` has the function's declared return type,
+- `@ensures(lambda r: expr)`: a one-parameter lambda. The decorator is a new inference context,
+  alongside those listed in [lambdas.md](../language_specification/lambdas.md): `r` has the function's declared return type,
   and the body is `bool` in the parameter scope plus `r`. Refused on a function returning `None`,
-  which has no value to bind (see open question 4).
+  which has no value to bind (see open question 4). Parameters named in the body have their
+  values at entry, so a body that rebinds a parameter does not change what `@ensures` reads.
 - `@invariant(expr)` / `@decreases(expr)`: `bool` and an integer type respectively, in the scope
-  enclosing the loop.
+  enclosing the loop. `@decreases` is checked at runtime as well: non-negative at each arrival at
+  the loop condition, and strictly smaller than at the previous arrival.
 
 **Loop annotations are decorators on the `while` statement, not statements in its body.** A bare
 `invariant expr` statement would collide with programs that already have a variable of that name:
 `invariant (x)`, `invariant - x` and `invariant[x]` are all valid expression statements today. `@`
-cannot begin a statement, so a decorator before `while` is unambiguous, and its position matches its
-meaning, which is a fact about the loop head. This makes `while` a new decorator host, accepted only
-for these two decorators.
+cannot begin an expression, and a statement-initial `@` is already parsed as a decorator list
+(`@suppress`, [diagnostic_suppression.md](../language_specification/diagnostic_suppression.md)), so
+a decorator before `while` is unambiguous. Its position also matches its meaning, which is a fact
+about the loop head. `while` becomes a new host for a statement-scope decorator, accepted only for
+these two.
 
 `@invariant` means one thing on every rung: the expression is true each time control reaches the
 loop condition, which is before the first iteration, after every iteration, and on the evaluation
@@ -124,7 +129,7 @@ The same annotations mean the same thing on every rung; a higher rung only check
 | 4. Lean | All inputs, with a written proof | The pure, total subset | Proof effort |
 
 **Rung 1: runtime.** `@requires` lowers to a check at function entry, `@ensures` to a check at each
-return, `@invariant` to a check before each evaluation of the loop condition. This is a lowering
+return, `@invariant` and `@decreases` to checks before each evaluation of the loop condition. This is a lowering
 decision recorded in `SemanticInfo`; `RoslynEmitter` only translates the resulting IR (Critical
 Rule 2). An operation that raises (`ZeroDivisionError`, `OverflowError`) propagates as it does today.
 
@@ -135,7 +140,9 @@ calling one hundreds of times with generated arguments would repeat its side eff
 failure can be written out as an ordinary `@test` to pin it.
 
 Derived tests are emitted as xUnit tests through the existing `@test` lowering and run by
-`dotnet test` ([unittest.md](../language_specification/unittest.md)); there is no new command.
+`dotnet test` ([unittest.md](../language_specification/unittest.md)); there is no new command. They
+are emitted only in a project that already references xUnit, as `@test` requires; elsewhere a
+contracted function gets its runtime checks and no derived test.
 
 Rejection sampling fails on narrow preconditions such as `n == k * k`. A derived test that cannot
 find enough inputs satisfying `@requires` within its budget **fails as inconclusive**; it never
@@ -154,9 +161,10 @@ failure is pinned by a test that needs no solver to run.
 
 *Proved* means three things: every `@ensures`, `assert` and `@invariant` holds; **no operation
 raises**; and, where `@decreases` is given, the loop terminates. Each operation that can raise
-inside the subset carries its own obligation: a non-zero divisor for `//` and `%`, no
-`int.MinValue // -1`, an in-range narrowing conversion, a present value when an `Optional` is
-unwrapped. An explicit `raise` is outside the subset.
+inside the subset carries its own obligation. The list is not exhaustive and must be built from
+the Core surface: a non-zero divisor for `//` and `%`, no `int.MinValue // -1`, no `abs` of the
+minimum value, no overflow in non-constant integer `**`, an in-range narrowing conversion, a present
+value when an `Optional` is unwrapped. An explicit `raise` is outside the subset.
 
 **Rung 4: Lean.** `sharpyc emit lean` translates verified-subset functions to Lean definitions and
 their contracts to theorem statements with the proofs left open. A person or an LLM writes the
@@ -205,11 +213,14 @@ first. Internally, a call site whose `@requires` is proved may call an unchecked
   proof result, so it has no dependency on verification.
 - **Verification** (`sharpyc verify`, never part of a build): reads the lowered IR, treats each
   tagged check as an obligation rather than a throw path, emits SMT-LIB text (`sharpyc emit smt`) and
-  runs a solver as a child process. It writes a results file keyed by a hash of the function's IR.
+  runs a solver as a child process. It writes a results file keyed by a hash of everything the
+  proof used: the function's IR, the contracts of each callee it relied on, and the version of the
+  built-in models.
   Emitting text rather than linking a solver keeps the compiler free of the dependency, makes
   verification conditions snapshot-testable, and leaves the solver replaceable.
 - **Erasure** (opt-in, last stage): a separate IR-to-IR pass after Lowering that drops tagged checks
-  named in a results file whose hash still matches. A stale or missing file erases nothing.
+  named in a results file whose hash still matches. A stale or missing file erases nothing, so
+  weakening a callee's `@ensures` invalidates its callers' proofs.
 
 The order is Lowering, then (out of band) Verification, then Erasure, then the emitter. Nothing
 feeds back into an earlier pass.
@@ -238,7 +249,8 @@ reviews, so it must be shown to constrain something.
 
 ## Companion tooling
 
-Independent of the solver, and each useful alone:
+Each useful alone. The first needs no solver; none of the other three is scheduled in the staging
+list below, and each would be its own proposal:
 
 1. **`sharpyc mutate`.** Mutate a function body (flip a comparison, off-by-one a constant, drop a
    statement) and report mutants that no contract or test kills. This is Critical Rule 12 offered
@@ -274,7 +286,8 @@ Each stage ships alone and none changes what users wrote in an earlier one.
    `@test`.
 3. `sharpyc emit smt` and `sharpyc verify` for the integer/bool/struct/union subset; solver
    counterexamples written out as `@test` the same way.
-4. `sharpyc mutate` and precondition-satisfiability checks.
+4. Precondition-satisfiability checks in `sharpyc verify`; `sharpyc mutate`, which needs no solver
+   and could ship at any point after stage 1.
 5. `sharpyc emit lean`.
 6. Opt-in erasure of proved checks.
 
@@ -287,15 +300,17 @@ Each stage ships alone and none changes what users wrote in an earlier one.
 3. **`for` loops.** `@invariant` is defined on `while` only. A `for` over a range needs a rule for
    an invariant that mentions the loop variable, which is unbound at the loop head before the first
    iteration.
-4. **Pre-state in postconditions.** `old(expr)` is unnecessary while only `@pure` functions verify;
-   needed as soon as methods on mutable types do, and it is what would give a `None`-returning
+4. **Pre-state in postconditions.** Parameters already read at their entry values. A general
+   `old(expr)` is unnecessary while only `@pure` functions verify, but is needed as soon as methods
+   on mutable types do, and it is what would give a `None`-returning
    function something to state in `@ensures`.
 5. **Release builds.** Whether unproved `@ensures`/`@invariant` checks stay in by default, tied to
    the unimplemented `-O` analogue in [assert_statement.md](../language_specification/assert_statement.md).
 6. **Generators on rung 2**, for user types (derived from constructors, or user-supplied) and for
    narrow preconditions that rejection sampling cannot satisfy.
 7. **Which solver is the reference** for CI, and the default timeout.
-8. **Decorators on statements.** `while` becomes a decorator host for two decorators only. Whether
+8. **Decorators on `while`.** Statement-scope decorators exist (`@suppress`); `while` becomes a new
+   host, for two decorators only. Whether
    that is acceptable, or a recognised leading `assert` in the loop body is preferred despite reusing
    `assert` for a second meaning.
 9. **Purity by attribute.** Whether trusting `PureAttribute` on Core is acceptable, or Core purity
