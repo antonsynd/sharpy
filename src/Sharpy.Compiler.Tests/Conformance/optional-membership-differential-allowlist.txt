@@ -1140,22 +1140,6 @@ IPv6Network/NoneNeedle  cells=6  pin=ce5ecbfbc1531547  # see #2674 (owner ruling
 #= T: struct/IPv6Network/Optional/not in/Expression -> sharpy refused SPY0220,SPY0222 | expected refused SPY0222
 #= T: struct/IPv6Network/Optional/not in/IfCondition -> sharpy refused SPY0220,SPY0222 | expected refused SPY0222
 
-LeftForm/Chain  cells=14  pin=d5239060501734a0  # see #2644 (outside P93's contract): a chain link is its binary twin (owner ruling 2026-11-13 on the chain-link tracker: "Refuse, as the twin", "Same as the twin"; plan P93 D3), and a middle operand that is also the next link's needle is typed as its head link types it and read by the membership link as a named needle is (owner ruling 2026-11-15, plan-67a01f R2), so the chain carries each twin's code. FloatLiteral@slot (14): the membership link `1.5 in xs` over a `float32` slot reaches Roslyn (SPY0908) in the chain and in its desugaring, the twins of LeftForm/Float32 (#2644); an internal error is never a pass
-#= FloatLiteral@slot/Call/in/ChainLink -> sharpy refused SPY0908 | desugaring refused SPY0908
-#= FloatLiteral@slot/Call/not in/ChainLink -> sharpy refused SPY0908 | desugaring refused SPY0908
-#= FloatLiteral@slot/Comprehension/in/ChainLink -> sharpy refused SPY0908 | desugaring refused SPY0908
-#= FloatLiteral@slot/Comprehension/not in/ChainLink -> sharpy refused SPY0908 | desugaring refused SPY0908
-#= FloatLiteral@slot/Name/in/ChainLink -> sharpy refused SPY0908 | desugaring refused SPY0908
-#= FloatLiteral@slot/Name/not in/ChainLink -> sharpy refused SPY0908 | desugaring refused SPY0908
-#= FloatLiteral@slot/QuestionMark/in/ChainLink -> sharpy refused SPY0908 | desugaring refused SPY0908
-#= FloatLiteral@slot/QuestionMark/not in/ChainLink -> sharpy refused SPY0908 | desugaring refused SPY0908
-#= FloatLiteral@slot/Rebind/in/ChainLink -> sharpy refused SPY0908 | desugaring refused SPY0908
-#= FloatLiteral@slot/Rebind/not in/ChainLink -> sharpy refused SPY0908 | desugaring refused SPY0908
-#= FloatLiteral@slot/Spread/in/ChainLink -> sharpy refused SPY0908 | desugaring refused SPY0908
-#= FloatLiteral@slot/Spread/not in/ChainLink -> sharpy refused SPY0908 | desugaring refused SPY0908
-#= FloatLiteral@slot/Walrus/in/ChainLink -> sharpy refused SPY0908 | desugaring refused SPY0908
-#= FloatLiteral@slot/Walrus/not in/ChainLink -> sharpy refused SPY0908 | desugaring refused SPY0908
-
 LeftForm/Ellipsis  cells=42  pin=7c2e3f88d01a5610  # see #1931 (comment 6870300877; owner ruling 2026-11-14, plan P93): `...` as a left operand reaches Roslyn (SPY0908, CS8115), as its desugaring does: an internal error is never a pass
 #= EllipsisLiteral@slot/Call/in/ComprehensionFilter -> sharpy refused SPY0908 | desugaring refused SPY0908
 #= EllipsisLiteral@slot/Call/in/Expression -> sharpy refused SPY0908 | desugaring refused SPY0908
