@@ -1140,49 +1140,21 @@ IPv6Network/NoneNeedle  cells=6  pin=ce5ecbfbc1531547  # see #2674 (owner ruling
 #= T: struct/IPv6Network/Optional/not in/Expression -> sharpy refused SPY0220,SPY0222 | expected refused SPY0222
 #= T: struct/IPv6Network/Optional/not in/IfCondition -> sharpy refused SPY0220,SPY0222 | expected refused SPY0222
 
-LeftForm/Chain  cells=42  pin=f0402988f3a0e912  # see #2695 and #2644 (outside P93's contract): a chain link is its binary twin (owner ruling 2026-11-13 on the chain-link tracker: "Refuse, as the twin", "Same as the twin"; plan P93 D3). GeneratorExpression and LambdaExpression@slot (28): see #2695: `==` on function values and iterators is refused; python compares identity. The lambda link's SPY0402 is P93 D3's ruled slot typing (the chain types the lambda by the `in` slot; its head twin `h == (lambda w: w)` is SPY0222), and the generator cells are the chain's head twin (SPY0222) where the desugaring's bound name is SPY0402. FloatLiteral@slot (14): a float literal needle into a `float32` slot reaches Roslyn (SPY0908), the twins of LeftForm/Float32 (#2644)
-#= FloatLiteral@slot/Call/in/ChainLink -> sharpy refused SPY0908 | desugaring prints 9 1 True
-#= FloatLiteral@slot/Call/not in/ChainLink -> sharpy refused SPY0908 | desugaring prints 9 1 False
-#= FloatLiteral@slot/Comprehension/in/ChainLink -> sharpy refused SPY0908 | desugaring prints 9 1 True
-#= FloatLiteral@slot/Comprehension/not in/ChainLink -> sharpy refused SPY0908 | desugaring prints 9 1 False
-#= FloatLiteral@slot/Name/in/ChainLink -> sharpy refused SPY0908 | desugaring prints 9 True
-#= FloatLiteral@slot/Name/not in/ChainLink -> sharpy refused SPY0908 | desugaring prints 9 False
-#= FloatLiteral@slot/QuestionMark/in/ChainLink -> sharpy refused SPY0908 | desugaring prints 9 1 True returned None
-#= FloatLiteral@slot/QuestionMark/not in/ChainLink -> sharpy refused SPY0908 | desugaring prints 9 1 False returned None
-#= FloatLiteral@slot/Rebind/in/ChainLink -> sharpy refused SPY0908 | desugaring prints 9 True
-#= FloatLiteral@slot/Rebind/not in/ChainLink -> sharpy refused SPY0908 | desugaring prints 9 False
-#= FloatLiteral@slot/Spread/in/ChainLink -> sharpy refused SPY0908 | desugaring prints 9 1 True
-#= FloatLiteral@slot/Spread/not in/ChainLink -> sharpy refused SPY0908 | desugaring prints 9 1 False
-#= FloatLiteral@slot/Walrus/in/ChainLink -> sharpy refused SPY0908 | desugaring prints 9 1 True
-#= FloatLiteral@slot/Walrus/not in/ChainLink -> sharpy refused SPY0908 | desugaring prints 9 1 False
-#= GeneratorExpression/Call/in/ChainLink -> sharpy refused SPY0222 | desugaring refused SPY0402
-#= GeneratorExpression/Call/not in/ChainLink -> sharpy refused SPY0222 | desugaring refused SPY0402
-#= GeneratorExpression/Comprehension/in/ChainLink -> sharpy refused SPY0222 | desugaring refused SPY0402
-#= GeneratorExpression/Comprehension/not in/ChainLink -> sharpy refused SPY0222 | desugaring refused SPY0402
-#= GeneratorExpression/Name/in/ChainLink -> sharpy refused SPY0222 | desugaring refused SPY0402
-#= GeneratorExpression/Name/not in/ChainLink -> sharpy refused SPY0222 | desugaring refused SPY0402
-#= GeneratorExpression/QuestionMark/in/ChainLink -> sharpy refused SPY0222 | desugaring refused SPY0402
-#= GeneratorExpression/QuestionMark/not in/ChainLink -> sharpy refused SPY0222 | desugaring refused SPY0402
-#= GeneratorExpression/Rebind/in/ChainLink -> sharpy refused SPY0222 | desugaring refused SPY0402
-#= GeneratorExpression/Rebind/not in/ChainLink -> sharpy refused SPY0222 | desugaring refused SPY0402
-#= GeneratorExpression/Spread/in/ChainLink -> sharpy refused SPY0222 | desugaring refused SPY0402
-#= GeneratorExpression/Spread/not in/ChainLink -> sharpy refused SPY0222 | desugaring refused SPY0402
-#= GeneratorExpression/Walrus/in/ChainLink -> sharpy refused SPY0222 | desugaring refused SPY0402
-#= GeneratorExpression/Walrus/not in/ChainLink -> sharpy refused SPY0222 | desugaring refused SPY0402
-#= LambdaExpression@slot/Call/in/ChainLink -> sharpy refused SPY0402 | desugaring refused SPY0222
-#= LambdaExpression@slot/Call/not in/ChainLink -> sharpy refused SPY0402 | desugaring refused SPY0222
-#= LambdaExpression@slot/Comprehension/in/ChainLink -> sharpy refused SPY0402 | desugaring refused SPY0222
-#= LambdaExpression@slot/Comprehension/not in/ChainLink -> sharpy refused SPY0402 | desugaring refused SPY0222
-#= LambdaExpression@slot/Name/in/ChainLink -> sharpy refused SPY0402 | desugaring refused SPY0222
-#= LambdaExpression@slot/Name/not in/ChainLink -> sharpy refused SPY0402 | desugaring refused SPY0222
-#= LambdaExpression@slot/QuestionMark/in/ChainLink -> sharpy refused SPY0402 | desugaring refused SPY0222
-#= LambdaExpression@slot/QuestionMark/not in/ChainLink -> sharpy refused SPY0402 | desugaring refused SPY0222
-#= LambdaExpression@slot/Rebind/in/ChainLink -> sharpy refused SPY0402 | desugaring refused SPY0222
-#= LambdaExpression@slot/Rebind/not in/ChainLink -> sharpy refused SPY0402 | desugaring refused SPY0222
-#= LambdaExpression@slot/Spread/in/ChainLink -> sharpy refused SPY0402 | desugaring refused SPY0222
-#= LambdaExpression@slot/Spread/not in/ChainLink -> sharpy refused SPY0402 | desugaring refused SPY0222
-#= LambdaExpression@slot/Walrus/in/ChainLink -> sharpy refused SPY0402 | desugaring refused SPY0222
-#= LambdaExpression@slot/Walrus/not in/ChainLink -> sharpy refused SPY0402 | desugaring refused SPY0222
+LeftForm/Chain  cells=14  pin=d5239060501734a0  # see #2644 (outside P93's contract): a chain link is its binary twin (owner ruling 2026-11-13 on the chain-link tracker: "Refuse, as the twin", "Same as the twin"; plan P93 D3), and a middle operand that is also the next link's needle is typed as its head link types it and read by the membership link as a named needle is (owner ruling 2026-11-15, plan-67a01f R2), so the chain carries each twin's code. FloatLiteral@slot (14): the membership link `1.5 in xs` over a `float32` slot reaches Roslyn (SPY0908) in the chain and in its desugaring, the twins of LeftForm/Float32 (#2644); an internal error is never a pass
+#= FloatLiteral@slot/Call/in/ChainLink -> sharpy refused SPY0908 | desugaring refused SPY0908
+#= FloatLiteral@slot/Call/not in/ChainLink -> sharpy refused SPY0908 | desugaring refused SPY0908
+#= FloatLiteral@slot/Comprehension/in/ChainLink -> sharpy refused SPY0908 | desugaring refused SPY0908
+#= FloatLiteral@slot/Comprehension/not in/ChainLink -> sharpy refused SPY0908 | desugaring refused SPY0908
+#= FloatLiteral@slot/Name/in/ChainLink -> sharpy refused SPY0908 | desugaring refused SPY0908
+#= FloatLiteral@slot/Name/not in/ChainLink -> sharpy refused SPY0908 | desugaring refused SPY0908
+#= FloatLiteral@slot/QuestionMark/in/ChainLink -> sharpy refused SPY0908 | desugaring refused SPY0908
+#= FloatLiteral@slot/QuestionMark/not in/ChainLink -> sharpy refused SPY0908 | desugaring refused SPY0908
+#= FloatLiteral@slot/Rebind/in/ChainLink -> sharpy refused SPY0908 | desugaring refused SPY0908
+#= FloatLiteral@slot/Rebind/not in/ChainLink -> sharpy refused SPY0908 | desugaring refused SPY0908
+#= FloatLiteral@slot/Spread/in/ChainLink -> sharpy refused SPY0908 | desugaring refused SPY0908
+#= FloatLiteral@slot/Spread/not in/ChainLink -> sharpy refused SPY0908 | desugaring refused SPY0908
+#= FloatLiteral@slot/Walrus/in/ChainLink -> sharpy refused SPY0908 | desugaring refused SPY0908
+#= FloatLiteral@slot/Walrus/not in/ChainLink -> sharpy refused SPY0908 | desugaring refused SPY0908
 
 LeftForm/Ellipsis  cells=42  pin=7c2e3f88d01a5610  # see #1931 (comment 6870300877; owner ruling 2026-11-14, plan P93): `...` as a left operand reaches Roslyn (SPY0908, CS8115), as its desugaring does: an internal error is never a pass
 #= EllipsisLiteral@slot/Call/in/ComprehensionFilter -> sharpy refused SPY0908 | desugaring refused SPY0908
