@@ -1,7 +1,7 @@
 # Contracts and Tiered Verification — Proposal
 
-**Issue:** none yet (file one when the proposal is ruled on)
-**Status:** Proposal — not committed. Nothing here is implemented; every spelling is provisional.
+**Issue:** [#2701](https://github.com/antonsynd/sharpy/issues/2701) (parked; lists known gaps from review)
+**Status:** Proposal — not committed, not scheduled. Nothing here is implemented; every spelling is provisional.
 **Related:** [feature-lifecycle.md](feature-lifecycle.md), [unittest.md](../language_specification/unittest.md), [assert_statement.md](../language_specification/assert_statement.md), [decorators.md](../language_specification/decorators.md)
 
 ---
