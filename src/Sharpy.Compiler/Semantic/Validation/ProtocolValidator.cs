@@ -63,11 +63,26 @@ internal class ProtocolValidator : ValidatingAstWalker
 
     public override void VisitBinaryOp(BinaryOp node)
     {
-        if (node.Operator is BinaryOperator.In or BinaryOperator.NotIn)
-        {
-            ValidateMembership(node);
-        }
+        ValidateOperatorSite(OperatorSite.Of(node));
         base.VisitBinaryOp(node);
+    }
+
+    /// <summary>
+    /// Every link of a comparison chain is validated as its binary twin (P93 D3, #2648): an <c>in</c>
+    /// link draws the SPY0320 its binary form draws, at the twin's position.
+    /// </summary>
+    public override void VisitComparisonChain(ComparisonChain node)
+    {
+        foreach (var link in OperatorSite.LinksOf(node))
+            ValidateOperatorSite(link);
+        base.VisitComparisonChain(node);
+    }
+
+    /// <summary>The protocol requirement of one operator site — a binary operator or a chain link.</summary>
+    private void ValidateOperatorSite(OperatorSite site)
+    {
+        if (site.Operator is BinaryOperator.In or BinaryOperator.NotIn)
+            ValidateMembership(site);
     }
 
     public override void VisitFunctionCall(FunctionCall node)
@@ -198,25 +213,37 @@ internal class ProtocolValidator : ValidatingAstWalker
         }
     }
 
-    private void ValidateMembership(BinaryOp binOp)
+    private void ValidateMembership(OperatorSite site)
     {
-        var containerType = Context.SemanticInfo.GetExpressionType(binOp.Right);
+        var containerType = Context.SemanticInfo.GetExpressionType(site.Right);
         if (containerType == null || containerType is UnknownType)
             return;
 
         if (ReportOptionalProtocol(containerType, "membership testing",
-                binOp.LineStart, binOp.ColumnStart, binOp.Span))
+                site.Line, site.Column, site.Span))
             return;
 
-        if (!HasProtocol(containerType, DunderNames.Contains))
+        // P93 D1 (R-NZ): a class the iteration ring enumerates answers `in` without `__contains__`.
+        // The checker's record on the container node (a Direct iterable projection, set only by the
+        // membership site from TypeChecker.IterationMembershipElement) is that fact; this check reads
+        // it and decides nothing about iteration itself. `__getitem__` + `__len__` never records one
+        // (R-OA), so the legacy sequence pair stays refused here.
+        if (!HasProtocol(containerType, DunderNames.Contains) && !AnswersMembershipByIteration(site.Right))
         {
             AddError(
                 $"Type '{containerType.GetDisplayName()}' does not support membership testing " +
                 "(missing '__contains__' method).",
-                binOp.LineStart, binOp.ColumnStart, code: DiagnosticCodes.Semantic.ProtocolMissingMethod,
-                span: binOp.Span);
+                site.Line, site.Column, code: DiagnosticCodes.Semantic.ProtocolMissingMethod,
+                span: site.Span);
         }
     }
+
+    /// <summary>
+    /// Whether the checker recorded that <paramref name="container"/>, a membership container, answers
+    /// <c>in</c> by enumerating its synthesized <c>IEnumerable[T]</c> (P93 D1).
+    /// </summary>
+    private bool AnswersMembershipByIteration(Expression container)
+        => Context.SemanticInfo.GetIterableProjection(container) is { Kind: IterableProjectionKind.Direct };
 
     private void ValidateFunctionCall(FunctionCall call)
     {

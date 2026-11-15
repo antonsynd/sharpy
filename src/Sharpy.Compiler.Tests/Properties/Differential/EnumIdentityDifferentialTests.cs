@@ -39,7 +39,7 @@ namespace Sharpy.Compiler.Tests.Properties.Differential;
 /// <c>object</c> stays boxed reference identity — no operand's static type is an enum, so the contract does not
 /// reach it and the answer is pinned so that a change is seen; and <c>==</c> / <c>!=</c> with an <c>object</c>
 /// operand is the checker's general rule, not an enum-pair decision (SPY0222 against an enum, SPY0402 for two
-/// objects, and a pinned reference comparison where a chain link skips that refusal).</para>
+/// objects, in a chain link as in the binary form).</para>
 /// <para><b>Emitted shape</b> (<see cref="ShapeViolation"/>): every cell that runs and compares two operands of ONE
 /// int-backed enum must emit the enum's native operator, and every pair of two different enums
 /// <c>object.Equals</c> (the probe's positive control). The answers alone cannot see a same-enum pair that was
@@ -321,7 +321,8 @@ public class EnumIdentityDifferentialTests : IntegrationTestBase
         return byId;
     }
 
-    /// <summary>What a cell must do: print CPython's lines, print pinned lines, or be refused by one code.</summary>
+    /// <summary>What a cell must do: print CPython's lines, print pinned lines, or be refused by exactly the codes
+    /// <see cref="RefusedBy"/> lists (sorted, comma-joined).</summary>
     private sealed record Expectation(bool Compared, IReadOnlyList<string>? Pinned, string? RefusedBy, string Why);
 
     private static readonly Expectation ComparedToCPython = new(true, null, null, "CPython 3.15");
@@ -335,16 +336,22 @@ public class EnumIdentityDifferentialTests : IntegrationTestBase
                 + (cell.Right == Operand.ObjectHoldingMember ? 1 : 0);
             if (objectOperands == 2)
             {
-                return cell.Position == Position.ChainLink
-                    ? new(false, new[] { "False" }, null,
-                        "`object == object` as a chain link is not refused as the binary form is, and compares the two "
-                        + "boxes by reference (pinned; outside #2670's contract, cell on #2648)")
-                    : new(false, null, DiagnosticCodes.Validation.UnsupportedOperator,
-                        "`object == object` is refused (SPY0402): no enum operand type, outside #2670's contract");
+                // A chain link is refused as its binary twin is (P93 D3; owner ruling, #2648 comment 6865267508).
+                return new(false, null, DiagnosticCodes.Validation.UnsupportedOperator,
+                    "`object == object` is refused (SPY0402), as a chain link too: no enum operand type, outside #2670's contract");
             }
             if (objectOperands == 1)
-                return new(false, null, DiagnosticCodes.Semantic.InvalidBinaryOperation,
-                    "`object ==` an enum is refused by the checker (SPY0222): not a pair of enum types");
+            {
+                // A chain `l == r == r` is its two links (P93 D3): with the `object` on the right, the second link
+                // is `object == object`, refused as its twin is (SPY0402) beside the first link's SPY0222.
+                return cell.Position == Position.ChainLink && cell.Right == Operand.ObjectHoldingMember
+                    ? new(false, null,
+                        DiagnosticCodes.Semantic.InvalidBinaryOperation + "," + DiagnosticCodes.Validation.UnsupportedOperator,
+                        "`object ==` an enum is refused by the checker (SPY0222), and the chain's `object == object` link "
+                        + "as its twin (SPY0402)")
+                    : new(false, null, DiagnosticCodes.Semantic.InvalidBinaryOperation,
+                        "`object ==` an enum is refused by the checker (SPY0222): not a pair of enum types");
+            }
             return ComparedToCPython;
         }
 
@@ -524,7 +531,9 @@ public class EnumIdentityDifferentialTests : IntegrationTestBase
             if (expected.RefusedBy is { } code)
             {
                 refusals++;
-                meets = sharpy.RefusedBy is { Count: 1 } by && by.Single() == code;
+                // The refusing codes, sorted and comma-joined: a chain is refused by each of its links' codes.
+                meets = sharpy.RefusedBy is { Count: > 0 } by
+                    && string.Join(",", by.OrderBy(c => c, StringComparer.Ordinal)) == code;
             }
             else if (expected.Pinned is { } lines)
             {
