@@ -134,8 +134,8 @@ Product @ 7be6704c4 (`run`); oracle CPython 3.15.2; stage 0 @ de55a06a0.
 
 ## Revision log
 
-- @ 907aad013 — revised before the first pass: the owner's two rulings of 2026-11-13 recorded (#2648 comment 6865267508; #2645 comment 6865268833). No decision, predicate, mutation or count changed.
-- @ 7cf933cec — revised after the 1st pass (NEEDS REVISION, Dimension 4, Dimension 6, Dimension 7): stage 0 @ 1304d2af1 answers findings 1, 2 (the axis), 4 and the bulk ruling; @ 3833e96e1, finding 5's four axes and the `__iter__` shape, one row per fact and cause; @ a547f91ad, the second batch: producer types, hosts, forms, hoist kinds; @ ed5642202, the third: three links behind a hoist, 35 facts, nine shards; @ de55a06a0, the fourth: both pivot sides. D1: the synthesized `IEnumerable[T]`, LINQ named (finding 3). D2: a recorded binding type, cast, tuple hoist (finding 2). D3: both direction changes ruled (finding 6). D4: `Unknown` for a refused head. M1–M3 split.
+- @ 907aad013 — before the 1st pass: the owner's two 2026-11-13 rulings recorded (#2648 comment 6865267508; #2645 comment 6865268833). No decision, predicate, mutation or count changed.
+- @ 7cf933cec — after the 1st pass (NEEDS REVISION, Dimensions 4, 6, 7): stage 0 @ 1304d2af1 answers findings 1, 2 (the axis), 4 and the bulk ruling; @ 3833e96e1, finding 5's four axes and the `__iter__` shape, one row per fact and cause; @ a547f91ad, the second batch: producer types, hosts, forms, hoist kinds; @ ed5642202, the third: three links behind a hoist, 35 facts, nine shards; @ de55a06a0, the fourth: both pivot sides. D1: the synthesized `IEnumerable[T]`, LINQ named (finding 3). D2: a recorded binding type, cast, tuple hoist (finding 2). D3: both directions ruled (finding 6). D4: `Unknown` for a refused head. M1–M3 split.
 - deferred findings resolved in code @ 05f4871f6
 
 ## Verification Summary
