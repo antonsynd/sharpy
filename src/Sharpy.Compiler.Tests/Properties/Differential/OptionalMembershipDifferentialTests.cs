@@ -1928,7 +1928,7 @@ public abstract class MembershipOperatorDifferentialBase : IntegrationTestBase
     };
 
     /// <summary>The two kinds of chain link: a value comparison, or a test (membership, identity) — the links a
-    /// chain is refused for today (#2648). The facts of three-link chains are sliced by the kind of their FIRST
+    /// chain was refused for before plan P93 (#2648). The facts of three-link chains are sliced by the kind of their FIRST
     /// link, so that none runs near CI's per-test limit.</summary>
     private enum LinkKind { Comparison, Test }
 
@@ -1949,19 +1949,12 @@ public abstract class MembershipOperatorDifferentialBase : IntegrationTestBase
     /// <summary>Why no chain of a fact can show a control today, or null where one must.</summary>
     private static string? ChainControlExcluded(SequenceFact fact, ChainControl control)
     {
+        // Plan P93 (D3, #2648) deleted the exclusions a chain's test link (SPY0519) held: a chain whose first link
+        // is a test, the none-last `T?` / `T | None` half, and the tagged-left form each show both controls now.
         if (fact.Block is SequenceBlock.Pivot or SequenceBlock.Operators)
             return "the block's sequences are one operator: it has no chain";
-        if (fact.First == LinkKind.Test)
-            return "#2648: a chain whose first link is a test is refused by code generation (SPY0519), so none runs";
         if (fact.Form == SequenceForm.NoneLast && control == ChainControl.EvaluatesLastOperand)
             return "the form's last operand is the literal `None`, which is not traced";
-        if (fact.Form == SequenceForm.NoneLast && fact.Subjects == SubjectSlice.TaggedOrOptional)
-            return "every chain of the half ends in a link between a `T?` or `T | None` operand and the literal `None`: "
-                + "a comparison the checker refuses in both forms (SPY0222, \"Did you mean 'is None'?\") or a test link "
-                + "(SPY0519, #2648): none runs";
-        if (fact.Form == SequenceForm.TaggedLeft)
-            return "every chain of the form has a link between a tagged `T?` operand and a plain `T` one, which the "
-                + "checker refuses in both forms (SPY0222), or a test link (SPY0519): none runs";
         return null;
     }
 
@@ -3449,46 +3442,8 @@ public abstract class MembershipOperatorDifferentialBase : IntegrationTestBase
     /// </summary>
     private static readonly Dictionary<string, int> BulkCensus = new(StringComparer.Ordinal)
     {
-        ["ChainLink/NoneNeedle"] = 5304,
-        ["ChainLink/Plain"] = 3332,
-        ["LeftForm/Chain"] = 574,
-        ["Order/ChainLink/NoneNeedle"] = 3278,
-        ["Order/ChainLink/Plain"] = 3332,
-        ["Order/NoneNeedle"] = 3384,
-        ["Order/Plain"] = 5058,
-        ["Order/UserIterable/NoneNeedle"] = 4320,
-        ["Order/UserIterable/Plain"] = 4392,
-        ["Sequence/Chain"] = 8236,
-        ["SequenceHoist/Comprehension/Chain"] = 5288,
-        ["SequenceHoist/QuestionMark/Chain"] = 5288,
-        ["SequenceHoist/Spread/Chain"] = 5288,
-        ["SequenceHoist/Walrus/Chain"] = 5288,
-        ["SequencePosition/NoneLast/Chain"] = 5896,
-        ["SequencePosition/Optional/Chain"] = 3472,
-        ["SequencePosition/Plain/Chain"] = 3472,
-        ["SequencePosition/Tagged/Chain"] = 2560,
-        ["SequencePosition/TaggedLeft/Chain"] = 1072,
-        ["SequenceTriple/NoneLast/ComparisonFirst/Chain"] = 6072,
-        ["SequenceTriple/NoneLast/TestFirst/Chain"] = 6976,
-        ["SequenceTriple/NoneLastTaggedOrOptional/ComparisonFirst/Chain"] = 5600,
-        ["SequenceTriple/NoneLastTaggedOrOptional/TestFirst/Chain"] = 9728,
-        ["SequenceTriple/Optional/ComparisonFirst/Chain"] = 8336,
-        ["SequenceTriple/Optional/TestFirst/Chain"] = 11344,
-        ["SequenceTriple/Plain/ComparisonFirst/Chain"] = 8336,
-        ["SequenceTriple/Plain/TestFirst/Chain"] = 11344,
-        ["SequenceTriple/Tagged/ComparisonFirst/Chain"] = 2560,
-        ["SequenceTriple/Tagged/TestFirst/Chain"] = 9216,
-        ["SequenceTriple/TaggedLeft/TestFirst/Chain"] = 3080,
-        ["SequenceTripleHoist/Comprehension/ComparisonFirst/Chain"] = 8336,
-        ["SequenceTripleHoist/Comprehension/TestFirst/Chain"] = 11344,
-        ["SequenceTripleHoist/QuestionMark/ComparisonFirst/Chain"] = 8336,
-        ["SequenceTripleHoist/QuestionMark/TestFirst/Chain"] = 11344,
-        ["SequenceTripleHoist/Spread/ComparisonFirst/Chain"] = 8336,
-        ["SequenceTripleHoist/Spread/TestFirst/Chain"] = 11344,
-        ["SequenceTripleHoist/Walrus/ComparisonFirst/Chain"] = 8336,
-        ["SequenceTripleHoist/Walrus/TestFirst/Chain"] = 11344,
-        ["UserIterable/NoneNeedle"] = 7620,
-        ["UserIterable/Plain"] = 4392,
+        // Empty since plan P93 (T7): every portion it named (SPY0519 chain links, SPY0320 user iterables, the order
+        // rows) drained, and what remains of those rows is pin lines. A new bulk portion needs an owner ruling.
     };
 
     /// <summary>How a row's divergent cells are written: the bulk portion (the cells of the row's one cause, when
