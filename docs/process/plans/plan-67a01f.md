@@ -211,3 +211,20 @@ Pass 1's six findings are answered, read against the generator and the plan: the
 - The spy-stdlib sites D2 moves: not counted (T1). Snapshots re-measured: 178 files, 3 with `.Contains(`, none with a needle D2 binds.
 - `check_plan_refs.py --issues` cannot look issues up here (`gh issue view` is refused); the ten trackers and #2690 were read with `gh api` and are open.
 - **Owner question** (optional; the stamp does not wait for it): the deferred finding is resolved in code by `/implement-plan`'s first task. If you would rather keep `OptionalNoneTest` excluded, say so and the row is struck; the exclusion then wants a reason that is not the generator's own limit.
+
+## Implementation Checklist
+
+Base cd4071554 (`origin/dev`, the plan's merge); branch `claude/membership-totality`. Lead: this session. Tasks are commit-sized; owners are background agents unless marked lead.
+
+- [ ] T0 — Deferred finding 1: delete `SequenceExcludedKinds[OptionalNoneTest]`, none-last sequences over a tagged `T?` subject, re-measure totals, `BulkCensus` and `…/NoneLast/…` rows — test-expert — blocked by none
+- [ ] T1 — Probe each D's predicate by `run` at the base; by-direction lists (D3 both moves, the 156 SPY0908 → SPY0402, D4's programs); count the spy-stdlib sites D2 moves — lead — blocked by none
+- [ ] T2 — Parser (D4) + Pretty/dump of `ComparisonChain`; LSP check over `c is Color.RED is d` — parser-expert — blocked by none
+- [ ] T5 — Core `StringHelpers.Repeat(count, str)` for `int` and `long` + Core.Tests — core-library-expert — blocked by none
+- [ ] T3 — Checker: D1 `IterationMembershipElement`, D2 needle-binding record (`MergeFrom`), D3 link routine, D4 link 0; M5 — semantic-expert — blocked by T2
+- [ ] T4 — Validators: SPY0320 gate on D1's record; `VisitComparisonChain` in both validators; M1/M3 validator halves — semantic-expert — blocked by T3
+- [ ] T3r — Regeneration after the first Semantic commit (spy-stdlib, spy-test, stdlib docs, oracle ledger); diff read as findings — lead — blocked by T3
+- [ ] T6 — Emitter: D1 LINQ `Contains`, D2 bind helper + hoist + count-first repeat, D3 `BuildLink` through binary emitters; sink rows; M1/M2/M3 emitter halves — codegen-expert — blocked by T4, T5
+- [ ] T6r — Regeneration again after T6 — lead — blocked by T6
+- [ ] T7 — Spec (D5), `deviations.yaml` R-OA row, fixtures, `SpecRowMap`, `OptionalElementControlExcluded` entries, drain allowlist to pin lines, `BulkCensus` entries, `scorecard_metrics.py --lower` — test-expert — blocked by T6r
+- [ ] TF — Final verification: build, Infrastructure|Conformance filter, whitespace, commit subjects, `/ci-gate`, GapDiscovery sweeps, staleness gates, spec examples, `verification-expert` standalone — lead — blocked by all
+- [ ] TW — `dotnet format whitespace` — lead — blocked by all
