@@ -2929,7 +2929,7 @@ Sequence/Binary  cells=277  pin=4875267aa2596646  # see #2645 (plan P93): an ope
 #= uint8/TaggedLeft/in -> sharpy prints 1 0 True | desugaring prints 0 1 True
 #= uint8/TaggedLeft/not in -> sharpy prints 1 0 False | desugaring prints 0 1 False
 
-Sequence/Chain  cells=52  pin=b2c35431a3267261  bulk=6580:5ded1f2588260732  # see #2648 (plan P93): a chain with an `in`, `not in`, `is` or `is not` link is refused by code generation (SPY0519: the bulk portion) where its desugaring runs or is refused by another code. Pin lines: a chain whose `==` / `!=` link the binary form refuses (SPY0402) compiles or reaches Roslyn. A link gets its binary twin's verdict
+Sequence/Chain  cells=52  pin=b2c35431a3267261  bulk=8236:dea0c4284dcf3bb1  # see #2648 (plan P93): a chain with an `in`, `not in`, `is` or `is not` link is refused by code generation (SPY0519: the bulk portion) where its desugaring runs or is refused by another code. Pin lines: a chain whose `==` / `!=` link the binary form refuses (SPY0402) compiles or reaches Roslyn. A link gets its binary twin's verdict
 #= D/NoneLast/!=,!= -> sharpy prints 0 1 True | desugaring refused SPY0402
 #= D/NoneLast/!=,== -> sharpy prints 0 1 False | desugaring refused SPY0402
 #= D/NoneLast/==,!= -> sharpy prints 0 1 False | desugaring refused SPY0402
@@ -3129,7 +3129,7 @@ SequencePivot/Binary  cells=8  pin=c73d396f866028be  # see #2645 (plan P93): an 
 #= tuple[int, int]/Optional/in/int on the left -> sharpy prints 1 0 True | desugaring prints 0 1 True
 #= tuple[int, int]/Optional/not in/int on the left -> sharpy prints 1 0 False | desugaring prints 0 1 False
 
-SequencePosition/NoneLast/Chain  cells=40  pin=11e39d55207a1ab8  bulk=2584:a366c32f320f39b5  # see #2648 (plan P93): a chain with an `in`, `not in`, `is` or `is not` link is refused by code generation (SPY0519: the bulk portion) where its desugaring runs or is refused by another code, as an `if` condition and as a comprehension filter, in the form whose last operand is the literal `None`. Pin lines: a chain whose `==` / `!=` link the binary form refuses (SPY0402) compiles or reaches Roslyn. A link gets its binary twin's verdict
+SequencePosition/NoneLast/Chain  cells=40  pin=11e39d55207a1ab8  bulk=5896:6d9b303f05b40f0a  # see #2648 (plan P93): a chain with an `in`, `not in`, `is` or `is not` link is refused by code generation (SPY0519: the bulk portion) where its desugaring runs or is refused by another code, as an `if` condition and as a comprehension filter, in the form whose last operand is the literal `None`. Pin lines: a chain whose `==` / `!=` link the binary form refuses (SPY0402) compiles or reaches Roslyn. A link gets its binary twin's verdict
 #= D/NoneLast/!=,!=/ComprehensionFilter -> sharpy prints 0 1 True | desugaring refused SPY0402
 #= D/NoneLast/!=,!=/IfCondition -> sharpy prints 0 1 True | desugaring refused SPY0402
 #= D/NoneLast/!=,==/ComprehensionFilter -> sharpy prints 0 1 False | desugaring refused SPY0402
@@ -3798,6 +3798,10 @@ SequenceTriple/NoneLast/ComparisonFirst/Chain  cells=40  pin=98dfeea1eb43467e  b
 #= K/NoneLast/==,==,== -> sharpy prints 0 1 False | desugaring refused SPY0402
 
 SequenceTriple/NoneLast/TestFirst/Chain  cells=0  pin=e3b0c44298fc1c14  bulk=6976:1b5726f39c2d8fb1  # see #2648 (plan P93): a chain with an `in`, `not in`, `is` or `is not` link is refused by code generation (SPY0519: the bulk portion) where its desugaring runs or is refused by another code, for a chain of three links whose first link is a test (`in`, `not in`, `is`, `is not`), in the form whose last operand is the literal `None`. Pin lines: a chain whose `==` / `!=` link the binary form refuses (SPY0402) compiles or reaches Roslyn. A link gets its binary twin's verdict
+
+SequenceTriple/NoneLastTaggedOrOptional/ComparisonFirst/Chain  cells=0  pin=e3b0c44298fc1c14  bulk=5600:7a06ac80ff836d2d  # see #2648 (plan P93): a chain with an `in`, `not in`, `is` or `is not` link is refused by code generation (SPY0519: the bulk portion) where its desugaring runs or is refused by another code, for a chain of three links whose first link is a comparison, in the form whose last operand is the literal `None`, the operands before it typed `T?` or `T | None` (the tagged-or-optional half of the subject typings; owner, 2026-11-15, "Split, baseline 616 (Recommended)", P93 T0). Pin lines: a chain whose `==` / `!=` link the binary form refuses (SPY0402) compiles or reaches Roslyn. A link gets its binary twin's verdict
+
+SequenceTriple/NoneLastTaggedOrOptional/TestFirst/Chain  cells=0  pin=e3b0c44298fc1c14  bulk=9728:65918dc609534b33  # see #2648 (plan P93): a chain with an `in`, `not in`, `is` or `is not` link is refused by code generation (SPY0519: the bulk portion) where its desugaring runs or is refused by another code, for a chain of three links whose first link is a test (`in`, `not in`, `is`, `is not`), in the form whose last operand is the literal `None`, the operands before it typed `T?` or `T | None` (the tagged-or-optional half of the subject typings; owner, 2026-11-15, "Split, baseline 616 (Recommended)", P93 T0). Pin lines: a chain whose `==` / `!=` link the binary form refuses (SPY0402) compiles or reaches Roslyn. A link gets its binary twin's verdict
 
 SequenceTriple/Optional/ComparisonFirst/Chain  cells=0  pin=e3b0c44298fc1c14  bulk=8336:74d576a96aa5d163  # see #2648 (plan P93): a chain with an `in`, `not in`, `is` or `is not` link is refused by code generation (SPY0519: the bulk portion) where its desugaring runs or is refused by another code, for a chain of three links whose first link is a comparison, in the `T | None` form. Pin lines: a chain whose `==` / `!=` link the binary form refuses (SPY0402) compiles or reaches Roslyn. A link gets its binary twin's verdict
 

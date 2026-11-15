@@ -1704,9 +1704,97 @@ public abstract class MembershipOperatorDifferentialBase : IntegrationTestBase
     private const string SequenceRowPrefix = "Sequence/";
 
     /// <summary>How a sequence's operands are typed: the payload; <c>T | None</c>; the tagged <c>T?</c>, on both
-    /// values or on the first alone (the operand types <c>??</c> has its two lowerings for); or the payload with the
-    /// literal <c>None</c> as the last operand (the None tests and their refusals).</summary>
+    /// values or on the first alone (the operand types <c>??</c> has its two lowerings for); or the literal
+    /// <c>None</c> as the last operand (the None tests and their refusals), the operands before it typed by each
+    /// <see cref="NoneLastSubject"/>.</summary>
     private enum SequenceForm { Plain, Optional, Tagged, TaggedLeft, NoneLast }
+
+    /// <summary>How the operands before the literal <c>None</c> of the none-last form are typed: the payload, the
+    /// tagged <c>T?</c> or <c>T | None</c>. The subject of a None test is one of them, and the checker lowers the
+    /// test by the subject's type (<c>ClassifyNoneTest</c>: <c>OptionalNoneTest</c> on a <c>T?</c>,
+    /// <c>ReferenceNoneTest</c> on a <c>T | None</c> or a reference, <c>BoxedNoneTest</c> on any other), so every
+    /// block's none-last product is taken over all three (plan-67a01f, deferred finding 1).</summary>
+    private enum NoneLastSubject { Payload, Tagged, Optional }
+
+    /// <summary>The subject typings of each form (<see cref="NoneLastSubject"/>) for a payload, by whether its
+    /// <c>T | None</c> is a CLR value type's <c>Nullable&lt;T&gt;</c> (<see cref="NullableIsADistinctClrType"/>): in
+    /// the none-last form the payload and <c>T?</c> for every payload, and <c>T | None</c> where it is a different CLR
+    /// type from the payload (of a reference type it is the payload's own CLR type, a nullable annotation: the
+    /// payload typing's twin). Every other form types its operands itself, one typing, written
+    /// <see cref="NoneLastSubject.Payload"/>. No default arm.</summary>
+    private static NoneLastSubject[] SubjectsOf(SequenceForm form, bool valueType) => form switch
+    {
+        SequenceForm.Plain or SequenceForm.Optional or SequenceForm.Tagged or SequenceForm.TaggedLeft
+            => new[] { NoneLastSubject.Payload },
+        SequenceForm.NoneLast => valueType
+            ? new[] { NoneLastSubject.Payload, NoneLastSubject.Tagged, NoneLastSubject.Optional }
+            : new[] { NoneLastSubject.Payload, NoneLastSubject.Tagged },
+        _ => throw new InvalidOperationException($"SequenceForm.{form} has no subject typings: give them"),
+    };
+
+    /// <summary>How many (form, subject typing) pairs <see cref="SubjectsOf"/> generates for a payload whose
+    /// <c>T | None</c> is a distinct CLR type, and for one whose is not, as literals.</summary>
+    private const int SequenceFormTypingsOfAValueType = 7;
+    private const int SequenceFormTypingsOfAReference = 6;
+
+    /// <summary>How many sequence payloads <see cref="NullableIsADistinctClrType"/> measures as value types, as a
+    /// literal: the measurement is total over the roster, and only this pins it against a probe that silently
+    /// answers otherwise.</summary>
+    private const int SequenceValueTypePayloads = 19;
+
+    /// <summary>
+    /// Whether a payload's <c>T | None</c> is a different CLR type from the payload: MEASURED, never listed. A probe
+    /// declares the payload and a <c>T | None</c> parameter of it the way a cell does (a generic function for a type
+    /// parameter, a method for <c>Self</c>), the compiler emits it, and Roslyn binds the emitted parameter: a
+    /// <c>Nullable&lt;T&gt;</c> is a value type's distinct CLR type; any other is the payload's own type under a
+    /// nullable annotation. Keyed by payload name, over every sequence payload, once per test process.
+    /// </summary>
+    private static readonly Lazy<IReadOnlyDictionary<string, bool>> ValueTypePayloads = new(() =>
+        GeneratePayloads().Concat(SequenceOnlyPayloads).ToDictionary(p => p.Name, NullableIsADistinctClrType, StringComparer.Ordinal));
+
+    private static bool NullableIsADistinctClrType(Payload payload)
+    {
+        var source = "from ipaddress import IPv4Address, IPv6Address\n\n"
+            + (payload.SharpyDeclaration is { } declaration ? declaration.TrimEnd('\n') + "\n" : "")
+            + (payload.SelfOf != null
+                ? "    def value_probe(self, x: Self | None) -> bool:\n        return x is None\n"
+                : $"\ndef value_probe{payload.TypeParameters}(x: {payload.CellSpelling} | None) -> bool:\n    return x is None\n")
+            + "\ndef main() -> None:\n    pass\n";
+        var options = new CompilerOptions
+        {
+            References = new[] { Sharpy.TestInfrastructure.SharpyCoreReference.Location, SharpyStdlibReference.Location },
+            OutputType = "exe",
+            WarningsAsErrors = false,
+        };
+        var result = new Compiler(options, NullLogger.Instance).Compile(source, "value_probe.spy");
+        var errors = result.Diagnostics.GetErrors().Select(d => $"[{d.Code}] {d.Message}").ToList();
+        Assert.True(errors.Count == 0 && result.GeneratedCSharpCode != null,
+            $"payload {payload.Name}: its value-type probe does not compile: " + string.Join("; ", errors) + "\n" + source);
+        var compilation = Microsoft.CodeAnalysis.CSharp.CSharpCompilation.Create("value_probe",
+            new[] { Microsoft.CodeAnalysis.CSharp.CSharpSyntaxTree.ParseText(result.GeneratedCSharpCode!) },
+            IntegrationTestBase.GetSharedReferences()
+                .Append(Microsoft.CodeAnalysis.MetadataReference.CreateFromFile(SharpyStdlibReference.Location)));
+        var probes = compilation.GetSymbolsWithName(
+                n => n.Replace("_", "", StringComparison.Ordinal).Equals("valueprobe", StringComparison.OrdinalIgnoreCase),
+                Microsoft.CodeAnalysis.SymbolFilter.Member)
+            .OfType<Microsoft.CodeAnalysis.IMethodSymbol>().ToList();
+        Assert.True(probes.Count == 1 && probes[0].Parameters.Length == 1,
+            $"payload {payload.Name}: the emitted C# has {probes.Count} value_probe method(s)\n{result.GeneratedCSharpCode}");
+        var type = probes[0].Parameters[0].Type;
+        Assert.True(type.TypeKind != Microsoft.CodeAnalysis.TypeKind.Error,
+            $"payload {payload.Name}: Roslyn cannot bind the emitted parameter type {type}\n{result.GeneratedCSharpCode}");
+        return type.OriginalDefinition.SpecialType == Microsoft.CodeAnalysis.SpecialType.System_Nullable_T;
+    }
+
+    /// <summary>The operand type of a sequence's first operand: the payload, made <c>T | None</c> or <c>T?</c> by
+    /// its form or, in the none-last form, by its subject typing.</summary>
+    private static string SequenceOperandType(Payload payload, Sequence sequence) => payload.CellSpelling
+        + (sequence.Form, sequence.Subject) switch
+        {
+            (SequenceForm.Optional, _) or (SequenceForm.NoneLast, NoneLastSubject.Optional) => " | None",
+            (SequenceForm.Tagged or SequenceForm.TaggedLeft, _) or (SequenceForm.NoneLast, NoneLastSubject.Tagged) => "?",
+            _ => "",
+        };
 
     /// <summary>
     /// The spelling of every <see cref="BinaryOperator"/>, or why the sequence matrix does not generate it. No
@@ -1820,9 +1908,13 @@ public abstract class MembershipOperatorDifferentialBase : IntegrationTestBase
         /// last operand then hoists statements and the chain takes its imperative path.</summary>
         public SequenceHoist Hoist { get; init; } = SequenceHoist.None;
 
+        /// <summary>The none-last form's typing of the operands before <c>None</c> (<see cref="SubjectsOf"/>).</summary>
+        public NoneLastSubject Subject { get; init; } = NoneLastSubject.Payload;
+
         public int CellId => Id * 2;
         public int ReferenceId => Id * 2 + 1;
-        public string Key => $"{Payload.Name}/{Form}/{string.Join(",", Operators.Select(o => SpellingOf(o).Spelling))}"
+        public string Key => $"{Payload.Name}/{Form}{(Subject == NoneLastSubject.Payload ? "" : $":{Subject}")}/"
+            + string.Join(",", Operators.Select(o => SpellingOf(o).Spelling))
             + (Pivot is { } p ? $"/{Pivots[p].Type} on the {(PivotOnLeft ? "left" : "right")}" : "")
             + (Position == SequencePosition.Assignment ? "" : $"/{Position}") + (Hoist == SequenceHoist.None ? "" : $"/HoistLast:{Hoist}");
         public string Cause => Operators.Length == 1 ? "Binary" : "Chain";
@@ -1871,6 +1963,10 @@ public abstract class MembershipOperatorDifferentialBase : IntegrationTestBase
             return "#2648: a chain whose first link is a test is refused by code generation (SPY0519), so none runs";
         if (fact.Form == SequenceForm.NoneLast && control == ChainControl.EvaluatesLastOperand)
             return "the form's last operand is the literal `None`, which is not traced";
+        if (fact.Form == SequenceForm.NoneLast && fact.Subjects == SubjectSlice.TaggedOrOptional)
+            return "every chain of the half ends in a link between a `T?` or `T | None` operand and the literal `None`: "
+                + "a comparison the checker refuses in both forms (SPY0222, \"Did you mean 'is None'?\") or a test link "
+                + "(SPY0519, #2648): none runs";
         if (fact.Form == SequenceForm.TaggedLeft)
             return "every chain of the form has a link between a tagged `T?` operand and a plain `T` one, which the "
                 + "checker refuses in both forms (SPY0222), or a test link (SPY0519): none runs";
@@ -1932,7 +2028,8 @@ public abstract class MembershipOperatorDifferentialBase : IntegrationTestBase
     /// <item><see cref="HoistLast"/> — every pair of links in every form, the last operand hoisting, a fact per
     /// hoist kind;</item>
     /// <item><see cref="Triple"/> — every ordered triple of links (a link's place in a chain is first, middle or
-    /// last: three links have all three), a fact per form and kind of first link;</item>
+    /// last: three links have all three), a fact per form and kind of first link; the none-last form's in two
+    /// halves by subject typing (<see cref="SubjectSlicesOf"/>);</item>
     /// <item><see cref="TripleHoist"/> — every ordered triple of links in the plain form, the last operand
     /// hoisting, a fact per hoist kind and kind of first link. Out of the generator between 6f00cfa18 and the
     /// ninth compiler shard (#2690): a shard job ran 24 m 25 s of its 25 minutes with it in.</item>
@@ -1945,6 +2042,33 @@ public abstract class MembershipOperatorDifferentialBase : IntegrationTestBase
     private enum SequenceBlock { Operators, Pairs, Pivot, Position, HoistLast, Triple, TripleHoist }
 
     private enum SliceAxis { None, Form, Hoist, FormAndFirstLink, HoistAndFirstLink }
+
+    /// <summary>The subject typings (<see cref="NoneLastSubject"/>) a fact holds: all of its form's, or one half of
+    /// the none-last form's — the payload typing, or the tagged <c>T?</c> and <c>T | None</c> typings (owner, 2026-11-15,
+    /// "Split, baseline 616 (Recommended)", P93 T0: the three-link none-last facts over all three typings ran 9 m 24 s
+    /// and 8 m 13 s locally, against CI's 10-minute per-test limit).</summary>
+    private enum SubjectSlice { All, Payload, TaggedOrOptional }
+
+    /// <summary>The subject slices of a block's facts in a form: the three-link none-last facts split in two
+    /// halves, every other fact whole. No default arm.</summary>
+    private static SubjectSlice[] SubjectSlicesOf(SequenceBlock block, SequenceForm form) => (block, form) switch
+    {
+        (SequenceBlock.Triple, SequenceForm.NoneLast) => new[] { SubjectSlice.Payload, SubjectSlice.TaggedOrOptional },
+        (SequenceBlock.Operators or SequenceBlock.Pairs or SequenceBlock.Pivot or SequenceBlock.Position
+            or SequenceBlock.HoistLast or SequenceBlock.Triple or SequenceBlock.TripleHoist,
+            SequenceForm.Plain or SequenceForm.Optional or SequenceForm.Tagged or SequenceForm.TaggedLeft or SequenceForm.NoneLast)
+            => new[] { SubjectSlice.All },
+        _ => throw new InvalidOperationException($"SequenceBlock.{block} in SequenceForm.{form} has no subject slices"),
+    };
+
+    /// <summary>Whether a subject slice holds a subject typing. No default arm.</summary>
+    private static bool InSlice(SubjectSlice slice, NoneLastSubject subject) => slice switch
+    {
+        SubjectSlice.All => true,
+        SubjectSlice.Payload => subject == NoneLastSubject.Payload,
+        SubjectSlice.TaggedOrOptional => subject is NoneLastSubject.Tagged or NoneLastSubject.Optional,
+        _ => throw new InvalidOperationException($"SubjectSlice.{slice} holds no subject typing"),
+    };
 
     /// <summary>The axis a block's facts slice it by. No default arm.</summary>
     private static SliceAxis SliceAxisOf(SequenceBlock block) => block switch
@@ -1965,7 +2089,12 @@ public abstract class MembershipOperatorDifferentialBase : IntegrationTestBase
     /// <see cref="RowPrefix"/> is the prefix of the allowlist rows it owns.</summary>
     private sealed record SequenceFact(SequenceBlock Block, SequenceForm? Form, SequenceHoist? Hoist, LinkKind? First = null)
     {
-        private string Slice => Form?.ToString() ?? Hoist?.ToString() ?? "";
+        /// <summary>The subject typings the fact holds (<see cref="SubjectSlicesOf"/>); a tagged-or-optional half
+        /// names itself after its form.</summary>
+        public SubjectSlice Subjects { get; init; } = SubjectSlice.All;
+
+        private string Slice => (Form?.ToString() ?? Hoist?.ToString() ?? "")
+            + (Subjects == SubjectSlice.TaggedOrOptional ? nameof(SubjectSlice.TaggedOrOptional) : "");
 
         public string RowPrefix => Block switch
         {
@@ -2036,8 +2165,9 @@ public abstract class MembershipOperatorDifferentialBase : IntegrationTestBase
                     break;
                 case SliceAxis.FormAndFirstLink:
                     foreach (var form in Enum.GetValues<SequenceForm>())
-                        foreach (var first in Enum.GetValues<LinkKind>())
-                            facts.Add(new SequenceFact(block, form, null, first));
+                        foreach (var subjects in SubjectSlicesOf(block, form))
+                            foreach (var first in Enum.GetValues<LinkKind>())
+                                facts.Add(new SequenceFact(block, form, null, first) { Subjects = subjects });
                     break;
                 case SliceAxis.HoistAndFirstLink:
                     foreach (var hoist in Enum.GetValues<SequenceHoist>().Where(h => h != SequenceHoist.None))
@@ -2084,9 +2214,14 @@ public abstract class MembershipOperatorDifferentialBase : IntegrationTestBase
         var forms = fact.Form is { } only ? new[] { only } : Enum.GetValues<SequenceForm>();
         var hoist = fact.Hoist ?? SequenceHoist.None;
         var sequences = new List<Sequence>();
+        // Inside the form: every sequence of the none-last form is generated once per subject typing.
         void Add(Payload payload, SequenceForm form, BinaryOperator[] ops, SequencePosition position = SequencePosition.Assignment,
-            int? pivot = null, bool onLeft = false) =>
-            sequences.Add(new Sequence(sequences.Count, payload, form, ops, pivot, onLeft) { Position = position, Hoist = hoist });
+            int? pivot = null, bool onLeft = false)
+        {
+            foreach (var subject in SubjectsOf(form, ValueTypePayloads.Value[payload.Name]).Where(s => InSlice(fact.Subjects, s)))
+                sequences.Add(new Sequence(sequences.Count, payload, form, ops, pivot, onLeft)
+                { Position = position, Hoist = hoist, Subject = subject });
+        }
         foreach (var payload in payloads)
             foreach (var form in forms)
                 switch (fact.Block)
@@ -2207,12 +2342,7 @@ public abstract class MembershipOperatorDifferentialBase : IntegrationTestBase
             var id = reference ? sequence.ReferenceId : sequence.CellId;
             if (!active.Contains(id))
                 return;
-            var type = payload.CellSpelling + sequence.Form switch
-            {
-                SequenceForm.Optional => " | None",
-                SequenceForm.Tagged or SequenceForm.TaggedLeft => "?",
-                _ => "",
-            };
+            var type = SequenceOperandType(payload, sequence);
             var second = sequence.Form == SequenceForm.TaggedLeft ? payload.CellSpelling : type;
             var operands = SequenceOperands(sequence);
             var ops = sequence.Operators.Select(o => SpellingOf(o).Spelling!).ToArray();
@@ -2301,10 +2431,10 @@ public abstract class MembershipOperatorDifferentialBase : IntegrationTestBase
                         continue;
                     Add($"{indent}try:", id);
                     // The tagged Optional is constructed, never converted to (SPY0604).
-                    var arguments = sequence.Form switch
+                    var arguments = (sequence.Form, sequence.Subject) switch
                     {
-                        SequenceForm.Tagged => "Some(a), Some(c)",
-                        SequenceForm.TaggedLeft => "Some(a), c",
+                        (SequenceForm.Tagged, _) or (SequenceForm.NoneLast, NoneLastSubject.Tagged) => "Some(a), Some(c)",
+                        (SequenceForm.TaggedLeft, _) => "Some(a), c",
                         _ => "a, c",
                     };
                     Add($"{indent}    {(sequence.Hoist == SequenceHoist.QuestionMark ? "_ = " : "")}{callee}{id}"
@@ -2366,8 +2496,6 @@ public abstract class MembershipOperatorDifferentialBase : IntegrationTestBase
         [Sem.OperatorLoweringKind.Native] = "the absent-entry convention: no record is written for it",
         [Sem.OperatorLoweringKind.TrueDivisionCastLeft] = "recorded only when the divisor is a non-zero literal: a literal "
             + "operand has no evaluation to order (the variable-divisor twin, GuardedTrueDivisionCastLeft, is recorded)",
-        [Sem.OperatorLoweringKind.OptionalNoneTest] = "a None test on a `T?` subject: its other operand is the literal `None`, "
-            + "and the NoneLast form types its subject as the payload (its twins ReferenceNoneTest and BoxedNoneTest are recorded)",
         [Sem.OperatorLoweringKind.EnumMemberReferenceIdentity] = "recorded on a TypeCheck node (`t is Tone.A`, a member "
             + "spelled after `is`), never on a BinaryOp: the right operand is a member name, not an evaluation",
         [Sem.OperatorLoweringKind.NegateLiteralInt] = "recorded on a unary minus",
@@ -2444,7 +2572,7 @@ public abstract class MembershipOperatorDifferentialBase : IntegrationTestBase
     /// the desugared program, so no oracle is needed and a divergence the binary form has from CPython is not
     /// counted twice here.
     /// <para><b>Generated, never listed.</b> payload (the axis of the membership matrix) × form
-    /// (<see cref="SequenceForm"/>) × sequence: every <see cref="BinaryOperator"/> <see cref="SpellingOf"/> spells,
+    /// (<see cref="SequenceForm"/>; the none-last form × its subject typing, <see cref="SubjectsOf"/>) × sequence: every <see cref="BinaryOperator"/> <see cref="SpellingOf"/> spells,
     /// and every ordered pair of <see cref="ComparisonOperator"/> links; in the plain form each binary operator also
     /// takes each pivot type on each side (<see cref="Pivots"/>). The count is asserted from the enumerations, and
     /// the operand types are closed against <c>OperatorLoweringKind</c> (<see cref="SequenceExcludedKinds"/>).</para>
@@ -2499,7 +2627,6 @@ public abstract class MembershipOperatorDifferentialBase : IntegrationTestBase
         var binaryCount = operators.Length - SequenceExcludedOperators;
         var linkCount = Enum.GetValues<ComparisonOperator>().Length;
         Assert.Equal(linkCount, Enum.GetValues<ComparisonOperator>().Select(LinkOperator).Distinct().Count());
-        var formCount = Enum.GetValues<SequenceForm>().Length;
         // The statement positions are the image of the matrix's Position, less the pinned exclusions.
         var positions = Enum.GetValues<Position>();
         Assert.All(positions, p => Assert.True((SequencePositionOf(p).Generated != null) != (SequencePositionOf(p).Excluded != null)
@@ -2540,39 +2667,74 @@ public abstract class MembershipOperatorDifferentialBase : IntegrationTestBase
             && (PivotSidesOf(f).Excluded ?? "-").Trim().Length > 0, $"{f}: both pivot sides, or the reason a side is left out"));
         Assert.True(sequenceForms.Sum(f => PivotSidesOf(f).Sides.Length) == SequencePivotFormSides,
             $"PivotSidesOf generates {sequenceForms.Sum(f => PivotSidesOf(f).Sides.Length)} (form, side) pairs; {SequencePivotFormSides} are pinned");
+        // The subject typings of each form: distinct, at least one; the none-last form takes every one for a payload
+        // whose `T | None` is a distinct CLR type and all but `T | None` for any other; the totals are pinned.
+        foreach (var valueType in new[] { false, true })
+            Assert.All(sequenceForms, f => Assert.True(SubjectsOf(f, valueType).Length > 0
+                && SubjectsOf(f, valueType).Distinct().Count() == SubjectsOf(f, valueType).Length,
+                $"{f}: its subject typings are not distinct, or there are none"));
+        Assert.Equal(Enum.GetValues<NoneLastSubject>().OrderBy(s => s), SubjectsOf(SequenceForm.NoneLast, true).OrderBy(s => s));
+        Assert.Equal(Enum.GetValues<NoneLastSubject>().Where(s => s != NoneLastSubject.Optional).OrderBy(s => s),
+            SubjectsOf(SequenceForm.NoneLast, false).OrderBy(s => s));
+        Assert.True(sequenceForms.Sum(f => SubjectsOf(f, true).Length) == SequenceFormTypingsOfAValueType
+            && sequenceForms.Sum(f => SubjectsOf(f, false).Length) == SequenceFormTypingsOfAReference,
+            $"SubjectsOf generates {sequenceForms.Sum(f => SubjectsOf(f, true).Length)} (form, subject typing) pairs for a value "
+            + $"type and {sequenceForms.Sum(f => SubjectsOf(f, false).Length)} for a reference; {SequenceFormTypingsOfAValueType} "
+            + $"and {SequenceFormTypingsOfAReference} are pinned");
+        // The value-ness is measured for every payload of the roster, and the measured count is pinned.
+        var valueTypes = ValueTypePayloads.Value;
+        Assert.True(payloads.Select(p => p.Name).OrderBy(n => n, StringComparer.Ordinal).SequenceEqual(valueTypes.Keys.OrderBy(n => n, StringComparer.Ordinal)),
+            "the value-type measurement is not over the sequence payloads, each once");
+        var valueCount = payloads.Count(p => valueTypes[p.Name]);
+        Assert.True(valueCount == SequenceValueTypePayloads,
+            $"the probe measures {valueCount} sequence payloads whose `T | None` is a distinct CLR type ["
+            + string.Join(", ", payloads.Where(p => valueTypes[p.Name]).Select(p => p.Name)) + $"]; {SequenceValueTypePayloads} are pinned");
+        var referenceCount = payloadCount - valueCount;
+        // The sequences of a form over every payload: each payload once per subject typing it takes.
+        int Typed(SequenceForm form, SubjectSlice slice = SubjectSlice.All) =>
+            valueCount * SubjectsOf(form, true).Count(s => InSlice(slice, s)) + referenceCount * SubjectsOf(form, false).Count(s => InSlice(slice, s));
+        var typed = valueCount * SequenceFormTypingsOfAValueType + referenceCount * SequenceFormTypingsOfAReference;
+        var factTyped = fact.Form is { } slicedForm ? Typed(slicedForm, fact.Subjects) : payloadCount;
+        // The subject slices of every block in every form partition its subject typings: each typing in exactly one
+        // slice, so the halves of a split fact hold the whole product between them.
+        Assert.All(Enum.GetValues<SequenceBlock>(), b => Assert.All(sequenceForms, f => Assert.All(new[] { false, true },
+            valueType => Assert.All(SubjectsOf(f, valueType), s => Assert.True(SubjectSlicesOf(b, f).Count(slice => InSlice(slice, s)) == 1,
+                $"{b} in {f}: the subject typing {s} is in {SubjectSlicesOf(b, f).Count(slice => InSlice(slice, s))} of its subject slices, not one")))));
+        var pivotTypedSides = sequenceForms.Sum(f => PivotSidesOf(f).Sides.Length * Typed(f));
         // The fact is one of the facts, and its slice is a value of its block's slice axis.
         Assert.Contains(fact, SequenceFacts());
         Assert.True(SliceAxisOf(block) switch
         {
-            SliceAxis.None => fact.Form == null && fact.Hoist == null && fact.First == null,
-            SliceAxis.Form => fact.Form != null && fact.Hoist == null && fact.First == null,
-            SliceAxis.Hoist => fact.Form == null && fact.Hoist is { } h && h != SequenceHoist.None && fact.First == null,
-            SliceAxis.FormAndFirstLink => fact.Form != null && fact.Hoist == null && fact.First != null,
-            _ => fact.Form == null && fact.Hoist is { } k && k != SequenceHoist.None && fact.First != null,
+            SliceAxis.None => fact.Form == null && fact.Hoist == null && fact.First == null && fact.Subjects == SubjectSlice.All,
+            SliceAxis.Form => fact.Form != null && fact.Hoist == null && fact.First == null && fact.Subjects == SubjectSlice.All,
+            SliceAxis.Hoist => fact.Form == null && fact.Hoist is { } h && h != SequenceHoist.None && fact.First == null && fact.Subjects == SubjectSlice.All,
+            SliceAxis.FormAndFirstLink => fact.Form is { } tripleForm && fact.Hoist == null && fact.First != null
+                && SubjectSlicesOf(block, tripleForm).Contains(fact.Subjects),
+            _ => fact.Form == null && fact.Hoist is { } k && k != SequenceHoist.None && fact.First != null && fact.Subjects == SubjectSlice.All,
         }, $"{fact.Name}: its slice is not a value of {SliceAxisOf(block)}");
         // The first links of a kind, from the enumeration: the kinds partition the links.
         var comparisonOperators = Enum.GetValues<ComparisonOperator>();
         Assert.Equal(linkCount, Enum.GetValues<LinkKind>().Sum(k => comparisonOperators.Count(o => LinkKindOf(o) == k)));
         Assert.All(Enum.GetValues<LinkKind>(), k => Assert.Contains(comparisonOperators, o => LinkKindOf(o) == k));
         var firstLinkCount = fact.First is { } firstKind ? comparisonOperators.Count(o => LinkKindOf(o) == firstKind) : linkCount;
+        var typings = $"({valueCount} value-type payloads x {SequenceFormTypingsOfAValueType} + {referenceCount} others x "
+            + $"{SequenceFormTypingsOfAReference} (form, subject typing) pairs)";
         var (expectedCount, product) = block switch
         {
-            SequenceBlock.Operators => (payloadCount * (formCount * binaryCount + binaryCount * Pivots.Length * 2),
-                $"{payloadCount} payloads x ({formCount} forms x {binaryCount} binary operators + {binaryCount} binary operators x "
-                + $"{Pivots.Length} pivots x 2 sides)"),
-            SequenceBlock.Pairs => (payloadCount * formCount * pairs,
-                $"{payloadCount} payloads x {formCount} forms x {linkCount} x {linkCount} chain link pairs"),
-            SequenceBlock.Pivot => (payloadCount * binaryCount * Pivots.Length * SequencePivotFormSides,
-                $"{payloadCount} payloads x {binaryCount} binary operators x {Pivots.Length} pivots x {SequencePivotFormSides} "
-                + "(form, side) pairs of the other forms"),
-            SequenceBlock.Position => (payloadCount * (positionCount - 1) * (binaryCount + pairs),
-                $"{payloadCount} payloads x {positionCount - 1} further statement positions x ({binaryCount} binary operators + "
-                + $"{linkCount} x {linkCount} chain link pairs), in the form {fact.Form}"),
-            SequenceBlock.HoistLast => (payloadCount * formCount * pairs,
-                $"{payloadCount} payloads x {formCount} forms x {linkCount} x {linkCount} chain link pairs, behind {fact.Hoist}"),
-            SequenceBlock.Triple => (payloadCount * firstLinkCount * pairs,
-                $"{payloadCount} payloads x {firstLinkCount} first links ({fact.First}) x {linkCount} x {linkCount} chain link "
-                + $"triples, in the form {fact.Form}"),
+            SequenceBlock.Operators => (typed * binaryCount + payloadCount * binaryCount * Pivots.Length * 2,
+                $"{typed} {typings} x {binaryCount} binary operators + {payloadCount} payloads x {binaryCount} binary "
+                + $"operators x {Pivots.Length} pivots x 2 sides"),
+            SequenceBlock.Pairs => (typed * pairs, $"{typed} {typings} x {linkCount} x {linkCount} chain link pairs"),
+            SequenceBlock.Pivot => (binaryCount * Pivots.Length * pivotTypedSides,
+                $"{binaryCount} binary operators x {Pivots.Length} pivots x {pivotTypedSides} (payload, form, side, subject "
+                + $"typing) of the other forms ({SequencePivotFormSides} (form, side) pairs)"),
+            SequenceBlock.Position => (factTyped * (positionCount - 1) * (binaryCount + pairs),
+                $"{factTyped} (payload, subject typing) pairs x {positionCount - 1} further statement positions x ({binaryCount} "
+                + $"binary operators + {linkCount} x {linkCount} chain link pairs), in the form {fact.Form}"),
+            SequenceBlock.HoistLast => (typed * pairs, $"{typed} {typings} x {linkCount} x {linkCount} chain link pairs, behind {fact.Hoist}"),
+            SequenceBlock.Triple => (factTyped * firstLinkCount * pairs,
+                $"{factTyped} (payload, subject typing) pairs x {firstLinkCount} first links ({fact.First}) x {linkCount} x "
+                + $"{linkCount} chain link triples, in the form {fact.Form}, subject typings {fact.Subjects}"),
             SequenceBlock.TripleHoist => (payloadCount * firstLinkCount * pairs,
                 $"{payloadCount} payloads x {firstLinkCount} first links ({fact.First}) x {linkCount} x {linkCount} chain link "
                 + $"triples, in the plain form, behind {fact.Hoist}"),
@@ -2582,6 +2744,7 @@ public abstract class MembershipOperatorDifferentialBase : IntegrationTestBase
             $"the generator made {sequences.Count} sequences; the axes give {expectedCount} ({product}): a sequence was dropped or invented");
         Assert.All(sequences, s => Assert.True(fact.Causes.Contains(s.Cause), $"{s.Key}: its cause {s.Cause} is not one of the fact's"));
         Assert.All(sequences, s => Assert.True(s.Hoist == (fact.Hoist ?? SequenceHoist.None) && (fact.Form == null || s.Form == fact.Form)
+            && InSlice(fact.Subjects, s.Subject)
             && (fact.First == null || LinkKindOf(Enum.Parse<ComparisonOperator>(s.Operators[0].ToString())) == fact.First),
             $"{s.Key}: not in the fact's slice"));
         Assert.Equal(sequences.Count, sequences.Select(s => s.Key).Distinct(StringComparer.Ordinal).Count());
@@ -3303,18 +3466,20 @@ public abstract class MembershipOperatorDifferentialBase : IntegrationTestBase
         ["Order/Plain"] = 5058,
         ["Order/UserIterable/NoneNeedle"] = 4320,
         ["Order/UserIterable/Plain"] = 4392,
-        ["Sequence/Chain"] = 6580,
+        ["Sequence/Chain"] = 8236,
         ["SequenceHoist/Comprehension/Chain"] = 5288,
         ["SequenceHoist/QuestionMark/Chain"] = 5288,
         ["SequenceHoist/Spread/Chain"] = 5288,
         ["SequenceHoist/Walrus/Chain"] = 5288,
-        ["SequencePosition/NoneLast/Chain"] = 2584,
+        ["SequencePosition/NoneLast/Chain"] = 5896,
         ["SequencePosition/Optional/Chain"] = 3472,
         ["SequencePosition/Plain/Chain"] = 3472,
         ["SequencePosition/Tagged/Chain"] = 2560,
         ["SequencePosition/TaggedLeft/Chain"] = 1072,
         ["SequenceTriple/NoneLast/ComparisonFirst/Chain"] = 6072,
         ["SequenceTriple/NoneLast/TestFirst/Chain"] = 6976,
+        ["SequenceTriple/NoneLastTaggedOrOptional/ComparisonFirst/Chain"] = 5600,
+        ["SequenceTriple/NoneLastTaggedOrOptional/TestFirst/Chain"] = 9728,
         ["SequenceTriple/Optional/ComparisonFirst/Chain"] = 8336,
         ["SequenceTriple/Optional/TestFirst/Chain"] = 11344,
         ["SequenceTriple/Plain/ComparisonFirst/Chain"] = 8336,
