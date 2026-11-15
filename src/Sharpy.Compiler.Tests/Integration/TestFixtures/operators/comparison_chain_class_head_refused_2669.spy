@@ -1,0 +1,12 @@
+# `x is Dog is d` is a type test `x is Dog` followed by a link: a class name after `is` is the retired type
+# test, refused with SPY0349 (use isinstance) in a chain as it is alone (plan P93 D4). Only a dotted name
+# that is an enum member is an identity operand there.
+
+class Dog:
+    pass
+
+
+def main() -> None:
+    x: Dog = Dog()
+    d: Dog = x
+    print(x is Dog is d)
