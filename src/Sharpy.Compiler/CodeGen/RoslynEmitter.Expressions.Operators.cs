@@ -1055,6 +1055,12 @@ internal partial class RoslynEmitter
                 : operandExprs[i];
             var needleEvaluated = leftEvaluated[i];
 
+            // A middle operand captured by link i-1 holds its own value, the one link i-1 compared
+            // (P93 D3: a link is its binary twin). Link i, binding it as a membership needle, takes it
+            // through the binding cast here, at the read that is its needle (P93 D2).
+            if (i > 0 && tempNames[i] != null && needleBindings[i] is { } capturedBinding)
+                left = Cast(capturedBinding, left);
+
             if (i >= 1 && operandEvals[i + 1].Count > 0)
             {
                 if (needleBindings[i] is { } binding && !needleEvaluated)
@@ -1070,16 +1076,13 @@ internal partial class RoslynEmitter
             if (tempNames[i + 1] != null)
             {
                 // Wrap in: (expr is var __cmp_N ? __cmp_N : __cmp_N)
-                // This evaluates expr once, binds to __cmp_N, and returns the value. A middle operand
-                // that link i+1 binds as a membership needle is captured through the same cast the
-                // binary form binds it with (P93 D2).
-                var capturedOperand = operandExprs[i + 1];
-                if (i + 1 < linkCount && needleBindings[i + 1] is { } nextBinding)
-                    capturedOperand = Cast(nextBinding, capturedOperand);
+                // This evaluates expr once, binds to __cmp_N, and returns the value. The capture is
+                // uncast: link i reads the operand as its binary twin does, and a link i+1 that binds
+                // it as a membership needle casts it at its own read (above), never here (P93 D3).
                 right = ParenthesizedExpression(
                     ConditionalExpression(
                         IsPattern(
-                            capturedOperand,
+                            operandExprs[i + 1],
                             VarPattern(SingleVariableDesignation(Identifier(tempNames[i + 1]!)))),
                         IdentifierName(tempNames[i + 1]!),
                         IdentifierName(tempNames[i + 1]!)));

@@ -225,4 +225,22 @@ public class MembershipOperandOrderEmissionTests : IntegrationTestBase
             "needle", "container", "r", "True",
             "False", "False");
     }
+
+    /// <summary>D3: a middle operand read by a comparison link and then bound as the next link's needle is
+    /// compared at its own type (the twin <c>a == mk("a")</c>), the needle cast applied only at the
+    /// membership read: a <c>str</c> cast to <c>object</c> would compare by reference, a <c>long</c> cast to
+    /// <c>float</c> would round 2**53 + 1.</summary>
+    [Fact]
+    public void ChainMiddleOperand_IsComparedAtItsOwnType_NotItsNeedleBinding()
+    {
+        AssertRuns("def mk(s: str) -> str:\n    return s + \"b\"\n\n"
+            + "def big() -> long:\n    return 9007199254740993\n\n"
+            + "def main() -> None:\n    a: str = \"ab\"\n    objs: list[object] = [a]\n"
+            + "    print(a == mk(\"a\") in objs)\n"
+            + "    print(a != mk(\"a\") in objs)\n"
+            + "    print(a == mk(\"a\") == mk(\"a\") in objs)\n"
+            + "    n: long = 9007199254740992\n    fs: list[float] = [9007199254740992.0]\n"
+            + "    print(n == big() in fs)\n",
+            "True", "False", "True", "False");
+    }
 }
