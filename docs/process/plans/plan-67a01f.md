@@ -215,11 +215,13 @@ Pass 1's six findings are answered, read against the generator and the plan: the
 ## Implementation Checklist
 
 Base cd4071554 (`origin/dev`, the plan's merge); branch `claude/membership-totality`. Lead: this session. Tasks are commit-sized; owners are background agents unless marked lead.
+Baseline: 84888/0/10 @ cd4071554 (measured, CI run 43666691859). Build @ cd4071554: 0 warnings.
 
 - [ ] T0 — Deferred finding 1: delete `SequenceExcludedKinds[OptionalNoneTest]`, none-last sequences over a tagged `T?` subject, re-measure totals, `BulkCensus` and `…/NoneLast/…` rows — test-expert — blocked by none
-- [ ] T1 — Probe each D's predicate by `run` at the base; by-direction lists (D3 both moves, the 156 SPY0908 → SPY0402, D4's programs); count the spy-stdlib sites D2 moves — lead — blocked by none
+- [x] T1 — Probe each D's predicate by `run` at the base; by-direction lists (D3 both moves, the 156 SPY0908 → SPY0402, D4's programs); count the spy-stdlib sites D2 moves — lead — blocked by none
+  - @ cd4071554 (`run`, CPython 3.15.2): D1 `IterBag`/`GIterBag[int]`/generator+`contains` SPY0320 → to run; `SeqBag`, `LB` SPY0320 kept; generic `SeqBag` `None` SPY0222+SPY0320 → SPY0320. D2 `n() in c()` / `not in` print container first, `k() * s()` str first, walrus `True` (CPython needle/count first, `False`): wrong output → CPython, nothing refused. D3 `in`/`is`/`is not` links SPY0519 → twin (488 worked → SPY0402, 10516 SPY0519 → SPY0908, both ruled; 156 SPY0908 → SPY0402, gain). D4 `c is Color.RED is d` / `== d` SPY0349 → value; `x is Dog is d`, `x is Outer.Inner is d` SPY0349 kept. Spy-stdlib sites D2 moves: read from the T3r/T6r regeneration diff.
 - [ ] T2 — Parser (D4) + Pretty/dump of `ComparisonChain`; LSP check over `c is Color.RED is d` — parser-expert — blocked by none
-- [ ] T5 — Core `StringHelpers.Repeat(count, str)` for `int` and `long` + Core.Tests — core-library-expert — blocked by none
+- [x] T5 — Core `StringHelpers.Repeat(count, str)` for `int` and `long` + Core.Tests — core-library-expert — blocked by none — 740030e8e (mutation: red 6 failed, restored green 11)
 - [ ] T3 — Checker: D1 `IterationMembershipElement`, D2 needle-binding record (`MergeFrom`), D3 link routine, D4 link 0; M5 — semantic-expert — blocked by T2
 - [ ] T4 — Validators: SPY0320 gate on D1's record; `VisitComparisonChain` in both validators; M1/M3 validator halves — semantic-expert — blocked by T3
 - [ ] T3r — Regeneration after the first Semantic commit (spy-stdlib, spy-test, stdlib docs, oracle ledger); diff read as findings — lead — blocked by T3
