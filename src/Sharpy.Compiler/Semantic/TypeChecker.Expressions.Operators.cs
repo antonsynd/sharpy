@@ -1234,8 +1234,15 @@ internal partial class TypeChecker
         // Each adjacent pair is a LINK, and a link is its binary twin (P93 D3, #2648): `a < b` and
         // `b < c` are decided by the ONE link routine the binary operator takes (CheckOperatorLink),
         // diagnostics and lowering alike. What only a chain has stays here: the operands are checked
-        // once each (a needle under the next operand's slot), and a middle `None` operand read by two
-        // links takes the typed-null cast only when both agree (noneSlots).
+        // once each, and a middle `None` operand read by two links takes the typed-null cast only when
+        // both agree (noneSlots).
+        //
+        // An operand is typed as the twin that reads it FIRST types it (owner ruling 2026-11-15, plan
+        // P93 R2, "own type, cast at needle"): a middle operand is link i-1's right operand, so it is
+        // typed as `a op b` types its `b` — and when link i reads it as its `in` needle, that link
+        // binds it at its slot (ClassifyMembership's needle binding), exactly as it binds a named
+        // needle (`t == p in ts`). Only the head (operand 0) is read by one link alone, so only a head
+        // needle is checked under its container's slot, as the twin `x in c` checks it.
 
         // Validate chain structure: operators count should equal operands count minus 1
         // (e.g., 3 operands need 2 operators: a < b < c)
@@ -1245,9 +1252,7 @@ internal partial class TypeChecker
             return SemanticType.Bool;
         }
 
-        // #1777: check operands with special handling for in/not in links. Needles (left
-        // operand of an in/not in link) are deferred so their container's element type can be
-        // pushed as the expectation, mirroring CheckBinaryOp's reorder.
+        // The links that are membership tests (#1777): their containers take the twin's setup.
         var needleIndices = new HashSet<int>();
         for (int i = 0; i < chain.Operators.Length; i++)
         {
@@ -1271,12 +1276,16 @@ internal partial class TypeChecker
                 "a chain head spelled like a type names no enum member (SPY0349); its operand is a type, not a value"));
         }
 
-        // Pass 1: check all non-needle operands in source order. The RIGHT operand of a link whose
-        // left operand's type has a user dunder goes through the operand seam exactly as the binary
-        // form does (#1719) — one decision for `d == v` and for `a == d == v`.
+        // Pass 1: every operand but a head needle, in source order, as the link that reads it first
+        // types it. The RIGHT operand of a link whose left operand's type has a user dunder goes through
+        // the operand seam exactly as the binary form does (#1719) — one decision for `d == v` and for
+        // `a == d == v`; a container (the right operand of an `in` link) is checked plainly, as the
+        // twin `x in c` checks it; and a middle operand that is also the next link's needle is no
+        // exception (R2): `t == (1, 2) in ts` compares the `tuple[int, int]` its twin `t == (1, 2)`
+        // compares.
         for (int i = 0; i < chain.Operands.Length; i++)
         {
-            if (needleIndices.Contains(i) || operandTypes[i] != null)
+            if ((i == 0 && needleIndices.Contains(0)) || operandTypes[i] != null)
                 continue;
 
             if (i > 0 && !needleIndices.Contains(i - 1)
@@ -1291,16 +1300,14 @@ internal partial class TypeChecker
             operandTypes[i] = CheckExpression(chain.Operands[i]);
         }
 
-        // Pass 2: check needle operands under the container's element type expectation — the slot
-        // the binary form pushes (MembershipNeedleSlot), recorded on the container the same way.
-        // Right to left (P93 D3): in `a in b in c` the middle operand is link 1's needle AND link 0's
-        // container, so it is checked first, as a needle under c's slot (the twin `b in c`), and only
-        // then set up as a's container (the twin `a in b`). Every container is therefore typed when
-        // its needle is reached — a non-needle in pass 1, a needle earlier in this pass — and every
-        // link's container takes the twin's setup whether or not it is also a needle.
-        for (int ni = chain.Operators.Length - 1; ni >= 0; ni--)
+        // Pass 2, in source order: every `in` link's container takes the twin's setup (the slot the
+        // binary form pushes, MembershipNeedleSlot, with the facts it records on the container: a
+        // tuple's array bridge, a Direct projection) whether or not it is also a needle (`a in b in
+        // c`), and the head needle is checked under its container's slot, as the twin `x in c` checks
+        // it.
+        for (int ni = 0; ni < chain.Operators.Length; ni++)
         {
-            if (!needleIndices.Contains(ni) || operandTypes[ni] != null)
+            if (!needleIndices.Contains(ni))
                 continue;
 
             SemanticType? elementType = null;
@@ -1309,7 +1316,8 @@ internal partial class TypeChecker
                 var containerView = ProtocolReceiver(chain.Operands[ni + 1], operandTypes[ni + 1]!);
                 elementType = MembershipNeedleSlot(chain.Operands[ni + 1], containerView);
             }
-            operandTypes[ni] = CheckMembershipNeedle(chain.Operands[ni], elementType);
+            if (ni == 0 && operandTypes[0] == null)
+                operandTypes[0] = CheckMembershipNeedle(chain.Operands[0], elementType);
         }
 
         // Each link through the binary operator's own routine, and its record. Every link gets a
@@ -1327,18 +1335,6 @@ internal partial class TypeChecker
             links.Add(link.Lowering);
             if (link.NoneSlot is { } slot)
                 noneSlots[i, link.NoneOnLeft ? 0 : 1] = slot;
-        }
-
-        // A middle operand that is also a membership needle is read by link k-1 and bound by link k:
-        // the type its one capture holds (ComparisonLinkLowering.CaptureType, P93 D3 ruling).
-        for (int k = 1; k < chain.Operands.Length - 1; k++)
-        {
-            if (links[k].Shape == ComparisonLinkShape.Membership
-                && _semanticInfo.TryGetMembershipNeedleBinding(chain.Operands[k], out var binding)
-                && MiddleNeedleCapturesAtBinding(operandTypes[k], binding))
-            {
-                links[k] = links[k] with { CaptureType = binding };
-            }
         }
 
         // A None operand is emitted ONCE and read by both adjacent links, so it is cast to the typed-null
@@ -1359,23 +1355,6 @@ internal partial class TypeChecker
 
         // All comparison chains return bool
         return SemanticType.Bool;
-    }
-
-    /// <summary>
-    /// Whether a chain's middle needle is captured at its binding (P93 D3 ruling): the binding cannot
-    /// change the comparison of the link that reads the operand first — it is the operand's own type,
-    /// or that type's nullable lift — or the operand has no own type C# can spell (<c>None</c>). A
-    /// reference up-cast (<c>str</c> to <c>object</c>) or a numeric conversion (<c>long</c> to
-    /// <c>float</c>) is neither, so that capture keeps the operand's own type.
-    /// </summary>
-    private static bool MiddleNeedleCapturesAtBinding(SemanticType? ownType, SemanticType binding)
-    {
-        if (ownType is null or VoidType)
-            return true;
-        if (ownType is UnknownType)
-            return false;
-        return ownType.CanonicalKey == binding.CanonicalKey
-            || (binding is NullableType lift && lift.UnderlyingType.CanonicalKey == ownType.CanonicalKey);
     }
 
     /// <summary>

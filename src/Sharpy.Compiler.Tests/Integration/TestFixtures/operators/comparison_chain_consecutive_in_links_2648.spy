@@ -1,7 +1,7 @@
 # P93 D3 (#2648): consecutive in / not in links. The middle operand of `a in b in c` is link 1's
-# needle AND link 0's container: it is checked under c's element slot (the twin `b in c`) and
-# then set up as a's container (the twin `a in b`), whatever c is: a tuple (the array bridge),
-# a class iterated by __iter__ alone (the Direct projection), a list.
+# needle AND link 0's container: it is checked as a's container (the twin `a in b`; owner ruling
+# 2026-11-15, plan-67a01f R2) and bound by link 1 under c's element slot (the twin `b in c`), whatever
+# c is: a tuple (the array bridge), a class iterated by __iter__ alone (the Direct projection), a list.
 class Rows:
     _rows: list[list[int]]
 
@@ -25,9 +25,6 @@ def main() -> None:
     print(1 not in xs in t)
     print(1 in ys not in t)
     print(3 in ys in t)
-    # the middle needle takes t's element slot: the empty list is a list[int]
-    print(1 in [] in t)
-    print(1 not in [] in t)
 
     # user class iterated by __iter__ alone
     print(1 in xs in rows)

@@ -1,0 +1,7 @@
+SPY0227: no best common type ('Dog', 'Cat') @43:17
+SPY0227: no best common type ('int64', 'None') @47:17
+SPY0227: no best common type ('str', 'None') @51:16
+SPY0222: Type 'list[int32]' does not support operator 'in' with operand of type 'list[list[float64]]' @55:17
+SPY0227: no best common type ('int32', 'None') @59:17
+SPY0227: Cannot infer type of empty list literal @63:16
+!count 8

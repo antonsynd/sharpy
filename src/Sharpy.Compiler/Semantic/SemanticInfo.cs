@@ -3567,20 +3567,11 @@ public enum ComparisonLinkShape
 /// kind); <see cref="Equality"/> is the <c>==</c>/<c>!=</c> strategy (<c>null</c> for every other operator);
 /// <see cref="Shape"/> names the binary emitter the link lowers through. A refused link records
 /// <see cref="OperatorLoweringKind.Native"/> under its operator's shape.
-/// <para><see cref="CaptureType"/> (chain links only, P93 D3 ruling): on a <see cref="ComparisonLinkShape.Membership"/>
-/// link whose needle is a MIDDLE operand — read first by the previous link, captured once — the type that capture
-/// holds when it is the needle's binding (<see cref="SemanticInfo.TryGetMembershipNeedleBinding"/>): the binding
-/// is the operand's own type or that type's nullable lift, or the operand has no own type C# can spell (<c>None</c>).
-/// Then the slot type cannot change the previous link's comparison, and it types an operand only the needle slot
-/// typed (<c>a == (f() if c else None) in ys</c>). Null otherwise: the capture holds the operand at its own type,
-/// so the previous link compares what its binary twin compares (no <c>str</c>-as-<c>object</c> reference test,
-/// no <c>long</c>-as-<c>float</c> rounding), and the needle read alone takes the binding cast.</para>
 /// </summary>
 public sealed record ComparisonLinkLowering(
     OperatorLoweringKind Kind,
     BinaryOpLowering? Equality,
-    ComparisonLinkShape Shape = ComparisonLinkShape.Comparison,
-    SemanticType? CaptureType = null);
+    ComparisonLinkShape Shape = ComparisonLinkShape.Comparison);
 
 /// <summary>Per-link lowering of a <see cref="ComparisonChain"/>; <c>Links[i]</c> is operator <c>i</c> (#1642).</summary>
 public sealed record ComparisonChainLowering(

@@ -244,17 +244,24 @@ public class MembershipOperandOrderEmissionTests : IntegrationTestBase
             "True", "False", "True", "False");
     }
 
-    /// <summary>D3 ruling: a middle needle the checker typed only by its slot (a conditional with a
-    /// <c>None</c> arm) is captured at the slot's type, its nullable lift — a cast that cannot change the
-    /// link reading it first — so the capture compiles; the comparison links still read their own types.</summary>
+    /// <summary>D3, owner ruling 2026-11-15 (plan-67a01f R2): a middle needle is compared at the type its
+    /// left twin gives it (<c>t == (1, 2)</c> compares two <c>tuple[int, int]</c>) and cast to the
+    /// <c>in</c> link's slot only at that link's read, as a named needle (<c>t == p in ts</c>) is.</summary>
     [Fact]
-    public void ChainMiddleNeedle_TypedOnlyByItsSlot_IsCapturedAtItsLift()
+    public void ChainMiddleNeedle_IsComparedAtItsLeftTwinsType_AndCastAtItsNeedleRead()
     {
-        AssertRuns(Trace + "def main() -> None:\n    flag: bool = True\n    a: int | None = 1\n"
-            + "    ys: list[int | None] = [1, None]\n"
-            + "    print(a == (tr(\"m\", 1) if flag else None) in ys)\n"
-            + "    print(a != (tr(\"m\", 2) if flag else None) not in ys)\n",
-            "m", "True", "m", "True");
+        var source = Trace + "def main() -> None:\n    t: tuple[int, int] = (1, 2)\n"
+            + "    ts: list[tuple[float, float]] = [(1.0, 2.0)]\n"
+            + "    print(t == (1, 2) in ts)\n"
+            + "    print(t != (1, 2) in ts)\n"
+            + "    print(t == (tr(\"g\", 1), 2) in ts)\n"
+            + "    xs: list[int] = [1, 2]\n    os: list[object] = [[1, 2]]\n"
+            + "    print(xs == [1, 2] in os)\n";
+        AssertRuns(source, "True", "False", "g", "True", "True");
+
+        var result = CompileAndExecute(source);
+        result.GeneratedCSharp.Should().Contain("is var __cmp_");
+        result.GeneratedCSharp.Should().Contain("((global::System.ValueTuple<double, double>)__cmp_");
     }
 
     /// <summary>D2: a needle over literals whose operator can raise (<c>//</c>, <c>%</c>, <c>/</c>) is an

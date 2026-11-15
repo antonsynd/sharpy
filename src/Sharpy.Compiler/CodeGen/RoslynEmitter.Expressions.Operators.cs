@@ -1066,14 +1066,11 @@ internal partial class RoslynEmitter
             var needleEvaluated = leftEvaluated[i];
 
             // A middle operand captured by link i-1 holds its own value, the one link i-1 compared
-            // (P93 D3: a link is its binary twin). Link i, binding it as a membership needle, takes it
-            // through the binding cast here, at the read that is its needle (P93 D2) — unless the
-            // checker recorded the capture at the binding already (ComparisonLinkLowering.CaptureType).
-            if (i > 0 && tempNames[i] != null && needleBindings[i] is { } capturedBinding
-                && chainLowering.Links[i].CaptureType == null)
-            {
+            // (P93 D3: a link is its binary twin; owner ruling R2: the checker typed it as that twin
+            // does). Link i, binding it as a membership needle, takes it through the recorded binding
+            // cast here, at the read that is its needle (P93 D2), as it would a named needle.
+            if (i > 0 && tempNames[i] != null && needleBindings[i] is { } capturedBinding)
                 left = Cast(capturedBinding, left);
-            }
 
             if (i >= 1 && operandEvals[i + 1].Count > 0)
             {
@@ -1092,17 +1089,11 @@ internal partial class RoslynEmitter
                 // Wrap in: (expr is var __cmp_N ? __cmp_N : __cmp_N)
                 // This evaluates expr once, binds to __cmp_N, and returns the value. The capture is
                 // uncast: link i reads the operand as its binary twin does, and a link i+1 that binds
-                // it as a membership needle casts it at its own read (above) (P93 D3). Where the checker
-                // recorded the capture at that binding (ComparisonLinkLowering.CaptureType: a cast that
-                // cannot change link i, which may type an operand only the needle slot typed), the
-                // capture takes it here.
-                var capturedOperand = operandExprs[i + 1];
-                if (i + 1 < linkCount && chainLowering.Links[i + 1].CaptureType is { } captureType)
-                    capturedOperand = Cast(_typeMapper.MapSemanticType(captureType), capturedOperand);
+                // it as a membership needle casts it at its own read (above), never here (P93 D3).
                 right = ParenthesizedExpression(
                     ConditionalExpression(
                         IsPattern(
-                            capturedOperand,
+                            operandExprs[i + 1],
                             VarPattern(SingleVariableDesignation(Identifier(tempNames[i + 1]!)))),
                         IdentifierName(tempNames[i + 1]!),
                         IdentifierName(tempNames[i + 1]!)));

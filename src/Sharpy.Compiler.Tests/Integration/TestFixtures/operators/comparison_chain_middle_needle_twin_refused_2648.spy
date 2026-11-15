@@ -1,0 +1,64 @@
+# A chain's middle operand that is also the next link's `in` needle is typed as its LEFT link's binary
+# twin types it (plan P93 D3, #2648; owner ruling 2026-11-15, plan-67a01f R2, "own type, cast at
+# needle"), so every link is its twin, a refusal included. Where the left twin refuses its right
+# operand, the chain refuses with the twin's code: a conditional with mixed class arms or a `None`
+# arm has no type of its own, nor has an empty list that is a container (SPY0227; `a is (d if flag
+# else k)`, `n == (gl() if flag else None)`, `s < (gs() if flag else None)`, `1 in []` are each
+# SPY0227 alone). Where the right twin refuses the needle at
+# its own type, the chain refuses as `p in fss` does for `p: list[int]` (SPY0222). CPython 3.15 runs
+# each line alone but the `<` one, which raises TypeError ('<' not supported between 'str' and
+# 'NoneType').
+
+class Animal:
+    pass
+
+
+class Dog(Animal):
+    pass
+
+
+class Cat(Animal):
+    pass
+
+
+def gl() -> long:
+    return 1
+
+
+def gs() -> str:
+    return "s"
+
+
+def tr(label: str, v: int) -> int:
+    print(label)
+    return v
+
+
+def main() -> None:
+    d = Dog()
+    k = Cat()
+    zoo: list[Animal] = [d, k]
+    a: Animal = d
+    flag: bool = len(zoo) > 0
+    print(a is (d if flag else k) in zoo)
+
+    n: long = gl()
+    objs: list[object] = ["a", 1]
+    print(n == (gl() if flag else None) in objs)
+
+    s = "a"
+    ss: list[str | None] = ["s", None]
+    print(s < (gs() if flag else None) in ss)
+
+    xs: list[int] = [1, 2]
+    fss: list[list[float]] = [[1.0, 2.0]]
+    print(xs == [1, 2] in fss)
+
+    c: int | None = 1
+    ys: list[int | None] = [1, None]
+    print(c == (tr("m", 1) if flag else None) in ys)
+    print(c != (tr("m", 2) if flag else None) not in ys)
+
+    t: tuple[list[int], list[int]] = ([1, 2], [3])
+    print(1 in [] in t)
+    print(1 not in [] in t)

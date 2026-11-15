@@ -453,13 +453,15 @@ public class MembershipTotalityCheckerTests
     /// <c>not in</c>, <c>m</c> is link 1's needle AND link 0's container. Link 1 is still its twin
     /// <c>m op1 c</c>: its container carries the twin's setup (the tuple array bridge, D1's
     /// <c>Direct</c> projection), its needle the twin's binding, the link the twin's lowering and
-    /// diagnostics. The head link is clean, so every checker diagnostic is link 1's.
+    /// diagnostics. The head link is clean, so every checker diagnostic is link 1's. Every middle here
+    /// has a type of its own (a name), so its left twin <c>h op0 m</c> and the needle slot agree on it;
+    /// one they disagree on is typed by the left twin (owner ruling R2,
+    /// <see cref="MiddleNeedle_IsTypedAsItsLeftTwin_AndBoundAtItsSlot"/>).
     /// </summary>
     [Theory]
     [InlineData("xs: list[int] = [1]; t: tuple[list[int], list[int]] = ([1], [2])", "1", "in", "xs", "in", "t")]
     [InlineData("xs: list[int] = [1]; t: tuple[list[int], list[int]] = ([1], [2])", "1", "not in", "xs", "in", "t")]
     [InlineData("xs: list[int] = [1]; t: tuple[list[int], list[int]] = ([1], [2])", "1", "in", "xs", "not in", "t")]
-    [InlineData("xs: list[int] = [1]; t: tuple[list[int], list[int]] = ([1], [2])", "1", "in", "[]", "in", "t")]
     [InlineData("ss: list[str] = [\"a\"]; t: tuple[list[int], list[int]] = ([1], [2])", "\"a\"", "in", "ss", "in", "t")]
     [InlineData("xs: list[int] = [1]; bag: ListOf[int] = ListOf[int]([[1]])", "1", "in", "xs", "in", "bag")]
     [InlineData("xs: list[int] = [1]; bag: ListOf[int] = ListOf[int]([[1]])", "1", "not in", "xs", "not in", "bag")]
@@ -522,28 +524,57 @@ public class MembershipTotalityCheckerTests
     }
 
     /// <summary>
-    /// D3 ruling: a middle needle's capture type (<see cref="ComparisonLinkLowering.CaptureType"/>, on the
-    /// membership link that binds it) is its binding only where that cannot change the link reading it
-    /// first — the operand's own type or its nullable lift (a conditional with a <c>None</c> arm, typed by
-    /// the slot alone). A reference up-cast or a numeric conversion records none: the capture is uncast.
+    /// D3, owner ruling 2026-11-15 (plan-67a01f R2, "own type, cast at needle"): a middle operand that is
+    /// also the next link's <c>in</c> needle is typed as its LEFT twin (<c>head op0 middle</c>) types its
+    /// right operand, never under the needle slot — and the membership link still records the needle's
+    /// binding, the slot the emitter casts it to at that link's read alone (as for a named needle).
+    /// </summary>
+    [Theory]
+    [InlineData("t: tuple[int, int] = (1, 2); ts: list[tuple[float, float]] = [(1.0, 2.0)]",
+        "t", "==", "(1, 2)", "in", "ts", "tuple[float64, float64]")]
+    [InlineData("t: tuple[int, int] = (1, 2); ts: list[tuple[float, float]] = [(1.0, 2.0)]",
+        "t", "!=", "(1, 2)", "not in", "ts", "tuple[float64, float64]")]
+    [InlineData("xs: list[int] = [1, 2]; os: list[object] = [xs]", "xs", "==", "[1, 2]", "in", "os", "object")]
+    [InlineData("a: int = 1; xs: list[int] = [1]", "a", "==", "len(xs)", "in", "xs", "int32")]
+    [InlineData("s: str = \"ab\"; objs: list[object] = [s]", "s", "==", "s.upper()", "in", "objs", "object")]
+    [InlineData("n: long = 1; fs: list[float] = [1.0]", "n", "<", "abs(n)", "in", "fs", "float64")]
+    [InlineData("xs: list[int] = [1, 2]; ys: list[int | None] = [2, None]", "1", "<", "len(xs)", "in", "ys", "int32 | None")]
+    public void MiddleNeedle_IsTypedAsItsLeftTwin_AndBoundAtItsSlot(
+        string declarations, string head, string op0, string middle, string op1, string container, string binding)
+    {
+        var twin = Analyze(declarations, $"{head} {op0} {middle}");
+        var chained = Analyze(declarations, $"{head} {op0} {middle} {op1} {container}");
+
+        Assert.True(chained.CheckerErrors.Count == 0, chained.Describe());
+        var binary = (BinaryOp)TestedExpression(twin);
+        var chain = (ComparisonChain)TestedExpression(chained);
+        var twinType = twin.Info.GetExpressionType(binary.Right)?.GetDisplayName();
+        Assert.NotNull(twinType);
+        Assert.Equal(twinType, chained.Info.GetExpressionType(chain.Operands[1])?.GetDisplayName());
+        Assert.True(chained.Info.TryGetMembershipNeedleBinding(chain.Operands[1], out var recorded));
+        Assert.Equal(binding, recorded!.GetDisplayName());
+        Assert.Equal(ComparisonLinkShape.Membership, chained.Info.GetComparisonChainLowering(chain)!.Links[1].Shape);
+    }
+
+    /// <summary>
+    /// The refusal half of the R2 ruling: where the left twin refuses its right operand, the chain refuses
+    /// with the twin's code (a conditional with a <c>None</c> arm, an empty list, no expectation: SPY0227); where the
+    /// right twin refuses the needle at its own type, the chain refuses as <c>p in c</c> does.
     /// </summary>
     [Theory]
     [InlineData("a: int | None = 1; flag: bool = True; ys: list[int | None] = [1, None]",
-        "a == (len(ys) if flag else None) in ys", "int32 | None")]
-    [InlineData("a: int = 1; xs: list[int] = [1]", "a == len(xs) in xs", "int32")]
-    [InlineData("s: str = \"ab\"; objs: list[object] = [s]", "s == s.upper() in objs", null)]
-    [InlineData("n: long = 1; fs: list[float] = [1.0]", "n == abs(n) in fs", null)]
-    public void MiddleNeedle_CapturesAtItsBinding_OnlyWhereItCannotChangeTheComparison(
-        string declarations, string expression, string? captureType)
+        "a == (len(ys) if flag else None)", "a == (len(ys) if flag else None) in ys")]
+    [InlineData("xs: list[int] = [1, 2]; p: list[int] = [1, 2]; fss: list[list[float]] = [[1.0, 2.0]]",
+        "p in fss", "xs == [1, 2] in fss")]
+    [InlineData("t: tuple[list[int], list[int]] = ([1], [2])", "1 in []", "1 in [] in t")]
+    public void MiddleNeedle_RefusedByATwin_IsRefusedWithItsCode(string declarations, string twinExpression, string expression)
     {
-        var analysis = Analyze(declarations, expression);
+        var twin = Analyze(declarations, twinExpression);
+        var chained = Analyze(declarations, expression);
 
-        Assert.True(analysis.CheckerErrors.Count == 0, analysis.Describe());
-        var chain = (ComparisonChain)TestedExpression(analysis);
-        var links = analysis.Info.GetComparisonChainLowering(chain)!.Links;
-        Assert.Equal(ComparisonLinkShape.Membership, links[1].Shape);
-        Assert.Null(links[0].CaptureType);
-        Assert.Equal(captureType, links[1].CaptureType?.GetDisplayName());
+        var expected = twin.CheckerErrors.Select(d => d.Code).Distinct().ToList();
+        Assert.NotEmpty(expected);
+        Assert.Equal(expected, chained.CheckerErrors.Select(d => d.Code).Distinct().ToList());
     }
 
     // ---------------------------------------------------------------- D4: a chain head spelled like a type
