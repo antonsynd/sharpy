@@ -1,7 +1,7 @@
-# `c is Color.RED is d` is a comparison CHAIN, not one identity comparison: its first link has no
-# single-comparison reading, so it keeps the SPY0349 refusal it had before #2669 rather than
-# comparing the bool of `c is Color.RED` against `d`. (An `is` link in a chain is not lowered at
-# all yet: `c is d is e` is SPY0519, the class #2648 tracks.)
+# `c is Color.RED is d` is a comparison CHAIN headed by a dotted name the parser reads like a type.
+# Before P93 it kept the SPY0349 type-test refusal; under P93 D4 (plan-67a01f, owner-ruled) the chain
+# is built over [c, Color.RED, d] and its first link takes the type test's rule: `Color.RED` is an enum
+# member, so the link is an identity comparison, and the chain prints what CPython 3.15 prints.
 
 enum Color:
     RED = 1

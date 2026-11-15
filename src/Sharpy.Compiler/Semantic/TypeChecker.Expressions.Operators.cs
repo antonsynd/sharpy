@@ -44,42 +44,17 @@ internal partial class TypeChecker
                 return SemanticType.Unknown;
             }
 
-            // Tuples need the array bridge for Contains; other containers (str, list, set,
-            // dict) already have their own Contains semantics (#1771).
-            IterableArgumentProjection? membershipProjection = null;
-            if (containerType is TupleType)
-            {
-                membershipProjection = ClassifyIterableSource(
-                    binOp.Right, containerType, null, StorePosition.CollectionElement,
-                    MembershipContainerSiteNoun);
-                if (membershipProjection != null)
-                    _semanticInfo.SetIterableProjection(binOp.Right, membershipProjection);
-            }
-
-            var elementType = membershipProjection?.ElementType
-                ?? ResolveMembershipElementType(containerType);
-            SemanticType needleType;
-            if (elementType != null)
-            {
-                using (EnterStore(StorePosition.ArgumentPositional, elementType, binOp.Left))
-                {
-                    needleType = OperandView(CheckExpression(binOp.Left));
-                }
-            }
-            else
-            {
-                needleType = OperandView(CheckExpression(binOp.Left));
-            }
-
+            var needleType = CheckMembershipNeedle(
+                binOp.Left, MembershipNeedleSlot(binOp.Right, containerType));
             if (needleType is UnknownType)
                 return SemanticType.Unknown;
 
-            // The membership kind is the checker's fact (#2635, Rule 2): the emitter's In/NotIn arm
-            // reads it and never tests a type. Nothing below this return writes the node again.
-            var membershipKind = ClassifyMembership(binOp, binOp.Left, needleType, containerType);
-            if (membershipKind != OperatorLoweringKind.Native)
-                _semanticInfo.SetOperatorLowering(binOp, new OperatorLowering(membershipKind));
-            return SemanticType.Bool;
+            // The membership kind is the checker's fact (#2635, Rule 2), decided by the ONE link
+            // routine every chain link also takes (P93 D3): the emitter's In/NotIn arm reads it and
+            // never tests a type. Nothing below this return writes the node again.
+            var membership = CheckOperatorLink(OperatorSite.Of(binOp), needleType, containerType, operandSlot: null);
+            RecordOperatorLink(binOp, membership);
+            return membership.Type;
         }
 
         // The operand of an `is (not) None` test reads the honest, un-narrowed value: mark it so
@@ -112,122 +87,27 @@ internal partial class TypeChecker
             return SemanticType.Unknown;
         }
 
+        // A comparison or identity operator is decided by the ONE link routine (P93 D3, #2648): every
+        // link of a comparison chain is this operator's twin and takes the same call, so the two
+        // positions cannot get different verdicts, refusals included.
+        if (IsComparisonOperator(binOp.Operator) || binOp.Operator is BinaryOperator.Is or BinaryOperator.IsNot)
+        {
+            var link = CheckOperatorLink(OperatorSite.Of(binOp), leftType, rightType, operandSlot);
+            RecordOperatorLink(binOp, link);
+            return link.Type;
+        }
+
         // #1766: a LiteralString is a str at every value-use route.
         leftType = OperandView(leftType);
         rightType = OperandView(rightType);
 
-        // Reject void-returning call operands in equality comparisons (#911). A `None`-typed
-        // (VoidType) operand that is NOT the literal `None` is a void-returning call used as a
-        // comparand (e.g. `s == f()` where `f() -> None`). Python would evaluate the call and
-        // compare against None, but that is almost certainly a bug, and Sharpy already rejects
-        // void-call *assignment* (SPY0229). Gating here — before InferBinaryOpType — also
-        // guarantees the literal-shape invariant the equality lowering relies on: any VoidType
-        // operand that reaches inference/lowering is the `None` literal. Scope is ==/!= only;
-        // other operators already fail inference with SPY0222. (Axiom 3 > Axiom 2.)
-        if (binOp.Operator is BinaryOperator.Equal or BinaryOperator.NotEqual)
-        {
-            var voidOperandFound = false;
-            if (leftType is VoidType && binOp.Left is not NoneLiteral)
-            {
-                AddError(
-                    "Expression of type 'None' has no value and cannot be used as a comparison operand; call it as a statement and compare separately",
-                    binOp.Left.LineStart,
-                    binOp.Left.ColumnStart,
-                    code: DiagnosticCodes.Semantic.VoidComparisonOperand,
-                    span: binOp.Left.Span);
-                voidOperandFound = true;
-            }
-            if (rightType is VoidType && binOp.Right is not NoneLiteral)
-            {
-                AddError(
-                    "Expression of type 'None' has no value and cannot be used as a comparison operand; call it as a statement and compare separately",
-                    binOp.Right.LineStart,
-                    binOp.Right.ColumnStart,
-                    code: DiagnosticCodes.Semantic.VoidComparisonOperand,
-                    span: binOp.Right.Span);
-                voidOperandFound = true;
-            }
-            if (voidOperandFound)
-            {
-                return SemanticType.Unknown;
-            }
-        }
-
-        // A string-backed enum member compares equal to its backing string — CPython's StrEnum
-        // does (`LogLevel.INFO == "INFO"` is True), and the emitted class's implicit conversion
-        // makes the C# comparison bind. Answered here rather than in the operator registry, which
-        // keys on type identity and would need an entry per enum (#1284).
-        if (binOp.Operator is BinaryOperator.Equal or BinaryOperator.NotEqual
-            && ((IsStringBackedEnum(leftType) && rightType is BuiltinType { Name: BuiltinNames.Str })
-                || (IsStringBackedEnum(rightType) && leftType is BuiltinType { Name: BuiltinNames.Str })))
-        {
-            return SemanticType.Bool;
-        }
-
         // §10.2.11: a constant operand converts to the other operand's type before promotion
         // A seam-admitted operand converts to its slot before the operator resolves — §10.2.11's
         // constant rule generalized to every value shape the store seam admits.
-        var (effectiveLeftType, effectiveRightType) = EffectiveOperandTypes(
-            binOp.Operator, binOp.Left, leftType, binOp.Right, operandSlot ?? rightType);
-
-        // Use TypeInferenceService for type inference
-        var resultType = _typeInference.InferBinaryOpType(binOp.Operator, effectiveLeftType, effectiveRightType);
-
-        // If type inference fails, report the error directly
-        // (validators may not catch all type incompatibilities)
+        var (resultType, effectiveLeftType, effectiveRightType) = InferOperatorResult(
+            OperatorSite.Of(binOp), leftType, rightType, operandSlot, isChainLink: false);
         if (resultType == null)
-        {
-            // When comparing against the `None` literal with ==/!=, point the user at the
-            // supported spelling: Sharpy rejects `x == None` (SPY0222) but accepts `x is None`
-            // (#1079). Both operand orders (`x == None` and `None == x`) get the hint. The
-            // suggested operator rides the diagnostic data payload for a future LSP quick-fix.
-            IReadOnlyDictionary<string, string>? data = null;
-            string? messageSuffix = null;
-            if (binOp.Operator is BinaryOperator.Equal or BinaryOperator.NotEqual
-                && (binOp.Left is NoneLiteral || binOp.Right is NoneLiteral))
-            {
-                var suggestedOperator = binOp.Operator == BinaryOperator.Equal ? "is None" : "is not None";
-                messageSuffix = $". Did you mean '{suggestedOperator}'?";
-                data = new Dictionary<string, string> { ["suggestedOperator"] = suggestedOperator };
-            }
-
-            ReportUnsupportedBinaryOperator(binOp, GetOperatorSymbol(binOp.Operator),
-                leftType, rightType, data, messageSuffix);
             return SemanticType.Unknown;
-        }
-
-        // Record how a comparison should be lowered by codegen — the equality strategy (#886:
-        // tuples and CLR types that resolve via Equals, no op_Equality, must emit an Equals call;
-        // #901: reference-type ==/!= None is a null pattern) rides the IR transport, the ordering
-        // kind (#1623: ordinal string compare, constrained type-parameter CompareTo) the
-        // OperatorLowering tag. Both come from the ONE classifier every comparison-chain link also
-        // uses, so the binary and chain positions cannot drift (#1642).
-        //
-        // Invariant (#911): any VoidType operand reaching this point is guaranteed to be the
-        // `None` literal — void-returning call operands were rejected above with SPY0329. This
-        // is what makes the NoneCheck lowering's AST-shape operand selection well-defined. Three
-        // consumers rely on it: InferBinaryOpType/GetBinaryOpLowering (TypeInferenceService),
-        // the emitter's NoneCheck branches (RoslynEmitter.Expressions.Operators / .Statements.
-        // ControlFlow), and OperatorValidator (suppress-only, never selects operands).
-        if (IsComparisonOperator(binOp.Operator))
-        {
-            var link = ClassifyComparisonLowering(binOp.Operator, leftType, rightType);
-            if (link.Equality is { } equality && equality != BinaryOpLowering.NativeOperator)
-            {
-                _semanticInfo.SetBinaryOpLowering(binOp, equality);
-            }
-            if (link.Kind != OperatorLoweringKind.Native)
-            {
-                _semanticInfo.SetOperatorLowering(binOp, new OperatorLowering(link.Kind));
-            }
-
-            // A CLR-reference `== None` / `!= None` emits its None operand as a typed null so C# binds
-            // the type's same-type operator == (#2238, cure A) — the argument-slot cast fact (#1721).
-            if (_typeInference.ClrReferenceNoneComparandSlot(binOp.Operator, leftType, rightType) is { } slot)
-            {
-                _semanticInfo.SetArgumentSlotCast(leftType is VoidType ? binOp.Left : binOp.Right, slot);
-            }
-        }
 
         // Constant-fold integer exponentiation so a result that fits a wider integer type
         // widens (e.g. `10 ** 18` → long) and an out-of-range result is diagnosed (SPY0328)
@@ -272,19 +152,6 @@ internal partial class TypeChecker
                 new OperatorLowering(OperatorLoweringKind.ShiftCountCastToInt));
         }
 
-        // `x is None` / `x is not None` / `None is x` (#2224, ruling R-EJ): `is` never runs user code —
-        // every None test records HOW its subject is tested, so the emitter never falls back to a
-        // `x == null` that binds a user `operator ==` (synthesized from `__eq__`, or a CLR overload).
-        if (binOp.Operator is BinaryOperator.Is or BinaryOperator.IsNot
-            && (binOp.Right is NoneLiteral || binOp.Left is NoneLiteral)
-            && ClassifyNoneTest(binOp.Right is NoneLiteral ? leftType : rightType) is { } noneTestKind)
-        {
-            _semanticInfo.SetOperatorLowering(binOp, new OperatorLowering(noneTestKind));
-        }
-
-        // `is` / `is not` with an int-backed enum operand (#2669): identity is equality.
-        var isEnumIdentity = RecordEnumIdentity(binOp, leftType, rightType);
-
         if (binOp.Operator == BinaryOperator.NullCoalesce && leftType is OptionalType)
         {
             var kind = rightType is OptionalType
@@ -317,31 +184,6 @@ internal partial class TypeChecker
         if (ClassifyFlooredArithmetic(binOp.Operator, leftType, rightType) is { } flooredKind)
         {
             _semanticInfo.SetOperatorLowering(binOp, new OperatorLowering(flooredKind));
-        }
-
-        // Warn when is/is not is used with value types — identity comparison is
-        // meaningless because value types are boxed, so the result is always False.
-        // Never for an enum operand (#2669): its `is` is lowered to value equality above, so the
-        // warning's claim would be false. The exemption reads the recorded decision, not
-        // IsValueType, so it holds whether or not an enum reports itself as a value type.
-        if (binOp.Operator is BinaryOperator.Is or BinaryOperator.IsNot && !isEnumIdentity)
-        {
-            var effectiveLeft = leftType is NullableType nl ? nl.UnderlyingType : leftType;
-            var effectiveRight = rightType is NullableType nr ? nr.UnderlyingType : rightType;
-
-            if (effectiveLeft.IsValueType && effectiveRight.IsValueType)
-            {
-                var opSymbol = binOp.Operator == BinaryOperator.Is ? "is" : "is not";
-                _diagnostics.AddWarning(
-                    $"'{opSymbol}' used with value types '{leftType.GetDisplayName()}' and " +
-                    $"'{rightType.GetDisplayName()}' — identity comparison is always False " +
-                    "due to boxing; use '==' or '!=' instead",
-                    binOp.LineStart,
-                    binOp.ColumnStart,
-                    _currentFilePath,
-                    code: DiagnosticCodes.Validation.IsWithValueTypes,
-                    phase: CompilerPhase.TypeChecking);
-            }
         }
 
         // #1731/#1741: literal-derived string + string (concatenation) and string * int (repetition)
@@ -1389,7 +1231,11 @@ internal partial class TypeChecker
         // A comparison chain like "a < b < c" has:
         // - Operands: [a, b, c]
         // - Operators: [LessThan, LessThan]
-        // We need to validate each adjacent pair: (a < b) and (b < c)
+        // Each adjacent pair is a LINK, and a link is its binary twin (P93 D3, #2648): `a < b` and
+        // `b < c` are decided by the ONE link routine the binary operator takes (CheckOperatorLink),
+        // diagnostics and lowering alike. What only a chain has stays here: the operands are checked
+        // once each (a needle under the next operand's slot), and a middle `None` operand read by two
+        // links takes the typed-null cast only when both agree (noneSlots).
 
         // Validate chain structure: operators count should equal operands count minus 1
         // (e.g., 3 operands need 2 operators: a < b < c)
@@ -1413,12 +1259,24 @@ internal partial class TypeChecker
         var operandTypes = new SemanticType?[chain.Operands.Length];
         var operandSlots = new SemanticType?[chain.Operands.Length];
 
+        // P93 D4: a head spelled like a type (`c is Outer.Inner is d`) whose dotted name is not an enum
+        // member is refused by link 0 (SPY0349, CheckTypeCheck's rule). Its operand names a type, not a
+        // value, so it is never checked as an expression: it is recorded Unknown, which every chain
+        // walker below (and the validators) skips.
+        if (chain.HeadCheckType is { } headCheckType && EnumOfMemberSpelledAsType(headCheckType) == null)
+        {
+            operandTypes[1] = SemanticType.Unknown;
+            _semanticInfo.SetExpressionType(chain.Operands[1], SemanticType.Unknown);
+            MarkExpressionAsErrorRecovery(chain.Operands[1], ErrorRecoveryReason.Propagated(
+                "a chain head spelled like a type names no enum member (SPY0349); its operand is a type, not a value"));
+        }
+
         // Pass 1: check all non-needle operands in source order. The RIGHT operand of a link whose
         // left operand's type has a user dunder goes through the operand seam exactly as the binary
         // form does (#1719) — one decision for `d == v` and for `a == d == v`.
         for (int i = 0; i < chain.Operands.Length; i++)
         {
-            if (needleIndices.Contains(i))
+            if (needleIndices.Contains(i) || operandTypes[i] != null)
                 continue;
 
             if (i > 0 && !needleIndices.Contains(i - 1)
@@ -1433,7 +1291,8 @@ internal partial class TypeChecker
             operandTypes[i] = CheckExpression(chain.Operands[i]);
         }
 
-        // Pass 2: check needle operands under the container's element type expectation.
+        // Pass 2: check needle operands under the container's element type expectation — the slot
+        // the binary form pushes (MembershipNeedleSlot), recorded on the container the same way.
         for (int ni = 0; ni < chain.Operands.Length; ni++)
         {
             if (!needleIndices.Contains(ni) || operandTypes[ni] != null)
@@ -1443,78 +1302,30 @@ internal partial class TypeChecker
             // later link and was deferred in pass 1.
             operandTypes[ni + 1] ??= CheckExpression(chain.Operands[ni + 1]);
 
-            var containerView = OperandView(operandTypes[ni + 1]!);
-            if (containerView is not UnknownType)
+            SemanticType? elementType = null;
+            if (operandTypes[ni + 1] is not UnknownType)
             {
-                var elementType = ResolveMembershipElementType(containerView);
-                if (elementType != null)
-                {
-                    using (EnterStore(StorePosition.ArgumentPositional, elementType, chain.Operands[ni]))
-                    {
-                        operandTypes[ni] = CheckExpression(chain.Operands[ni]);
-                    }
-                    continue;
-                }
+                var containerView = ProtocolReceiver(chain.Operands[ni + 1], operandTypes[ni + 1]!);
+                elementType = MembershipNeedleSlot(chain.Operands[ni + 1], containerView);
             }
-            operandTypes[ni] = CheckExpression(chain.Operands[ni]);
+            operandTypes[ni] = CheckMembershipNeedle(chain.Operands[ni], elementType);
         }
 
-        // Validate each comparison pair and record its lowering. Every link gets a record — an
-        // Unknown-operand or refused link records the native form — so the emitter reads one
-        // fact per operator and never needs a fallback (#1642).
+        // Each link through the binary operator's own routine, and its record. Every link gets a
+        // record — an Unknown-operand or refused link records the native form under its operator's
+        // shape — so the emitter reads one fact per operator and never needs a fallback (#1642).
         var links = ImmutableArray.CreateBuilder<ComparisonLinkLowering>(chain.Operators.Length);
         // The typed-null slot each link proposes for its None operand (#2238, cure A), per operand.
         var noneSlots = new SemanticType?[chain.Operators.Length, 2];
         for (int i = 0; i < chain.Operators.Length; i++)
         {
-            var leftType = OperandView(operandTypes[i]!);
-            var rightType = OperandView(operandTypes[i + 1]!);
-
-            // Skip validation if either operand is Unknown to avoid cascading errors
-            if (leftType is UnknownType || rightType is UnknownType)
-            {
-                links.Add(new ComparisonLinkLowering(OperatorLoweringKind.Native, null));
-                continue;
-            }
-
-            // Map ComparisonOperator to BinaryOperator and validate
-            var binaryOp = TypeUtils.ComparisonOperatorToBinaryOperator(chain.Operators[i]);
-
-            // #1750 (R-U): in/not in links go through the same needle check as the binary form.
-            if (binaryOp is BinaryOperator.In or BinaryOperator.NotIn)
-            {
-                links.Add(new ComparisonLinkLowering(
-                    ClassifyMembership(chain, chain.Operands[i], leftType, rightType), null));
-                continue;
-            }
-
-            var resultType = _typeInference.InferBinaryOpType(
-                binaryOp, leftType, operandSlots[i + 1] ?? rightType);
-
-            // If type inference fails, report the error directly
-            if (resultType == null)
-            {
-                // The same `is None` steer the binary form gives (#1079, #2221): a chain link
-                // refuses `== None` exactly where the binary form does.
-                var noneSteer = binaryOp is BinaryOperator.Equal or BinaryOperator.NotEqual
-                    && (chain.Operands[i] is NoneLiteral || chain.Operands[i + 1] is NoneLiteral)
-                        ? $". Did you mean '{(binaryOp == BinaryOperator.Equal ? "is None" : "is not None")}'?"
-                        : "";
-                ReportValueTypeMismatch(
-                    $"Type '{leftType.GetDisplayName()}' does not support operator '{GetOperatorSymbol(binaryOp)}' with operand of type '{rightType.GetDisplayName()}'{noneSteer}",
-                    chain.Operands[i + 1], leftType,
-                    chain.Operands[i].LineStart,
-                    chain.Operands[i].ColumnStart,
-                    code: DiagnosticCodes.Semantic.InvalidBinaryOperation,
-                    span: chain.Span);
-                links.Add(new ComparisonLinkLowering(OperatorLoweringKind.Native, null));
-                continue;
-            }
-
-            // The SAME classifier the binary form `Operands[i] <op> Operands[i+1]` uses.
-            links.Add(ClassifyComparisonLowering(binaryOp, leftType, rightType));
-            if (_typeInference.ClrReferenceNoneComparandSlot(binaryOp, leftType, rightType) is { } slot)
-                noneSlots[i, leftType is VoidType ? 0 : 1] = slot;
+            var link = CheckOperatorLink(
+                OperatorSite.OfLink(chain, i), operandTypes[i]!, operandTypes[i + 1]!, operandSlots[i + 1],
+                headCheckType: i == 0 ? chain.HeadCheckType : null,
+                isChainLink: true);
+            links.Add(link.Lowering);
+            if (link.NoneSlot is { } slot)
+                noneSlots[i, link.NoneOnLeft ? 0 : 1] = slot;
         }
 
         // A None operand is emitted ONCE and read by both adjacent links, so it is cast to the typed-null
@@ -1535,6 +1346,355 @@ internal partial class TypeChecker
 
         // All comparison chains return bool
         return SemanticType.Bool;
+    }
+
+    /// <summary>
+    /// The verdict of one comparison, identity or membership operator application (P93 D3): the
+    /// expression's type (<see cref="UnknownType"/> when the link was refused or an operand was
+    /// unknown), its lowering, and the typed-null slot of a CLR-reference <c>== None</c> /
+    /// <c>!= None</c> operand (#2238) with the side it is on.
+    /// </summary>
+    private readonly record struct LinkVerdict(
+        SemanticType Type, ComparisonLinkLowering Lowering, SemanticType? NoneSlot = null, bool NoneOnLeft = false)
+    {
+        public static LinkVerdict Refused(ComparisonLinkShape shape)
+            => new(SemanticType.Unknown, new ComparisonLinkLowering(OperatorLoweringKind.Native, null, shape));
+    }
+
+    /// <summary>The binary emitter a link of <paramref name="site"/>'s operator lowers through.</summary>
+    private static ComparisonLinkShape LinkShapeOf(OperatorSite site) => site.Operator switch
+    {
+        BinaryOperator.In or BinaryOperator.NotIn => ComparisonLinkShape.Membership,
+        BinaryOperator.Is or BinaryOperator.IsNot when site.Left is NoneLiteral || site.Right is NoneLiteral
+            => ComparisonLinkShape.NoneTest,
+        BinaryOperator.Is or BinaryOperator.IsNot => ComparisonLinkShape.Identity,
+        _ => ComparisonLinkShape.Comparison,
+    };
+
+    /// <summary>
+    /// THE link routine (P93 D3, #2648): decides one comparison (<c>==</c> <c>!=</c> <c>&lt;</c>
+    /// <c>&lt;=</c> <c>&gt;</c> <c>&gt;=</c>), identity (<c>is</c>, <c>is not</c>) or membership
+    /// (<c>in</c>, <c>not in</c>) operator over its already-checked operands, and reports every
+    /// diagnostic the operator draws. Called by the binary site (<see cref="CheckBinaryOp"/>) and by
+    /// every link of <see cref="CheckComparisonChain"/>, so a chain link is its binary twin in every
+    /// outcome — a refusal included (owner ruling, #2648 comments 6865267508 and 6867353616). The
+    /// classifiers it owns: <see cref="ClassifyMembership"/>, the void-comparand gate (SPY0329),
+    /// <see cref="ClassifyComparisonLowering"/>, <see cref="ClassifyNoneTest"/>,
+    /// <see cref="ClassifyEnumIdentity"/>, and the value-type <c>is</c> warning; neither site
+    /// calls one of them itself.
+    /// <para>For a membership link <paramref name="leftType"/> is the needle's type and
+    /// <paramref name="rightType"/> the container's; the needle was already checked under the slot
+    /// <see cref="MembershipNeedleSlot"/> gave it. <paramref name="operandSlot"/> is the user-dunder
+    /// slot the right operand was admitted into (<see cref="CheckOperatorOperand"/>).
+    /// <paramref name="headCheckType"/> is set for link 0 of a chain whose head was spelled like a
+    /// type (P93 D4): that link takes <see cref="CheckTypeCheck"/>'s rule
+    /// (<see cref="TypeSpelledIdentity"/>).</para>
+    /// <para>The caller records the verdict: the binary site on its node
+    /// (<see cref="RecordOperatorLink"/>), the chain in its <see cref="ComparisonLinkLowering"/>.</para>
+    /// </summary>
+    private LinkVerdict CheckOperatorLink(
+        OperatorSite site, SemanticType leftType, SemanticType rightType, SemanticType? operandSlot,
+        TypeAnnotation? headCheckType = null, bool isChainLink = false)
+    {
+        var op = site.Operator;
+        var shape = LinkShapeOf(site);
+
+        // P93 D4: `c is Color.RED is d` — link 0 of a chain whose head the parser read as a type test.
+        if (headCheckType != null)
+            return TypeSpelledIdentity(headCheckType, site, leftType, rightType);
+
+        // Skip validation if either operand is Unknown to avoid cascading errors
+        if (leftType is UnknownType || rightType is UnknownType)
+            return LinkVerdict.Refused(shape);
+
+        // #1766: a LiteralString is a str at every value-use route.
+        leftType = OperandView(leftType);
+        rightType = OperandView(rightType);
+
+        // #1750 (R-U): the needle-vs-slot check, the ONE place a membership kind is decided (#2635).
+        // The container is asked through the protocol-receiver view (#1792): a loose `T | None`
+        // container answers as `T`.
+        if (op is BinaryOperator.In or BinaryOperator.NotIn)
+        {
+            var membershipKind = ClassifyMembership(site, leftType, ProtocolReceiverView(rightType));
+            return new LinkVerdict(SemanticType.Bool, new ComparisonLinkLowering(membershipKind, null, shape));
+        }
+
+        // Reject void-returning call operands in equality comparisons (#911). A `None`-typed
+        // (VoidType) operand that is NOT the literal `None` is a void-returning call used as a
+        // comparand (e.g. `s == f()` where `f() -> None`). Python would evaluate the call and
+        // compare against None, but that is almost certainly a bug, and Sharpy already rejects
+        // void-call *assignment* (SPY0229). Gating here — before InferBinaryOpType — also
+        // guarantees the literal-shape invariant the equality lowering relies on: any VoidType
+        // operand that reaches inference/lowering is the `None` literal. Scope is ==/!= only;
+        // other operators already fail inference with SPY0222. (Axiom 3 > Axiom 2.)
+        if (op is BinaryOperator.Equal or BinaryOperator.NotEqual)
+        {
+            var voidOperandFound = false;
+            foreach (var (operand, operandType) in new[] { (site.Left, leftType), (site.Right, rightType) })
+            {
+                if (operandType is not VoidType || operand is NoneLiteral)
+                    continue;
+                AddError(
+                    "Expression of type 'None' has no value and cannot be used as a comparison operand; call it as a statement and compare separately",
+                    operand.LineStart,
+                    operand.ColumnStart,
+                    code: DiagnosticCodes.Semantic.VoidComparisonOperand,
+                    span: operand.Span);
+                voidOperandFound = true;
+            }
+            if (voidOperandFound)
+                return LinkVerdict.Refused(shape);
+        }
+
+        // A string-backed enum member compares equal to its backing string — CPython's StrEnum
+        // does (`LogLevel.INFO == "INFO"` is True), and the emitted class's implicit conversion
+        // makes the C# comparison bind. Answered here rather than in the operator registry, which
+        // keys on type identity and would need an entry per enum (#1284).
+        if (op is BinaryOperator.Equal or BinaryOperator.NotEqual
+            && ((IsStringBackedEnum(leftType) && rightType is BuiltinType { Name: BuiltinNames.Str })
+                || (IsStringBackedEnum(rightType) && leftType is BuiltinType { Name: BuiltinNames.Str })))
+        {
+            return new LinkVerdict(SemanticType.Bool,
+                new ComparisonLinkLowering(OperatorLoweringKind.Native, BinaryOpLowering.NativeOperator, shape));
+        }
+
+        var (resultType, _, _) = InferOperatorResult(site, leftType, rightType, operandSlot, isChainLink);
+        if (resultType == null)
+            return LinkVerdict.Refused(shape);
+
+        // Record how a comparison should be lowered by codegen — the equality strategy (#886:
+        // tuples and CLR types that resolve via Equals, no op_Equality, must emit an Equals call;
+        // #901: reference-type ==/!= None is a null pattern) rides the IR transport, the ordering
+        // kind (#1623: ordinal string compare, constrained type-parameter CompareTo) the
+        // OperatorLowering tag.
+        //
+        // Invariant (#911): any VoidType operand reaching this point is guaranteed to be the
+        // `None` literal — void-returning call operands were rejected above with SPY0329. This
+        // is what makes the NoneCheck lowering's AST-shape operand selection well-defined. Three
+        // consumers rely on it: InferBinaryOpType/GetBinaryOpLowering (TypeInferenceService),
+        // the emitter's NoneCheck branches (RoslynEmitter.Expressions.Operators / .Statements.
+        // ControlFlow), and OperatorValidator (suppress-only, never selects operands).
+        if (IsComparisonOperator(op))
+        {
+            var comparison = ClassifyComparisonLowering(op, leftType, rightType);
+
+            // A CLR-reference `== None` / `!= None` emits its None operand as a typed null so C# binds
+            // the type's same-type operator == (#2238, cure A) — the argument-slot cast fact (#1721).
+            return _typeInference.ClrReferenceNoneComparandSlot(op, leftType, rightType) is { } slot
+                ? new LinkVerdict(resultType, comparison, slot, NoneOnLeft: leftType is VoidType)
+                : new LinkVerdict(resultType, comparison);
+        }
+
+        // `is` / `is not`.
+        OperatorLoweringKind? identityKind;
+        var isEnumIdentity = false;
+        if (shape == ComparisonLinkShape.NoneTest)
+        {
+            // `x is None` / `x is not None` / `None is x` (#2224, ruling R-EJ): `is` never runs user
+            // code — every None test records HOW its subject is tested, so the emitter never falls back
+            // to a `x == null` that binds a user `operator ==` (synthesized from `__eq__`, or a CLR
+            // overload).
+            identityKind = ClassifyNoneTest(site.Right is NoneLiteral ? leftType : rightType);
+        }
+        else
+        {
+            // `is` / `is not` with an int-backed enum operand (#2669): identity is equality.
+            identityKind = ClassifyEnumIdentity(leftType, rightType);
+            isEnumIdentity = identityKind != null;
+        }
+
+        // Warn when is/is not is used with value types — identity comparison is
+        // meaningless because value types are boxed, so the result is always False.
+        // Never for an enum operand (#2669): its `is` is lowered to value equality above, so the
+        // warning's claim would be false. The exemption reads the recorded decision, not
+        // IsValueType, so it holds whether or not an enum reports itself as a value type.
+        if (!isEnumIdentity)
+        {
+            var effectiveLeft = leftType is NullableType nl ? nl.UnderlyingType : leftType;
+            var effectiveRight = rightType is NullableType nr ? nr.UnderlyingType : rightType;
+
+            if (effectiveLeft.IsValueType && effectiveRight.IsValueType)
+            {
+                var opSymbol = op == BinaryOperator.Is ? "is" : "is not";
+                _diagnostics.AddWarning(
+                    $"'{opSymbol}' used with value types '{leftType.GetDisplayName()}' and " +
+                    $"'{rightType.GetDisplayName()}' — identity comparison is always False " +
+                    "due to boxing; use '==' or '!=' instead",
+                    site.Line,
+                    site.Column,
+                    _currentFilePath,
+                    code: DiagnosticCodes.Validation.IsWithValueTypes,
+                    phase: CompilerPhase.TypeChecking);
+            }
+        }
+
+        return new LinkVerdict(resultType,
+            new ComparisonLinkLowering(identityKind ?? OperatorLoweringKind.Native, null, shape));
+    }
+
+    /// <summary>
+    /// Records a <see cref="LinkVerdict"/> on the binary operator it was decided for, exactly as the
+    /// binary site always recorded these facts: the operator lowering kind (absent = native), the
+    /// equality strategy (absent = the native operator), and the typed-null cast of a CLR-reference
+    /// <c>None</c> comparand.
+    /// </summary>
+    private void RecordOperatorLink(BinaryOp binOp, LinkVerdict verdict)
+    {
+        if (verdict.Lowering.Equality is { } equality && equality != BinaryOpLowering.NativeOperator)
+            _semanticInfo.SetBinaryOpLowering(binOp, equality);
+        if (verdict.Lowering.Kind != OperatorLoweringKind.Native)
+            _semanticInfo.SetOperatorLowering(binOp, new OperatorLowering(verdict.Lowering.Kind));
+        if (verdict.NoneSlot is { } slot)
+            _semanticInfo.SetArgumentSlotCast(verdict.NoneOnLeft ? binOp.Left : binOp.Right, slot);
+    }
+
+    /// <summary>
+    /// The result type of a binary operator over its checked operands, or null after reporting the
+    /// refusal (SPY0222) — shared by the arithmetic path of <see cref="CheckBinaryOp"/> and the link
+    /// routine. §10.2.11: a constant operand converts to the other operand's type before promotion,
+    /// and a seam-admitted operand (<paramref name="operandSlot"/>) to its slot. The effective operand
+    /// types are returned for the arithmetic classifiers. A chain link's middle operand is read by two
+    /// links, so a chain link only ADDS a constant cast and never forgets one the other link recorded.
+    /// </summary>
+    private (SemanticType? Result, SemanticType EffectiveLeft, SemanticType EffectiveRight) InferOperatorResult(
+        OperatorSite site, SemanticType leftType, SemanticType rightType, SemanticType? operandSlot, bool isChainLink)
+    {
+        var (effectiveLeftType, effectiveRightType) = EffectiveOperandTypes(
+            site.Operator, site.Left, leftType, site.Right, operandSlot ?? rightType, forgetUnneededCasts: !isChainLink);
+
+        var resultType = _typeInference.InferBinaryOpType(site.Operator, effectiveLeftType, effectiveRightType);
+        if (resultType != null)
+            return (resultType, effectiveLeftType, effectiveRightType);
+
+        // When comparing against the `None` literal with ==/!=, point the user at the
+        // supported spelling: Sharpy rejects `x == None` (SPY0222) but accepts `x is None`
+        // (#1079). Both operand orders (`x == None` and `None == x`) get the hint. The
+        // suggested operator rides the diagnostic data payload for a future LSP quick-fix.
+        IReadOnlyDictionary<string, string>? data = null;
+        string? messageSuffix = null;
+        if (site.Operator is BinaryOperator.Equal or BinaryOperator.NotEqual
+            && (site.Left is NoneLiteral || site.Right is NoneLiteral))
+        {
+            var suggestedOperator = site.Operator == BinaryOperator.Equal ? "is None" : "is not None";
+            messageSuffix = $". Did you mean '{suggestedOperator}'?";
+            data = new Dictionary<string, string> { ["suggestedOperator"] = suggestedOperator };
+        }
+
+        ReportUnsupportedOperator(GetOperatorSymbol(site.Operator), site.Left, site.Right,
+            site.Line, site.Column, site.Span, leftType, rightType, data, messageSuffix);
+        return (null, effectiveLeftType, effectiveRightType);
+    }
+
+    /// <summary>
+    /// The slot a membership needle is checked under, pushed as its expectation by the binary site and
+    /// by every chain link (#1750, #1777), with the facts the container carries recorded on its node:
+    /// a tuple's array bridge (#1771, the iterable ring's one tuple rule), and — P93 D1 — a user class
+    /// the iteration ring enumerates (<see cref="IterationMembershipElement"/>) a <c>Direct</c>
+    /// projection of its element, the fact the validator (SPY0320) and the emitter's LINQ
+    /// <c>Enumerable.Contains&lt;E&gt;</c> read. <paramref name="containerView"/> is the
+    /// protocol-receiver view of the container. Null when the container names no single slot.
+    /// </summary>
+    private SemanticType? MembershipNeedleSlot(Expression container, SemanticType containerView)
+    {
+        // Tuples need the array bridge for Contains; other containers (str, list, set,
+        // dict) already have their own Contains semantics (#1771).
+        if (containerView is TupleType)
+        {
+            var projection = ClassifyIterableSource(
+                container, containerView, null, StorePosition.CollectionElement,
+                MembershipContainerSiteNoun);
+            if (projection != null)
+            {
+                _semanticInfo.SetIterableProjection(container, projection);
+                return projection.ElementType;
+            }
+        }
+        else if (IterationMembershipElement(containerView) is { } iterationElement)
+        {
+            _semanticInfo.SetIterableProjection(container,
+                new IterableArgumentProjection(IterableProjectionKind.Direct, iterationElement));
+        }
+
+        return ResolveMembershipElementType(containerView);
+    }
+
+    /// <summary>
+    /// Checks a membership needle under <paramref name="elementType"/> as its expectation (the
+    /// argument position of <c>y.Contains(x)</c>), or plainly when the container names no slot.
+    /// </summary>
+    private SemanticType CheckMembershipNeedle(Expression needle, SemanticType? elementType)
+    {
+        if (elementType == null)
+            return OperandView(CheckExpression(needle));
+
+        using (EnterStore(StorePosition.ArgumentPositional, elementType, needle))
+        {
+            return OperandView(CheckExpression(needle));
+        }
+    }
+
+    /// <summary>
+    /// P93 D1 (R-NZ, R-OA): the element a Sharpy-declared container answers <c>in</c> with when it has
+    /// no <c>__contains__</c> but the iteration ring enumerates it — or null. The host is
+    /// <see cref="TryGetGenericHost"/>'s (a plain class, or a constructed generic at its substitution)
+    /// whose declaration has no CLR type (a Sharpy source class), and no <c>__contains__</c> anywhere up
+    /// its chain (<see cref="ProtocolMembership.HasDunderInChain"/>): a class that declares one answers
+    /// by it, as Python's own protocol precedence does.
+    /// <para>The element is the one of the <c>IEnumerable[T]</c> <see cref="SynthesisAnalyzer"/>
+    /// synthesizes for the class — the interface LINQ's <c>Enumerable.Contains&lt;E&gt;</c> enumerates —
+    /// asked per declaration up the chain, nearest first, with the synthesis rule: a declaration with
+    /// both <c>__iter__</c> and <c>__next__</c> answers with <c>__next__</c>'s return type; one with
+    /// <c>__iter__</c> alone answers with the unpeeled return of a generator or producer
+    /// (<see cref="IterableElementDecider.IsRecognizedProducerType"/>) <c>__iter__</c>. No other
+    /// <c>__iter__</c> answers (<c>-&gt; list[int]</c> synthesizes nothing, #1915), and
+    /// <c>__getitem__</c> + <c>__len__</c> never does (R-OA): Python's legacy sequence protocol is not
+    /// membership in Sharpy. An inherited answer is substituted through each generic base's type
+    /// arguments, then through the host view.</para>
+    /// </summary>
+    internal SemanticType? IterationMembershipElement(SemanticType containerType)
+    {
+        if (containerType is NullableType nullable)
+            containerType = nullable.UnderlyingType;
+
+        if (TryGetGenericHost(containerType) is not { } host
+            || host.Definition.ClrType != null
+            || ProtocolMembership.HasDunderInChain(host.Definition, DunderNames.Contains))
+        {
+            return null;
+        }
+
+        Func<SemanticType, SemanticType> substitute = host.Substitute;
+        for (var current = host.Definition; current is { ClrType: null }; current = current.BaseType)
+        {
+            var iter = current.Methods.FirstOrDefault(m => m.Name == DunderNames.Iter);
+            if (iter != null)
+            {
+                // SynthesisAnalyzer: `__next__` + `__iter__` → IEnumerable[`__next__`'s annotation, or
+                // object]; `__iter__` alone → IEnumerable[the unpeeled generator / producer return].
+                var next = current.Methods.FirstOrDefault(m => m.Name == DunderNames.Next);
+                if (next != null)
+                    return substitute(next.ReturnType is VoidType or UnknownType ? SemanticType.Object : next.ReturnType);
+
+                if (iter.IsGenerator || IterableElementDecider.IsRecognizedProducerType(iter.ReturnType))
+                {
+                    var element = IterableElementDecider.UnpeelProducerType(iter.ReturnType, iter.IsGenerator);
+                    return element is UnknownType ? null : substitute(element);
+                }
+            }
+
+            // Up the chain: a generic base's own type parameters are closed by the arguments this
+            // declaration gave it (`class D(G[int])`), before the host view closes the host's own.
+            if (current.BaseType is { TypeParameters.Count: > 0 } baseDefinition
+                && current.BaseTypeRef is { ResolvedTypeArguments.IsDefaultOrEmpty: false } baseReference)
+            {
+                var outer = substitute;
+                var arguments = baseReference.ResolvedTypeArguments;
+                substitute = t => outer(SubstituteThroughDefinition(t, baseDefinition, arguments));
+            }
+        }
+
+        return null;
     }
 
     private static bool IsComparisonOperator(BinaryOperator op)
@@ -1606,45 +1766,68 @@ internal partial class TypeChecker
     /// (<see cref="IsArgumentAssignable"/>) for every container, and for a CLR-backed one the CLR
     /// call seam's as well (<see cref="ClrContainsTakesNeedle"/>), so <c>x in y</c> takes the
     /// needles <c>y.Contains(x)</c> takes (#2647).</para>
+    /// <para>P93 D2 (#2645): an accepted needle's BINDING type is recorded on the needle node
+    /// (<see cref="SemanticInfo.SetMembershipNeedleBinding"/>) — the needle's own type when it is a
+    /// <c>T | None</c>, else the first slot the store seam takes it into — so the emitter can evaluate
+    /// it before its container. No record for a container with no slot, a needle only the CLR call
+    /// seam takes, or a refused needle; every check records or forgets, so a re-checked lambda body
+    /// keeps no stale binding.</para>
     /// </summary>
     /// <returns>The lowering kind of this membership test; <see cref="OperatorLoweringKind.Native"/>
     /// when nothing special applies, the container is oblivious, or the needle was refused.</returns>
     private OperatorLoweringKind ClassifyMembership(
-        Node diagnosticNode, Expression needle, SemanticType needleType, SemanticType containerType)
+        OperatorSite site, SemanticType needleType, SemanticType containerType)
     {
+        var needle = site.Left;
         var slots = ResolveMembershipSlots(containerType, out var clrFormals);
         if (slots.Count == 0)
+        {
+            // No slot (#2249): no binding record, and today's emission.
+            _semanticInfo.SetMembershipNeedleBinding(needle, null);
             return OperatorLoweringKind.Native;
+        }
+
+        // The first slot the store seam takes a needle into — the type the needle is bound as
+        // (P93 D2). Null when only the CLR call seam takes it (#2647): C# alone types that argument.
+        SemanticType? FirstSlotTaking(SemanticType type, Expression? node)
+            => slots.FirstOrDefault(slot => IsArgumentAssignable(type, slot, node));
 
         // The lift asks a TYPE question of the needle's underlying type, so no expression is
         // passed: the constant and conditional shapes of the store seam belong to the plain path.
         bool FitsASlot(SemanticType type, Expression? node)
-            => slots.Any(slot => IsArgumentAssignable(type, slot, node))
+            => FirstSlotTaking(type, node) != null
                || ClrContainsTakesNeedle(type, node, clrFormals);
 
         var lifted = needleType as NullableType;
         bool LiftFitsASlot()
             => lifted != null && FitsASlot(lifted.UnderlyingType, null);
 
+        // P93 D2: a `T | None` needle is bound as its own type, so the emitter's cast never unwraps it
+        // (#2674's value-type needles keep their own form); any other accepted needle as the first slot
+        // the store seam takes it into.
+        OperatorLoweringKind Accept(OperatorLoweringKind kind)
+        {
+            _semanticInfo.SetMembershipNeedleBinding(needle, lifted ?? FirstSlotTaking(needleType, needle));
+            return kind;
+        }
+
         if (lifted != null && IsSubsequenceContainer(containerType) && LiftFitsASlot())
-            return OperatorLoweringKind.MembershipNoneRaises;
+            return Accept(OperatorLoweringKind.MembershipNoneRaises);
 
         if (FitsASlot(needleType, needle))
-            return OperatorLoweringKind.Native;
+            return Accept(OperatorLoweringKind.Native);
 
         if (LiftFitsASlot())
         {
-            return lifted!.IsValueType
+            return Accept(lifted!.IsValueType
                 ? OperatorLoweringKind.MembershipNoneIsFalse
-                : OperatorLoweringKind.Native;
+                : OperatorLoweringKind.Native);
         }
 
-        var opSpelling = diagnosticNode is BinaryOp binOp
-            ? GetOperatorSymbol(binOp.Operator)
-            : "in";
+        _semanticInfo.SetMembershipNeedleBinding(needle, null);
 
         var message = $"Type '{needleType.GetDisplayName()}' does not support operator " +
-            $"'{opSpelling}' with operand of type '{containerType.GetDisplayName()}'";
+            $"'{GetOperatorSymbol(site.Operator)}' with operand of type '{containerType.GetDisplayName()}'";
 
         // The steer names ONE slot: the first whose cast cures the needle, else the first.
         var needleSpelling = SpellOperand(needle, "x");
@@ -1661,7 +1844,7 @@ internal partial class TypeChecker
         ReportValueTypeMismatch(message, needle, steerSlot,
             needle.LineStart, needle.ColumnStart,
             code: DiagnosticCodes.Semantic.InvalidBinaryOperation,
-            span: diagnosticNode.Span);
+            span: site.Span);
         return OperatorLoweringKind.Native;
     }
 
@@ -1833,6 +2016,14 @@ internal partial class TypeChecker
                 if (itemParam != null)
                     return hostView.Substitute(itemParam.Type);
             }
+
+            // P93 D1 (R-NZ, R-OA): a Sharpy-declared host with no __contains__ answers `in` with the
+            // element of the IEnumerable[T] the iteration ring synthesizes for it, and with nothing
+            // else — never with its __getitem__'s return, which the generic-container arm below would
+            // read (the legacy sequence pair is not membership in Sharpy: a generic `SeqBag[T]` took a
+            // needle slot from it and refused a mismatched needle with SPY0222 instead of SPY0320).
+            if (typeSymbol.ClrType == null)
+                return IterationMembershipElement(containerType);
         }
 
         // Generic containers and views (list[T], set[T], dict[K,V], .keys()/.values()/.items(), and
@@ -2449,21 +2640,6 @@ internal partial class TypeChecker
     }
 
     /// <summary>
-    /// Records <see cref="ClassifyEnumIdentity"/>'s answer on an <c>is</c> / <c>is not</c> node whose
-    /// operands are not the None literal, and reports whether it recorded one.
-    /// </summary>
-    private bool RecordEnumIdentity(BinaryOp binOp, SemanticType leftType, SemanticType rightType)
-    {
-        if (binOp.Operator is not (BinaryOperator.Is or BinaryOperator.IsNot)
-            || binOp.Left is NoneLiteral || binOp.Right is NoneLiteral
-            || ClassifyEnumIdentity(leftType, rightType) is not { } kind)
-            return false;
-
-        _semanticInfo.SetOperatorLowering(binOp, new OperatorLowering(kind));
-        return true;
-    }
-
-    /// <summary>
     /// The enum whose MEMBER a type-test's dotted name spells (<c>Color.RED</c>,
     /// <c>Outer.Color.RED</c>, <c>mod.Color.RED</c>), or null (#2669). Asked of the type resolver, the
     /// same authority that would resolve the name as a type: the whole name must NOT resolve as a
@@ -2496,33 +2672,70 @@ internal partial class TypeChecker
             && EnumOfMemberSpelledAsType(typeCheck.CheckType) is { } memberEnum)
         {
             var memberType = CheckExpression(identityOperand);
-
-            // The classifier answers from the operand types; when it has no answer for an int-backed
-            // member (its own access is left untyped — a nested enum's chain, #2038 — and the value
-            // is not an enum either), the member is still a member of `memberEnum`, and
-            // object.Equals is right for every pair.
-            var kind = memberEnum.IsStringEnum
-                ? OperatorLoweringKind.EnumMemberReferenceIdentity
-                : ClassifyEnumIdentity(OperandView(valueType), OperandView(memberType))
-                    ?? OperatorLoweringKind.EnumIdentityObjectEquals;
-            _semanticInfo.SetOperatorLowering(typeCheck, new OperatorLowering(kind));
+            _semanticInfo.SetOperatorLowering(typeCheck,
+                new OperatorLowering(TypeSpelledIdentityKind(memberEnum, valueType, memberType)));
             return SemanticType.Bool;
         }
 
-        // #1298 (owner decision 2026-08-08): `x is TypeName` is retired as a type test.
-        // `is` means reference identity only; the type-test spelling is isinstance.
-        // The parser still produces a TypeCheck node (tooling sees the shape), but the
-        // semantic phase refuses it. The emitter arm (GenerateTypeCheck) is kept as
-        // defence-in-depth but never reached.
-        var valueName = typeCheck.Value is Identifier id ? id.Name : "value";
+        ReportIsTypeTestRetired(typeCheck.Value, typeCheck.CheckType,
+            typeCheck.LineStart, typeCheck.ColumnStart, typeCheck.Span);
+        return SemanticType.Bool;
+    }
+
+    /// <summary>
+    /// The identity lowering of <c>x is E.M</c> spelled like a type, when <c>E.M</c> is a member of
+    /// <paramref name="memberEnum"/> (#2669) — <see cref="CheckTypeCheck"/>'s rule, shared with link 0
+    /// of a chain whose head was spelled that way (P93 D4). A string-backed member is a reference
+    /// singleton; for an int-backed one the classifier answers from the operand types, and when it
+    /// has no answer (the member's own access is left untyped — a nested enum's chain, #2038 — and the
+    /// value is not an enum either), the member is still a member of <paramref name="memberEnum"/>,
+    /// and object.Equals is right for every pair.
+    /// </summary>
+    private OperatorLoweringKind TypeSpelledIdentityKind(
+        TypeSymbol memberEnum, SemanticType valueType, SemanticType memberType)
+        => memberEnum.IsStringEnum
+            ? OperatorLoweringKind.EnumMemberReferenceIdentity
+            : ClassifyEnumIdentity(OperandView(valueType), OperandView(memberType))
+                ?? OperatorLoweringKind.EnumIdentityObjectEquals;
+
+    /// <summary>
+    /// #1298 (owner decision 2026-08-08): <c>x is TypeName</c> is retired as a type test. <c>is</c>
+    /// means reference identity only; the type-test spelling is isinstance. The parser still produces
+    /// the type-test shape (tooling sees it), but the semantic phase refuses it (SPY0349) — the one
+    /// refusal of <see cref="CheckTypeCheck"/> and of a chain head spelled the same way (P93 D4). The
+    /// emitter arm (GenerateTypeCheck) is kept as defence-in-depth but never reached.
+    /// </summary>
+    private void ReportIsTypeTestRetired(
+        Expression value, TypeAnnotation checkType, int line, int column, Text.TextSpan? span)
+    {
+        var valueName = value is Identifier id ? id.Name : "value";
         AddError(
             $"'is' compares references, not types. " +
-            $"Use 'isinstance({valueName}, {typeCheck.CheckType.Name})' to test a value's type.",
-            typeCheck.LineStart, typeCheck.ColumnStart,
+            $"Use 'isinstance({valueName}, {checkType.Name})' to test a value's type.",
+            line, column,
             code: DiagnosticCodes.Semantic.IsTypeTestRetired,
-            span: typeCheck.Span);
+            span: span);
+    }
 
-        return SemanticType.Bool;
+    /// <summary>
+    /// Link 0 of a comparison chain whose head the parser read as a type test (P93 D4:
+    /// <c>c is Color.RED is d</c>, <c>c is Outer.Inner == d</c>) — <see cref="CheckTypeCheck"/>'s
+    /// rule, by the same two helpers: an enum member is an identity link
+    /// (<see cref="TypeSpelledIdentityKind"/>); any other dotted name is SPY0349 with the same steer
+    /// (<see cref="ReportIsTypeTestRetired"/>), and its operand was recorded <see cref="UnknownType"/>
+    /// unchecked (<see cref="CheckComparisonChain"/>), so the link after it is skipped.
+    /// </summary>
+    private LinkVerdict TypeSpelledIdentity(
+        TypeAnnotation headCheckType, OperatorSite site, SemanticType valueType, SemanticType memberType)
+    {
+        if (EnumOfMemberSpelledAsType(headCheckType) is { } memberEnum)
+        {
+            return new LinkVerdict(SemanticType.Bool, new ComparisonLinkLowering(
+                TypeSpelledIdentityKind(memberEnum, valueType, memberType), null, ComparisonLinkShape.Identity));
+        }
+
+        ReportIsTypeTestRetired(site.Left, headCheckType, site.Line, site.Column, site.Span);
+        return LinkVerdict.Refused(ComparisonLinkShape.Identity);
     }
 
     /// <summary>
@@ -2935,7 +3148,7 @@ internal partial class TypeChecker
 
     private (SemanticType left, SemanticType right) EffectiveOperandTypes(
         BinaryOperator op, Expression left, SemanticType leftType,
-        Expression right, SemanticType rightType)
+        Expression right, SemanticType rightType, bool forgetUnneededCasts = true)
     {
         if (op is BinaryOperator.LeftShift or BinaryOperator.RightShift)
             return (leftType, rightType);
@@ -2948,10 +3161,14 @@ internal partial class TypeChecker
 
         // The converted constant's cast (#2344) is recorded — or forgotten — on every check, so a
         // lambda body re-checked under other parameter types keeps no stale fact.
-        _semanticInfo.SetIntegerConstantCast(left,
-            leftConverts && !rightConverts && ImplicitConversions.RequiresConstantCast(leftType, rightType) ? rightType : null);
-        _semanticInfo.SetIntegerConstantCast(right,
-            rightConverts && !leftConverts && ImplicitConversions.RequiresConstantCast(rightType, leftType) ? leftType : null);
+        // A comparison-chain link (forgetUnneededCasts false) shares its middle operand with the next
+        // link, so it only adds a cast and never forgets the one the other link recorded.
+        var leftCast = leftConverts && !rightConverts && ImplicitConversions.RequiresConstantCast(leftType, rightType) ? rightType : null;
+        var rightCast = rightConverts && !leftConverts && ImplicitConversions.RequiresConstantCast(rightType, leftType) ? leftType : null;
+        if (leftCast != null || forgetUnneededCasts)
+            _semanticInfo.SetIntegerConstantCast(left, leftCast);
+        if (rightCast != null || forgetUnneededCasts)
+            _semanticInfo.SetIntegerConstantCast(right, rightCast);
 
         if (leftConverts && !rightConverts)
             return (rightType, rightType);
@@ -3041,6 +3258,13 @@ internal partial class TypeChecker
     /// </summary>
     private static string? PromotionRefusalSteer(Node node, SemanticType left, SemanticType right)
     {
+        var (leftNode, rightNode) = OperandNodes(node);
+        return PromotionRefusalSteer(leftNode, rightNode, left, right);
+    }
+
+    private static string? PromotionRefusalSteer(
+        Expression? leftNode, Expression? rightNode, SemanticType left, SemanticType right)
+    {
         var leftInfo = PrimitiveCatalog.GetPrimitiveInfo(left);
         var rightInfo = PrimitiveCatalog.GetPrimitiveInfo(right);
         if (leftInfo == null || rightInfo == null)
@@ -3050,7 +3274,7 @@ internal partial class TypeChecker
         if (PrimitiveCatalog.GetPromotedType(left, right) != null)
             return null;
 
-        var (leftSpelling, rightSpelling) = OperandSpellings(node);
+        var (leftSpelling, rightSpelling) = (SpellOperand(leftNode, "x"), SpellOperand(rightNode, "y"));
 
         if (PrimitiveCatalog.IsDecimal(left) && PrimitiveCatalog.IsFloatingPoint(right))
         {
@@ -3073,19 +3297,6 @@ internal partial class TypeChecker
         return null;
     }
 
-    private static (string Left, string Right) OperandSpellings(Node node)
-    {
-        var (left, right) = OperandNodes(node);
-        return (SpellOperand(left, "x"), SpellOperand(right, "y"));
-    }
-
-    /// <summary>
-    /// The refused VALUE of an operator refusal — a <c>BinaryOp</c>'s right operand or an
-    /// <c>Assignment</c>'s value, which is what the augmented form <c>s += n or "z"</c> refuses
-    /// (#1819). Null for a node shape with no operand pair.
-    /// </summary>
-    private static Expression? OperandValueNode(Node node) => OperandNodes(node).Right;
-
     private static (Expression? Left, Expression? Right) OperandNodes(Node node)
         => node switch
         {
@@ -3105,17 +3316,35 @@ internal partial class TypeChecker
         IReadOnlyDictionary<string, string>? data = null,
         string? messageSuffix = null)
     {
+        var (leftNode, rightNode) = OperandNodes(node);
+        ReportUnsupportedOperator(operatorSpelling, leftNode, rightNode,
+            node.LineStart, node.ColumnStart, node.Span, left, right, data, messageSuffix);
+    }
+
+    /// <summary>
+    /// THE operator refusal (SPY0222) of a binary operator, an augmented assignment and every
+    /// comparison-chain link (P93 D3: a link is refused by its twin's message): reported at
+    /// (<paramref name="line"/>, <paramref name="column"/>) — the binary expression, the assignment,
+    /// or the link's left operand.
+    /// </summary>
+    private void ReportUnsupportedOperator(
+        string operatorSpelling, Expression? leftNode, Expression? rightNode,
+        int line, int column, Text.TextSpan? span,
+        SemanticType left, SemanticType right,
+        IReadOnlyDictionary<string, string>? data = null,
+        string? messageSuffix = null)
+    {
         var message = $"Type '{left.GetDisplayName()}' does not support operator '{operatorSpelling}' with operand of type '{right.GetDisplayName()}'";
-        messageSuffix ??= PromotionRefusalSteer(node, left, right);
+        messageSuffix ??= PromotionRefusalSteer(leftNode, rightNode, left, right);
         if (messageSuffix != null)
             message += messageSuffix;
 
         // The RIGHT operand is the refused value and the LEFT type is the slot it was measured
         // against, so `s += n or "z"` and `"a" + (n or "z")` carry the #1819 steer by construction
         // — the augmented form only ever reached this reporter, never the store seam.
-        ReportValueTypeMismatch(message, OperandValueNode(node), left,
-            node.LineStart, node.ColumnStart,
+        ReportValueTypeMismatch(message, rightNode, left,
+            line, column,
             code: DiagnosticCodes.Semantic.InvalidBinaryOperation,
-            span: node.Span, data: data);
+            span: span, data: data);
     }
 }

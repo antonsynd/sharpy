@@ -70,8 +70,9 @@ public class BuiltinTypeNameComparisonScanTests
         // Discovery collapses generic params to object; the read undoes that collapse (#889).
         ["TypeChecker.Expressions.Access.Calls.cs::NormalizeExpectedParamType"] =
             "object-collapse normalization (#889); single-spelling type",
-        // StrEnum members compare equal to their backing str (#1284) — a str-spelling read.
-        ["TypeChecker.Expressions.Operators.cs::CheckBinaryOp"] =
+        // StrEnum members compare equal to their backing str (#1284) — a str-spelling read. The arm
+        // moved with the comparison operators into the one link routine (P93 D3, plan-67a01f).
+        ["TypeChecker.Expressions.Operators.cs::CheckOperatorLink"] =
             "StrEnum == str comparison arm (#1284)",
         // str/string spelling hedge, TypeChecker's operator arm (pre-ruled: Operators.cs:1210).
         ["TypeChecker.Expressions.Operators.cs::IsStringType"] = "str/string spelling hedge",
