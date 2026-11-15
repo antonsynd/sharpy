@@ -18,7 +18,33 @@ namespace Sharpy.Compiler.CodeGen;
 internal partial class RoslynEmitter
 {
     private ExpressionSyntax GenerateExpression(Sharpy.Compiler.Parser.Ast.Expression expr)
+        => GenerateExpressionWithFacts(expr, deferReceiverUnwrap: false, out _);
+
+    /// <summary>
+    /// <see cref="GenerateExpression(Sharpy.Compiler.Parser.Ast.Expression)"/> leaving the node's recorded
+    /// receiver unwrap to the caller where it can (see <see cref="GenerateExpressionWithFacts"/>): a
+    /// comparison chain's middle operand (P93 D3).
+    /// </summary>
+    private ExpressionSyntax GenerateExpressionDeferringReceiverUnwrap(
+        Sharpy.Compiler.Parser.Ast.Expression expr, out ReceiverUnwrapKind? deferredUnwrap)
+        => GenerateExpressionWithFacts(expr, deferReceiverUnwrap: true, out deferredUnwrap);
+
+    /// <summary>
+    /// The generation every expression goes through, optionally leaving the
+    /// node's recorded receiver unwrap (#1792) to the caller. A node read once is unwrapped here; a
+    /// comparison chain's middle operand is generated once and read by TWO links, and its unwrap belongs
+    /// to the one read that is a protocol route's receiver (the container of a membership link) — the
+    /// other link reads the value as its binary twin does, wrapped (P93 D3). With
+    /// <paramref name="deferReceiverUnwrap"/> the unwrap is returned in <paramref name="deferredUnwrap"/>
+    /// instead of applied, unless a later fact on the node (char or sequence materialization, a slot
+    /// cast) must see the unwrapped value first, in which case it is applied here as always and
+    /// <paramref name="deferredUnwrap"/> is null.
+    /// </summary>
+    private ExpressionSyntax GenerateExpressionWithFacts(
+        Sharpy.Compiler.Parser.Ast.Expression expr, bool deferReceiverUnwrap, out ReceiverUnwrapKind? deferredUnwrap)
     {
+        deferredUnwrap = null;
+
         // Re-entry tripwire (#1334). Null in production — one null check, no state, no allocation.
         // Installed only by a test-side ICodeEmitterFactory, which is what makes double generation
         // a structural property rather than something each shape has to be tested for.
@@ -39,35 +65,46 @@ internal partial class RoslynEmitter
         // GetEnumerator) needs the payload. Applied FIRST, before the two materializations below,
         // because those describe the payload's own shape, not the wrapper's. Absent for every
         // reference payload and every bare receiver, so the default path is byte-identical.
-        var receiverUnwrap = _context.SemanticInfo?.GetReceiverUnwrap(expr);
-        if (receiverUnwrap != null)
-            generated = ApplyReceiverUnwrap(generated, receiverUnwrap.Kind);
-
+        //
         // Char materialization (#1291): the TypeChecker decided this expression yields a char-based CLR
         // value where its own semantic type says Sharpy `str`, and named the conversion. Applied before
         // the sequence wrap below, so a value needing both is converted first and then wrapped — the
         // order the two facts were decided in.
-        var charKind = _context.SemanticInfo?.GetCharMaterialization(expr);
-        if (charKind != null)
-            generated = MaterializeChar(generated, charKind.Value);
-
+        //
         // Sequence materialization (#1251): the TypeChecker decided this expression yields a CLR
         // sequence where its own semantic type says Sharpy collection, and named the collection to
         // build. Applied here, at the one choke point every expression passes through, so no position
         // can be reached that forgot to apply it. Absent for every expression whose emitted type
         // already matches its semantic type, which is all of them except CLR-sequence values — so the
         // default path is byte-identical.
-        var materializationTarget = _context.SemanticInfo?.GetSequenceMaterialization(expr);
-        if (materializationTarget != null)
-            generated = MaterializeSequence(generated, materializationTarget);
-
+        //
         // Argument slot cast (#1721): the TypeChecker bound this argument to a `T | None` slot of
         // an OVERLOADED callee and recorded the slot. Roslyn admits `T → Optional<T>` implicitly
         // (Sharpy.Core's conversion operator) where strict Optional does not, so without the cast
         // the C# binder sees a tie the selection already broke (CS0121 behind SPY0908). The None
         // operand of a CLR-reference `== None` carries the same fact (#2238): `x == (T?)null`. Applied
         // last: the value is converted and materialized first, then cast to its slot.
+        var receiverUnwrap = _context.SemanticInfo?.GetReceiverUnwrap(expr);
+        var charKind = _context.SemanticInfo?.GetCharMaterialization(expr);
+        var materializationTarget = _context.SemanticInfo?.GetSequenceMaterialization(expr);
         var slotCast = _context.SemanticInfo?.GetArgumentSlotCast(expr);
+
+        if (receiverUnwrap != null)
+        {
+            // A deferred unwrap is applied by the caller after this method returns, so it is deferred
+            // only when no later fact needs the unwrapped value first.
+            if (deferReceiverUnwrap && charKind == null && materializationTarget == null && slotCast == null)
+                deferredUnwrap = receiverUnwrap.Kind;
+            else
+                generated = ApplyReceiverUnwrap(generated, receiverUnwrap.Kind);
+        }
+
+        if (charKind != null)
+            generated = MaterializeChar(generated, charKind.Value);
+
+        if (materializationTarget != null)
+            generated = MaterializeSequence(generated, materializationTarget);
+
         return slotCast != null
             ? EmittedTreePrecedence.Cast(_typeMapper.MapSemanticType(slotCast), generated)
             : generated;
