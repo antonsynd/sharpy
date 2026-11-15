@@ -2,7 +2,9 @@
 # (plan P93 D3, #2648): the comparison link is its binary twin, so it compares the operand at its own
 # type, never at the needle's binding type. The capture is uncast; only the membership read casts it.
 # Each wrong cast flips a result: `str` as `object` compares by reference, a `Dog` as `Animal` skips
-# Dog's `__eq__`, a `long` as `float` rounds 2**53 + 1 to 2**53.
+# Dog's `__eq__`, a `long` as `float` rounds 2**53 + 1 to 2**53. A needle typed only by its slot (a
+# conditional with a `None` arm) is captured at that slot's type, its nullable lift: that cast cannot
+# change the comparison link.
 
 def mk(s: str) -> str:
     return s + "b"
@@ -31,6 +33,11 @@ def same(d: Dog) -> Dog:
     return d
 
 
+def tr(label: str, v: int) -> int:
+    print(label)
+    return v
+
+
 def main() -> None:
     a: str = "ab"
     b: str = mk("a")
@@ -57,3 +64,9 @@ def main() -> None:
     print(n == big() in fs)
     print(m == big() not in ones)
     print(n < big() not in ones)
+
+    flag: bool = len(fs) > 0
+    c: int | None = 1
+    ys: list[int | None] = [1, None]
+    print(c == (tr("m", 1) if flag else None) in ys)
+    print(c != (tr("m", 2) if flag else None) not in ys)

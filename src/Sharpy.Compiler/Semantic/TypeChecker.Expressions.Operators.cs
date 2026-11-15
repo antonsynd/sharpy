@@ -1329,6 +1329,18 @@ internal partial class TypeChecker
                 noneSlots[i, link.NoneOnLeft ? 0 : 1] = slot;
         }
 
+        // A middle operand that is also a membership needle is read by link k-1 and bound by link k:
+        // the type its one capture holds (ComparisonLinkLowering.CaptureType, P93 D3 ruling).
+        for (int k = 1; k < chain.Operands.Length - 1; k++)
+        {
+            if (links[k].Shape == ComparisonLinkShape.Membership
+                && _semanticInfo.TryGetMembershipNeedleBinding(chain.Operands[k], out var binding)
+                && MiddleNeedleCapturesAtBinding(operandTypes[k], binding))
+            {
+                links[k] = links[k] with { CaptureType = binding };
+            }
+        }
+
         // A None operand is emitted ONCE and read by both adjacent links, so it is cast to the typed-null
         // slot only when every link reading it proposes that same slot (the binary form's fact, #2238).
         // A middle None between two different CLR types (or a CLR type and a non-CLR operand) keeps the
@@ -1347,6 +1359,23 @@ internal partial class TypeChecker
 
         // All comparison chains return bool
         return SemanticType.Bool;
+    }
+
+    /// <summary>
+    /// Whether a chain's middle needle is captured at its binding (P93 D3 ruling): the binding cannot
+    /// change the comparison of the link that reads the operand first — it is the operand's own type,
+    /// or that type's nullable lift — or the operand has no own type C# can spell (<c>None</c>). A
+    /// reference up-cast (<c>str</c> to <c>object</c>) or a numeric conversion (<c>long</c> to
+    /// <c>float</c>) is neither, so that capture keeps the operand's own type.
+    /// </summary>
+    private static bool MiddleNeedleCapturesAtBinding(SemanticType? ownType, SemanticType binding)
+    {
+        if (ownType is null or VoidType)
+            return true;
+        if (ownType is UnknownType)
+            return false;
+        return ownType.CanonicalKey == binding.CanonicalKey
+            || (binding is NullableType lift && lift.UnderlyingType.CanonicalKey == ownType.CanonicalKey);
     }
 
     /// <summary>

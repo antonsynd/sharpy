@@ -244,6 +244,19 @@ public class MembershipOperandOrderEmissionTests : IntegrationTestBase
             "True", "False", "True", "False");
     }
 
+    /// <summary>D3 ruling: a middle needle the checker typed only by its slot (a conditional with a
+    /// <c>None</c> arm) is captured at the slot's type, its nullable lift — a cast that cannot change the
+    /// link reading it first — so the capture compiles; the comparison links still read their own types.</summary>
+    [Fact]
+    public void ChainMiddleNeedle_TypedOnlyByItsSlot_IsCapturedAtItsLift()
+    {
+        AssertRuns(Trace + "def main() -> None:\n    flag: bool = True\n    a: int | None = 1\n"
+            + "    ys: list[int | None] = [1, None]\n"
+            + "    print(a == (tr(\"m\", 1) if flag else None) in ys)\n"
+            + "    print(a != (tr(\"m\", 2) if flag else None) not in ys)\n",
+            "m", "True", "m", "True");
+    }
+
     /// <summary>D2: a needle over literals whose operator can raise (<c>//</c>, <c>%</c>, <c>/</c>) is an
     /// evaluation, so it raises before its container is read.</summary>
     [Fact]

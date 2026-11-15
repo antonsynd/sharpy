@@ -521,6 +521,31 @@ public class MembershipTotalityCheckerTests
         Assert.Equal("list[int32]", middle!.GetDisplayName());
     }
 
+    /// <summary>
+    /// D3 ruling: a middle needle's capture type (<see cref="ComparisonLinkLowering.CaptureType"/>, on the
+    /// membership link that binds it) is its binding only where that cannot change the link reading it
+    /// first — the operand's own type or its nullable lift (a conditional with a <c>None</c> arm, typed by
+    /// the slot alone). A reference up-cast or a numeric conversion records none: the capture is uncast.
+    /// </summary>
+    [Theory]
+    [InlineData("a: int | None = 1; flag: bool = True; ys: list[int | None] = [1, None]",
+        "a == (len(ys) if flag else None) in ys", "int32 | None")]
+    [InlineData("a: int = 1; xs: list[int] = [1]", "a == len(xs) in xs", "int32")]
+    [InlineData("s: str = \"ab\"; objs: list[object] = [s]", "s == s.upper() in objs", null)]
+    [InlineData("n: long = 1; fs: list[float] = [1.0]", "n == abs(n) in fs", null)]
+    public void MiddleNeedle_CapturesAtItsBinding_OnlyWhereItCannotChangeTheComparison(
+        string declarations, string expression, string? captureType)
+    {
+        var analysis = Analyze(declarations, expression);
+
+        Assert.True(analysis.CheckerErrors.Count == 0, analysis.Describe());
+        var chain = (ComparisonChain)TestedExpression(analysis);
+        var links = analysis.Info.GetComparisonChainLowering(chain)!.Links;
+        Assert.Equal(ComparisonLinkShape.Membership, links[1].Shape);
+        Assert.Null(links[0].CaptureType);
+        Assert.Equal(captureType, links[1].CaptureType?.GetDisplayName());
+    }
+
     // ---------------------------------------------------------------- D4: a chain head spelled like a type
 
     [Theory]
