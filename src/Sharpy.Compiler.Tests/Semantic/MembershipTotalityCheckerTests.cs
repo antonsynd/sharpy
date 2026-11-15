@@ -448,6 +448,79 @@ public class MembershipTotalityCheckerTests
         Assert.Contains("operator 'not in'", actual.Message);
     }
 
+    /// <summary>
+    /// D3 for consecutive membership links: in <c>h op0 m op1 c</c> with both operators <c>in</c> /
+    /// <c>not in</c>, <c>m</c> is link 1's needle AND link 0's container. Link 1 is still its twin
+    /// <c>m op1 c</c>: its container carries the twin's setup (the tuple array bridge, D1's
+    /// <c>Direct</c> projection), its needle the twin's binding, the link the twin's lowering and
+    /// diagnostics. The head link is clean, so every checker diagnostic is link 1's.
+    /// </summary>
+    [Theory]
+    [InlineData("xs: list[int] = [1]; t: tuple[list[int], list[int]] = ([1], [2])", "1", "in", "xs", "in", "t")]
+    [InlineData("xs: list[int] = [1]; t: tuple[list[int], list[int]] = ([1], [2])", "1", "not in", "xs", "in", "t")]
+    [InlineData("xs: list[int] = [1]; t: tuple[list[int], list[int]] = ([1], [2])", "1", "in", "xs", "not in", "t")]
+    [InlineData("xs: list[int] = [1]; t: tuple[list[int], list[int]] = ([1], [2])", "1", "in", "[]", "in", "t")]
+    [InlineData("ss: list[str] = [\"a\"]; t: tuple[list[int], list[int]] = ([1], [2])", "\"a\"", "in", "ss", "in", "t")]
+    [InlineData("xs: list[int] = [1]; bag: ListOf[int] = ListOf[int]([[1]])", "1", "in", "xs", "in", "bag")]
+    [InlineData("xs: list[int] = [1]; bag: ListOf[int] = ListOf[int]([[1]])", "1", "not in", "xs", "not in", "bag")]
+    [InlineData("xs: list[int] = [1]", "1", "in", "xs", "in", "[xs]")]
+    [InlineData("x: int | None = None; xs: list[int | None] = [None]", "x", "in", "xs", "in", "[xs]")]
+    public void ConsecutiveInLink_IsItsBinaryTwin(
+        string declarations, string head, string op0, string middle, string op1, string container)
+    {
+        var twin = Analyze(declarations, $"{middle} {op1} {container}");
+        var chained = Analyze(declarations, $"{head} {op0} {middle} {op1} {container}");
+
+        Assert.Equal(
+            twin.CheckerDiagnostics.Select(d => $"{d.Code} {d.Message}").OrderBy(s => s, StringComparer.Ordinal),
+            chained.CheckerDiagnostics.Select(d => $"{d.Code} {d.Message}").OrderBy(s => s, StringComparer.Ordinal));
+
+        var binary = (BinaryOp)TestedExpression(twin);
+        var chain = (ComparisonChain)TestedExpression(chained);
+        // Two compilations: the projection is compared by its facts, its element by display name.
+        static string? Facts(IterableArgumentProjection? p)
+            => p == null ? null : $"{p.Kind} {p.ElementType.GetDisplayName()} {p.TupleArity}";
+        Assert.Equal(
+            Facts(twin.Info.GetIterableProjection(binary.Right)),
+            Facts(chained.Info.GetIterableProjection(chain.Operands[2])));
+        Assert.Equal(
+            twin.Info.TryGetMembershipNeedleBinding(binary.Left, out var twinBinding) ? twinBinding!.GetDisplayName() : null,
+            chained.Info.TryGetMembershipNeedleBinding(chain.Operands[1], out var linkBinding) ? linkBinding!.GetDisplayName() : null);
+        Assert.Equal(
+            twin.Info.GetExpressionType(binary.Left)?.GetDisplayName(),
+            chained.Info.GetExpressionType(chain.Operands[1])?.GetDisplayName());
+        var link = chained.Info.GetComparisonChainLowering(chain)!.Links[1];
+        Assert.Equal(twin.Info.GetOperatorLoweringForIr(binary)?.Kind ?? OperatorLoweringKind.Native, link.Kind);
+        Assert.Equal(ComparisonLinkShape.Membership, link.Shape);
+    }
+
+    /// <summary>
+    /// Positive control for <see cref="ConsecutiveInLink_IsItsBinaryTwin"/>'s projection comparison:
+    /// the containers it compares carry a projection (null = null would pass vacuously), and the
+    /// middle operand, a list, is still set up as link 0's container (no projection: a list has its
+    /// own <c>Contains</c>) with link 0's needle bound under its slot.
+    /// </summary>
+    [Theory]
+    [InlineData("t: tuple[list[int], list[int]] = ([1], [2])", "t", IterableProjectionKind.TupleToArray, "list[int32]")]
+    [InlineData("bag: ListOf[int] = ListOf[int]([[1]])", "bag", IterableProjectionKind.Direct, "list[int32]")]
+    public void ConsecutiveInLinks_SetUpBothContainers(
+        string declaration, string container, IterableProjectionKind kind, string element)
+    {
+        var analysis = Analyze($"xs: list[int] = [1]; {declaration}", $"1 in xs in {container}");
+
+        Assert.True(analysis.Errors.Count == 0, analysis.Describe());
+        var chain = (ComparisonChain)TestedExpression(analysis);
+        var projection = analysis.Info.GetIterableProjection(chain.Operands[2]);
+        Assert.NotNull(projection);
+        Assert.Equal(kind, projection!.Kind);
+        Assert.Equal(element, projection.ElementType.GetDisplayName());
+        Assert.Null(analysis.Info.GetIterableProjection(chain.Operands[1]));
+        Assert.True(analysis.Info.TryGetMembershipNeedleBinding(chain.Operands[0], out var head));
+        Assert.Equal("int32", head!.GetDisplayName());
+        Assert.True(analysis.Info.TryGetMembershipNeedleBinding(chain.Operands[1], out var middle));
+        Assert.Equal("list[int32]", middle!.GetDisplayName());
+    }
+
     // ---------------------------------------------------------------- D4: a chain head spelled like a type
 
     [Theory]

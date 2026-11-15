@@ -1293,14 +1293,15 @@ internal partial class TypeChecker
 
         // Pass 2: check needle operands under the container's element type expectation — the slot
         // the binary form pushes (MembershipNeedleSlot), recorded on the container the same way.
-        for (int ni = 0; ni < chain.Operands.Length; ni++)
+        // Right to left (P93 D3): in `a in b in c` the middle operand is link 1's needle AND link 0's
+        // container, so it is checked first, as a needle under c's slot (the twin `b in c`), and only
+        // then set up as a's container (the twin `a in b`). Every container is therefore typed when
+        // its needle is reached — a non-needle in pass 1, a needle earlier in this pass — and every
+        // link's container takes the twin's setup whether or not it is also a needle.
+        for (int ni = chain.Operators.Length - 1; ni >= 0; ni--)
         {
             if (!needleIndices.Contains(ni) || operandTypes[ni] != null)
                 continue;
-
-            // Ensure the container (ni + 1) is checked — it might itself be a needle for a
-            // later link and was deferred in pass 1.
-            operandTypes[ni + 1] ??= CheckExpression(chain.Operands[ni + 1]);
 
             SemanticType? elementType = null;
             if (operandTypes[ni + 1] is not UnknownType)
