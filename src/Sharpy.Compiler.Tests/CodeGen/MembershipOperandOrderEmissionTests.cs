@@ -131,6 +131,28 @@ public class MembershipOperandOrderEmissionTests : IntegrationTestBase
             "False", "False", "False");
     }
 
+    /// <summary>
+    /// The bare-name arm for every binary operator and chain link (lead ruling on T6's sibling cell): a
+    /// name read on the left is captured before a right operand's hoist (a spread) whose walrus rebinds
+    /// it — a binary operator, a chain's head and middle operand, and a call argument. Read from the
+    /// emitted syntax alone (<c>HoistRebindsARead</c>).
+    /// </summary>
+    [Fact]
+    public void BareNameLeftOperand_IsReadBeforeARightOperandsHoistRebindsIt()
+    {
+        AssertRuns(Trace + "def two(a: int, b: int) -> int:\n    return a * 10 + b\n\n"
+            + "def main() -> None:\n"
+            + "    x: int = 1\n    print(x == len([*keep((x := 5), [5])]))\n"
+            + "    x = 1\n    print(x + len([*keep((x := 5), [5])]))\n"
+            + "    x = 1\n    print(x < len([*keep((x := 5), [5, 6])]))\n"
+            + "    x = 1\n    print(x != len([*keep((x := 5), [5])]))\n"
+            + "    y: int = 1\n    print(0 < y == len([*keep((y := 5), [5, 6, 7, 8, 9])]))\n"
+            + "    y = 1\n    print(0 < y < len([*keep((y := 5), [5, 6])]))\n"
+            + "    x = 1\n    print(x == len([*keep((x := 5), [5])]) == 1)\n"
+            + "    x = 1\n    print(two(x, len([*keep((x := 5), [5])])))\n",
+            "True", "2", "True", "False", "False", "True", "True", "11");
+    }
+
     /// <summary>D2, the count-first overload (M2): <c>n * s</c> evaluates <c>n</c> first.</summary>
     [Fact]
     public void StringRepeat_WithTheStringOnTheRight_EvaluatesTheCountFirst()

@@ -991,6 +991,20 @@ internal partial class RoslynEmitter
                     : GenerateExpression(chain.Operands[captured]));
         }
 
+        // A bare-name middle operand is read by link i-1 and again by link i, after operand i+1's
+        // hoists: when those rebind it (a walrus in a spread, `0 < y == len([*keep((y := 5), xs)])`),
+        // it is captured by link i-1 like a non-trivial middle, so link i reads the value Python
+        // evaluated once (P93 D2). Read from the emitted syntax alone (HoistRebindsARead).
+        for (int i = 1; i < operandCount - 1; i++)
+        {
+            if (tempNames[i] == null
+                && chain.Operands[i] is Parser.Ast.Identifier
+                && HoistRebindsARead(operandEvals[i + 1], operandExprs[i]))
+            {
+                tempNames[i] = GenerateTempVarName("cmp");
+            }
+        }
+
         // Whether link i's left operand syntax is a local already holding its value: a middle operand
         // captured by link i-1, or operand 0 captured ahead of operand 1's hoists (below).
         var leftEvaluated = new bool[linkCount];
@@ -1000,8 +1014,9 @@ internal partial class RoslynEmitter
         // Operands 0 and 1 always run, in that order. Operand 1's hoists are flushed as statements
         // before the chain expression, so operand 0 is captured after its own hoists and ahead of
         // operand 1's when it has an effect (the ordering rule of GenerateExpressionsInOrder, applied
-        // to the chain), or when link 0 binds it as a membership needle: then the local takes the
-        // needle's binding type, and a bare name is read before the container can rebind it (P93 D2).
+        // to the chain) or is a bare name operand 1's hoists rebind, or when link 0 binds it as a
+        // membership needle: then the local takes the needle's binding type, and a bare name is read
+        // before the container can rebind it (P93 D2).
         foreach (var stmt in operandEvals[0])
             HoistEvaluation(stmt);
         if (operandEvals[1].Count > 0)
@@ -1011,7 +1026,8 @@ internal partial class RoslynEmitter
                 operandExprs[0] = HoistBoundNeedle(headBinding, operandExprs[0], GenerateTempVarName("cmpOrder"));
                 leftEvaluated[0] = true;
             }
-            else if (!IsSideEffectFree(chain.Operands[0]))
+            else if (!IsSideEffectFree(chain.Operands[0])
+                || (chain.Operands[0] is Parser.Ast.Identifier && HoistRebindsARead(operandEvals[1], operandExprs[0])))
             {
                 var orderTemp = GenerateTempVarName("cmpOrder");
                 HoistEvaluation(LocalDeclarationStatement(
