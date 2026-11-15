@@ -304,6 +304,7 @@ grapheme.slice("Héllo", 0, 3)  # "Hél"
 
 See [docs/design/](../design/) for standalone proposal documents:
 - [Property Observers (`before_set`/`after_set`)](../design/property-observers-proposal.md) — [#416](https://github.com/antonsynd/sharpy/issues/416) — **shipped experimental** as `property_observers`.
+- [Contracts and Tiered Verification](../design/contracts-and-verification-proposal.md) — `@requires`/`@ensures`/`@pure` checked at runtime, by derived property tests, by an SMT solver, and optionally via Lean export. Not committed.
 
 ---
 
