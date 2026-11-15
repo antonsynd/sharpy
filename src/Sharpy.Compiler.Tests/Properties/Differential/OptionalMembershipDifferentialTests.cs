@@ -3104,8 +3104,18 @@ public abstract class MembershipOperatorDifferentialBase : IntegrationTestBase
     /// position (a chain link after a traced head operand, <c>tr(h) == needle op container</c>); its reference binds
     /// the head, then the needle to a name declared by the slot's type, then applies the operator to the name (a
     /// chain: the head link first, the membership link only when it holds, and the needle bound unannotated, at its
-    /// own type, as the head link types it: owner ruling 2026-11-15, plan-67a01f R2, and R3). Both print their value. <c>main</c> declares each form's
+    /// own type, as the head link types it, or spelled in place when it is a constant: owner ruling 2026-11-15,
+    /// plan-67a01f R2 and R3). Both print their value. <c>main</c> declares each form's
     /// operands once and calls every function of the form over them.</summary>
+    /// <summary>The left-operand forms that are a CONSTANT chain middle (owner ruling 2026-11-15, plan-67a01f R3,
+    /// "By value, cast"): literals the binary <c>x in c</c> admits by value, which the checker's constant-middle rule
+    /// (<c>TypeChecker.IsConstantNeedle</c>) admits by value too. A traced form (<c>-@</c>, <c>@ + 1</c>) has an
+    /// evaluation, so it is never one.</summary>
+    private static readonly HashSet<Type> ConstantMiddleKinds = new()
+    {
+        typeof(IntegerLiteral), typeof(FloatLiteral), typeof(StringLiteral), typeof(BooleanLiteral), typeof(NoneLiteral),
+    };
+
     private static Program LeftFormProgramFor(IReadOnlyList<LeftCell> cells, IReadOnlySet<int> active)
     {
         var lines = new List<string>();
@@ -3174,17 +3184,20 @@ public abstract class MembershipOperatorDifferentialBase : IntegrationTestBase
                 if (chain)
                 {
                     // The chain's middle operand is typed as the head link, its left twin, types it, never by the
-                    // membership slot (P93 D3, owner ruling 2026-11-15, plan-67a01f R2: "own type, cast at needle"),
-                    // and admitted at the slot by that type, never by its constant shape (lead ruling on R3): EVERY
-                    // middle is bound to an UNANNOTATED name, its own type, and the membership link reads that name as
-                    // it reads a named needle. The head link reads the needle in place when it has no evaluation (no
-                    // traced read: a literal, a name, a lambda), so it keeps its twin's literal typing (`h == None`).
+                    // membership slot (P93 D3, owner ruling 2026-11-15, plan-67a01f R2: "own type, cast at needle"):
+                    // it is bound to an UNANNOTATED name, its own type, and the membership link reads that name as it
+                    // reads a named needle. A CONSTANT middle (a literal: no evaluation) is admitted by its value, as
+                    // the binary `1 in xs` admits it (owner ruling 2026-11-15, plan-67a01f R3, "By value, cast"), so it
+                    // is spelled in place in both links. The head link also reads any other needle with no traced read
+                    // (a name, a lambda) in place, so it keeps its twin's typing.
                     var traced = form.Needle.Contains('@');
+                    var constant = ConstantMiddleKinds.Contains(cell.Kind);
                     Add($"    t9 = tr({id}, 9, h)", id);
-                    Add($"    t0 = {needle}", id);
+                    if (!constant)
+                        Add($"    t0 = {needle}", id);
                     Add($"    v = t9 == {(traced ? "t0" : needle)}", id);
                     Add("    if v:", id);
-                    Add($"        v = t0 {op} {container}", id);
+                    Add($"        v = {(constant ? needle : "t0")} {op} {container}", id);
                 }
                 else
                 {
