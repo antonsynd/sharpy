@@ -8,7 +8,7 @@
 # GENERATED, HUMAN-REVIEWED: bash build_tools/regenerate_corpus_pins.sh rewrites the rows and the `# total` lines; review
 # the diff (a new stem's rows are its own; a moved row of an existing stem is a finding until explained). A new key's cite row in
 # code-action-shape-allowlist.txt is written by hand (the loader names it), and so is a drained key's deletion.
-# total stems identity keys=14 rows=2076
+# total stems identity keys=14 rows=2078
 # total stems crlf keys=8 rows=282
 # total stems cr keys=8 rows=291
 # total stems comment keys=7 rows=285
@@ -651,6 +651,7 @@ extract-method identity diagnostics operators/comparison_chain_class_head_refuse
 extract-method identity diagnostics operators/comparison_chain_enum_member_head_identity_2669 # #2294
 extract-method identity diagnostics operators/comparison_chain_mixed_lowerings_1642 # #2294
 extract-method identity diagnostics operators/iteration_lowering_1623 # #2294
+extract-method identity diagnostics operators/membership_inherited_generic_dunder_2653 # #2294
 extract-method identity diagnostics operators/membership_iterable_declares_contains_2653 # #2294
 extract-method identity diagnostics operators/operator_lowering_augmented_narrow_2443 # #2294
 extract-method identity diagnostics operators/operator_lowering_pow_decimal_augmented_2443 # #2294
@@ -1993,6 +1994,7 @@ wrap-try identity diagnostics nested_types/nested_underscore_within_hierarchy_12
 wrap-try identity diagnostics operand_order/index_store_1853 # #2296
 wrap-try identity diagnostics operand_precedence_seams_1727 # #2296
 wrap-try identity diagnostics operators/augassign_shift_long_count_1643 # #2296
+wrap-try identity diagnostics operators/membership_inherited_generic_dunder_2653 # #2296
 wrap-try identity diagnostics operators/membership_iterable_declares_contains_2653 # #2296
 wrap-try identity diagnostics operators/negative_literal_width_1304_1623 # #2296
 wrap-try identity diagnostics operators/optional_needle_membership_bytes_needle_2635 # #2296
