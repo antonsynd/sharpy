@@ -755,9 +755,9 @@ namespace Sharpy.Stdlib.Tests.Spy.Collections.CollectionsModuleTests
 #line (343, 5) - (343, 28) 12 "src/Sharpy.Stdlib.Tests/Spy/collections/collections_module_tests.spy"
             Xunit.Assert.Equal(2, global::Sharpy.Builtins.Len(items));
 #line (344, 5) - (344, 31) 12 "src/Sharpy.Stdlib.Tests/Spy/collections/collections_module_tests.spy"
-            Xunit.Assert.True(items.Contains(("x", 10)));
+            Xunit.Assert.True(((global::System.ValueTuple<string, int>)("x", 10) is var __in_7 && items.Contains(__in_7)));
 #line (345, 5) - (345, 31) 12 "src/Sharpy.Stdlib.Tests/Spy/collections/collections_module_tests.spy"
-            Xunit.Assert.True(items.Contains(("y", 20)));
+            Xunit.Assert.True(((global::System.ValueTuple<string, int>)("y", 20) is var __in_8 && items.Contains(__in_8)));
 #line hidden
         }
 
@@ -890,7 +890,7 @@ namespace Sharpy.Stdlib.Tests.Spy.Collections.CollectionsModuleTests
 #line (405, 5) - (405, 90) 12 "src/Sharpy.Stdlib.Tests/Spy/collections/collections_module_tests.spy"
             global::Sharpy.DefaultDict<string, int> dd = new global::Sharpy.DefaultDict<string, int>(() => 0);
 #line (406, 5) - (407, 22) 12 "src/Sharpy.Stdlib.Tests/Spy/collections/collections_module_tests.spy"
-            bool __raised_7 = false;
+            bool __raised_9 = false;
 #line hidden
             try
             {
@@ -900,10 +900,10 @@ namespace Sharpy.Stdlib.Tests.Spy.Collections.CollectionsModuleTests
             }
             catch (KeyError)
             {
-                __raised_7 = true;
+                __raised_9 = true;
             }
 
-            if (!__raised_7)
+            if (!__raised_9)
                 throw new global::Sharpy.AssertionError("Expected KeyError to be raised, but no exception was raised");
         }
 
@@ -931,7 +931,7 @@ namespace Sharpy.Stdlib.Tests.Spy.Collections.CollectionsModuleTests
 #line (420, 5) - (420, 90) 12 "src/Sharpy.Stdlib.Tests/Spy/collections/collections_module_tests.spy"
             global::Sharpy.DefaultDict<string, int> dd = new global::Sharpy.DefaultDict<string, int>(() => 0);
 #line (421, 5) - (422, 29) 12 "src/Sharpy.Stdlib.Tests/Spy/collections/collections_module_tests.spy"
-            bool __raised_8 = false;
+            bool __raised_10 = false;
 #line hidden
             try
             {
@@ -941,10 +941,10 @@ namespace Sharpy.Stdlib.Tests.Spy.Collections.CollectionsModuleTests
             }
             catch (KeyError)
             {
-                __raised_8 = true;
+                __raised_10 = true;
             }
 
-            if (!__raised_8)
+            if (!__raised_10)
                 throw new global::Sharpy.AssertionError("Expected KeyError to be raised, but no exception was raised");
         }
 
