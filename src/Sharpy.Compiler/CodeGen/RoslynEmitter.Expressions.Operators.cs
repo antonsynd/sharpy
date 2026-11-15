@@ -475,7 +475,9 @@ internal partial class RoslynEmitter
     /// <summary>
     /// A literal, or operators over literals (<c>-1</c>, <c>(2 + 3)</c>): an operand with no
     /// evaluation, whose order beside its container cannot be observed (P93 D2). Deliberately
-    /// partial: every other form answers <c>false</c> and is bound, which is always correct.
+    /// partial: every other form answers <c>false</c> and is bound, which is always correct. An
+    /// operator that can raise over literals (<c>1 // 0</c>, <c>1 % 0</c>, <c>1 / 0</c>, <c>**</c>) is
+    /// an evaluation whose exception must precede the container's (#2645), so it is not literal-only.
     /// </summary>
     private static bool IsLiteralOnly(Expression expr) => expr switch
     {
@@ -483,9 +485,17 @@ internal partial class RoslynEmitter
             or NoneLiteral or EllipsisLiteral => true,
         Parenthesized parenthesized => IsLiteralOnly(parenthesized.Expression),
         UnaryOp unary => IsLiteralOnly(unary.Operand),
-        BinaryOp binary => IsLiteralOnly(binary.Left) && IsLiteralOnly(binary.Right),
+        BinaryOp binary => !CanRaiseOverLiterals(binary.Operator)
+            && IsLiteralOnly(binary.Left) && IsLiteralOnly(binary.Right),
         _ => false,
     };
+
+    /// <summary>
+    /// A binary operator whose value over literal operands can be an exception: a division by zero
+    /// (<c>/</c>, <c>//</c>, <c>%</c>) or a power that raises (<c>0 ** -1</c>) (P93 D2, #2645).
+    /// </summary>
+    private static bool CanRaiseOverLiterals(BinaryOperator op) => op is BinaryOperator.Divide
+        or BinaryOperator.FloorDivide or BinaryOperator.Modulo or BinaryOperator.Power;
 
     /// <summary>
     /// Hoists a bound needle into <c>Binding name = needle;</c> and returns the local — the needle

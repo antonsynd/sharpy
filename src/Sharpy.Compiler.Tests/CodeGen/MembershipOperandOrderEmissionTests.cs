@@ -243,4 +243,16 @@ public class MembershipOperandOrderEmissionTests : IntegrationTestBase
             + "    print(n == big() in fs)\n",
             "True", "False", "True", "False");
     }
+
+    /// <summary>D2: a needle over literals whose operator can raise (<c>//</c>, <c>%</c>, <c>/</c>) is an
+    /// evaluation, so it raises before its container is read.</summary>
+    [Fact]
+    public void RaisingLiteralNeedle_IsEvaluatedBeforeContainer()
+    {
+        AssertRuns(Trace + "def main() -> None:\n    xs: list[int] = [1, 2]\n    fs: list[float] = [1.0]\n"
+            + "    try:\n        print((1 // 0) in tr(\"container\", xs))\n    except ZeroDivisionError:\n        print(\"zde\")\n"
+            + "    try:\n        print((1 % 0) not in tr(\"container\", xs))\n    except ZeroDivisionError:\n        print(\"zde\")\n"
+            + "    try:\n        print((1 / 0) in tr(\"container\", fs))\n    except ZeroDivisionError:\n        print(\"zde\")\n",
+            "zde", "zde", "zde");
+    }
 }
