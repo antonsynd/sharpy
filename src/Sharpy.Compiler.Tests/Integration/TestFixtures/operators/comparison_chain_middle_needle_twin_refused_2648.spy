@@ -5,11 +5,12 @@
 # arm has no type of its own, nor has an empty list that is a container (SPY0227; `a is (d if flag
 # else k)`, `n == (gl() if flag else None)`, `s < (gs() if flag else None)`, `1 in []` are each
 # SPY0227 alone). Where the right twin refuses the needle at its own type, the chain refuses as
-# `p in fss` does for `p: list[int]` (SPY0222). A constant middle is admitted at the slot by its
-# type, never by its constant shape (lead ruling on R3, applying R2's "as a named operand is"):
-# `h == -1 in i8` over `i8: list[int8]` is refused as `p in i8` is for `p: int` (SPY0222). CPython
-# 3.15 runs each line alone but the `<` one, which raises TypeError ('<' not supported between
-# 'str' and 'NoneType').
+# `p in fss` does for `p: list[int]` (SPY0222); a tuple literal middle is admitted by its type too
+# (`(1, -1)` is a `tuple[int, int]`, which no `tuple[int8, int8]` slot takes). A constant middle is
+# admitted by its value where it fits (owner ruling 2026-11-15, plan-67a01f R3, "By value, cast"),
+# so one out of the slot's range is refused as the binary `300 in i8` is (SPY0222). CPython 3.15 runs
+# each line alone but the `<` one, which raises TypeError ('<' not supported between 'str' and
+# 'NoneType').
 
 class Animal:
     pass
@@ -65,13 +66,9 @@ def main() -> None:
     print(1 in [] in t)
     print(1 not in [] in t)
 
-    h: int = 1
+    h: int = 300
     i8: list[int8] = [1, -1]
-    u8: list[uint8] = [2]
-    print(h == -1 in i8)
-    print(h == (1 + 1) in i8)
-    print(h == (1 + 1) in u8)
-    print(h == +2 in i8)
-    print(h == (1) in i8)
-    print(h < -1 not in i8)
-    print(h == 1 in i8)
+    print(h == 300 in i8)
+    t2: tuple[int, int] = (1, -1)
+    t8: list[tuple[int8, int8]] = [(1, -1)]
+    print(t2 == (1, -1) in t8)

@@ -1342,7 +1342,7 @@ internal partial class TypeChecker
             var link = CheckOperatorLink(
                 OperatorSite.OfLink(chain, i), operandTypes[i]!, operandTypes[i + 1]!, operandSlots[i + 1],
                 headCheckType: i == 0 ? chain.HeadCheckType : null,
-                isChainLink: true, middleNeedle: i > 0);
+                isChainLink: true, needleByTypeAlone: i > 0 && !IsConstantNeedle(chain.Operands[i]));
             links.Add(link.Lowering);
             if (link.NoneSlot is { } slot)
                 noneSlots[i, link.NoneOnLeft ? 0 : 1] = slot;
@@ -1405,9 +1405,11 @@ internal partial class TypeChecker
     /// <para>For a membership link <paramref name="leftType"/> is the needle's type and
     /// <paramref name="rightType"/> the container's. A binary needle, or a chain's head needle, was
     /// already checked under the slot <see cref="MembershipNeedleSlot"/> gave it; a chain's MIDDLE
-    /// needle (<paramref name="middleNeedle"/>) was checked as its left link's right operand, its own
-    /// type, and is admitted at the slot by that type alone, never by its constant shape, as a named
-    /// needle is (owner ruling 2026-11-15, plan-67a01f R2). <paramref name="operandSlot"/> is the user-dunder
+    /// needle was checked as its left link's right operand, its own type (owner ruling 2026-11-15,
+    /// plan-67a01f R2). A non-constant middle (<paramref name="needleByTypeAlone"/>) is admitted at the
+    /// slot by that type alone, as a named needle is; a constant one (<see cref="IsConstantNeedle"/>)
+    /// by its value where it fits, as the binary <c>1 in xs</c> admits it (owner ruling 2026-11-15,
+    /// plan-67a01f R3, "By value, cast"). <paramref name="operandSlot"/> is the user-dunder
     /// slot the right operand was admitted into (<see cref="CheckOperatorOperand"/>).
     /// <paramref name="headCheckType"/> is set for link 0 of a chain whose head was spelled like a
     /// type (P93 D4): that link takes <see cref="CheckTypeCheck"/>'s rule
@@ -1417,7 +1419,7 @@ internal partial class TypeChecker
     /// </summary>
     private LinkVerdict CheckOperatorLink(
         OperatorSite site, SemanticType leftType, SemanticType rightType, SemanticType? operandSlot,
-        TypeAnnotation? headCheckType = null, bool isChainLink = false, bool middleNeedle = false)
+        TypeAnnotation? headCheckType = null, bool isChainLink = false, bool needleByTypeAlone = false)
     {
         var op = site.Operator;
         var shape = LinkShapeOf(site);
@@ -1439,7 +1441,7 @@ internal partial class TypeChecker
         // container answers as `T`.
         if (op is BinaryOperator.In or BinaryOperator.NotIn)
         {
-            var membershipKind = ClassifyMembership(site, leftType, ProtocolReceiverView(rightType), middleNeedle);
+            var membershipKind = ClassifyMembership(site, leftType, ProtocolReceiverView(rightType), needleByTypeAlone);
             return new LinkVerdict(SemanticType.Bool, new ComparisonLinkLowering(membershipKind, null, shape));
         }
 
@@ -1781,6 +1783,22 @@ internal partial class TypeChecker
     }
 
     /// <summary>
+    /// A CONSTANT chain middle needle (owner ruling 2026-11-15, plan-67a01f R3, "By value, cast"): a
+    /// literal, or unary and binary operators over literals (<c>-1</c>, <c>(1 + 1)</c>), parentheses
+    /// aside — the shape the binary <c>x in c</c> admits by value. Such a middle is admitted at its slot by
+    /// its value where it fits, as the twin <c>1 in xs</c> is; every other middle (a tuple or list literal
+    /// included) by its type alone (R2).
+    /// </summary>
+    private static bool IsConstantNeedle(Expression expr) => expr switch
+    {
+        IntegerLiteral or FloatLiteral or StringLiteral or BooleanLiteral or NoneLiteral => true,
+        Parenthesized parenthesized => IsConstantNeedle(parenthesized.Expression),
+        UnaryOp unary => IsConstantNeedle(unary.Operand),
+        BinaryOp binary => IsConstantNeedle(binary.Left) && IsConstantNeedle(binary.Right),
+        _ => false,
+    };
+
+    /// <summary>
     /// The needle-vs-slot check for <c>in</c>/<c>not in</c> (#1750, R-U), shared by the binary site
     /// and every chain link, and the ONE place a membership lowering kind is decided (#2635). A
     /// container without a resolvable slot is oblivious — the container-presence check (SPY0320) in
@@ -1814,8 +1832,8 @@ internal partial class TypeChecker
     /// seam takes, or a refused needle; every check records or forgets, so a re-checked lambda body
     /// keeps no stale binding.</para>
     /// </summary>
-    /// <param name="admitByTypeAlone">A chain's middle needle (R2): admitted at a slot by its type,
-    /// never by the store seam's value shapes.</param>
+    /// <param name="admitByTypeAlone">A chain's non-constant middle needle (R2, R3): admitted at a slot
+    /// by its type, never by the store seam's value shapes.</param>
     /// <returns>The lowering kind of this membership test; <see cref="OperatorLoweringKind.Native"/>
     /// when nothing special applies, the container is oblivious, or the needle was refused.</returns>
     private OperatorLoweringKind ClassifyMembership(
@@ -1823,9 +1841,10 @@ internal partial class TypeChecker
     {
         var needle = site.Left;
         // The node the store seam reads a value SHAPE from (an in-range constant, a conditional of
-        // admitted arms). None for a chain's middle needle (R2): it is read as a named needle is, so
-        // `h == -1 in cs` over `cs: list[int8]` is refused as `p in cs` (p: int) is, never admitted by
-        // the constant shape of a value the chain captured at `int`.
+        // admitted arms). None for a chain's non-constant middle needle (R2): it is read as a named
+        // needle is (`t == (1, 2) in ts` by its tuple type). A constant middle keeps its node (R3, "By
+        // value, cast"): `h == -1 in cs` over `cs: list[int8]` admits -1 by value, as `-1 in cs` does,
+        // and the emitter casts the captured value to the binding at the `in` read.
         var shapeNode = admitByTypeAlone ? null : needle;
         var slots = ResolveMembershipSlots(containerType, out var clrFormals);
         if (slots.Count == 0)

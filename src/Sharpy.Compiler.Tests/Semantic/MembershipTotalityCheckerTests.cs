@@ -527,7 +527,9 @@ public class MembershipTotalityCheckerTests
     /// D3, owner ruling 2026-11-15 (plan-67a01f R2, "own type, cast at needle"): a middle operand that is
     /// also the next link's <c>in</c> needle is typed as its LEFT twin (<c>head op0 middle</c>) types its
     /// right operand, never under the needle slot — and the membership link still records the needle's
-    /// binding, the slot the emitter casts it to at that link's read alone (as for a named needle).
+    /// binding, the slot the emitter casts it to at that link's read alone (as for a named needle). A
+    /// constant middle (<c>-1</c>, <c>(1 + 1)</c>) is bound at a narrower slot by its value (owner ruling
+    /// 2026-11-15, plan-67a01f R3, "By value, cast"), as the binary <c>-1 in i8</c> binds it.
     /// </summary>
     [Theory]
     [InlineData("t: tuple[int, int] = (1, 2); ts: list[tuple[float, float]] = [(1.0, 2.0)]",
@@ -540,6 +542,10 @@ public class MembershipTotalityCheckerTests
     [InlineData("n: long = 1; fs: list[float] = [1.0]", "n", "<", "abs(n)", "in", "fs", "float64")]
     [InlineData("xs: list[int] = [1, 2]; ys: list[int | None] = [2, None]", "1", "<", "len(xs)", "in", "ys", "int32 | None")]
     [InlineData("f: float = 1.0; fs: list[float] = [1.0]", "f", "==", "1", "in", "fs", "float64")]
+    [InlineData("h: int = 1; i8: list[int8] = [1, -1]", "h", "==", "-1", "in", "i8", "int8")]
+    [InlineData("h: int = 1; i8: list[int8] = [1, -1]", "h", "==", "(1 + 1)", "in", "i8", "int8")]
+    [InlineData("h: int = 1; i8: list[int8] = [1, -1]", "h", "<", "1", "not in", "i8", "int8")]
+    [InlineData("h: int = 1; u8: list[uint8] = [2]", "h", "==", "+2", "in", "u8", "uint8")]
     [InlineData("f: float = 1.0; fs: list[float] = [1.0]", "f", "!=", "(0 + 1)", "not in", "fs", "float64")]
     public void MiddleNeedle_IsTypedAsItsLeftTwin_AndBoundAtItsSlot(
         string declarations, string head, string op0, string middle, string op1, string container, string binding)
@@ -561,8 +567,8 @@ public class MembershipTotalityCheckerTests
     /// <summary>
     /// The refusal half of the R2 ruling: where the left twin refuses its right operand, the chain refuses
     /// with the twin's code (a conditional with a <c>None</c> arm, an empty list, no expectation: SPY0227); where the
-    /// right twin refuses the needle at its own type, the chain refuses as <c>p in c</c> does — a constant middle
-    /// included, admitted by its type and never by its constant shape (R3: <c>h == -1 in i8</c> as <c>p in i8</c>).
+    /// right twin refuses the needle, the chain refuses as it does: a tuple literal middle by its type, as
+    /// <c>p in t8</c>; a constant middle by its value (owner ruling R3, "By value, cast"), as <c>300 in i8</c>.
     /// </summary>
     [Theory]
     [InlineData("a: int | None = 1; flag: bool = True; ys: list[int | None] = [1, None]",
@@ -570,9 +576,9 @@ public class MembershipTotalityCheckerTests
     [InlineData("xs: list[int] = [1, 2]; p: list[int] = [1, 2]; fss: list[list[float]] = [[1.0, 2.0]]",
         "p in fss", "xs == [1, 2] in fss")]
     [InlineData("t: tuple[list[int], list[int]] = ([1], [2])", "1 in []", "1 in [] in t")]
-    [InlineData("h: int = 1; p: int = 1; i8: list[int8] = [1, -1]", "p in i8", "h == -1 in i8")]
-    [InlineData("h: int = 1; p: int = 1; i8: list[int8] = [1, -1]", "p in i8", "h == (1 + 1) in i8")]
-    [InlineData("h: int = 1; p: int = 1; i8: list[int8] = [1, -1]", "p in i8", "h == 1 in i8")]
+    [InlineData("h: int = 1; i8: list[int8] = [1, -1]", "300 in i8", "h == 300 in i8")]
+    [InlineData("t: tuple[int, int] = (1, -1); p: tuple[int, int] = (1, -1); t8: list[tuple[int8, int8]] = [(1, -1)]",
+        "p in t8", "t == (1, -1) in t8")]
     public void MiddleNeedle_RefusedByATwin_IsRefusedWithItsCode(string declarations, string twinExpression, string expression)
     {
         var twin = Analyze(declarations, twinExpression);

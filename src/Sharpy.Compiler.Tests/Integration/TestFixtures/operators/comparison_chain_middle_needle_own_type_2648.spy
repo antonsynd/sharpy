@@ -69,7 +69,20 @@ def main() -> None:
     print(xs == [1, 2] not in xss)
     print(xs == [2, 1] in xss)
 
-    # a constant middle admitted at a wider slot by its type: compared at int, read as a float
+    # a constant middle admitted at a narrower slot by its value, as `-1 in i8` is (owner ruling
+    # 2026-11-15, plan-67a01f R3, "By value, cast"), compared at int and cast at the `in` read
+    h8: int = 1
+    i8: list[int8] = [1, -1]
+    u8: list[uint8] = [2]
+    print(h8 == 1 in i8)
+    print(h8 == -1 in i8)
+    print(h8 == (1 + 1) in i8)
+    print(h8 == (1 + 1) in u8)
+    print(h8 == +2 in i8)
+    print(h8 == (1) in i8)
+    print(h8 < -1 not in i8)
+
+    # a constant middle admitted at a wider slot: compared at int, read as a float
     f: float = 1.0
     fs: list[float] = [1.0, 2.0]
     print(f == 1 in fs)
