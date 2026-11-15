@@ -136,6 +136,7 @@ Product @ 7be6704c4 (`run`); oracle CPython 3.15.2; stage 0 @ de55a06a0.
 
 - @ 907aad013 — revised before the first pass: the owner's two rulings of 2026-11-13 recorded (#2648 comment 6865267508; #2645 comment 6865268833). No decision, predicate, mutation or count changed.
 - @ 7cf933cec — revised after the 1st pass (NEEDS REVISION, Dimension 4, Dimension 6, Dimension 7): stage 0 @ 1304d2af1 answers findings 1, 2 (the axis), 4 and the bulk ruling; @ 3833e96e1, finding 5's four axes and the `__iter__` shape, one row per fact and cause; @ a547f91ad, the second batch: producer types, hosts, forms, hoist kinds; @ ed5642202, the third: three links behind a hoist, 35 facts, nine shards; @ de55a06a0, the fourth: both pivot sides. D1: the synthesized `IEnumerable[T]`, LINQ named (finding 3). D2: a recorded binding type, cast, tuple hoist (finding 2). D3: both direction changes ruled (finding 6). D4: `Unknown` for a refused head. M1–M3 split.
+- deferred findings resolved in code @ 05f4871f6
 
 ## Verification Summary
 
@@ -217,7 +218,7 @@ Pass 1's six findings are answered, read against the generator and the plan: the
 Base cd4071554 (`origin/dev`, the plan's merge); branch `claude/membership-totality`. Lead: this session. Tasks are commit-sized; owners are background agents unless marked lead.
 Baseline: 84888/0/10 @ cd4071554 (measured, CI run 43666691859). Build @ cd4071554: 0 warnings.
 
-- [ ] T0 — Deferred finding 1: delete `SequenceExcludedKinds[OptionalNoneTest]`, none-last sequences over a tagged `T?` subject, re-measure totals, `BulkCensus` and `…/NoneLast/…` rows — test-expert — blocked by none
+- [x] T0 — Deferred finding 1: delete `SequenceExcludedKinds[OptionalNoneTest]`, none-last sequences over a tagged `T?` subject, re-measure totals, `BulkCensus` and `…/NoneLast/…` rows — test-expert — blocked by none — 05f4871f6 (deferred finding 1 resolved in code; split by subject typing, baseline 614 → 616 per owner ruling; mutation: broken → red 2 of 2, restored → green 2; known-red sequence cells 188693 → 208989, rows 96 → 98)
   - Lead ruling (C): tagged `T?` for every payload, `T | None` for the value-type payloads (measured by the emitted CLR type, 19). Triple/NoneLast/ComparisonFirst then ran 9m24s locally against CI's 10 min hang timeout; **owner ruling, 2026-11-15** (AskUserQuestion): "Split, baseline 616 (Recommended)" — the two Triple/NoneLast facts split by subject typing, 2 new rows, `allowlist_rows_outside_seed` 614 → 616.
 - [x] T1 — Probe each D's predicate by `run` at the base; by-direction lists (D3 both moves, the 156 SPY0908 → SPY0402, D4's programs); count the spy-stdlib sites D2 moves — lead — blocked by none
   - @ cd4071554 (`run`, CPython 3.15.2): D1 `IterBag`/`GIterBag[int]`/generator+`contains` SPY0320 → to run; `SeqBag`, `LB` SPY0320 kept; generic `SeqBag` `None` SPY0222+SPY0320 → SPY0320. D2 `n() in c()` / `not in` print container first, `k() * s()` str first, walrus `True` (CPython needle/count first, `False`): wrong output → CPython, nothing refused. D3 `in`/`is`/`is not` links SPY0519 → twin (488 worked → SPY0402, 10516 SPY0519 → SPY0908, both ruled; 156 SPY0908 → SPY0402, gain). D4 `c is Color.RED is d` / `== d` SPY0349 → value; `x is Dog is d`, `x is Outer.Inner is d` SPY0349 kept. Spy-stdlib sites D2 moves: read from the T3r/T6r regeneration diff.
