@@ -871,6 +871,22 @@ public record ComparisonChain : Expression
     /// </summary>
     public ImmutableArray<(int Line, int Column)> OperatorPositions { get; init; } = ImmutableArray<(int Line, int Column)>.Empty;
 
+    /// <summary>
+    /// The type spelling of the chain's first link when that link was written like a type test
+    /// (P93 D4): for <c>c is Color.RED is d</c> or <c>c is Color.RED == d</c> the parser reads
+    /// <c>is Color.RED</c> as a <see cref="TypeCheck"/> head with a dotted-name
+    /// <see cref="TypeCheck.IdentityOperand"/>, then — because a comparison operator follows — builds
+    /// the chain over <c>[c, Color.RED, d]</c> with <see cref="ComparisonOperator.Is"/> first and keeps
+    /// the head's <see cref="TypeCheck.CheckType"/> here. Null for every other chain, including one
+    /// headed by a type test with no dotted-name reading (that head stays a <see cref="TypeCheck"/>
+    /// operand).
+    /// <para>A syntax fact, spelled by the same tokens as <c>Operands[1]</c>: the unparser prints the
+    /// operands alone. The type checker gives link 0 <c>CheckTypeCheck</c>'s rule when this is set: an
+    /// enum member is an identity link; anything else (a nested or qualified type such as
+    /// <c>Outer.Inner</c>) is SPY0349. Like every <see cref="TypeAnnotation"/> it is not a child node.</para>
+    /// </summary>
+    public TypeAnnotation? HeadCheckType { get; init; }
+
     /// <inheritdoc/>
     public override void ValidateInvariants()
     {
@@ -882,6 +898,8 @@ public record ComparisonChain : Expression
             "ComparisonChain.Operators.Length must equal Operands.Length - 1");
         Debug.Assert(OperatorPositions.IsEmpty || OperatorPositions.Length == Operators.Length,
             "ComparisonChain.OperatorPositions.Length must equal Operators.Length when non-empty");
+        Debug.Assert(HeadCheckType == null || (Operators.Length > 0 && Operators[0] == ComparisonOperator.Is),
+            "ComparisonChain.HeadCheckType is set only on a chain whose first operator is Is");
     }
 
     /// <inheritdoc/>
@@ -1103,8 +1121,10 @@ public record TypeCheck : Expression
     /// name with no type arguments and no suffix (<c>x is Color.RED</c>, <c>x is mod.Color.RED</c>)
     /// the parser also builds the member-access chain the same tokens spell, because "an uppercase
     /// name after <c>is</c>" cannot tell an enum member from a nested or qualified type. Null for
-    /// every other spelling, and for a <see cref="TypeCheck"/> that heads a longer comparison
-    /// (<c>x is Color.RED == y</c>), which has no single-comparison reading.
+    /// every other spelling. A head with this reading that a comparison operator follows
+    /// (<c>x is Color.RED == y</c>) does not survive as a <see cref="TypeCheck"/>: the parser makes
+    /// it the chain's first <c>is</c> link and keeps <see cref="CheckType"/> as
+    /// <see cref="ComparisonChain.HeadCheckType"/> (P93 D4).
     /// <para>A syntax fact, derived from the same tokens as <see cref="CheckType"/>: the unparser and
     /// the structural comparer read <see cref="CheckType"/> alone. It is deliberately NOT a child node
     /// (<see cref="GetChildNodes"/>): the type checker decides which reading holds, checks this
