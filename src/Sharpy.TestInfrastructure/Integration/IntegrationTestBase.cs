@@ -178,6 +178,14 @@ public abstract class IntegrationTestBase : IDisposable
         => Enumerable.Empty<string>();
 
     /// <summary>
+    /// The compiler's error cap for this test's compiles (<see cref="CompilerOptions.MaxErrors"/>); 0 keeps the
+    /// compiler's defaults (25 parser errors, 100 semantic errors). A generator that compiles one program over
+    /// thousands of cells and removes the refused ones by line raises it, so one compile reports every refusal
+    /// instead of the first hundred.
+    /// </summary>
+    protected virtual int MaxErrors => 0;
+
+    /// <summary>
     /// Result of compiling and executing Sharpy code.
     /// </summary>
     protected class ExecutionResult
@@ -330,7 +338,8 @@ public abstract class IntegrationTestBase : IDisposable
                     // what holds the `unittest/*.expected.cs` snapshots byte-identical while the
                     // same source compiles framework-free under `sharpyc run` (#1495).
                     TargetsTestHost = true,
-                    Features = features
+                    Features = features,
+                    MaxErrors = MaxErrors
                 };
 
                 compileResult = api.Compile(sharpySource, options, sourceFilePath);
@@ -674,7 +683,8 @@ public abstract class IntegrationTestBase : IDisposable
                 OutputType = "exe",
                 // See the note on the single-file path above (#1495).
                 TargetsTestHost = true,
-                Features = features
+                Features = features,
+                MaxErrors = MaxErrors
             };
 
             var result = api.CompileFile(entryFilePath, options);
