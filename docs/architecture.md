@@ -8,11 +8,11 @@ Sharpy is a statically-typed Pythonic language for .NET. Source `.spy` files com
 
 | Priority | Axiom | When conflicts arise... |
 |----------|-------|------------------------|
-| 1 | **.NET** | Always compiles to valid C# for CLR. Run-time behaviour the CLR defines (type initialization, initializer order, generic instantiation, evaluation order) is inherited; a departure names the defect it removes and the cost it accepts |
-| 2 | **Types** | Static typing, non-nullable by default. No program observes a value that was never given one: a CLR default never stands in for an initializer that has not run |
-| 3 | **Python** | Syntax/idioms yield to above. Python is evidence for behaviour only where a Python program of the same shape exists (a twin); with no twin, .NET decides |
+| 1 | **.NET** | Always compiles to valid C# for CLR. Run-time behaviour the CLR or C# defines (type initialization, initializer order, generic instantiation, numeric width) is inherited, except where the no-default clause below outranks it (N3); any other departure names the defect it removes and the cost it accepts |
+| 2 | **Types** | Static typing, non-nullable by default. A CLR default never stands in for an initializer that has not run |
+| 3 | **Python** | Syntax/idioms yield to above. Python is evidence for behaviour only where python3 runs the same program with the same meaning (a twin); with no twin, the two above decide. An error Python raises only because of declaration order is not evidence |
 
-**Tie-breaks**, in order, when no rule keeps everything: (1) no silently wrong value (a default standing in for a value, a skipped initializer, an order-dependent result); (2) a compile-time error over a run-time error; (3) a program that runs correctly keeps its value unless a recorded decision changes it; (4) one rule for every host over a special case. Full text: [Core Axioms](language_specification/introduction.md#core-axioms).
+**Tie-breaks**, in order, when no rule keeps everything: (1) no silently wrong value (a CLR default standing in for an initializer that has not run, a skipped initializer, a value that depends on which initializer ran first); (2) a compile-time error over a run-time error, and either over a silently wrong value; (3) a correct program keeps its value unless a recorded decision changes it; (4) one rule for every host (module, class, generic class) over a special case. Full text: [Core Axioms](language_specification/introduction.md#core-axioms).
 
 ## Architecture & Pipeline
 
