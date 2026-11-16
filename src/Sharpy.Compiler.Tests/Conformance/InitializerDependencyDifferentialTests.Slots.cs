@@ -18,6 +18,12 @@ namespace Sharpy.Compiler.Tests.Conformance;
 /// <see cref="Evaluated.Conditionally"/> slot the entry's text never evaluates the read, the program runs and prints
 /// what python prints, and a compile-time cycle would refuse a working program. Every entry's text is parsed, and the
 /// read must sit in the slot the entry names.
+///
+/// The third stage-0 commit adds the kind of the values on the cycle (<see cref="NodeKinds"/>, the image of
+/// <see cref="BindingKind"/>): the ring cells, whose one rule is <see cref="RingIsRefused"/>. A cycle is a compile error
+/// when every read on it is evaluated whenever its initializer is, or when every value on it is a <c>const</c> (the set
+/// refused today). A cycle that needs a read in a conditional slot or a lambda body to close, and passes through a value
+/// that is no <c>const</c>, runs today and must keep running.
 /// </summary>
 public sealed partial class InitializerDependencyDifferentialTests
 {
@@ -363,9 +369,183 @@ public sealed partial class InitializerDependencyDifferentialTests
         }
     }
 
+    // ------------------------------------------------------------------------------------------- //
+    // The ring cells: the kind of the values on a cycle
+    // ------------------------------------------------------------------------------------------- //
+
+    /// <summary>A kind of value the cycle graph holds: how a value named after <paramref name="Declare"/>'s first argument
+    /// is declared with an initializer, and how it is read.</summary>
+    internal sealed record NodeKind(BindingKind Kind, bool IsConst, Func<string, string, string[]> Declare, Func<string, string> Read);
+
+    private static NodeKind ModuleNode(BindingKind kind, string keyword, bool isConst = false) =>
+        new(kind, isConst, (n, init) => new[] { $"{keyword}{n}0: int = {init}" }, n => $"{n}0");
+
+    private static NodeKind TypeNode(BindingKind kind, string keyword, bool isStatic, bool isConst = false) =>
+        new(
+            kind,
+            isConst,
+            (n, init) => new[] { $"class {n.ToUpperInvariant()}0:" }.Concat(isStatic ? new[] { "    @static" } : Array.Empty<string>()).Append($"    {keyword}v: int = {init}").ToArray(),
+            n => $"{n.ToUpperInvariant()}0.v");
+
+    /// <summary>The kinds the plan's graph makes nodes (D8): every value with an initializer that is no literal.</summary>
+    internal static readonly IReadOnlyList<NodeKind> NodeKinds = new[]
+    {
+        ModuleNode(BindingKind.ModuleVar, ""),
+        ModuleNode(BindingKind.ModuleComputedConst, "const ", isConst: true),
+        ModuleNode(BindingKind.ModuleProperty, "property "),
+        TypeNode(BindingKind.StaticField, "", isStatic: true),
+        TypeNode(BindingKind.StaticProperty, "property ", isStatic: true),
+        TypeNode(BindingKind.ClassComputedConst, "const ", isStatic: false, isConst: true),
+    };
+
+    private const string LiteralOnNoCycle = "a literal const reads no value, so it is on no cycle: a const that reads its neighbour is the computed const's cell";
+
+    private const string PerObject = "its initializer runs once per object, in a constructor: the graph of static initializers does not hold it";
+
+    private const string NoStaticInitializer = "names a function or a type: it has no initializer the graph walks";
+
+    private const string InitializedInItsBody = "position-local: it is initialized where its statement runs, and no rule of N3 names it";
+
+    /// <summary>Lazy: it starts from the operand family's exclusions, which another file of this type declares. The kinds that
+    /// family leaves out for what they name are left out here for the same fact, said of an initializer.</summary>
+    private static readonly Lazy<IReadOnlyDictionary<BindingKind, Exclusion>> LazyExcludedNodeKinds = new(() => new Dictionary<BindingKind, Exclusion>(
+        ExcludedOperandKinds.Where(e => NodeKinds.All(n => n.Kind != e.Key)).Select(e => KeyValuePair.Create(
+            e.Key,
+            e.Value.Reason == NotAnIntValue ? new Exclusion(NoStaticInitializer) : e.Value.Reason == PositionLocal ? new Exclusion(InitializedInItsBody) : e.Value)))
+    {
+        [BindingKind.ModuleLiteralConst] = new(LiteralOnNoCycle),
+        [BindingKind.ClassLiteralConst] = new(LiteralOnNoCycle),
+        [BindingKind.InstanceField] = new(PerObject),
+        [BindingKind.InstanceProperty] = new(PerObject),
+        [BindingKind.None] = new("no binding: a ring's values are named"),
+    });
+
+    internal static IReadOnlyDictionary<BindingKind, Exclusion> ExcludedNodeKinds => LazyExcludedNodeKinds.Value;
+
+    /// <summary>The kinds the slot's read cannot name yet. The reader is declared first, as python needs, so its read is a forward one.</summary>
+    internal static readonly IReadOnlyDictionary<BindingKind, Exclusion> ExcludedRingTargets = new Dictionary<BindingKind, Exclusion>
+    {
+        [BindingKind.ModuleVar] = new(
+            "a module variable declared later is invisible until rule N1 lands (#2423), which is not this plan's: the kind is a ring's reader and its closing value, never the slot's read",
+            "const x0: int = (y0)\ny0: int = x0 + 1\ndef main() -> None:\n    print(x0, y0)\n",
+            "SPY0200"),
+    };
+
+    /// <summary>The slots the ring cells ride: one evaluated whenever its parent is, one conditional, and the body of a
+    /// nested function. Each is an entry of <see cref="Slots"/>, so its class is the map's.</summary>
+    internal static readonly IReadOnlyList<string> RingSlots = new[] { "Parenthesized.Expression", "ConditionalExpression.ElseValue", "LambdaExpression.Body" };
+
+    /// <summary>The cycle rule (D8). A ring is refused when its slot's read is evaluated whenever the initializer is, since
+    /// every other read on a ring is; or when every value on it is a const, the set refused today.</summary>
+    internal static bool RingIsRefused(Evaluated slot, bool everyNodeIsConst) => slot == Evaluated.Always || everyNodeIsConst;
+
+    /// <summary>The rings: every reader kind × every kind the slot's read may name, and each pair whose slot edge joins two
+    /// consts again through every kind. Only there does a third value change the rule's answer: any other slot edge is
+    /// certain or absent whatever follows it.</summary>
+    private static IEnumerable<(NodeKind X, NodeKind Y, NodeKind? Through, string Slot)> RingProduct()
+    {
+        foreach (var x in NodeKinds)
+            foreach (var y in NodeKinds.Where(k => !ExcludedRingTargets.ContainsKey(k.Kind)))
+                foreach (var slot in RingSlots)
+                {
+                    yield return (x, y, null, slot);
+                    if (!x.IsConst || !y.IsConst)
+                        continue;
+                    foreach (var through in NodeKinds)
+                        yield return (x, y, through, slot);
+                }
+    }
+
+    private static string RingId(NodeKind x, NodeKind y, NodeKind? through, string slot) =>
+        $"Slot/Ring/{x.Kind}>{y.Kind}{(through == null ? "" : ">" + through.Kind)}/{slot}";
+
+    /// <summary>The reader <c>x</c> holds its read of <c>y</c> in the slot; <c>y</c> reads <c>x</c> again, through <c>z</c> where
+    /// there is one. Declared in the order python needs: the reader, the value between, the value read.</summary>
+    private static string RingProgram(NodeKind x, NodeKind y, NodeKind? through, string shape)
+    {
+        var body = new List<string>(x.Declare("x", shape.Replace(Operand, y.Read("y"), StringComparison.Ordinal)));
+        if (through != null)
+            body.AddRange(through.Declare("z", $"{x.Read("x")} + 1"));
+        body.AddRange(y.Declare("y", $"{(through ?? x).Read(through == null ? "x" : "z")} + 1"));
+        var printed = through == null ? $"{x.Read("x")}, {y.Read("y")}" : $"{x.Read("x")}, {through.Read("z")}, {y.Read("y")}";
+        return WithHelpers(Harness.Join(body) + Harness.MainBlock($"print({printed})"));
+    }
+
+    internal static IEnumerable<Cell> RingCells()
+    {
+        foreach (var (x, y, through, slot) in RingProduct())
+        {
+            var entry = Slots[slot][0];
+            var everyNodeIsConst = x.IsConst && y.IsConst && (through?.IsConst ?? true);
+            var refused = RingIsRefused(entry.When, everyNodeIsConst);
+            var always = entry.When == Evaluated.Always;
+            var model = through == null ? $"{entry.Value} {entry.Value + 1}" : $"{entry.Value} {entry.Value + 1} {entry.Value + 2}";
+            yield return new Cell(RingId(x, y, through, slot), Family.Slot, RingProgram(x, y, through, entry.Sharpy), RingProgram(x, y, through, entry.Twin ?? entry.Sharpy), model)
+            {
+                RefusalCode = refused ? SlotCycle : null,
+                // What must not move: a ring that runs today, and a ring of consts, which is refused today.
+                IsControl = !always || everyNodeIsConst,
+                Python = always ? PythonExpectation.NameError : PythonExpectation.Prints,
+                Route = SlotRoute(always && !everyNodeIsConst ? Evaluated.Always : Evaluated.Conditionally),
+            };
+        }
+    }
+
+    private static List<string> RingTotalityFailures(IReadOnlyList<Cell> pool)
+    {
+        var failures = new List<string>();
+        foreach (var kind in Enum.GetValues<BindingKind>())
+        {
+            bool generated = NodeKinds.Any(n => n.Kind == kind), excluded = ExcludedNodeKinds.ContainsKey(kind);
+            if (generated == excluded)
+                failures.Add($"node BindingKind.{kind} is {Both(generated)}");
+        }
+        foreach (var dup in NodeKinds.GroupBy(n => n.Kind).Where(g => g.Count() > 1))
+            failures.Add($"node BindingKind.{dup.Key} is declared twice");
+        foreach (var kind in ExcludedRingTargets.Keys.Where(k => NodeKinds.All(n => n.Kind != k)))
+            failures.Add($"ring target BindingKind.{kind} is no node kind");
+        if (NodeKinds.All(n => n.IsConst) || NodeKinds.All(n => !n.IsConst))
+            failures.Add("the node kinds hold no const, or nothing else: no ring is mixed");
+
+        foreach (var slot in RingSlots.Where(s => !Slots.TryGetValue(s, out var entries) || entries.Length != 1))
+            failures.Add($"ring slot {slot} is no slot with one entry");
+        var ridden = RingSlots.Where(Slots.ContainsKey).Select(s => Slots[s][0].When).ToHashSet();
+        foreach (var when in Enum.GetValues<Evaluated>().Where(w => !ridden.Contains(w)))
+            failures.Add($"Evaluated.{when} rides no ring");
+        if (!RingSlots.Contains("LambdaExpression.Body"))
+            failures.Add("no ring rides the body of a nested function");
+
+        var rings = RingProduct().ToList();
+        foreach (var kind in NodeKinds)
+        {
+            if (rings.All(r => r.X != kind))
+                failures.Add($"node BindingKind.{kind.Kind} is no ring's reader");
+            if (rings.All(r => r.Y != kind) && !ExcludedRingTargets.ContainsKey(kind.Kind))
+                failures.Add($"node BindingKind.{kind.Kind} is no slot's read");
+            if (rings.All(r => r.Through != kind))
+                failures.Add($"node BindingKind.{kind.Kind} is on no ring of three");
+        }
+        // The rule's own falsifiers: a const pair closed through a value that is no const, and through one that is.
+        foreach (var (allConst, what) in new[] { (false, "a value that is no const"), (true, "a third const") })
+        {
+            if (!rings.Any(r => r.Through != null && r.Through.IsConst == allConst && Slots[r.Slot][0].When == Evaluated.Conditionally))
+                failures.Add($"no ring closes a conditional read between two consts through {what}");
+        }
+
+        var ids = pool.Where(c => c.Family == Family.Slot && c.Id.StartsWith("Slot/Ring/", StringComparison.Ordinal)).Select(c => c.Id).ToHashSet(StringComparer.Ordinal);
+        var owed = rings.Select(r => RingId(r.X, r.Y, r.Through, r.Slot)).ToHashSet(StringComparer.Ordinal);
+        foreach (var id in owed.Where(id => !ids.Contains(id)).Take(20))
+            failures.Add($"the ring axes owe {id} and the pool does not hold it");
+        foreach (var id in ids.Where(id => !owed.Contains(id)).Take(20))
+            failures.Add($"the pool holds {id} and the ring axes do not owe it");
+        return failures;
+    }
+
     private static IEnumerable<(string What, Exclusion Exclusion)> SlotExclusions() =>
         ExcludedSlots.Select(e => ($"slot {e.Key}", e.Value))
-            .Concat(ExcludedBinaryOperators.Select(e => ($"BinaryOperator.{e.Key}", e.Value)));
+            .Concat(ExcludedBinaryOperators.Select(e => ($"BinaryOperator.{e.Key}", e.Value)))
+            .Concat(ExcludedNodeKinds.Select(e => ($"node BindingKind.{e.Key}", e.Value)))
+            .Concat(ExcludedRingTargets.Select(e => ($"ring target BindingKind.{e.Key}", e.Value)));
 
     internal static List<string> SlotTotalityFailures(IReadOnlyList<Cell> pool)
     {
@@ -417,7 +597,9 @@ public sealed partial class InitializerDependencyDifferentialTests
         foreach (var when in Enum.GetValues<Evaluated>().Where(w => SlotProduct().All(p => p.Entry.When != w)))
             failures.Add($"Evaluated.{when} has no entry");
 
-        var ids = pool.Where(c => c.Family == Family.Slot).Select(c => c.Id).ToHashSet(StringComparer.Ordinal);
+        failures.AddRange(RingTotalityFailures(pool));
+
+        var ids = pool.Where(c => c.Family == Family.Slot && !c.Id.StartsWith("Slot/Ring/", StringComparison.Ordinal)).Select(c => c.Id).ToHashSet(StringComparer.Ordinal);
         var owed = SlotProduct().Select(p => p.Id).ToHashSet(StringComparer.Ordinal);
         foreach (var id in owed.Where(id => !ids.Contains(id)).Take(20))
             failures.Add($"the slot map owes {id} and the pool does not hold it");

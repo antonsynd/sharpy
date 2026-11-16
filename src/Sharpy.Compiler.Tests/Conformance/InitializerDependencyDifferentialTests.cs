@@ -31,15 +31,18 @@ namespace Sharpy.Compiler.Tests.Conformance;
 /// The pool is three sub-products (<see cref="Product"/>), not the full product. Declaration order is fixed:
 /// dependency, then <c>t</c>, then the reader. The order axis is the P77a pool's.
 ///
-/// Three more families ride the same sweep, allowlist and ratchet, each in its own file and each closing an axis the
-/// plan's first verification found hand-listed (the owner's rulings of 2026-11-16, #2422 comment 6923063788):
+/// Three more families ride the same sweep, allowlist and ratchet, each in its own file and each closing axes the
+/// plan's first two verifications found hand-listed (the owner's rulings of 2026-11-16, #2422 comments 6923063788 and
+/// 6925297897):
 /// <list type="bullet">
 /// <item><see cref="Family.Operand"/>: a <c>ref</c> / <c>out</c> / <c>in</c> operand, <see cref="ParameterModifier"/> ×
 /// <see cref="BindingKind"/>;</item>
-/// <item><see cref="Family.Location"/>: a store to a module or <c>@static</c> value, or a use that needs its storage
-/// location, <see cref="LocationUse"/> (fed by <see cref="StoreForm"/>) × holder × value kind × when;</item>
+/// <item><see cref="Family.Location"/>: a use of a module or <c>@static</c> value, <see cref="LocationUse"/> (fed by the
+/// AST's target-bearing nodes, the emitter's store seam, <see cref="StoreForm"/> and <see cref="ParameterModifier"/>) ×
+/// holder × <see cref="HostForm"/> × value kind × when;</item>
 /// <item><see cref="Family.Slot"/>: every child slot of every concrete <see cref="Expression"/> subclass, classified as
-/// evaluated whenever its parent is, or not.</item>
+/// evaluated whenever its parent is, or not; and the ring cells, the kind of the values on a cycle
+/// (<see cref="NodeKinds"/>, the image of <see cref="BindingKind"/>).</item>
 /// </list>
 ///
 /// Known-red cells are rows of <c>initializer-dependency-differential-allowlist.txt</c>. A run writes its report, every
@@ -410,6 +413,10 @@ public sealed partial class InitializerDependencyDifferentialTests : Integration
         ("ap0(", new[] { "def ap0(f: () -> int) -> int:", "    return 5" }),
         ("P(", new[] { "struct P:", "    x: int", "    def __init__(self, x: int) -> None:", "        self.x = x", "    def add(self, by: int) -> None:", "        self.x = self.x + by" }),
         ("Q(", new[] { "class Q:", "    x: int", "    def __init__(self, x: int) -> None:", "        self.x = x", "    def add(self, by: int) -> None:", "        self.x = self.x + by" }),
+        ("seven()", new[] { "def seven() -> int:", "    return 7" }),
+        ("fill2(", new[] { "def fill2(a: out int, by: int) -> int:", "    a = 41 + by", "    return 1" }),
+        ("peek2(", new[] { "def peek2(a: in int, by: int) -> int:", "    return a + by" }),
+        ("CM0(", new[] { "class CM0:", "    v: int", "    def __init__(self, v: int) -> None:", "        self.v = v", "    def __enter__(self) -> int:", "        return self.v", "    def __exit__(self) -> None:", "        pass" }),
     };
 
     /// <summary>A program's text under the helpers it names, each declared once, after its imports.</summary>
@@ -500,6 +507,7 @@ public sealed partial class InitializerDependencyDifferentialTests : Integration
         .Concat(OperandCells())
         .Concat(LocationCells())
         .Concat(SlotCells())
+        .Concat(RingCells())
         .OrderBy(c => c.Id, StringComparer.Ordinal)
         .ToList());
 
@@ -926,6 +934,8 @@ public sealed partial class InitializerDependencyDifferentialTests : Integration
                     controls = pool.Count(c => c.IsControl),
                     mustRefuse = pool.Count(c => c.MustRefuse),
                     twins = pool.Count(c => c.TwinSource != null),
+                    rings = pool.Count(c => c.Id.StartsWith("Slot/Ring/", StringComparison.Ordinal)),
+                    genericHost = pool.Count(c => c.Id.Contains("+Generic/", StringComparison.Ordinal)),
                     sites = Sites.Count,
                     shapes = Shapes.Count,
                     excludedShapes = ExcludedShapes.Count,
