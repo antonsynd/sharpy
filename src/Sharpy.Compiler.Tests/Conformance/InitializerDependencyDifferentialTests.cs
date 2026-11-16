@@ -39,7 +39,8 @@ namespace Sharpy.Compiler.Tests.Conformance;
 /// <see cref="BindingKind"/>;</item>
 /// <item><see cref="Family.Location"/>: a use of a module or <c>@static</c> value, <see cref="LocationUse"/> (fed by the
 /// AST's target-bearing nodes, the emitter's store seam, <see cref="StoreForm"/> and <see cref="ParameterModifier"/>) ×
-/// holder × <see cref="HostForm"/> × value kind × when;</item>
+/// holder × <see cref="HostForm"/> × value kind × when; and the cross-type forward read, reader × target
+/// <see cref="HostForm"/> (the fourth stage-0 commit, on the owner's ruling of 2026-11-16, #2422 comment 6927434861);</item>
 /// <item><see cref="Family.Slot"/>: every child slot of every concrete <see cref="Expression"/> subclass, classified as
 /// evaluated whenever its parent is, or not; and the ring cells, the kind of the values on a cycle
 /// (<see cref="NodeKinds"/>, the image of <see cref="BindingKind"/>).</item>
@@ -379,10 +380,22 @@ public sealed partial class InitializerDependencyDifferentialTests : Integration
 
     internal sealed record Cell(string Id, Family Family, string Source, string? TwinSource, string Model)
     {
-        /// <summary>The code the cell must be refused with. Null: it runs and prints <see cref="Model"/>.</summary>
+        /// <summary>The code the cell must be refused with. Null: it runs and prints <see cref="Model"/>, or ends as <see cref="Raises"/> says.</summary>
         public string? RefusalCode { get; init; }
 
         public bool MustRefuse => RefusalCode != null;
+
+        /// <summary>A code a must-refuse cell is refused with today by a validator the plan retires (D9), accepted beside
+        /// <see cref="RefusalCode"/>. It is named by its <c>DiagnosticCodes</c> constant, so the retirement removes the acceptance.</summary>
+        public string? RetiringRefusal { get; init; }
+
+        /// <summary>The exception an uncaught run of the cell must end with: it compiles, and stops with that type on stderr.
+        /// A run that prints, a refusal and any other exception are red.</summary>
+        public string? Raises { get; init; }
+
+        /// <summary>What python's twin prints where that is not <see cref="Model"/>: a divergence the plan records
+        /// (<c>docs/deviations.yaml</c>), held here so the oracle measures it.</summary>
+        public string? PythonModel { get; init; }
 
         /// <summary>A cell with nothing of its family's axis in it. It is green or the generator is wrong, and no row may list it.</summary>
         public bool IsControl { get; init; }
@@ -506,6 +519,7 @@ public sealed partial class InitializerDependencyDifferentialTests : Integration
         .Select(k => MakeCell(k.Site, k.Holder, k.Use, k.Node, k.Dependency))
         .Concat(OperandCells())
         .Concat(LocationCells())
+        .Concat(CrossTypeCells())
         .Concat(SlotCells())
         .Concat(RingCells())
         .OrderBy(c => c.Id, StringComparer.Ordinal)
@@ -730,13 +744,29 @@ public sealed partial class InitializerDependencyDifferentialTests : Integration
     /// <summary>The refusal a constants-only site gives a module value.</summary>
     private const string ConstantOnlyRefusal = "SPY0401";
 
+    private static readonly Regex UncaughtException = new(@"^Unhandled exception\. (?:[\w.]+\.)?(\w+)(?::|$)", RegexOptions.CultureInvariant);
+
+    /// <summary>The type of the exception an uncaught run ended with: the first line of its stderr. An exception a type
+    /// initializer wrapped reads as the wrapper, which is what a caller's <c>except</c> sees.</summary>
+    internal static string? UncaughtType(string stderr)
+        => UncaughtException.Match(stderr.TrimStart().Split('\n', 2)[0].TrimEnd()) is { Success: true } m ? m.Groups[1].Value : null;
+
     /// <summary>Expectation × Sharpy outcome → verdict class.</summary>
-    internal static VerdictClass Judge(Cell cell, SharpyKind kind, string stdout)
+    internal static VerdictClass Judge(Cell cell, SharpyKind kind, string stdout, string stderr = "")
     {
         if (kind is SharpyKind.TimedOut or SharpyKind.Harness)
             return VerdictClass.Harness;
         if (kind == SharpyKind.Ice)
             return VerdictClass.Ice;
+        if (cell.Raises != null)
+        {
+            return kind switch
+            {
+                SharpyKind.Ran => VerdictClass.SilentWrong,
+                SharpyKind.Refused => VerdictClass.FalseRefusal,
+                _ => UncaughtType(stderr) == cell.Raises ? VerdictClass.Match : VerdictClass.RuntimeThrow,
+            };
+        }
         if (cell.MustRefuse)
         {
             return kind switch
@@ -827,7 +857,8 @@ public sealed partial class InitializerDependencyDifferentialTests : Integration
                 failures.Add($"Harness {r.Cell.Id}: Sharpy {Describe(r)}");
                 continue;
             }
-            if (r.Cell.MustRefuse && r.Kind == SharpyKind.Refused && !r.Observed.Run.ErrorCodes.Contains(r.Cell.RefusalCode!))
+            if (r.Cell.MustRefuse && r.Kind == SharpyKind.Refused && !r.Observed.Run.ErrorCodes.Contains(r.Cell.RefusalCode!)
+                && (r.Cell.RetiringRefusal == null || !r.Observed.Run.ErrorCodes.Contains(r.Cell.RetiringRefusal)))
                 failures.Add($"RefusalReason {r.Cell.Id}: the cell's refusal is {r.Cell.RefusalCode} and Sharpy {Describe(r)}");
 
             var isRed = r.Class != VerdictClass.Match;
@@ -895,15 +926,18 @@ public sealed partial class InitializerDependencyDifferentialTests : Integration
                 var python = pythonById.TryGetValue(i, out var verdict)
                     ? Harness.ClassifyPython(verdict)
                     : new PyOutcome(PyKind.SyntaxError, "no verdict from the runner");
-                if (cell.Python == PythonExpectation.Prints && python != PyOutcome.Ran(cell.Model))
-                    pythonFailure = $"the model prints '{cell.Model}' and python {python}";
+                var printed = cell.PythonModel ?? cell.Model;
+                if (cell.Python == PythonExpectation.Prints && python != PyOutcome.Ran(printed))
+                    pythonFailure = $"python's twin is modelled to print '{printed}' and python {python}";
+                if (cell.PythonModel != null && (cell.Python != PythonExpectation.Prints || cell.PythonModel == cell.Model))
+                    pythonFailure = "a cell names what python prints only where python prints something else than the model";
                 if (cell.Python == PythonExpectation.NameError && python.Kind != PyKind.NameError)
                     pythonFailure = $"the model raises NameError and python {python}";
             }
 
             var observed = RunSharpyRetryingATimeout(cell);
             var kind = Harness.ClassifySharpy(observed.Run);
-            results.Add(new Result(cell, observed, kind, Judge(cell, kind, observed.Run.Stdout), pythonFailure));
+            results.Add(new Result(cell, observed, kind, Judge(cell, kind, observed.Run.Stdout, observed.Run.Stderr), pythonFailure));
         }
 
         // --- Ratchet. ---
@@ -936,6 +970,9 @@ public sealed partial class InitializerDependencyDifferentialTests : Integration
                     twins = pool.Count(c => c.TwinSource != null),
                     rings = pool.Count(c => c.Id.StartsWith("Slot/Ring/", StringComparison.Ordinal)),
                     genericHost = pool.Count(c => c.Id.Contains("+Generic/", StringComparison.Ordinal)),
+                    mustRaise = pool.Count(c => c.Raises != null),
+                    pythonDiverges = pool.Count(c => c.PythonModel != null),
+                    crossType = pool.Count(c => c.Id.StartsWith("Location/CrossType/", StringComparison.Ordinal)),
                     sites = Sites.Count,
                     shapes = Shapes.Count,
                     excludedShapes = ExcludedShapes.Count,
@@ -971,7 +1008,7 @@ public sealed partial class InitializerDependencyDifferentialTests : Integration
             red.OrderBy(r => r.Cell.Id, StringComparer.Ordinal)
                 .Select(r => $"{r.Cell.Id} {r.Class} # {ProposedCite(r.Cell, r.Class, r.Observed.Run.CsCode, r.Observed.UnresolvedName)}"));
 
-        return $"initializer-dependency-differential: pool {pool.Count} ({pool.Count(c => c.IsControl)} controls, {pool.Count(c => c.MustRefuse)} must-refuse), "
+        return $"initializer-dependency-differential: pool {pool.Count} ({pool.Count(c => c.IsControl)} controls, {pool.Count(c => c.MustRefuse)} must-refuse, {pool.Count(c => c.Raises != null)} must-raise), "
             + $"sites {Sites.Count}, shapes {Shapes.Count}, dependencies {Dependencies.Count}, "
             + $"python agreed {results.Count(r => r.Cell.TwinSource != null && r.PythonFailure == null)}/{pool.Count(c => c.TwinSource != null)}, "
             + $"red {red.Count}, allowlist {rows.Count}, wall {wall.TotalSeconds:F1}s. "
@@ -1039,6 +1076,33 @@ public sealed partial class InitializerDependencyDifferentialTests : Integration
     [InlineData(VerdictClass.FalseRefusal, null, null, "UNROUTED(FalseRefusal)")]
     internal void Route_OnlyTheUnresolvedModuleValue_IsTheClassIssue(VerdictClass verdict, string? cs, string? name, string cite)
         => Assert.Equal(cite, ReferenceRoute(verdict, cs, name) ?? Unrouted(verdict, cs, name));
+
+    /// <summary>A cell that must raise is green on an uncaught exception of its type, read from the first line of stderr:
+    /// one a type initializer wrapped is the wrapper's, and red.</summary>
+    [Theory]
+    [InlineData(SharpyKind.RuntimeThrow, "Unhandled exception. Sharpy.NameError: name 't' is not defined\n   at M.Use()", VerdictClass.Match)]
+    [InlineData(SharpyKind.RuntimeThrow, "Unhandled exception. System.TypeInitializationException: The type initializer for 'H' threw an exception.\n ---> Sharpy.NameError: name 't' is not defined", VerdictClass.RuntimeThrow)]
+    [InlineData(SharpyKind.RuntimeThrow, "Unhandled exception. System.NullReferenceException: Object reference not set to an instance of an object.", VerdictClass.RuntimeThrow)]
+    [InlineData(SharpyKind.Ran, "", VerdictClass.SilentWrong)]
+    [InlineData(SharpyKind.Refused, "", VerdictClass.FalseRefusal)]
+    internal void Judge_ACellThatMustRaise_IsGreenOnItsExceptionOnly(SharpyKind kind, string stderr, VerdictClass verdict)
+    {
+        var cell = GeneratedCells().First(c => c.Raises == CycleError);
+
+        Assert.Equal(verdict, Judge(cell, kind, "1", stderr));
+    }
+
+    [Fact]
+    public void Ratchet_ARetiringRefusal_IsAcceptedBesideTheCellsOwn_AndNoOtherCodeIs()
+    {
+        var cell = GeneratedCells().First(c => c.RetiringRefusal != null);
+        var none = new Dictionary<string, AllowRow>();
+
+        Assert.NotEqual(cell.RefusalCode, cell.RetiringRefusal);
+        Assert.Empty(RatchetFailures(new[] { ResultOf(cell, VerdictClass.Match, refusal: new[] { cell.RefusalCode! }) }, none));
+        Assert.Empty(RatchetFailures(new[] { ResultOf(cell, VerdictClass.Match, refusal: new[] { cell.RetiringRefusal! }) }, none));
+        Assert.Contains("RefusalReason", Assert.Single(RatchetFailures(new[] { ResultOf(cell, VerdictClass.Match, refusal: new[] { "SPY0200" }) }, none)));
+    }
 
     [Fact]
     public void Allowlist_ARow_NamesAGeneratedCellARedClassAndAnIssue()
