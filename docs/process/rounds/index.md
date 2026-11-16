@@ -138,7 +138,7 @@
 
 ## Open items pending owner confirmation
 
-ONE, from R-PM (2026-11-16, after call 45): the owner's next arc is P78 → P79 → P21b → P21c, and this charter binds *P77 before P78* (forward reads need N3) — does P77 head the arc, or does P78 go first with its plan stating what forward reads do without N3? **next** = `/create-plan` for the arc's first group once that is answered (`#2422 #2412 #2420` if P77 heads it, else `#2423 #2398 #2432 #2487`); the membership / nullability lane's `/create-plan #2686 #2694 #2648` named below waits behind P21c. None other at call 45; one measurement is owed to the owner by P99's plan — whether `h is f1` answers `True` for the same function (R-PI's caveat).
+none after R-PM (2026-11-16, after call 45; the *P77 before P78* question was answered the same day: "do P77 before P78"). **next** = `/create-plan #2422 #2412 #2420` (P77, full (c); lands alone; generator EXISTS, P77a) then `/verify-plan`, then P78 → P79 → P21b → P21c; the membership / nullability lane's `/create-plan #2686 #2694 #2648` named below waits behind P21c. None at call 45; one measurement is owed to the owner by P99's plan — whether `h is f1` answers `True` for the same function (R-PI's caveat).
 
 ## Unparsed
 
