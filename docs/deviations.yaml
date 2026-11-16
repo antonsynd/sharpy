@@ -2151,6 +2151,37 @@ deviations:
         xs: list[int] = [1, 2]
         print(None in xs)              # ERROR SPY0222: Type 'None' does not support operator 'in' with operand of type 'list[int32]'
 
+  - id: membership-legacy-sequence-protocol
+    code: SPY0320
+    category: operators
+    audience: python
+    severity: error
+    python_behavior: "A class with no `__contains__` and no `__iter__` but a `__getitem__` answers `x in obj` through the legacy sequence protocol: Python calls `__getitem__(0)`, `__getitem__(1)`, … and compares each result with the needle until one is equal (`True`) or `__getitem__` raises `IndexError` (`False`). A class with `__len__` + `__getitem__` over a list of `0, 1, 4` answers `4 in obj` with `True`."
+    sharpy_behavior: "Refused at compile time (SPY0320: the type does not support membership testing). `in` is answered by `__contains__` or, for a class that only iterates, by `__iter__` (owner ruling R-NZ, #2653); `__getitem__` with `__len__` never answers it. Owner ruling R-OA (#2653 comment 6826280413, 2026-11-12): \"maybe let's say no on __getitem__ with __len__\" — the index `__getitem__` takes need not be an integer, and an integer index need not be dense, so probing it from 0 upward is not a membership test the class declared. Declare `__contains__` or `__iter__` instead. (plan-67a01f, P93 D1.)"
+    spec_ref: docs/language_specification/membership_operators.md#validation
+    existing_diagnostic: SPY0320
+    planned_diagnostic: null
+    example:
+      python: |
+        class Squares:
+            def __init__(self):
+                self._items = [0, 1, 4]
+            def __len__(self):
+                return len(self._items)
+            def __getitem__(self, i):
+                return self._items[i]
+        print(4 in Squares())          # True
+      sharpy: |
+        class Squares:
+            _items: list[int]
+            def __init__(self):
+                self._items = [0, 1, 4]
+            def __len__(self) -> int:
+                return len(self._items)
+            def __getitem__(self, i: int) -> int:
+                return self._items[i]
+        print(4 in Squares())          # ERROR SPY0320: Type 'Squares' does not support membership testing (missing '__contains__' method).
+
 
   - id: chainmap-reversed-admitted
     code: null

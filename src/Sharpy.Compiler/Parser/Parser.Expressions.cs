@@ -473,6 +473,7 @@ public partial class Parser
     private Expression ParseComparison()
     {
         var left = ParseCast();
+        var headIsPosition = (Line: 0, Column: 0);
 
         // Special case: "is" followed by a type name should be parsed as TypeCheck. The result
         // becomes the left operand of the comparison chain below rather than returning early —
@@ -488,6 +489,7 @@ public partial class Parser
             {
                 var startLine = left.LineStart;
                 var startColumn = left.ColumnStart;
+                headIsPosition = (Current.Line, Current.Column);
                 Advance(); // skip 'is'
                 var typeStartLine = Current.Line;
                 var typeStartColumn = Current.Column;
@@ -549,11 +551,21 @@ public partial class Parser
         if (operators.Count == 0)
             return left;
 
-        // A type test that heads a longer comparison (`x is Color.RED == y`) has no single-comparison
-        // reading, so it carries no identity operand: the checker keeps refusing it (SPY0349) rather
-        // than comparing the BOOL of the first link against the next operand (#2669).
-        if (ReferenceEquals(operands[0], left) && left is TypeCheck { IdentityOperand: not null } chainHead)
-            operands[0] = chainHead with { IdentityOperand = null };
+        // A type test with a dotted-name reading that heads a longer comparison (`c is Color.RED is d`,
+        // `c is Color.RED == d`) is the chain's first link, not an operand of it (P93 D4): the chain is
+        // built over [Value, IdentityOperand, …] with `is` first, and the head's type spelling is kept
+        // on the chain (ComparisonChain.HeadCheckType) for the checker, which gives link 0
+        // CheckTypeCheck's rule. Comparing the BOOL of a type test against the next operand has no
+        // reading (#2669). A head with no dotted-name reading (`x is Dog == y`) stays a TypeCheck operand.
+        TypeAnnotation? headCheckType = null;
+        if (ReferenceEquals(operands[0], left) && left is TypeCheck { IdentityOperand: { } headOperand } chainHead)
+        {
+            operands[0] = chainHead.Value;
+            operands.Insert(1, headOperand);
+            operators.Insert(0, ComparisonOperator.Is);
+            operatorPositions.Insert(0, headIsPosition);
+            headCheckType = chainHead.CheckType;
+        }
 
         if (operators.Count == 1)
         {
@@ -579,6 +591,7 @@ public partial class Parser
             Operands = operands.ToImmutableArray(),
             Operators = operators.ToImmutableArray(),
             OperatorPositions = operatorPositions.ToImmutableArray(),
+            HeadCheckType = headCheckType,
             LineStart = operands[0].LineStart,
             ColumnStart = operands[0].ColumnStart,
             LineEnd = operands[^1].LineEnd,

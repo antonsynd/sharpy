@@ -8,10 +8,10 @@
 # GENERATED, HUMAN-REVIEWED: bash build_tools/regenerate_corpus_pins.sh rewrites the rows and the `# total` lines; review
 # the diff (a new stem's rows are its own; a moved row of an existing stem is a finding until explained). A new key's cite row in
 # code-action-shape-allowlist.txt is written by hand (the loader names it), and so is a drained key's deletion.
-# total stems identity keys=14 rows=2070
-# total stems crlf keys=8 rows=282
-# total stems cr keys=8 rows=291
-# total stems comment keys=7 rows=285
+# total stems identity keys=14 rows=2086
+# total stems crlf keys=8 rows=285
+# total stems cr keys=8 rows=293
+# total stems comment keys=7 rows=288
 extract-method identity diagnostics Formatting/module_docstring_then_statement # #2294
 extract-method identity diagnostics abstract_class_interface_stubs # #2294
 extract-method identity diagnostics access_modifiers/access_modifiers # #2294
@@ -647,8 +647,14 @@ extract-method identity diagnostics nested_validator_lookup_1461 # #2294
 extract-method identity diagnostics null_conditional_optional_member_call_1307 # #2294
 extract-method identity diagnostics nullable_comparison_operators # #2294
 extract-method identity diagnostics operator_overload_specificity # #2294
+extract-method identity diagnostics operators/comparison_chain_class_head_refused_2669 # #2294
+extract-method identity diagnostics operators/comparison_chain_enum_member_head_identity_2669 # #2294
+extract-method identity diagnostics operators/comparison_chain_middle_operand_uncast_2648 # #2294
 extract-method identity diagnostics operators/comparison_chain_mixed_lowerings_1642 # #2294
 extract-method identity diagnostics operators/iteration_lowering_1623 # #2294
+extract-method identity diagnostics operators/membership_inherited_generic_dunder_2653 # #2294
+extract-method identity diagnostics operators/membership_iterable_declares_contains_2653 # #2294
+extract-method identity diagnostics operators/membership_raising_literal_needle_first_2645 # #2294
 extract-method identity diagnostics operators/operator_lowering_augmented_narrow_2443 # #2294
 extract-method identity diagnostics operators/operator_lowering_pow_decimal_augmented_2443 # #2294
 extract-method identity diagnostics operators/operator_lowering_pow_float32_2443 # #2294
@@ -1314,12 +1320,18 @@ extract-method identity parse narrowing/narrowing_ternary_optional_unwrap # #229
 extract-method identity parse operand_order/index_assign_hoisted_index_1885 # #2294
 extract-method identity parse operand_order/index_read_1853 # #2294
 extract-method identity parse operand_order/pipe_operand_order_1853 # #2294
+extract-method identity parse operators/comparison_chain_membership_identity_links_2648 # #2294
+extract-method identity parse operators/comparison_chain_middle_needle_own_type_2648 # #2294
+extract-method identity parse operators/comparison_chain_middle_needle_twin_refused_2648 # #2294
+extract-method identity parse operators/comparison_chain_middle_operand_uncast_2648 # #2294
 extract-method identity parse operators/comparison_chain_mixed_lowerings_1642 # #2294
 extract-method identity parse operators/comparison_chain_strings_1642 # #2294
 extract-method identity parse operators/floor_div_modulo_lowering_matrix_1658 # #2294
 extract-method identity parse operators/floor_div_modulo_narrow_int_1662 # #2294
 extract-method identity parse operators/generic_compareto_1623 # #2294
+extract-method identity parse operators/membership_needle_evaluated_first_2645 # #2294
 extract-method identity parse operators/membership_none_is_false_lowering_2635 # #2294
+extract-method identity parse operators/membership_raising_literal_needle_first_2645 # #2294
 extract-method identity parse operators/optional_needle_membership_2635 # #2294
 extract-method identity parse optional_result/maybe_chained # #2294
 extract-method identity parse optional_result/maybe_expression_0034 # #2294
@@ -1654,6 +1666,8 @@ remove-annotation identity diagnostics name_collision/grid_delegate_vs_module_va
 remove-annotation identity diagnostics name_collision/no_collision_event_split_accessors # #2296
 remove-annotation identity diagnostics nested_validator_lookup_1461 # #2296
 remove-annotation identity diagnostics nullable_none_throws # #2296
+remove-annotation identity diagnostics operators/comparison_chain_middle_needle_own_type_2648 # #2296
+remove-annotation identity diagnostics operators/comparison_chain_middle_needle_twin_refused_2648 # #2296
 remove-annotation identity diagnostics operators/comparison_chain_strings_1642 # #2296
 remove-annotation identity diagnostics operators/operator_lowering_pow_mixed_sign_width_2443 # #2296
 remove-annotation identity diagnostics operators/optional_needle_membership_2635 # #2296
@@ -1988,6 +2002,8 @@ wrap-try identity diagnostics nested_types/nested_underscore_within_hierarchy_12
 wrap-try identity diagnostics operand_order/index_store_1853 # #2296
 wrap-try identity diagnostics operand_precedence_seams_1727 # #2296
 wrap-try identity diagnostics operators/augassign_shift_long_count_1643 # #2296
+wrap-try identity diagnostics operators/membership_inherited_generic_dunder_2653 # #2296
+wrap-try identity diagnostics operators/membership_iterable_declares_contains_2653 # #2296
 wrap-try identity diagnostics operators/negative_literal_width_1304_1623 # #2296
 wrap-try identity diagnostics operators/optional_needle_membership_bytes_needle_2635 # #2296
 wrap-try identity diagnostics optional_result/optional_null_conditional_coalesce # #2296
@@ -2159,6 +2175,7 @@ extract-method crlf diagnostics narrowing/narrowing_nested_if # #2294
 extract-method crlf diagnostics narrowing/narrowing_none_check # #2294
 extract-method crlf diagnostics nested_types/nested_default_public_1259 # #2294
 extract-method crlf diagnostics operand_order/index_store_1853 # #2294
+extract-method crlf diagnostics operators/comparison_chain_middle_operand_uncast_2648 # #2294
 extract-method crlf diagnostics operators/membership_none_is_false_lowering_2635 # #2294
 extract-method crlf diagnostics optional_result/result_type_0016 # #2294
 extract-method crlf diagnostics optional_result/result_unwrap_0002 # #2294
@@ -2251,7 +2268,9 @@ extract-method crlf parse lambdas/higher_order_function_0019 # #2294
 extract-method crlf parse lambdas/lambda_as_argument_0001 # #2294
 extract-method crlf parse name_collision/grid_delegate_both_escaped # #2294
 extract-method crlf parse narrowing/narrowing_reassignment_use_after # #2294
+extract-method crlf parse operators/comparison_chain_middle_operand_uncast_2648 # #2294
 extract-method crlf parse operators/membership_none_is_false_lowering_2635 # #2294
+extract-method crlf parse operators/membership_raising_literal_needle_first_2645 # #2294
 extract-method crlf parse optional_strict_construction_1720 # #2294
 extract-method crlf parse overload_generic_inferred_optional_1811 # #2294
 extract-method crlf parse overload_keyword_out_of_order_1810 # #2294
@@ -2535,7 +2554,9 @@ extract-method cr parse lambdas/higher_order_function_0019 # #2294
 extract-method cr parse lambdas/lambda_as_argument_0001 # #2294
 extract-method cr parse name_collision/grid_delegate_both_escaped # #2294
 extract-method cr parse narrowing/narrowing_reassignment_use_after # #2294
+extract-method cr parse operators/comparison_chain_middle_operand_uncast_2648 # #2294
 extract-method cr parse operators/membership_none_is_false_lowering_2635 # #2294
+extract-method cr parse operators/membership_raising_literal_needle_first_2645 # #2294
 extract-method cr parse optional_strict_construction_1720 # #2294
 extract-method cr parse overload_generic_inferred_optional_1811 # #2294
 extract-method cr parse overload_keyword_out_of_order_1810 # #2294
@@ -2748,6 +2769,7 @@ extract-method comment diagnostics narrowing/narrowing_nested_if # #2294
 extract-method comment diagnostics narrowing/narrowing_none_check # #2294
 extract-method comment diagnostics nested_types/nested_default_public_1259 # #2294
 extract-method comment diagnostics operators/membership_none_is_false_lowering_2635 # #2294
+extract-method comment diagnostics operators/membership_raising_literal_needle_first_2645 # #2294
 extract-method comment diagnostics operators/operator_lowering_pow_float32_2443 # #2294
 extract-method comment diagnostics optional_result/result_unwrap_0002 # #2294
 extract-method comment diagnostics optional_result/try_expression_multi_exception_common_base # #2294
@@ -2840,7 +2862,9 @@ extract-method comment parse lambdas/higher_order_function_0019 # #2294
 extract-method comment parse lambdas/lambda_as_argument_0001 # #2294
 extract-method comment parse name_collision/grid_delegate_both_escaped # #2294
 extract-method comment parse narrowing/narrowing_reassignment_use_after # #2294
+extract-method comment parse operators/comparison_chain_middle_operand_uncast_2648 # #2294
 extract-method comment parse operators/membership_none_is_false_lowering_2635 # #2294
+extract-method comment parse operators/membership_raising_literal_needle_first_2645 # #2294
 extract-method comment parse optional_strict_construction_1720 # #2294
 extract-method comment parse overload_generic_inferred_optional_1811 # #2294
 extract-method comment parse overload_keyword_out_of_order_1810 # #2294

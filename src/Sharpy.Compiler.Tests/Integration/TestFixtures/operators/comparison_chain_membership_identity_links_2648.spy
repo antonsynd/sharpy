@@ -1,0 +1,41 @@
+# `in`, `not in`, `is` and `is not` as comparison-chain links (plan P93 D3, #2648): each link is its binary
+# twin, and the chain evaluates every operand once, left to right, a membership link's needle before its
+# container. Before P93 every one of these chains was refused at code generation (SPY0519). The traced
+# operands print the order; the short-circuited chains print no trace past the first False link.
+
+class Node:
+    name: str
+
+    def __init__(self, name: str):
+        self.name = name
+
+
+def t(label: str, v: int) -> int:
+    print("operand", label)
+    return v
+
+
+def box(label: str) -> list[int]:
+    print("container", label)
+    return [2, 3]
+
+
+def node(label: str, n: Node) -> Node:
+    print("operand", label)
+    return n
+
+
+def main() -> None:
+    print(t("a", 1) < t("b", 2) in box("in"))
+    print(t("c", 1) < t("d", 2) not in box("not in"))
+    print(t("e", 5) < t("f", 2) in box("short-circuit"))
+    print(t("g", 2) == t("h", 2) in box("eq"))
+    first: Node = Node("x")
+    second: Node = first
+    other: Node = Node("x")
+    print(node("i", first) is node("j", second) is not node("k", other))
+    print(node("l", first) is node("m", other) is node("n", second))
+    print(first is second is first)
+    print(first is not other is not second)
+    xs: list[int] = [1, 2]
+    print(1 in xs is not None)

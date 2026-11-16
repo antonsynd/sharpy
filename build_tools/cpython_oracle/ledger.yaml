@@ -549,6 +549,14 @@ deviations:
   spec_ref: docs/stdlib/math.md
   existing_diagnostic: null
   planned_diagnostic: null
+- id: membership-legacy-sequence-protocol
+  category: operators
+  audience: python
+  severity: error
+  code: SPY0320
+  spec_ref: docs/language_specification/membership_operators.md#validation
+  existing_diagnostic: SPY0320
+  planned_diagnostic: null
 - id: membership-needle-type-mismatch
   category: operators
   audience: python

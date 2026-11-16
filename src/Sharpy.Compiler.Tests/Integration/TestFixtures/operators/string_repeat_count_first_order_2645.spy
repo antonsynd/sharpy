@@ -1,0 +1,24 @@
+# `count * text` evaluates the count first, as CPython does (plan P93 D2, #2645): the emitter calls the Core
+# overload that takes the count first, `StringHelpers.Repeat(count, str)`, instead of evaluating the string
+# operand first. Each operand is a traced call, so the printed order differs under the defect.
+
+def count(v: int) -> int:
+    print("count")
+    return v
+
+
+def wide_count(v: int64) -> int64:
+    print("count64")
+    return v
+
+
+def text(s: str) -> str:
+    print("text")
+    return s
+
+
+def main() -> None:
+    print(count(3) * text("ab"))
+    print(text("cd") * count(2))
+    print(wide_count(2) * text("xy"))
+    print(count(0) * text("ab") == "")

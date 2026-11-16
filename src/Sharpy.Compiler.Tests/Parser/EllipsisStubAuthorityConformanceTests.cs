@@ -92,6 +92,8 @@ public class EllipsisStubAuthorityConformanceTests
             "Structural comparison: two ellipsis literals are equal because they carry no payload.",
         ["TypeChecker.Expressions.cs :: CheckExpression"] =
             "Expression-type dispatch: an ellipsis expression is typed Void wherever it appears; the Parenthesized arm normalizes grouping.",
+        ["RoslynEmitter.Expressions.Operators.cs :: IsLiteralOnly"] =
+            "Evaluation-order classification (P93 D2): a literal operand, `...` included, has no evaluation to order, so its needle is not bound. The Parenthesized arm recurses. Not a declaration-body classification.",
         ["ExtractVariableProvider.cs :: IsTrivialExpression"] =
             "LSP refactoring: excludes trivial expressions from extract-variable. Not a declaration-body classification.",
     };

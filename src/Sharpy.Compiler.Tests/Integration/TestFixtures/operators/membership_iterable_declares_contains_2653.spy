@@ -1,0 +1,59 @@
+# A class with `__iter__` and no `__contains__` answers `in` by iterating it, as CPython does (plan P93 D1,
+# owner ruling R-NZ, #2653). Each class also declares a method named `contains` that answers False: it is
+# not `__contains__`, so `in` must never call it (it compiles to a C# `Contains`; LINQ's `Enumerable.Contains`
+# is named in full instead). Under the defect the first class was refused (SPY0320); bound to the user's
+# `Contains` it would print False where CPython prints True.
+
+class Numbers:
+    _items: list[int]
+
+    def __init__(self, a: int, b: int):
+        self._items = [a, b]
+
+    def __iter__(self) -> Iterator[int]:
+        return iter(self._items)
+
+    def contains(self, item: int) -> bool:
+        return False
+
+
+class Evens:
+    _limit: int
+
+    def __init__(self, limit: int):
+        self._limit = limit
+
+    def __iter__(self) -> int:
+        n: int = 0
+        while n < self._limit:
+            yield n
+            n += 2
+
+    def contains(self, item: int) -> bool:
+        return False
+
+
+class Box[T]:
+    _items: list[T]
+
+    def __init__(self, items: list[T]):
+        self._items = items
+
+    def __iter__(self) -> Iterator[T]:
+        return iter(self._items)
+
+    def contains(self, item: T) -> bool:
+        return False
+
+
+def main() -> None:
+    numbers: Numbers = Numbers(1, 2)
+    print(1 in numbers)
+    print(3 in numbers)
+    print(2 not in numbers)
+    print(numbers.contains(1))
+    print(4 in Evens(10))
+    print(3 in Evens(10))
+    words: Box[str] = Box(["a", "b"])
+    print("b" in words)
+    print("z" not in words)

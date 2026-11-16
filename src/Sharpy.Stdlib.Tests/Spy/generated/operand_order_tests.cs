@@ -114,7 +114,7 @@ namespace Sharpy.Stdlib.Tests.Spy.Compiler.OperandOrderTests
                 1,
                 2
             };
-            var __arg_11 = global::Sharpy.Stdlib.Tests.Spy.Compiler.OperandOrderTests.OperandOrderTestsModule.Take(xs);
+            int __in_11 = global::Sharpy.Stdlib.Tests.Spy.Compiler.OperandOrderTests.OperandOrderTestsModule.Take(xs);
             Sharpy.List<int> __src_9 = xs;
             var __comp_8 = new Sharpy.List<int>(((global::Sharpy.ISized)__src_9).Count);
             foreach (var __loopVar_10 in __src_9)
@@ -124,7 +124,7 @@ namespace Sharpy.Stdlib.Tests.Spy.Compiler.OperandOrderTests
             }
 
 #line (55, 5) - (55, 44) 12 "src/Sharpy.Stdlib.Tests/Spy/compiler/operand_order_tests.spy"
-            Xunit.Assert.True(!__comp_8.Contains(__arg_11));
+            Xunit.Assert.True(!__comp_8.Contains(__in_11));
 #line hidden
         }
 

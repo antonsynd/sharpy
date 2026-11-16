@@ -32,13 +32,14 @@ namespace Sharpy.Compiler.Tests.Properties.Differential;
 /// DIFFERENT enum types answers False / True as CPython does, both operands evaluated once — it was CS0019 behind
 /// SPY0908 for two int-backed enums, an int-backed against a string-backed one and <c>E | None</c> against another
 /// enum, and a silent True for two string-backed enums with equal values. The same-enum pairs are the control.</para>
-/// <para><b>Expected map</b> (<see cref="Expect"/>). COMPARED cells print CPython's lines. HAND-EXPECTED cells,
-/// counted apart: an <c>is</c> link of a comparison chain is not lowered at all (SPY0519, the class #2648 tracks; a
-/// chain headed by <c>x is Member</c> keeps SPY0349); <c>is</c> between two operands that are BOTH typed
+/// <para><b>Expected map</b> (<see cref="Expect"/>). COMPARED cells print CPython's lines — an <c>is</c> link of a
+/// comparison chain included: a link is its binary twin (P93 D3, #2648), and a chain headed by <c>x is Member</c>
+/// gives its first link the type test's rule (P93 D4). HAND-EXPECTED cells,
+/// counted apart: <c>is</c> between two operands that are BOTH typed
 /// <c>object</c> stays boxed reference identity — no operand's static type is an enum, so the contract does not
 /// reach it and the answer is pinned so that a change is seen; and <c>==</c> / <c>!=</c> with an <c>object</c>
 /// operand is the checker's general rule, not an enum-pair decision (SPY0222 against an enum, SPY0402 for two
-/// objects, and a pinned reference comparison where a chain link skips that refusal).</para>
+/// objects, in a chain link as in the binary form).</para>
 /// <para><b>Emitted shape</b> (<see cref="ShapeViolation"/>): every cell that runs and compares two operands of ONE
 /// int-backed enum must emit the enum's native operator, and every pair of two different enums
 /// <c>object.Equals</c> (the probe's positive control). The answers alone cannot see a same-enum pair that was
@@ -143,10 +144,6 @@ public class EnumIdentityDifferentialTests : IntegrationTestBase
         Operand.OtherClrEnumVar => $"{side}_kind",
         _ => throw new ArgumentOutOfRangeException(nameof(operand)),
     };
-
-    /// <summary>An operand the parser reads as a type name after <c>is</c>: an uppercase dotted member.</summary>
-    private static bool IsMemberLiteral(Operand operand)
-        => operand is Operand.EnumMember or Operand.OtherEnumMember or Operand.StrEnumMember or Operand.ClrEnumMember;
 
     private sealed record Cell(int Id, Operand Left, Operand Right, BinaryOperator Op, Position Position)
     {
@@ -324,7 +321,8 @@ public class EnumIdentityDifferentialTests : IntegrationTestBase
         return byId;
     }
 
-    /// <summary>What a cell must do: print CPython's lines, print pinned lines, or be refused by one code.</summary>
+    /// <summary>What a cell must do: print CPython's lines, print pinned lines, or be refused by exactly the codes
+    /// <see cref="RefusedBy"/> lists (sorted, comma-joined).</summary>
     private sealed record Expectation(bool Compared, IReadOnlyList<string>? Pinned, string? RefusedBy, string Why);
 
     private static readonly Expectation ComparedToCPython = new(true, null, null, "CPython 3.15");
@@ -338,33 +336,34 @@ public class EnumIdentityDifferentialTests : IntegrationTestBase
                 + (cell.Right == Operand.ObjectHoldingMember ? 1 : 0);
             if (objectOperands == 2)
             {
-                return cell.Position == Position.ChainLink
-                    ? new(false, new[] { "False" }, null,
-                        "`object == object` as a chain link is not refused as the binary form is, and compares the two "
-                        + "boxes by reference (pinned; outside #2670's contract, cell on #2648)")
-                    : new(false, null, DiagnosticCodes.Validation.UnsupportedOperator,
-                        "`object == object` is refused (SPY0402): no enum operand type, outside #2670's contract");
+                // A chain link is refused as its binary twin is (P93 D3; owner ruling, #2648 comment 6865267508).
+                return new(false, null, DiagnosticCodes.Validation.UnsupportedOperator,
+                    "`object == object` is refused (SPY0402), as a chain link too: no enum operand type, outside #2670's contract");
             }
             if (objectOperands == 1)
-                return new(false, null, DiagnosticCodes.Semantic.InvalidBinaryOperation,
-                    "`object ==` an enum is refused by the checker (SPY0222): not a pair of enum types");
+            {
+                // A chain `l == r == r` is its two links (P93 D3): with the `object` on the right, the second link
+                // is `object == object`, refused as its twin is (SPY0402) beside the first link's SPY0222.
+                return cell.Position == Position.ChainLink && cell.Right == Operand.ObjectHoldingMember
+                    ? new(false, null,
+                        DiagnosticCodes.Semantic.InvalidBinaryOperation + "," + DiagnosticCodes.Validation.UnsupportedOperator,
+                        "`object ==` an enum is refused by the checker (SPY0222), and the chain's `object == object` link "
+                        + "as its twin (SPY0402)")
+                    : new(false, null, DiagnosticCodes.Semantic.InvalidBinaryOperation,
+                        "`object ==` an enum is refused by the checker (SPY0222): not a pair of enum types");
+            }
             return ComparedToCPython;
         }
 
-        if (cell.Position == Position.ChainLink)
-        {
-            // `x is Member is y`: the type-test spelling heads a chain, which has no single-comparison reading.
-            if (cell.Op == BinaryOperator.Is && IsMemberLiteral(cell.Right))
-                return new(false, null, DiagnosticCodes.Semantic.IsTypeTestRetired,
-                    "a chain headed by `x is Member` keeps the type-test refusal it had before #2669");
-            return new(false, null, DiagnosticCodes.CodeGen.UnsupportedOperator,
-                "an `is` link of a comparison chain is not lowered (SPY0519, the class #2648 tracks)");
-        }
-
+        // A chain link is its binary twin (P93 D3, #2648), and a chain headed by `x is Member` takes the type
+        // test's rule for its first link (P93 D4): an enum member is an identity link. So an `is` chain cell
+        // `l op r op r` answers what its two links answer.
         if (cell.Left == Operand.ObjectHoldingMember && cell.Right == Operand.ObjectHoldingMember)
         {
             // Two `object`s: neither static type is an enum, so this is ordinary reference identity on two boxes.
-            return new(false, new[] { cell.Op == BinaryOperator.Is ? "False" : "True" }, null,
+            // As a chain, the second link compares `r` with itself: one box, so `is` holds and `is not` fails
+            // — `l is r` (False) short-circuits; `l is not r` (True) then `r is not r` (False).
+            return new(false, new[] { cell.Position == Position.ChainLink || cell.Op == BinaryOperator.Is ? "False" : "True" }, null,
                 "both operands are typed `object`: outside #2669's contract, reference identity of two boxes (pinned; deviations.yaml enum-identity-is)");
         }
 
@@ -532,7 +531,9 @@ public class EnumIdentityDifferentialTests : IntegrationTestBase
             if (expected.RefusedBy is { } code)
             {
                 refusals++;
-                meets = sharpy.RefusedBy is { Count: 1 } by && by.Single() == code;
+                // The refusing codes, sorted and comma-joined: a chain is refused by each of its links' codes.
+                meets = sharpy.RefusedBy is { Count: > 0 } by
+                    && string.Join(",", by.OrderBy(c => c, StringComparer.Ordinal)) == code;
             }
             else if (expected.Pinned is { } lines)
             {

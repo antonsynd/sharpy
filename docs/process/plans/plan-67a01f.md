@@ -134,8 +134,9 @@ Product @ 7be6704c4 (`run`); oracle CPython 3.15.2; stage 0 @ de55a06a0.
 
 ## Revision log
 
-- @ 907aad013 — revised before the first pass: the owner's two rulings of 2026-11-13 recorded (#2648 comment 6865267508; #2645 comment 6865268833). No decision, predicate, mutation or count changed.
-- @ 7cf933cec — revised after the 1st pass (NEEDS REVISION, Dimension 4, Dimension 6, Dimension 7): stage 0 @ 1304d2af1 answers findings 1, 2 (the axis), 4 and the bulk ruling; @ 3833e96e1, finding 5's four axes and the `__iter__` shape, one row per fact and cause; @ a547f91ad, the second batch: producer types, hosts, forms, hoist kinds; @ ed5642202, the third: three links behind a hoist, 35 facts, nine shards; @ de55a06a0, the fourth: both pivot sides. D1: the synthesized `IEnumerable[T]`, LINQ named (finding 3). D2: a recorded binding type, cast, tuple hoist (finding 2). D3: both direction changes ruled (finding 6). D4: `Unknown` for a refused head. M1–M3 split.
+- @ 907aad013 — before the 1st pass: the owner's two 2026-11-13 rulings recorded (#2648 comment 6865267508; #2645 comment 6865268833). No decision, predicate, mutation or count changed.
+- @ 7cf933cec — after the 1st pass (NEEDS REVISION, Dimensions 4, 6, 7): stage 0 @ 1304d2af1 answers findings 1, 2 (the axis), 4 and the bulk ruling; @ 3833e96e1, finding 5's four axes and the `__iter__` shape, one row per fact and cause; @ a547f91ad, the second batch: producer types, hosts, forms, hoist kinds; @ ed5642202, the third: three links behind a hoist, 35 facts, nine shards; @ de55a06a0, the fourth: both pivot sides. D1: the synthesized `IEnumerable[T]`, LINQ named (finding 3). D2: a recorded binding type, cast, tuple hoist (finding 2). D3: both directions ruled (finding 6). D4: `Unknown` for a refused head. M1–M3 split.
+- deferred findings resolved in code @ 05f4871f6
 
 ## Verification Summary
 
@@ -211,3 +212,153 @@ Pass 1's six findings are answered, read against the generator and the plan: the
 - The spy-stdlib sites D2 moves: not counted (T1). Snapshots re-measured: 178 files, 3 with `.Contains(`, none with a needle D2 binds.
 - `check_plan_refs.py --issues` cannot look issues up here (`gh issue view` is refused); the ten trackers and #2690 were read with `gh api` and are open.
 - **Owner question** (optional; the stamp does not wait for it): the deferred finding is resolved in code by `/implement-plan`'s first task. If you would rather keep `OptionalNoneTest` excluded, say so and the row is struck; the exclusion then wants a reason that is not the generator's own limit.
+
+## Implementation Checklist
+
+Base cd4071554 (`origin/dev`, the plan's merge); branch `claude/membership-totality`. Lead: this session. Tasks are commit-sized; owners are background agents unless marked lead.
+Baseline: 84888/0/10 @ cd4071554 (measured, CI run 43666691859). Build @ cd4071554: 0 warnings.
+
+- [x] T0 — Deferred finding 1: delete `SequenceExcludedKinds[OptionalNoneTest]`, none-last sequences over a tagged `T?` subject, re-measure totals, `BulkCensus` and `…/NoneLast/…` rows — test-expert — blocked by none — 05f4871f6 (deferred finding 1 resolved in code; split by subject typing, baseline 614 → 616 per owner ruling; mutation: broken → red 2 of 2, restored → green 2; re-run by the lead @ 05f4871f6: `OptionalNoneTest` re-excluded → red with the stale-exclusion message, restored → green 1 passed; known-red sequence cells 188693 → 208989, rows 96 → 98)
+  - Lead ruling (C): tagged `T?` for every payload, `T | None` for the value-type payloads (measured by the emitted CLR type, 19). Triple/NoneLast/ComparisonFirst then ran 9m24s locally against CI's 10 min hang timeout; **owner ruling, 2026-11-15** (AskUserQuestion): "Split, baseline 616 (Recommended)" — the two Triple/NoneLast facts split by subject typing, 2 new rows, `allowlist_rows_outside_seed` 614 → 616.
+- [x] T1 — Probe each D's predicate by `run` at the base; by-direction lists (D3 both moves, the 156 SPY0908 → SPY0402, D4's programs); count the spy-stdlib sites D2 moves — lead — blocked by none
+  - @ cd4071554 (`run`, CPython 3.15.2): D1 `IterBag`/`GIterBag[int]`/generator+`contains` SPY0320 → to run; `SeqBag`, `LB` SPY0320 kept; generic `SeqBag` `None` SPY0222+SPY0320 → SPY0320. D2 `n() in c()` / `not in` print container first, `k() * s()` str first, walrus `True` (CPython needle/count first, `False`): wrong output → CPython, nothing refused. D3 `in`/`is`/`is not` links SPY0519 → twin (488 worked → SPY0402, 10516 SPY0519 → SPY0908, both ruled; 156 SPY0908 → SPY0402, gain). D4 `c is Color.RED is d` / `== d` SPY0349 → value; `x is Dog is d`, `x is Outer.Inner is d` SPY0349 kept. Spy-stdlib sites D2 moves: read from the T3r/T6r regeneration diff.
+- [x] T2 — Parser (D4) + Pretty/dump of `ComparisonChain`; LSP check over `c is Color.RED is d` — parser-expert — blocked by none — 435c51bc1 (M4: red 4 of 16, restored green 16; `FrontEndParityTests` compares diagnostics only, so direct LSP tests added). Leaves `errors/enum_member_is_chain_head_refused_2669` and 72 `EnumIdentityDifferentialTests` chain-head cells red (SPY0349 → SPY0519) until T3 gives link 0 its rule.
+- [x] T5 — Core `StringHelpers.Repeat(count, str)` for `int` and `long` + Core.Tests — core-library-expert — blocked by none — 740030e8e (mutation: red 6 failed, restored green 11; re-run by the lead: 6 failed → 11 passed)
+- [x] T3 — Checker: D1 `IterationMembershipElement`, D2 needle-binding record (`MergeFrom`), D3 link routine, D4 link 0; M5 — semantic-expert — blocked by T2 — c6cc41700 (M5 red 1 of 53, D3 red 8 of 53, M1 checker half red 10 of 53, restored green 53; side-table ratchet 84 → 85 for D2's ruled dictionary, lead ruling (A); `errors/enum_member_is_chain_head_refused_2669.error` removed by the lead, the fixture reads SPY0519 until T6)
+- [x] T4 — Validators: SPY0320 gate on D1's record; `VisitComparisonChain` in both validators; M1/M3 validator halves — semantic-expert — blocked by T3 — bce521ec9 (M3 red 3 and 4 of 14, M1 validator half red 4 of 14, restored green 14). Red until T6: the 2669 fixture, `OperatorLoweringCorpusCensusTests`, 648 `is`/`is not` @ChainLink cells of `EnumIdentityDifferentialTests` (SPY0519); interim wrong value `CBag` declaring `contains` → `False` (CPython `True`) until T6's qualified `Enumerable.Contains`
+- [x] T3r — Regeneration after the first Semantic commit (spy-stdlib, spy-test, stdlib docs, oracle ledger); diff read as findings — lead — blocked by T3 — @ 5f34b540e: spy-stdlib, spy-test, `.expected.cs` snapshots, corpus pins (49/0/0), stdlib docs and oracle ledger all byte-identical (no emitter change yet); fixture corpus 3682/1/0, the one red the 2669 fixture (SPY0519 until T6). Lead re-ran T3's M1 checker half in a worktree @ bce521ec9: broken → 10 of 53 failed, restored → 53 passed
+- [x] T6 — Emitter: D1 LINQ `Contains`, D2 bind helper + hoist + count-first repeat, D3 `BuildLink` through binary emitters; sink rows; M1/M2/M3 emitter halves — codegen-expert — blocked by T4, T5 — f9078a930 (M1 red 2 of 9; M2 bind 6 of 9, cast 1, tuple hoist 1, bare name 2, count-first 1; M3 red 3 of 16; restored green 16; re-run by the lead in a worktree: bind removed → 6 of 9 failed, restored → 9 passed; no sink rows needed, no snapshot moved). `Repeat(b, a)` → `Repeat(a, b)` in `RoslynEmitterOperatorLoweringTests` is D2's ruled shape. `expressions/chained_identity_operators.error` removed by the lead (6a31b7c04). Open: in-contract sibling, a bare-name left operand of any binary operator re-read after the right operand's hoist rebinds it (pre-existing @ cd4071554), fixed in 9252c7203 (`HoistRebindsARead`, from emitted syntax only; mutations: each of the three captures removed → red 1 of 10, restored → green 10; filter set 5435/0/0). Out of contract, filed as #2694: augmented assignment and builtin variadic `print` order
+- [x] T6r — Regeneration again after T6 — lead — blocked by T6 — @ dcf4d86a4: spy-stdlib C#, `.expected.cs` snapshots (fixture corpus 3683/0/0), corpus pins (49/0/0) and stdlib docs byte-identical; spy-test C# moves in 4 files, each hunk D2's (the needle bind with its slot cast, the count-first `Repeat(3, "abc")`, a typed needle local) or a temp renumbering; those 4 classes 127/0/0. Oracle ledger: +1 row, T7's R-OA deviation, committed by T7
+- [x] T7 — Spec (D5), `deviations.yaml` R-OA row, fixtures, `SpecRowMap`, `OptionalElementControlExcluded` entries, drain allowlist to pin lines, `BulkCensus` entries, `scorecard_metrics.py --lower` — test-expert — blocked by T6r — 32e5d870e (10 fixtures under `operators/`, the 2669 fixture moved; M1 fixtures red 2, restored green), e0b330ae8 (spec, `membership-legacy-sequence-protocol` row, oracle ledger 128; `SpecRowMap` move, #2653's 12 `OptionalElementControlExcluded` entries deleted; mutations red 1 / red 1, restored green), 2a7c81c2a (drain; mutation: a drained row re-added → red 1, restored green). The 37 facts pass, 37/0/0, and each proposed allowlist is byte-identical. Known red went from 98 rows / 256619 cells to 57 / 2850 (sequences 0); `BulkCensus` is empty; 3 stale `ChainControlExcluded` entries were deleted at the facts' demand; `allowlist_rows_outside_seed` went 616 → 575. Residue is re-cited off the closing #2645/#2648/#2653 onto #2651, #2674, #2644, #1931, and #2695, the last filed by the lead for `==` on function values and iterators: 28 LeftForm/Chain cells, where the lambda link's SPY0402 is D3's ruled slot typing. Re-run by the lead in a worktree: M1 (the emitter's LINQ arm unreachable, the producer gate forced true) failed 2 of 3 broken and passed 3 of 3 restored.
+- [x] TF — Final verification: build, Infrastructure|Conformance filter, whitespace, commit subjects, `/ci-gate`, GapDiscovery sweeps, staleness gates, spec examples, `verification-expert` standalone — lead — blocked by all
+  - Gate 1 @ 2a7c81c2a (CI run 43704665831): 85115/5/10, red. All 5 reds were standing rosters the plan moved: the scalar type-annotation census (D4's `ComparisonChain.HeadCheckType`), spec codes SPY0320/SPY0349 in `comparison_chaining.md`, the emitter reporting sites 25 → 24 (D3 removed the SPY0519 site), and T6's `IsLiteralOnly` in the stub-authority and dispatch-site rosters. Fixed in 5aa8b9476, and the 5 classes then passed 42/0/0. Python build tools were red on the R-LW body cap (20,526 bytes) after the mandated Revision log line; the earlier log lines were condensed (20,479) in d119f5903.
+  - Local @ 2a7c81c2a: build 0 warnings; whitespace `--verify-no-changes` clean; spy-stdlib and spy-test staleness clean; stdlib docs and oracle ledger (128) unchanged; `check_spec_blocks.sh` 1275 blocks, 0 failing; scorecard `--check` OK (575); `FrontEndParityTests` 1/0; GapDiscovery InteropConformance 5/0, MetamorphicCorpus 1/0, DifferentialExecution 5/0. `check_allowlist_issue_state.sh` could not query `gh` (GraphQL 403 here); every cited issue (#1931, #2644, #2651, #2674, #2695) was read open by REST.
+  - `verification-expert` (opus, standalone) @ e69e5076e found 1 in-contract cell: D1 `__iter__`/`__contains__` inherited from a generic base (`IntBox(Box[int])`) was SPY0222. Fixed in fb3416ec9 (`SubstituteDunderForHost`, semantic-expert), with mutation 7 of 77 red and restored 77; the lead re-ran it in a worktree and reproduced 7 → 77. Regeneration in e11bec6a2 moved only the corpus pins for the new stem. Its 0-violation sweeps: 2500 2-link and 1500 3-link chains against their twins, and a 2880-case order matrix. Out of contract, filed by class: #2696 (identity before `__eq__`), #2697 (a mixed-type conditional with a hoisting branch, CS0029), #2698 (iteration over a generic base's `__iter__`); cells on #2681, #2432, #2695 and #1915.
+  - **Final gate: 85142/0/10 @ e11bec6a2 (measured, CI run 43714991734)**; Python build tools green (run 43714993727).
+- [x] TW — `dotnet format whitespace` — lead — blocked by all — `format whitespace --verify-no-changes` clean @ 2a7c81c2a; the fb3416ec9 lane formatted with no changes; CI whitespace step green @ e11bec6a2
+- [x] R1 — Independent review @ eded8273b: merge after fixes. Applied: chain middle operand captured under the next link's needle cast (0723cdfcd), consecutive `in` links skipping container setup (2f66f7654), raising literal needle (4cc650933), None-arm capture (18d443017); declined: a stale `Direct` projection forget (unreachable: `CheckExpression` caches per node, so a guard could not fail). Lead re-run of 2f66f7654: 10 of 78 red, restored 78. Gate 85199/0/10 @ 05e19c02b (CI run 43724999175).
+- [x] R2 — Second review @ 05e19c02b: merge after fixes. D3's middle operand that is also an `in` needle is typed under the `in` link's slot, so the link before it compares at that type (`t == (1, 2) in ts` False, CPython True) or reaches SPY0908. **Owner ruling, 2026-11-15** (AskUserQuestion, after confirming CPython parses `x == [1, 2] in y` as one chain, `Compare(ops=[Eq(), In()])`): "Own type, cast at needle" — a middle needle is typed as its left link's binary twin types it, and cast to the `in` link's slot only where that link reads it, as a named operand is; every link is then its twin. The 28 #2695 lambda cells move SPY0402 → SPY0222 (the twin's code); `CaptureType` goes. — semantic-expert — blocked by R1 Landed ff6a57538..9ed7af9ed (checker, spec, LeftForm chain reference re-bound unannotated per the ruling, pins); lead mutation re-run @ 9ed7af9ed: middle needle re-typed under its slot → red (≥38 failed, run cut by the output pipe), restored → green 114/0; regen @ 9ed7af9ed: no diff.
+- [x] R3 — Third independent review of 05e19c02b..9ed7af9ed — lead — blocked by R2 · Review @ 9ed7af9ed: merge after fixes; 1 ICE (`h == -1 in cs`, int8: a literal middle admitted by its constant shape, no cast at the captured read), 1 pre-existing refusal (head-needle walrus unseen by later operands), 2 nits. **Owner ruling, 2026-11-15** (AskUserQuestion, after the lead's by-type reading refused `h == 1 in xs` over `list[uint64]`): "By value, cast" — a constant middle needle is admitted by its value where it fits the slot, as `1 in xs` alone is, and is always cast at the `in` read; out-of-range constants are refused; tuple/list literal middles stay admitted by type. Landed 93e5a59ec..6d0074a39 (constant middle by value with the cast always at the `in` read; head-needle walrus checked after its container, before later operands; nits; LeftForm chain reference: constant middles in place, others bound unannotated; allowlist net zero vs 9ed7af9ed). Lead mutation re-run @ 6d0074a39: constant middles admitted by type → red (5 failed / 123), restored → green 123/0; regen: no diff.
+
+## Implementation Verification Record
+
+**Plan:** `docs/process/plans/plan-67a01f.md` (stamp: CONVERGED; Adequacy: CLASS)
+**Tier:** full — Agents 1–4 (contract §12); three more independent reviews (the range, and each of the round's two code fixes)
+**Branch:** `claude/membership-totality` · **Pull request:** https://github.com/antonsynd/sharpy/pull/2699
+**Scope:** `cd4071554..2c782bf8f` (base = parent of the first implementation commit 4ce03c048; 48 implementation commits, 3 remediation commits)
+**Verified on:** 2026-11-16
+
+### Completeness (Agent 1)
+
+| Status | Count |
+|--------|-------|
+| DONE (evidence cited) | 11 (D1–D5; sweep green and `BulkCensus` empty; allowlist; the CONVERGED deferred finding @ 05f4871f6; no orphan symbols; T6's sink claim; Missing Steps) |
+| Was PARTIAL (now fixed) | 2 (the plan's M1 "accepts `__getitem__` + `__len__`" and "producer gate dropped" mutations had no separate record: run by the lead, red 5 and red 2 of 116, in 88e5d745c's body) |
+| Was MISSING (now fixed) | 0 |
+| DIVERGED (acceptable, why) | 1 (D3's "a needle typed under the next operand's slot" is replaced by owner rulings R2 and R3, 2026-11-15, recorded in the checklist) |
+| Unresolved | 1 (the M2 and M5 records are unit and fixture proxies, not the stage-0 rows the plan names; the rows themselves run in CI) |
+
+- Fixtures: 12 `.expected` stems and `comparison_chain_refused_link_twin_code_2648` print differently under the base compiler (they discriminate); 4 `.error` stems are refused at both ends and guard the other direction, each beside an answering sibling.
+- Spec blocks of the two changed spec files: 20 run, 0 failing with the compiler @ 98daf1272; 2 failing and 5 mismatched with the compiler @ cd4071554.
+- "37 facts": 33 `[Fact]` + 4 `[SkippableFact]` in 27 classes (measured by the lead; Agent 1 counted the 33).
+
+Issues to Close:
+
+| Issue | Criterion | Evidence | Verdict |
+|---|---|---|---|
+| #2645 | order-alone and `…/Binary` rows gone, the gate | no such row in the allowlist @ 98daf1272; `f() in g()` prints needle then container (container first @ cd4071554); `k() * s()` count first; gate below | CLOSEABLE |
+| #2653 | no `UserIterable` / `GetItemLen` cell cited to #2653; spec row and deviation row | no row cites it @ 98daf1272; `1 in IterBag(1, 2)` and `GIterBag[int]` print True; `__getitem__` + `__len__` is SPY0320 with `docs/deviations.yaml` row `membership-legacy-sequence-protocol`; this round's residue cells live on #2702 and #2249 | CLOSEABLE |
+| #2648 | no chain-row cell cited to #2648, the D4 fixture | the criterion as written holds @ 98daf1272, but Agent 3 refuted "a link is its binary twin" for one arm (C1 below), posted on #2648 | NOT YET |
+
+### Regressions (Agent 2)
+
+- **Baseline @ HEAD:** 85237 passed, 0 failed, 10 skipped @ 98daf1272 (measured, CI run 43771997259; Python build tools run 43771999468 green)
+- **Post-remediation @ FINAL:** 85253 passed, 0 failed, 10 skipped @ 2c782bf8f (measured, CI run 43794576288; Python build tools run 43794579202 green). No red; the pass count is the baseline plus 16, not itemised (this round added 4 theory rows, 1 fact and 1 fixture, and removed no test)
+- **Regressions found (red @ HEAD, green @ BASE):** 0 in the test suite (26 jobs green at both runs; the same 10 skipped tests; the 12 test names absent at HEAD are a moved stem and renames, all accounted for). By direction, outside any test, a refusal at the base that became something worse: 4 classes; 2 fixed in this round (Fixes Applied), 2 filed and open (C1 on #2648; the dropped `__iter__` body, #2703).
+- **Pre-existing reds (red at both):** 0
+- **Expectation changes in range:** 0 modified `.expected`; 1 `.error` → `.expected` (`expressions/chained_identity_operators`, the plan's D3); 1 stem moved out of `errors/`; 0 `.skip`. 108 fixtures the range did not touch print the same under both compilers.
+
+### Attribution (control run)
+
+- **Control @ BASE:** 84888 passed, 0 failed, 10 skipped @ cd4071554 (measured, CI run 43666691859), the same workflow
+- No red to attribute. `MetamorphicCorpusInvarianceTests` 1/0/0 @ 98daf1272 (measured, local).
+
+### Class contract status (Agents 3 + 4)
+
+- **Violated contract:** `x in c` is answered for every container the iteration ring accepts, in every position a comparison may stand, a chain link included; a chain link gets its binary twin's verdict; every binary operator evaluates its left operand first.
+- **Standing harness:** `OptionalMembershipDifferentialTests` / `MembershipOperatorDifferentialBase` (stage 0, 37 facts) — green @ 2c782bf8f in the gate above
+- **Allowlist delta:** 96 rows (4461 pinned + 231862 bulk cells) @ cd4071554 → 57 rows / 2822 cells @ 98daf1272; +0 added; 0 stale; every row cites an open issue (#2674 48, #2651 2, #2644 2, #1931 1 by Agent 1's count of the cited rows). The checklist's "2,850 cells" is stale by 28: measured 2822. `allowlist_rows_outside_seed` 575, equal to its baseline.
+- **Cells probed / passed / failed:** 440 / 409 / 25, 6 non-cells (matrix built by Agent 4 as the complement of the stage-0 generator, plus two axis changes: warm multi-file compile, LSP diagnostics against `emit diagnostics`; both agree). Re-run @ 5e73463fb: 433 programs print what they printed @ 98daf1272; the 7 that differ are the SPY0908 → SPY0320 cells of 88e5d745c.
+  - Class 1, a user iterable declared after its use: SPY0320 at both ends, except the `__next__` pair, SPY0320 → SPY0908 → fixed to SPY0320 (88e5d745c). Posted on #2249.
+  - Class 2, a nested iterable class, 6 cells: SPY0320 → SPY0908 (CS1503) → fixed to SPY0320 (88e5d745c). The cause (a nested class is emitted without any dunder-synthesized interface; `bool(x)`, `len(x)`, `list(x)`, `sorted(x)` are wrong at the base too) is filed as #2702.
+  - Class 3, a walrus in a needle read by its container, 9 cells: SPY0200 at both ends (CPython answers). Posted on #2644.
+  - D3 chains (94 chains of 2–6 links, 33 special forms) and D2's emission order: NOT REFUTED.
+- **Seam-or-arm verdicts:** 5 SEAM (validators, emitter `BuildLink`, D2, parser/Pretty/LSP for D4, D1), 1 ARM → posted on the class's own open tracker #2648:
+  - **C1.** `CheckBinaryOp` reads an `is None` / `is not None` subject un-narrowed (`_typeTestOperand`); `CheckComparisonChain` does not, so a chain's None-test link reads the NARROWED subject. Under a narrowing made stale inside the same chain (`self.clear() == 1 is not None is not self.v`) the link calls `Unwrap()` on an empty Optional: `InvalidOperationException` @ 98daf1272, SPY0519 @ cd4071554, CPython and the binary twin print False. Not fixed here: how a middle operand that two links read is typed is the question owner rulings R2 and R3 answered for needles, and this arm needs the same kind of answer; it is the next plan's seam.
+- **Refusals by direction:** the range adds no diagnostic code. Chain links that reached SPY0519 @ cd4071554 answer or draw their twin's code; Agent 3 found no program outside the ruled families that ran at the base and is refused now. This round's two fixes restore SPY0320 where the base had it: 7 cells SPY0908 → SPY0320, 1 class silent-wrong → SPY0320, and 2 programs that answered correctly between the two are refused again as at the base: an iterating override declared after its use (`False True` @ 98daf1272; posted on #2249) and a self-returning override beside an inherited `__next__` (#2703 cell 5).
+
+### Guards mutation-tested (Agent 3)
+
+- **Red when broken:** 18 of 18 mutations by Agent 3 (own worktree; restored 372/0/0 Compiler, 2/0/0 LSP, 11/0/0 Core @ 98daf1272 (measured)); 5 more by the lead on the remediation commits (nested gate, unresolved-`__next__` gate, the two M1 mutations, the nearest-`__iter__` return), each red, each restored green (116/0/0 @ 88e5d745c, 122/0/0 @ 5e73463fb, 124/0/0 @ 2c782bf8f (measured, filtered); the last mutation re-run with the new rows: 3 red)
+- **Vacuous / inverted / inert:** 0
+- **Absence assertions given a positive control:** the new refusal rows sit beside answering rows of the same theory family (`IterBag`, `NextBag`, `SubIterBag`); the new `.error` fixture beside `membership_inherited_generic_dunder_2653`
+
+### Architectural Review (Agent 3, Section B)
+
+- **Critical:** 0 · **Warnings:** 3 (0 fixed; W1 the test-host `assert a == b` evaluates the right operand first, pre-existing, posted on #2694; W2 `IterationMembershipElement` re-derives the synthesis rule instead of reading the synthesized interface, posted on #2702 as a fix note; W3 the SPY0908 allowlist rows cite #2674, the nullability design tracker, without naming a lowering: left, that tracker's plan names it) · **Suggestions:** 3 (S1, S2 posted on #2443; S3 `Repeat('a', "x")` for C# callers, left)
+- `Name == BuiltinNames.` comparisons under `Semantic/`: 102 @ cd4071554, 102 @ 98daf1272. New `SemanticInfo` dictionaries join `MergeFrom` (mutation red 14).
+
+### Generated artifacts
+
+- Regenerated at 98daf1272 by Agent 2: spy-stdlib C#, spy-test C#, stdlib docs, oracle ledger (128), snapshots (3699/0/0), corpus pins (17066/0/0 and 49/0/0): empty diff, 0 findings.
+- This round: 5e73463fb added a fixture without its LSP corpus-pin rows (the five `FormattingRouteParitySweepTests.*_Census_PinsHoldOverEveryStem` facts red in CI run 43792505208 @ 5e73463fb); regenerated in 2c782bf8f (18 rows of the new stem, all #2279, and the totals lines; 17071/0/0 and 49/0/0 on the regeneration run (measured, local)).
+- Staleness gates @ 5e73463fb (local): spy-stdlib C# and spy-test C# up to date (119 files), spec blocks clean, scorecard `--check` OK, oracle ledger 128 and stdlib docs regenerate with an empty diff, plan caps OK. Whitespace clean @ 2c782bf8f.
+
+### Fixes Applied
+
+| Commit | Description | Category |
+|--------|-------------|----------|
+| 88e5d745c | D1 gives no answer for an `__iter__` declared on a nested class (#2702) or beside an unresolved `__next__` (#2249): 7 cells SPY0320 @ base → SPY0908 @ 98daf1272 → SPY0320. One stale comment, one spec paragraph re-wrapped (fourth review). | regression |
+| 5e73463fb | The nearest `__iter__` decides: an `__iter__ -> list[int]` override of an iterating base answered `in` with the base's elements (SPY0320 @ base → `True False` @ 98daf1272, CPython TypeError → SPY0320). Found by the review of 88e5d745c. | regression |
+| 2c782bf8f | Two theory rows (`SelfOverNextBag` refused with `TODO(#2703)`, `GenOverListBag` answers); the corpus pins regenerated for 5e73463fb's fixture. No production change. | guard-fix / regen |
+
+Independent reviews of this round: fourth @ 98daf1272: merge (4 low findings: 2 applied in 88e5d745c, 2 posted on #2644 and #2443); fifth @ 88e5d745c: merge (1 medium finding in the range, applied as 5e73463fb; 1 test-doc finding applied; 2 cells posted on #2702 and #1915); final @ 5e73463fb: merge after fixes (0 code findings; the unrecorded cells recorded in 2c782bf8f's body and on #2703; 2 rows added; the spec is left as written and its cell filed).
+
+### Issues Created (one per class — contract §10)
+
+| Issue | Class (contract) | Cells | Lane | Reach | Tracker existed? |
+|-------|------------------|-------|------|-------|------------------|
+| #2702 | a nested class gets none of its dunder-synthesized interfaces | 7 (+1 generic-outer cell and a fix note, comments) | lane:silent-wrong, lane:ice, lane:runtime-throw | reach:program | new |
+| #2703 | the emitted `GetEnumerator` is not the class's `__iter__` (a self-returning `__iter__`'s body is dropped; an override hides the base's) | 6 | lane:silent-wrong, lane:false-refusal | reach:program | new |
+| #2648 | chain None-test link reads the narrowed subject (C1) | 3 | (tracker's) | (tracker's) | posted on #2648 |
+| #2249 | declared-after-use: forward-declared iterables, the override declared after its use | 2 comments | (tracker's) | (tracker's) | posted on #2249 |
+| #2644 | walrus needle read by its container (9), uint32 literal needle, conditional-of-constants middle | 11 | (tracker's) | (tracker's) | posted on #2644 |
+| #2694 | test-host `assert` evaluates the right operand first | 1 | (tracker's) | (tracker's) | posted on #2694 |
+| #2443 | literal-shape predicates in CodeGen; the banned-token scan's doc | 2 | (tracker's) | (tracker's) | posted on #2443 |
+| #1915 | `for` over a list-returning `__iter__` override | 1 | (tracker's) | (tracker's) | posted on #1915 |
+
+- Ledger: cells recorded 3 → issues filed 2 → tracker comments 10 → deviation rows 0
+- **Round ratio:** filed 2 / closed 2 (#2645, #2653); open count per lane, measured before the two closes: silent-wrong 72, ice 83, false-refusal 70, missing-refusal 14, runtime-throw 7, message 11, tooling 48
+
+### Unresolved Items
+
+- **C1** (above): a chain's `is None` link under a narrowing made stale in the same chain throws at run time where the base refused (SPY0519) and CPython prints False. Open on #2648, which stays open for it.
+- **#2703, cell 2:** `b = Base(); print(3 in b, 1 in b)` where `Base.__iter__` resets a counter and returns `self` beside `__next__` prints `True False` @ 2c782bf8f; SPY0320 @ cd4071554; CPython `True True`. The emitter writes `GetEnumerator() => this` and drops the body; `for` over the same object twice is wrong at the base too. D1's `__next__` arm answers through that enumerator, so the wrong `in` answer is new with this plan. Not fixed here: the cure is the emitter's, and refusing by the shape of an `__iter__` body would be a new axis.
+- #2703, cells 5 and 6: a self-returning `__iter__` override beside an inherited `__next__` is SPY0320 where the spec's Validation sentence admits it and CPython answers (as at the base).
+- #2702: `in` on a nested iterable class is SPY0320 where CPython answers (a false refusal, as at the base).
+- #2249: `in` on an iterable declared after its use is SPY0320 where CPython answers (as at the base).
+- The M2 and M5 mutation records are proxies (Completeness).
+
+### Files Changed
+
+`git diff --stat cd4071554..2c782bf8f`: 91 files changed, 5825 insertions(+), 3635 deletions(-). Of these the round changed (`git diff --stat 98daf1272..2c782bf8f`):
+
+```
+ docs/language_specification/comparison_chaining.md |  7 +-
+ ...embership_iter_list_override_refused_2653.error |  1 +
+ .../membership_iter_list_override_refused_2653.spy | 18 +++++
+ .../Semantic/MembershipTotalityCheckerTests.cs     | 78 ++++++++++++++++++++--
+ .../Semantic/TypeChecker.Expressions.Operators.cs  | 36 +++++++---
+ .../Conformance/formatting-route-census.txt        | 64 +++++++++++-------
+ 6 files changed, 166 insertions(+), 38 deletions(-)
+```
