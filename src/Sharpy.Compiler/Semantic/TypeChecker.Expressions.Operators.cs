@@ -1669,11 +1669,12 @@ internal partial class TypeChecker
     /// by it, as Python's own protocol precedence does.
     /// <para>The element is the one of the <c>IEnumerable[T]</c> <see cref="SynthesisAnalyzer"/>
     /// synthesizes for the class — the interface LINQ's <c>Enumerable.Contains&lt;E&gt;</c> enumerates —
-    /// asked per declaration up the chain, nearest first, with the synthesis rule: a declaration with
-    /// both <c>__iter__</c> and <c>__next__</c> answers with <c>__next__</c>'s return type; one with
-    /// <c>__iter__</c> alone answers with the unpeeled return of a generator or producer
-    /// (<see cref="IterableElementDecider.IsRecognizedProducerType"/>) <c>__iter__</c>. No other
-    /// <c>__iter__</c> answers (<c>-&gt; list[int]</c> synthesizes nothing, #1915), and
+    /// asked of the nearest declaration up the chain that declares <c>__iter__</c>, with the synthesis
+    /// rule: a declaration with both <c>__iter__</c> and <c>__next__</c> answers with <c>__next__</c>'s
+    /// return type; one with <c>__iter__</c> alone answers with the unpeeled return of a generator or
+    /// producer (<see cref="IterableElementDecider.IsRecognizedProducerType"/>) <c>__iter__</c>. No
+    /// other <c>__iter__</c> answers (<c>-&gt; list[int]</c> synthesizes nothing, #1915) and none above
+    /// it is asked: an override that does not iterate hides the base's that does. And
     /// <c>__getitem__</c> + <c>__len__</c> never does (R-OA): Python's legacy sequence protocol is not
     /// membership in Sharpy. Two declarations the rule would name do not answer, because the emitted
     /// class does not implement the interface the answer promises: a nested class (its base list lacks
@@ -1725,6 +1726,10 @@ internal partial class TypeChecker
                     var element = IterableElementDecider.UnpeelProducerType(iter.ReturnType, iter.IsGenerator);
                     return element is UnknownType ? null : SubstituteDunderForHost(host, containerType, current, element);
                 }
+
+                // The nearest `__iter__` decides, as it does at run time: one that synthesizes nothing
+                // (`-> list[int]`) hides an ancestor's, and the ancestor's elements are not this class's.
+                return null;
             }
         }
 

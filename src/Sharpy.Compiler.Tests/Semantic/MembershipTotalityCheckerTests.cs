@@ -100,6 +100,10 @@ public class MembershipTotalityCheckerTests
             def __iter__(self) -> Iterator[str]:
                 return iter(self.items)
 
+        class ListOverProducerBag(ProducerBag):
+            def __iter__(self) -> list[str]:
+                return ["z"]
+
         class NextBag:
             n: int
 
@@ -256,12 +260,16 @@ public class MembershipTotalityCheckerTests
     }
 
     /// <summary>
-    /// D1, the shapes that do NOT answer: an <c>__iter__</c> that names no producer (#1915), the legacy
-    /// <c>__getitem__</c> + <c>__len__</c> pair (R-OA), and a class with <c>__contains__</c> (it answers
-    /// by its own dunder). No D1 record; the first two are refused by the protocol check (SPY0320).
+    /// D1, the shapes that do NOT answer: an <c>__iter__</c> that names no producer (#1915) — its own, or
+    /// one overriding a base's that does iterate, where an answer would be the BASE's elements — the
+    /// legacy <c>__getitem__</c> + <c>__len__</c> pair (R-OA), a class with <c>__contains__</c> (it
+    /// answers by its own dunder), and a nested class (it iterates, but is emitted without the
+    /// interface, #2702). No D1 record; all but the <c>__contains__</c> one are refused by the protocol
+    /// check (SPY0320).
     /// </summary>
     [Theory]
     [InlineData("bag: LB = LB()", "1 in bag", true)]
+    [InlineData("bag: ListOverProducerBag = ListOverProducerBag()", "\"a\" in bag", true)]   // the nearest __iter__ decides
     [InlineData("bag: SeqBag = SeqBag(1, 2)", "1 in bag", true)]
     [InlineData("bag: GSeqBag[int] = GSeqBag[int]([1, 2])", "1 in bag", true)]
     [InlineData("bag: DunderContainsBag = DunderContainsBag()", "\"a\" in bag", false)]
