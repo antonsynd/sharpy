@@ -56,6 +56,10 @@ src/Sharpy.Cli/bin/Debug/net10.0/sharpyc project x.spyproj
 
 Satisfy all three when free. Axiom 1 governs the implementation, not the Pythonic surface.
 
+- **Run-time default:** what the CLR defines (type initialization, initializer order, generics, evaluation order) is inherited; a departure names the defect it removes.
+- **No twin, no vote:** Python is evidence for behaviour only where a Python program of the same shape exists; otherwise .NET decides.
+- **Tie-breaks, in order:** no silently wrong value (a default, a skipped initializer, an order-dependent result) > compile error over run-time error > a running program keeps its value unless ruled > one rule for every host. [Text](docs/language_specification/introduction.md#core-axioms).
+
 | Conflict | Resolution |
 |---|---|
 | `//`, `%` | Floored, as Python (`Builtins.FloorDiv`/`FloorMod`) |

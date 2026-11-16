@@ -8,9 +8,11 @@ Sharpy is a statically-typed Pythonic language for .NET. Source `.spy` files com
 
 | Priority | Axiom | When conflicts arise... |
 |----------|-------|------------------------|
-| 1 | **.NET** | Always compiles to valid C# for CLR |
-| 2 | **Types** | Static typing, non-nullable by default |
-| 3 | **Python** | Syntax/idioms yield to above |
+| 1 | **.NET** | Always compiles to valid C# for CLR. Run-time behaviour the CLR defines (type initialization, initializer order, generic instantiation, evaluation order) is inherited; a departure names the defect it removes and the cost it accepts |
+| 2 | **Types** | Static typing, non-nullable by default. No program observes a value that was never given one: a CLR default never stands in for an initializer that has not run |
+| 3 | **Python** | Syntax/idioms yield to above. Python is evidence for behaviour only where a Python program of the same shape exists (a twin); with no twin, .NET decides |
+
+**Tie-breaks**, in order, when no rule keeps everything: (1) no silently wrong value (a default standing in for a value, a skipped initializer, an order-dependent result); (2) a compile-time error over a run-time error; (3) a program that runs correctly keeps its value unless a recorded decision changes it; (4) one rule for every host over a special case. Full text: [Core Axioms](language_specification/introduction.md#core-axioms).
 
 ## Architecture & Pipeline
 
