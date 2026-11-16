@@ -587,6 +587,10 @@ public class MembershipTotalityCheckerTests
     /// The residue of the ruling, pinned: an operand a None test reads FIRST and another link reads
     /// after it (<c>None is not x &lt; 5</c>) is still read narrowed by both. Under a live narrowing the
     /// answers are the twins'; under one made stale earlier in the chain the None-test link unwraps.
+    /// The asserted type is today's, not the contract's: the change that finishes the ruling (#2648)
+    /// replaces this fact with the twin's read (<c>int32?</c>). It is also the boundary of
+    /// <see cref="NarrowedNoneTestSubject_ChainLinkIsItsBinaryTwin"/>'s class: widening that class to
+    /// "any None-test reader" without the per-link read turns this red.
     /// </summary>
     [Fact]
     public void NoneTestFirst_ThenAnotherLink_StillReadsTheNarrowedOperand()

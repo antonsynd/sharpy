@@ -1303,7 +1303,10 @@ internal partial class TypeChecker
         // earlier in the chain unwrapped an empty Optional at run time where the twin answers (#2648).
         // Owner ruling 2026-11-16: each link reads a shared operand as its twin reads it. Here that is
         // the operand every reading link tests against None — the head, the tail, or one between two
-        // `None`s. An operand another link also reads keeps that link's narrowed reading (R2).
+        // `None`s.
+        // TODO(#2648): an operand another kind of link also reads is still read narrowed by both. Where
+        // the None test reads it first (`None is not x < 5`) that is not its twin's read: the ruling
+        // wants the honest value there and the narrowing at the other link's own read.
         bool IsNoneTestLink(int link, int noneOperand) =>
             chain.Operands[noneOperand] is NoneLiteral
             && TypeUtils.ComparisonOperatorToBinaryOperator(chain.Operators[link])
