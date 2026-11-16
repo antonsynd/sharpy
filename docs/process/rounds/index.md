@@ -138,7 +138,7 @@
 
 ## Open items pending owner confirmation
 
-none after R-PM (2026-11-16, after call 45; the *P77 before P78* question was answered the same day: "do P77 before P78"). **next** = `/create-plan #2422 #2412 #2420` (P77, full (c); lands alone; generator EXISTS, P77a) then `/verify-plan`, then P78 → P79 → P21b → P21c; the membership / nullability lane's `/create-plan #2686 #2694 #2648` named below waits behind P21c. None at call 45; one measurement is owed to the owner by P99's plan — whether `h is f1` answers `True` for the same function (R-PI's caveat).
+none after R-PM (2026-11-16, after call 45; the *P77 before P78* question was answered the same day: "do P77 before P78"). Owed to call 46: read `sweep-2026-11-16.md` with the issues — strike the six closed on 2026-11-16, post the moved cells on the 46 PARTIAL and 7 CHANGED issues (21 of the PARTIAL have a fixed headline, so their titles are stale), correct the four python claims 3.15.2 does not bear out (#2064 #2096 #2113 #2412), and place the #1882 skip removal in the band. **next** = `/create-plan #2422 #2412 #2420` (P77, full (c); lands alone; generator EXISTS, P77a) then `/verify-plan`, then P78 → P79 → P21b → P21c; the membership / nullability lane's `/create-plan #2686 #2694 #2648` named below waits behind P21c. None at call 45; one measurement is owed to the owner by P99's plan — whether `h is f1` answers `True` for the same function (R-PI's caveat).
 
 ## Unparsed
 
