@@ -31,11 +31,22 @@ namespace Sharpy.Compiler.Tests.Conformance;
 /// The pool is three sub-products (<see cref="Product"/>), not the full product. Declaration order is fixed:
 /// dependency, then <c>t</c>, then the reader. The order axis is the P77a pool's.
 ///
+/// Three more families ride the same sweep, allowlist and ratchet, each in its own file and each closing an axis the
+/// plan's first verification found hand-listed (the owner's rulings of 2026-11-16, #2422 comment 6923063788):
+/// <list type="bullet">
+/// <item><see cref="Family.Operand"/>: a <c>ref</c> / <c>out</c> / <c>in</c> operand, <see cref="ParameterModifier"/> ×
+/// <see cref="BindingKind"/>;</item>
+/// <item><see cref="Family.Location"/>: a store to a module or <c>@static</c> value, or a use that needs its storage
+/// location, <see cref="LocationUse"/> (fed by <see cref="StoreForm"/>) × holder × value kind × when;</item>
+/// <item><see cref="Family.Slot"/>: every child slot of every concrete <see cref="Expression"/> subclass, classified as
+/// evaluated whenever its parent is, or not.</item>
+/// </list>
+///
 /// Known-red cells are rows of <c>initializer-dependency-differential-allowlist.txt</c>. A run writes its report, every
 /// cell and the rows it would propose under <c>.claude/tmp/initializer-dependency-differential-*</c>.
 /// </summary>
 [Trait("Category", "GapDiscovery")]
-public sealed class InitializerDependencyDifferentialTests : IntegrationTestBase
+public sealed partial class InitializerDependencyDifferentialTests : IntegrationTestBase
 {
     private const string AllowlistFileName = "initializer-dependency-differential-allowlist.txt";
     private const int SharpyExecTimeoutMs = 12_000;
@@ -49,6 +60,10 @@ public sealed class InitializerDependencyDifferentialTests : IntegrationTestBase
 
     /// <summary>The issue whose fix turns a red cell green: the reference to the module value is emitted as a name C# cannot resolve.</summary>
     private const string ClassIssue = "#2420";
+
+    /// <summary>The tracker of rule N3, which the three later families' red cells wait on: a value read before it is ready,
+    /// a cycle that prints a default, an operand the C# compiler refuses in the checker's place.</summary>
+    private const string ReadinessIssue = "#2422";
 
     private const string Operand = "{d}";
 
@@ -336,13 +351,46 @@ public sealed class InitializerDependencyDifferentialTests : IntegrationTestBase
     // The cell, its program, its twin and its expectation
     // ------------------------------------------------------------------------------------------- //
 
-    internal sealed record Cell(string Id, Site Site, Holder Holder, Use Use, Type Node, Dependency Dependency, string Source, string TwinSource, string Model)
+    internal enum Family
     {
-        public bool MustRefuse => Site.TakesConstantsOnly;
+        /// <summary>The first four axes: what a reference to a module value compiles to.</summary>
+        Reference,
+        Operand,
+        Location,
+        Slot,
+    }
 
-        /// <summary>A cell with nothing of the axis in it: a literal initializer, read from a site that is not a module variable.
-        /// It is green or the generator is wrong, and no row may list it.</summary>
-        public bool IsControl => Dependency.Kind == BindingKind.None && !Site.ReaderIsAModuleVariable;
+    /// <summary>What the python twin of a cell does. A cell python has no spelling for carries no twin, and says why where it is made.</summary>
+    internal enum PythonExpectation
+    {
+        Prints,
+        NameError,
+        NoTwin,
+    }
+
+    /// <summary>The key of a <see cref="Family.Reference"/> cell on its four axes.</summary>
+    internal sealed record ReferenceKey(Site Site, Holder Holder, Use Use, Type Node, Dependency Dependency);
+
+    /// <summary>The cite of a red cell whose failure is its class's own, or null: a red with no route is red until one names it.</summary>
+    internal delegate string? Route(VerdictClass verdict, string? csCode, string? unresolvedName);
+
+    internal sealed record Cell(string Id, Family Family, string Source, string? TwinSource, string Model)
+    {
+        /// <summary>The code the cell must be refused with. Null: it runs and prints <see cref="Model"/>.</summary>
+        public string? RefusalCode { get; init; }
+
+        public bool MustRefuse => RefusalCode != null;
+
+        /// <summary>A cell with nothing of its family's axis in it. It is green or the generator is wrong, and no row may list it.</summary>
+        public bool IsControl { get; init; }
+
+        public bool NeedsStdlib { get; init; }
+
+        public PythonExpectation Python { get; init; } = PythonExpectation.Prints;
+
+        public Route Route { get; init; } = static (_, _, _) => null;
+
+        public ReferenceKey? Reference { get; init; }
     }
 
     private static readonly (string Marker, string[] Lines)[] HelperTable =
@@ -354,7 +402,24 @@ public sealed class InitializerDependencyDifferentialTests : IntegrationTestBase
         ("Box(", new[] { "class Box:", "    v: int", "    def __init__(self, v: int) -> None:", "        self.v = v" }),
         ("mk(", new[] { "def mk(v: int) -> () -> int:", "    return lambda: v" }),
         ("ap(", new[] { "def ap(f: () -> int) -> int:", "    return f()" }),
+        ("fill(", new[] { "def fill(a: out int) -> int:", "    a = 42", "    return 1" }),
+        ("peek(", new[] { "def peek(a: in int) -> int:", "    return a" }),
+        ("peek0(", new[] { "def peek0(a: int) -> int:", "    return a" }),
+        ("grow(", new[] { "def grow(a: ref int, by: int) -> int:", "    a = a + by", "    return a" }),
+        ("one()", new[] { "async def one() -> int:", "    return 1" }),
+        ("ap0(", new[] { "def ap0(f: () -> int) -> int:", "    return 5" }),
+        ("P(", new[] { "struct P:", "    x: int", "    def __init__(self, x: int) -> None:", "        self.x = x", "    def add(self, by: int) -> None:", "        self.x = self.x + by" }),
+        ("Q(", new[] { "class Q:", "    x: int", "    def __init__(self, x: int) -> None:", "        self.x = x", "    def add(self, by: int) -> None:", "        self.x = self.x + by" }),
     };
+
+    /// <summary>A program's text under the helpers it names, each declared once, after its imports.</summary>
+    private static string WithHelpers(string text, IEnumerable<string>? imports = null)
+    {
+        var head = (imports ?? Array.Empty<string>())
+            .Concat(HelperTable.Where(h => text.Contains(h.Marker, StringComparison.Ordinal)).SelectMany(h => h.Lines))
+            .ToList();
+        return head.Count == 0 ? text : Harness.Join(head) + text;
+    }
 
     private static string Program(Site site, Holder holder, Use use, string shape, Dependency dependency)
     {
@@ -377,9 +442,7 @@ public sealed class InitializerDependencyDifferentialTests : IntegrationTestBase
             main = Harness.MainPrinting(placed.Access, placed.Setup);
         }
 
-        var text = Harness.Join(body) + main;
-        var head = imports.Concat(HelperTable.Where(h => text.Contains(h.Marker, StringComparison.Ordinal)).SelectMany(h => h.Lines)).ToList();
-        return head.Count == 0 ? text : Harness.Join(head) + text;
+        return WithHelpers(Harness.Join(body) + main, imports);
     }
 
     /// <summary>Python has no module-level accessor: its twin reads from a function, as the P77a pool's does.</summary>
@@ -391,14 +454,18 @@ public sealed class InitializerDependencyDifferentialTests : IntegrationTestBase
         var shape = Shapes[node];
         return new Cell(
             $"{site.Key}/{holder}.{use}/{node.Name}/{dependency.Key}",
-            site,
-            holder,
-            use,
-            node,
-            dependency,
+            Family.Reference,
             Program(site, holder, use, shape.Sharpy, dependency),
             Program(TwinSite(site), holder, use, shape.Twin ?? shape.Sharpy, dependency),
-            shape.Model(DependencyValue).ToString(CultureInfo.InvariantCulture));
+            shape.Model(DependencyValue).ToString(CultureInfo.InvariantCulture))
+        {
+            RefusalCode = site.TakesConstantsOnly ? ConstantOnlyRefusal : null,
+            // A literal initializer, read from a site that is not a module variable.
+            IsControl = dependency.Kind == BindingKind.None && !site.ReaderIsAModuleVariable,
+            NeedsStdlib = dependency.NeedsStdlib,
+            Route = ReferenceRoute,
+            Reference = new ReferenceKey(site, holder, use, node, dependency),
+        };
     }
 
     private static bool ShapeAdmits(Type node, Holder holder, Dependency dependency)
@@ -430,6 +497,9 @@ public sealed class InitializerDependencyDifferentialTests : IntegrationTestBase
     private static readonly Lazy<IReadOnlyList<Cell>> Pool = new(() => Product()
         .Distinct()
         .Select(k => MakeCell(k.Site, k.Holder, k.Use, k.Node, k.Dependency))
+        .Concat(OperandCells())
+        .Concat(LocationCells())
+        .Concat(SlotCells())
         .OrderBy(c => c.Id, StringComparer.Ordinal)
         .ToList());
 
@@ -442,9 +512,18 @@ public sealed class InitializerDependencyDifferentialTests : IntegrationTestBase
     private static string Both(bool generated) => generated ? "both generated and excluded" : "neither generated nor excluded";
 
     /// <summary>One line per way an axis fails to be the image of its source, or the pool to be fed by its axes.</summary>
-    internal static List<string> TotalityFailures(IReadOnlyList<Cell> pool)
+    internal static List<string> TotalityFailures(IReadOnlyList<Cell> everyCell)
     {
         var failures = new List<string>();
+        foreach (var dup in everyCell.GroupBy(c => c.Id, StringComparer.Ordinal).Where(g => g.Count() > 1))
+            failures.Add($"duplicate cell id {dup.Key}");
+        foreach (var family in Enum.GetValues<Family>().Where(f => everyCell.All(c => c.Family != f)))
+            failures.Add($"Family.{family} has no cell");
+        failures.AddRange(OperandTotalityFailures(everyCell));
+        failures.AddRange(LocationTotalityFailures(everyCell));
+        failures.AddRange(SlotTotalityFailures(everyCell));
+
+        var pool = everyCell.Where(c => c.Family == Family.Reference).ToList();
 
         var nodes = typeof(Expression).Assembly.GetTypes()
             .Where(t => !t.IsAbstract && typeof(Expression).IsAssignableFrom(t))
@@ -500,9 +579,7 @@ public sealed class InitializerDependencyDifferentialTests : IntegrationTestBase
                 failures.Add($"{what}: an exclusion carries its program and its code together");
         }
 
-        // The pool against its axes: ids are unique, and each sub-product is whole.
-        foreach (var dup in pool.GroupBy(c => c.Id, StringComparer.Ordinal).Where(g => g.Count() > 1))
-            failures.Add($"duplicate cell id {dup.Key}");
+        // The pool against its axes: each sub-product is whole.
         var ids = pool.Select(c => c.Id).ToHashSet(StringComparer.Ordinal);
         var forms = Forms().ToList();
         foreach (var holder in Enum.GetValues<Holder>().Where(h => forms.All(f => f.Holder != h)))
@@ -538,9 +615,16 @@ public sealed class InitializerDependencyDifferentialTests : IntegrationTestBase
             failures.Add($"the generator made {pool.Count} cells; the axes give {owedIds.Count}");
 
         // Every cell off the control has its control in the pool, except under a shape that takes a variable only.
-        foreach (var cell in pool.Where(c => c.Dependency.Kind != BindingKind.None && Shapes[c.Node].NeedsStorage == null))
+        foreach (var cell in pool)
         {
-            var control = $"{cell.Site.Key}/{cell.Holder}.{cell.Use}/{cell.Node.Name}/{Control.Key}";
+            if (cell.Reference is not { } key)
+            {
+                failures.Add($"{cell.Id} is a reference cell without its key");
+                continue;
+            }
+            if (key.Dependency.Kind == BindingKind.None || Shapes[key.Node].NeedsStorage != null)
+                continue;
+            var control = $"{key.Site.Key}/{key.Holder}.{key.Use}/{key.Node.Name}/{Control.Key}";
             if (!ids.Contains(control))
                 failures.Add($"{cell.Id} has no control {control}");
         }
@@ -551,7 +635,10 @@ public sealed class InitializerDependencyDifferentialTests : IntegrationTestBase
     private static IEnumerable<(string What, Exclusion Exclusion)> AllExclusions() =>
         ExcludedShapes.Select(e => ($"Expression subclass {e.Key.Name}", e.Value))
             .Concat(ExcludedDependencies.Select(e => ($"BindingKind.{e.Key}", e.Value)))
-            .Concat(ExcludedPositions.Select(e => ($"ReadPosition.{e.Key}", e.Value)));
+            .Concat(ExcludedPositions.Select(e => ($"ReadPosition.{e.Key}", e.Value)))
+            .Concat(OperandExclusions())
+            .Concat(LocationExclusions())
+            .Concat(SlotExclusions());
 
     [Fact]
     public void Axes_AreTheImageOfTheirSources_AndThePoolIsFedByThem()
@@ -563,6 +650,11 @@ public sealed class InitializerDependencyDifferentialTests : IntegrationTestBase
         Assert.True(failures.Count == 0, $"{failures.Count} totality failure(s):\n{string.Join("\n", failures)}");
         Assert.True(pool.Count(c => c.IsControl) >= 200 && pool.Count(c => !c.IsControl) >= 200,
             $"The pool holds {pool.Count(c => c.IsControl)} controls and {pool.Count(c => !c.IsControl)} other cells: a product is empty.");
+        foreach (var family in Enum.GetValues<Family>())
+        {
+            Assert.True(pool.Count(c => c.Family == family) >= 60, $"Family.{family} holds {pool.Count(c => c.Family == family)} cells: a product is empty.");
+            Assert.Contains(pool, c => c.Family == family && c.IsControl);
+        }
     }
 
     /// <summary>An exclusion that says "refused" or "an internal error" is a claim about the compiler, and this is its
@@ -571,14 +663,17 @@ public sealed class InitializerDependencyDifferentialTests : IntegrationTestBase
     public void Exclusions_ThatRestOnADiagnostic_StillDrawIt()
     {
         var probes = AllExclusions().Where(e => e.Exclusion.Program != null).ToList();
-        Assert.True(probes.Count >= 7, $"Found {probes.Count} exclusions with a program.");
+        Assert.True(probes.Count >= 10, $"Found {probes.Count} exclusions with a program.");
 
         var stale = new List<string>();
         foreach (var (what, exclusion) in probes)
         {
-            var run = RunSharpy(exclusion.Program!, needsStdlib: false, SharpyExecTimeoutMs).Run;
-            if (!run.AllCodes.Contains(exclusion.Code!))
-                stale.Add($"{what} is excluded for {exclusion.Code} and its program drew [{string.Join(",", run.AllCodes.Distinct())}] (exit {run.ExitCode}): generate the value");
+            var observed = RunSharpy(exclusion.Program!, needsStdlib: false, SharpyExecTimeoutMs);
+            var run = observed.Run;
+            // A code may name the C# error behind an internal error: `SPY0908 CS1612`.
+            var codes = exclusion.Code!.Split(' ');
+            if (!run.AllCodes.Contains(codes[0]) || (codes.Length > 1 && run.CsCode != codes[1]))
+                stale.Add($"{what} is excluded for {exclusion.Code} and its program drew [{string.Join(",", run.AllCodes.Distinct())}{(run.CsCode == null ? "" : " " + run.CsCode)}] (exit {run.ExitCode}): generate the value");
         }
 
         Assert.True(stale.Count == 0, string.Join("\n", stale));
@@ -620,8 +715,8 @@ public sealed class InitializerDependencyDifferentialTests : IntegrationTestBase
     /// <summary>One slow cell on a loaded runner is not a verdict: a timed-out run gets one more at twice the timeout, as the P77a sweep's does.</summary>
     private Observed RunSharpyRetryingATimeout(Cell cell)
     {
-        var observed = RunSharpy(cell.Source, cell.Dependency.NeedsStdlib, SharpyExecTimeoutMs);
-        return observed.Run.TimedOut ? RunSharpy(cell.Source, cell.Dependency.NeedsStdlib, SharpyExecTimeoutMs * 2) : observed;
+        var observed = RunSharpy(cell.Source, cell.NeedsStdlib, SharpyExecTimeoutMs);
+        return observed.Run.TimedOut ? RunSharpy(cell.Source, cell.NeedsStdlib, SharpyExecTimeoutMs * 2) : observed;
     }
 
     /// <summary>The refusal a constants-only site gives a module value.</summary>
@@ -655,12 +750,20 @@ public sealed class InitializerDependencyDifferentialTests : IntegrationTestBase
     /// <summary>The names a reference to the module value, or to a module variable reading it, is emitted under.</summary>
     private static readonly HashSet<string> ModuleValueNames = new(StringComparer.Ordinal) { "t", "T", "r", "R" };
 
-    /// <summary>The row a red cell carries: the issue whose fix turns it green. The class's own failure is the one it names:
-    /// the reference emitted as a name C# cannot resolve. Any other red has no route, and is red until one names it.</summary>
-    internal static string ProposedCite(VerdictClass verdict, string? csCode, string? unresolvedName)
+    /// <summary>The route of the first four axes. The class's own failure is the one it names: the reference emitted as a
+    /// name C# cannot resolve.</summary>
+    internal static string? ReferenceRoute(VerdictClass verdict, string? csCode, string? unresolvedName)
         => verdict == VerdictClass.Ice && csCode == "CS0103" && unresolvedName != null && ModuleValueNames.Contains(unresolvedName)
             ? $"{ClassIssue} ice"
-            : $"UNROUTED({verdict}{(csCode == null ? "" : " " + csCode)}{(unresolvedName == null ? "" : " " + unresolvedName)})";
+            : null;
+
+    internal static string Unrouted(VerdictClass verdict, string? csCode, string? unresolvedName)
+        => $"UNROUTED({verdict}{(csCode == null ? "" : " " + csCode)}{(unresolvedName == null ? "" : " " + unresolvedName)})";
+
+    /// <summary>The row a red cell carries: the issue whose fix turns it green, by its family's route. Any other red has no
+    /// route, and is red until one names it.</summary>
+    internal static string ProposedCite(Cell cell, VerdictClass verdict, string? csCode, string? unresolvedName)
+        => cell.Route(verdict, csCode, unresolvedName) ?? Unrouted(verdict, csCode, unresolvedName);
 
     internal sealed record AllowRow(VerdictClass Class, string Cite);
 
@@ -716,20 +819,20 @@ public sealed class InitializerDependencyDifferentialTests : IntegrationTestBase
                 failures.Add($"Harness {r.Cell.Id}: Sharpy {Describe(r)}");
                 continue;
             }
-            if (r.Cell.MustRefuse && r.Kind == SharpyKind.Refused && !r.Observed.Run.ErrorCodes.Contains(ConstantOnlyRefusal))
-                failures.Add($"RefusalReason {r.Cell.Id}: the site's refusal is {ConstantOnlyRefusal} and Sharpy {Describe(r)}");
+            if (r.Cell.MustRefuse && r.Kind == SharpyKind.Refused && !r.Observed.Run.ErrorCodes.Contains(r.Cell.RefusalCode!))
+                failures.Add($"RefusalReason {r.Cell.Id}: the cell's refusal is {r.Cell.RefusalCode} and Sharpy {Describe(r)}");
 
             var isRed = r.Class != VerdictClass.Match;
             if (isRed && r.Cell.IsControl)
-                failures.Add($"Control {r.Cell.Id} is {r.Class}: Sharpy {Describe(r)}. A literal initializer read from this site is red, so no cell here isolates the dependency: exclude the value with its reason");
+                failures.Add($"Control {r.Cell.Id} is {r.Class}: Sharpy {Describe(r)}. A cell with nothing of its axis in it is red, so no cell beside it isolates the axis: exclude the value with its reason");
             else if (isRed && row == null)
                 failures.Add($"{r.Class} {r.Cell.Id}: Sharpy {Describe(r)}; model '{r.Cell.Model}'");
             else if (isRed && row!.Class != r.Class)
                 failures.Add($"{r.Cell.Id}: listed as {row.Class}, now {r.Class}: MOVED, update or delete the row");
             else if (!isRed && row != null)
                 failures.Add($"{r.Cell.Id}: listed as {row.Class}, now {r.Class}: STALE, delete the row");
-            else if (isRed && row!.Cite != ProposedCite(r.Class, r.Observed.Run.CsCode, r.Observed.UnresolvedName))
-                failures.Add($"{r.Cell.Id}: the row cites '{row.Cite}' and the route says '{ProposedCite(r.Class, r.Observed.Run.CsCode, r.Observed.UnresolvedName)}'");
+            else if (isRed && row!.Cite != ProposedCite(r.Cell, r.Class, r.Observed.Run.CsCode, r.Observed.UnresolvedName))
+                failures.Add($"{r.Cell.Id}: the row cites '{row.Cite}' and the route says '{ProposedCite(r.Cell, r.Class, r.Observed.Run.CsCode, r.Observed.UnresolvedName)}'");
         }
         return failures;
     }
@@ -758,9 +861,11 @@ public sealed class InitializerDependencyDifferentialTests : IntegrationTestBase
         var twinFailures = new Dictionary<int, string>();
         for (int i = 0; i < pool.Count; i++)
         {
+            if (pool[i].TwinSource is not { } twin)
+                continue;
             try
             {
-                requests.Add(new PyRequest(i, TwinRenderer.Render(pool[i].TwinSource)));
+                requests.Add(new PyRequest(i, TwinRenderer.Render(twin)));
             }
             catch (Exception ex) when (ex is NotSupportedException or InvalidOperationException)
             {
@@ -775,13 +880,17 @@ public sealed class InitializerDependencyDifferentialTests : IntegrationTestBase
         {
             var cell = pool[i];
             string? pythonFailure = twinFailures.GetValueOrDefault(i);
-            if (pythonFailure == null)
+            if (cell.TwinSource == null != (cell.Python == PythonExpectation.NoTwin))
+                pythonFailure = "a cell carries its twin and its python expectation together";
+            if (pythonFailure == null && cell.TwinSource != null)
             {
                 var python = pythonById.TryGetValue(i, out var verdict)
                     ? Harness.ClassifyPython(verdict)
                     : new PyOutcome(PyKind.SyntaxError, "no verdict from the runner");
-                if (python != PyOutcome.Ran(cell.Model))
+                if (cell.Python == PythonExpectation.Prints && python != PyOutcome.Ran(cell.Model))
                     pythonFailure = $"the model prints '{cell.Model}' and python {python}";
+                if (cell.Python == PythonExpectation.NameError && python.Kind != PyKind.NameError)
+                    pythonFailure = $"the model raises NameError and python {python}";
             }
 
             var observed = RunSharpyRetryingATimeout(cell);
@@ -812,8 +921,11 @@ public sealed class InitializerDependencyDifferentialTests : IntegrationTestBase
                 new
                 {
                     pool = pool.Count,
+                    byFamily = pool.GroupBy(c => c.Family).OrderBy(g => g.Key).ToDictionary(g => g.Key.ToString(), g => g.Count()),
+                    redByFamily = red.GroupBy(r => r.Cell.Family).OrderBy(g => g.Key).ToDictionary(g => g.Key.ToString(), g => g.Count()),
                     controls = pool.Count(c => c.IsControl),
                     mustRefuse = pool.Count(c => c.MustRefuse),
+                    twins = pool.Count(c => c.TwinSource != null),
                     sites = Sites.Count,
                     shapes = Shapes.Count,
                     excludedShapes = ExcludedShapes.Count,
@@ -823,7 +935,7 @@ public sealed class InitializerDependencyDifferentialTests : IntegrationTestBase
                     byClass,
                     red = red.Count,
                     allowlistSize = rows.Count,
-                    pythonAgreed = results.Count(r => r.PythonFailure == null),
+                    pythonAgreed = results.Count(r => r.Cell.TwinSource != null && r.PythonFailure == null),
                     wallSeconds = wall.TotalSeconds,
                 },
                 new JsonSerializerOptions { WriteIndented = true }));
@@ -847,12 +959,14 @@ public sealed class InitializerDependencyDifferentialTests : IntegrationTestBase
         File.WriteAllLines(
             Path.Combine(dir, "initializer-dependency-differential-proposed-allowlist.txt"),
             red.OrderBy(r => r.Cell.Id, StringComparer.Ordinal)
-                .Select(r => $"{r.Cell.Id} {r.Class} # {ProposedCite(r.Class, r.Observed.Run.CsCode, r.Observed.UnresolvedName)}"));
+                .Select(r => $"{r.Cell.Id} {r.Class} # {ProposedCite(r.Cell, r.Class, r.Observed.Run.CsCode, r.Observed.UnresolvedName)}"));
 
         return $"initializer-dependency-differential: pool {pool.Count} ({pool.Count(c => c.IsControl)} controls, {pool.Count(c => c.MustRefuse)} must-refuse), "
-            + $"sites {Sites.Count}, shapes {Shapes.Count}, dependencies {Dependencies.Count}, python agreed {results.Count(r => r.PythonFailure == null)}/{results.Count}, "
+            + $"sites {Sites.Count}, shapes {Shapes.Count}, dependencies {Dependencies.Count}, "
+            + $"python agreed {results.Count(r => r.Cell.TwinSource != null && r.PythonFailure == null)}/{pool.Count(c => c.TwinSource != null)}, "
             + $"red {red.Count}, allowlist {rows.Count}, wall {wall.TotalSeconds:F1}s. "
-            + string.Join(" ", byClass.Select(c => $"{c.Key}={c.Value}"));
+            + string.Join(" ", byClass.Select(c => $"{c.Key}={c.Value}")) + ". "
+            + string.Join(" ", Enum.GetValues<Family>().Select(f => $"{f}={pool.Count(c => c.Family == f)}/red {red.Count(r => r.Cell.Family == f)}"));
     }
 
     private static string ReportDirectory()
@@ -883,9 +997,9 @@ public sealed class InitializerDependencyDifferentialTests : IntegrationTestBase
     public void Ratchet_ARedCell_NeedsItsRow_AndARowNeedsItsRedCell()
     {
         var pool = GeneratedCells();
-        var onAxis = pool.First(c => !c.IsControl && !c.MustRefuse);
-        var control = pool.First(c => c.IsControl && !c.MustRefuse);
-        var refusing = pool.First(c => c.MustRefuse);
+        var onAxis = pool.First(c => c.Family == Family.Reference && !c.IsControl && !c.MustRefuse);
+        var control = pool.First(c => c.Family == Family.Reference && c.IsControl && !c.MustRefuse);
+        var refusing = pool.First(c => c.Family == Family.Reference && c.MustRefuse);
         var none = new Dictionary<string, AllowRow>();
         var listed = new Dictionary<string, AllowRow> { [onAxis.Id] = new(VerdictClass.Ice, $"{ClassIssue} ice") };
 
@@ -914,7 +1028,7 @@ public sealed class InitializerDependencyDifferentialTests : IntegrationTestBase
     [InlineData(VerdictClass.SilentWrong, null, null, "UNROUTED(SilentWrong)")]
     [InlineData(VerdictClass.FalseRefusal, null, null, "UNROUTED(FalseRefusal)")]
     internal void Route_OnlyTheUnresolvedModuleValue_IsTheClassIssue(VerdictClass verdict, string? cs, string? name, string cite)
-        => Assert.Equal(cite, ProposedCite(verdict, cs, name));
+        => Assert.Equal(cite, ReferenceRoute(verdict, cs, name) ?? Unrouted(verdict, cs, name));
 
     [Fact]
     public void Allowlist_ARow_NamesAGeneratedCellARedClassAndAnIssue()
