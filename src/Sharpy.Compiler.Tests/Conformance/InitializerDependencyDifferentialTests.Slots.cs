@@ -2,6 +2,7 @@ using System.Collections;
 using System.Reflection;
 using Sharpy.Compiler.Parser.Ast;
 using Harness = Sharpy.Compiler.Tests.Conformance.NameResolutionDifferentialTests;
+using ParameterModifier = Sharpy.Compiler.Parser.Ast.ParameterModifier;
 using SharpyLexer = Sharpy.Compiler.Lexer.Lexer;
 using SharpyParser = Sharpy.Compiler.Parser.Parser;
 
@@ -24,6 +25,13 @@ namespace Sharpy.Compiler.Tests.Conformance;
 /// when every read on it is evaluated whenever its initializer is, or when every value on it is a <c>const</c> (the set
 /// refused today). A cycle that needs a read in a conditional slot or a lambda body to close, and passes through a value
 /// that is no <c>const</c>, runs today and must keep running.
+///
+/// The fifth stage-0 commit closes two things the third verification found open. The slot of a
+/// <see cref="ModifiedArgument"/> is its modifier's to classify (<see cref="ModifiedArguments"/>, the image of
+/// <see cref="ParameterModifier"/>): a <c>ref</c> or an <c>in</c> operand is read, and an <c>out</c> operand is stored, which
+/// is no edge to another value. And a value some plain store names closes no cycle of two or more
+/// (<see cref="StoredCells"/>): the store may run before the value's initializer, which then replaces it, so the reads
+/// around the cycle never meet a value that is being initialized.
 /// </summary>
 public sealed partial class InitializerDependencyDifferentialTests
 {
@@ -35,7 +43,11 @@ public sealed partial class InitializerDependencyDifferentialTests
 
     /// <summary>One program per slot, or per case of a slot whose answer depends on which child or operator it is.
     /// <see cref="Value"/> is what the whole text is worth when the read is not evaluated.</summary>
-    internal sealed record SlotEntry(Evaluated When, string Sharpy, int Value = 0, string? Twin = null, string? Case = null);
+    internal sealed record SlotEntry(Evaluated When, string Sharpy, int Value = 0, string? Twin = null, string? Case = null)
+    {
+        /// <summary>The slot's child is stored to, not read: evaluated whenever its parent is, and no edge to another value.</summary>
+        public bool Stores { get; init; }
+    }
 
     private const string SlotCycle = "SPY0278";
 
@@ -117,7 +129,6 @@ public sealed partial class InitializerDependencyDifferentialTests
         ["ConditionalExpression.ThenValue"] = new[] { Conditionally("{d} if 1 < 0 else 5", 5) },
         ["ConditionalExpression.ElseValue"] = new[] { Conditionally("5 if 1 > 0 else {d}", 5) },
         ["LambdaExpression.Body"] = new[] { Conditionally("ap0(lambda: {d})", 5) },
-        ["ModifiedArgument.Argument"] = new[] { Always("bump(ref {d})", twin: "inc({d})") },
         ["TypeCoercion.Value"] = new[] { Always("({d} as! int)", twin: "({d})") },
         ["Parenthesized.Expression"] = new[] { Always("({d})") },
         ["WalrusExpression.Value"] = new[] { Always("(w0 := {d})") },
@@ -176,6 +187,24 @@ public sealed partial class InitializerDependencyDifferentialTests
         [BinaryOperator.NotIn] = Always("int(4 not in [{d}])"),
         [BinaryOperator.IsNot] = Always("int(3 is not {d})"),
         [BinaryOperator.NullCoalesce] = Conditionally("opt(5) ?? {d}", 5, twin: "opt(5) or {d}"),
+    };
+
+    /// <summary>The operand of a <see cref="ModifiedArgument"/> is its modifier's to classify: the slot's cases are the image of
+    /// <see cref="ParameterModifier"/>. A <c>ref</c> and an <c>in</c> operand are read. An <c>out</c> operand is stored: the
+    /// callee writes it, nothing reads it, and a store is no edge of the cycle graph, whichever value it names (the
+    /// owner's Q21: a store to a value from inside its own initializer is allowed).</summary>
+    private const string ModifiedArgumentSlot = "ModifiedArgument.Argument";
+
+    internal static readonly IReadOnlyDictionary<ParameterModifier, SlotEntry> ModifiedArguments = new Dictionary<ParameterModifier, SlotEntry>
+    {
+        [ParameterModifier.Ref] = Always("bump(ref {d})", twin: "inc({d})"),
+        [ParameterModifier.In] = Always("peek(in {d})", twin: "peek0({d})"),
+        [ParameterModifier.Out] = new(Evaluated.Always, "fill(out {d})", 1) { Stores = true },
+    };
+
+    internal static readonly IReadOnlyDictionary<ParameterModifier, Exclusion> ExcludedModifiedArguments = new Dictionary<ParameterModifier, Exclusion>
+    {
+        [ParameterModifier.None] = new("the parser builds no ModifiedArgument without a modifier: a plain argument sits in FunctionCall.Arguments, which has its entry"),
     };
 
     private const string OperatorProbeHead = "class B:\n    @static\n    q: int = 3\n";
@@ -307,10 +336,11 @@ public sealed partial class InitializerDependencyDifferentialTests
     }
 
     /// <summary>The slots of a text the read sits in, and the operators of the binary operations whose right operand holds it.</summary>
-    private static (HashSet<string> Slots, HashSet<BinaryOperator> Rights) ReadSlots(string text)
+    private static (HashSet<string> Slots, HashSet<BinaryOperator> Rights, HashSet<ParameterModifier> Modifiers) ReadSlots(string text)
     {
         var slots = new HashSet<string>(StringComparer.Ordinal);
         var rights = new HashSet<BinaryOperator>();
+        var modifiers = new HashSet<ParameterModifier>();
         foreach (var node in Reachable(ParseInitializer(text)).OfType<Expression>())
         {
             foreach (var property in AstProperties(node.GetType()))
@@ -321,8 +351,10 @@ public sealed partial class InitializerDependencyDifferentialTests
                 }
             if (node is BinaryOp binary && HoldsTheRead(binary.Right))
                 rights.Add(binary.Operator);
+            if (node is ModifiedArgument modified && HoldsTheRead(modified.Argument))
+                modifiers.Add(modified.Modifier);
         }
-        return (slots, rights);
+        return (slots, rights, modifiers);
     }
 
     // ------------------------------------------------------------------------------------------- //
@@ -331,7 +363,8 @@ public sealed partial class InitializerDependencyDifferentialTests
 
     private static IEnumerable<(string Id, string Key, SlotEntry Entry)> SlotProduct() =>
         Slots.SelectMany(s => s.Value.Select(e => ($"Slot/{s.Key}{(e.Case == null ? "" : "/" + e.Case)}", s.Key, e)))
-            .Concat(BinaryRights.Select(r => ($"Slot/{BinaryRight}/{r.Key}", BinaryRight, r.Value)));
+            .Concat(BinaryRights.Select(r => ($"Slot/{BinaryRight}/{r.Key}", BinaryRight, r.Value)))
+            .Concat(ModifiedArguments.Select(m => ($"Slot/{ModifiedArgumentSlot}/{m.Key}", ModifiedArgumentSlot, m.Value)));
 
     /// <summary>The two types, in either order. Sharpy's reader sits second, so its read of <c>B.q</c> is typed by a declared type
     /// and the one forward read is the plain <c>A.x + 1</c>. Python's reader sits first: a class body runs where it is written, so
@@ -353,10 +386,52 @@ public sealed partial class InitializerDependencyDifferentialTests
         : verdict == VerdictClass.RuntimeThrow ? $"{ReadinessIssue} runtime-throw"
         : null;
 
+    private const string KeptSuffix = "/Kept";
+
+    /// <summary>The control of a stored slot. The storing value <c>A.x</c> is first read by <c>B.p</c>, so its store to <c>B.q</c>
+    /// runs inside B's sweep before <c>q</c>'s place: it is kept, <c>q</c>'s initializer replaces it, and nothing is on a cycle.
+    /// A graph that takes the stored operand for a read sees <c>x</c> and <c>q</c> read each other and refuses a program
+    /// that runs today.</summary>
+    private static string KeptProgram(string shape)
+    {
+        var body = new[]
+        {
+            "class B:", "    @static", "    p: int = A.x", "    @static", "    q: int = A.x + 1",
+            "class A:", "    @static", $"    x: int = {shape.Replace(Operand, SlotRead, StringComparison.Ordinal)}",
+        };
+        return WithHelpers(Harness.Join(body) + Harness.MainBlock("print(B.p, B.q, A.x)"));
+    }
+
+    /// <summary>A stored slot's two cells. In the family's own program <c>B.q</c>'s initializer reads <c>A.x</c>, whose
+    /// initializer stores <c>B.q</c> while that initializer is still running: the store is allowed, and <c>q</c>'s
+    /// initializer then replaces it with its result (the owner's Q21). Nothing reads a value that has none, so the program
+    /// runs, and a graph that takes the stored operand for a read refuses it. Today it prints the stored value: C# starts
+    /// with the class <c>main</c> names first, and <c>q</c>'s initializer reads a default. Python has no modifier: neither
+    /// cell has a twin.</summary>
+    private static IEnumerable<Cell> StoredSlotCells(string id, SlotEntry entry)
+    {
+        yield return new Cell(id, Family.Slot, SlotProgram(entry.Sharpy, readerFirst: false), null, $"{entry.Value} {entry.Value + 1}")
+        {
+            Python = PythonExpectation.NoTwin,
+            Route = static (verdict, _, _) => ValueRoute(verdict),
+        };
+        yield return new Cell(id + KeptSuffix, Family.Slot, KeptProgram(entry.Sharpy), null, $"{entry.Value} {entry.Value + 1} {entry.Value}")
+        {
+            IsControl = true,
+            Python = PythonExpectation.NoTwin,
+        };
+    }
+
     internal static IEnumerable<Cell> SlotCells()
     {
         foreach (var (id, _, entry) in SlotProduct())
         {
+            if (entry.Stores)
+            {
+                foreach (var cell in StoredSlotCells(id, entry))
+                    yield return cell;
+                continue;
+            }
             var always = entry.When == Evaluated.Always;
             yield return new Cell(id, Family.Slot, SlotProgram(entry.Sharpy, readerFirst: false), SlotProgram(entry.Twin ?? entry.Sharpy, readerFirst: true), $"{entry.Value} {entry.Value + 1}")
             {
@@ -367,6 +442,80 @@ public sealed partial class InitializerDependencyDifferentialTests
                 Route = SlotRoute(entry.When),
             };
         }
+    }
+
+    // ------------------------------------------------------------------------------------------- //
+    // The stored node: a plain store that may run before a value's initializer
+    // ------------------------------------------------------------------------------------------- //
+
+    private const string StoredPrefix = "Slot/Stored/";
+
+    /// <summary>The cycle rule's last clause (D8). <c>A.x</c> and <c>B.q</c> read each other in slots evaluated whenever
+    /// their initializers are. An earlier value of B calls a function that uses <c>B.q</c>, and a value between reads
+    /// <c>A.x</c>. A plain store is kept until <c>q</c>'s initializer replaces it (the owner's Q14), so <c>x</c> reads the
+    /// stored value and no read meets a value that is being initialized: the program runs, as it does today, and a graph
+    /// that refuses it turns a working program into an error. Any other use reads <c>q</c> first, which starts its
+    /// initializer: the cycle is on every run, and it is a compile error. The same holds of a value that reads itself:
+    /// after a store it reads what was stored (the owner's Q21).</summary>
+    internal static bool StoredNodeRuns(LocationUse use) => IsPlainStore(use);
+
+    /// <summary>The uses that are statements on an int <c>@static</c> value of a plain class: the location family's own.</summary>
+    private static IEnumerable<LocationUse> StoredUses() =>
+        Enum.GetValues<LocationUse>().Where(u =>
+            UseExclusion(u, ValueKind.Int, BindingKind.StaticField) == null && !ExcludedLocationCells.ContainsKey((u, BindingKind.StaticField, HostForm.Plain)));
+
+    private static string StoredProgram(LocationUse use)
+    {
+        var (statement, _, _) = UseText(use, ValueKind.Int, SlotRead, "1");
+        var body = new List<string>
+        {
+            "class B:", "    @static", "    z: int = pre()", "    @static", "    w: int = A.x", "    @static", "    q: int = A.x + 1",
+            "class A:", "    @static", $"    x: int = {SlotRead} + 1",
+            "def pre() -> int:",
+        };
+        body.AddRange(statement.Split('\n').Select(l => "    " + l));
+        body.Add("    return 0");
+        return WithHelpers(Harness.Join(body) + Harness.MainBlock($"print(B.z, B.w, {SlotRead}, A.x)"));
+    }
+
+    /// <summary>One cell per use. Python's class bodies run where they are written, and B's names a class that does not
+    /// exist yet: no twin.</summary>
+    internal static IEnumerable<Cell> StoredCells()
+    {
+        foreach (var use in StoredUses())
+        {
+            var runs = StoredNodeRuns(use);
+            var (_, stored, _) = UseText(use, ValueKind.Int, SlotRead, "1");
+            yield return new Cell($"{StoredPrefix}{use}", Family.Slot, StoredProgram(use), null, $"0 {stored + 1} {stored + 2} {stored + 1}")
+            {
+                RefusalCode = runs ? null : SlotCycle,
+                // What runs today and must not move.
+                IsControl = runs,
+                Python = PythonExpectation.NoTwin,
+                Route = SlotRoute(runs ? Evaluated.Conditionally : Evaluated.Always),
+            };
+        }
+    }
+
+    private static List<string> StoredTotalityFailures(IReadOnlyList<Cell> pool)
+    {
+        var failures = new List<string>();
+        var uses = StoredUses().ToList();
+        // The use axis is the location family's: every use with an int cell on a plain class's `@static` value.
+        foreach (var use in LocationProduct().Where(c => c.Holder == BindingKind.StaticField && c.Form == HostForm.Plain && c.Kind == ValueKind.Int).Select(c => c.Use).Distinct().Where(u => !uses.Contains(u)))
+            failures.Add($"LocationUse.{use} has a location cell on a plain class and no stored-node cell");
+        foreach (var answer in new[] { true, false }.Where(a => uses.All(u => StoredNodeRuns(u) != a)))
+            failures.Add($"no stored-node cell {(answer ? "runs" : "is refused")}");
+        if (SlotRead != "B.q" || !Slots.TryGetValue("BinaryOp.Left", out var left) || left.Any(e => e.When != Evaluated.Always))
+            failures.Add("the stored-node program's two reads sit in BinaryOp.Left, which is no longer evaluated whenever its parent is");
+
+        var ids = pool.Where(c => c.Id.StartsWith(StoredPrefix, StringComparison.Ordinal)).Select(c => c.Id).ToHashSet(StringComparer.Ordinal);
+        var owed = uses.Select(u => $"{StoredPrefix}{u}").ToHashSet(StringComparer.Ordinal);
+        foreach (var id in owed.Where(id => !ids.Contains(id)))
+            failures.Add($"the stored-node axis owes {id} and the pool does not hold it");
+        foreach (var id in ids.Where(id => !owed.Contains(id)))
+            failures.Add($"the pool holds {id} and the stored-node axis does not owe it");
+        return failures;
     }
 
     // ------------------------------------------------------------------------------------------- //
@@ -544,6 +693,7 @@ public sealed partial class InitializerDependencyDifferentialTests
     private static IEnumerable<(string What, Exclusion Exclusion)> SlotExclusions() =>
         ExcludedSlots.Select(e => ($"slot {e.Key}", e.Value))
             .Concat(ExcludedBinaryOperators.Select(e => ($"BinaryOperator.{e.Key}", e.Value)))
+            .Concat(ExcludedModifiedArguments.Select(e => ($"slot case ParameterModifier.{e.Key}", e.Value)))
             .Concat(ExcludedNodeKinds.Select(e => ($"node BindingKind.{e.Key}", e.Value)))
             .Concat(ExcludedRingTargets.Select(e => ($"ring target BindingKind.{e.Key}", e.Value)));
 
@@ -558,14 +708,15 @@ public sealed partial class InitializerDependencyDifferentialTests
             {
                 found.Add(key);
                 // A subclass the shape axis excludes has no program to hold a read: its slots ride that exclusion.
-                var listed = (Slots.ContainsKey(key) ? 1 : 0) + (ExcludedSlots.ContainsKey(key) ? 1 : 0) + (key == BinaryRight ? 1 : 0) + (ExcludedShapes.ContainsKey(node) ? 1 : 0);
+                var listed = (Slots.ContainsKey(key) ? 1 : 0) + (ExcludedSlots.ContainsKey(key) ? 1 : 0) + (key == BinaryRight ? 1 : 0) + (key == ModifiedArgumentSlot ? 1 : 0)
+                    + (ExcludedShapes.ContainsKey(node) ? 1 : 0);
                 if (listed != 1)
                     failures.Add($"slot {key} is {(listed == 0 ? "neither classified nor excluded" : "listed more than once")}");
             }
         }
         if (found.Count < 50)
             failures.Add($"the scan found {found.Count} slots: it reads nothing");
-        foreach (var key in Slots.Keys.Concat(ExcludedSlots.Keys).Append(BinaryRight).Where(k => !found.Contains(k)))
+        foreach (var key in Slots.Keys.Concat(ExcludedSlots.Keys).Append(BinaryRight).Append(ModifiedArgumentSlot).Where(k => !found.Contains(k)))
             failures.Add($"{key} is not a slot of a concrete Expression subclass");
 
         foreach (var op in Enum.GetValues<BinaryOperator>())
@@ -573,6 +724,22 @@ public sealed partial class InitializerDependencyDifferentialTests
             bool generated = BinaryRights.ContainsKey(op), excluded = ExcludedBinaryOperators.ContainsKey(op);
             if (generated == excluded)
                 failures.Add($"BinaryOperator.{op} is {Both(generated)}");
+        }
+
+        // The cases of a modified argument's slot are the image of its modifier: a new modifier is red until it is classified.
+        foreach (var modifier in Enum.GetValues<ParameterModifier>())
+        {
+            bool generated = ModifiedArguments.ContainsKey(modifier), excluded = ExcludedModifiedArguments.ContainsKey(modifier);
+            if (generated == excluded)
+                failures.Add($"slot case ParameterModifier.{modifier} of {ModifiedArgumentSlot} is {Both(generated)}");
+        }
+        // An operand is stored by the one modifier whose callee must write it, and by no other.
+        foreach (var (modifier, entry) in ModifiedArguments.Where(m => m.Value.Stores != (m.Key == ParameterModifier.Out)))
+            failures.Add($"slot case ParameterModifier.{modifier} is {(entry.Stores ? "classified as a store and is read" : "classified as a read and is stored")}");
+        foreach (var (key, entries) in Slots)
+        {
+            foreach (var entry in entries.Where(e => e.Stores))
+                failures.Add($"slot {key} is classified as a store: only a modified argument's operand is one ('{entry.Sharpy}')");
         }
 
         // Each entry's read sits in the slot it names, in both texts, and each slot with cases has one of each kind it claims.
@@ -583,9 +750,11 @@ public sealed partial class InitializerDependencyDifferentialTests
                 if (!text.Contains(Operand, StringComparison.Ordinal))
                     failures.Add($"{id}: '{text}' holds no read");
             }
-            var (slots, rights) = ReadSlots(entry.Sharpy.Replace(Operand, SlotRead, StringComparison.Ordinal));
+            var (slots, rights, modifiers) = ReadSlots(entry.Sharpy.Replace(Operand, SlotRead, StringComparison.Ordinal));
             if (key == BinaryRight ? !rights.Contains(BinaryRights.First(r => ReferenceEquals(r.Value, entry)).Key) : !slots.Contains(key))
                 failures.Add($"{id}: the read of '{entry.Sharpy}' sits in [{string.Join(", ", slots.OrderBy(s => s, StringComparer.Ordinal))}], not in {key}");
+            if (key == ModifiedArgumentSlot && !modifiers.SetEquals(new[] { ModifiedArguments.First(m => ReferenceEquals(m.Value, entry)).Key }))
+                failures.Add($"{id}: the operand of '{entry.Sharpy}' sits under [{string.Join(", ", modifiers.OrderBy(m => m))}]");
         }
         foreach (var (key, entries) in Slots)
         {
@@ -598,9 +767,11 @@ public sealed partial class InitializerDependencyDifferentialTests
             failures.Add($"Evaluated.{when} has no entry");
 
         failures.AddRange(RingTotalityFailures(pool));
+        failures.AddRange(StoredTotalityFailures(pool));
 
-        var ids = pool.Where(c => c.Family == Family.Slot && !c.Id.StartsWith("Slot/Ring/", StringComparison.Ordinal)).Select(c => c.Id).ToHashSet(StringComparer.Ordinal);
-        var owed = SlotProduct().Select(p => p.Id).ToHashSet(StringComparer.Ordinal);
+        var ids = pool.Where(c => c.Family == Family.Slot && !c.Id.StartsWith("Slot/Ring/", StringComparison.Ordinal) && !c.Id.StartsWith(StoredPrefix, StringComparison.Ordinal))
+            .Select(c => c.Id).ToHashSet(StringComparer.Ordinal);
+        var owed = SlotProduct().SelectMany(p => p.Entry.Stores ? new[] { p.Id, p.Id + KeptSuffix } : new[] { p.Id }).ToHashSet(StringComparer.Ordinal);
         foreach (var id in owed.Where(id => !ids.Contains(id)).Take(20))
             failures.Add($"the slot map owes {id} and the pool does not hold it");
         foreach (var id in ids.Where(id => !owed.Contains(id)).Take(20))

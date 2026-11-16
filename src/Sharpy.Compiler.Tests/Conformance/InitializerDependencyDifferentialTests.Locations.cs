@@ -1,6 +1,5 @@
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
-using Sharpy.Compiler.Diagnostics;
 using Sharpy.Compiler.Parser.Ast;
 using Sharpy.TestInfrastructure.Oracles;
 using Harness = Sharpy.Compiler.Tests.Conformance.NameResolutionDifferentialTests;
@@ -33,11 +32,20 @@ namespace Sharpy.Compiler.Tests.Conformance;
 /// The fourth stage-0 commit carries the owner's ruling of 2026-11-16 (#2422 comment 6927434861, Q14 to Q16, "go with
 /// model B as described"): declaration order, never dropped, on every host. A generic host is no exception: each
 /// closed generic type sweeps its own values in declaration order, so a plain store before the initializer is kept
-/// and then replaced there too (<c>5 7</c>). And any use of a value, a read or a store, while its own initializer is
-/// running is a cycle (Q15): a <c>NameError</c> at run time, SPY0278 where the store sits in the initializer's own text
-/// in a slot the slot map classifies <see cref="Evaluated.Always"/>. Python runs the plain stores of that kind and prints
-/// the initializer's value: the divergence each such cell records (<see cref="Cell.PythonModel"/>).
-/// <see cref="CrossTypeCells"/> are the forward read from one type into another, on both host forms.
+/// and then replaced there too (<c>5 7</c>).
+///
+/// Inside a value's OWN initializer the rule is the owner's of 2026-11-16 (#2422 comment 6930736624, Q21, which
+/// supersedes Q15 where they differ): do what C# does unless N3 forbids it. A plain store gives the value a value, so
+/// it is allowed, a read after it returns what was stored, and the initializer's result then replaces it: the cell
+/// prints what it prints today and in python. A use that reads the value before it was ever given one, a store that
+/// reads first among them, is the cycle: a <c>NameError</c>, never a default (<see cref="OwnInitializerRaises"/>).
+///
+/// The fifth stage-0 commit carries the rulings of 2026-11-16 that followed the third verification (#2422 comments
+/// 6930063803 and 6930130729, Q17 and Q18, "Sweep at once" and "go with option 1, C# order"): every host, a module, a
+/// class or a closed generic type, sweeps as a unit the first time it is required. <see cref="CrossCells"/> are a use
+/// from one host's initializer of another host's value: the use (<see cref="LocationUse"/>) × the two hosts
+/// (<see cref="CrossHosts"/>) × which is declared first (<see cref="CrossOrder"/>) × whether the target host reads the
+/// user's value back. Their one rule is <see cref="CrossModel"/>.
 /// </summary>
 public sealed partial class InitializerDependencyDifferentialTests
 {
@@ -320,7 +328,7 @@ public sealed partial class InitializerDependencyDifferentialTests
 
     private static bool IsOwnInitializer(When when) => when is When.DuringInitializer or When.DuringInitializerThenRead or When.InInitializerText;
 
-    /// <summary>The error of a use of a value while its own initializer is running (rule N3; the owner's Q15 for a store).</summary>
+    /// <summary>The error of a read of a value that has no value yet while its own initializer is running (rule N3).</summary>
     internal const string CycleError = "NameError";
 
     /// <summary>A plain store as an expression of the value's own initializer, or null: it is a statement there.</summary>
@@ -334,18 +342,15 @@ public sealed partial class InitializerDependencyDifferentialTests
         _ => throw new ArgumentOutOfRangeException(nameof(use), "not a plain store"),
     };
 
-    /// <summary>The slot of the slot family's map that a plain store's target sits in, where the store is an expression.</summary>
-    internal static readonly IReadOnlyDictionary<LocationUse, string> TextSlots = new Dictionary<LocationUse, string>
-    {
-        [LocationUse.OutOperand] = "ModifiedArgument.Argument",
-        [LocationUse.ComprehensionTarget] = "ListComprehension.Clauses:ForClause.Target",
-    };
+    /// <summary>The rule inside a value's own initializer (the owner's Q21). A plain store reads nothing: the value has
+    /// been given a value, and the rest of the initializer may read it. Any other use reads the value before it has one,
+    /// and that is the cycle.</summary>
+    internal static bool OwnInitializerRaises(LocationUse use) => !IsPlainStore(use);
 
-    /// <summary>The cycle graph's rule (D8), read from the slot map: a store in the value's own initializer text is a
-    /// compile error when its slot is evaluated whenever the initializer is. A binder's slot is none of the map's: the
-    /// store runs once per element, so the compiler cannot say it runs, and the cycle is the run-time error.</summary>
-    internal static bool TextStoreIsRefused(LocationUse use) =>
-        TextSlots.TryGetValue(use, out var slot) && Slots.TryGetValue(slot, out var entries) && entries.All(e => e.When == Evaluated.Always);
+    /// <summary>What a plain store from inside the value's own initializer leaves: the initializer's result, which replaces
+    /// what was stored. That is what the use's function returns (1, or the stored value where it reads it back), or what
+    /// the store's expression is worth in the initializer's own text (1).</summary>
+    internal static string OwnInitializerModel(When when, int after) => when == When.DuringInitializerThenRead ? $"{after}" : "1";
 
     private const string WalrusBindsALocal =
         "a walrus in a module initializer binds a local of that initializer (`a: int = (t := 5) + 1` beside `t: int = 7` prints `6 7`): it stores no module value";
@@ -513,7 +518,7 @@ public sealed partial class InitializerDependencyDifferentialTests
     /// declare. Before the initializer, the module twin is python's own order: a plain store is kept and then overwritten, any
     /// read is a NameError (order-only: under N3 the value is initialized first). A class body's twin cannot name its own class
     /// yet, so a type's value has none there. Inside the value's own initializer the module twin is python's order too: a
-    /// read is a NameError, as the model is, and a plain store runs and prints (<see cref="PythonPrints"/>).</summary>
+    /// read is a NameError and a plain store runs and prints the initializer's result, as the model has both.</summary>
     internal static PythonExpectation LocationPython(BindingKind holder, HostForm form, LocationUse use, When when)
     {
         if (OperandUses.Values.Any(o => o.Whole == use || o.Member == use) || use == LocationUse.WithTarget
@@ -526,19 +531,15 @@ public sealed partial class InitializerDependencyDifferentialTests
         return IsPlainStore(use) ? PythonExpectation.Prints : PythonExpectation.NameError;
     }
 
-    /// <summary>What python prints for a plain store from inside the value's own initializer, where Sharpy's model is the
-    /// cycle error: the initializer's value, which is what the use's function returns (1, or the value it stored and read back).</summary>
-    internal static string PythonPrints(When when, int after) => when == When.DuringInitializerThenRead ? $"{after}" : "1";
-
     /// <summary>A read before the initializer sees a storage default today: a wrong value, or a null that throws. A use
-    /// inside the value's own initializer runs today on that default, or throws on it. A store in the initializer's own
-    /// text that the compiler cannot call certain is refused today by the validator the plan retires.</summary>
+    /// that reads the value inside its own initializer runs today on that default, or throws on it. A store in the
+    /// initializer's own text is refused today by the validator the plan retires.</summary>
     private static Route LocationRoute(LocationUse use, When when) => (verdict, _, _) =>
         when switch
         {
             When.BeforeInitializer when !IsPlainStore(use) => ValueRoute(verdict),
             When.DuringInitializer or When.DuringInitializerThenRead => ValueRoute(verdict),
-            When.InInitializerText => verdict == VerdictClass.FalseRefusal && !TextStoreIsRefused(use) ? $"{ReadinessIssue} false-refusal" : null,
+            When.InInitializerText => verdict == VerdictClass.FalseRefusal ? $"{ReadinessIssue} false-refusal" : null,
             _ => null,
         };
 
@@ -564,22 +565,20 @@ public sealed partial class InitializerDependencyDifferentialTests
         {
             var python = LocationPython(holder, form, use, when);
             var (_, after, returned) = UseText(use, kind, "t", "1");
-            var cycle = IsOwnInitializer(when);
-            var refused = when == When.InInitializerText && TextStoreIsRefused(use);
+            var own = IsOwnInitializer(when);
+            var raises = own && OwnInitializerRaises(use);
             yield return new Cell(
                 LocationId(holder, form, kind, use, when),
                 Family.Location,
                 LocationProgram(holder, form, kind, use, when, twin: false),
                 python == PythonExpectation.NoTwin ? null : LocationProgram(holder, form, kind, use, when, twin: true),
-                cycle ? CycleError : LocationModel(use, when, form, after, returned?.Value))
+                raises ? CycleError : own ? OwnInitializerModel(when, after) : LocationModel(use, when, form, after, returned?.Value))
             {
-                RefusalCode = refused ? SlotCycle : null,
-                RetiringRefusal = refused ? DiagnosticCodes.SemanticOverflow.StaticInitializerForwardRead : null,
-                Raises = cycle && !refused ? CycleError : null,
-                PythonModel = cycle && python == PythonExpectation.Prints ? PythonPrints(when, after) : null,
-                // What runs today and must not move: a use of a ready value, a plain store before the initializer (kept, then
-                // replaced), and a store the compiler refuses in the value's own initializer text.
-                IsControl = when is When.Ready or When.ReadyAcrossAwait || (when == When.BeforeInitializer && IsPlainStore(use)) || refused,
+                Raises = raises ? CycleError : null,
+                // What runs today and must not move: a use of a ready value, and a plain store before the value's initializer
+                // (kept, then replaced) or from a function that initializer calls (replaced by its result).
+                IsControl = when is When.Ready or When.ReadyAcrossAwait
+                    || (IsPlainStore(use) && (when is When.BeforeInitializer or When.DuringInitializer or When.DuringInitializerThenRead)),
                 Python = python,
                 Route = LocationRoute(use, when),
             };
@@ -587,41 +586,250 @@ public sealed partial class InitializerDependencyDifferentialTests
     }
 
     // ------------------------------------------------------------------------------------------- //
-    // The cross-type forward read
+    // Two hosts: a use, from one host's initializer, of another host's value
     // ------------------------------------------------------------------------------------------- //
 
-    private const string CrossTypePrefix = "Location/CrossType/";
+    private const string CrossPrefix = "Location/Cross/";
 
-    private static string CrossTypeId(HostForm reader, HostForm target) => $"{CrossTypePrefix}{reader}>{target}";
-
-    /// <summary>The reader type's first value reads the target type's first value, and the target's second value reads the
-    /// reader's first: no value is on a cycle. A sweep of the target that starts inside the reader's initializer runs the
-    /// target's second initializer while the reader's value is still being initialized, and raises.</summary>
-    private static string CrossTypeProgram(HostForm reader, HostForm target)
+    /// <summary>Which of the two hosts is declared first. A closed literal set.</summary>
+    internal enum CrossOrder
     {
-        static string Head(string name, HostForm form) => form == HostForm.Generic ? $"class {name}[E]:" : $"class {name}:";
-        static string Closed(string name, HostForm form) => form == HostForm.Generic ? $"{name}[int]" : name;
-        var (a, b) = (Closed("A", reader), Closed("B", target));
-        var body = new[]
-        {
-            Head("A", reader), "    @static", $"    x: int = {b}.p", "    @static", "    z: int = 5",
-            Head("B", target), "    @static", "    p: int = 1", "    @static", $"    q: int = {a}.x + 1",
-        };
-        return Harness.Join(body) + Harness.MainBlock($"print({a}.x, {a}.z, {b}.p, {b}.q)");
+        UserFirst,
+        TargetFirst,
     }
 
-    /// <summary>The cross-type forward read (the first verification's F3, and the owner's Q14 for a generic class), reader
-    /// × target <see cref="HostForm"/>: a forward read initializes its target first, whatever hosts the two values, so each
-    /// cell prints <c>1 5 1 2</c>. Python's class bodies run where they are written: the twin is an order-only NameError.</summary>
-    internal static IEnumerable<Cell> CrossTypeCells() =>
-        from reader in Enum.GetValues<HostForm>()
-        from target in Enum.GetValues<HostForm>()
-        let plain = reader == HostForm.Plain && target == HostForm.Plain
-        select new Cell(CrossTypeId(reader, target), Family.Location, CrossTypeProgram(reader, target), plain ? CrossTypeProgram(reader, target) : null, "1 5 1 2")
+    /// <summary>One host of a pair: a stored holder in a host form. A module, a plain class or a generic class.</summary>
+    internal sealed record CrossHost(BindingKind Holder, HostForm Form)
+    {
+        public bool IsModule => IsModuleHolder(Holder);
+
+        public bool IsGeneric => Form == HostForm.Generic;
+
+        public string Key => IsModule ? "Module" : Form.ToString();
+    }
+
+    /// <summary>The hosts: every stored holder of the location family, in every host form it has.</summary>
+    internal static IEnumerable<CrossHost> CrossHosts() =>
+        from holder in LocationHolders
+        where !IsConstHolder(holder)
+        from form in Enum.GetValues<HostForm>()
+        where FormExclusion(holder, form) == null
+        select new CrossHost(holder, form);
+
+    private const string OneHost = "one host: a module's use of its own value is the location family's cell";
+
+    /// <summary>Why a pair of hosts has no cell, or null. Two classes are two hosts; a module is one.</summary>
+    internal static string? PairExclusion(CrossHost user, CrossHost target) => user.IsModule && target.IsModule ? OneHost : null;
+
+    private const string LaterModuleVariable =
+        "the class reads back a module variable declared after it, which is invisible until rule N1 lands (#2423): not this plan's";
+
+    /// <summary>The module's sweep reaches a module value and a plain class at its place. A closed generic type has none:
+    /// its first use is the only thing that sweeps it.</summary>
+    private static bool HasPosition(CrossHost host) => !host.IsGeneric;
+
+    /// <summary>The rule's first half (D5; the owner's Q17 and Q18). The use is the first thing to require the target
+    /// class, so the class sweeps there, as a unit: every initializer of it runs inside the user's. A closed generic type
+    /// is first required by the use whichever is declared first (a generic user's own first use is <c>main</c>'s read of
+    /// its value, which the cell prints first). A plain class is, when the user's initializer runs before the module's
+    /// sweep reaches the class: the user has a place in that sweep, and is declared first.</summary>
+    internal static bool UseStartsTheTargetSweep(CrossHost user, CrossHost target, CrossOrder order) =>
+        !target.IsModule && (target.IsGeneric || (HasPosition(user) && order == CrossOrder.UserFirst));
+
+    /// <summary>The rule's second half (the owner's Q14, which stands inside one host). The use runs inside the target
+    /// host's OWN sweep, before the target value's place: a module's sweep reaches a plain class declared above the value.
+    /// A plain store is kept and the initializer replaces it; any other use initializes the value first.</summary>
+    internal static bool UseRunsInsideTheTargetSweep(CrossHost user, CrossHost target, CrossOrder order) =>
+        target.IsModule && HasPosition(user) && order == CrossOrder.UserFirst;
+
+    /// <summary>What a cell prints, or null: it raises. With a read back, the target host's second value reads the user's
+    /// value: inside a sweep the use started, that value is still being initialized, and the read is the cycle error (the
+    /// residue the owner accepted at Q18). Otherwise the user's value is what the use's function returns, the target value
+    /// is what the use left, or its initializer's where a kept store was replaced, and the read back is one more.</summary>
+    internal static string? CrossModel(CrossHost user, CrossHost target, CrossOrder order, LocationUse use, bool readBack)
+    {
+        if (readBack && UseStartsTheTargetSweep(user, target, order))
+            return null;
+        var (_, after, returned) = UseText(use, ValueKind.Int, "p", "1");
+        var first = returned?.Value ?? after;
+        var loaded = UseRunsInsideTheTargetSweep(user, target, order) && IsPlainStore(use) ? InitialValue : after;
+        return $"{first} {loaded}{(readBack ? $" {first + 1}" : "")}";
+    }
+
+    /// <summary>Why a pair's cell does not exist, or null.</summary>
+    internal static string? CrossExclusion(CrossHost user, CrossHost target, CrossOrder order, LocationUse use, bool readBack)
+    {
+        if (PairExclusion(user, target) is { } pair)
+            return pair;
+        if (UseExclusion(use, ValueKind.Int, target.Holder) is { } notAUse)
+            return notAUse;
+        if (ExcludedLocationCells.TryGetValue((use, target.Holder, target.Form), out var excluded))
+            return excluded.Reason;
+        return user.IsModule && order == CrossOrder.TargetFirst && readBack ? LaterModuleVariable : null;
+    }
+
+    private static string CrossId(CrossHost user, CrossHost target, CrossOrder order, LocationUse use, bool readBack) =>
+        $"{CrossPrefix}{user.Key}>{target.Key}/{order}/{use}{(readBack ? "/ReadBack" : "")}";
+
+    private static List<string> CrossDeclaration(string name, CrossHost host, params (string Name, string Initializer)[] values)
+    {
+        if (host.IsModule)
+            return values.Select(v => $"{v.Name}: int = {v.Initializer}").ToList();
+        var lines = new List<string> { host.IsGeneric ? $"class {name}[E]:" : $"class {name}:" };
+        foreach (var (value, initializer) in values)
         {
-            Python = plain ? PythonExpectation.NameError : PythonExpectation.NoTwin,
-            Route = static (verdict, _, _) => ValueRoute(verdict),
-        };
+            lines.Add("    @static");
+            lines.Add($"    {value}: int = {initializer}");
+        }
+        return lines;
+    }
+
+    private static string CrossName(string type, CrossHost host, string value) =>
+        host.IsModule ? value : host.IsGeneric ? $"{type}[int].{value}" : $"{type}.{value}";
+
+    /// <summary>The user host's value <c>x</c> is initialized by a function that uses the target host's value <c>p</c>;
+    /// with a read back, the target host's second value <c>q</c> reads <c>x</c>. No value is on a cycle.</summary>
+    private static string CrossProgram(CrossHost user, CrossHost target, CrossOrder order, LocationUse use, bool readBack, bool twin)
+    {
+        var (x, p, q) = (CrossName("A", user, "x"), CrossName("B", target, "p"), CrossName("B", target, "q"));
+        var (statement, _, returned) = UseText(use, ValueKind.Int, p, "1");
+        var userLines = CrossDeclaration("A", user, ("x", "use()"));
+        var targetLines = readBack
+            ? CrossDeclaration("B", target, ("p", $"{InitialValue}"), ("q", $"{x} + 1"))
+            : CrossDeclaration("B", target, ("p", $"{InitialValue}"));
+        var function = new List<string> { "def use() -> int:" };
+        // Python binds a bare store's name in the function unless it is declared global, as the location family's twin says.
+        if (twin && target.IsModule)
+            function.Add("    global p");
+        function.AddRange(statement.Split('\n').Select(l => "    " + l));
+        function.Add($"    return {returned?.Text ?? p}");
+
+        var hosts = order == CrossOrder.UserFirst ? userLines.Concat(targetLines) : targetLines.Concat(userLines);
+        var body = new List<string>(twin ? function.Concat(hosts) : hosts.Concat(function));
+        return WithHelpers(Harness.Join(body) + Harness.MainBlock($"print({x}, {p}{(readBack ? ", " + q : "")})"));
+    }
+
+    /// <summary>What python's twin does, where it has one: no generic host, and a use python can spell
+    /// (<see cref="LocationPython"/>). Python runs top to bottom. With the user first, its function runs before the target
+    /// host exists: a plain store to a module name binds it and the module's own line then replaces it, as the model says;
+    /// anything else is an order-only NameError. With the target first, a read back names a user that does not exist yet.</summary>
+    internal static PythonExpectation CrossPython(CrossHost user, CrossHost target, CrossOrder order, LocationUse use, bool readBack)
+    {
+        if (user.IsGeneric || target.IsGeneric || LocationPython(target.Holder, HostForm.Plain, use, When.Ready) == PythonExpectation.NoTwin)
+            return PythonExpectation.NoTwin;
+        if (order == CrossOrder.UserFirst)
+            return target.IsModule && IsPlainStore(use) ? PythonExpectation.Prints : PythonExpectation.NameError;
+        return readBack ? PythonExpectation.NameError : PythonExpectation.Prints;
+    }
+
+    private static IEnumerable<(CrossHost User, CrossHost Target, CrossOrder Order, LocationUse Use, bool ReadBack)> CrossProduct() =>
+        from user in CrossHosts()
+        from target in CrossHosts()
+        from order in Enum.GetValues<CrossOrder>()
+        from use in Enum.GetValues<LocationUse>()
+        from readBack in new[] { false, true }
+        where CrossExclusion(user, target, order, use, readBack) == null
+        select (user, target, order, use, readBack);
+
+    internal static IEnumerable<Cell> CrossCells()
+    {
+        foreach (var (user, target, order, use, readBack) in CrossProduct())
+        {
+            var python = CrossPython(user, target, order, use, readBack);
+            var model = CrossModel(user, target, order, use, readBack);
+            yield return new Cell(
+                CrossId(user, target, order, use, readBack),
+                Family.Location,
+                CrossProgram(user, target, order, use, readBack, twin: false),
+                python == PythonExpectation.NoTwin ? null : CrossProgram(user, target, order, use, readBack, twin: true),
+                model ?? CycleError)
+            {
+                Raises = model == null ? CycleError : null,
+                // What runs today and must not move: a use that reads nothing back, of a value that is ready when it runs or
+                // is made ready by it. A store into a later class lands on the class's initialized value, as C# has it.
+                IsControl = !readBack && !UseRunsInsideTheTargetSweep(user, target, order),
+                Python = python,
+                Route = static (verdict, _, _) => ValueRoute(verdict),
+            };
+        }
+    }
+
+    /// <summary>The read back of a later module variable, on both class forms: the programs the exclusion rests on.</summary>
+    private static IEnumerable<(string What, Exclusion Exclusion)> CrossExclusions() =>
+        from user in CrossHosts()
+        where user.IsModule
+        from target in CrossHosts()
+        where !target.IsModule
+        select (
+            $"cross {user.Key}>{target.Key} read back, target first",
+            new Exclusion(LaterModuleVariable, CrossProgram(user, target, CrossOrder.TargetFirst, LocationUse.Assign, readBack: true, twin: false), "SPY0200"));
+
+    internal static List<string> CrossTotalityFailures(IReadOnlyList<Cell> pool)
+    {
+        var failures = new List<string>();
+        var hosts = CrossHosts().ToList();
+        var cells = CrossProduct().ToList();
+
+        // The hosts are the location family's stored holders in their host forms, and every pair is generated or is one host.
+        foreach (var (holder, form, _, _, _) in LocationProduct().Where(c => !IsConstHolder(c.Holder)).Distinct())
+        {
+            if (!hosts.Contains(new CrossHost(holder, form)))
+                failures.Add($"holder BindingKind.{holder} in HostForm.{form} has location cells and is no cross host");
+        }
+        foreach (var user in hosts)
+            foreach (var target in hosts)
+            {
+                bool generated = cells.Any(c => c.User == user && c.Target == target), excluded = PairExclusion(user, target) != null;
+                if (generated == excluded)
+                    failures.Add($"the host pair {user.Key}>{target.Key} is {Both(generated)}");
+                if (excluded)
+                    continue;
+                // The use axis is the location family's: every use with a cell on the target's holder and form has its cells
+                // here, in both orders, with and without a read back, but for the one exclusion that carries its program.
+                var uses = LocationProduct().Where(c => c.Holder == target.Holder && c.Form == target.Form && c.Kind == ValueKind.Int).Select(c => c.Use).Distinct().ToList();
+                if (uses.Count(IsPlainStore) == 0 || uses.Count(u => !IsPlainStore(u)) == 0)
+                    failures.Add($"the host pair {user.Key}>{target.Key} has no plain store, or nothing else");
+                foreach (var use in uses)
+                    foreach (var order in Enum.GetValues<CrossOrder>())
+                        foreach (var readBack in new[] { false, true })
+                        {
+                            var owedHere = !(user.IsModule && order == CrossOrder.TargetFirst && readBack);
+                            if (owedHere != cells.Contains((user, target, order, use, readBack)))
+                                failures.Add($"{CrossId(user, target, order, use, readBack)} is {(owedHere ? "owed by the location family's uses and not generated" : "generated against its exclusion")}");
+                        }
+            }
+
+        // The rule's answers each have a cell, on each side of the plain-store line.
+        foreach (var plain in new[] { true, false })
+        {
+            var kind = plain ? "a plain store" : "a use that reads";
+            if (!cells.Any(c => IsPlainStore(c.Use) == plain && c.ReadBack && UseStartsTheTargetSweep(c.User, c.Target, c.Order)))
+                failures.Add($"no cell reads back inside a sweep that {kind} started");
+            if (!cells.Any(c => IsPlainStore(c.Use) == plain && c.ReadBack && !UseStartsTheTargetSweep(c.User, c.Target, c.Order)))
+                failures.Add($"no cell reads back {kind} that started no sweep");
+            if (!cells.Any(c => IsPlainStore(c.Use) == plain && UseRunsInsideTheTargetSweep(c.User, c.Target, c.Order)))
+                failures.Add($"no cell holds {kind} inside the target host's own sweep");
+            // A store into a class declared later, and into a closed generic type declared earlier (the third verification's F10).
+            foreach (var target in hosts.Where(h => !h.IsModule))
+                foreach (var order in Enum.GetValues<CrossOrder>())
+                {
+                    if (!cells.Any(c => IsPlainStore(c.Use) == plain && c.Target == target && c.Order == order && !c.ReadBack && HasPosition(c.User)))
+                        failures.Add($"no cell holds {kind} from a host with a place into a {target.Key} class, {order}");
+                }
+        }
+        foreach (var readBack in new[] { false, true }.Where(r => cells.All(c => c.ReadBack != r)))
+            failures.Add($"no cross cell {(readBack ? "reads back" : "is without a read back")}");
+        foreach (var order in Enum.GetValues<CrossOrder>().Where(o => cells.All(c => c.Order != o)))
+            failures.Add($"CrossOrder.{order} has no cell");
+
+        var held = pool.Where(c => c.Id.StartsWith(CrossPrefix, StringComparison.Ordinal)).Select(c => c.Id).ToHashSet(StringComparer.Ordinal);
+        var owed = cells.Select(c => CrossId(c.User, c.Target, c.Order, c.Use, c.ReadBack)).ToHashSet(StringComparer.Ordinal);
+        foreach (var id in owed.Where(id => !held.Contains(id)).Take(20))
+            failures.Add($"the cross axes owe {id} and the pool does not hold it");
+        foreach (var id in held.Where(id => !owed.Contains(id)).Take(20))
+            failures.Add($"the pool holds {id} and the cross axes do not owe it");
+        return failures;
+    }
 
     private static IEnumerable<(string What, Exclusion Exclusion)> LocationExclusions() =>
         ExcludedHolders.Select(e => ($"holder BindingKind.{e.Key}", e.Value))
@@ -629,6 +837,7 @@ public sealed partial class InitializerDependencyDifferentialTests
             .Concat(ExcludedTargetArms.Select(e => ($"target arm {e.Key}", e.Value)))
             .Concat(ExcludedOperandModifiers.Select(e => ($"operand use ParameterModifier.{e.Key}", e.Value)))
             .Concat(ExcludedTextHolders.Select(e => ($"a store in the initializer text of BindingKind.{e.Key}", e.Value)))
+            .Concat(CrossExclusions())
             .Concat(ExcludedLocationCells.Select(e => (
                 $"location {e.Key.Use} on {e.Key.Holder}+{e.Key.Form}",
                 new Exclusion(e.Value.Reason, LocationProgram(e.Key.Holder, e.Key.Form, KindsOf(e.Key.Use)[0], e.Key.Use, When.Ready, twin: false), e.Value.Code))));
@@ -714,7 +923,7 @@ public sealed partial class InitializerDependencyDifferentialTests
                 if (IsConstHolder(holder))
                     continue;
                 // A stored holder's: a plain store before the initializer, which an unswept host answers with the stored value
-                // (the owner's Q14), and one inside it, alone and read back (Q15).
+                // (the owner's Q14), and one inside it, alone and read back, which runs (Q21).
                 foreach (var when in new[] { When.BeforeInitializer, When.DuringInitializer, When.DuringInitializerThenRead }
                     .Where(w => !cells.Contains((holder, form, ValueKind.Int, LocationUse.Assign, w))))
                     failures.Add($"holder BindingKind.{holder} in HostForm.{form} has no plain store at When.{when}");
@@ -740,34 +949,20 @@ public sealed partial class InitializerDependencyDifferentialTests
                 failures.Add($"LocationUse.{use} has no cell at When.{when}");
             if (plain && cells.All(c => c.Use != use || c.When != When.DuringInitializerThenRead))
                 failures.Add($"LocationUse.{use} is a plain store and has no cell that reads it back inside its own initializer");
-            // A plain store that is an expression has its slot, which the slot map classifies or excludes.
-            if (!plain || TextForm(use, "t") == null || use == LocationUse.Walrus)
-                continue;
-            if (!TextSlots.TryGetValue(use, out var slot))
-                failures.Add($"LocationUse.{use} is a store an initializer's text can hold and names no slot");
-            else if (!Slots.ContainsKey(slot) && !ExcludedSlots.ContainsKey(slot))
-                failures.Add($"LocationUse.{use} names the slot {slot}, which the slot map neither classifies nor excludes");
-            if (cells.All(c => c.Use != use || c.When != When.InInitializerText))
+            // A plain store that is an expression has its cell in the initializer's own text.
+            if (plain && TextForm(use, "t") != null && use != LocationUse.Walrus && cells.All(c => c.Use != use || c.When != When.InInitializerText))
                 failures.Add($"LocationUse.{use} has no cell in its own initializer text");
         }
-        foreach (var use in TextSlots.Keys.Where(u => !IsPlainStore(u) || TextForm(u, "t") == null))
-            failures.Add($"LocationUse.{use} names a slot and is no store an initializer's text can hold");
-        // The text rule's two answers both have a cell.
-        var inText = cells.Where(c => c.When == When.InInitializerText).Select(c => TextStoreIsRefused(c.Use)).ToHashSet();
-        foreach (var answer in new[] { true, false }.Where(a => !inText.Contains(a)))
-            failures.Add($"no store in an initializer's own text is {(answer ? "refused" : "left to run time")}");
+        // Inside its own initializer the rule's two answers both have a cell, on every stored holder and host form.
+        foreach (var (holder, form) in cells.Where(c => !IsConstHolder(c.Holder)).Select(c => (c.Holder, c.Form)).Distinct())
+            foreach (var answer in new[] { true, false }.Where(a => !cells.Any(c => c.Holder == holder && c.Form == form && c.When == When.DuringInitializer && OwnInitializerRaises(c.Use) == a)))
+                failures.Add($"holder BindingKind.{holder} in HostForm.{form} has no use inside its own initializer that {(answer ? "raises" : "runs")}");
         foreach (var holder in ExcludedTextHolders.Keys.Where(h => !LocationHolders.Contains(h) || IsConstHolder(h)))
             failures.Add($"BindingKind.{holder} is excluded from the initializer text and is no stored holder");
 
-        // The cross-type read: every pair of host forms.
-        var crossOwed = (from reader in Enum.GetValues<HostForm>() from target in Enum.GetValues<HostForm>() select CrossTypeId(reader, target)).ToHashSet(StringComparer.Ordinal);
-        var crossHeld = pool.Where(c => c.Id.StartsWith(CrossTypePrefix, StringComparison.Ordinal)).Select(c => c.Id).ToHashSet(StringComparer.Ordinal);
-        foreach (var id in crossOwed.Where(id => !crossHeld.Contains(id)))
-            failures.Add($"the host forms owe {id} and the pool does not hold it");
-        foreach (var id in crossHeld.Where(id => !crossOwed.Contains(id)))
-            failures.Add($"the pool holds {id} and the host forms do not owe it");
+        failures.AddRange(CrossTotalityFailures(pool));
 
-        var ids = pool.Where(c => c.Family == Family.Location && !c.Id.StartsWith(CrossTypePrefix, StringComparison.Ordinal)).Select(c => c.Id).ToHashSet(StringComparer.Ordinal);
+        var ids = pool.Where(c => c.Family == Family.Location && !c.Id.StartsWith(CrossPrefix, StringComparison.Ordinal)).Select(c => c.Id).ToHashSet(StringComparer.Ordinal);
         var owed = cells.Select(k => LocationId(k.Holder, k.Form, k.Kind, k.Use, k.When)).ToHashSet(StringComparer.Ordinal);
         foreach (var id in owed.Where(id => !ids.Contains(id)).Take(20))
             failures.Add($"the location axes owe {id} and the pool does not hold it");
