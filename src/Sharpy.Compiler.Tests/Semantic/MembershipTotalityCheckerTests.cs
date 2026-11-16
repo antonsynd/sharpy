@@ -117,6 +117,10 @@ public class MembershipTotalityCheckerTests
                 self.n += 1
                 return 1.5
 
+        class SelfOverNextBag(NextBag):
+            def __iter__(self) -> SelfOverNextBag:
+                return self
+
         class ContainsMethodBag:
             items: list[int]
 
@@ -140,6 +144,10 @@ public class MembershipTotalityCheckerTests
         class LB:
             def __iter__(self) -> list[int]:
                 return [1, 2]
+
+        class GenOverListBag(LB):
+            def __iter__(self) -> int:
+                yield 3
 
         class SeqBag:
             items: list[int]
@@ -247,6 +255,7 @@ public class MembershipTotalityCheckerTests
     [InlineData("bag: ListOf[int] = ListOf[int]([[1]])", "[1] in bag", "list[int32]")]     // a forwarded argument nested in the clause
     [InlineData("bag: StrProducer = StrProducer()", "\"a\" in bag", "str")]                  // the clause's SECOND argument, producer unpeeled
     [InlineData("bag: ContainsMethodBag = ContainsMethodBag()", "1 in bag", "int32")]        // a method `contains` is not __contains__
+    [InlineData("bag: GenOverListBag = GenOverListBag()", "3 in bag", "int32")]              // the nearest __iter__ decides: a generator over a list-returning base's
     public void IteratingClass_AnswersMembership_WithItsSynthesizedElement(string declarations, string expression, string element)
     {
         var analysis = Analyze(declarations, expression);
@@ -261,7 +270,8 @@ public class MembershipTotalityCheckerTests
 
     /// <summary>
     /// D1, the shapes that do NOT answer: an <c>__iter__</c> that names no producer (#1915) — its own, or
-    /// one overriding a base's that does iterate, where an answer would be the BASE's elements — the
+    /// one overriding a base's that does iterate, where an answer would be the BASE's elements — a
+    /// self-returning override whose <c>__next__</c> is only the base's (#2703), the
     /// legacy <c>__getitem__</c> + <c>__len__</c> pair (R-OA), a class with <c>__contains__</c> (it
     /// answers by its own dunder), and a nested class (it iterates, but is emitted without the
     /// interface, #2702). No D1 record; all but the <c>__contains__</c> one are refused by the protocol
@@ -270,6 +280,9 @@ public class MembershipTotalityCheckerTests
     [Theory]
     [InlineData("bag: LB = LB()", "1 in bag", true)]
     [InlineData("bag: ListOverProducerBag = ListOverProducerBag()", "\"a\" in bag", true)]   // the nearest __iter__ decides
+    // TODO(#2703): CPython answers True. A self-returning override beside an INHERITED __next__ is emitted as a
+    // GetEnumerator that hides the base's, so an answer would enumerate through the base's, not this __iter__.
+    [InlineData("bag: SelfOverNextBag = SelfOverNextBag()", "1.5 in bag", true)]
     [InlineData("bag: SeqBag = SeqBag(1, 2)", "1 in bag", true)]
     [InlineData("bag: GSeqBag[int] = GSeqBag[int]([1, 2])", "1 in bag", true)]
     [InlineData("bag: DunderContainsBag = DunderContainsBag()", "\"a\" in bag", false)]
