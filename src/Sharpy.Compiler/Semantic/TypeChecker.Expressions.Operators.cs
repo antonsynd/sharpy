@@ -1324,7 +1324,8 @@ internal partial class TypeChecker
 
         // Pass 2, in source order: every other `in` link's container takes the twin's setup whether or
         // not it is also a needle (`a in b in c`); the slot it returns is discarded, since a middle
-        // needle is typed as its left twin types it and admitted at the slot by its type (R2).
+        // needle is typed as its left twin types it (R2) and admitted at the slot by the link routine:
+        // by its type, or by its value when it is a constant (R3).
         for (int ni = 1; ni < chain.Operators.Length; ni++)
         {
             if (needleIndices.Contains(ni))
@@ -1674,7 +1675,10 @@ internal partial class TypeChecker
     /// (<see cref="IterableElementDecider.IsRecognizedProducerType"/>) <c>__iter__</c>. No other
     /// <c>__iter__</c> answers (<c>-&gt; list[int]</c> synthesizes nothing, #1915), and
     /// <c>__getitem__</c> + <c>__len__</c> never does (R-OA): Python's legacy sequence protocol is not
-    /// membership in Sharpy. An answer is typed at the receiver by
+    /// membership in Sharpy. Two declarations the rule would name do not answer, because the emitted
+    /// class does not implement the interface the answer promises: a nested class (its base list lacks
+    /// the synthesized row, #2702) and a <c>__next__</c> pair declared after the use (its
+    /// <c>__next__</c> is unresolved there, #2249). An answer is typed at the receiver by
     /// <see cref="SubstituteDunderForHost"/>: through the host view for the host's own declaration,
     /// through the base clauses' written arguments for an inherited one (<c>class IntBox(Box[int])</c>,
     /// <c>class Mid[U](Box[U])</c> as <c>Mid[int]</c>).</para>
@@ -1696,13 +1700,24 @@ internal partial class TypeChecker
             var iter = current.Methods.FirstOrDefault(m => m.Name == DunderNames.Iter);
             if (iter != null)
             {
+                // TODO(#2702): a nested class is emitted without its synthesized `IEnumerable<T>` base
+                // — the interface the LINQ call enumerates — so an answer for an `__iter__` declared
+                // on one reached Roslyn (CS1503 behind SPY0908). No answer until its base list has it.
+                if (current.DeclaringType != null)
+                    return null;
+
                 // SynthesisAnalyzer: `__next__` + `__iter__` → IEnumerable[`__next__`'s annotation, or
                 // object]; `__iter__` alone → IEnumerable[the unpeeled generator / producer return].
                 var next = current.Methods.FirstOrDefault(m => m.Name == DunderNames.Next);
                 if (next != null)
                 {
+                    // An unresolved `__next__` (a class declared after this use, #2249) is no answer:
+                    // read as `object` it named an interface the class does not implement (CS1503).
+                    if (next.ReturnType is UnknownType)
+                        return null;
+
                     return SubstituteDunderForHost(host, containerType, current,
-                        next.ReturnType is VoidType or UnknownType ? SemanticType.Object : next.ReturnType);
+                        next.ReturnType is VoidType ? SemanticType.Object : next.ReturnType);
                 }
 
                 if (iter.IsGenerator || IterableElementDecider.IsRecognizedProducerType(iter.ReturnType))

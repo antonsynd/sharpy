@@ -161,6 +161,11 @@ public class MembershipTotalityCheckerTests
             def __getitem__(self, i: int) -> T:
                 return self.items[i]
 
+        class Holder:
+            class NestedBag:
+                def __iter__(self) -> Iterator[int]:
+                    return iter([4])
+
         def nothing() -> None:
             pass
 
@@ -186,7 +191,11 @@ public class MembershipTotalityCheckerTests
         var body = string.Concat(declarations
             .Split(';', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
             .Select(line => $"    {line}\n"));
-        var source = Prelude + "def main() -> None:\n" + body + $"    b: bool = {expression}\n    print(b)\n";
+        return AnalyzeSource(Prelude + "def main() -> None:\n" + body + $"    b: bool = {expression}\n    print(b)\n");
+    }
+
+    private static Analysis AnalyzeSource(string source)
+    {
         var options = new CompilerOptions
         {
             References = new[]
@@ -256,6 +265,9 @@ public class MembershipTotalityCheckerTests
     [InlineData("bag: SeqBag = SeqBag(1, 2)", "1 in bag", true)]
     [InlineData("bag: GSeqBag[int] = GSeqBag[int]([1, 2])", "1 in bag", true)]
     [InlineData("bag: DunderContainsBag = DunderContainsBag()", "\"a\" in bag", false)]
+    // TODO(#2702): a nested class is emitted without its synthesized IEnumerable[T]; CPython answers True.
+    // Until it has one the checker must not answer either: an answer reached Roslyn (CS1503 behind SPY0908).
+    [InlineData("bag: Holder.NestedBag = Holder.NestedBag()", "4 in bag", true)]
     public void NonIteratingShape_RecordsNoIterationElement(string declarations, string expression, bool refused)
     {
         var analysis = Analyze(declarations, expression);
@@ -266,6 +278,43 @@ public class MembershipTotalityCheckerTests
             Assert.Equal(new[] { DiagnosticCodes.Semantic.ProtocolMissingMethod }, analysis.ErrorCodes.ToArray());
         else
             Assert.True(analysis.Errors.Count == 0, analysis.Describe());
+    }
+
+    /// <summary>
+    /// D1 answers only where the class's <c>__next__</c> is typed: a <c>__next__</c> pair declared AFTER
+    /// its use is unresolved when the use is checked (#2249), and read as <c>object</c> it named an
+    /// <c>IEnumerable[object]</c> the class does not implement (CS1503 behind SPY0908). No D1 record;
+    /// the protocol refusal alone. The same class declared before the use answers
+    /// (<see cref="IteratingClass_AnswersMembership_WithItsSynthesizedElement"/>, <c>NextBag</c>).
+    /// </summary>
+    [Fact]
+    public void NextPairDeclaredAfterItsUse_RecordsNoIterationElement()
+    {
+        // TODO(#2249): CPython answers True; a later class's signatures are unresolved at this use.
+        const string source = """
+            def main() -> None:
+                b: bool = 1 in LateNext()
+                print(b)
+
+            class LateNext:
+                n: int
+
+                def __init__(self) -> None:
+                    self.n = 0
+
+                def __iter__(self) -> LateNext:
+                    return self
+
+                def __next__(self) -> int:
+                    self.n += 1
+                    return self.n
+
+            """;
+        var analysis = AnalyzeSource(source);
+
+        var membership = (BinaryOp)TestedExpression(analysis);
+        Assert.Null(analysis.Info.GetIterableProjection(membership.Right));
+        Assert.Equal(new[] { DiagnosticCodes.Semantic.ProtocolMissingMethod }, analysis.ErrorCodes.ToArray());
     }
 
     /// <summary>

@@ -69,9 +69,10 @@ ruling 2026-11-15, plan-67a01f R2). So `t == (1, 2) in ts` compares two `tuple[i
 value where it fits the slot, as the binary `-1 in cs` admits it, and converted at the membership
 read (owner ruling 2026-11-15, plan-67a01f R3): `h == -1 in cs` over `cs: list[int8]` compares `h`
 with the `int` -1 and then tests the `int8` -1, and a constant out of the slot's range is refused as
-`300 in cs` is. A tuple or list literal there is admitted by its type. Only the head of a chain is read by one link alone, so only a head needle is typed by its
-needle slot, as `x in c` types it, and it is checked before the operands after its container, which
-may read a name it binds (`(y := 2) in xs == [y]`).
+`300 in cs` is. A tuple or list literal there is admitted by its type. Only the head of a chain is
+read by one link alone, so only a head needle is typed by its needle slot, as `x in c` types it, and
+it is checked before the operands after its container, which may read a name it binds
+(`(y := 2) in xs == [y]`).
 
 <!-- spec-sweep: output -->
 ```python
