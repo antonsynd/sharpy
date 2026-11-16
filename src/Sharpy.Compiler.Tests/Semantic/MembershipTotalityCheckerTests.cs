@@ -173,6 +173,14 @@ public class MembershipTotalityCheckerTests
             def __getitem__(self, i: int) -> T:
                 return self.items[i]
 
+        class OptBag:
+            v: int?
+            u: int | None
+
+            def __init__(self) -> None:
+                self.v = Some(1)
+                self.u = 1
+
         class Holder:
             class NestedBag:
                 def __iter__(self) -> Iterator[int]:
@@ -490,6 +498,105 @@ public class MembershipTotalityCheckerTests
         Assert.Equal(twinKind, link.Kind);
         Assert.Equal(shape, link.Shape);
         Assert.Equal(twin.Info.GetBinaryOpLoweringForIr(binary), link.Equality ?? BinaryOpLowering.NativeOperator);
+    }
+
+    // ---------------------------------------------------------------- #2648: a narrowed None-test subject
+
+    /// <summary>`b: bool = …` inside `if <guard> is not None:`, where the guard's subject is narrowed.</summary>
+    private static Analysis AnalyzeNarrowed(string declaration, string guard, string expression, string type = "bool") =>
+        AnalyzeSource(Prelude + "def main() -> None:\n    n: int = 1\n"
+            + $"    {declaration}\n    if {guard} is not None:\n        b: {type} = {expression}\n        print(b)\n");
+
+    /// <summary>
+    /// The cells of "an operand every reading link tests against None": subject (a local or a field,
+    /// <c>T?</c> or <c>T | None</c>, value or reference, parenthesized or not) × position (head, tail,
+    /// between two <c>None</c>s on either side) × operator. Each row: the chain, the binary twin of
+    /// the link under test, that link's index and the subject's operand index.
+    /// </summary>
+    public static IEnumerable<object[]> NarrowedNoneTestCells()
+    {
+        var subjects = new (string Declaration, string Guard, string Subject)[]
+        {
+            ("x: int? = Some(1)", "x", "x"),
+            ("x: int | None = 1", "x", "x"),
+            ("x: str | None = \"a\"", "x", "x"),
+            ("x: int? = Some(1)", "x", "(x)"),
+            ("bag: OptBag = OptBag()", "bag.v", "bag.v"),
+            ("bag: OptBag = OptBag()", "bag.u", "bag.u"),
+        };
+        foreach (var (declaration, guard, subject) in subjects)
+        {
+            foreach (var op in new[] { "is", "is not" })
+            {
+                yield return new object[] { declaration, guard, $"{subject} {op} None is None", $"{subject} {op} None", 0, 0 };
+                yield return new object[] { declaration, guard, $"n == n is not None {op} {subject}", $"None {op} {subject}", 2, 3 };
+                yield return new object[] { declaration, guard, $"None {op} {subject} is None", $"None {op} {subject}", 0, 1 };
+                yield return new object[] { declaration, guard, $"None is {subject} {op} None", $"{subject} {op} None", 1, 1 };
+            }
+        }
+    }
+
+    /// <summary>
+    /// #2648, owner ruling 2026-11-16 ("each link reads a shared operand as its twin reads it"): the
+    /// subject of an <c>is (not) None</c> chain link that no other kind of link reads is read
+    /// un-narrowed, as <c>x is None</c> alone reads it, so the link records its twin's lowering. Read
+    /// narrowed, the link took the narrowed type's lowering and unwrapped an empty value at run time
+    /// once the narrowing was stale (fixtures <c>comparison_chain_none_test_*unnarrowed_2648</c>).
+    /// </summary>
+    [Theory]
+    [MemberData(nameof(NarrowedNoneTestCells))]
+    public void NarrowedNoneTestSubject_ChainLinkIsItsBinaryTwin(
+        string declaration, string guard, string chainSource, string twinSource, int linkIndex, int subjectIndex)
+    {
+        var twin = AnalyzeNarrowed(declaration, guard, twinSource);
+        var chained = AnalyzeNarrowed(declaration, guard, chainSource);
+        Assert.True(twin.Errors.Count == 0, twin.Describe());
+        Assert.True(chained.Errors.Count == 0, chained.Describe());
+
+        var binary = (BinaryOp)TestedExpression(twin);
+        var chain = (ComparisonChain)TestedExpression(chained);
+        var twinSubject = binary.Right is NoneLiteral ? binary.Left : binary.Right;
+        Assert.Equal(
+            twin.Info.GetExpressionType(twinSubject)?.GetDisplayName(),
+            chained.Info.GetExpressionType(chain.Operands[subjectIndex])?.GetDisplayName());
+
+        var link = chained.Info.GetComparisonChainLowering(chain)!.Links[linkIndex];
+        Assert.Equal(ComparisonLinkShape.NoneTest, link.Shape);
+        Assert.Equal(twin.Info.GetOperatorLoweringForIr(binary)?.Kind ?? OperatorLoweringKind.Native, link.Kind);
+    }
+
+    /// <summary>
+    /// Positive control for <see cref="NarrowedNoneTestSubject_ChainLinkIsItsBinaryTwin"/>: the guard
+    /// its cells sit under does narrow (a plain read of the subject has the inner type), so equal
+    /// types there are not equal by default.
+    /// </summary>
+    [Theory]
+    [InlineData("x: int? = Some(1)", "x", "x", "int")]
+    [InlineData("x: int | None = 1", "x", "x", "int")]
+    [InlineData("bag: OptBag = OptBag()", "bag.v", "bag.v", "int")]
+    [InlineData("bag: OptBag = OptBag()", "bag.u", "bag.u", "int")]
+    public void NarrowedNoneTestCells_SitUnderALiveNarrowing(string declaration, string guard, string subject, string type)
+    {
+        var analysis = AnalyzeNarrowed(declaration, guard, subject, type);
+
+        Assert.True(analysis.Errors.Count == 0, analysis.Describe());
+        Assert.Equal("int32", analysis.Info.GetExpressionType(TestedExpression(analysis))?.GetDisplayName());
+    }
+
+    /// <summary>
+    /// The residue of the ruling, pinned: an operand a None test reads FIRST and another link reads
+    /// after it (<c>None is not x &lt; 5</c>) is still read narrowed by both. Under a live narrowing the
+    /// answers are the twins'; under one made stale earlier in the chain the None-test link unwraps.
+    /// </summary>
+    [Fact]
+    public void NoneTestFirst_ThenAnotherLink_StillReadsTheNarrowedOperand()
+    {
+        // TODO(#2648): the None test reads the honest Optional (`int32?`) and `x < 5` narrows at its own read.
+        var chained = AnalyzeNarrowed("x: int? = Some(1)", "x", "None is not x < 5");
+
+        Assert.True(chained.Errors.Count == 0, chained.Describe());
+        var chain = (ComparisonChain)TestedExpression(chained);
+        Assert.Equal("int32", chained.Info.GetExpressionType(chain.Operands[1])?.GetDisplayName());
     }
 
     /// <summary>Positive control for the checker-phase filter the twin theory compares through.</summary>

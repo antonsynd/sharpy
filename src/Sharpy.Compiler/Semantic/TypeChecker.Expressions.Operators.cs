@@ -1297,6 +1297,21 @@ internal partial class TypeChecker
         // needle is checked as soon as its container is, under that container's slot, as the twin
         // `x in c` checks it — so before operands 2.., which may read a name it binds
         // (`(y := 2) in xs == [y]`).
+        //
+        // The subject of an `is (not) None` link reads the honest, un-narrowed value, as the twin
+        // `x is None` reads it (CheckBinaryOp's _typeTestOperand): read narrowed, a narrowing made stale
+        // earlier in the chain unwrapped an empty Optional at run time where the twin answers (#2648).
+        // Owner ruling 2026-11-16: each link reads a shared operand as its twin reads it. Here that is
+        // the operand every reading link tests against None — the head, the tail, or one between two
+        // `None`s. An operand another link also reads keeps that link's narrowed reading (R2).
+        bool IsNoneTestLink(int link, int noneOperand) =>
+            chain.Operands[noneOperand] is NoneLiteral
+            && TypeUtils.ComparisonOperatorToBinaryOperator(chain.Operators[link])
+                is BinaryOperator.Is or BinaryOperator.IsNot;
+        bool ReadOnlyByNoneTests(int k) =>
+            (k == 0 || IsNoneTestLink(k - 1, k - 1))
+            && (k == chain.Operators.Length || IsNoneTestLink(k, k + 1));
+
         var headIsNeedle = needleIndices.Contains(0);
         for (int i = 0; i < chain.Operands.Length; i++)
         {
@@ -1305,6 +1320,8 @@ internal partial class TypeChecker
 
             if (operandTypes[i] == null)
             {
+                using var honestRead = ScopedValue.Push(ref _typeTestOperand,
+                    ReadOnlyByNoneTests(i) ? UnwrapParenthesized(chain.Operands[i]) : _typeTestOperand);
                 if (i > 0 && !needleIndices.Contains(i - 1)
                     && operandTypes[i - 1] is { } previous && previous is not UnknownType)
                 {

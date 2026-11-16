@@ -1,0 +1,8 @@
+tail live  True True
+tail stale False False
+head live  False False
+head stale True True
+mid live   False False
+mid stale  True True
+walrus     False False
+walrus tw  False
