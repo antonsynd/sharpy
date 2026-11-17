@@ -566,6 +566,7 @@ public class SocketErrnoDifferentialTests
         TestPreconditions.RequireOrSkip(OperatingSystem.IsLinux(), "EMFILE's number is Linux's errno value.");
         TestPreconditions.RequireOrSkip(File.Exists("/usr/bin/prlimit") || File.Exists("/bin/prlimit"),
             "the Sharpy side lowers its descriptor limit with prlimit(1) (util-linux), which is not installed.");
+        RequireUninstrumentedChild();
         var python = PythonInterpreter.RequireOrSkip();
         var work = SysPath.Combine(SysPath.GetTempPath(), "sharpy-socket-emfile-" + Guid.NewGuid().ToString("N"));
         Directory.CreateDirectory(work);
@@ -595,6 +596,138 @@ public class SocketErrnoDifferentialTests
             catch (IOException) { }
             catch (UnauthorizedAccessException) { }
         }
+    }
+
+    /// <summary>
+    /// The Sharpy assemblies the EMFILE program's child process loads: Sharpy.Stdlib (<c>socket</c>) and
+    /// Sharpy.Core (<c>print</c>). Both are in <c>coverage.runsettings</c>' include list.
+    /// </summary>
+    internal static readonly IReadOnlyList<System.Reflection.Assembly> ChildAssemblies = new[]
+    {
+        typeof(global::Sharpy.SocketModule.SocketModuleModule).Assembly,
+        typeof(global::Sharpy.Builtins).Assembly,
+    };
+
+    /// <summary>
+    /// The coverage-on run's gate for a child that exhausts its own descriptors (owner ruling 2026-11-17,
+    /// on mainline's red after Microsoft.NET.Test.Sdk 18.12.0): Microsoft.CodeCoverage's static
+    /// instrumentation puts a tracker into each included assembly, whose background flush (18.12.0) opens a
+    /// file; with the descriptors exhausted it cannot, cannot load System.Console to log that, and the child
+    /// aborts (exit 134). Skipped exactly when <see cref="CoverageInstrumentation.IsInstrumented"/> says a
+    /// child assembly is instrumented; the coverage-off (PR) run always runs the test.
+    /// <c>EmfileCoverageGate_SkipsExactlyWhenTheChildsAssembliesCarryProbes</c> holds this to the IL.
+    /// </summary>
+    internal static void RequireUninstrumentedChild()
+    {
+        var instrumented = ChildAssemblies.Where(CoverageInstrumentation.IsInstrumented).Select(a => a.GetName().Name).ToList();
+        TestPreconditions.RequireOrSkip(instrumented.Count == 0,
+            $"statically instrumented by Microsoft.CodeCoverage (--collect \"Code Coverage\"): {string.Join(", ", instrumented)}; "
+            + "the collector's background flush cannot open its file once the child has exhausted its descriptors, and the "
+            + "child aborts (owner ruling 2026-11-17). EMFILE end to end is evaluated by the coverage-off (PR) run.");
+    }
+
+    /// <summary>
+    /// The EMFILE gate is the detector's answer and nothing wider, and the detector is held to the IL: for each child
+    /// assembly, whether the methods of an anchor type really load or call a member of a collector-injected type is
+    /// read from their IL; the detector must agree, and the gate must skip exactly when one of them carries probes. A
+    /// plain run therefore runs the test body; a coverage-on run skips it.
+    /// </summary>
+    [Fact]
+    public void EmfileCoverageGate_SkipsExactlyWhenTheChildsAssembliesCarryProbes()
+    {
+        var anchors = new[] { typeof(global::Sharpy.SocketModule.SocketModuleModule), typeof(global::Sharpy.Builtins) };
+        Assert.Equal(ChildAssemblies, anchors.Select(t => t.Assembly));
+        bool anyProbed = false;
+        foreach (var anchor in anchors)
+        {
+            var (bodies, memberOperands, probed) = ScanForProbes(anchor);
+            _output.WriteLine($"{anchor.Assembly.GetName().Name}: {bodies} bodies, {memberOperands} member operands, {probed} probed; "
+                + $"detector instrumented={CoverageInstrumentation.IsInstrumented(anchor.Assembly)}");
+            // Positive control: the scan decoded real bodies and resolved their member operands.
+            Assert.True(bodies > 10 && memberOperands > 10, $"{anchor}: the IL scan went blind ({bodies} bodies, {memberOperands} operands)");
+            Assert.True(CoverageInstrumentation.IsInstrumented(anchor.Assembly) == (probed > 0),
+                $"{anchor.Assembly.GetName().Name}: detector says instrumented={CoverageInstrumentation.IsInstrumented(anchor.Assembly)}, "
+                + $"but {probed} bodies of {anchor} reference a {CoverageInstrumentation.InjectedNamespacePrefix}.* member");
+            anyProbed |= probed > 0;
+        }
+
+        string? skipReason = null;
+        try
+        {
+            RequireUninstrumentedChild();
+        }
+        catch (SkipException e)
+        {
+            skipReason = e.Message;
+        }
+        Assert.True((skipReason != null) == anyProbed,
+            $"the EMFILE gate skipped={skipReason != null} ({skipReason}), but the child's assemblies carry probes={anyProbed}");
+        if (skipReason != null)
+            Assert.Contains("Microsoft.CodeCoverage", skipReason, StringComparison.Ordinal);
+    }
+
+    private static readonly System.Collections.Generic.Dictionary<short, System.Reflection.Emit.OpCode> OneByteOpCodes = new();
+    private static readonly System.Collections.Generic.Dictionary<short, System.Reflection.Emit.OpCode> TwoByteOpCodes = new();
+
+    /// <summary>Decodes every body declared on <paramref name="type"/> and counts those referencing an injected member.</summary>
+    private static (int Bodies, int MemberOperands, int Probed) ScanForProbes(Type type)
+    {
+        lock (OneByteOpCodes)
+        {
+            if (OneByteOpCodes.Count == 0)
+            {
+                foreach (var f in typeof(System.Reflection.Emit.OpCodes).GetFields(System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Static))
+                {
+                    var op = (System.Reflection.Emit.OpCode)f.GetValue(null)!;
+                    (op.Size == 1 ? OneByteOpCodes : TwoByteOpCodes)[(short)(op.Value & 0xFF)] = op;
+                }
+            }
+        }
+        const System.Reflection.BindingFlags all = System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.NonPublic
+            | System.Reflection.BindingFlags.Static | System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.DeclaredOnly;
+        int bodies = 0, operands = 0, probed = 0;
+        foreach (var method in type.GetMethods(all).Cast<System.Reflection.MethodBase>().Concat(type.GetConstructors(all)))
+        {
+            var il = method.GetMethodBody()?.GetILAsByteArray();
+            if (il is null)
+                continue;
+            bodies++;
+            bool hit = false;
+            int pc = 0;
+            while (pc < il.Length)
+            {
+                var op = il[pc] == 0xFE ? TwoByteOpCodes[il[pc + 1]] : OneByteOpCodes[il[pc]];
+                pc += op.Size;
+                if (op.OperandType is System.Reflection.Emit.OperandType.InlineField or System.Reflection.Emit.OperandType.InlineMethod)
+                {
+                    try
+                    {
+                        var member = method.Module.ResolveMember(BitConverter.ToInt32(il, pc),
+                            type.IsGenericType ? type.GetGenericArguments() : null,
+                            method.IsGenericMethod ? method.GetGenericArguments() : null);
+                        operands++;
+                        if (member?.DeclaringType is { } owner && CoverageInstrumentation.IsInjected(owner))
+                            hit = true;
+                    }
+                    catch (Exception e) when (e is ArgumentException or BadImageFormatException or TypeLoadException or MissingMemberException)
+                    {
+                    }
+                }
+                pc += op.OperandType switch
+                {
+                    System.Reflection.Emit.OperandType.InlineNone => 0,
+                    System.Reflection.Emit.OperandType.ShortInlineBrTarget or System.Reflection.Emit.OperandType.ShortInlineI
+                        or System.Reflection.Emit.OperandType.ShortInlineVar => 1,
+                    System.Reflection.Emit.OperandType.InlineVar => 2,
+                    System.Reflection.Emit.OperandType.InlineI8 or System.Reflection.Emit.OperandType.InlineR => 8,
+                    System.Reflection.Emit.OperandType.InlineSwitch => 4 + 4 * BitConverter.ToInt32(il, pc),
+                    _ => 4,
+                };
+            }
+            if (hit)
+                probed++;
+        }
+        return (bodies, operands, probed);
     }
 
     /// <summary>
