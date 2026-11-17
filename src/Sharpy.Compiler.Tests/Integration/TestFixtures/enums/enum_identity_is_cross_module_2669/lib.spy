@@ -1,0 +1,11 @@
+enum Color:
+    RED = 1
+    GREEN = 2
+
+class Registry:
+    enum Level:
+        LOW = 1
+        HIGH = 2
+
+def favourite() -> Color:
+    return Color.GREEN

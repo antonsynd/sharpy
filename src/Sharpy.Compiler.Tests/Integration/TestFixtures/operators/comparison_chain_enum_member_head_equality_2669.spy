@@ -1,0 +1,16 @@
+# `c is Color.RED == d` is a comparison chain headed by a dotted name the parser reads like a type (plan P93
+# D4, #2669): it is built over [c, Color.RED, d], and its first link takes the type test's rule. `Color.RED`
+# is an enum member, so the link is an identity comparison, and the `==` link after it compares the member
+# with `d`. Before P93 the head kept the SPY0349 type-test refusal. CPython 3.15 prints True, then False.
+
+enum Color:
+    RED = 1
+    GREEN = 2
+
+
+def main() -> None:
+    c: Color = Color.RED
+    d: Color = Color.RED
+    e: Color = Color.GREEN
+    print(c is Color.RED == d)
+    print(c is Color.RED == e)

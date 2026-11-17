@@ -1,0 +1,13 @@
+# `x is Outer.Inner is d`: the chain head's dotted name is read like a type (plan P93 D4). It names a nested
+# class, not an enum member, so the first link is the retired type test, refused with SPY0349 and the same
+# isinstance steer as `x is Outer.Inner` alone.
+
+class Outer:
+    class Inner:
+        pass
+
+
+def main() -> None:
+    x: Outer.Inner = Outer.Inner()
+    d: Outer.Inner = x
+    print(x is Outer.Inner is d)

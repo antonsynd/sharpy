@@ -15,10 +15,17 @@ Sharpy is run as a benevolent dictatorship (see [GOVERNANCE.md](GOVERNANCE.md)):
 
 On Linux or macOS, `build_tools/setup_env.sh` installs all of it: the .NET 10 SDK as
 `dotnet`, the .NET 11 SDK in its own directory as `dotnet11` (off PATH, for when #2548
-lands), the local .NET tools, CPython 3.15 plus the CI oracle version in `.python-version`
+lands; see below), the local .NET tools, CPython 3.15 plus the CI oracle version in `.python-version`
 (via uv), and a `.venv` with the `build_tools` dependencies. Run
 `build_tools/setup_env.sh --help` for options (`--build` builds and smoke-tests), then
 `source .venv/sharpy-env.sh` in each shell.
+
+The root `global.json` pins the SDK to 10.0.x (`rollForward: latestFeature`), so a machine or
+CI image that also has SDK 11 still builds with 10. The .NET 11 host honours the pin too:
+inside the repo `dotnet11` fails with "A compatible .NET SDK was not found" (outside it,
+`dotnet11 --version` works). Work on #2548 runs SDK 11 here by setting `sdk.version` in
+`global.json` to `11.0.100` on its own branch; do not remove or loosen the pin elsewhere,
+CI depends on it.
 
 ## Build and Test
 

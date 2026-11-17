@@ -1,0 +1,1 @@
+'is' compares references, not types. Use 'isinstance(c, Color)' to test a value's type. @12:11

@@ -12,6 +12,7 @@ on:
       - 'build_tools/**'
       - '.python-version'
       - 'Directory.Build.props'
+      - 'global.json'
       - '.editorconfig'
       - 'src/Sharpy.Playground/**'
       - 'src/Sharpy.Compiler/**'

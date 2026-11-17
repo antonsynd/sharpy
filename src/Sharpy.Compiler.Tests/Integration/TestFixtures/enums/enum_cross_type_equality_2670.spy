@@ -1,0 +1,48 @@
+# #2670 (owner ruling 2026-11-12): `==` / `!=` between two DIFFERENT enum types answers False /
+# True, as CPython does, with both operands evaluated once. It was CS0019 behind SPY0908 for two
+# int-backed enums, for an int-backed against a string-backed one and for `E | None` against
+# another enum, and a silent True for two string-backed enums with equal backing values (C#
+# compared the strings). Same-enum equality is the control. The differential test owns the matrix.
+
+enum Color:
+    RED = 1
+    GREEN = 2
+
+enum Size:
+    S = 1
+    M = 2
+
+enum Tone:
+    A = "a"
+
+enum Mood:
+    A = "a"
+
+def next_size(label: str) -> Size:
+    print(label)
+    return Size.S
+
+def main():
+    c: Color = Color.RED
+    s: Size = Size.S
+    t: Tone = Tone.A
+    m: Mood = Mood.A
+    oc: Color | None = Color.RED
+    absent: Color | None = None
+    print(c == s)
+    print(c != s)
+    print(c == Size.S)
+    print(Color.RED == Size.S)
+    print(c == t)
+    print(t != c)
+    print(t == m)
+    print(t != m)
+    print(oc == s)
+    print(absent == s)
+    print(absent != s)
+    print(c == next_size("once"))
+    print(c == s == s)
+    print(c == Color.RED == c)
+    print(c == Color.RED)
+    print(t == Tone.A)
+    print(oc == c)

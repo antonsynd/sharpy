@@ -1,0 +1,17 @@
+# An `__iter__` that returns a list names no producer (#1915): the class does not iterate, so it does not
+# answer `in` (plan P93 D1: only a generator, a producer type or a `__next__` pair answers). CPython 3.15
+# raises TypeError at run time ("argument of type 'Listed' is not a container or iterable"); Sharpy refuses
+# it with SPY0320 at the membership test.
+
+class Listed:
+    _items: list[int]
+
+    def __init__(self):
+        self._items = [1, 2]
+
+    def __iter__(self) -> list[int]:
+        return self._items
+
+
+def main() -> None:
+    print(1 in Listed())

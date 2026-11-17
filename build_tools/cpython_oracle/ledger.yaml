@@ -277,6 +277,14 @@ deviations:
   spec_ref: docs/language_specification/collection_types.md
   existing_diagnostic: SPY0115
   planned_diagnostic: null
+- id: enum-identity-is
+  category: operators
+  audience: python
+  severity: none
+  code: null
+  spec_ref: docs/language_specification/identity_operators.md
+  existing_diagnostic: null
+  planned_diagnostic: null
 - id: enum-value-type-consistency
   category: types
   audience: python
@@ -540,6 +548,14 @@ deviations:
   code: null
   spec_ref: docs/stdlib/math.md
   existing_diagnostic: null
+  planned_diagnostic: null
+- id: membership-legacy-sequence-protocol
+  category: operators
+  audience: python
+  severity: error
+  code: SPY0320
+  spec_ref: docs/language_specification/membership_operators.md#validation
+  existing_diagnostic: SPY0320
   planned_diagnostic: null
 - id: membership-needle-type-mismatch
   category: operators

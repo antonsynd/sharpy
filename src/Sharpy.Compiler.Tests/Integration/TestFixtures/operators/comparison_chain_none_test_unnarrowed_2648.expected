@@ -1,0 +1,7 @@
+tail live  True False True False
+tail stale False True False True
+tail str   False True False True
+head live  False True False True
+head stale True False True False
+mid live   False True False True
+mid stale  True False True False

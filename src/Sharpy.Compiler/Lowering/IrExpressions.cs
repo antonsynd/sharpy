@@ -305,8 +305,10 @@ internal sealed record IrOpaqueExpression(
 /// An operator expression whose AST key carries a recorded operator lowering
 /// (<c>SemanticInfo._operatorLowerings</c>; P82 tranche 3, #2443, plan-92249e D1): a
 /// <see cref="BinaryOp"/> other than <c>==</c>/<c>!=</c> (an <see cref="IrEqualityComparison"/>) and
-/// other than a folded constant power (an <see cref="IrConstant"/>), a <see cref="UnaryOp"/>, or a
-/// <see cref="FunctionCall"/> that applies a base class's operator (<c>super().__add__(o)</c>). The
+/// other than a folded constant power (an <see cref="IrConstant"/>), a <see cref="UnaryOp"/>, a
+/// <see cref="FunctionCall"/> that applies a base class's operator (<c>super().__add__(o)</c>), or a
+/// <see cref="TypeCheck"/> the checker resolved as an identity comparison against an enum member
+/// (<c>x is Color.RED</c>, #2669). The
 /// pass builds it exactly when the key has an entry; any other such expression stays an
 /// <see cref="IrOpaqueExpression"/>, whose operator reads <c>(Native, null)</c>.
 /// </summary>

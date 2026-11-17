@@ -57,6 +57,21 @@ namespace Sharpy
         }
 
         /// <summary>
+        /// Repeats a string a specified number of times, count first.
+        /// Python: <c>3 * "ab"  # "ababab"</c>. The count-first parameter order is for
+        /// <c>count * str</c>, so the left operand is evaluated before the string.
+        /// </summary>
+        public static string Repeat(int count, string s) => Repeat(s, count);
+
+        /// <summary>
+        /// Repeats a string a specified number of times, count first (long count).
+        /// The count-first parameter order is for <c>count * str</c>, so the left operand
+        /// is evaluated before the string.
+        /// Throws <see cref="OverflowError"/> if count exceeds int range.
+        /// </summary>
+        public static string Repeat(long count, string s) => Repeat(s, count);
+
+        /// <summary>
         /// Gets the character at the specified index as a single-character string.
         /// Supports negative indexing (Python semantics).
         /// </summary>
