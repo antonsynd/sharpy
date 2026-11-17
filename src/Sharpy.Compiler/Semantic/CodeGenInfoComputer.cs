@@ -26,6 +26,12 @@ internal class CodeGenInfoComputer
     private SemanticBinding? _importFacts;
     private string? _rootNamespace;
     private bool _isEntryPoint;
+    private IReadOnlySet<string>? _deferredCycleFiles;
+
+    // The module's own HasSweep inputs (plan-775c50 D2): a Guarded value declared in any host, and an
+    // import of a module that has a sweep. Combined by ImportedStaticFacts.HasSweep once, at the end.
+    private bool _declaresGuardedValue;
+    private bool _anyImportHasSweep;
 
     // Module-level const analysis is now in ConstEligibility (#1791); this class reads the fact
     // from SemanticBinding.GetCompileTimeConstant in ProcessModuleLevelConstant.
@@ -86,8 +92,12 @@ internal class CodeGenInfoComputer
     /// name of the module's namespace (#2039).
     /// </param>
     public void ComputeForModule(Module module, string? sourceFilePath = null, bool isEntryPoint = false,
-        string? sourceRootPath = null, SemanticBinding? importFacts = null, string? rootNamespace = null)
+        string? sourceRootPath = null, SemanticBinding? importFacts = null, string? rootNamespace = null,
+        IReadOnlySet<string>? deferredCycleFiles = null)
     {
+        _deferredCycleFiles = deferredCycleFiles;
+        _declaresGuardedValue = false;
+        _anyImportHasSweep = false;
         _rootNamespace = rootNamespace;
         _sourceFilePath = sourceFilePath;
         _sourceRootPath = sourceRootPath;
@@ -141,6 +151,13 @@ internal class CodeGenInfoComputer
         // check: a source with no file identity (the LSP single-document analysis) is built under
         // its real name elsewhere, so seeding `Module` would refuse there what the build accepts.
         DetectModuleLevelCollisions(module, string.IsNullOrEmpty(_sourceFilePath) ? null : layout);
+
+        // The module's own HasSweep, recorded once declarer-side under its path on the shared binding
+        // (plan-775c50 D2): every importer reads it through ImportedStaticFacts.ImportedSweep. A module with
+        // no file identity (the LSP single-document analysis) is never imported and records nothing.
+        if (!string.IsNullOrEmpty(_sourceFilePath))
+            (_importFacts ?? _semanticBinding).SetModuleHasSweep(_sourceFilePath,
+                ImportedStaticFacts.HasSweep(_declaresGuardedValue, _anyImportHasSweep));
 
         // Fourth pass: name every local of every function-like scope. Runs last so that a chain
         // whose head is a module-level variable (write-through from a function) inherits the
@@ -252,13 +269,13 @@ internal class CodeGenInfoComputer
                     ProcessFromImport(fromImport);
                     break;
                 case PropertyDef propDef:
-                    ProcessModuleLevelProperty(propDef);
+                    ProcessModuleLevelProperty(module, propDef);
                     break;
             }
         }
     }
 
-    private void ProcessModuleLevelProperty(PropertyDef propDef)
+    private void ProcessModuleLevelProperty(Module module, PropertyDef propDef)
     {
         var symbol = _symbolTable.Lookup(propDef.Name);
         if (symbol is VariableSymbol { IsModuleProperty: true } varSymbol && !_semanticBinding.HasCodeGenInfo(varSymbol))
@@ -273,9 +290,38 @@ internal class CodeGenInfoComputer
                 Version = 0,
                 IsModuleLevel = true,
                 IsConstant = false,
-                HasExecutionOrderIssues = false
+                HasExecutionOrderIssues = false,
+                // Split accessors merge into one module property: every def of its member key decides.
+                StaticStorage = RecordModuleValue(propDef.Name, StaticStorageFacts.ForProperty(
+                    module.Body.Select(s => s.UnwrapDecorated()).OfType<PropertyDef>()
+                        .Where(p => p.MemberKey() == propDef.MemberKey()))),
             });
         }
+    }
+
+    /// <summary>
+    /// Returns <paramref name="storage"/>, noting a <see cref="StaticStorage.Guarded"/> value toward
+    /// the module's own <c>HasSweep</c> (plan-775c50 D2): every value fact passes through here.
+    /// </summary>
+    private StaticStorage? NoteStorage(StaticStorage? storage)
+    {
+        if (storage == StaticStorage.Guarded)
+            _declaresGuardedValue = true;
+        return storage;
+    }
+
+    /// <summary>
+    /// <see cref="NoteStorage"/> for a MODULE value, which also records the fact declarer-side under
+    /// this file's path and the value's name on the shared binding: the record
+    /// <see cref="ImportedStaticFacts.ImportedStorage"/> reads when an importer's symbol is not the
+    /// declared one (the cold module-variable identity split: findings ledger, P77 T2; P78 / #2423).
+    /// </summary>
+    private StaticStorage? RecordModuleValue(string name, StaticStorage? storage)
+    {
+        NoteStorage(storage);
+        if (storage is { } recorded && !string.IsNullOrEmpty(_sourceFilePath))
+            (_importFacts ?? _semanticBinding).SetModuleValueStorage(_sourceFilePath, name, recorded);
+        return storage;
     }
 
     private void ProcessModuleLevelVariable(VariableDeclaration varDecl)
@@ -305,7 +351,11 @@ internal class CodeGenInfoComputer
                 Version = 0,
                 IsModuleLevel = !hasIssues,  // Not module-level if has execution order issues
                 IsConstant = false,
-                HasExecutionOrderIssues = hasIssues
+                HasExecutionOrderIssues = hasIssues,
+                // A variable emitted as a Main() local is no module value (#2125, out of P77's contract).
+                StaticStorage = hasIssues
+                    ? null
+                    : RecordModuleValue(varDecl.Name, StaticStorageFacts.Classify(varDecl.InitialValue != null, isCSharpConst: false)),
             });
             _processedModuleLevelVars.Add(varDecl.Name);
         }
@@ -328,9 +378,23 @@ internal class CodeGenInfoComputer
                 IsModuleLevel = true,
                 IsConstant = true,
                 IsCompileTimeConstant = isCompileTime,
-                HasExecutionOrderIssues = false
+                HasExecutionOrderIssues = false,
+                StaticStorage = RecordModuleValue(constDecl.Name, StaticStorageFacts.Classify(constDecl.InitialValue != null, isCompileTime)),
             });
         }
+    }
+
+    /// <summary>
+    /// The imported module's <c>HasSweep</c>, read through <see cref="ImportedStaticFacts.ImportedSweep"/> (the one
+    /// predicate) and noted toward this module's own fact: an import of a module with a sweep gives
+    /// the importer one too (transitive, plan-775c50 D2).
+    /// </summary>
+    private bool NoteImportedSweep(string? importedFilePath)
+    {
+        var hasSweep = ImportedStaticFacts.ImportedSweep(_importFacts ?? _semanticBinding, importedFilePath, _deferredCycleFiles);
+        if (hasSweep)
+            _anyImportHasSweep = true;
+        return hasSweep;
     }
 
     // Phase 1 moved const-eligibility analysis to ConstEligibility.cs.
@@ -351,8 +415,10 @@ internal class CodeGenInfoComputer
                     OriginalName = effectiveName,
                     ImportKind = alias.AsName != null ? ImportKind.FromImportWithAlias : ImportKind.ModuleImport,
                     NamespaceSegments = layout?.NamespaceSegments,
-                    MembersClassName = layout?.MembersClassName
+                    MembersClassName = layout?.MembersClassName,
+                    HasSweep = NoteImportedSweep(moduleSymbol.FilePath),
                 });
+                CopyImportedValueStorage(moduleSymbol);
                 RecordSubmoduleLayouts(moduleSymbol, new HashSet<ModuleSymbol>(ReferenceEqualityComparer.Instance));
             }
             else
@@ -391,10 +457,50 @@ internal class CodeGenInfoComputer
                     OriginalName = submodule.Name,
                     ImportKind = ImportKind.ModuleImport,
                     NamespaceSegments = layout.NamespaceSegments,
-                    MembersClassName = layout.MembersClassName
+                    MembersClassName = layout.MembersClassName,
+                    HasSweep = NoteImportedSweep(submodule.FilePath),
                 });
             }
+            CopyImportedValueStorage(submodule);
             RecordSubmoduleLayouts(submodule, visited);
+        }
+    }
+
+    /// <summary>
+    /// Copies each exported module value's storage facts onto the export <paramref name="module"/>'s
+    /// qualified spelling binds (<c>import m</c>; <c>m.x</c>), through
+    /// <see cref="ImportedStaticFacts.ImportedStorage"/>, the one importer-side predicate (plan-775c50
+    /// D2). An export that is the declared symbol carries the fact already (a const, a warm build's
+    /// restored variable). The copy exists for a cold build's module VARIABLE, whose export is
+    /// ModuleLoader's extracted symbol with no CodeGenInfo (findings ledger, P77 T2: the identity
+    /// split, candidate class P78 / #2423): delete it, and the binding's module-value map, once the
+    /// export is the declared symbol. Its spelling is the from-import rule's, the one the emitter's
+    /// qualified-member fallback already produces, and it is not module-level, so it moves no name.
+    /// </summary>
+    private void CopyImportedValueStorage(ModuleSymbol module)
+    {
+        if (module.IsNetModule)
+            return;
+        var facts = _importFacts ?? _semanticBinding;
+        foreach (var (name, export) in module.Exports)
+        {
+            if (export is not VariableSymbol)
+                continue;
+            var (storage, isOnGenericHost) = ImportedStaticFacts.ImportedStorage(facts, export);
+            if (storage == null)
+                continue;
+            var existing = _semanticBinding.GetCodeGenInfo(export) ?? facts.GetCodeGenInfo(export);
+            if (existing?.StaticStorage != null)
+                continue;
+            SetCodeGenInfo(export, existing != null
+                ? existing with { StaticStorage = storage, IsOnGenericHost = isOnGenericHost }
+                : new CodeGenInfo
+                {
+                    CSharpName = DetermineCSharpNameForFromImport(name, export, isNetModule: false),
+                    OriginalName = name,
+                    StaticStorage = storage,
+                    IsOnGenericHost = isOnGenericHost,
+                });
         }
     }
 
@@ -413,7 +519,10 @@ internal class CodeGenInfoComputer
             sourceIsNetModule ? importFacts.GetNetModuleCSharpClassName(fromImport.Module) : null,
             sourceIsNetModule);
         if (sourceLayout != null)
-            _semanticInfo?.SetModuleLayout(fromImport, sourceLayout);
+            _semanticInfo?.SetModuleLayout(fromImport, sourceLayout with
+            {
+                HasSweep = NoteImportedSweep(importFacts.GetResolvedModuleFilePath(fromImport)),
+            });
 
         // A from-import binds exactly the names ProjectCompiler Phase 4 recorded, each beside the symbol the
         // scope bound it to (#2385) — a star's and an explicit import's alike. The checker may since have
@@ -472,10 +581,20 @@ internal class CodeGenInfoComputer
                     : sourceLayout?.NamespaceSegments)
                 : null;
 
+        // A from-imported value's storage facts are its DECLARATION's (plan-775c50 D2), read through
+        // the one importer-side predicate: an aliased import binds a clone, and its importer must pick
+        // the same store and sweep arms the declaring module does. In a cold build a module VARIABLE's
+        // clone roots at ModuleLoader's extracted symbol, not the declared one, and the predicate reads
+        // the declarer's keyed record instead (findings ledger, P77 T2: the identity split, candidate
+        // class P78 / #2423). A .NET module's member has no record here (D10's attributes).
+        var (importedStorage, importedOnGenericHost) = ImportedStaticFacts.ImportedStorage(_importFacts ?? _semanticBinding, symbol);
+
         SetCodeGenInfo(symbol, new CodeGenInfo
         {
             CSharpName = csharpName,
             OriginalName = effectiveName,
+            StaticStorage = importedStorage,
+            IsOnGenericHost = importedOnGenericHost,
             ImportKind = aliasName != null ? ImportKind.FromImportWithAlias : ImportKind.FromImport,
             OriginalImportName = aliasName != null ? name : null,
             // A Sharpy module's exported types are its top-level types: siblings of <X> in the
@@ -753,6 +872,31 @@ internal class CodeGenInfoComputer
                     break;
             }
         }
+
+        MarkStaticPropertyStorage(typeSymbol, body);
+    }
+
+    /// <summary>
+    /// The storage facts of a type's <c>@static</c> properties (plan-775c50 D2), on the
+    /// <see cref="PropertySymbol"/> itself: a class-level property is a record with no
+    /// <see cref="Symbol"/> to carry a CodeGenInfo (lead's ruling on T2). Split accessors merge into
+    /// one property, so every def of the member key decides. An instance property carries no fact.
+    /// </summary>
+    private void MarkStaticPropertyStorage(TypeSymbol typeSymbol, IEnumerable<Statement> body)
+    {
+        foreach (var defs in body.OfType<PropertyDef>().GroupBy(p => p.MemberKey()))
+        {
+            if (typeSymbol.FindProperty(defs.Key.Name, defs.Key.ExplicitInterface) is not { IsStatic: true } property)
+                continue;
+            var storage = NoteStorage(StaticStorageFacts.ForProperty(defs));
+            if (storage == null)
+                continue;
+            typeSymbol.Properties[typeSymbol.Properties.IndexOf(property)] = property with
+            {
+                StaticStorage = storage,
+                IsOnGenericHost = StaticStorageFacts.IsGenericHost(typeSymbol),
+            };
+        }
     }
 
     /// <summary>
@@ -794,6 +938,11 @@ internal class CodeGenInfoComputer
             // The compile-time constant fact is computed by ConstEligibility (#1791).
             var isCompileTime = fieldDecl.IsConst && _semanticBinding.GetCompileTimeConstant(fieldSymbol);
 
+            // A static value: a class `const` or a `@static` field (plan-775c50 D2). An instance field
+            // is the object's storage, outside rule N3 (lead's ruling on T2), and carries no fact.
+            var isStaticValue = fieldDecl.IsConst
+                || fieldDecl.Decorators.Any(d => !d.IsBracketAttribute && d.Name == DecoratorNames.Static);
+
             SetCodeGenInfo(fieldSymbol, new CodeGenInfo
             {
                 CSharpName = NameCasing.ResolveField(fieldDecl.Name, fieldDecl.IsNameBacktickEscaped),
@@ -802,6 +951,10 @@ internal class CodeGenInfoComputer
                 IsConstant = fieldDecl.IsConst,
                 IsCompileTimeConstant = isCompileTime,
                 RequiresPerInstanceDefault = RequiresPerInstanceDefault(fieldDecl, fieldSymbol),
+                StaticStorage = isStaticValue
+                    ? NoteStorage(StaticStorageFacts.Classify(fieldDecl.InitialValue != null, isCompileTime))
+                    : null,
+                IsOnGenericHost = isStaticValue && StaticStorageFacts.IsGenericHost(typeSymbol),
             });
         }
     }

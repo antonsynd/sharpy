@@ -3265,12 +3265,17 @@ public enum InterpolationKind
 /// collision check seeds the namespace with them, and the emitter names the classes from them.
 /// Recorded by <c>CodeGenInfoComputer</c>. Not on the incremental-cache wire (a per-node fact); an
 /// imported module's layout crosses files on its <see cref="ModuleSymbol"/>'s CodeGenInfo.
+/// <see cref="HasSweep"/> is set only on the source layout a <c>from m import x</c> records: the
+/// imported module has a sweep its importer requires at the import's position (plan-775c50 D2, read
+/// through <see cref="ImportedStaticFacts"/>, the same fact an <c>import m</c> carries on
+/// <see cref="CodeGenInfo.HasSweep"/>).
 /// </summary>
 public sealed record ModuleLayout(
     IReadOnlyList<string> NamespaceSegments,
     string MembersClassName,
     string? TestClassName = null,
-    IReadOnlyDictionary<string, string>? FixtureClassNames = null)
+    IReadOnlyDictionary<string, string>? FixtureClassNames = null,
+    bool HasSweep = false)
 {
     /// <summary>
     /// The C# namespace the module's members class and sibling types are declared in, under
