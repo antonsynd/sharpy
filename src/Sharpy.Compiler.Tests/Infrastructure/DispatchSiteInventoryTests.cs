@@ -203,7 +203,11 @@ public class DispatchSiteInventoryTests
         // text is asserted by the hand cells (#2363).
         ["Semantic/Validation/ExceptHandlerOrderValidator.cs::ExceptHandlerOrderValidator.DescribeHandler"] = "refusal-net:ExceptHandlerReachabilityTests",
         ["CodeGen/RoslynEmitter.ClassMembers.cs::RoslynEmitter.GenerateClassMembers"] = "refusal-net:FileBasedIntegrationTests",
-        ["CodeGen/RoslynEmitter.ClassMembers.cs::RoslynEmitter.GenerateInterfaceMembers"] = "refusal-net:FileBasedIntegrationTests",
+        ["CodeGen/RoslynEmitter.ClassMembers.cs::RoslynEmitter.GenerateInterfaceMembersCore"] = "refusal-net:FileBasedIntegrationTests",
+        // plan-775c50 D4: a store or `out` target names a Guarded variable through the symbol the checker
+        // bound on a bare name or a qualified one; every other target is no Guarded value. The generated
+        // Location cells write each store site on both spellings.
+        ["CodeGen/RoslynEmitter.StaticValues.cs::RoslynEmitter.IsGuardedVariableTarget"] = "refusal-net:InitializerDependencyDifferentialTests",
         ["CodeGen/RoslynEmitter.Expressions.Access.Calls.cs::RoslynEmitter.IsMethodGroup"] = "refusal-net:FileBasedIntegrationTests",
         ["CodeGen/RoslynEmitter.Expressions.Access.Calls.cs::RoslynEmitter.IsMethodGroupOrLambda"] = "refusal-net:FileBasedIntegrationTests",
         ["CodeGen/RoslynEmitter.Expressions.cs::RoslynEmitter.GenerateExpressionCore"] = "refusal-net:FileBasedIntegrationTests",

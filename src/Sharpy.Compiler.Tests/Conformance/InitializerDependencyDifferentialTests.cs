@@ -575,6 +575,7 @@ public sealed partial class InitializerDependencyDifferentialTests : Integration
         .Concat(LocationCells())
         .Concat(CrossCells())
         .Concat(OutObservationCells())
+        .Concat(SameExpressionCells())
         .Concat(SlotCells())
         .Concat(StoredCells())
         .Concat(RingCells())

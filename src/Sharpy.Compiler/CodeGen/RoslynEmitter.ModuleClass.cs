@@ -94,6 +94,9 @@ internal partial class RoslynEmitter
 
         // All declarations go into the module class (types are nested, not namespace siblings)
         var moduleDeclarations = new List<MemberDeclarationSyntax>();
+
+        // The module is a host (plan-775c50 D5): its Guarded values' sweep steps collect here.
+        var moduleHost = OpenStaticHost(out var enclosingHost);
         var executableStatements = new List<Statement>();
 
         // Whether the module declares the entry-point main() — ModuleShape's answer, computed once by
@@ -190,8 +193,20 @@ internal partial class RoslynEmitter
                 var propGroup = modulePropertyGroups[moduleProp.Name];
                 if (ReferenceEquals(propGroup[0], moduleProp))
                 {
-                    moduleDeclarations.AddRange(GenerateModuleLevelProperty(propGroup));
+                    var groupMembers = GenerateModuleLevelProperty(propGroup).ToList();
+                    moduleDeclarations.AddRange(IsGuardedPropertyGroup(moduleProp)
+                        ? GuardPropertyGroup(groupMembers, moduleProp)
+                        : groupMembers);
                 }
+                continue;
+            }
+
+            // A Guarded module value expands into its readiness members (plan-775c50 D4), in place
+            // of an initialized field; its sweep step joins the module host's sweep here.
+            if (stmt is VariableDeclaration guardedDecl
+                && GenerateGuardedModuleValue(guardedDecl) is { } guardedMembers)
+            {
+                moduleDeclarations.AddRange(guardedMembers);
                 continue;
             }
 
@@ -303,6 +318,8 @@ internal partial class RoslynEmitter
                 memberDeclarations.Add(decl);
             }
         }
+
+        memberDeclarations.AddRange(CloseStaticHost(moduleHost, enclosingHost));
 
         var membersClassDecl = ClassDeclaration(shape.MembersClassName);
 

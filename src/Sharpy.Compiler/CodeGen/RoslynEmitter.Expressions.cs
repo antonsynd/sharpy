@@ -265,9 +265,10 @@ internal partial class RoslynEmitter
             // When _selfReplacementIdentifier is set (inlined operator body), map to that instead
             Identifier name when string.Equals(name.Name, PythonNames.Self, StringComparison.OrdinalIgnoreCase) =>
                 GenerateSelfReceiver(),
-            Identifier name => GenerateIdentifierExpression(name),
+            // In an `async def` body a use other than a plain read or store names the backing field (plan-775c50 D6).
+            Identifier name => GenerateWithAsyncEnsure(name, () => GenerateIdentifierExpression(name)),
             SuperExpression => BaseExpression(),  // super() -> base
-            MemberAccess memberAccess => GenerateMemberAccess(memberAccess),
+            MemberAccess memberAccess => GenerateWithAsyncEnsure(memberAccess, () => GenerateMemberAccess(memberAccess)),
             IndexAccess indexAccess => GenerateIndexAccess(indexAccess),
             SliceAccess sliceAccess => GenerateSliceAccess(sliceAccess),
             MultiAxisAccess multiAxis => GenerateMultiAxisAccess(multiAxis),
@@ -278,7 +279,8 @@ internal partial class RoslynEmitter
                 => GenerateOptionalNone(optNone),
             // Handle Some/Ok/Err -> Optional/Result factory calls (tagged union constructors)
             FunctionCall call when IsTaggedUnionConstructorCall(call) => GenerateTaggedUnionConstructor(call),
-            FunctionCall call => GenerateCall(call),
+            // An `out` operand on a Guarded value commits when the call returns (plan-775c50 D4).
+            FunctionCall call => GenerateCallWithOutCommits(call, () => GenerateCall(call)),
 
             // Operators
             UnaryOp unaryOp => GenerateUnaryOp(unaryOp),

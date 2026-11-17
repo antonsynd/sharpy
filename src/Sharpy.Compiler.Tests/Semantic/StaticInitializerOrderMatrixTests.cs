@@ -409,13 +409,14 @@ public class StaticInitializerOrderMatrixTests : IntegrationTestBase
         if (!module.Success || module.StandardOutput != "4\n")
             problems.Add($"control module host does not run 4: success={module.Success} stdout=[{module.StandardOutput.ReplaceLineEndings("\\n")}]");
 
-        // The const reader of a non-literal read is `static readonly` storage — ordered like a @static field, which is
-        // why the const reader is a row of this matrix at all.
+        // The const reader of a non-literal read is storage, not a C# `const` — ordered like a @static field, which is
+        // why the const reader is a row of this matrix at all. Under plan-775c50 D4 it is a Guarded value: its accessor
+        // returns `ref readonly`.
         var (constSource, _, _) = Program(Hosts[0].Header, null, Readers[1].Lines, "seven()", null, alias: false, "Host.B");
         var constRun = CompileAndExecute(constSource);
         if (!constRun.Success || constRun.StandardOutput != "7\n"
-            || constRun.GeneratedCSharp?.Contains("static readonly int B", StringComparison.Ordinal) != true)
-            problems.Add($"control: 'const B: int = seven() + 0' is not emitted 'static readonly' or does not run 7: success={constRun.Success} "
+            || constRun.GeneratedCSharp?.Contains("static ref readonly int B", StringComparison.Ordinal) != true)
+            problems.Add($"control: 'const B: int = seven() + 0' is not emitted 'static ref readonly' or does not run 7: success={constRun.Success} "
                 + $"stdout=[{constRun.StandardOutput.ReplaceLineEndings("\\n")}]");
 
         var ran = 0;

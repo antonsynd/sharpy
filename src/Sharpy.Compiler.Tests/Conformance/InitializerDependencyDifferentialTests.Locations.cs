@@ -380,7 +380,6 @@ public sealed partial class InitializerDependencyDifferentialTests
             [(LocationUse.StarLeaf, BindingKind.StaticField, HostForm.Plain)] = ("the parser takes a bare name as a starred target, and reads a qualified one as a tuple statement", "SPY0106"),
             [(LocationUse.StarLeaf, BindingKind.StaticField, HostForm.Generic)] = ("the parser takes a bare name as a starred target, and reads a qualified one as a tuple statement", "SPY0106"),
             [(LocationUse.Augmented, BindingKind.StaticField, HostForm.Generic)] = ("a compound store through a closed generic type is an internal error wherever it is written (#2435's class): no cell isolates the value", "SPY0908 CS0119"),
-            [(LocationUse.ForTarget, BindingKind.StaticField, HostForm.Generic)] = ("a `for` target through a closed generic type is an internal error wherever it is written (#2435's class): no cell isolates the value", "SPY0908 CS0305"),
         };
 
     private static bool IsOwnInitializer(When when) => when is When.DuringInitializer or When.DuringInitializerThenRead or When.InInitializerText;
@@ -683,7 +682,7 @@ public sealed partial class InitializerDependencyDifferentialTests
             [BindingKind.ModuleComputedConst] = (ConstTakesNoStore + "; the store is refused", "SPY0225"),
             [BindingKind.ClassComputedConst] = (
                 ConstTakesNoStore + "; the store through its qualified name is an internal error today, where the checker is to refuse it (#2435's class)",
-                "SPY0908 CS0198"),
+                "SPY0908 CS8331"),
         };
 
     /// <summary>The hosts: every holder of the location family that is not excluded, in every host form it has.</summary>
@@ -955,8 +954,34 @@ public sealed partial class InitializerDependencyDifferentialTests
     private const string NotReadyYet =
         "the value has none yet, so the operand is the temporary stored when the call returns (the owner's Q12), which the cell without an observation holds by its own model: what the callee reads there is a read before the initializer, the `Read` use's cell";
 
-    /// <summary>Why an operand's store is not observed at a time, or null: the value is ready when the use runs.</summary>
-    internal static string? ObservedWhenExclusion(When when) => when is When.Ready or When.ReadyAcrossAwait ? null : NotReadyYet;
+    private const string OperandInItsOwnText =
+        "the operand sits in the initializer's own text, as `fill2`'s argument: no callee of the observer's is there, and the cell without an observation is the one in that text";
+
+    /// <summary>Why an operand's store is not observed at a time, or null. Every time a function runs has its observed
+    /// cells (F14 of plan-775c50's fifth verification: where the value is not ready yet the operand is the temporary,
+    /// and the callee's read and a throw are cells with their own models, <see cref="NotReadyObservedModel"/>); the
+    /// initializer's own text holds no callee to observe with.</summary>
+    internal static string? ObservedWhenExclusion(When when) => when == When.InInitializerText ? OperandInItsOwnText : null;
+
+    /// <summary>Whether the value is ready when a use at <paramref name="when"/> runs, written from the time alone: after
+    /// the host's sweep, an <c>await</c> inside the use or not.</summary>
+    private static bool ReadyAt(When when) => when is When.Ready or When.ReadyAcrossAwait;
+
+    /// <summary>What an observed operand prints where the value is not ready yet (F14 of plan-775c50's fifth verification;
+    /// Q-F (a), not overruled): the operand is the temporary (Q12), so the callee's read of the value by its own name is a
+    /// read before the value has one, and a callee's throw loses the store. Before the initializer that read initializes
+    /// the value (<c>7</c>), and the temporary is stored on return (<c>42</c>) or lost (<c>7</c>). Inside the value's own
+    /// initializer the read is the cycle: null, the cell raises; a throw read back nothing, and the initializer's result
+    /// is the value.</summary>
+    internal static string? NotReadyObservedModel(OutObservation observed, When when, HostForm form) => (observed, when) switch
+    {
+        (OutObservation.InCallee, When.BeforeInitializer) => $"{InitialValue} {CalleeStore}{(form == HostForm.Generic ? $" {InitialValue}" : "")}",
+        (OutObservation.AfterThrow, When.BeforeInitializer) => $"{InitialValue} {InitialValue}{(form == HostForm.Generic ? $" {InitialValue}" : "")}",
+        (OutObservation.InCallee, When.DuringInitializer or When.DuringInitializerThenRead) => null,
+        (OutObservation.AfterThrow, When.DuringInitializer) => "1",
+        (OutObservation.AfterThrow, When.DuringInitializerThenRead) => null,
+        _ => throw new ArgumentOutOfRangeException(nameof(when), $"When.{when} is a time the value is ready, or is excluded"),
+    };
 
     /// <summary>Why a pair's operand is not observed, or null: the target value is ready when the use runs, in a host
     /// that has swept, that the use sweeps, or that is still sweeping below the value.</summary>
@@ -1019,6 +1044,25 @@ public sealed partial class InitializerDependencyDifferentialTests
     {
         foreach (var (holder, form, kind, use, when, observed) in ObservedLocationProduct())
         {
+            if (!ReadyAt(when))
+            {
+                // The value has none yet: the operand is the temporary (F14). These cells move from today's storage
+                // (`42 7`, `42`), so they are no controls, and they carry no rejected model: the temporary is the emission.
+                var model = NotReadyObservedModel(observed, when, form);
+                yield return new Cell(
+                    ObservedId(LocationId(holder, form, kind, use, when), observed),
+                    Family.Location,
+                    LocationProgram(holder, form, kind, use, when, twin: false, observed),
+                    null,
+                    model ?? CycleError)
+                {
+                    Raises = model == null ? CycleError : null,
+                    IsControl = false,
+                    Python = PythonExpectation.NoTwin,
+                    Route = LocationRoute(LocationUse.Read, when),
+                };
+                continue;
+            }
             var (_, after, returned) = ObservedText(observed, "t", "1");
             yield return new Cell(
                 ObservedId(LocationId(holder, form, kind, use, when), observed),
@@ -1047,6 +1091,42 @@ public sealed partial class InitializerDependencyDifferentialTests
                 Rejected = RejectedModel(observed, null),
             };
         }
+    }
+
+    private const string SameExpressionPrefix = "Location/SameExpression/";
+
+    /// <summary>
+    /// W10 of plan-775c50's fifth verification: an <c>out</c> call and a read of the same value in one expression,
+    /// <c>fill2(out H.t, 1) + H.t</c>. The read to the right sees the operand's store (<c>1 + 42</c>), so the temporary
+    /// of a value not yet ready is stored when the call returns, before the operand to its right; stored at the end of
+    /// the statement the read would initialize the value first (<c>8</c>). From an initializer above the value
+    /// (<c>43 7</c>: then replaced by its own) and on a ready one (<c>43 42</c>). Controls: today prints both.
+    /// </summary>
+    internal static IEnumerable<Cell> SameExpressionCells()
+    {
+        foreach (var form in Enum.GetValues<HostForm>())
+            foreach (var before in new[] { true, false })
+            {
+                var h = form == HostForm.Generic ? "H[int]" : "H";
+                var lines = new List<string> { form == HostForm.Generic ? "class H[E]:" : "class H:" };
+                if (before)
+                    lines.AddRange(new[] { "    @static", "    a: int = use()" });
+                lines.AddRange(new[] { "    @static", $"    t: int = {InitialValue}" });
+                lines.Add("def use() -> int:");
+                lines.Add($"    return fill2(out {h}.t, 1) + {h}.t");
+                lines.Add("def main() -> None:");
+                lines.Add(before ? $"    print({h}.a, {h}.t)" : $"    r = use()\n    print(r, {h}.t)");
+                yield return new Cell(
+                    $"{SameExpressionPrefix}{form}/{(before ? When.BeforeInitializer : When.Ready)}",
+                    Family.Location,
+                    WithHelpers(Harness.Join(lines)),
+                    null,
+                    $"{1 + CalleeStore} {(before ? InitialValue : CalleeStore)}")
+                {
+                    IsControl = true,
+                    Python = PythonExpectation.NoTwin,
+                };
+            }
     }
 
     internal static List<string> OutObservationTotalityFailures(IReadOnlyList<Cell> pool)
@@ -1079,13 +1159,21 @@ public sealed partial class InitializerDependencyDifferentialTests
                 failures.Add($"{readId} is not generated: nothing says whether the value is ready at When.{cell.When}");
                 continue;
             }
+            // An observed cell carries the rejected model (the temporary, on a ready value) if and only if the value is
+            // ready there; where it is not, the cell is the temporary's own (F14) and carries none.
             foreach (var observed in Enum.GetValues<OutObservation>())
             {
                 var id = ObservedId(LocationId(cell.Holder, cell.Form, cell.Kind, cell.Use, cell.When), observed);
-                if (byId.ContainsKey(id) != ready)
+                if (!byId.TryGetValue(id, out var observedCell))
+                {
+                    if (ready)
+                        failures.Add($"{id} is not generated, and {readId} is a control: an operand naming a ready value is not observed");
+                    continue;
+                }
+                if ((observedCell.Rejected != null) != ready)
                     failures.Add(ready
-                        ? $"{id} is not generated, and {readId} is a control: an operand naming a ready value is not observed"
-                        : $"{id} is generated, and {readId} is no control: an operand is observed where the value is not ready");
+                        ? $"{id} carries no rejected model, and {readId} is a control: an operand naming a ready value tells the emissions apart"
+                        : $"{id} carries a rejected model, and {readId} is no control: an operand is observed as ready where the value is not");
             }
         }
         // The iff holds of a host whose value is never ready, with nothing observed: every stored holder and host form has
@@ -1122,8 +1210,8 @@ public sealed partial class InitializerDependencyDifferentialTests
                 failures.Add($"no operand is observed {observed} on a host the use is the first to require");
         }
 
-        // An observed cell tells the two emissions apart, and is a control: green today.
-        var generated = location.Select(c => ObservedId(LocationId(c.Holder, c.Form, c.Kind, c.Use, c.When), c.Observed))
+        // An observed cell on a ready value tells the two emissions apart, and is a control: green today.
+        var generated = location.Where(c => ReadyAt(c.When)).Select(c => ObservedId(LocationId(c.Holder, c.Form, c.Kind, c.Use, c.When), c.Observed))
             .Concat(cross.Select(c => ObservedId(CrossId(c.User, c.Target, c.Order, c.Use, readBack: false), c.Observed)));
         foreach (var id in generated)
         {
@@ -1289,8 +1377,10 @@ public sealed partial class InitializerDependencyDifferentialTests
                             if (!ObservedUses().Contains(use) || ObservedWhenExclusion(when) != null)
                                 continue;
                             foreach (var observed in Enum.GetValues<OutObservation>())
-                                owed[ObservedId(id, observed)] = true;
+                                owed[ObservedId(id, observed)] = !IsOwnInitializer(when) && when != When.BeforeInitializer;
                         }
+        foreach (var cell in SameExpressionCells())
+            owed[cell.Id] = true;
         failures.AddRange(PoolAgainstOwed("the location axes", owed, pool.Where(c => c.Family == Family.Location && !c.Id.StartsWith(CrossPrefix, StringComparison.Ordinal))));
         return failures;
     }

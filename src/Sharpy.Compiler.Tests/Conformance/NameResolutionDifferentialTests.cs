@@ -540,8 +540,9 @@ public partial class NameResolutionDifferentialTests
                     return "#2398";
                 return run.CsCode switch
                 {
-                    // The store side of #2147's receiver matrix: one member through every receiver, one verdict.
-                    "CS0176" or "CS0131" or "CS0198" or "CS1656" when IsAttributeStore(cell) => "#2435",
+                    // The store side of #2147's receiver matrix: one member through every receiver, one verdict. A
+                    // computed const's accessor returns `ref readonly` under plan-775c50 D4, so its store is CS8331 where it was CS0198.
+                    "CS0176" or "CS0131" or "CS0198" or "CS8331" or "CS1656" when IsAttributeStore(cell) => "#2435",
                     "CS0176" => "#2147",
                     // A @static interface method read through its interface: the emitter renders it an instance member.
                     "CS0120" when cell.Family == Family.TypeMember && cell.Target == BindingKind.ModuleInterface => "#2111",

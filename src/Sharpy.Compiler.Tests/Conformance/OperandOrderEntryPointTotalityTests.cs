@@ -56,6 +56,7 @@ public class OperandOrderEntryPointTotalityTests
         // --- Conditional by design: ordering these operands would be WRONG. The later operand
         // must not be evaluated at all unless its branch is taken; each pushes its own sink. ---
         ["GenerateNullCoalesceOp"] = "the rhs evaluates only on the absent path; it has its own evaluation sink",
+        ["GenerateGuardedStorage"] = "plan-775c50 D4: one Guarded value's initializer, generated alone into its init method under its own scope sink; no sibling operand",
         ["GenerateShortCircuitOp"] = "the rhs evaluates only when the lhs does not decide; own sink",
         ["GenerateConditionalExpression"] = "exactly one arm evaluates; each arm has its own sink",
         ["GenerateAssert"] = "the message evaluates only on failure; it has its own evaluation sink",

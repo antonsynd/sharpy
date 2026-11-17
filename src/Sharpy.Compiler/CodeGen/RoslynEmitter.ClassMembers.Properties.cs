@@ -17,6 +17,36 @@ namespace Sharpy.Compiler.CodeGen;
 /// </summary>
 internal partial class RoslynEmitter
 {
+    /// <summary>
+    /// A class-level Guarded value (a <c>@static</c> field or a computed <c>const</c> with an
+    /// initializer, in any host; plan-775c50 D4): the readiness shape of
+    /// <see cref="GenerateGuardedValue"/> in place of an initialized static field. A const, and a
+    /// <c>@final</c> field, return <c>ref readonly</c>; the user's attributes stay on the storage.
+    /// </summary>
+    private IEnumerable<MemberDeclarationSyntax> GenerateGuardedField(VariableDeclaration varDecl, string fieldName)
+    {
+        var isFinal = varDecl.Decorators.Any(d => !d.IsBracketAttribute && d.Name == DecoratorNames.Final);
+        return GenerateGuardedValue(new GuardedValue(
+            fieldName, varDecl.Name, ClassFieldType(varDecl), varDecl.InitialValue!, MemberAccessKeyword(varDecl),
+            IsReadOnly: varDecl.IsConst || isFinal,
+            new SyntaxList<AttributeListSyntax>(),
+            GenerateAttributeListsFromDecorators(varDecl.Decorators))).ToList();
+    }
+
+    /// <summary>Whether a class body's field declaration is a Guarded value: its recorded fact.</summary>
+    private bool IsGuardedField(VariableDeclaration varDecl, CodeGenInfo? codeGenInfo)
+        => codeGenInfo is { StaticStorage: StaticStorage.Guarded } && varDecl.InitialValue != null;
+
+    /// <summary>A class field's declared type: its annotation, or a const's inferred initializer type.</summary>
+    private TypeSyntax ClassFieldType(VariableDeclaration varDecl)
+    {
+        if (varDecl.Type != null)
+            return _typeMapper.MapType(varDecl.Type);
+        if (varDecl.IsConst && varDecl.InitialValue != null)
+            return ResolveInferredDeclarationType(varDecl.InitialValue);
+        return PredefinedType(Token(SyntaxKind.ObjectKeyword));
+    }
+
     /// <param name="constructorOwnsDefault">
     /// True when a synthesized constructor definitely assigns this field on every path and owns the
     /// evaluation of its default (a struct auto-constructor's per-instance field default, #1684 R-A

@@ -204,6 +204,7 @@ RoslynEmitter.Statements.cs | type-name | GenericType | 1 | cite=#2443 | names a
 RoslynEmitter.Statements.cs | type-name | TaskType | 1 | cite=#2443 | names a SemanticType-hierarchy type outside TypeSyntaxMapper
 RoslynEmitter.Statements.cs | type-name-compare | name-subpattern | 1 | cite=#2443 | matches a SemanticType by name (`T { Name: … }` subpattern); hand the type to TypeSyntaxMapper or read an IR node
 RoslynEmitter.Statements.cs | type-read | GetExpressionSemanticType | 1 | cite=#2443 | reads the recorded expression SemanticType to choose emission
+RoslynEmitter.StaticValues.cs | type-name | NullableType | 1 | cite=#2443 | SyntaxFactory.NullableType builds the `StrongBox<T>?` syntax of the out spill (plan-775c50 D4); no SemanticType is named — the scanner reads the identifier
 RoslynEmitter.TestFixtures.cs | type-name | NullableType | 2 | cite=#2443 | names a SemanticType-hierarchy type outside TypeSyntaxMapper
 RoslynEmitter.TestFixtures.cs | type-name | TaskType | 4 | cite=#2443 | names a SemanticType-hierarchy type outside TypeSyntaxMapper
 RoslynEmitter.TypeDeclarations.cs | type-name | FunctionSymbol | 3 | cite=#2443 | names a Symbol-hierarchy type; read the recorded CodeGenInfo/SemanticInfo fact

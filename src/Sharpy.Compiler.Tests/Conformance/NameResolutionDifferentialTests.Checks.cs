@@ -621,12 +621,14 @@ public partial class NameResolutionDifferentialTests
     internal static readonly IReadOnlyDictionary<string, int> ModelsReadByNothingCensus = new Dictionary<string, int>(StringComparer.Ordinal)
     {
         // `H.x` in H's own body and `A.x` above `type A`: python has no earlier order that runs, because the class is not bound inside its body at either order.
-        // 39 of them are refused and 6 run with a wrong value, whose SilentWrong row reads no model.
-        [UnreadEarlierTwinRaises] = 45,
-        // read/str's load-time reads and the Alias cells at the earlier order: the axis spells no twin. The twin would be a program the pool does not hold.
-        [UnreadNoOrderToPair] = 20,
-        // Seed reads of a later binding: python raises, and the seed table has no earlier order. 18 are refused and 7 run with a wrong value.
-        [UnreadSeedRaises] = 25,
+        // All 39 are refused (plan-775c50 T4: the 6 that ran with a wrong value now run with the model's).
+        [UnreadEarlierTwinRaises] = 39,
+        // The Alias cells at the earlier order: the axis spells no twin. The twin would be a program the pool does not hold.
+        // (read/str's load-time reads run with their model since plan-775c50 T4, so Sharpy reads it.)
+        [UnreadNoOrderToPair] = 3,
+        // Seed reads of a later binding: python raises, and the seed table has no earlier order. All 18 are refused (plan-775c50 T4: the 7 that
+        // ran with a wrong value now run with the model's).
+        [UnreadSeedRaises] = 18,
         [UnreadDeviationRow] = 1,
     };
 

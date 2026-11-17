@@ -1291,7 +1291,12 @@ internal partial class RoslynEmitter
                         Parser.Ast.ParameterModifier.In => SyntaxKind.InKeyword,
                         _ => SyntaxKind.None
                     };
-                    var csArg = Argument(GenerateExpression(modArg.Argument));
+                    // An `out` operand naming a Guarded value picks its arm by the value's state at the
+                    // operand's place (plan-775c50 D4): N__out(out var __spillK), committed on return.
+                    var operand = GenerateExpression(modArg.Argument);
+                    var csArg = Argument(modArg.Modifier == Parser.Ast.ParameterModifier.Out && IsGuardedVariableTarget(modArg.Argument)
+                        ? GuardedOutOperand(modArg.Argument, operand)
+                        : operand);
                     if (refKind != SyntaxKind.None)
                         csArg = csArg.WithRefKindKeyword(Token(refKind));
                     yield return csArg;

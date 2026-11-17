@@ -56,11 +56,12 @@ def main():
         // #1683: a same-module backing field is now emitted global::-qualified through its module class
         // (#2039: namespace Source, members class SourceModule).
         generated.Should().Contain("return global::Source.SourceModule._DebugMode");
-        generated.Should().Contain("_DebugMode = value");
+        // plan-775c50 D4: `_debug_mode` is a Guarded module variable, so the setter's plain store is its `__set`.
+        generated.Should().Contain("_DebugMode__set(value)");
     }
 
     [Fact]
-    public void AutoProperty_EmitsStaticAutoPropertyWithInitializer()
+    public void AutoProperty_EmitsStaticPropertyWithGuardedDefault()
     {
         var source = @"
 property default_timeout: float = 30.0
@@ -71,7 +72,15 @@ def main():
         var result = _api.Compile(source);
 
         result.Success.Should().BeTrue();
-        result.GeneratedCSharp.Should().Contain("public static double DefaultTimeout { get; set; } = 30.0d;");
+        // plan-775c50 D4: a property default is Guarded — no initializer on the storage; the default is
+        // assigned by its init method, run at its position in the module's sweep, and the accessors
+        // keep get / set through the readiness prelude and store.
+        var generated = result.GeneratedCSharp!;
+        generated.Should().Contain("public static double DefaultTimeout");
+        generated.Should().NotContain("} = 30.0d;");
+        generated.Should().Contain("DefaultTimeout__field = 30.0d;");
+        generated.Should().Contain("global::Sharpy.StaticInit.Run(ref DefaultTimeout__state, \"default_timeout\", DefaultTimeout__init);");
+        generated.Should().Contain("global::Sharpy.StaticInit.Store(ref __host, __Sweep, ref DefaultTimeout__state, ref DefaultTimeout__field, value);");
     }
 
     [Fact]
