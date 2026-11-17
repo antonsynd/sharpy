@@ -123,10 +123,12 @@ internal class TypeInferenceService
         if (left is TypeParameterType || right is TypeParameterType)
             return BinaryOpLowering.EqualityComparerDefault;
 
-        // `==` / `!=` between two DIFFERENT enum types (#2670, owner ruling 2026-11-12: False, as
-        // CPython): C# has no operator for two unrelated enums (CS0019), and two string-backed enums
-        // would compare their backing strings through the implicit conversion. The null-safe static
-        // Equals evaluates both operands once and answers False for members of different enums.
+        // `==` / `!=` between two DIFFERENT enum types that are not both string-backed (#2670, owner
+        // ruling 2026-11-12: False, as CPython's plain `Enum`): C# has no operator for two unrelated
+        // enums (CS0019). The null-safe static Equals evaluates both operands once and answers False
+        // for members of different enums. Two string-backed enums keep the native operator, which
+        // binds `string == string` through each enum's implicit conversion: they compare as their
+        // backing strings, as CPython's `StrEnum` does (owner ruling 2026-11-17).
         if (IsCrossEnumEquality(op, left, right))
             return BinaryOpLowering.EqualsCallStatic;
 
@@ -147,11 +149,15 @@ internal class TypeInferenceService
     /// <summary>
     /// True when <c>==</c>/<c>!=</c> compares members of two DIFFERENT enum types, either operand
     /// possibly <c>E | None</c> (#2670). Inference admits every enum pair (<see cref="IsEnumType"/>
-    /// on both sides); this is the part of that set the native operator cannot answer: two
-    /// int-backed enums (CS0019), an int-backed against a string-backed one (CS0019), and two
-    /// string-backed enums (which C# would compare by backing string, True for equal values where
-    /// CPython answers False). Erring toward "different" is safe — <c>object.Equals</c> on two
-    /// members of the SAME enum is still their equality — but it boxes, so "same" is asked of
+    /// on both sides); this is the part of that set the native operator cannot answer as CPython
+    /// does: two int-backed enums (CS0019) and an int-backed against a string-backed one (CS0019),
+    /// each False as plain <c>Enum</c> members of different classes are. Two string-backed enums are
+    /// NOT in the set: the spec maps them to CPython's <c>StrEnum</c>, whose members compare as their
+    /// strings (<c>Tone.A == Mood.A</c> is True for equal values), and the native operator binds
+    /// <c>string == string</c> through the implicit conversion, the answer the same-enum pair and
+    /// <c>Tone.A == "a"</c> already get (owner ruling 2026-11-17). Erring toward "different" on
+    /// the rest is safe — <c>object.Equals</c> on two members of the SAME enum is still their
+    /// equality — but it boxes, so "same" is asked of
     /// <see cref="TypeHierarchyService.IsSameEnumDeclaration"/>: import clones and the two symbols
     /// of one CLR enum (an imported name against a CLR member's type) are one enum and keep the
     /// native operator, as does an operand whose symbol cannot be found.
@@ -163,6 +169,7 @@ internal class TypeInferenceService
 
         return EnumSymbolOf(UnwrapNullable(left)) is { } leftEnum
             && EnumSymbolOf(UnwrapNullable(right)) is { } rightEnum
+            && !(leftEnum.IsStringEnum && rightEnum.IsStringEnum)
             && !TypeHierarchyService.IsSameEnumDeclaration(leftEnum, rightEnum);
     }
 
