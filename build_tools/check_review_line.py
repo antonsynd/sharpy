@@ -39,12 +39,14 @@ branch gets the rebase hint; every one of them fails the check):
                  names no exemption for a head named `dev`; the only bot exemption (owner,
                  2026-11-17) is `--author dependabot[bot]` with every changed code path a package
                  manifest under `src/` (`*.csproj`, `Directory.Packages.props`,
-                 `packages.lock.json`) modified in place, and every removed and added line of its
-                 diff a version change (version_only): a `<PackageReference>`/`<PackageVersion>`
-                 tag whose pair differs only in `Version="..."`, or a lock-file `resolved`,
-                 `requested`, `contentHash` or `"<package>": "<version>"` line whose pair differs
-                 only in the value. Anything else (an added or binary file, no patch, a `<Target>`,
-                 a property, a new package) needs the line;
+                 `packages.lock.json`) modified in place, and every hunk of its diff a version
+                 change (version_only): as many removed as added lines, the i-th removed paired
+                 with the i-th added, each pair identical but for a different version value, in
+                 a `<PackageReference>`/`<PackageVersion>` tag's `Version="..."` (a concrete
+                 version on both sides, never a float or range) or a lock-file `resolved`,
+                 `requested`, `contentHash` or `"<package>": "<version>"` value. Anything else
+                 (an added or binary file, no patch, a moved line, a `<Target>`, a property, a
+                 new package, a line holding a line separator other than `\n`) needs the line;
   missing        no line counts;
   malformed      the last counted line does not parse;
   sha not an ancestor of head
@@ -130,6 +132,12 @@ LOCK_LINE = re.compile(r'\s*"([^"]+)": "([^"]*)",?\s*')
 LOCK_ANY_VALUE = ("resolved", "requested", "contentHash")
 # A version or NuGet range (`1.2.3-rc.1`, `10.*`, `[1.0, )`): never `$(...)`, which MSBuild evaluates.
 VERSION = re.compile(r"[\[(]?\d[0-9A-Za-z.*+-]*(?:\s*,\s*[0-9A-Za-z.*+-]*)?[\])]?")
+# A concrete version (`10.0.15`, `1.2.3-rc.1+build`), the only kind a manifest tag may change to or
+# from: a float (`1.*`) or range (`[1.0,)`) lets later restores pick unreviewed versions.
+CONCRETE_VERSION = re.compile(r"\d+(?:\.\d+)*(?:-[0-9A-Za-z.-]+)?(?:\+[0-9A-Za-z.-]+)?")
+# Characters Python or other readers may take as a line end inside one git diff line (a `\r` is
+# allowed only as the line's last character, a CRLF file).
+LINE_BREAKS = re.compile("[\r\x0b\x0c\x1c\x1d\x1e\x85\u2028\u2029]")
 
 NOT_REQUIRED = "not required"
 OK = "ok"
@@ -188,68 +196,81 @@ def is_manifest_path(path: str) -> bool:
     )
 
 
-def _version_key(path: str, line: str) -> Optional[str]:
-    """What a changed manifest line must equal on the other side of its pair (the line with its
-    version value blanked), or None when the line is no version change."""
+def _version_key(path: str, line: str) -> Optional[tuple]:
+    """(the line with its version value blanked, the version value(s)) for a changed manifest line
+    that may be one side of a version change; None when it cannot be."""
+    if LINE_BREAKS.search(line[:-1] if line.endswith("\r") else line):
+        return None
     if path.endswith("packages.lock.json"):
         m = LOCK_LINE.fullmatch(line)
         if not m or (
             m.group(1) not in LOCK_ANY_VALUE and not VERSION.fullmatch(m.group(2))
         ):
             return None
-        return line[: m.start(2)] + line[m.end(2) :]
+        return line[: m.start(2)] + line[m.end(2) :], (m.group(2),)
+    values = tuple(VERSION_VALUE_TEXT.findall(line))
     if not VERSION_TAG.fullmatch(line) or not all(
-        VERSION.fullmatch(v) for v in VERSION_VALUE_TEXT.findall(line)
+        CONCRETE_VERSION.fullmatch(v) for v in values
     ):
         return None
-    return VERSION_VALUE.sub(r"\1\2", line)
+    return VERSION_VALUE.sub(r"\1\2", line), values
 
 
 def version_only(diff: str, paths: Sequence[str]) -> Optional[str]:
     """None when `diff` (`git diff -U0` of `paths`) changes nothing but versions in every one of
     `paths`, each modified in place; else why not. No patch for a path is a reason."""
-    changes: dict = {}
+    changes: dict = {}  # path -> [(removed lines, added lines)], one entry per hunk
     path = None
     in_hunk = False
-    for line in diff.splitlines():
+    # git ends a diff line at "\n" only (str.splitlines also splits on \r, U+2028, ...).
+    lines = diff.split("\n")
+    if lines and lines[-1] == "":
+        lines.pop()
+    for line in lines:
         if line.startswith("diff --git "):
             rest = line[len("diff --git a/") :]
             half = (len(rest) - 3) // 2
             path = rest[:half] if rest == rest[:half] + " b/" + rest[:half] else None
             if path is None or path in changes:
                 return f"unreadable diff header: {line[:120]}"
-            changes[path], in_hunk = ([], []), False
+            changes[path], in_hunk = [], False
         elif path is None:
             return f"diff text before a header: {line[:120]}"
         elif line.startswith("@@"):
             in_hunk = True
+            changes[path].append(([], []))
         elif not in_hunk:
             # Extended headers: only the index line and the two file names are a modification.
             if not line.startswith(("index ", "--- a/", "+++ b/")):
                 return f"{path}: {line.strip()[:120]}"
         elif line.startswith("-"):
-            changes[path][0].append(line[1:])
+            changes[path][-1][0].append(line[1:])
         elif line.startswith("+"):
-            changes[path][1].append(line[1:])
+            changes[path][-1][1].append(line[1:])
         elif not line.startswith("\\"):
             return f"{path}: unexpected diff line: {line[:120]}"
     for p in paths:
-        if p not in changes or not (changes[p][0] or changes[p][1]):
+        if p not in changes or not any(r or a for r, a in changes[p]):
             return f"{p}: no patch"
-    for p, (removed, added) in changes.items():
+    for p, hunks in changes.items():
         if p not in paths:
             return f"{p}: not a changed manifest"
-        keys = []
-        for side in (removed, added):
-            side_keys = []
-            for text in side:
-                key = _version_key(p, text)
-                if key is None:
+        for removed, added in hunks:
+            for text in removed + added:
+                if _version_key(p, text) is None:
                     return f"{p}: not a version change: {text.strip()[:120]}"
-                side_keys.append(key)
-            keys.append(sorted(side_keys))
-        if keys[0] != keys[1]:
-            return f"{p}: removed and added lines differ in more than a version"
+            if len(removed) != len(added):
+                return (
+                    f"{p}: a hunk removes {len(removed)} and adds {len(added)} line(s)"
+                )
+            # Paired by position: a line that moves (another ItemGroup, a Condition) is no pair.
+            for old, new in zip(removed, added):
+                (old_rest, old_v), (new_rest, new_v) = (
+                    _version_key(p, old),
+                    _version_key(p, new),
+                )
+                if old_rest != new_rest or old_v == new_v:
+                    return f"{p}: not a version change: {old.strip()[:60]} -> {new.strip()[:60]}"
     return None
 
 

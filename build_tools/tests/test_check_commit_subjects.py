@@ -517,3 +517,28 @@ def test_the_grandfather_still_applies_on_a_pr_run(repo):
     assert result.returncode == 0 and "1 pre-gate" in result.stdout, result.stdout
     none = _run(repo, f"{base}..HEAD", "--grandfather", "none", "--pr-author", "someone")
     assert none.returncode == 1
+
+
+@pytest.mark.parametrize("shadow", ["refs/tags/origin/dev", "refs/heads/origin/dev"])
+def test_a_tag_or_branch_named_origin_dev_does_not_open_the_judged_door(repo, shadow):
+    # Review of PR #2726 @ 54991d373: git resolves a short `origin/dev` to `refs/tags/origin/dev`
+    # (and `refs/heads/origin/dev`) before `refs/remotes/origin/dev`, and any writer can push a tag.
+    base = _git(repo, "rev-parse", "HEAD").strip()
+    _git(repo, "update-ref", "refs/remotes/origin/dev", base)
+    head = _bot_commit(repo, LONG_BUMP)
+    _git(repo, "update-ref", shadow, head)
+    result = _run_workflow_step(repo, _pr_env(base, head, "someone"))
+    assert result.returncode == 1 and "::error::" in result.stdout, (
+        result.stdout + result.stderr
+    )
+    # Positive control: the real remote-tracking ref on the commit opens it.
+    _git(repo, "update-ref", "refs/remotes/origin/dev", head)
+    assert _run_workflow_step(repo, _pr_env(base, head, "someone")).returncode == 0
+
+
+def test_without_the_remote_refs_a_promotion_is_a_clean_red(repo):
+    base = _git(repo, "rev-parse", "HEAD").strip()
+    head = _bot_commit(repo, LONG_BUMP)
+    result = _run_workflow_step(repo, _pr_env(base, head, "owner"))
+    assert result.returncode == 1 and "::error::" in result.stdout
+    assert "Traceback" not in result.stderr, result.stderr

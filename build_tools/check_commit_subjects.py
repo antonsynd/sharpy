@@ -8,13 +8,12 @@ and quotes text the author did not choose: a merge commit (more than one parent 
 commit (it quotes the reverted subject verbatim). A third kind is Dependabot's generated
 "chore: Bump ..." subject (owner, 2026-11-17): exempt only when the subject has one of
 DEPENDABOT_SUBJECT's shapes, the author email is Dependabot's, and, on a pull-request run
-(`--pr-author` given), the PR author login is `dependabot[bot]` or the commit is already on
-`origin/dev` or `origin/mainline` (a promotion or sync PR carries one its own PR run judged). A git
-author is free text; the login is GitHub's. Residual: a push run has no login, so there the shape and
-email decide; both branches take only PRs, so it re-reads commits a PR run judged. A fourth kind is
-exempt because it predates the
-gate: any commit reachable from the commit that introduced this script (GATE_COMMIT, 2026-11-07) was
-written when the figure was advice, so a range that reaches back past it — the dev → mainline
+(`--pr-author` given), the PR author login is `dependabot[bot]` or the commit is already on the
+remote-tracking `origin/dev` or `origin/mainline` (a promotion or sync PR carries one its own PR
+run judged). A git author is free text; the login is GitHub's. Residual: a push run has no login,
+so there the shape and email decide; both branches take only PRs, so it re-reads commits a PR run
+judged. A fourth kind is exempt because it predates the gate: any commit reachable from the
+commit that introduced this script (GATE_COMMIT, 2026-11-07) was written when the figure was advice, so a range that reaches back past it — the dev → mainline
 promotion PR #2522 spanned 187 commits, six of them long — is judged only on what came after.
 Override the grandfather line with `--grandfather <sha>` (or `--grandfather none`).
 
@@ -57,7 +56,8 @@ DEPENDABOT_SUBJECT = re.compile(
     r"|\S+)"
 )
 # Branches that take only pull requests: a commit on one was judged by the PR run that landed it.
-JUDGED_REFS = ("origin/dev", "origin/mainline")
+# Full names: git resolves a short `origin/dev` to a tag `refs/tags/origin/dev` first.
+JUDGED_REFS = ("refs/remotes/origin/dev", "refs/remotes/origin/mainline")
 
 
 @dataclass(frozen=True)

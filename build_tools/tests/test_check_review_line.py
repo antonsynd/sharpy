@@ -547,9 +547,16 @@ class VersionOnlyGit(mod.Git):
 
 def test_dependabot_manifest_only_pr_is_not_required() -> None:
     g, bot = VersionOnlyGit(), "dependabot[bot]"
-    paths = ["src/Sharpy.Core/Sharpy.Core.csproj", "Directory.Packages.props", "src/x/packages.lock.json"]
+    paths = [
+        "src/Sharpy.Core/Sharpy.Core.csproj",
+        "Directory.Packages.props",
+        "src/x/packages.lock.json",
+    ]
     for outside in (".github/x.csproj", "build_tools/x.csproj"):
-        assert mod.judge("", paths + [outside], "h", "b", g, author=bot).verdict == mod.MISSING
+        assert (
+            mod.judge("", paths + [outside], "h", "b", g, author=bot).verdict
+            == mod.MISSING
+        )
     result = mod.judge("", paths, "h", "b", g, author=bot)
     assert result.verdict == mod.NOT_REQUIRED, result.detail
     # Controls: the same paths from a human, a lookalike login, and a bot PR that also edits code.
@@ -557,7 +564,10 @@ def test_dependabot_manifest_only_pr_is_not_required() -> None:
     assert mod.judge("", paths, "h", "b", g, author="dependabot").verdict == mod.MISSING
     assert mod.judge("", paths, "h", "b", g, author="someone").verdict == mod.MISSING
     for extra in ("src/a.cs", ".github/workflows/x.yml", "build_tools/x.py"):
-        assert mod.judge("", paths + [extra], "h", "b", g, author=bot).verdict == mod.MISSING
+        assert (
+            mod.judge("", paths + [extra], "h", "b", g, author=bot).verdict
+            == mod.MISSING
+        )
 
 
 def test_main_passes_the_author_to_the_judge(monkeypatch, capsys) -> None:
@@ -967,6 +977,15 @@ CSPROJ = """<Project Sdk="Microsoft.NET.Sdk">
       <PrivateAssets>all</PrivateAssets>
     </PackageReference>
   </ItemGroup>
+  <ItemGroup>
+    <PackageReference Include="F1" Version="1.*" />
+    <PackageReference Include="F2" Version="[1.0,)" />
+    <PackageReference Include="F3" Version="(,2.0]" />
+    <PackageReference Include="F4" Version="*" />
+  </ItemGroup>
+  <ItemGroup Condition="'$(TargetFramework)' == 'netstandard2.1'">
+    <Compile Remove="Tarfile/**" />
+  </ItemGroup>
 </Project>
 """
 PROPS = """<Project>
@@ -992,13 +1011,25 @@ LOCK = """{
   }
 }
 """
-PJ, PP, LK = "src/A/A.csproj", "src/Directory.Packages.props", "src/A/packages.lock.json"
+PJ, PP, LK = (
+    "src/A/A.csproj",
+    "src/Directory.Packages.props",
+    "src/A/packages.lock.json",
+)
 FOO_BUMP = ('Include="Foo" Version="1.0.0"', 'Include="Foo" Version="1.1.0"')
 
 
 # kind -> list of (path, ((old, new), ...)) edits, or a callable(repo) for the odd ones.
 KINDS = {
-    "csproj version only": [(PJ, (FOO_BUMP, ('Include="Bar" Version="2.0.0"', 'Include="Bar" Version="2.1.0"')))],
+    "csproj version only": [
+        (
+            PJ,
+            (
+                FOO_BUMP,
+                ('Include="Bar" Version="2.0.0"', 'Include="Bar" Version="2.1.0"'),
+            ),
+        )
+    ],
     "props version only": [(PP, (('Version="3.0.0"', 'Version="3.1.0"'),))],
     "lock file only": [
         (
@@ -1024,21 +1055,83 @@ KINDS = {
         )
     ],
     "version bump plus a property change": [
-        (PJ, (FOO_BUMP, ("<Nullable>enable</Nullable>", "<Nullable>disable</Nullable>")))
+        (
+            PJ,
+            (FOO_BUMP, ("<Nullable>enable</Nullable>", "<Nullable>disable</Nullable>")),
+        )
     ],
-    "an Sdk element's Version changed": [(PJ, (('Version="1.0.0" />\n  <Prop', 'Version="6.6.6" />\n  <Prop'),))],
+    "an Sdk element's Version changed": [
+        (PJ, (('Version="1.0.0" />\n  <Prop', 'Version="6.6.6" />\n  <Prop'),))
+    ],
     "a Version that MSBuild evaluates": [
-        (PJ, (('Include="Foo" Version="1.0.0"', "Include=\"Foo\" Version=\"$([System.IO.File]::ReadAllText('x'))\""),))
+        (
+            PJ,
+            (
+                (
+                    'Include="Foo" Version="1.0.0"',
+                    'Include="Foo" Version="$([System.IO.File]::ReadAllText(\'x\'))"',
+                ),
+            ),
+        )
     ],
     "a new package": [
-        (PJ, (('    <PackageReference Include="Foo"', '    <PackageReference Include="Evil" Version="1.0.0" />\n    <PackageReference Include="Foo"'),))
+        (
+            PJ,
+            (
+                (
+                    '    <PackageReference Include="Foo"',
+                    '    <PackageReference Include="Evil" Version="1.0.0" />\n    <PackageReference Include="Foo"',
+                ),
+            ),
+        )
     ],
-    "a package swapped": [(PJ, (('Include="Foo" Version="1.0.0"', 'Include="Evil" Version="1.1.0"'),))],
+    "a package swapped": [
+        (PJ, (('Include="Foo" Version="1.0.0"', 'Include="Evil" Version="1.1.0"'),))
+    ],
     "a lock-file type changed": [(LK, (('"type": "Direct"', '"type": "Transitive"'),))],
     "a manifest added": "add",
     "a binary manifest (no patch)": "binary",
-    "a .cs file too": [(PJ, (FOO_BUMP,)), ("src/A/a.cs", (("class A {}", "class A { int x; }"),))],
+    "a .cs file too": [
+        (PJ, (FOO_BUMP,)),
+        ("src/A/a.cs", (("class A {}", "class A { int x; }"),)),
+    ],
 }
+# Review of PR #2726 @ 54991d373: a line that moves (here into the netstandard-only ItemGroup, the
+# shape of src/Sharpy.Stdlib/Sharpy.Stdlib.csproj) is no version change, bumped or not.
+FOO_LINE = '    <PackageReference Include="Foo" Version="1.0.0" />\n'
+TARFILE = '    <Compile Remove="Tarfile/**" />\n'
+for _bump in ("1.1.0", "1.0.0"):
+    KINDS[f"a line moved into a conditional ItemGroup, version {_bump}"] = [
+        (PJ, ((FOO_LINE, ""), (TARFILE, TARFILE + FOO_LINE.replace("1.0.0", _bump))))
+    ]
+# A float or range on either side is more than a version change: later restores pick versions.
+for _i, _float in enumerate(("1.*", "[1.0,)", "(,2.0]", "*"), 1):
+    KINDS[f"Foo pinned to {_float}"] = [
+        (PJ, ((FOO_BUMP[0], f'Include="Foo" Version="{_float}"'),))
+    ]
+    KINDS[f"F{_i} from {_float} to 1.1.0"] = [
+        (
+            PJ,
+            (
+                (
+                    f'Include="F{_i}" Version="{_float}"',
+                    f'Include="F{_i}" Version="1.1.0"',
+                ),
+            ),
+        )
+    ]
+# The reviewer's line: a version tag, U+2028, then text a str.splitlines() reader would drop.
+KINDS["U+2028 after a version tag"] = [
+    (
+        PJ,
+        (
+            (
+                'Include="Foo" Version="1.0.0" />',
+                'Include="Foo" Version="1.1.0" />\u2028\\ junk <Target Name="E"/>',
+            ),
+        ),
+    )
+]
 EXEMPT_KINDS = {"csproj version only", "props version only", "lock file only"}
 AUTHORS = ["dependabot[bot]", "dependabot", "someone", None]
 
@@ -1051,7 +1144,12 @@ def manifests(tmp_path_factory) -> Dict[str, str]:
     git(r, "config", "user.email", "t@example.invalid")
     git(r, "config", "user.name", "t")
     git(r, "config", "commit.gpgsign", "false")
-    for path, text in ((PJ, CSPROJ), (PP, PROPS), (LK, LOCK), ("src/A/a.cs", "class A {}")):
+    for path, text in (
+        (PJ, CSPROJ),
+        (PP, PROPS),
+        (LK, LOCK),
+        ("src/A/a.cs", "class A {}"),
+    ):
         (r / path).parent.mkdir(parents=True, exist_ok=True)
         (r / path).write_text(text)
     git(r, "add", "-A")
@@ -1085,10 +1183,16 @@ def test_dependabot_exemption_content_table(manifests, kind: str, author) -> Non
     g = mod.Git(manifests["repo"])
     base, head = manifests["base"], manifests[kind]
     result = mod.judge("", g.changed_paths(base, head), head, base, g, author=author)
-    want = mod.NOT_REQUIRED if author == "dependabot[bot]" and kind in EXEMPT_KINDS else mod.MISSING
+    want = (
+        mod.NOT_REQUIRED
+        if author == "dependabot[bot]" and kind in EXEMPT_KINDS
+        else mod.MISSING
+    )
     assert result.verdict == want, result.detail
     # Every refused manifest-only kind is refused by the content check, not by something else.
-    content_refused = author == "dependabot[bot]" and kind not in EXEMPT_KINDS | {"a .cs file too"}
+    content_refused = author == "dependabot[bot]" and kind not in EXEMPT_KINDS | {
+        "a .cs file too"
+    }
     assert ("exemption not taken" in result.detail) is content_refused, result.detail
 
 
@@ -1101,6 +1205,62 @@ def test_dependabot_exemption_content_table(manifests, kind: str, author) -> Non
     ],
 )
 def test_a_missing_or_truncated_patch_is_not_version_only(diff: str) -> None:
+    assert mod.version_only(diff, ["src/A/A.csproj"]) is not None
+
+
+CSPROJ_DIFF = (
+    "diff --git a/src/A/A.csproj b/src/A/A.csproj\nindex 1..2 100644\n"
+    "--- a/src/A/A.csproj\n+++ b/src/A/A.csproj\n@@ -7 +7 @@\n"
+)
+TAG = '    <PackageReference Include="Foo" Version="{}" />'
+
+
+@pytest.mark.parametrize(
+    "ch", ["\r", "\x0b", "\x0c", "\x1c", "\x1d", "\x1e", "\x85", "\u2028", "\u2029"]
+)
+def test_a_changed_line_holding_a_line_separator_is_not_a_version_change(
+    ch: str,
+) -> None:
+    # Git ends a diff line at \n only; text after any of these must not be hidden from the check.
+    for added in (
+        TAG.format("1.1.0") + ch + " ",
+        TAG.format("1.1.0") + ch + '\\ <Target Name="E"/>',
+    ):
+        diff = CSPROJ_DIFF + "-" + TAG.format("1.0.0") + "\n+" + added + "\n"
+        assert mod.version_only(diff, ["src/A/A.csproj"]) is not None, repr(added)
+    # The same separator on both sides of the pair: the pairing alone would accept it.
+    both = TAG + ch + " "
+    diff = (
+        CSPROJ_DIFF + "-" + both.format("1.0.0") + "\n+" + both.format("1.1.0") + "\n"
+    )
+    assert mod.version_only(diff, ["src/A/A.csproj"]) is not None
+
+
+def test_a_crlf_line_pair_is_a_version_change() -> None:
+    # Positive control for the separator rule: a `\r` that ends the line (a CRLF file) is allowed.
+    diff = (
+        CSPROJ_DIFF + "-" + TAG.format("1.0.0") + "\r\n+" + TAG.format("1.1.0") + "\r\n"
+    )
+    assert mod.version_only(diff, ["src/A/A.csproj"]) is None
+
+
+@pytest.mark.parametrize(
+    "value", ["10.0.15", "18.12.0", "5.12.0", "11.0.0", "1.2.3-rc.1", "1.0.0+b.5"]
+)
+def test_concrete_versions(value: str) -> None:
+    assert mod.CONCRETE_VERSION.fullmatch(value)
+
+
+@pytest.mark.parametrize(
+    "value", ["1.*", "[1.0,)", "(,2.0]", "*", "$(V)", "1.0 ", "[1.0.0, )"]
+)
+def test_floats_and_ranges_are_not_concrete(value: str) -> None:
+    assert not mod.CONCRETE_VERSION.fullmatch(value)
+
+
+def test_an_unchanged_version_is_no_version_change() -> None:
+    # A removed/added pair that keeps its version is not a version change.
+    diff = CSPROJ_DIFF + "-" + TAG.format("1.0.0") + "\n+" + TAG.format("1.0.0") + "\n"
     assert mod.version_only(diff, ["src/A/A.csproj"]) is not None
 
 
@@ -1119,5 +1279,243 @@ def test_version_only_positive_control() -> None:
 def test_the_missing_verdict_names_why_the_exemption_was_not_taken(manifests) -> None:
     g = mod.Git(manifests["repo"])
     base, head = manifests["base"], manifests["csproj with a Target added"]
-    result = mod.judge("", g.changed_paths(base, head), head, base, g, author="dependabot[bot]")
-    assert "exemption not taken" in result.detail and "<Target" in result.detail, result.detail
+    result = mod.judge(
+        "", g.changed_paths(base, head), head, base, g, author="dependabot[bot]"
+    )
+    assert "exemption not taken" in result.detail and "<Target" in result.detail, (
+        result.detail
+    )
+
+
+# The eight real Dependabot diffs (GitHub "list pull request files" patches, fetched 2026-11-17,
+# context lines dropped: the -U0 view the check reads), hunk by hunk: (path, removed, added).
+REAL_DEPENDABOT = {
+    2706: [
+        (
+            "src/Sharpy.Cli.Tests/Sharpy.Cli.Tests.csproj",
+            [
+                '    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="18.11.0" />'
+            ],
+            [
+                '    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="18.12.0" />'
+            ],
+        ),
+        (
+            "src/Sharpy.Compiler.Tests/Sharpy.Compiler.Tests.csproj",
+            [
+                '    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="18.11.0" />'
+            ],
+            [
+                '    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="18.12.0" />'
+            ],
+        ),
+        (
+            "src/Sharpy.Core.Tests/Sharpy.Core.Tests.csproj",
+            [
+                '    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="18.11.0" />'
+            ],
+            [
+                '    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="18.12.0" />'
+            ],
+        ),
+        (
+            "src/Sharpy.Lsp.Tests/Sharpy.Lsp.Tests.csproj",
+            [
+                '    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="18.11.0" />'
+            ],
+            [
+                '    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="18.12.0" />'
+            ],
+        ),
+        (
+            "src/Sharpy.Stdlib.Tests/Sharpy.Stdlib.Tests.csproj",
+            [
+                '    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="18.11.0" />'
+            ],
+            [
+                '    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="18.12.0" />'
+            ],
+        ),
+    ],
+    2707: [
+        (
+            "src/Sharpy.Compiler/Sharpy.Compiler.csproj",
+            [
+                '    <PackageReference Include="Microsoft.CodeAnalysis.CSharp" Version="5.9.0" />',
+                '    <PackageReference Include="Microsoft.CodeAnalysis.CSharp.Workspaces" Version="5.9.0" />',
+            ],
+            [
+                '    <PackageReference Include="Microsoft.CodeAnalysis.CSharp" Version="5.12.0" />',
+                '    <PackageReference Include="Microsoft.CodeAnalysis.CSharp.Workspaces" Version="5.12.0" />',
+            ],
+        ),
+    ],
+    2708: [
+        (
+            "src/Sharpy.Playground/Sharpy.Playground.csproj",
+            [
+                '    <PackageReference Include="Microsoft.AspNetCore.Components.WebAssembly" Version="10.0.14" />'
+            ],
+            [
+                '    <PackageReference Include="Microsoft.AspNetCore.Components.WebAssembly" Version="10.0.15" />'
+            ],
+        ),
+    ],
+    2711: [
+        (
+            "src/Sharpy.Stdlib/Sharpy.Stdlib.csproj",
+            [
+                '    <PackageReference Include="Microsoft.Data.Sqlite" Version="10.0.14" />'
+            ],
+            [
+                '    <PackageReference Include="Microsoft.Data.Sqlite" Version="10.0.15" />'
+            ],
+        ),
+        (
+            "src/Sharpy.Stdlib/modules/Sharpy.Stdlib.Sqlite3.csproj",
+            [
+                '    <PackageReference Include="Microsoft.Data.Sqlite" Version="10.0.14" />'
+            ],
+            [
+                '    <PackageReference Include="Microsoft.Data.Sqlite" Version="10.0.15" />'
+            ],
+        ),
+    ],
+    2714: [
+        (
+            "src/Sharpy.Cli/Sharpy.Cli.csproj",
+            ['    <PackageReference Include="System.CommandLine" Version="2.0.14" />'],
+            ['    <PackageReference Include="System.CommandLine" Version="3.0.0" />'],
+        ),
+    ],
+    2709: [
+        (
+            "src/Sharpy.Playground/Sharpy.Playground.csproj",
+            [
+                '    <PackageReference Include="Microsoft.AspNetCore.Components.WebAssembly.DevServer" Version="10.0.14" PrivateAssets="all" />'
+            ],
+            [
+                '    <PackageReference Include="Microsoft.AspNetCore.Components.WebAssembly.DevServer" Version="11.0.0" PrivateAssets="all" />'
+            ],
+        ),
+    ],
+    2710: [
+        (
+            "src/Sharpy.Core/Sharpy.Core.csproj",
+            [
+                '    <PackageReference Include="Microsoft.Bcl.AsyncInterfaces" Version="10.0.14" Condition="\'$(TargetFramework)\' == \'netstandard2.1\'" />'
+            ],
+            [
+                '    <PackageReference Include="Microsoft.Bcl.AsyncInterfaces" Version="11.0.0" Condition="\'$(TargetFramework)\' == \'netstandard2.1\'" />'
+            ],
+        ),
+    ],
+    2712: [
+        (
+            "src/Sharpy.Cli.Tests/Sharpy.Cli.Tests.csproj",
+            [
+                '    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="18.11.0" />'
+            ],
+            [
+                '    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="18.12.0" />'
+            ],
+        ),
+        (
+            "src/Sharpy.Cli/Sharpy.Cli.csproj",
+            ['    <PackageReference Include="System.CommandLine" Version="2.0.14" />'],
+            ['    <PackageReference Include="System.CommandLine" Version="3.0.0" />'],
+        ),
+        (
+            "src/Sharpy.Compiler.Tests/Sharpy.Compiler.Tests.csproj",
+            [
+                '    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="18.11.0" />'
+            ],
+            [
+                '    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="18.12.0" />'
+            ],
+        ),
+        (
+            "src/Sharpy.Compiler/Sharpy.Compiler.csproj",
+            [
+                '    <PackageReference Include="Microsoft.CodeAnalysis.CSharp" Version="5.9.0" />',
+                '    <PackageReference Include="Microsoft.CodeAnalysis.CSharp.Workspaces" Version="5.9.0" />',
+                '    <PackageReference Include="Microsoft.Extensions.FileSystemGlobbing" Version="10.0.14" />',
+            ],
+            [
+                '    <PackageReference Include="Microsoft.CodeAnalysis.CSharp" Version="5.12.0" />',
+                '    <PackageReference Include="Microsoft.CodeAnalysis.CSharp.Workspaces" Version="5.12.0" />',
+                '    <PackageReference Include="Microsoft.Extensions.FileSystemGlobbing" Version="11.0.0" />',
+            ],
+        ),
+        (
+            "src/Sharpy.Core.Tests/Sharpy.Core.Tests.csproj",
+            [
+                '    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="18.11.0" />'
+            ],
+            [
+                '    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="18.12.0" />'
+            ],
+        ),
+        (
+            "src/Sharpy.Lsp.Tests/Sharpy.Lsp.Tests.csproj",
+            [
+                '    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="18.11.0" />'
+            ],
+            [
+                '    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="18.12.0" />'
+            ],
+        ),
+        (
+            "src/Sharpy.Stdlib.Tests/Sharpy.Stdlib.Tests.csproj",
+            [
+                '    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="18.11.0" />'
+            ],
+            [
+                '    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="18.12.0" />'
+            ],
+        ),
+        (
+            "src/Sharpy.Stdlib/Sharpy.Stdlib.csproj",
+            [
+                '    <PackageReference Include="Microsoft.Data.Sqlite" Version="10.0.14" />'
+            ],
+            [
+                '    <PackageReference Include="Microsoft.Data.Sqlite" Version="10.0.15" />'
+            ],
+        ),
+        (
+            "src/Sharpy.Stdlib/modules/Sharpy.Stdlib.Sqlite3.csproj",
+            [
+                '    <PackageReference Include="Microsoft.Data.Sqlite" Version="10.0.14" />'
+            ],
+            [
+                '    <PackageReference Include="Microsoft.Data.Sqlite" Version="10.0.15" />'
+            ],
+        ),
+    ],
+}
+
+
+def _diff(hunks) -> str:
+    out, seen = [], set()
+    for path, removed, added in hunks:
+        if path not in seen:
+            seen.add(path)
+            out.append(
+                f"diff --git a/{path} b/{path}\nindex 1..2 100644\n--- a/{path}\n+++ b/{path}"
+            )
+        out.append(f"@@ -1,{len(removed)} +1,{len(added)} @@")
+        out += ["-" + r for r in removed] + ["+" + a for a in added]
+    return "\n".join(out) + "\n"
+
+
+@pytest.mark.parametrize("pr", sorted(REAL_DEPENDABOT))
+def test_the_real_dependabot_diffs_are_version_only(pr: int) -> None:
+    hunks = REAL_DEPENDABOT[pr]
+    assert mod.version_only(_diff(hunks), sorted({h[0] for h in hunks})) is None
+
+
+def test_a_real_pair_reordered_inside_its_hunk_is_not_version_only() -> None:
+    # #2707's two-line hunk with its added lines swapped: the same multiset, a different pairing.
+    path, removed, added = REAL_DEPENDABOT[2707][0]
+    assert mod.version_only(_diff([(path, removed, added[::-1])]), [path]) is not None

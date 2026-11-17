@@ -1,6 +1,6 @@
 # Commit-subject length gate (W3.4, owner ruling D5 of 2026-11-07): every non-merge, non-revert commit
 # subject in a PR, or in a push to dev/mainline, is at most 72 characters — the `/commit` skill's figure,
-# made a gate by build_tools/check_commit_subjects.py (merges, reverts and Dependabot-authored commits are exempt). No path filter: a docs-only PR has subjects too.
+# made a gate by build_tools/check_commit_subjects.py (merges, reverts and Dependabot `chore: Bump` commits in its PRs or already on dev/mainline are exempt). No path filter: a docs-only PR has subjects too.
 # The two gate workflows (dotnet10.yml, python-build-tools.yml) are path-filtered and dispatched by
 # `.claude/scripts/ci-gate`, which needs no subject check (a dispatch has no range), so this is its own
 # small workflow rather than a job on either of them.
@@ -30,7 +30,7 @@ jobs:
       with:
         python-version-file: .python-version
 
-    - name: Check commit subjects (≤ 72 chars; merges, reverts and Dependabot commits exempt)
+    - name: Check commit subjects (≤ 72 chars; merges, reverts, Dependabot's own bumps exempt)
       env:
         EVENT: ${{ github.event_name }}
         BASE_SHA: ${{ github.event.pull_request.base.sha }}
