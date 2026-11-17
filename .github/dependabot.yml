@@ -28,6 +28,22 @@ updates:
     target-branch: "dev"
     labels: ["dependencies", "dotnet", "nuget"]
     open-pull-requests-limit: 10
+    # Packages versioned with .NET stay on 10.x while the projects target net10.0;
+    # version 11 waits for the net11.0 target (#2548). 11.0.0 of
+    # System.Collections.Immutable collides with net10's built-in copy (CS0433, #2713).
+    ignore:
+      - dependency-name: "Microsoft.AspNetCore.Components.WebAssembly"
+        versions: [">= 11"]
+      - dependency-name: "Microsoft.AspNetCore.Components.WebAssembly.DevServer"
+        versions: [">= 11"]
+      - dependency-name: "Microsoft.Bcl.AsyncInterfaces"
+        versions: [">= 11"]
+      - dependency-name: "Microsoft.Data.Sqlite"
+        versions: [">= 11"]
+      - dependency-name: "Microsoft.Extensions.FileSystemGlobbing"
+        versions: [">= 11"]
+      - dependency-name: "System.Collections.Immutable"
+        versions: [">= 11"]
     # Group some common packages to reduce PR noise
     groups:
       test-dependencies:

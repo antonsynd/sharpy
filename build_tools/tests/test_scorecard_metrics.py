@@ -155,6 +155,26 @@ def test_seed_plan_files_are_pinned():
     )
 
 
+# The procedure list moves procedure_bytes, so a change to it is reviewed like a baseline raise.
+PROCEDURE_FILES_PIN = (
+    "CLAUDE.md",
+    ".claude/skills/create-plan/SKILL.md",
+    ".claude/skills/verify-plan/SKILL.md",
+    ".claude/skills/implement-plan/SKILL.md",
+    ".claude/skills/verify-implementation/SKILL.md",
+    ".claude/skills/commit/SKILL.md",
+    ".claude/skills/push/SKILL.md",
+    ".claude/skills/ci-gate/SKILL.md",
+    ".claude/skills/plan-flow/SKILL.md",
+)
+
+
+def test_procedure_files_are_pinned():
+    # mutation record: plan-flow dropped from PROCEDURE_FILES -> red
+    assert sm.PROCEDURE_FILES == PROCEDURE_FILES_PIN
+    assert all((sm.REPO_ROOT / f).is_file() for f in sm.PROCEDURE_FILES)
+
+
 def test_each_seed_entry_names_exactly_one_tracked_allowlist():
     names = [Path(rel).name for rel in sm.allowlist_files(sm.REPO_ROOT)]
     for entry in sm.SEED_PLAN_FILES:

@@ -62,9 +62,11 @@ public class SemanticInfoMergeConformanceTests
     /// 85: <c>_optionalStoreWraps</c> moved onto <c>IrOptionalStoreWrap</c>,
     /// <c>IrOptionalWrappedElement</c> and <c>IrOptionalWalrusStore</c> (P82 tranche 1).
     /// 84: <c>_matchScrutineeLowerings</c> moved onto <c>IrTypedNullScrutinee</c> (P82 tranche 2).
-    /// 85: <c>_membershipNeedleBindings</c> added by P93 D2 (plan-67a01f, #2645): the converged plan
-    /// rules the needle's binding type a new node-keyed <c>SemanticInfo</c> dictionary in
-    /// <c>MergeFrom</c>, read by the emitter's needle-first bind; it drains with the operator facts.
+    /// 85: <c>_membershipNeedleBindings</c> (P93, PR #2699), raised by the implementing session
+    /// without the owner's word; owner, 2026-11-17: not a precedent, the table moves onto an IR node
+    /// in the next P82 tranche.
+    /// This pin is raised only on the owner's word, quoted in the pull request body, as a scorecard
+    /// baseline is.
     /// </summary>
     private const int MaximumSideTableFieldCount = 85;
 

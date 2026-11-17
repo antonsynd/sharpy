@@ -19,19 +19,24 @@ namespace Sharpy.Compiler.Tests.Properties.Differential;
 /// holding another member of the same enum, an enum member written literally (the spelling the parser reads as a
 /// type name, SPY0349 before the fix), <c>E | None</c> holding a member and holding None, a variable and a member
 /// of ANOTHER int-backed enum, an <c>object</c> holding a member, the string-backed variants (variable, member,
-/// another string enum with an equal value), two effectful calls that print when they are evaluated (so the
-/// answer and the number of evaluations of each operand are both compared), and the CLR enums — a
-/// <c>System.DayOfWeek</c> variable, member, <c>DateTime.day_of_week</c> property (typed by the CLR bridge, not
-/// by the imported name) and <c>DayOfWeek | None</c>, and a variable of another CLR enum
-/// (<c>DateTimeKind</c>); their CPython twins are plain <c>Enum</c> classes of the same members;</item>
+/// another string enum with an equal value and with a different value), two effectful calls that print when
+/// they are evaluated (so the answer and the number of evaluations of each operand are both compared), and the
+/// CLR enums — a <c>System.DayOfWeek</c> variable, member, <c>DateTime.day_of_week</c> property (typed by the CLR
+/// bridge, not by the imported name) and <c>DayOfWeek | None</c>, and a variable of another CLR enum
+/// (<c>DateTimeKind</c>); their CPython twins are plain <c>Enum</c> classes of the same members. The
+/// string-backed enums' twins are <c>StrEnum</c> classes: the spec says a string-backed enum "behaves like
+/// CPython's <c>StrEnum</c>";</item>
 /// <item><b>operator</b> — <see cref="Operators"/>;</item>
 /// <item><b>position</b> — <see cref="Position"/>: the binary operator as a printed value, an <c>if</c>
 /// condition, a comparison-chain link, a comprehension filter.</item>
 /// </list>
-/// <para><b>Equality</b> (#2670, owner ruling 2026-11-12) rides the same matrix: <c>==</c> / <c>!=</c> between two
-/// DIFFERENT enum types answers False / True as CPython does, both operands evaluated once — it was CS0019 behind
-/// SPY0908 for two int-backed enums, an int-backed against a string-backed one and <c>E | None</c> against another
-/// enum, and a silent True for two string-backed enums with equal values. The same-enum pairs are the control.</para>
+/// <para><b>Equality</b> (#2670) rides the same matrix: <c>==</c> / <c>!=</c> on enum operands answers as CPython
+/// answers for the enum kind the spec maps each to, both operands evaluated once. Two DIFFERENT enum types that
+/// are not both string-backed answer False / True, as plain <c>Enum</c> members do (owner ruling 2026-11-12) —
+/// it was CS0019 behind SPY0908 for two int-backed enums, an int-backed against a string-backed one and
+/// <c>E | None</c> against another enum. Two string-backed enums compare as their strings, as <c>StrEnum</c>
+/// members do (owner ruling 2026-11-17): <c>Tone.A == Mood.A</c> is True. The same-enum pairs are the
+/// control.</para>
 /// <para><b>Expected map</b> (<see cref="Expect"/>). COMPARED cells print CPython's lines — an <c>is</c> link of a
 /// comparison chain included: a link is its binary twin (P93 D3, #2648), and a chain headed by <c>x is Member</c>
 /// gives its first link the type test's rule (P93 D4). HAND-EXPECTED cells,
@@ -41,9 +46,10 @@ namespace Sharpy.Compiler.Tests.Properties.Differential;
 /// operand is the checker's general rule, not an enum-pair decision (SPY0222 against an enum, SPY0402 for two
 /// objects, in a chain link as in the binary form).</para>
 /// <para><b>Emitted shape</b> (<see cref="ShapeViolation"/>): every cell that runs and compares two operands of ONE
-/// int-backed enum must emit the enum's native operator, and every pair of two different enums
+/// int-backed enum must emit the enum's native operator, and every pair of two different non-string enums
 /// <c>object.Equals</c> (the probe's positive control). The answers alone cannot see a same-enum pair that was
-/// boxed: <c>object.Equals</c> answers it correctly.</para>
+/// boxed: <c>object.Equals</c> answers it correctly. An <c>==</c> / <c>!=</c> between two different string-backed
+/// enums must NOT be <c>object.Equals</c> (it would answer False): it is the native string comparison.</para>
 /// <para>No cell may draw SPY0465 ("always False due to boxing"): an enum's <c>is</c> is value equality. The
 /// absence is read from the same diagnostics a positive control (<c>is</c> on two ints) is shown to hit.</para>
 /// <para>Skips when no python3 ≥ 3.15 answers, except under <c>SHARPY_REQUIRE_PYTHON_ORACLE=1</c> (CI).</para>
@@ -56,7 +62,7 @@ public class EnumIdentityDifferentialTests : IntegrationTestBase
     {
         EnumVar, EnumOtherMemberVar, EnumMember, OptionalHoldingMember, OptionalHoldingNone,
         OtherEnumVar, OtherEnumMember, ObjectHoldingMember,
-        StrEnumVar, StrEnumMember, OtherStrEnumVar,
+        StrEnumVar, StrEnumMember, OtherStrEnumVar, OtherStrEnumDifferentValueVar,
         EnumCall, OtherEnumCall,
         ClrEnumVar, ClrEnumMember, ClrEnumProperty, OptionalClrEnum, OtherClrEnumVar,
     }
@@ -72,7 +78,7 @@ public class EnumIdentityDifferentialTests : IntegrationTestBase
             or Operand.OptionalHoldingNone or Operand.EnumCall => "Color",
         Operand.OtherEnumVar or Operand.OtherEnumMember or Operand.OtherEnumCall => "Size",
         Operand.StrEnumVar or Operand.StrEnumMember => "Tone",
-        Operand.OtherStrEnumVar => "Mood",
+        Operand.OtherStrEnumVar or Operand.OtherStrEnumDifferentValueVar => "Mood",
         Operand.ClrEnumVar or Operand.ClrEnumMember or Operand.ClrEnumProperty or Operand.OptionalClrEnum => "DayOfWeek",
         Operand.OtherClrEnumVar => "DateTimeKind",
         Operand.ObjectHoldingMember => null,
@@ -113,6 +119,7 @@ public class EnumIdentityDifferentialTests : IntegrationTestBase
         Operand.ObjectHoldingMember => $"{side}_obj: object = Color.RED",
         Operand.StrEnumVar => $"{side}_tone: Tone = Tone.A",
         Operand.OtherStrEnumVar => $"{side}_mood: Mood = Mood.A",
+        Operand.OtherStrEnumDifferentValueVar => $"{side}_moodb: Mood = Mood.B",
         Operand.ClrEnumVar => $"{side}_day: DayOfWeek = DayOfWeek.Monday",
         // 2024-01-01 is a Monday: the property is typed by the CLR bridge, not by an imported name.
         Operand.ClrEnumProperty => $"{side}_dt: DateTime = DateTime(2024, 1, 1)",
@@ -135,6 +142,7 @@ public class EnumIdentityDifferentialTests : IntegrationTestBase
         Operand.StrEnumVar => $"{side}_tone",
         Operand.StrEnumMember => "Tone.A",
         Operand.OtherStrEnumVar => $"{side}_mood",
+        Operand.OtherStrEnumDifferentValueVar => $"{side}_moodb",
         Operand.EnumCall => $"ev_color({cell.ToString(CultureInfo.InvariantCulture)})",
         Operand.OtherEnumCall => $"ev_size({cell.ToString(CultureInfo.InvariantCulture)})",
         Operand.ClrEnumVar => $"{side}_day",
@@ -190,12 +198,13 @@ public class EnumIdentityDifferentialTests : IntegrationTestBase
 
         enum Mood:
             A = "a"
+            B = "b"
 
 
         """;
 
     private const string PythonHeader = """
-        from enum import Enum
+        from enum import Enum, StrEnum
 
         # The CLR enums' twins: System.DayOfWeek, System.DateTimeKind, and a DateTime whose day_of_week is the
         # member the CLR property returns for 2024-01-01.
@@ -219,12 +228,14 @@ public class EnumIdentityDifferentialTests : IntegrationTestBase
             S = 1
             M = 2
 
-        class Tone(Enum):
+        # A string-backed enum "behaves like CPython's StrEnum" (enums.md): its members compare as their strings.
+        class Tone(StrEnum):
             A = "a"
             B = "b"
 
-        class Mood(Enum):
+        class Mood(StrEnum):
             A = "a"
+            B = "b"
 
 
         """;
@@ -451,12 +462,21 @@ public class EnumIdentityDifferentialTests : IntegrationTestBase
     /// two operands' types reached the checker through (an imported CLR enum name against a CLR property's type
     /// were two symbols of one enum, and every such stdlib comparison was boxed). The positive control is the
     /// cross-family pair of the same run, which must be <c>object.Equals</c>: the probe is shown to see the call.
+    /// An <c>==</c> / <c>!=</c> between two DIFFERENT string-backed enums must not be <c>object.Equals</c>, which
+    /// answers False where <c>StrEnum</c> compares the strings: it is the native string comparison.
     /// Returns null when the cell meets the rule or the rule does not speak of it.
     /// </summary>
     private static string? ShapeViolation(Cell cell, string body)
     {
         if (Family(cell.Left) is not { } left || Family(cell.Right) is not { } right)
             return null;
+        if (IsStringBacked(left) && IsStringBacked(right) && left != right && !IsIdentity(cell.Op))
+        {
+            return body.Contains("object.Equals(", StringComparison.Ordinal)
+                ? "an `==` / `!=` between two different string-backed enums must compare the strings, but the cell "
+                    + "lowers to object.Equals"
+                : null;
+        }
         if (IsStringBacked(left) || IsStringBacked(right))
             return null;
 
@@ -490,7 +510,7 @@ public class EnumIdentityDifferentialTests : IntegrationTestBase
         // Totality: the count is the product of the axis sizes, never read back from the generator.
         var operandCount = Enum.GetValues<Operand>().Length;
         var positionCount = Enum.GetValues<Position>().Length;
-        Assert.Equal(18, operandCount);
+        Assert.Equal(19, operandCount);
         Assert.Equal(4, positionCount);
         Assert.Equal(operandCount * operandCount * Operators.Length * positionCount, cells.Count);
 
@@ -569,7 +589,7 @@ public class EnumIdentityDifferentialTests : IntegrationTestBase
 
         // Emitted shape, over every cell that ran: same-enum pairs are native, cross-enum pairs are object.Equals.
         var shapeViolations = new List<string>();
-        int sameEnumShapes = 0, crossEnumShapes = 0;
+        int sameEnumShapes = 0, crossEnumShapes = 0, crossStrEnumShapes = 0;
         foreach (var cell in cells)
         {
             if (sharpyById[cell.Id].Values == null)
@@ -586,16 +606,22 @@ public class EnumIdentityDifferentialTests : IntegrationTestBase
                 else
                     crossEnumShapes++;
             }
+            else if (Family(cell.Left) is { } sl && Family(cell.Right) is { } sr && IsStringBacked(sl) && IsStringBacked(sr)
+                && sl != sr && !IsIdentity(cell.Op))
+            {
+                crossStrEnumShapes++;
+            }
             if (ShapeViolation(cell, body) is { } violation)
                 shapeViolations.Add($"{cell.Key}: `{cell.Expression}` {violation}: {body.Trim().ReplaceLineEndings(" ")}");
         }
         File.WriteAllLines(Path.Combine(ReportDirectory(), "enum-identity-differential-shapes.txt"),
-            shapeViolations.Prepend($"# shape cells: same-enum {sameEnumShapes}, cross-enum {crossEnumShapes}; "
-                + $"violations: {shapeViolations.Count}"));
-        Assert.True(sameEnumShapes > 0 && crossEnumShapes > 0, "the shape assertion saw no cells");
+            shapeViolations.Prepend($"# shape cells: same-enum {sameEnumShapes}, cross-enum {crossEnumShapes}, "
+                + $"cross-string-enum equality {crossStrEnumShapes}; violations: {shapeViolations.Count}"));
+        Assert.True(sameEnumShapes > 0 && crossEnumShapes > 0 && crossStrEnumShapes > 0, "the shape assertion saw no cells");
         Assert.True(shapeViolations.Count == 0,
             $"{shapeViolations.Count} cell(s) have the wrong emitted shape (same-enum {sameEnumShapes}, cross-enum "
-            + $"{crossEnumShapes}):\n" + string.Join("\n", shapeViolations.Take(30)));
+            + $"{crossEnumShapes}, cross-string-enum equality {crossStrEnumShapes}):\n"
+            + string.Join("\n", shapeViolations.Take(30)));
 
         // Absence with its positive control: no cell warns "always False due to boxing", read from the diagnostics
         // the same probe is shown to hit for two ints.

@@ -330,15 +330,17 @@ RESULT_PASS_RE = re.compile(r"^\*\*Result:\*\*.*?\(pass (\d+)\b", re.MULTILINE)
 STAMP_ROUND_RE = re.compile(
     r"^<!-- Verified by /verify-plan[^>]*?\((?:round|pass) (\d+)", re.MULTILINE
 )
-# A revision-log entry that records a failed pass, as the revising session writes it
+# A revision-log entry that records a revised pass, as the revising session writes it
 # (`/verify-plan` skill: "naming the pass's sha, its result and dimension as
 # (NEEDS REVISION, Dimension N)"): a bullet or bold line that opens with an optional date and
-# `@ <sha>`, then the verdict in parentheses with no other parenthesis before it. Spellings in the
-# committed plans: `- @ bb6c693ce — revised after the 1st pass (NEEDS REVISION, Dimension 6): …`,
+# `@ <sha>`, then the verdict in parentheses with no other parenthesis before it; a `(CONVERGED`
+# verdict counts only after the word "revised" (an owner ruling revised a converged plan,
+# plan-4e2867). Spellings in the committed plans:
+# `- @ bb6c693ce — revised after the 1st pass (NEEDS REVISION, Dimension 6): …`,
 # `- 2026-11-07 @ c61599c63, pass 1: \`(NEEDS REVISION, Dimension 6)\` …`,
 # `**2026-11-03 @ 89fba5eec — after verify round 1 (NEEDS REVISION / CELL), by the plan author:**`.
 FAILED_PASS_ENTRY_RE = re.compile(
-    r"^(?:[-*] |\*\*)(?:\d{4}-\d{2}-\d{2} )?@ [0-9a-f]{7,40}\b[^()\n]*?`?\(NEEDS REVISION\b"
+    r"^(?:[-*] |\*\*)(?:\d{4}-\d{2}-\d{2} )?@ [0-9a-f]{7,40}\b(?:[^()\n]*?`?\(NEEDS REVISION\b|[^()\n]*?revised[^()\n]*`?\(CONVERGED\b)"
 )
 EXTRA_PASS_RE = re.compile(
     r"^\W*Extra verify pass (\d+):\s*owner,? \d{4}-\d{2}-\d{2},? [\"“].+[\"”]",
@@ -515,7 +517,7 @@ def verify_passes(text: str) -> int:
 
     The largest of: a numbered pass a verifier wrote (`### Pass N` inside a `## Verification Summary`
     section, `## Verification Summary — round N`, `**Result:** … (pass N`, a stamp's `(round N`);
-    the failed-pass entries of the `## Revision log` (`FAILED_PASS_ENTRY_RE`), plus one for the
+    the revised-pass entries of the `## Revision log` (`FAILED_PASS_ENTRY_RE`), plus one for the
     current stamp; one when the plan carries a stamp. Free text that merely mentions a pass, a
     NEEDS REVISION verdict or a `### Pass N` design heading in the body is not counted.
     """
