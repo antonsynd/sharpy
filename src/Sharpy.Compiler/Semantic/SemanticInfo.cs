@@ -1686,7 +1686,10 @@ public class SemanticInfo : ISemanticQuery
     /// Python's order, each once, as its <see cref="ModuleLayout"/> with <see cref="ModuleLayout.HasSweep"/>
     /// (plan-775c50 D5): <c>import a.b.c</c> → a, a.b, a.b.c; <c>import a.b as x</c> → a, a.b; several
     /// aliases → each chain in turn; <c>from a.b import n</c> → a, a.b, then a.b.n when n is a submodule and
-    /// no export of a.b. Empty for a statement whose modules are all .NET, synthetic or unresolved; a
+    /// no export of a.b. A Sharpy module imported by reference (every regenerated Sharpy.Stdlib module, a
+    /// referenced Sharpy library) is in the list by its discovered load entry (D10):
+    /// <see cref="ModuleLayout.ClrMembersClass"/> set, no namespace segments. Empty for a statement whose
+    /// modules are all .NET with no load entry, synthetic or unresolved; a
     /// namespace-only package (no <c>__init__.spy</c>) and the importing module itself stand for nothing.
     /// Null for any other statement, and for an import the checker did not reach.
     /// </summary>
@@ -3341,8 +3344,26 @@ public sealed record ModuleLayout(
     string MembersClassName,
     string? TestClassName = null,
     IReadOnlyDictionary<string, string>? FixtureClassNames = null,
-    bool HasSweep = false)
+    bool HasSweep = false,
+    string? ClrMembersClass = null)
 {
+    /// <summary>
+    /// The layout of a Sharpy module imported by reference (plan-775c50 D10), as an import requirement
+    /// names it (<see cref="SemanticInfo.GetImportRequirements"/>): <see cref="ClrMembersClass"/> is the
+    /// discovered <c>[SharpyModule]</c> class's CLR full name (nested types joined by <c>.</c>, as
+    /// discovery reports it), the class whose
+    /// <c>Sharpy.SharpyLoadEntryAttribute</c> member loads it; <see cref="NamespaceSegments"/> is empty
+    /// (the module is no source of this project, so no project namespace applies), and
+    /// <see cref="MembersClassName"/> is the class's simple name. Never on the incremental-cache wire:
+    /// the cache carries a file's OWN layout only (a source module's, which has no CLR class), and
+    /// import requirements are recomputed whenever their importer is checked.
+    /// </summary>
+    public static ModuleLayout ByReference(string clrMembersClass, bool hasSweep)
+    {
+        var simple = clrMembersClass[(Math.Max(clrMembersClass.LastIndexOf('.'), clrMembersClass.LastIndexOf('+')) + 1)..];
+        return new ModuleLayout(Array.Empty<string>(), simple, HasSweep: hasSweep, ClrMembersClass: clrMembersClass);
+    }
+
     /// <summary>
     /// The C# namespace the module's members class and sibling types are declared in, under
     /// <paramref name="rootNamespace"/> (the project namespace; empty or null for none).
@@ -3361,7 +3382,7 @@ public sealed record ModuleLayout(
     /// type a self-contained publish invokes <c>Main</c> on (<c>Thing.ThingModule</c>).
     /// </summary>
     public string MembersClassFullName(string? rootNamespace)
-        => string.Join(".", NamespaceParts(rootNamespace).Append(MembersClassName));
+        => ClrMembersClass ?? string.Join(".", NamespaceParts(rootNamespace).Append(MembersClassName));
 
     /// <summary>
     /// The ONE layout authority for a module's own layout (#2039, #2102): its namespace segments and

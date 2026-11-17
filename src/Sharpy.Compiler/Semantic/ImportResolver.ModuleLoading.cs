@@ -81,7 +81,11 @@ internal partial class ImportResolver
 
             // Track .NET module names for codegen to emit correct using directives
             if (moduleInfo is { IsNetModule: true })
+            {
                 _semanticBinding.MarkAsNetModule(importAlias.Name, moduleInfo.CSharpNamespace, moduleInfo.CSharpClassName);
+                // A Sharpy module imported by reference loads at the import's position (plan-775c50 D10).
+                AppendByReferenceChain(importAlias.Name, chain);
+            }
 
             // If not found in .NET assemblies, try .spy file
             if (moduleInfo == null)
@@ -120,7 +124,7 @@ internal partial class ImportResolver
                     _dependencyRecorder.AddDependency(_currentModulePath, modulePath);
                 }
 
-                AppendImportChain(importAlias.Name, modulePath, chain);
+                AppendImportChain(importAlias.Name, ImportRequirement.Source(modulePath, isImported: true), chain);
 
                 moduleInfo = LoadModule(modulePath, importAlias.LineStart, importAlias.ColumnStart);
 
@@ -425,11 +429,14 @@ internal partial class ImportResolver
             }
 
             moduleInfo = LoadModule(resolution.FullPath, fromImport.LineStart, fromImport.ColumnStart);
-            RecordFromImportChain(fromImport, resolvedPath, resolution.FullPath, moduleInfo);
+            RecordFromImportChain(fromImport, resolvedPath, ImportRequirement.Source(resolution.FullPath, isImported: true), moduleInfo);
         }
         else
         {
             _logger.LogDebug($"[ImportResolver]   Resolved as .NET module");
+            // A Sharpy module imported by reference loads at the import's position (plan-775c50 D10).
+            if (moduleInfo.IsNetModule)
+                RecordFromImportChain(fromImport, fromImport.Module, ByReference(fromImport.Module, isImported: true), moduleInfo);
         }
 
         // Validate imported names and populate re-export information for code generation

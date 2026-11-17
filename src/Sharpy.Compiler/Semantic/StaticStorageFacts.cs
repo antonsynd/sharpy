@@ -111,9 +111,9 @@ internal static class ImportedStaticFacts
     /// loaded or sweeping returns at once, so a true only ever adds a call that does nothing.
     /// </summary>
     public static bool RequiredSweep(SemanticBinding facts, ImportRequirement requirement, IReadOnlySet<string>? deferredCycleFiles)
-        => requirement.IsImported
+        => requirement.IsImported && requirement.FilePath != null
             ? ImportedSweep(facts, requirement.FilePath, deferredCycleFiles)
-            : facts.GetModuleHasSweep(requirement.FilePath) ?? true;
+            : requirement.FilePath is { } path ? facts.GetModuleHasSweep(path) ?? true : requirement.LoadEntry?.HasSweep ?? true;
 
     /// <summary>
     /// The storage facts of an imported value (<paramref name="imported"/>: an export, or a from-import's

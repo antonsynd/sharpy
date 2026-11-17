@@ -1,8 +1,13 @@
 using FluentAssertions;
+using Microsoft.CodeAnalysis;
+using Microsoft.CodeAnalysis.CSharp;
 using Sharpy.Compiler.Logging;
 using Sharpy.Compiler.Model;
 using Sharpy.Compiler.Parser.Ast;
+using Sharpy.Compiler.Project;
 using Sharpy.Compiler.Semantic;
+using Sharpy.Compiler.Tests.Helpers;
+using Sharpy.TestInfrastructure.Integration;
 using Xunit;
 using Xunit.Abstractions;
 
@@ -203,7 +208,8 @@ public class ImportRequirementsFactTests : IDisposable
         return path;
     }
 
-    private (string Dir, ProjectConfig Config) WriteProject(string name, IEnumerable<Cell> cells, string touch)
+    private (string Dir, ProjectConfig Config) WriteProject(string name, IEnumerable<Cell> cells, string touch,
+        IReadOnlyList<string>? references = null)
     {
         var dir = Path.Combine(_tempDir, name);
         var files = Tree.Values.Select(m => Write(dir, m.File, m.Source)).ToList();
@@ -217,11 +223,22 @@ public class ImportRequirementsFactTests : IDisposable
             RootNamespace = "Reqs",
             SourceFiles = files,
             Configuration = "Debug",
+            References = references?.ToList() ?? new List<string>(),
         });
     }
 
     private static ProjectCompilationResult Build(ProjectConfig config)
         => new Compiler(new CompilerOptions { Incremental = true }, NullLogger.Instance).CompileProject(config);
+
+    /// <summary>A build on <c>sharpyc project</c>'s reference route (the stdlib and Core from
+    /// <see cref="DefaultReferences"/>, beside the project's own references), incremental.</summary>
+    private static ProjectCompilationResult BuildWithReferences(ProjectConfig config)
+    {
+        var defaults = DefaultReferences.Resolve();
+        DefaultReferences.ApplyTo(config, defaults);
+        var options = CompilerOptionsFactory.ForProject(config, defaultReferences: defaults, incremental: true);
+        return new Compiler(options, NullLogger.Instance).CompileProject(config);
+    }
 
     private static string Diagnostics(ProjectCompilationResult result)
         => string.Join("\n", result.Diagnostics.GetAll().Where(d => d.IsError).Select(d => $"{d.Code} {d.FilePath}:{d.Line}: {d.Message}"));
@@ -241,10 +258,18 @@ public class ImportRequirementsFactTests : IDisposable
             return $"{string.Join(".", layout.NamespaceSegments)}/{layout.MembersClassName}";
         });
 
-    private static string Render(ModuleLayout layout) => $"{string.Join(".", layout.NamespaceSegments)}/{layout.MembersClassName} sweep={layout.HasSweep}";
+    /// <summary>A layout as the cells spell it; a by-reference module's (D10) leads with its CLR members class,
+    /// and any namespace segment it carried would show after an <c>@</c> (it carries none).</summary>
+    private static string Render(ModuleLayout layout) => layout.ClrMembersClass is { } clr
+        ? $"{ClrPrefix}{clr}{(layout.NamespaceSegments.Count == 0 ? "" : "@" + string.Join(".", layout.NamespaceSegments))}/{layout.MembersClassName} sweep={layout.HasSweep}"
+        : $"{string.Join(".", layout.NamespaceSegments)}/{layout.MembersClassName} sweep={layout.HasSweep}";
 
+    private const string ClrPrefix = "clr:";
+
+    /// <summary>A cell's expected list: a tree module's name reads its own layout; a <c>clr:</c> entry is a
+    /// by-reference module's literal rendering.</summary>
     private static string Expected(Cell cell, IReadOnlyDictionary<string, string> own)
-        => string.Join(" | ", cell.Expected.Select(m => $"{own[m]} sweep={Tree[m].HasSweep}"));
+        => string.Join(" | ", cell.Expected.Select(m => m.StartsWith(ClrPrefix, StringComparison.Ordinal) ? m : $"{own[m]} sweep={Tree[m].HasSweep}"));
 
     private static IEnumerable<string> CellFailures(string view, ProjectModel model, string dir, IEnumerable<Cell> cells,
         IReadOnlyDictionary<string, string> own, Func<CompilationUnit, SemanticInfo?> infoOf)
@@ -326,6 +351,111 @@ public class ImportRequirementsFactTests : IDisposable
         var own = OwnLayouts(model, dir);
         CellFailures("refused-merged", model, dir, cells, own, _ => model.SemanticInfo)
             .Should().BeEmpty("python runs the submodule a from-import names, after its package");
+    }
+
+    // ------------------------------------------------------------------------------------------- //
+    // By reference (S4): a Sharpy module another assembly holds
+    // ------------------------------------------------------------------------------------------- //
+
+    /// <summary>The regenerated stdlib's entries, literal (each is the <c>[SharpyLoadEntry(hasSweep)]</c> its
+    /// <c>__Load</c> carries in <c>src/Sharpy.Stdlib</c>): os and os.path are two modules, two entries.</summary>
+    private const string MathRef = ClrPrefix + "Sharpy.MathModule.MathModuleModule/MathModuleModule sweep=True";
+    private const string OsRef = ClrPrefix + "Sharpy.OsModule.OsModuleModule/OsModuleModule sweep=True";
+    private const string OsPathRef = ClrPrefix + "Sharpy.OsPathModule.OsPathModuleModule/OsPathModuleModule sweep=False";
+
+    /// <summary>The referenced Sharpy library's modules: <c>libsw</c> has a Guarded value (a sweep),
+    /// <c>libplain</c> none. Its members classes are spelled by the library build's own layout rule.</summary>
+    private static readonly (string File, string Source)[] LibraryModules =
+    {
+        ("libsw.spy", "lv: int = 5\n\ndef lsw() -> int:\n    return lv\n"),
+        ("libplain.spy", "def lf() -> int:\n    return 1\n"),
+    };
+
+    /// <summary>By-reference rows (Python's order as the tree cells measure it: a package before its
+    /// submodule, statement order between names, each module once). A module whose class declares no
+    /// entry (a hand-written C# <c>[SharpyModule]</c>, a .NET namespace) adds nothing: its statement's
+    /// record is the empty list, as <c>NetOnly</c>'s is.</summary>
+    internal static Cell[] ByReferenceCells(string libSw, string libPlain) => new Cell[]
+    {
+        new("RefImport", "r_import.spy", "import math", new[] { MathRef }),
+        new("RefImportAs", "r_import_as.spy", "import math as mm", new[] { MathRef }),
+        new("RefFromName", "r_from_name.spy", "from math import pi", new[] { MathRef }),
+        new("RefFromStar", "r_from_star.spy", "from math import *", new[] { MathRef }),
+        new("RefRepeated", "r_repeated.spy", "import math, math as mm", new[] { MathRef }),
+        new("RefPackage", "r_package.spy", "import os.path", new[] { OsRef, OsPathRef }),
+        new("RefFromPackageModule", "r_from_pkg.spy", "from os.path import join", new[] { OsRef, OsPathRef }),
+        new("RefThenSource", "r_then_source.spy", "import math, a.b", new[] { MathRef, "a", "a.b" }),
+        new("SourceThenRef", "r_source_then.spy", "import a.b, math", new[] { "a", "a.b", MathRef }),
+        new("RefSourceRef", "r_src_ref.spy", "import os.path, m, math", new[] { OsRef, OsPathRef, "m", MathRef }),
+        new("LibSweep", "r_lib_sw.spy", "import libsw", new[] { libSw }),
+        new("LibPlainFrom", "r_lib_plain.spy", "from libplain import lf", new[] { libPlain }),
+        new("LibThenSource", "r_lib_then.spy", "import libsw, a.b.c", new[] { libSw, "a", "a.b", "a.b.c" }),
+        new("NoEntry", "r_no_entry.spy", "import handmod", Array.Empty<string>()),
+        new("NoEntryFrom", "r_no_entry_from.spy", "from handmod import hf", Array.Empty<string>()),
+        new("NoEntryThenRef", "r_no_entry_ref.spy", "import handmod, math", new[] { MathRef }),
+    };
+
+    /// <summary>A C# assembly declaring <c>[SharpyModule("handmod")]</c> by hand, with no load entry.</summary>
+    private string BuildHandWrittenModuleAssembly()
+    {
+        var name = $"HandMod_{Guid.NewGuid():N}";
+        var path = Path.Combine(_tempDir, name + ".dll");
+        var compilation = CSharpCompilation.Create(
+            name,
+            new[] { CSharpSyntaxTree.ParseText(
+                "namespace HandWritten { [global::Sharpy.SharpyModule(\"handmod\")] public static class HandModule { public static int Hf() => 7; } }") },
+            IntegrationTestBase.GetSharedReferences(),
+            new CSharpCompilationOptions(OutputKind.DynamicallyLinkedLibrary));
+        var emit = compilation.Emit(path);
+        emit.Success.Should().BeTrue(string.Join("\n", emit.Diagnostics));
+        return path;
+    }
+
+    [Fact]
+    public void ByReferenceModules_AreRequiredInPythonsOrder_ColdMergedPerFileAndWarm()
+    {
+        // The Sharpy library, built by the compiler under test: its modules' load entries are its own.
+        using var lib = new ProjectCompilationHelper(_output);
+        lib.WithRootNamespace("ReqLib").WithOutputType("library");
+        lib.Options.AssemblyName = $"ReqLib_{Guid.NewGuid():N}";
+        foreach (var (file, source) in LibraryModules)
+            lib.AddSourceFile(file, source);
+        lib.CreateProjectFile();
+        var libResult = lib.Compile();
+        lib.AssertCompilationSucceeded(libResult);
+        var libModel = libResult.ProjectModel!;
+        string LibRef(string file, bool hasSweep)
+        {
+            var unit = libModel.Units.Values.Single(u => Path.GetFileName(u.FilePath) == file);
+            var layout = libModel.SemanticInfo!.GetModuleLayout(unit.Ast!)!;
+            var fullName = layout.MembersClassFullName("ReqLib");
+            return $"{ClrPrefix}{fullName}/{layout.MembersClassName} sweep={hasSweep}";
+        }
+
+        var cells = ByReferenceCells(LibRef("libsw.spy", true), LibRef("libplain.spy", false));
+        var references = new[] { libResult.OutputAssemblyPath!, BuildHandWrittenModuleAssembly() };
+        var (dir, config) = WriteProject("byref", cells, "build 1", references);
+
+        var cold = BuildWithReferences(config);
+        cold.Success.Should().BeTrue("the specimen must compile (positive control: every by-reference import resolves). Diagnostics:\n" + Diagnostics(cold));
+        var coldModel = cold.ProjectModel!;
+        var own = OwnLayouts(coldModel, dir);
+
+        var failures = new List<string>();
+        failures.AddRange(CellFailures("cold-merged", coldModel, dir, cells, own, _ => coldModel.SemanticInfo));
+        failures.AddRange(CellFailures("cold-file", coldModel, dir, cells, own, u => u.FileSemanticInfo));
+
+        foreach (var cell in cells)
+            Write(dir, cell.File, CellSource(cell, "build 2"));
+        var warm = BuildWithReferences(config);
+        warm.Success.Should().BeTrue("the warm build must compile. Diagnostics:\n" + Diagnostics(warm));
+        var served = warm.Metrics?.SkippedFiles.Select(Path.GetFullPath).ToHashSet() ?? new HashSet<string>();
+        served.Should().Contain(Path.GetFullPath(Path.Combine(dir, Tree["a"].File.Replace('/', Path.DirectorySeparatorChar))),
+            "the positive control of the warm view: a source module of the mixed chains is served");
+        failures.AddRange(CellFailures("warm-merged", warm.ProjectModel!, dir, cells, own, _ => warm.ProjectModel!.SemanticInfo));
+
+        _output.WriteLine($"{cells.Length} by-reference cells x 3 views");
+        failures.Should().BeEmpty("a by-reference Sharpy module is required in Python's order, by its discovered load entry");
     }
 
     [Fact]

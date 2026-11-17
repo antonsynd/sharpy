@@ -449,6 +449,14 @@ internal class CodeGenInfoComputer
         var requirements = new List<ModuleLayout>();
         foreach (var requirement in facts.GetImportChain(statement) ?? Array.Empty<ImportRequirement>())
         {
+            // A Sharpy module imported by reference (D10): its discovered load entry's CLR class and flag.
+            if (requirement.LoadEntry is { } entry)
+            {
+                if (entry.HasSweep)
+                    _anyImportHasSweep = true;
+                requirements.Add(ModuleLayout.ByReference(entry.MembersClassFullName, entry.HasSweep));
+                continue;
+            }
             if (ImportedModuleLayout(requirement.FilePath, null, null, isNetModule: false) is not { } layout)
                 continue;
             var hasSweep = ImportedStaticFacts.RequiredSweep(facts, requirement, _deferredCycleFiles);
