@@ -529,8 +529,24 @@ def test_no_code_path_and_other_bases_are_not_required() -> None:
         )
 
 
+class VersionOnlyGit(mod.Git):
+    """Every manifest's diff is a one-line version bump (the content table below uses real git)."""
+
+    def manifest_diff(self, base: str, head: str, paths) -> str:
+        return "".join(
+            f"diff --git a/{p} b/{p}\nindex 1..2 100644\n--- a/{p}\n+++ b/{p}\n@@ -1 +1 @@\n"
+            + (
+                '-    "resolved": "1.0.0",\n+    "resolved": "1.1.0",\n'
+                if p.endswith(".json")
+                else '-<PackageReference Include="A" Version="1.0.0" />\n'
+                '+<PackageReference Include="A" Version="1.1.0" />\n'
+            )
+            for p in paths
+        )
+
+
 def test_dependabot_manifest_only_pr_is_not_required() -> None:
-    g, bot = mod.Git(), "dependabot[bot]"
+    g, bot = VersionOnlyGit(), "dependabot[bot]"
     paths = ["src/Sharpy.Core/Sharpy.Core.csproj", "Directory.Packages.props", "src/x/packages.lock.json"]
     for outside in (".github/x.csproj", "build_tools/x.csproj"):
         assert mod.judge("", paths + [outside], "h", "b", g, author=bot).verdict == mod.MISSING
@@ -545,7 +561,7 @@ def test_dependabot_manifest_only_pr_is_not_required() -> None:
 
 
 def test_main_passes_the_author_to_the_judge(monkeypatch, capsys) -> None:
-    class Fake(mod.Git):
+    class Fake(VersionOnlyGit):
         def changed_paths(self, base: str, head: str) -> List[str]:
             return ["src/Sharpy.Core/Sharpy.Core.csproj"]
 
@@ -934,3 +950,174 @@ def test_a_comment_closed_on_its_line_is_removed_mid_line() -> None:
     # And a comment opened at the start of a line and closed later hides only its contents.
     # (Each hidden line stays as an empty string, so line positions are kept.)
     assert mod.visible_lines("<!-- x\ny\nz --> w\nv") == ["", "", " w", "v"]
+
+
+# --- The Dependabot exemption's content check (owner ruling 2026-11-17) --------------------------
+# "make the review-line exemption require every changed line to be a version attribute": the table
+# is {author} x {diff kind}, built on a scratch repository and judged through real `git diff`.
+
+CSPROJ = """<Project Sdk="Microsoft.NET.Sdk">
+  <Sdk Name="Some.Sdk" Version="1.0.0" />
+  <PropertyGroup>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="Foo" Version="1.0.0" />
+    <PackageReference Include="Bar" Version="2.0.0">
+      <PrivateAssets>all</PrivateAssets>
+    </PackageReference>
+  </ItemGroup>
+</Project>
+"""
+PROPS = """<Project>
+  <ItemGroup>
+    <PackageVersion Include="Baz" Version="3.0.0" />
+  </ItemGroup>
+</Project>
+"""
+LOCK = """{
+  "version": 1,
+  "dependencies": {
+    "net10.0": {
+      "Foo": {
+        "type": "Direct",
+        "requested": "[1.0.0, )",
+        "resolved": "1.0.0",
+        "contentHash": "AAAA+/==",
+        "dependencies": {
+          "Qux": "4.0.0"
+        }
+      }
+    }
+  }
+}
+"""
+PJ, PP, LK = "src/A/A.csproj", "src/Directory.Packages.props", "src/A/packages.lock.json"
+FOO_BUMP = ('Include="Foo" Version="1.0.0"', 'Include="Foo" Version="1.1.0"')
+
+
+# kind -> list of (path, ((old, new), ...)) edits, or a callable(repo) for the odd ones.
+KINDS = {
+    "csproj version only": [(PJ, (FOO_BUMP, ('Include="Bar" Version="2.0.0"', 'Include="Bar" Version="2.1.0"')))],
+    "props version only": [(PP, (('Version="3.0.0"', 'Version="3.1.0"'),))],
+    "lock file only": [
+        (
+            LK,
+            (
+                ('"[1.0.0, )"', '"[1.1.0, )"'),
+                ('"resolved": "1.0.0"', '"resolved": "1.1.0"'),
+                ('"AAAA+/=="', '"BBBB+/=="'),
+                ('"Qux": "4.0.0"', '"Qux": "4.1.0"'),
+            ),
+        )
+    ],
+    "csproj with a Target added": [
+        (
+            PJ,
+            (
+                FOO_BUMP,
+                (
+                    "</Project>",
+                    '  <Target Name="x" BeforeTargets="Build"><Exec Command="echo hi" /></Target>\n</Project>',
+                ),
+            ),
+        )
+    ],
+    "version bump plus a property change": [
+        (PJ, (FOO_BUMP, ("<Nullable>enable</Nullable>", "<Nullable>disable</Nullable>")))
+    ],
+    "an Sdk element's Version changed": [(PJ, (('Version="1.0.0" />\n  <Prop', 'Version="6.6.6" />\n  <Prop'),))],
+    "a Version that MSBuild evaluates": [
+        (PJ, (('Include="Foo" Version="1.0.0"', "Include=\"Foo\" Version=\"$([System.IO.File]::ReadAllText('x'))\""),))
+    ],
+    "a new package": [
+        (PJ, (('    <PackageReference Include="Foo"', '    <PackageReference Include="Evil" Version="1.0.0" />\n    <PackageReference Include="Foo"'),))
+    ],
+    "a package swapped": [(PJ, (('Include="Foo" Version="1.0.0"', 'Include="Evil" Version="1.1.0"'),))],
+    "a lock-file type changed": [(LK, (('"type": "Direct"', '"type": "Transitive"'),))],
+    "a manifest added": "add",
+    "a binary manifest (no patch)": "binary",
+    "a .cs file too": [(PJ, (FOO_BUMP,)), ("src/A/a.cs", (("class A {}", "class A { int x; }"),))],
+}
+EXEMPT_KINDS = {"csproj version only", "props version only", "lock file only"}
+AUTHORS = ["dependabot[bot]", "dependabot", "someone", None]
+
+
+@pytest.fixture(scope="module")
+def manifests(tmp_path_factory) -> Dict[str, str]:
+    r = tmp_path_factory.mktemp("manifests") / "repo"
+    r.mkdir()
+    git(r, "init", "-q", "-b", "dev")
+    git(r, "config", "user.email", "t@example.invalid")
+    git(r, "config", "user.name", "t")
+    git(r, "config", "commit.gpgsign", "false")
+    for path, text in ((PJ, CSPROJ), (PP, PROPS), (LK, LOCK), ("src/A/a.cs", "class A {}")):
+        (r / path).parent.mkdir(parents=True, exist_ok=True)
+        (r / path).write_text(text)
+    git(r, "add", "-A")
+    git(r, "commit", "-q", "-m", "base")
+    s = {"repo": str(r), "base": git(r, "rev-parse", "HEAD")}
+    for i, (kind, edits) in enumerate(KINDS.items()):
+        git(r, "switch", "-q", "-c", f"k{i}", s["base"])
+        if edits == "add":
+            (r / "src/B").mkdir(exist_ok=True)
+            (r / "src/B/B.csproj").write_text(
+                '<Project>\n<PackageReference Include="Foo" Version="1.0.0" />\n</Project>\n'
+            )
+        elif edits == "binary":
+            (r / PJ).write_bytes(CSPROJ.replace("1.0.0", "1.1.0").encode() + b"\0")
+        else:
+            for path, pairs in edits:
+                text = (r / path).read_text()
+                for old, new in pairs:
+                    assert old in text, (kind, old)
+                    text = text.replace(old, new, 1)
+                (r / path).write_text(text)
+        git(r, "add", "-A")
+        git(r, "commit", "-q", "-m", kind)
+        s[kind] = git(r, "rev-parse", "HEAD")
+    return s
+
+
+@pytest.mark.parametrize("author", AUTHORS)
+@pytest.mark.parametrize("kind", list(KINDS))
+def test_dependabot_exemption_content_table(manifests, kind: str, author) -> None:
+    g = mod.Git(manifests["repo"])
+    base, head = manifests["base"], manifests[kind]
+    result = mod.judge("", g.changed_paths(base, head), head, base, g, author=author)
+    want = mod.NOT_REQUIRED if author == "dependabot[bot]" and kind in EXEMPT_KINDS else mod.MISSING
+    assert result.verdict == want, result.detail
+    # Every refused manifest-only kind is refused by the content check, not by something else.
+    content_refused = author == "dependabot[bot]" and kind not in EXEMPT_KINDS | {"a .cs file too"}
+    assert ("exemption not taken" in result.detail) is content_refused, result.detail
+
+
+@pytest.mark.parametrize(
+    "diff",
+    [
+        "",  # no patch at all
+        "diff --git a/src/A/A.csproj b/src/A/A.csproj\nindex 1..2 100644\n",  # header, no hunk
+        "diff --git a/src/A/A.csproj b/src/A/A.csproj\n--- a/src/A/A.csproj\n+++ b/src/A/A.csproj\n",
+    ],
+)
+def test_a_missing_or_truncated_patch_is_not_version_only(diff: str) -> None:
+    assert mod.version_only(diff, ["src/A/A.csproj"]) is not None
+
+
+def test_version_only_positive_control() -> None:
+    diff = (
+        "diff --git a/src/A/A.csproj b/src/A/A.csproj\nindex 1..2 100644\n"
+        "--- a/src/A/A.csproj\n+++ b/src/A/A.csproj\n@@ -7 +7 @@\n"
+        '-    <PackageReference Include="Foo" Version="1.0.0" />\n'
+        '+    <PackageReference Include="Foo" Version="1.1.0" />\n'
+    )
+    assert mod.version_only(diff, ["src/A/A.csproj"]) is None
+    # One manifest of two without a patch is enough to lose the exemption.
+    assert mod.version_only(diff, ["src/A/A.csproj", "src/B/B.csproj"]) is not None
+
+
+def test_the_missing_verdict_names_why_the_exemption_was_not_taken(manifests) -> None:
+    g = mod.Git(manifests["repo"])
+    base, head = manifests["base"], manifests["csproj with a Target added"]
+    result = mod.judge("", g.changed_paths(base, head), head, base, g, author="dependabot[bot]")
+    assert "exemption not taken" in result.detail and "<Target" in result.detail, result.detail

@@ -38,10 +38,13 @@ branch gets the rebase hint; every one of them fails the check):
                  path is a code path (a sync of `mainline` into `dev` changes none). README item 6
                  names no exemption for a head named `dev`; the only bot exemption (owner,
                  2026-11-17) is `--author dependabot[bot]` with every changed code path a package
-                 manifest under `src/` (`*.csproj`, `packages.lock.json`; the root
-                 `Directory.Packages.props` is no code path). Residual risk, accepted: a `.csproj`
-                 can hold MSBuild logic, and a writer with push access to a `dependabot/*` branch
-                 keeps the PR's author, so the exemption trusts that branch protection;
+                 manifest under `src/` (`*.csproj`, `Directory.Packages.props`,
+                 `packages.lock.json`) modified in place, and every removed and added line of its
+                 diff a version change (version_only): a `<PackageReference>`/`<PackageVersion>`
+                 tag whose pair differs only in `Version="..."`, or a lock-file `resolved`,
+                 `requested`, `contentHash` or `"<package>": "<version>"` line whose pair differs
+                 only in the value. Anything else (an added or binary file, no patch, a `<Target>`,
+                 a property, a new package) needs the line;
   missing        no line counts;
   malformed      the last counted line does not parse;
   sha not an ancestor of head
@@ -108,11 +111,25 @@ CODE_PREFIXES = (
 RULE_BASE = "dev"
 # Owner ruling (2026-11-17): a dependency bump opened by Dependabot needs no review line. The author
 # login is set by GitHub and cannot be chosen by a PR (a branch name can), and the exemption holds
-# only while every changed code path is a package manifest, so a bot PR that also edits source,
-# scripts or workflows still needs the line.
+# only while every changed code path is a package manifest whose diff changes versions and nothing
+# else (version_only), so a bot PR that also edits source, scripts, workflows or MSBuild logic still
+# needs the line.
 DEPENDENCY_BOT = "dependabot[bot]"
 MANIFEST_NAMES = ("Directory.Packages.props", "packages.lock.json")
 MANIFEST_SUFFIXES = (".csproj",)
+# A version change in an MSBuild manifest: one PackageReference/PackageVersion tag on the line, in
+# attribute form (`/>`, or `>` opening an element whose unchanged children stay context).
+VERSION_TAG = re.compile(
+    r'\s*<(?:PackageReference|PackageVersion)\s[^<>]*?\sVersion="[^"]*"[^<>]*?/?>\s*'
+)
+VERSION_VALUE = re.compile(r'(\sVersion=")[^"]*(")')
+VERSION_VALUE_TEXT = re.compile(r'\sVersion="([^"]*)"')
+# A lock-file line `"<key>": "<value>",`; `resolved`/`requested`/`contentHash` take any value, any
+# other key (a dependency's name) only a version or version range on both sides.
+LOCK_LINE = re.compile(r'\s*"([^"]+)": "([^"]*)",?\s*')
+LOCK_ANY_VALUE = ("resolved", "requested", "contentHash")
+# A version or NuGet range (`1.2.3-rc.1`, `10.*`, `[1.0, )`): never `$(...)`, which MSBuild evaluates.
+VERSION = re.compile(r"[\[(]?\d[0-9A-Za-z.*+-]*(?:\s*,\s*[0-9A-Za-z.*+-]*)?[\])]?")
 
 NOT_REQUIRED = "not required"
 OK = "ok"
@@ -169,6 +186,71 @@ def is_manifest_path(path: str) -> bool:
     return path.startswith("src/") and (
         path.endswith(MANIFEST_SUFFIXES) or path.rsplit("/", 1)[-1] in MANIFEST_NAMES
     )
+
+
+def _version_key(path: str, line: str) -> Optional[str]:
+    """What a changed manifest line must equal on the other side of its pair (the line with its
+    version value blanked), or None when the line is no version change."""
+    if path.endswith("packages.lock.json"):
+        m = LOCK_LINE.fullmatch(line)
+        if not m or (
+            m.group(1) not in LOCK_ANY_VALUE and not VERSION.fullmatch(m.group(2))
+        ):
+            return None
+        return line[: m.start(2)] + line[m.end(2) :]
+    if not VERSION_TAG.fullmatch(line) or not all(
+        VERSION.fullmatch(v) for v in VERSION_VALUE_TEXT.findall(line)
+    ):
+        return None
+    return VERSION_VALUE.sub(r"\1\2", line)
+
+
+def version_only(diff: str, paths: Sequence[str]) -> Optional[str]:
+    """None when `diff` (`git diff -U0` of `paths`) changes nothing but versions in every one of
+    `paths`, each modified in place; else why not. No patch for a path is a reason."""
+    changes: dict = {}
+    path = None
+    in_hunk = False
+    for line in diff.splitlines():
+        if line.startswith("diff --git "):
+            rest = line[len("diff --git a/") :]
+            half = (len(rest) - 3) // 2
+            path = rest[:half] if rest == rest[:half] + " b/" + rest[:half] else None
+            if path is None or path in changes:
+                return f"unreadable diff header: {line[:120]}"
+            changes[path], in_hunk = ([], []), False
+        elif path is None:
+            return f"diff text before a header: {line[:120]}"
+        elif line.startswith("@@"):
+            in_hunk = True
+        elif not in_hunk:
+            # Extended headers: only the index line and the two file names are a modification.
+            if not line.startswith(("index ", "--- a/", "+++ b/")):
+                return f"{path}: {line.strip()[:120]}"
+        elif line.startswith("-"):
+            changes[path][0].append(line[1:])
+        elif line.startswith("+"):
+            changes[path][1].append(line[1:])
+        elif not line.startswith("\\"):
+            return f"{path}: unexpected diff line: {line[:120]}"
+    for p in paths:
+        if p not in changes or not (changes[p][0] or changes[p][1]):
+            return f"{p}: no patch"
+    for p, (removed, added) in changes.items():
+        if p not in paths:
+            return f"{p}: not a changed manifest"
+        keys = []
+        for side in (removed, added):
+            side_keys = []
+            for text in side:
+                key = _version_key(p, text)
+                if key is None:
+                    return f"{p}: not a version change: {text.strip()[:120]}"
+                side_keys.append(key)
+            keys.append(sorted(side_keys))
+        if keys[0] != keys[1]:
+            return f"{p}: removed and added lines differ in more than a version"
+    return None
 
 
 def strip_comments(line: str, in_comment: bool) -> tuple:
@@ -331,6 +413,25 @@ class Git:
                 out.append(sha)
         return out
 
+    def manifest_diff(self, base: str, head: str, paths: Sequence[str]) -> str:
+        """`git diff -U0 base...head` of `paths`, the same comparison as changed_paths."""
+        r = self._run(
+            "diff",
+            "--no-renames",
+            "--no-color",
+            "--no-ext-diff",
+            "--no-textconv",
+            "--src-prefix=a/",
+            "--dst-prefix=b/",
+            "-U0",
+            f"{base}...{head}",
+            "--",
+            *paths,
+        )
+        if r.returncode != 0:
+            raise RuntimeError(r.stderr.strip() or "git diff failed")
+        return r.stdout
+
     def changed_paths(self, base: str, head: str) -> List[str]:
         r = self._run("diff", "--no-renames", "--name-only", f"{base}...{head}")
         if r.returncode != 0:
@@ -358,18 +459,22 @@ def judge(
             NOT_REQUIRED, f"no changed path is a code path ({len(paths)} changed)"
         )
 
+    not_exempt = ""
     if author == DEPENDENCY_BOT and all(is_manifest_path(p) for p in code):
-        return Result(
-            NOT_REQUIRED,
-            f"{DEPENDENCY_BOT} changed only package manifests ({len(code)} code path(s))",
-        )
+        why = version_only(git.manifest_diff(base, head, code), code)
+        if why is None:
+            return Result(
+                NOT_REQUIRED,
+                f"{DEPENDENCY_BOT} changed only package versions ({len(code)} manifest(s))",
+            )
+        not_exempt = f" ({DEPENDENCY_BOT} exemption not taken: {why})"
 
     parsed = parse_body(body)
     if not parsed.lines:
         return Result(
             MISSING,
             f"{len(code)} code path(s) changed (e.g. {code[0]}) and no line starts with `Independent review @`"
-            " outside code, quotes and comments",
+            " outside code, quotes and comments" + not_exempt,
         )
     if not parsed.last_line_parses:
         return Result(
