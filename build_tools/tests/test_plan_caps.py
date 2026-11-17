@@ -160,6 +160,13 @@ def test_pass_count_on_committed_plans(name, passes):
     assert cpr.verify_passes((PLANS / name).read_text(encoding="utf-8")) == passes
 
 
+def test_converged_log_entry_without_revised_is_not_a_pass():
+    # mutation record: the CONVERGED alternative without "revised" -> red (3 passes)
+    log = REVISED + "- @ abc1234 — the 2nd pass (CONVERGED): deferred findings resolved\n"
+    assert cpr.verify_passes(_plan(log=log)) == 2
+    assert cpr.cap_violations("plan-new001.md", _plan(log=log)) == []
+
+
 def test_repository_plans_within_caps():
     """The guard itself: every committed plan is within the caps or its frozen grandfathered values."""
     problems = cpr.check_all_caps(REPO)

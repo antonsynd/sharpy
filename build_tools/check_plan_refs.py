@@ -332,14 +332,15 @@ STAMP_ROUND_RE = re.compile(
 )
 # A revision-log entry that records a revised pass, as the revising session writes it
 # (`/verify-plan` skill: "naming the pass's sha, its result and dimension as
-# (NEEDS REVISION, Dimension N)", or (CONVERGED) when an owner ruling revises a converged plan): a
-# bullet or bold line that opens with an optional date and `@ <sha>`, then the verdict in parentheses
-# with no other parenthesis before it. Spellings in the committed plans:
+# (NEEDS REVISION, Dimension N)"): a bullet or bold line that opens with an optional date and
+# `@ <sha>`, then the verdict in parentheses with no other parenthesis before it; a `(CONVERGED`
+# verdict counts only after the word "revised" (an owner ruling revised a converged plan,
+# plan-4e2867). Spellings in the committed plans:
 # `- @ bb6c693ce — revised after the 1st pass (NEEDS REVISION, Dimension 6): …`,
 # `- 2026-11-07 @ c61599c63, pass 1: \`(NEEDS REVISION, Dimension 6)\` …`,
 # `**2026-11-03 @ 89fba5eec — after verify round 1 (NEEDS REVISION / CELL), by the plan author:**`.
 FAILED_PASS_ENTRY_RE = re.compile(
-    r"^(?:[-*] |\*\*)(?:\d{4}-\d{2}-\d{2} )?@ [0-9a-f]{7,40}\b[^()\n]*?`?\((?:NEEDS REVISION|CONVERGED)\b"
+    r"^(?:[-*] |\*\*)(?:\d{4}-\d{2}-\d{2} )?@ [0-9a-f]{7,40}\b(?:[^()\n]*?`?\(NEEDS REVISION\b|[^()\n]*?revised[^()\n]*`?\(CONVERGED\b)"
 )
 EXTRA_PASS_RE = re.compile(
     r"^\W*Extra verify pass (\d+):\s*owner,? \d{4}-\d{2}-\d{2},? [\"“].+[\"”]",
