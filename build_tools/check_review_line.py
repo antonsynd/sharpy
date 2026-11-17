@@ -42,11 +42,13 @@ branch gets the rebase hint; every one of them fails the check):
                  `packages.lock.json`) modified in place, and every hunk of its diff a version
                  change (version_only): as many removed as added lines, the i-th removed paired
                  with the i-th added, each pair identical but for a different version value, in
-                 a `<PackageReference>`/`<PackageVersion>` tag's `Version="..."` (a concrete
-                 version on both sides, never a float or range) or a lock-file `resolved`,
-                 `requested`, `contentHash` or `"<package>": "<version>"` value. Anything else
-                 (an added or binary file, no patch, a moved line, a `<Target>`, a property, a
-                 new package, a line holding a line separator other than `\n`) needs the line;
+                 the `Version` attribute of a `<PackageReference>`/`<PackageVersion>` tag that
+                 parses as a strict attribute sequence (a concrete version on both sides, never a
+                 float or range) or a lock-file `resolved`, `requested`, `contentHash` or
+                 `"<package>": "<version>"` value. The diff is read as bytes and decoded as UTF-8
+                 with no newline translation. Anything else (an added or binary file, no patch,
+                 a moved line, a `<Target>`, a property, a new package, a line holding a line
+                 separator other than `\n`, a diff that is not UTF-8) needs the line;
   missing        no line counts;
   malformed      the last counted line does not parse;
   sha not an ancestor of head
@@ -120,12 +122,14 @@ DEPENDENCY_BOT = "dependabot[bot]"
 MANIFEST_NAMES = ("Directory.Packages.props", "packages.lock.json")
 MANIFEST_SUFFIXES = (".csproj",)
 # A version change in an MSBuild manifest: one PackageReference/PackageVersion tag on the line, in
-# attribute form (`/>`, or `>` opening an element whose unchanged children stay context).
+# attribute form (`/>`, or `>` opening an element whose unchanged children stay context), its
+# attributes a strict `name="value"` / `name='value'` sequence, so a `Version="..."` inside another
+# attribute's value is text, not the attribute.
 VERSION_TAG = re.compile(
-    r'\s*<(?:PackageReference|PackageVersion)\s[^<>]*?\sVersion="[^"]*"[^<>]*?/?>\s*'
+    r"\s*<(?:PackageReference|PackageVersion)"
+    r"((?:\s+[\w.:-]+\s*=\s*(?:\"[^\"]*\"|'[^']*'))*)\s*/?>\s*"
 )
-VERSION_VALUE = re.compile(r'(\sVersion=")[^"]*(")')
-VERSION_VALUE_TEXT = re.compile(r'\sVersion="([^"]*)"')
+TAG_ATTR = re.compile(r"\s+([\w.:-]+)\s*=\s*(?:\"([^\"]*)\"|'([^']*)')")
 # A lock-file line `"<key>": "<value>",`; `resolved`/`requested`/`contentHash` take any value, any
 # other key (a dependency's name) only a version or version range on both sides.
 LOCK_LINE = re.compile(r'\s*"([^"]+)": "([^"]*)",?\s*')
@@ -208,17 +212,31 @@ def _version_key(path: str, line: str) -> Optional[tuple]:
         ):
             return None
         return line[: m.start(2)] + line[m.end(2) :], (m.group(2),)
-    values = tuple(VERSION_VALUE_TEXT.findall(line))
-    if not VERSION_TAG.fullmatch(line) or not all(
-        CONCRETE_VERSION.fullmatch(v) for v in values
-    ):
+    m = VERSION_TAG.fullmatch(line)
+    if not m:
         return None
-    return VERSION_VALUE.sub(r"\1\2", line), values
+    attrs = [a for a in TAG_ATTR.finditer(line, m.start(1), m.end(1)) if a.group(1) == "Version"]
+    if len(attrs) != 1:
+        return None
+    group = 2 if attrs[0].group(2) is not None else 3
+    value = attrs[0].group(group)
+    if not CONCRETE_VERSION.fullmatch(value):
+        return None
+    return line[: attrs[0].start(group)] + line[attrs[0].end(group) :], (value,)
 
 
-def version_only(diff: str, paths: Sequence[str]) -> Optional[str]:
-    """None when `diff` (`git diff -U0` of `paths`) changes nothing but versions in every one of
-    `paths`, each modified in place; else why not. No patch for a path is a reason."""
+NO_NEWLINE = "\\ No newline at end of file"
+
+
+def version_only(diff, paths: Sequence[str]) -> Optional[str]:
+    """None when `diff` (`git diff -U0` of `paths`, bytes or str) changes nothing but versions in
+    every one of `paths`, each modified in place; else why not. No patch for a path is a reason, and
+    so is a diff that is not UTF-8."""
+    if isinstance(diff, bytes):
+        try:
+            diff = diff.decode("utf-8")
+        except UnicodeDecodeError as exc:
+            return f"the manifest diff is not UTF-8 ({exc.reason} at byte {exc.start})"
     changes: dict = {}  # path -> [(removed lines, added lines)], one entry per hunk
     path = None
     in_hunk = False
@@ -247,7 +265,7 @@ def version_only(diff: str, paths: Sequence[str]) -> Optional[str]:
             changes[path][-1][0].append(line[1:])
         elif line.startswith("+"):
             changes[path][-1][1].append(line[1:])
-        elif not line.startswith("\\"):
+        elif line != NO_NEWLINE:
             return f"{path}: unexpected diff line: {line[:120]}"
     for p in paths:
         if p not in changes or not any(r or a for r, a in changes[p]):
@@ -434,23 +452,31 @@ class Git:
                 out.append(sha)
         return out
 
-    def manifest_diff(self, base: str, head: str, paths: Sequence[str]) -> str:
-        """`git diff -U0 base...head` of `paths`, the same comparison as changed_paths."""
-        r = self._run(
-            "diff",
-            "--no-renames",
-            "--no-color",
-            "--no-ext-diff",
-            "--no-textconv",
-            "--src-prefix=a/",
-            "--dst-prefix=b/",
-            "-U0",
-            f"{base}...{head}",
-            "--",
-            *paths,
+    def manifest_diff(self, base: str, head: str, paths: Sequence[str]) -> bytes:
+        """`git diff -U0 base...head` of `paths`, the same comparison as changed_paths, as bytes:
+        text mode would turn a lone `\r` into `\n` and fail on bytes that are not UTF-8."""
+        r = subprocess.run(
+            [
+                "git",
+                "diff",
+                "--no-renames",
+                "--no-color",
+                "--no-ext-diff",
+                "--no-textconv",
+                "--src-prefix=a/",
+                "--dst-prefix=b/",
+                "-U0",
+                f"{base}...{head}",
+                "--",
+                *paths,
+            ],
+            capture_output=True,
+            cwd=self.cwd,
+            check=False,
         )
         if r.returncode != 0:
-            raise RuntimeError(r.stderr.strip() or "git diff failed")
+            message = r.stderr.decode("utf-8", "replace").strip()
+            raise RuntimeError(message or "git diff failed")
         return r.stdout
 
     def changed_paths(self, base: str, head: str) -> List[str]:

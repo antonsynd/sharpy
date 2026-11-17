@@ -13,8 +13,9 @@ remote-tracking `origin/dev` or `origin/mainline` (a promotion or sync PR carrie
 run judged). A git author is free text; the login is GitHub's. Residual: a push run has no login,
 so there the shape and email decide; both branches take only PRs, so it re-reads commits a PR run
 judged. A fourth kind is exempt because it predates the gate: any commit reachable from the
-commit that introduced this script (GATE_COMMIT, 2026-11-07) was written when the figure was advice, so a range that reaches back past it — the dev → mainline
-promotion PR #2522 spanned 187 commits, six of them long — is judged only on what came after.
+commit that introduced this script (GATE_COMMIT, 2026-11-07) was written when the figure was
+advice, so a range that reaches back past it — the dev → mainline promotion PR #2522 spanned 187
+commits, six of them long — is judged only on what came after.
 Override the grandfather line with `--grandfather <sha>` (or `--grandfather none`).
 
 Usage:

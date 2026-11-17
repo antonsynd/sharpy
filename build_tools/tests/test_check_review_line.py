@@ -982,6 +982,7 @@ CSPROJ = """<Project Sdk="Microsoft.NET.Sdk">
     <PackageReference Include="F2" Version="[1.0,)" />
     <PackageReference Include="F3" Version="(,2.0]" />
     <PackageReference Include="F4" Version="*" />
+    <PackageReference Include="Cond" Version="1.0.0" Condition='x Version="1.0.0" y' />
   </ItemGroup>
   <ItemGroup Condition="'$(TargetFramework)' == 'netstandard2.1'">
     <Compile Remove="Tarfile/**" />
@@ -1011,6 +1012,8 @@ LOCK = """{
   }
 }
 """
+CRLF_PJ = "src/C/C.csproj"
+CRLF_CSPROJ = '<Project>\r\n  <ItemGroup>\r\n    <PackageReference Include="Foo" Version="1.0.0" />\r\n  </ItemGroup>\r\n</Project>\r\n'
 PJ, PP, LK = (
     "src/A/A.csproj",
     "src/Directory.Packages.props",
@@ -1132,7 +1135,35 @@ KINDS["U+2028 after a version tag"] = [
         ),
     )
 ]
-EXEMPT_KINDS = {"csproj version only", "props version only", "lock file only"}
+# Second review of PR #2726 @ df64f7aa6, all through real git and Git.manifest_diff:
+# a lone CR inside an added line (text-mode subprocess turned it into a line end, hiding the rest),
+KINDS["a lone CR inside an added line"] = [
+    (PJ, ((FOO_BUMP[0] + " />", FOO_BUMP[1] + ' />\r\\ <Target Name="E"/>'),))
+]
+# and the reviewer's second shape, a lone CR then text a line-splitting reader takes as a hunk header,
+KINDS["a lone CR then a hunk header inside an added line"] = [
+    (PJ, ((FOO_BUMP[0] + " />", FOO_BUMP[1] + ' />\r@@ <Target Name="E"/>'),))
+]
+# bytes that are not UTF-8 (a traceback before; now the exemption is not taken),
+KINDS["a byte that is not UTF-8"] = [
+    (PJ, (FOO_BUMP, ('Include="Bar" Version="2.0.0"', 'Include="B\udcffr" Version="2.0.0"')))
+]
+# a `Version="..."` inside another attribute's value (text, not the Version attribute),
+KINDS["a Version inside another attribute's value"] = [
+    (PJ, (("Condition='x Version=\"1.0.0\" y'", "Condition='x Version=\"9.0.0\" y'"),))
+]
+# and their positive controls: a CRLF file's bump, and the real Version beside that attribute.
+KINDS["a CRLF csproj version only"] = [(CRLF_PJ, (FOO_BUMP,))]
+KINDS["a tag with a quoted Version text, real Version bumped"] = [
+    (PJ, (('Include="Cond" Version="1.0.0"', 'Include="Cond" Version="1.1.0"'),))
+]
+EXEMPT_KINDS = {
+    "csproj version only",
+    "props version only",
+    "lock file only",
+    "a CRLF csproj version only",
+    "a tag with a quoted Version text, real Version bumped",
+}
 AUTHORS = ["dependabot[bot]", "dependabot", "someone", None]
 
 
@@ -1144,14 +1175,16 @@ def manifests(tmp_path_factory) -> Dict[str, str]:
     git(r, "config", "user.email", "t@example.invalid")
     git(r, "config", "user.name", "t")
     git(r, "config", "commit.gpgsign", "false")
+    git(r, "config", "core.autocrlf", "false")
     for path, text in (
         (PJ, CSPROJ),
         (PP, PROPS),
         (LK, LOCK),
         ("src/A/a.cs", "class A {}"),
+        (CRLF_PJ, CRLF_CSPROJ),
     ):
         (r / path).parent.mkdir(parents=True, exist_ok=True)
-        (r / path).write_text(text)
+        (r / path).write_bytes(text.encode("utf-8"))
     git(r, "add", "-A")
     git(r, "commit", "-q", "-m", "base")
     s = {"repo": str(r), "base": git(r, "rev-parse", "HEAD")}
@@ -1166,11 +1199,12 @@ def manifests(tmp_path_factory) -> Dict[str, str]:
             (r / PJ).write_bytes(CSPROJ.replace("1.0.0", "1.1.0").encode() + b"\0")
         else:
             for path, pairs in edits:
-                text = (r / path).read_text()
+                # Bytes in and out: no newline translation; a lone surrogate writes a raw byte.
+                text = (r / path).read_bytes().decode("utf-8", "surrogateescape")
                 for old, new in pairs:
                     assert old in text, (kind, old)
                     text = text.replace(old, new, 1)
-                (r / path).write_text(text)
+                (r / path).write_bytes(text.encode("utf-8", "surrogateescape"))
         git(r, "add", "-A")
         git(r, "commit", "-q", "-m", kind)
         s[kind] = git(r, "rev-parse", "HEAD")
@@ -1519,3 +1553,36 @@ def test_a_real_pair_reordered_inside_its_hunk_is_not_version_only() -> None:
     # #2707's two-line hunk with its added lines swapped: the same multiset, a different pairing.
     path, removed, added = REAL_DEPENDABOT[2707][0]
     assert mod.version_only(_diff([(path, removed, added[::-1])]), [path]) is not None
+
+
+def test_the_lone_cr_reaches_git_and_the_check_as_one_line(manifests) -> None:
+    # The CR case above is only meaningful if git keeps it inside one diff line and the check reads
+    # it; this is the positive control that the scratch commit holds a raw CR mid-line.
+    g = mod.Git(manifests["repo"])
+    head = manifests["a lone CR inside an added line"]
+    raw = g.manifest_diff(manifests["base"], head, [PJ])
+    assert b'/>\r\\ <Target Name="E"/>\n' in raw
+    assert "not a version change" in (mod.version_only(raw, [PJ]) or "")
+
+
+def test_a_diff_that_is_not_utf8_is_a_reason_not_a_crash() -> None:
+    diff = (CSPROJ_DIFF + "-" + TAG.format("1.0.0") + "\n+").encode() + b"\xff\n"
+    assert "not UTF-8" in (mod.version_only(diff, ["src/A/A.csproj"]) or "")
+
+
+def test_the_non_utf8_kind_is_refused_for_its_encoding(manifests) -> None:
+    g = mod.Git(manifests["repo"])
+    base, head = manifests["base"], manifests["a byte that is not UTF-8"]
+    result = mod.judge(
+        "", g.changed_paths(base, head), head, base, g, author="dependabot[bot]"
+    )
+    assert result.verdict == mod.MISSING and "not UTF-8" in result.detail, result.detail
+
+
+def test_only_the_no_newline_marker_is_skipped() -> None:
+    # A hunk line starting with a backslash is git's marker only when it is exactly that text.
+    pair = "-" + TAG.format("1.0.0") + "\n+" + TAG.format("1.1.0") + "\n"
+    marker = "\\ No newline at end of file\n"
+    assert mod.version_only(CSPROJ_DIFF + pair + marker, ["src/A/A.csproj"]) is None
+    other = '\\ <Target Name="E"/>\n'
+    assert mod.version_only(CSPROJ_DIFF + pair + other, ["src/A/A.csproj"]) is not None
