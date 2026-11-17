@@ -2,7 +2,7 @@
 """Gate: every commit subject in a range is at most 72 characters (W3.4, owner ruling D5 of 2026-11-07).
 
 The figure is the `/commit` skill's ("Keep the first line under 72 characters"); this script is what
-makes it a gate instead of advice. Two kinds of subject are exempt because another tool writes them
+makes it a gate instead of advice. Some subjects are exempt because another tool writes them
 and quotes text the author did not choose: a merge commit (more than one parent — GitHub's
 "Merge pull request #N from owner/branch" runs past 72 on a long branch name) and a `Revert "..."`
 commit (it quotes the reverted subject verbatim). A third kind is a commit authored by Dependabot

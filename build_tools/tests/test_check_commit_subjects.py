@@ -276,3 +276,24 @@ def test_range_with_a_long_dependabot_commit_exits_0_but_a_human_one_exits_1(rep
     # Control: the same subject from a human on top is still red.
     _commit(repo, subject)
     assert run().returncode == 1
+
+
+def test_a_human_author_with_a_dependabot_committer_is_still_judged(repo):
+    base = _git(repo, "rev-parse", "HEAD").strip()
+    (repo / "f").write_text("x\n")
+    _git(
+        repo,
+        "commit",
+        "-q",
+        "-am",
+        "chore: Bump " + "p" * 80,
+        env={"GIT_COMMITTER_EMAIL": mod.DEPENDABOT_EMAIL},
+    )
+    result = subprocess.run(
+        [sys.executable, mod.__file__, f"{base}..HEAD"],
+        cwd=repo,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    assert result.returncode == 1, result.stdout + result.stderr
