@@ -58,3 +58,26 @@ updates:
     commit-message:
       prefix: "chore"
       include: "scope"
+
+  # VS Code extension (npm). Without this entry no bump is proposed for editors/vscode, e.g. the
+  # vscode-languageclient release that accepts minimatch 11 (GHSA-g3hv-75wg-m249, alert 78).
+  - package-ecosystem: "npm"
+    directory: "/editors/vscode"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "02:00"
+      timezone: "America/New_York"
+    target-branch: "dev"
+    labels: ["dependencies", "javascript"]
+    open-pull-requests-limit: 5
+    # @types/vscode must not pass engines.vscode (^1.91.0): vsce refuses to package when it does.
+    # @types/node follows the Node the workflow uses (20).
+    ignore:
+      - dependency-name: "@types/vscode"
+        update-types: ["version-update:semver-major", "version-update:semver-minor"]
+      - dependency-name: "@types/node"
+        update-types: ["version-update:semver-major"]
+    commit-message:
+      prefix: "chore"
+      include: "scope"
