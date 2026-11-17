@@ -401,6 +401,7 @@ internal class CodeGenInfoComputer
     // The ConstantPositionValidator calls ConstEligibility.LowersToConstantExpression directly.
     private void ProcessImport(ImportStatement import)
     {
+        RecordImportRequirements(import);
         foreach (var alias in import.Names)
         {
             var effectiveName = alias.AsName ?? alias.Name;
@@ -430,6 +431,32 @@ internal class CodeGenInfoComputer
                     RecordSubmoduleLayouts(rootModule, new HashSet<ModuleSymbol>(ReferenceEqualityComparer.Instance));
             }
         }
+    }
+
+    /// <summary>
+    /// Records on <paramref name="statement"/> (an <c>import</c> or <c>from … import</c>) the layout of each
+    /// Sharpy module it makes Python run, in Python's order, each with its <c>HasSweep</c> (plan-775c50 D5:
+    /// an importer requires them at the import's position). The chain is import resolution's
+    /// (<see cref="SemanticBinding.GetImportChain"/>, written by <c>ImportResolver</c>); a statement with
+    /// none — a .NET, synthetic or unresolved module — records an empty list. A module that requires
+    /// another with a sweep has a sweep itself (transitive, D2).
+    /// </summary>
+    private void RecordImportRequirements(Statement statement)
+    {
+        if (_semanticInfo == null)
+            return;
+        var facts = _importFacts ?? _semanticBinding;
+        var requirements = new List<ModuleLayout>();
+        foreach (var requirement in facts.GetImportChain(statement) ?? Array.Empty<ImportRequirement>())
+        {
+            if (ImportedModuleLayout(requirement.FilePath, null, null, isNetModule: false) is not { } layout)
+                continue;
+            var hasSweep = ImportedStaticFacts.RequiredSweep(facts, requirement, _deferredCycleFiles);
+            if (hasSweep)
+                _anyImportHasSweep = true;
+            requirements.Add(layout with { HasSweep = hasSweep });
+        }
+        _semanticInfo.SetImportRequirements(statement, requirements);
     }
 
     /// <summary>
@@ -506,6 +533,7 @@ internal class CodeGenInfoComputer
 
     private void ProcessFromImport(FromImportStatement fromImport)
     {
+        RecordImportRequirements(fromImport);
         var isNetModule = _semanticBinding.IsNetModule(fromImport.Module);
 
         // The source module's layout, on the import node (a from-import names no ModuleSymbol, #2039).

@@ -112,6 +112,13 @@ public class SemanticBinding
     // Maps FromImportStatement nodes to the source FILE their module resolved to (#1948)
     private readonly ConcurrentDictionary<FromImportStatement, string> _resolvedModuleFilePaths = new();
 
+    // Each import statement's chain (plan-775c50 D5): the Sharpy sources it makes Python run, in order,
+    // recorded by ImportResolver at resolution and read by the importer's CodeGenInfoComputer, which
+    // records the layouts on SemanticInfo (GetImportRequirements). Keyed on the ImportStatement or
+    // FromImportStatement node by identity.
+    private readonly ConcurrentDictionary<Statement, IReadOnlyList<ImportRequirement>> _importChains =
+        new(ReferenceEqualityComparer.Instance);
+
     // Maps FromImportStatement nodes to their re-exported symbols
     private readonly ConcurrentDictionary<FromImportStatement, Dictionary<string, Symbol>> _reExportedSymbols = new();
 
@@ -684,6 +691,9 @@ public class SemanticBinding
         foreach (var (stmt, symbols) in other._reExportedSymbols)
             _reExportedSymbols.TryAdd(stmt, symbols);
 
+        foreach (var (stmt, chain) in other._importChains)
+            _importChains.TryAdd(stmt, chain);
+
         foreach (var (path, hasSweep) in other._moduleHasSweep)
             _moduleHasSweep.TryAdd(path, hasSweep);
 
@@ -719,6 +729,17 @@ public class SemanticBinding
     /// </summary>
     public string? GetResolvedModuleFilePath(FromImportStatement stmt)
         => _resolvedModuleFilePaths.TryGetValue(stmt, out var path) ? path : null;
+
+    /// <summary>
+    /// Records the Sharpy sources <paramref name="statement"/> (an <c>import</c> or <c>from … import</c>)
+    /// makes Python run, in Python's order (plan-775c50 D5): written by <c>ImportResolver</c>.
+    /// </summary>
+    public void SetImportChain(Statement statement, IReadOnlyList<ImportRequirement> chain)
+        => _importChains[statement] = chain;
+
+    /// <summary>The chain <see cref="SetImportChain"/> recorded for <paramref name="statement"/>, or null.</summary>
+    public IReadOnlyList<ImportRequirement>? GetImportChain(Statement statement)
+        => _importChains.TryGetValue(statement, out var chain) ? chain : null;
 
     /// <summary>
     /// Records a module's own <c>HasSweep</c> fact (plan-775c50 D2) under its file path: written once

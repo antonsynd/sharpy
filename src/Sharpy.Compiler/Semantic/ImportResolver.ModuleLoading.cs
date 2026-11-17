@@ -27,6 +27,8 @@ internal partial class ImportResolver
         _logger.LogDebug($"Resolving import: {string.Join(", ", importStmt.Names.Select(n => n.Name))}");
 
         var result = new List<ModuleInfo?>();
+        // The Sharpy modules the statement makes Python run, in order (plan-775c50 D5).
+        var chain = new List<ImportRequirement>();
 
         foreach (var importAlias in importStmt.Names)
         {
@@ -118,6 +120,8 @@ internal partial class ImportResolver
                     _dependencyRecorder.AddDependency(_currentModulePath, modulePath);
                 }
 
+                AppendImportChain(importAlias.Name, modulePath, chain);
+
                 moduleInfo = LoadModule(modulePath, importAlias.LineStart, importAlias.ColumnStart);
 
                 // Plain imports of stub modules can't be deferred
@@ -129,6 +133,7 @@ internal partial class ImportResolver
             result.Add(moduleInfo);
         }
 
+        _semanticBinding.SetImportChain(importStmt, chain);
         return result;
     }
 
@@ -420,6 +425,7 @@ internal partial class ImportResolver
             }
 
             moduleInfo = LoadModule(resolution.FullPath, fromImport.LineStart, fromImport.ColumnStart);
+            RecordFromImportChain(fromImport, resolvedPath, resolution.FullPath, moduleInfo);
         }
         else
         {

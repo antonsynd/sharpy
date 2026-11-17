@@ -103,6 +103,19 @@ internal static class ImportedStaticFacts
     }
 
     /// <summary>
+    /// The <c>HasSweep</c> of one module an import statement requires (plan-775c50 D5): for a module the
+    /// statement imports (a dependency edge, checked first), <see cref="ImportedSweep"/>; for an ancestor
+    /// package or a from-import's submodule — a Sharpy source of this compilation that is no edge, so it
+    /// may be checked after the importer — its record, else true. The conservative arm is the lead's
+    /// T2 ruling's: every Sharpy-compiled module emits a load entry, and a load of a host already
+    /// loaded or sweeping returns at once, so a true only ever adds a call that does nothing.
+    /// </summary>
+    public static bool RequiredSweep(SemanticBinding facts, ImportRequirement requirement, IReadOnlySet<string>? deferredCycleFiles)
+        => requirement.IsImported
+            ? ImportedSweep(facts, requirement.FilePath, deferredCycleFiles)
+            : facts.GetModuleHasSweep(requirement.FilePath) ?? true;
+
+    /// <summary>
     /// The storage facts of an imported value (<paramref name="imported"/>: an export, or a from-import's
     /// bound symbol or alias clone): its declaration's <see cref="CodeGenInfo.StaticStorage"/> and
     /// generic-host flag, so an importer picks the store and sweep arms the declaring module does.

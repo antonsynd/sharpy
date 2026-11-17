@@ -303,6 +303,13 @@ public class SemanticInfo : ISemanticQuery
     // Identifier or MemberAccess that names the value); recorded by AsyncGuardedUseAnalyzer.
     private readonly ConcurrentDictionary<Expression, AsyncGuardedUse> _asyncGuardedUses = new(ReferenceEqualityComparer.Instance);
 
+    // plan-775c50 D5 (P77 T5): per import statement (`import` and `from … import`), the Sharpy modules it
+    // makes Python run, in Python's order, each with its layout and HasSweep — what an importer requires
+    // at the import's position. Which modules run depends on the statement's spelling (`import a.b.c`
+    // and `import a.b` both bind `a`), so the fact is per statement, never on the bound ModuleSymbol.
+    private readonly ConcurrentDictionary<Statement, IReadOnlyList<ModuleLayout>> _importRequirements =
+        new(ReferenceEqualityComparer.Instance);
+
     // #1747: a null-conditional access (`obj?.member`, `obj?.method()`) whose member/result type
     // is a bare T that the checker WRAPPED into Optional<T> (the "flatten" rule leaves an already
     // Optional member unwrapped). The recorded type of the node is Optional<T> in both cases, so
@@ -1664,6 +1671,28 @@ public class SemanticInfo : ISemanticQuery
     public AsyncGuardedUse? GetAsyncGuardedUse(Expression node)
         => _asyncGuardedUses.TryGetValue(node, out var use) ? use : null;
 
+    /// <summary>
+    /// Records the modules the import statement <paramref name="importStatement"/> makes Python run
+    /// (plan-775c50 D5). Set only by <c>CodeGenInfoComputer</c>, on every module-level <c>import</c> and
+    /// <c>from … import</c>.
+    /// </summary>
+    public void SetImportRequirements(Statement importStatement, IReadOnlyList<ModuleLayout> modules)
+    {
+        Put(_importRequirements, importStatement, modules);
+    }
+
+    /// <summary>
+    /// The Sharpy modules an <c>import</c> or <c>from … import</c> statement makes Python run, in
+    /// Python's order, each once, as its <see cref="ModuleLayout"/> with <see cref="ModuleLayout.HasSweep"/>
+    /// (plan-775c50 D5): <c>import a.b.c</c> → a, a.b, a.b.c; <c>import a.b as x</c> → a, a.b; several
+    /// aliases → each chain in turn; <c>from a.b import n</c> → a, a.b, then a.b.n when n is a submodule and
+    /// no export of a.b. Empty for a statement whose modules are all .NET, synthetic or unresolved; a
+    /// namespace-only package (no <c>__init__.spy</c>) and the importing module itself stand for nothing.
+    /// Null for any other statement, and for an import the checker did not reach.
+    /// </summary>
+    public IReadOnlyList<ModuleLayout>? GetImportRequirements(Statement importStatement)
+        => _importRequirements.TryGetValue(importStatement, out var modules) ? modules : null;
+
     public SemanticType? GetConditionalBranchNarrowing(Expression branch)
         => _conditionalBranchNarrowing.TryGetValue(branch, out var t) ? t : null;
 
@@ -2461,6 +2490,9 @@ public class SemanticInfo : ISemanticQuery
 
         foreach (var kvp in other._asyncGuardedUses)
             MergeEntry(_asyncGuardedUses, kvp, other);
+
+        foreach (var kvp in other._importRequirements)
+            MergeEntry(_importRequirements, kvp, other, SequenceValueComparer<ModuleLayout>.Instance);
 
         foreach (var kvp in other._charMaterializations)
             MergeEntry(_charMaterializations, kvp, other);

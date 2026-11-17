@@ -68,8 +68,12 @@ public class SemanticInfoMergeConformanceTests
     /// 86: <c>_asyncGuardedUses</c> added by P77 D6 (plan-775c50, T6): the converged plan rules which
     /// uses of a Guarded value in an <c>async def</c> body take the ensure arm "a <c>SemanticInfo</c>
     /// fact (in <c>MergeFrom</c>)", node-keyed on the use, read by the emitter's async arms.
+    /// 87: <c>_importRequirements</c> added by P77 D5 (plan-775c50, T5; lead's ruling): D5's "by an
+    /// importer's sweep at the import's position" needs the modules each import statement makes Python
+    /// run, which depend on the statement's spelling, not on the symbol it binds — a per-statement,
+    /// node-keyed fact in <c>MergeFrom</c>, read by the emitter's import-position requirement.
     /// </summary>
-    private const int MaximumSideTableFieldCount = 86;
+    private const int MaximumSideTableFieldCount = 87;
 
     /// <summary>
     /// #1887: the real property — an entry recorded on one SemanticInfo survives <c>MergeFrom</c>
