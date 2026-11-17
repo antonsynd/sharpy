@@ -1,0 +1,25 @@
+operand a
+operand b
+container in
+True
+operand c
+operand d
+container not in
+False
+operand e
+operand f
+False
+operand g
+operand h
+container eq
+True
+operand i
+operand j
+operand k
+True
+operand l
+operand m
+False
+True
+True
+True

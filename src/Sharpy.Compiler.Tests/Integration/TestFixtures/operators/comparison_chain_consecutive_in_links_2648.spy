@@ -1,0 +1,45 @@
+# P93 D3 (#2648): consecutive in / not in links. The middle operand of `a in b in c` is link 1's
+# needle AND link 0's container: it is checked as a's container (the twin `a in b`; owner ruling
+# 2026-11-15, plan-67a01f R2) and bound by link 1 under c's element slot (the twin `b in c`), whatever
+# c is: a tuple (the array bridge), a class iterated by __iter__ alone (the Direct projection), a list.
+class Rows:
+    _rows: list[list[int]]
+
+    def __init__(self, rows: list[list[int]]) -> None:
+        self._rows = rows
+
+    def __iter__(self) -> Iterator[list[int]]:
+        return iter(self._rows)
+
+
+def main() -> None:
+    xs: list[int] = [1, 2]
+    ys: list[int] = [3]
+    t: tuple[list[int], list[int]] = ([1, 2], [3])
+    rows: Rows = Rows([[1, 2], [4]])
+    nested: list[list[int]] = [[1, 2]]
+
+    # tuple container behind an `in` link
+    print(1 in xs in t)
+    print(5 in xs in t)
+    print(1 not in xs in t)
+    print(1 in ys not in t)
+    print(3 in ys in t)
+
+    # user class iterated by __iter__ alone
+    print(1 in xs in rows)
+    print(1 in ys in rows)
+    print(3 not in ys in rows)
+    print(1 in xs not in rows)
+
+    # list container
+    print(2 in xs in nested)
+    print(3 in ys in nested)
+    print(9 not in ys not in nested)
+
+    # 3 links
+    print(1 == 1 in xs in t)
+    print(0 < 1 in xs in rows)
+    print(1 in xs in t in [t])
+    print(1 in xs in nested in [nested])
+    print(3 in ys not in nested in [nested])

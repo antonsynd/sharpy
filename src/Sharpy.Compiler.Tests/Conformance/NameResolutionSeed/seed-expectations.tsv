@@ -1,9 +1,9 @@
 # P77a D7: the Sharpy tag of each seed cell. id<TAB>tag<TAB>model (| = newline)<TAB>the issue a red row cites<TAB>the error codes a refusal may carry
 A01	MustRun	2		
-A02	MustRun	2	#2422	
+A02	MustRun	2	#2423	
 A03	MustRefuseOrThrow		#2422	SPY0200
 A04	MustRun	5		
-A05	MustRun	7 7	#2422	
+A05	MustRun	7 7	#2423	
 A06	MustRun	2		
 A07	MustRun	8 7	#2422	
 A08	MustRun	4		
@@ -13,14 +13,14 @@ A11	MustRun	init a|init b|main|2	#2422
 A12	MustRefuse		#1974	SPY0204
 A13	MayRefuse	1		SPY0340
 A14	MustRefuse			SPY0204
-A15	MustRun	6 6 5	#2422	
+A15	MustRun	6 6 5	#2423	
 A16	MustRefuseOrThrow			SPY0278
 A17	MustRun	6		
 A18	MustRun	99		
 A19	MustRun	5		
 A20	MustRun	2	#2424	
 A21	MustRun	5		
-A22	MustRun	11	#2422	
+A22	MustRun	11	#2423	
 A23	MustRun	5	#2422	
 B01	MustRun	3	#2423	
 B02	MustRefuse		#2424	
@@ -141,9 +141,9 @@ D18	MustRefuse			SPY0401
 D19	MustRun	4		
 D20	MustRun	3	#2423	
 D21	MustRun	7	#2398	
-D22	MustRun	[1, 2]	#2422	
+D22	MustRun	[1, 2]	#2423	
 E01	MustRun	8 7	#2422	
-E02	MustRun	5	#2422	
+E02	MustRun	5	#2423	
 E03	MustRun	8 7	#2422	
 E04	MustRun	5		
 E05	MustRun	6		

@@ -1,0 +1,17 @@
+# A conditional and a fresh-walrus `bytes` needle into `bytes` compile and run (#2635, #2647,
+# plan-4e2867 D3): `bytes` takes an `int` and a `bytes` needle, and the membership site pushes
+# neither slot onto the needle's store, so a needle built in place is not refused against `int`.
+
+def pick(flag: bool) -> bool:
+    b1 = bytes([1, 2])
+    b2 = bytes([9])
+    return (b1 if flag else b2) in bytes([0, 1, 2, 3])
+
+def main():
+    print(pick(True), pick(False))
+    print((w := bytes([2, 3])) in bytes([1, 2, 3]), len(w))
+    print((v := bytes([3, 2])) not in bytes([1, 2, 3]), len(v))
+    flag = False
+    print((bytes([1]) if flag else bytes([4])) in bytes([1, 2]))
+    # The int slot still takes a conditional and a walrus needle.
+    print((1 if flag else 2) in bytes([1, 2]), (k := 7) in bytes([1, 2]), k)
