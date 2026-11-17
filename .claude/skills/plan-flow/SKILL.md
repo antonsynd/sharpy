@@ -41,7 +41,7 @@ Sync first (`git fetch origin`), then read the plan's first line to find where i
 
 A revision returns the plan to DRAFT, so the loop is draft → verify → (revise → verify)\* and it stops on a decision, not on a count (contract §12 Convergence).
 
-**The pass cap.** Two verify passes (R-LW). Before spawning a third or later pass, ask the owner once. A pass beyond the cap runs only on the owner's words, recorded as below and written into the plan's `## Scope` as `Extra verify pass <n>: owner, <date> "<words>"` by the revising agent, or by the verifier when no revision came between.
+**The pass cap.** Two verify passes per plan, across all its revisions (R-LW). When the second does not pass, bring its open finding to the owner as a decision (what it is, the options that resolve it, your recommendation), with no further pass among the options. One runs only when the owner asks for one in their own words: record them as below, have the revising agent (or the verifier, when no revision came between) write them into the plan's `## Scope` as `Extra verify pass <n>: owner, <date> "<words>"`, and quote them in your report.
 
 **Owner-only questions, once per stage, in one batch.** After each stage, collect what only the owner can answer: a NEEDS REVISION finding that is a decision (a hand-listed axis to close or rule out, a change that turns working code into a refusal, a tier or scope change, an unruled door, a scorecard baseline raise) and every Unchecked Claim that needs the owner's word. Ask them together, each with its options and your recommendation, before the revision starts. Do not start a revision around a question you have not asked.
 
