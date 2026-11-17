@@ -58,3 +58,35 @@ updates:
     commit-message:
       prefix: "chore"
       include: "scope"
+
+  # VS Code extension (npm). Until this entry, only security updates opened PRs here (to mainline,
+  # and they do not take the options below). The fix for alert 78 (minimatch, GHSA-g3hv-75wg-m249)
+  # waits for vscode-languageclient and @vscode/vsce releases that accept minimatch 11.
+  - package-ecosystem: "npm"
+    directory: "/editors/vscode"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "02:00"
+      timezone: "America/New_York"
+    target-branch: "dev"
+    labels: ["dependencies", "javascript"]
+    open-pull-requests-limit: 5
+    # No extension build runs on a PR into dev (vscode-extension.yml runs for mainline only), so
+    # bumps known to break it are held:
+    # - @types/vscode: vsce refuses to package when its range passes engines.vscode (^1.91.0) at
+    #   major.minor, and Dependabot rewrites the range to the new version, so no bump is safe.
+    # - @types/node: the extension host of VS Code 1.91 runs Node 20.
+    # - typescript: 6 and 7 fail lint, bundle and vsce (TS2591) without a tsconfig change.
+    # - @vscode/vsce: 4 declares engines.node >= 22; the workflow runs Node 20.
+    ignore:
+      - dependency-name: "@types/vscode"
+      - dependency-name: "@types/node"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "typescript"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "@vscode/vsce"
+        update-types: ["version-update:semver-major"]
+    commit-message:
+      prefix: "chore"
+      include: "scope"
