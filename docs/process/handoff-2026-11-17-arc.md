@@ -46,9 +46,9 @@ One command, after a build: `.claude/scripts/scorecard --since <date> --base <sh
 | Known-red rows, by owner of the row | P77 668 · P93 residue 57 · emitter inspection 213 · other 305 (1,243 outside the seed) | each plan drains what its stage 0 added; emitter inspection falls each P82 tranche |
 | `SemanticInfo` side tables | 85 | ≤ 84 after tranche 4; never up |
 | Read set, bytes | 299,372 | not up; a new skill or section deletes as much as it adds |
-| Counted procedure key; `CLAUDE.md` | 133,747; 9,304 | not up |
+| Counted procedure key; `CLAUDE.md` | 143,159 (133,747 before #2725 counted `/plan-flow`, owner's word quoted there); 9,304 | not up |
 | Verify passes per plan | 5, 2, 5 | ≤ 2 |
-| `mainline` push runs green | red since 2026-11-16 14:30Z | green within a day of any red |
+| `mainline` push runs green | red since 2026-11-16 14:30Z; the fix (#2724) is on `dev` and reaches `mainline` at the next promotion | green within a day of any red |
 | CI median wall / slowest shard | 19 / 15 min (shard 7 up to 24 on PRs) | not up |
 
 ## 4. Stop rules
@@ -86,6 +86,10 @@ read, which stop rule came closest.
 
 | # | Decision | Default while waiting |
 |---|---|---|
-| 1 | Fix `a is c` running a user `__eq__` (regression from #2679) in a no-plan lane, and file the untracked cells of the 2026-11-17 watch | not fixed, not filed |
-| 2 | Root `Directory.Build.props`, `Directory.Build.targets` and `global.json` are not "code" under the process README item 6, so a PR touching only them needs no review line | unchanged |
-| 3 | Coverage-on is seen only on `mainline` pushes and the daily `dev` run; a dependency bump merged into `mainline` meets it first | bumps go through `dev` |
+| 1 | Root `Directory.Build.props`, `Directory.Build.targets` and `global.json` are not "code" under the process README item 6, so a PR touching only them needs no review line | unchanged |
+| 2 | Coverage-on is seen only on `mainline` pushes and the daily `dev` run; a dependency bump merged into `mainline` meets it first | bumps go through `dev` |
+
+Ruled since this document was drafted (owner, 2026-11-17): "1) your rec; 2) yes, file them". The
+cells of the watch are filed, and `a is c` running a user `__eq__` is fixed in a no-plan lane
+(Refs #2680). "yes": Dependabot targets `dev` and holds packages versioned with .NET below 11 until
+#2548 (#2729). Dependabot reads its config from `mainline`, so both take effect at the next promotion.
