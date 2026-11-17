@@ -96,6 +96,8 @@ public class EllipsisStubAuthorityConformanceTests
             "Evaluation-order classification (P93 D2): a literal operand, `...` included, has no evaluation to order, so its needle is not bound. The Parenthesized arm recurses. Not a declaration-body classification.",
         ["ExtractVariableProvider.cs :: IsTrivialExpression"] =
             "LSP refactoring: excludes trivial expressions from extract-variable. Not a declaration-body classification.",
+        ["InitializerCycleValidator.cs :: SlotsOf"] =
+            "Initializer-graph slot map (plan-775c50 D8): `...` is a leaf with no child slots, like every other literal; the Parenthesized arm recurses. Not a declaration-body classification.",
     };
 
     [Fact]
