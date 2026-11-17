@@ -46,9 +46,12 @@ branch gets the rebase hint; every one of them fails the check):
                  parses as a strict attribute sequence (a concrete version on both sides, never a
                  float or range) or a lock-file `resolved`, `requested`, `contentHash` or
                  `"<package>": "<version>"` value. The diff is read as bytes and decoded as UTF-8
-                 with no newline translation. Anything else (an added or binary file, no patch,
-                 a moved line, a `<Target>`, a property, a new package, a line holding a line
-                 separator other than `\n`, a diff that is not UTF-8) needs the line;
+                 with no newline translation. It is judged line by line and parses no context, so
+                 a tag-shaped line inside a multi-line construct already on the base (an
+                 `<Exec Command="...">` value spanning lines) is judged as a tag. Anything else
+                 (an added or binary file, no patch, a moved line, a `<Target>`, a property, a
+                 new package, a line holding a line separator other than `\n`, a diff that is
+                 not UTF-8) needs the line;
   missing        no line counts;
   malformed      the last counted line does not parse;
   sha not an ancestor of head
@@ -215,7 +218,11 @@ def _version_key(path: str, line: str) -> Optional[tuple]:
     m = VERSION_TAG.fullmatch(line)
     if not m:
         return None
-    attrs = [a for a in TAG_ATTR.finditer(line, m.start(1), m.end(1)) if a.group(1) == "Version"]
+    attrs = [
+        a
+        for a in TAG_ATTR.finditer(line, m.start(1), m.end(1))
+        if a.group(1) == "Version"
+    ]
     if len(attrs) != 1:
         return None
     group = 2 if attrs[0].group(2) is not None else 3

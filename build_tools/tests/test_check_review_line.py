@@ -983,6 +983,9 @@ CSPROJ = """<Project Sdk="Microsoft.NET.Sdk">
     <PackageReference Include="F3" Version="(,2.0]" />
     <PackageReference Include="F4" Version="*" />
     <PackageReference Include="Cond" Version="1.0.0" Condition='x Version="1.0.0" y' />
+    <PackageReference Include="Dup" Version="1.0.0" Version="1.0.0" />
+    <PackageReference Include="Tail" Version="1.0.0" /> trailing text
+    <PackageReference Include=Unq Version="1.0.0" />
   </ItemGroup>
   <ItemGroup Condition="'$(TargetFramework)' == 'netstandard2.1'">
     <Compile Remove="Tarfile/**" />
@@ -1151,6 +1154,18 @@ KINDS["a byte that is not UTF-8"] = [
 # a `Version="..."` inside another attribute's value (text, not the Version attribute),
 KINDS["a Version inside another attribute's value"] = [
     (PJ, (("Condition='x Version=\"1.0.0\" y'", "Condition='x Version=\"9.0.0\" y'"),))
+]
+# Third review @ f575abeae: one row per structural guard of the tag parser, each red under exactly
+# the mutant that drops that guard: exactly one Version attribute (two, the first bumped), the end
+# anchor after `/>` (trailing text on the line), and quoted attribute values (an unquoted one).
+KINDS["a tag with two Version attributes, the first bumped"] = [
+    (PJ, (('Include="Dup" Version="1.0.0"', 'Include="Dup" Version="1.1.0"'),))
+]
+KINDS["a bumped tag followed by text on its line"] = [
+    (PJ, (('Include="Tail" Version="1.0.0"', 'Include="Tail" Version="1.1.0"'),))
+]
+KINDS["a bumped tag with an unquoted attribute value"] = [
+    (PJ, (('Include=Unq Version="1.0.0"', 'Include=Unq Version="1.1.0"'),))
 ]
 # and their positive controls: a CRLF file's bump, and the real Version beside that attribute.
 KINDS["a CRLF csproj version only"] = [(CRLF_PJ, (FOO_BUMP,))]
