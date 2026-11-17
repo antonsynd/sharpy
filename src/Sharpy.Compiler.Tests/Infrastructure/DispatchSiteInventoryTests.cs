@@ -65,10 +65,6 @@ public class DispatchSiteInventoryTests
         ["Analysis/ControlFlow/ControlFlowGraphBuilder.cs::ControlFlowGraphBuilder.BuildStatement"] = "guarded-by:CfgStatementTotalityTests",
         ["Analysis/ControlFlow/ControlFlowGraphBuilder.cs::ControlFlowGraphBuilder.CollectPatternBindingKeysInto"] = "guarded-by:CfgPatternBindingTotalityTests",
 
-        // ExecutionOrderAnalyzer — identifier/declaration collection
-        ["Semantic/ExecutionOrderAnalyzer.cs::ExecutionOrderAnalyzer.CollectReferencedIdentifiers"] = "guarded-by:ExecutionOrderAnalyzerTotalityTests",
-        ["Semantic/ExecutionOrderAnalyzer.cs::ExecutionOrderAnalyzer.CollectDeclarationNames"] = "guarded-by:ExecutionOrderAnalyzerTotalityTests",
-
         // CodeGenInfoComputer — code generation info over module/type members
         // ConstEligibility — the ONE walk over every const host (#1791). Collect dispatches on
         // statement kind; IsOperandTypeIndependentNativeOperator on the cross-module operator roster.

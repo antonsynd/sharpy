@@ -95,7 +95,7 @@ internal class CodeGenInfoComputer
         _isEntryPoint = isEntryPoint;
 
         // Run execution order analysis first to detect variables that need special handling
-        var analyzer = new ExecutionOrderAnalyzer(_symbolTable);
+        var analyzer = new ExecutionOrderAnalyzer();
         _variablesWithExecutionOrderIssues = analyzer.Analyze(module.Body);
 
         // First pass: Process module-level declarations (top-level statements)
@@ -1881,7 +1881,7 @@ internal class CodeGenInfoComputer
     }
 
     // Note: HasExecutionOrderIssues and ContainsRuntimeExpression methods were removed.
-    // The ExecutionOrderAnalyzer class now handles execution order detection with
-    // proper multi-pass analysis including assignment-before-declaration and
-    // transitive dependency detection.
+    // The ExecutionOrderAnalyzer class now handles execution order detection
+    // (assignment-before-declaration, a repeated declaration, an assignment-only variable);
+    // what an initializer reads is not one of them (plan-775c50 D1, #2420).
 }

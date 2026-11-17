@@ -1100,7 +1100,6 @@ read/ModuleVar/ModuleAccessorBody/Later/Bare/outer=None FalseRefusal # #2423 fal
 read/ModuleVar/ModuleInitializer/ComprehensionElement/Later/Bare/outer=None FalseRefusal # #2423 false-refusal
 read/ModuleVar/ModuleInitializer/ComprehensionIterable/Later/Bare/outer=None FalseRefusal # #2423 false-refusal
 read/ModuleVar/ModuleInitializer/Earlier/Call/outer=None FalseRefusal # #2423 false-refusal
-read/ModuleVar/ModuleInitializer/Lambda/Earlier/Bare/outer=None Ice # #2420 ice
 read/ModuleVar/ModuleInitializer/Lambda/Later/Bare/outer=None FalseRefusal # #2423 false-refusal
 read/ModuleVar/ModuleInitializer/Later/Bare/outer=None FalseRefusal # #2423 false-refusal
 read/ModuleVar/ModuleInitializer/Later/Call/outer=Builtin/abs Ice # #2423 ice
@@ -2215,7 +2214,6 @@ seed/D03 SilentWrong # #2423 missing-refusal
 seed/D04 SilentWrong # #2423 missing-refusal
 seed/D07 SilentWrong # #2424 missing-refusal
 seed/D08b SilentWrong # #2423 silent-wrong
-seed/D10 Ice # #2420 ice
 seed/D13 SilentWrong # #2425 missing-refusal
 seed/D14 SilentWrong # #2424 missing-refusal
 seed/D20 FalseRefusal # #2423 false-refusal
@@ -2224,7 +2222,6 @@ seed/D22 FalseRefusal # #2423 false-refusal
 seed/E01 SilentWrong # #2422 silent-wrong
 seed/E02 FalseRefusal # #2423 false-refusal
 seed/E03 SilentWrong # #2422 silent-wrong
-seed/E06 Ice # #2420 ice
 seed/E07 Ice # #2151 ice
 seed/E08 Ice # #2151 ice
 seed/E09 SilentWrong # #2424 missing-refusal
