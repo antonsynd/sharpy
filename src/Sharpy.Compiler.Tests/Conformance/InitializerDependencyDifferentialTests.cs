@@ -47,6 +47,9 @@ namespace Sharpy.Compiler.Tests.Conformance;
 /// (<see cref="NodeKinds"/>, the image of <see cref="BindingKind"/>); the cases of a modified argument's operand, the image of
 /// <see cref="ParameterModifier"/>; and a value on a cycle that a plain store names (<see cref="StoredCells"/>).</item>
 /// </list>
+/// The sixth stage-0 commit (the owner's ruling of 2026-11-16, #2422 comment 6932647936) adds to the location family
+/// the cells that observe an <c>out</c> operand's store on a ready value while the call runs and after the callee
+/// raises (<see cref="OutObservationCells"/>), each with the output of the emission the owner rejected.
 ///
 /// Known-red cells are rows of <c>initializer-dependency-differential-allowlist.txt</c>. A run writes its report, every
 /// cell and the rows it would propose under <c>.claude/tmp/initializer-dependency-differential-*</c>.
@@ -401,6 +404,10 @@ public sealed partial class InitializerDependencyDifferentialTests : Integration
         public Route Route { get; init; } = static (_, _, _) => null;
 
         public ReferenceKey? Reference { get; init; }
+
+        /// <summary>What the cell would print under an emission the owner rejected, or null. The cell is there to tell the
+        /// two apart: the sweep is red where Sharpy prints this (<see cref="DirectionFailures"/>).</summary>
+        public string? Rejected { get; init; }
     }
 
     private static readonly (string Marker, string[] Lines)[] HelperTable =
@@ -514,6 +521,7 @@ public sealed partial class InitializerDependencyDifferentialTests : Integration
         .Concat(OperandCells())
         .Concat(LocationCells())
         .Concat(CrossCells())
+        .Concat(OutObservationCells())
         .Concat(SlotCells())
         .Concat(StoredCells())
         .Concat(RingCells())
@@ -870,6 +878,14 @@ public sealed partial class InitializerDependencyDifferentialTests : Integration
         return failures;
     }
 
+    /// <summary>The direction of a cell that carries a rejected model: judged against that model in its own model's
+    /// place, it is red. One line per cell where Sharpy prints what the rejected emission prints.</summary>
+    internal static List<string> DirectionFailures(IReadOnlyList<Result> results) =>
+        results
+            .Where(r => r.Cell.Rejected != null && Judge(r.Cell with { Model = r.Cell.Rejected }, r.Kind, r.Observed.Run.Stdout, r.Observed.Run.Stderr) == VerdictClass.Match)
+            .Select(r => $"Direction {r.Cell.Id}: Sharpy prints '{r.Cell.Rejected}', the emission the owner rejected; the cell's model is '{r.Cell.Model}'")
+            .ToList();
+
     private static string Describe(Result r)
         => r.Kind == SharpyKind.Ran
             ? $"Ran '{Harness.Normalize(r.Observed.Run.Stdout)}'"
@@ -936,6 +952,7 @@ public sealed partial class InitializerDependencyDifferentialTests : Integration
         var path = PythonInterpreter.FindRepoFile("src", "Sharpy.Compiler.Tests", "Conformance", AllowlistFileName);
         var rows = ParseAllowlist(path == null ? Array.Empty<string>() : File.ReadAllLines(path), universe, failures);
         failures.AddRange(RatchetFailures(results, rows));
+        failures.AddRange(DirectionFailures(results));
 
         wall.Stop();
         var report = WriteReport(pool, results, rows, wall.Elapsed);
@@ -964,6 +981,7 @@ public sealed partial class InitializerDependencyDifferentialTests : Integration
                     genericHost = pool.Count(c => c.Id.Contains("+Generic/", StringComparison.Ordinal)),
                     mustRaise = pool.Count(c => c.Raises != null),
                     cross = pool.Count(c => c.Id.StartsWith("Location/Cross/", StringComparison.Ordinal)),
+                    outObserved = pool.Count(c => c.Rejected != null),
                     sites = Sites.Count,
                     shapes = Shapes.Count,
                     excludedShapes = ExcludedShapes.Count,
@@ -1055,6 +1073,25 @@ public sealed partial class InitializerDependencyDifferentialTests : Integration
         // A red control is never a row's to hold.
         var controlRow = new Dictionary<string, AllowRow> { [control.Id] = new(VerdictClass.Ice, $"{ClassIssue} ice") };
         Assert.Contains("Control", Assert.Single(RatchetFailures(new[] { ResultOf(control, VerdictClass.Ice, "CS0103", "t") }, controlRow)));
+    }
+
+    /// <summary>A cell that tells two emissions apart is red where Sharpy prints the rejected one, whatever the ratchet
+    /// says of it, and says nothing where Sharpy prints its model or does not run.</summary>
+    [Fact]
+    public void Direction_ACellThatPrintsTheRejectedEmission_IsRed()
+    {
+        var observed = GeneratedCells().Where(c => c.Rejected != null).ToList();
+        Assert.True(observed.Count >= 20, $"Found {observed.Count} cells with a rejected model.");
+
+        foreach (var cell in observed)
+        {
+            Assert.NotEqual(cell.Model, cell.Rejected);
+            Assert.Empty(DirectionFailures(new[] { ResultOf(cell, VerdictClass.Match) }));
+            Assert.Empty(DirectionFailures(new[] { ResultOf(cell, VerdictClass.Ice, "CS0103", "t") }));
+            var printsTheRejected = ResultOf(cell with { Model = cell.Rejected! }, VerdictClass.Match) with { Cell = cell, Class = VerdictClass.SilentWrong };
+            Assert.Contains("Direction", Assert.Single(DirectionFailures(new[] { printsTheRejected })));
+        }
+        Assert.Empty(DirectionFailures(GeneratedCells().Where(c => c.Rejected == null).Take(50).Select(c => ResultOf(c, VerdictClass.Match)).ToList()));
     }
 
     [Theory]

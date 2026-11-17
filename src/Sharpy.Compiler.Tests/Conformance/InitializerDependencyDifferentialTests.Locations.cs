@@ -46,6 +46,14 @@ namespace Sharpy.Compiler.Tests.Conformance;
 /// from one host's initializer of another host's value: the use (<see cref="LocationUse"/>) × the two hosts
 /// (<see cref="CrossHosts"/>) × which is declared first (<see cref="CrossOrder"/>) × whether the target host reads the
 /// user's value back. Their one rule is <see cref="CrossModel"/>.
+///
+/// The sixth stage-0 commit carries the ruling that followed the fourth verification (#2422 comment 6932647936, Q24, "C#
+/// storage, as today"): an <c>out</c> operand naming a value that is ready IS the storage, as in C#, and the temporary
+/// stored when the call returns stays where the value has none yet (Q12). The cell that reads the value after the call
+/// prints the same under both, so <see cref="OutObservationCells"/> observe the store while the call runs and after
+/// the callee raises (<see cref="OutObservation"/>), on every cell of the two products above whose use is an operand
+/// that stores and whose value is ready when the use runs. Each carries what the rejected emission would print
+/// (<see cref="Cell.Rejected"/>), and the sweep is red where Sharpy prints it.
 /// </summary>
 public sealed partial class InitializerDependencyDifferentialTests
 {
@@ -443,7 +451,7 @@ public sealed partial class InitializerDependencyDifferentialTests
     private static string LocationId(BindingKind holder, HostForm form, ValueKind kind, LocationUse use, When when) =>
         $"Location/{holder}{(form == HostForm.Plain ? "" : "+" + form)}/{kind}/{use}/{when}";
 
-    private static string LocationProgram(BindingKind holder, HostForm form, ValueKind kind, LocationUse use, When when, bool twin)
+    private static string LocationProgram(BindingKind holder, HostForm form, ValueKind kind, LocationUse use, When when, bool twin, OutObservation? observed = null)
     {
         var module = IsModuleHolder(holder);
         var generic = form == HostForm.Generic;
@@ -465,10 +473,13 @@ public sealed partial class InitializerDependencyDifferentialTests
             initial = TextForm(use, t) ?? throw new InvalidOperationException($"{use} is no expression");
         var readBack = ReadBack(kind, t);
         var awaited = when == When.ReadyAcrossAwait;
-        var (statement, _, returned) = UseText(use, kind, t, awaited ? "await one()" : "1");
+        var operand = awaited ? "await one()" : "1";
+        var (statement, _, returned) = observed is { } how ? ObservedText(how, t, operand) : UseText(use, kind, t, operand);
         var def = awaited ? "async def" : "def";
 
         var function = new List<string>();
+        if (observed is { } callee)
+            function.AddRange(ObservedCallee(callee, readBack));
         if (!inText)
         {
             function.Add($"{def} use() -> int:");
@@ -608,10 +619,24 @@ public sealed partial class InitializerDependencyDifferentialTests
         public string Key => IsModule ? "Module" : Form.ToString();
     }
 
-    /// <summary>The hosts: every stored holder of the location family, in every host form it has.</summary>
+    private const string ConstTakesNoStore =
+        "a const takes no store, and its read from another host's initializer is the `Read` cell of a stored holder in the same host form: the two-host rule is which host sweeps when, and names no holder kind";
+
+    /// <summary>A holder of the location family that is no host of a pair, with the code its store draws: the program is
+    /// the location family's own, a plain store to the holder (<see cref="CrossExclusions"/>).</summary>
+    internal static readonly IReadOnlyDictionary<BindingKind, (string Reason, string Code)> ExcludedCrossHolders =
+        new Dictionary<BindingKind, (string, string)>
+        {
+            [BindingKind.ModuleComputedConst] = (ConstTakesNoStore + "; the store is refused", "SPY0225"),
+            [BindingKind.ClassComputedConst] = (
+                ConstTakesNoStore + "; the store through its qualified name is an internal error today, where the checker is to refuse it (#2435's class)",
+                "SPY0908 CS0198"),
+        };
+
+    /// <summary>The hosts: every holder of the location family that is not excluded, in every host form it has.</summary>
     internal static IEnumerable<CrossHost> CrossHosts() =>
         from holder in LocationHolders
-        where !IsConstHolder(holder)
+        where !ExcludedCrossHolders.ContainsKey(holder)
         from form in Enum.GetValues<HostForm>()
         where FormExclusion(holder, form) == null
         select new CrossHost(holder, form);
@@ -689,15 +714,18 @@ public sealed partial class InitializerDependencyDifferentialTests
 
     /// <summary>The user host's value <c>x</c> is initialized by a function that uses the target host's value <c>p</c>;
     /// with a read back, the target host's second value <c>q</c> reads <c>x</c>. No value is on a cycle.</summary>
-    private static string CrossProgram(CrossHost user, CrossHost target, CrossOrder order, LocationUse use, bool readBack, bool twin)
+    private static string CrossProgram(CrossHost user, CrossHost target, CrossOrder order, LocationUse use, bool readBack, bool twin, OutObservation? observed = null)
     {
         var (x, p, q) = (CrossName("A", user, "x"), CrossName("B", target, "p"), CrossName("B", target, "q"));
-        var (statement, _, returned) = UseText(use, ValueKind.Int, p, "1");
+        var (statement, _, returned) = observed is { } how ? ObservedText(how, p, "1") : UseText(use, ValueKind.Int, p, "1");
         var userLines = CrossDeclaration("A", user, ("x", "use()"));
         var targetLines = readBack
             ? CrossDeclaration("B", target, ("p", $"{InitialValue}"), ("q", $"{x} + 1"))
             : CrossDeclaration("B", target, ("p", $"{InitialValue}"));
-        var function = new List<string> { "def use() -> int:" };
+        var function = new List<string>();
+        if (observed is { } callee)
+            function.AddRange(ObservedCallee(callee, p));
+        function.Add("def use() -> int:");
         // Python binds a bare store's name in the function unless it is declared global, as the location family's twin says.
         if (twin && target.IsModule)
             function.Add("    global p");
@@ -754,15 +782,19 @@ public sealed partial class InitializerDependencyDifferentialTests
         }
     }
 
-    /// <summary>The read back of a later module variable, on both class forms: the programs the exclusion rests on.</summary>
+    /// <summary>The read back of a later module variable, on both class forms, and a plain store to each holder that is
+    /// no host: the programs the exclusions rest on.</summary>
     private static IEnumerable<(string What, Exclusion Exclusion)> CrossExclusions() =>
-        from user in CrossHosts()
-        where user.IsModule
-        from target in CrossHosts()
-        where !target.IsModule
-        select (
-            $"cross {user.Key}>{target.Key} read back, target first",
-            new Exclusion(LaterModuleVariable, CrossProgram(user, target, CrossOrder.TargetFirst, LocationUse.Assign, readBack: true, twin: false), "SPY0200"));
+        (from user in CrossHosts()
+         where user.IsModule
+         from target in CrossHosts()
+         where !target.IsModule
+         select (
+             $"cross {user.Key}>{target.Key} read back, target first",
+             new Exclusion(LaterModuleVariable, CrossProgram(user, target, CrossOrder.TargetFirst, LocationUse.Assign, readBack: true, twin: false), "SPY0200")))
+        .Concat(ExcludedCrossHolders.Select(e => (
+            $"cross host BindingKind.{e.Key}",
+            new Exclusion(e.Value.Reason, LocationProgram(e.Key, HostForm.Plain, ValueKind.Int, LocationUse.Assign, When.Ready, twin: false), e.Value.Code))));
 
     internal static List<string> CrossTotalityFailures(IReadOnlyList<Cell> pool)
     {
@@ -770,12 +802,16 @@ public sealed partial class InitializerDependencyDifferentialTests
         var hosts = CrossHosts().ToList();
         var cells = CrossProduct().ToList();
 
-        // The hosts are the location family's stored holders in their host forms, and every pair is generated or is one host.
-        foreach (var (holder, form, _, _, _) in LocationProduct().Where(c => !IsConstHolder(c.Holder)).Distinct())
+        // The hosts are the location family's holders in their host forms, each a host or excluded with its program, once
+        // per holder and form; and every pair is generated or is one host.
+        foreach (var (holder, form) in LocationProduct().Select(c => (c.Holder, c.Form)).Distinct())
         {
-            if (!hosts.Contains(new CrossHost(holder, form)))
-                failures.Add($"holder BindingKind.{holder} in HostForm.{form} has location cells and is no cross host");
+            bool generated = hosts.Contains(new CrossHost(holder, form)), excluded = ExcludedCrossHolders.ContainsKey(holder);
+            if (generated == excluded)
+                failures.Add($"holder BindingKind.{holder} in HostForm.{form} has location cells and as a cross host is {Both(generated)}");
         }
+        foreach (var holder in ExcludedCrossHolders.Keys.Where(h => !LocationHolders.Contains(h)))
+            failures.Add($"BindingKind.{holder} is excluded as a cross host and is no holder of the location family");
         foreach (var user in hosts)
             foreach (var target in hosts)
             {
@@ -823,11 +859,190 @@ public sealed partial class InitializerDependencyDifferentialTests
             failures.Add($"CrossOrder.{order} has no cell");
 
         var held = pool.Where(c => c.Id.StartsWith(CrossPrefix, StringComparison.Ordinal)).Select(c => c.Id).ToHashSet(StringComparer.Ordinal);
-        var owed = cells.Select(c => CrossId(c.User, c.Target, c.Order, c.Use, c.ReadBack)).ToHashSet(StringComparer.Ordinal);
+        var owed = cells.Select(c => CrossId(c.User, c.Target, c.Order, c.Use, c.ReadBack))
+            .Concat(ObservedCrossProduct().Select(c => ObservedId(CrossId(c.User, c.Target, c.Order, c.Use, readBack: false), c.Observed)))
+            .ToHashSet(StringComparer.Ordinal);
         foreach (var id in owed.Where(id => !held.Contains(id)).Take(20))
             failures.Add($"the cross axes owe {id} and the pool does not hold it");
         foreach (var id in held.Where(id => !owed.Contains(id)).Take(20))
             failures.Add($"the pool holds {id} and the cross axes do not owe it");
+        return failures;
+    }
+
+    // ------------------------------------------------------------------------------------------- //
+    // An `out` operand naming a ready value: the store observed while the call runs, and after a throw
+    // ------------------------------------------------------------------------------------------- //
+
+    /// <summary>How an operand's store is observed, beyond the read after the call that the use's own cell is. A closed
+    /// literal set.</summary>
+    internal enum OutObservation
+    {
+        /// <summary>The callee reads the value by its own name after it has stored through the operand.</summary>
+        InCallee,
+
+        /// <summary>The callee raises after its store, the call sits in a <c>try</c>, and the value is read after it.</summary>
+        AfterThrow,
+    }
+
+    /// <summary>The uses observed: the whole-value operand uses that store without reading, the image of
+    /// <see cref="ParameterModifier"/> through <see cref="OperandUses"/> and <see cref="IsPlainStore"/>.</summary>
+    internal static IEnumerable<LocationUse> ObservedUses() => OperandUses.Values.Select(o => o.Whole).Where(IsPlainStore);
+
+    private const string NotReadyYet =
+        "the value has none yet, so the operand is the temporary stored when the call returns (the owner's Q12), which the cell without an observation holds by its own model: what the callee reads there is a read before the initializer, the `Read` use's cell";
+
+    /// <summary>Why an operand's store is not observed at a time, or null: the value is ready when the use runs.</summary>
+    internal static string? ObservedWhenExclusion(When when) => when is When.Ready or When.ReadyAcrossAwait ? null : NotReadyYet;
+
+    /// <summary>Why a pair's operand is not observed, or null: the target value is ready when the use runs, in a host
+    /// that has swept, that the use sweeps, or that is still sweeping below the value.</summary>
+    internal static string? ObservedCrossExclusion(CrossHost user, CrossHost target, CrossOrder order, bool readBack) =>
+        readBack ? "the read back observes the user's value, not the operand: the cell without it is the one observed"
+        : UseRunsInsideTheTargetSweep(user, target, order) ? NotReadyYet
+        : null;
+
+    /// <summary>The use runs inside the target host's OWN sweep, below the target value's place: the value is ready
+    /// and its host has not swept. The cell that tells an arm picked by the value from one picked by the host.</summary>
+    internal static bool UseRunsBelowTheValueInTheTargetSweep(CrossHost user, CrossHost target, CrossOrder order) =>
+        target.IsModule && HasPosition(user) && order == CrossOrder.TargetFirst;
+
+    /// <summary>The callee of an observed operand: it stores <see cref="CalleeStore"/>, then reads the value by its
+    /// own name, or raises.</summary>
+    private static IEnumerable<string> ObservedCallee(OutObservation observed, string read) => observed switch
+    {
+        OutObservation.InCallee => new[] { "def see(a: out int, by: int) -> int:", "    a = 41 + by", $"    return {read}" },
+        OutObservation.AfterThrow => new[] { "def boom(a: out int, by: int) -> None:", "    a = 41 + by", "    raise ValueError(\"x\")" },
+        _ => throw new ArgumentOutOfRangeException(nameof(observed)),
+    };
+
+    /// <summary>The statement of an observed operand on target <paramref name="t"/>, what the value holds after it, and
+    /// what the use's function returns where that is not the value read back: what the callee read.</summary>
+    private static (string Statement, int After, (string Text, int Value)? Returned) ObservedText(OutObservation observed, string t, string v) => observed switch
+    {
+        OutObservation.InCallee => ($"r0 = see(out {t}, {v})", CalleeStore, ("r0", CalleeStore)),
+        OutObservation.AfterThrow => ($"try:\n    boom(out {t}, {v})\nexcept ValueError:\n    pass", CalleeStore, null),
+        _ => throw new ArgumentOutOfRangeException(nameof(observed)),
+    };
+
+    /// <summary>What a cell prints first under the emission the owner rejected at Q24, the temporary on a ready value: the
+    /// callee reads the value it was before the call, and a callee that raises leaves it. The value read after the
+    /// call follows: stored on return, or never.</summary>
+    internal static string RejectedModel(OutObservation observed, HostForm? form) =>
+        (observed switch
+        {
+            OutObservation.InCallee => $"{InitialValue} {CalleeStore}",
+            OutObservation.AfterThrow => $"{InitialValue} {InitialValue}",
+            _ => throw new ArgumentOutOfRangeException(nameof(observed)),
+        }) + (form == HostForm.Generic ? $" {InitialValue}" : "");
+
+    private static string ObservedId(string id, OutObservation observed) => $"{id}/{observed}";
+
+    private static IEnumerable<(BindingKind Holder, HostForm Form, ValueKind Kind, LocationUse Use, When When, OutObservation Observed)> ObservedLocationProduct() =>
+        from cell in LocationProduct()
+        where ObservedUses().Contains(cell.Use) && ObservedWhenExclusion(cell.When) == null
+        from observed in Enum.GetValues<OutObservation>()
+        select (cell.Holder, cell.Form, cell.Kind, cell.Use, cell.When, observed);
+
+    private static IEnumerable<(CrossHost User, CrossHost Target, CrossOrder Order, LocationUse Use, OutObservation Observed)> ObservedCrossProduct() =>
+        from cell in CrossProduct()
+        where ObservedUses().Contains(cell.Use) && ObservedCrossExclusion(cell.User, cell.Target, cell.Order, cell.ReadBack) == null
+        from observed in Enum.GetValues<OutObservation>()
+        select (cell.User, cell.Target, cell.Order, cell.Use, observed);
+
+    /// <summary>Every cell is green today and must not move: the operand is the storage, so the callee reads what it
+    /// stored and a throw leaves it (the owner's Q24). Python has no modifier, so no twin.</summary>
+    internal static IEnumerable<Cell> OutObservationCells()
+    {
+        foreach (var (holder, form, kind, use, when, observed) in ObservedLocationProduct())
+        {
+            var (_, after, returned) = ObservedText(observed, "t", "1");
+            yield return new Cell(
+                ObservedId(LocationId(holder, form, kind, use, when), observed),
+                Family.Location,
+                LocationProgram(holder, form, kind, use, when, twin: false, observed),
+                null,
+                LocationModel(use, when, form, after, returned?.Value))
+            {
+                IsControl = true,
+                Python = PythonExpectation.NoTwin,
+                Rejected = RejectedModel(observed, form),
+            };
+        }
+        foreach (var (user, target, order, use, observed) in ObservedCrossProduct())
+        {
+            var (_, after, returned) = ObservedText(observed, "p", "1");
+            yield return new Cell(
+                ObservedId(CrossId(user, target, order, use, readBack: false), observed),
+                Family.Location,
+                CrossProgram(user, target, order, use, readBack: false, twin: false, observed),
+                null,
+                $"{returned?.Value ?? after} {after}")
+            {
+                IsControl = true,
+                Python = PythonExpectation.NoTwin,
+                Rejected = RejectedModel(observed, null),
+            };
+        }
+    }
+
+    internal static List<string> OutObservationTotalityFailures(IReadOnlyList<Cell> pool)
+    {
+        var failures = new List<string>();
+        var uses = ObservedUses().ToList();
+        if (uses.Count == 0)
+        {
+            failures.Add("no operand use stores without reading: nothing is observed");
+            return failures;
+        }
+        if (ObservedWhenExclusion(When.Ready) != null)
+            failures.Add("an operand naming a ready value is not observed");
+        var byId = pool.ToDictionary(c => c.Id, StringComparer.Ordinal);
+
+        // Every cell of the two products whose use is an operand that stores is observed in every way, or says why not.
+        var owed = new List<(string Id, string? Excluded)>();
+        foreach (var cell in LocationProduct().Where(c => uses.Contains(c.Use)))
+            foreach (var observed in Enum.GetValues<OutObservation>())
+                owed.Add((ObservedId(LocationId(cell.Holder, cell.Form, cell.Kind, cell.Use, cell.When), observed), ObservedWhenExclusion(cell.When)));
+        foreach (var cell in CrossProduct().Where(c => uses.Contains(c.Use)))
+            foreach (var observed in Enum.GetValues<OutObservation>())
+                owed.Add((
+                    ObservedId(CrossId(cell.User, cell.Target, cell.Order, cell.Use, cell.ReadBack), observed),
+                    ObservedCrossExclusion(cell.User, cell.Target, cell.Order, cell.ReadBack)));
+        foreach (var (id, excluded) in owed)
+        {
+            if (byId.ContainsKey(id) == (excluded != null))
+                failures.Add($"{id} is {(excluded == null ? "owed by an operand that stores into a ready value and not generated" : "generated against its exclusion")}");
+        }
+
+        var location = ObservedLocationProduct().ToList();
+        var cross = ObservedCrossProduct().ToList();
+        foreach (var observed in Enum.GetValues<OutObservation>())
+        {
+            // On every stored holder and host form, and at every time the value is ready.
+            foreach (var (holder, form) in LocationProduct().Where(c => uses.Contains(c.Use)).Select(c => (c.Holder, c.Form)).Distinct())
+                foreach (var when in Enum.GetValues<When>().Where(w => ObservedWhenExclusion(w) == null && !location.Contains((holder, form, ValueKind.Int, uses[0], w, observed))))
+                    failures.Add($"holder BindingKind.{holder} in HostForm.{form} has no operand observed {observed} at When.{when}");
+            // The value ready in a host that has not swept: the one place the value's state and its host's differ.
+            if (!cross.Any(c => c.Observed == observed && UseRunsBelowTheValueInTheTargetSweep(c.User, c.Target, c.Order)))
+                failures.Add($"no operand is observed {observed} on a ready value whose host is still sweeping");
+            if (!cross.Any(c => c.Observed == observed && UseStartsTheTargetSweep(c.User, c.Target, c.Order)))
+                failures.Add($"no operand is observed {observed} on a host the use is the first to require");
+        }
+
+        // An observed cell tells the two emissions apart, and is a control: green today.
+        var generated = location.Select(c => ObservedId(LocationId(c.Holder, c.Form, c.Kind, c.Use, c.When), c.Observed))
+            .Concat(cross.Select(c => ObservedId(CrossId(c.User, c.Target, c.Order, c.Use, readBack: false), c.Observed)));
+        foreach (var id in generated)
+        {
+            if (!byId.TryGetValue(id, out var cell))
+                continue;
+            if (cell.Rejected == null || cell.Rejected == cell.Model)
+                failures.Add($"{id}: its model '{cell.Model}' is what the rejected emission prints too ('{cell.Rejected}'): it tells nothing apart");
+            if (!cell.IsControl)
+                failures.Add($"{id} observes a ready value and is no control");
+        }
+        foreach (var cell in pool.Where(c => c.Rejected != null && !owed.Any(o => o.Id == c.Id)))
+            failures.Add($"{cell.Id} carries a rejected model and is no observed operand");
         return failures;
     }
 
@@ -961,9 +1176,12 @@ public sealed partial class InitializerDependencyDifferentialTests
             failures.Add($"BindingKind.{holder} is excluded from the initializer text and is no stored holder");
 
         failures.AddRange(CrossTotalityFailures(pool));
+        failures.AddRange(OutObservationTotalityFailures(pool));
 
         var ids = pool.Where(c => c.Family == Family.Location && !c.Id.StartsWith(CrossPrefix, StringComparison.Ordinal)).Select(c => c.Id).ToHashSet(StringComparer.Ordinal);
-        var owed = cells.Select(k => LocationId(k.Holder, k.Form, k.Kind, k.Use, k.When)).ToHashSet(StringComparer.Ordinal);
+        var owed = cells.Select(k => LocationId(k.Holder, k.Form, k.Kind, k.Use, k.When))
+            .Concat(ObservedLocationProduct().Select(k => ObservedId(LocationId(k.Holder, k.Form, k.Kind, k.Use, k.When), k.Observed)))
+            .ToHashSet(StringComparer.Ordinal);
         foreach (var id in owed.Where(id => !ids.Contains(id)).Take(20))
             failures.Add($"the location axes owe {id} and the pool does not hold it");
         foreach (var id in ids.Where(id => !owed.Contains(id)).Take(20))

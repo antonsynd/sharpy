@@ -1,9 +1,9 @@
 # Stage 0 of plan-775c50 (P77): the initializer-dependency ratchet. One generated cell per row with its verdict class:
 #   <cell id> <Ice|FalseRefusal|SilentWrong|RuntimeThrow> # #<issue> <lane>
 # A cell id is <site>/<holder>.<use>/<initializer node>/<dependency> on the first four axes (#2420), and on the families of
-# the second to fifth stage-0 commits (#2422): Operand/<site>/<modifier>/<operand>,
-# Location/<holder>[+Generic]/<value kind>/<use>/<when>,
-# Location/Cross/<user host>><target host>/<which is declared first>/<use>[/ReadBack],
+# the second to sixth stage-0 commits (#2422): Operand/<site>/<modifier>/<operand>,
+# Location/<holder>[+Generic]/<value kind>/<use>/<when>[/<how an out operand's store is observed>],
+# Location/Cross/<user host>><target host>/<which is declared first>/<use>[/ReadBack | /<how observed>],
 # Slot/<Expression subclass>.<slot>[/<case>][/Kept], Slot/Stored/<use> and
 # Slot/Ring/<reader kind>><read kind>[><kind between>]/<slot>.
 # The issue is the one whose fix turns the cell green; a green row is STALE and a row whose class moved is MOVED, both red.
