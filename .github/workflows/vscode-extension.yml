@@ -1,14 +1,18 @@
 name: VSCode Extension
 
+# Runs on dev as well as mainline (owner, 2026-11-17), so a change or a Dependabot bump to the
+# extension is built on its pull request into dev, not first at promotion.
 on:
   push:
-    branches: [ "mainline" ]
+    branches: [ "mainline", "dev" ]
     paths:
       - 'editors/vscode/**'
+      - '.github/workflows/vscode-extension.yml'
   pull_request:
-    branches: [ "mainline" ]
+    branches: [ "mainline", "dev" ]
     paths:
       - 'editors/vscode/**'
+      - '.github/workflows/vscode-extension.yml'
 
 jobs:
   build:
