@@ -1252,10 +1252,10 @@ public static partial class DiagnosticExplanations
             "def foo(*args: ref int): ...",
             "Remove the modifier or use individual parameters: def foo(a: ref int, b: ref int): ...");
 
-        Add(dict, DiagnosticCodes.Semantic.ModifierRequiresVariable, "ref/out argument must be a variable", "Semantic",
-            "ref and out arguments must refer to a storage location (variable, field, or indexer) that can be written to. Literals and expression results have no storage location.",
-            "swap(ref 5, ref 10)",
-            "Pass a variable instead: x = 5; swap(ref x, ref y)");
+        Add(dict, DiagnosticCodes.Semantic.ModifierRequiresVariable, "ref/out/in argument must be a variable", "Semantic",
+            "A ref, out or in argument passes a storage location, so the checker decides by what the operand resolves to, never by how it is spelled: a bare, qualified or aliased name of one value gets one verdict. A variable or field (module, @static or instance) is admitted under every modifier. A property is refused under ref, out and in, at module level, @static or on an instance, with a default or not: it is a pair of accessors, not a storage location. A const is refused under ref and out, because the callee may write through them; a computed const may be passed with in. Under ref and out a literal or any other expression result is refused too: it has no storage location.",
+            "property limit: int = 3\n\ndef bump(a: ref int) -> None:\n    a = a + 1\n\ndef main() -> None:\n    bump(ref limit)  # Error: 'limit' is a property",
+            "Pass a variable instead, and store it back if the property must change: current = limit; bump(ref current); limit = current");
 
         Add(dict, DiagnosticCodes.Semantic.InParameterReassignment, "cannot reassign 'in' parameter", "Semantic",
             "Parameters declared with the 'in' modifier are passed by readonly reference. They cannot be reassigned to prevent unintended mutation of the caller's value.",
