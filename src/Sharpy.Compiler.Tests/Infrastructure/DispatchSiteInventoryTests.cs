@@ -224,6 +224,12 @@ public class DispatchSiteInventoryTests
         // text for both shapes (mutation B-M9, steer returns null, reddens them) and the
         // LogicalResultSteerMatrixTests augmented cells assert the value-node route.
         ["Semantic/TypeChecker.Expressions.Operators.cs::TypeChecker.OperandNodes"] = "refusal-net:NarrowWidthArithmeticMatrixTests",
+        // plan-775c50 D7 (SPY0389): a ref/out/in operand is refused by the symbol it resolves to, on a
+        // bare name or a qualified one; every other operand (a local, a parameter, an element) is no
+        // refused kind, and the message names it as "the operand". The generated Operand cells refuse
+        // each kind on every spelling and run each accepted one.
+        ["Semantic/TypeChecker.Expressions.cs::TypeChecker.ResolveModifiedOperandKind"] = "refusal-net:InitializerDependencyDifferentialTests",
+        ["Semantic/TypeChecker.Expressions.cs::TypeChecker.DescribeOperand"] = "refusal-net:InitializerDependencyDifferentialTests",
         // ContainsSuperExpressionInExpression/InStatement deleted (#1740): the kind-enumerating
         // super() walker is gone, replaced by the materialized OperatorLowering/RequiresInstanceImpl
         // facts RoslynEmitter.Expressions.Access.cs and RoslynEmitter.Operators.cs's
