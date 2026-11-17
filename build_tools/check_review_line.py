@@ -36,9 +36,12 @@ branch gets the rebase hint; every one of them fails the check):
 
   not required   the base is not `dev` (a promotion into `mainline`, a stacked PR), or no changed
                  path is a code path (a sync of `mainline` into `dev` changes none). README item 6
-                 names no other exemption, so there is none for a head named `dev`; the one
-                 bot exemption is `--author dependabot[bot]` with every changed code path a package
-                 manifest (`*.csproj`, `Directory.Packages.props`, `packages.lock.json`);
+                 names no exemption for a head named `dev`; the only bot exemption (owner,
+                 2026-11-17) is `--author dependabot[bot]` with every changed code path a package
+                 manifest under `src/` (`*.csproj`, `packages.lock.json`; the root
+                 `Directory.Packages.props` is no code path). Residual risk, accepted: a `.csproj`
+                 can hold MSBuild logic, and a writer with push access to a `dependabot/*` branch
+                 keeps the PR's author, so the exemption trusts that branch protection;
   missing        no line counts;
   malformed      the last counted line does not parse;
   sha not an ancestor of head
@@ -162,7 +165,10 @@ def is_code_path(path: str) -> bool:
 
 
 def is_manifest_path(path: str) -> bool:
-    return path.endswith(MANIFEST_SUFFIXES) or path.rsplit("/", 1)[-1] in MANIFEST_NAMES
+    # Under src/ only: a `.csproj` under `.github/` or `build_tools/` is not a package manifest.
+    return path.startswith("src/") and (
+        path.endswith(MANIFEST_SUFFIXES) or path.rsplit("/", 1)[-1] in MANIFEST_NAMES
+    )
 
 
 def strip_comments(line: str, in_comment: bool) -> tuple:
