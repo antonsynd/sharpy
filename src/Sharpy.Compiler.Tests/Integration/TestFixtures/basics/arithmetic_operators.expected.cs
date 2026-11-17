@@ -21,15 +21,15 @@ namespace ArithmeticOperators
         public static void Main()
         {
 #line (13, 5) - (13, 22) 12 "arithmetic_operators.spy"
-            global::Sharpy.Builtins.Print(SumResult);
+            global::Sharpy.Builtins.Print(global::ArithmeticOperators.ArithmeticOperatorsModule.SumResult);
 #line (14, 5) - (14, 23) 12 "arithmetic_operators.spy"
-            global::Sharpy.Builtins.Print(DiffResult);
+            global::Sharpy.Builtins.Print(global::ArithmeticOperators.ArithmeticOperatorsModule.DiffResult);
 #line (15, 5) - (15, 23) 12 "arithmetic_operators.spy"
-            global::Sharpy.Builtins.Print(ProdResult);
+            global::Sharpy.Builtins.Print(global::ArithmeticOperators.ArithmeticOperatorsModule.ProdResult);
 #line (16, 5) - (16, 22) 12 "arithmetic_operators.spy"
-            global::Sharpy.Builtins.Print(DivResult);
+            global::Sharpy.Builtins.Print(global::ArithmeticOperators.ArithmeticOperatorsModule.DivResult);
 #line (17, 5) - (17, 22) 12 "arithmetic_operators.spy"
-            global::Sharpy.Builtins.Print(ModResult);
+            global::Sharpy.Builtins.Print(global::ArithmeticOperators.ArithmeticOperatorsModule.ModResult);
 #line hidden
         }
     }

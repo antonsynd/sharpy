@@ -24,13 +24,13 @@ namespace NullCoalescing0003
         public static void Main()
         {
 #line (16, 5) - (16, 13) 12 "null_coalescing_0003.spy"
-            global::Sharpy.Builtins.Print(Y);
+            global::Sharpy.Builtins.Print(global::NullCoalescing0003.NullCoalescing0003Module.Y);
 #line (19, 5) - (19, 13) 12 "null_coalescing_0003.spy"
-            global::Sharpy.Builtins.Print(B);
+            global::Sharpy.Builtins.Print(global::NullCoalescing0003.NullCoalescing0003Module.B);
 #line (22, 5) - (22, 24) 12 "null_coalescing_0003.spy"
-            global::Sharpy.Builtins.Print(DefaultName);
+            global::Sharpy.Builtins.Print(global::NullCoalescing0003.NullCoalescing0003Module.DefaultName);
 #line (25, 5) - (25, 18) 12 "null_coalescing_0003.spy"
-            global::Sharpy.Builtins.Print(Result);
+            global::Sharpy.Builtins.Print(global::NullCoalescing0003.NullCoalescing0003Module.Result);
 #line hidden
         }
     }
