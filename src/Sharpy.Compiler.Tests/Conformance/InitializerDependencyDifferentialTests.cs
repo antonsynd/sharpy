@@ -58,6 +58,11 @@ namespace Sharpy.Compiler.Tests.Conformance;
 /// dependency. The pool is held against axes written a second time, each cell with its control tag
 /// (<see cref="PoolAgainstOwed"/>), and a twin's NameError is the cell's own binding (<see cref="Cell.NameErrorOn"/>).
 ///
+/// Task M of the plan (its Testing Strategy: the cells R-LN rules to P77c, #2457 cell 4) adds two cell sets, each with
+/// its controls: the cycle routes beyond the text's own read and a def (<see cref="RouteCells"/>, and the slot map's
+/// conditional cases evaluated, <see cref="EvaluatedSlotCells"/>), in the slot family; and the read after a caught
+/// throw, on every host the lazy retry of D3 reaches (<see cref="RetryCells"/>), in the location family.
+///
 /// Known-red cells are rows of <c>initializer-dependency-differential-allowlist.txt</c>. A run writes its report, every
 /// cell and the rows it would propose under <c>.claude/tmp/initializer-dependency-differential-*</c>.
 /// </summary>
@@ -475,6 +480,7 @@ public sealed partial class InitializerDependencyDifferentialTests : Integration
         ("seven()", new[] { "def seven() -> int:", "    return 7" }),
         ("fill2(", new[] { "def fill2(a: out int, by: int) -> int:", "    a = 41 + by", "    return 1" }),
         ("peek2(", new[] { "def peek2(a: in int, by: int) -> int:", "    return a + by" }),
+        ("none0()", new[] { "def none0() -> int | None:", "    return None" }),
         ("CM0(", new[] { "class CM0:", "    v: int", "    def __init__(self, v: int) -> None:", "        self.v = v", "    def __enter__(self) -> int:", "        return self.v", "    def __exit__(self) -> None:", "        pass" }),
     };
 
@@ -579,6 +585,9 @@ public sealed partial class InitializerDependencyDifferentialTests : Integration
         .Concat(SlotCells())
         .Concat(StoredCells())
         .Concat(RingCells())
+        .Concat(RouteCells())
+        .Concat(EvaluatedSlotCells())
+        .Concat(RetryCells())
         .OrderBy(c => c.Id, StringComparer.Ordinal)
         .ToList());
 
@@ -601,6 +610,8 @@ public sealed partial class InitializerDependencyDifferentialTests : Integration
         failures.AddRange(OperandTotalityFailures(everyCell));
         failures.AddRange(LocationTotalityFailures(everyCell));
         failures.AddRange(SlotTotalityFailures(everyCell));
+        failures.AddRange(RouteTotalityFailures(everyCell));
+        failures.AddRange(RetryTotalityFailures(everyCell));
 
         var pool = everyCell.Where(c => c.Family == Family.Reference).ToList();
 
@@ -744,6 +755,8 @@ public sealed partial class InitializerDependencyDifferentialTests : Integration
         NoEnclosingBody, NotAnIntValue, NoStaticInitializer, LiteralOnNoCycle, NoBinding,
         // Scope: another harness holds the value, or the plan's graph leaves it out by decision (D8).
         PositionLocal, InitializedInItsBody, OtherModule, PerObject, ObjectStorage, TupleArmStoresNothing,
+        // What a kind runs when it is used, for the cycle routes: nothing, its constructor, a lambda's body, an implementing class's method.
+        RunsNoCode, ReachedThroughConstructor, ReachedThroughSlot, NoCodeOfItsOwn, ReachedThroughImplementation,
     };
 
     private static IEnumerable<(string What, Exclusion Exclusion)> AllExclusions() =>
@@ -753,7 +766,8 @@ public sealed partial class InitializerDependencyDifferentialTests : Integration
             .Concat(ExcludedPositions.Select(e => ($"ReadPosition.{e.Key}", e.Value)))
             .Concat(OperandExclusions())
             .Concat(LocationExclusions())
-            .Concat(SlotExclusions());
+            .Concat(SlotExclusions())
+            .Concat(RouteExclusions());
 
     [Fact]
     public void Axes_AreTheImageOfTheirSources_AndThePoolIsFedByThem()
@@ -1097,6 +1111,8 @@ public sealed partial class InitializerDependencyDifferentialTests : Integration
                     twins = pool.Count(c => c.TwinSource != null),
                     rings = pool.Count(c => c.Id.StartsWith(RingPrefix, StringComparison.Ordinal)),
                     stored = pool.Count(c => c.Id.StartsWith(StoredPrefix, StringComparison.Ordinal)),
+                    routes = pool.Count(c => c.Id.StartsWith(RoutePrefix, StringComparison.Ordinal)),
+                    retries = pool.Count(c => c.Id.StartsWith(RetryPrefix, StringComparison.Ordinal)),
                     genericHost = pool.Count(c => c.Id.Contains("+Generic/", StringComparison.Ordinal)),
                     mustRaise = pool.Count(c => c.Raises != null),
                     cross = pool.Count(c => c.Id.StartsWith("Location/Cross/", StringComparison.Ordinal)),
@@ -1227,12 +1243,15 @@ public sealed partial class InitializerDependencyDifferentialTests : Integration
         {
             ("reference", c => c.Family == Family.Reference),
             ("operand", c => c.Family == Family.Operand),
-            ("location", c => c.Family == Family.Location && !c.Id.StartsWith(CrossPrefix, StringComparison.Ordinal) && c.Rejected == null),
+            ("location", c => c.Family == Family.Location && !c.Id.StartsWith(CrossPrefix, StringComparison.Ordinal) && !c.Id.StartsWith(RetryPrefix, StringComparison.Ordinal) && c.Rejected == null),
             ("cross", c => c.Id.StartsWith(CrossPrefix, StringComparison.Ordinal) && c.Rejected == null),
             ("observed", c => c.Rejected != null),
-            ("slot", c => c.Family == Family.Slot && !c.Id.StartsWith(RingPrefix, StringComparison.Ordinal) && !c.Id.StartsWith(StoredPrefix, StringComparison.Ordinal)),
+            ("slot", c => c.Family == Family.Slot && !c.Id.StartsWith(RingPrefix, StringComparison.Ordinal) && !c.Id.StartsWith(StoredPrefix, StringComparison.Ordinal) && !c.Id.StartsWith(RoutePrefix, StringComparison.Ordinal)),
             ("ring", c => c.Id.StartsWith(RingPrefix, StringComparison.Ordinal)),
             ("stored", c => c.Id.StartsWith(StoredPrefix, StringComparison.Ordinal)),
+            ("route", c => c.Id.StartsWith(RoutePrefix, StringComparison.Ordinal) && !c.Id.StartsWith(EvaluatedPrefix, StringComparison.Ordinal)),
+            ("evaluated", c => c.Id.StartsWith(EvaluatedPrefix, StringComparison.Ordinal)),
+            ("retry", c => c.Id.StartsWith(RetryPrefix, StringComparison.Ordinal)),
         };
         foreach (var (name, holds) in groups)
         {

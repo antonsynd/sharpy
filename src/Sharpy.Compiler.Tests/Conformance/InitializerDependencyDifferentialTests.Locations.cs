@@ -1398,7 +1398,7 @@ public sealed partial class InitializerDependencyDifferentialTests
                         }
         foreach (var cell in SameExpressionCells())
             owed[cell.Id] = true;
-        failures.AddRange(PoolAgainstOwed("the location axes", owed, pool.Where(c => c.Family == Family.Location && !c.Id.StartsWith(CrossPrefix, StringComparison.Ordinal))));
+        failures.AddRange(PoolAgainstOwed("the location axes", owed, pool.Where(c => c.Family == Family.Location && !c.Id.StartsWith(CrossPrefix, StringComparison.Ordinal) && !c.Id.StartsWith(RetryPrefix, StringComparison.Ordinal))));
         return failures;
     }
 }
