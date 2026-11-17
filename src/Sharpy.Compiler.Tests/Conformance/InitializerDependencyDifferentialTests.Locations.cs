@@ -1058,10 +1058,42 @@ public sealed partial class InitializerDependencyDifferentialTests
             failures.Add("no operand use stores without reading: nothing is observed");
             return failures;
         }
-        if (ObservedWhenExclusion(When.Ready) != null)
-            failures.Add("an operand naming a ready value is not observed");
         // An id listed twice is the pool's own totality line: here the first cell stands for it.
         var byId = pool.GroupBy(c => c.Id, StringComparer.Ordinal).ToDictionary(g => g.Key, g => g.First(), StringComparer.Ordinal);
+
+        // At every time, an operand is observed there if and only if the value is ready there: the `Read` cell of the same
+        // holder, host form and kind at that time is a control. The times come from the `Read` cells, a second source,
+        // never from the exclusion that picks them: a time the exclusion drops while the `Read` cell there is a control,
+        // or keeps while it is none, is a line. A time with no `Read` cell is one where the read is excluded as the cycle
+        // (`WhenExclusion`): the value is not ready there, and a missing `Read` cell that no exclusion names is a line.
+        foreach (var cell in LocationProduct().Where(c => uses.Contains(c.Use)))
+        {
+            var readId = LocationId(cell.Holder, cell.Form, cell.Kind, LocationUse.Read, cell.When);
+            bool ready;
+            if (byId.TryGetValue(readId, out var read))
+                ready = read.IsControl;
+            else if (WhenExclusion(LocationUse.Read, cell.Holder, cell.When) != null)
+                ready = false;
+            else
+            {
+                failures.Add($"{readId} is not generated: nothing says whether the value is ready at When.{cell.When}");
+                continue;
+            }
+            foreach (var observed in Enum.GetValues<OutObservation>())
+            {
+                var id = ObservedId(LocationId(cell.Holder, cell.Form, cell.Kind, cell.Use, cell.When), observed);
+                if (byId.ContainsKey(id) != ready)
+                    failures.Add(ready
+                        ? $"{id} is not generated, and {readId} is a control: an operand naming a ready value is not observed"
+                        : $"{id} is generated, and {readId} is no control: an operand is observed where the value is not ready");
+            }
+        }
+        // The iff holds of a host whose value is never ready, with nothing observed: every stored holder and host form has
+        // a time at which it is observed in every way.
+        foreach (var (holder, form) in LocationProduct().Where(c => uses.Contains(c.Use)).Select(c => (c.Holder, c.Form)).Distinct())
+            foreach (var observed in Enum.GetValues<OutObservation>().Where(o => !LocationProduct().Any(c => c.Holder == holder && c.Form == form && uses.Contains(c.Use)
+                && byId.ContainsKey(ObservedId(LocationId(c.Holder, c.Form, c.Kind, c.Use, c.When), o)))))
+                failures.Add($"holder BindingKind.{holder} in HostForm.{form} has no operand observed {observed} at any time");
 
         // Every cell of the two products whose use is an operand that stores is observed in every way, or says why not.
         var owed = new List<(string Id, string? Excluded)>();
@@ -1083,10 +1115,6 @@ public sealed partial class InitializerDependencyDifferentialTests
         var cross = ObservedCrossProduct().ToList();
         foreach (var observed in Enum.GetValues<OutObservation>())
         {
-            // On every stored holder and host form, and at every time the value is ready.
-            foreach (var (holder, form) in LocationProduct().Where(c => uses.Contains(c.Use)).Select(c => (c.Holder, c.Form)).Distinct())
-                foreach (var when in Enum.GetValues<When>().Where(w => ObservedWhenExclusion(w) == null && !location.Contains((holder, form, ValueKind.Int, uses[0], w, observed))))
-                    failures.Add($"holder BindingKind.{holder} in HostForm.{form} has no operand observed {observed} at When.{when}");
             // The value ready in a host that has not swept: the one place the value's state and its host's differ.
             if (!cross.Any(c => c.Observed == observed && UseRunsBelowTheValueInTheTargetSweep(c.User, c.Target, c.Order)))
                 failures.Add($"no operand is observed {observed} on a ready value whose host is still sweeping");
