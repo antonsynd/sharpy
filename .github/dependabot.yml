@@ -72,8 +72,8 @@ updates:
     target-branch: "dev"
     labels: ["dependencies", "javascript"]
     open-pull-requests-limit: 5
-    # No extension build runs on a PR into dev (vscode-extension.yml runs for mainline only), so
-    # bumps known to break it are held:
+    # Bumps known to break the extension build (vscode-extension.yml, which runs on these PRs) are
+    # held rather than opened red:
     # - @types/vscode: vsce refuses to package when its range passes engines.vscode (^1.91.0) at
     #   major.minor, and Dependabot rewrites the range to the new version, so no bump is safe.
     # - @types/node: the extension host of VS Code 1.91 runs Node 20.
