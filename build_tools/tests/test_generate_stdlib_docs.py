@@ -3482,6 +3482,30 @@ class TestRenderedTypeRoster:
         hits = _roster_violations(stdlib_pages)
         assert hits == [], f"{len(hits)} non-Sharpy type tokens:\n" + "\n".join(hits)
 
+    def test_no_generated_or_private_module_value_is_documented(self, stdlib_pages):
+        # plan-775c50 D10: what the compiler adds beside a spy module's own members carries
+        # [CompilerGenerated] (the load entry `__Load`) and is no surface, as module discovery skips
+        # it; a `_name` module value (`random._random`) is private by Python's convention.
+        sources = [
+            p.read_text(encoding="utf-8")
+            for p in (_REPO_ROOT / "src" / "Sharpy.Stdlib").rglob("*.cs")
+            if not {"bin", "obj"} & set(p.parts)
+        ]
+        assert any(
+            "CompilerGenerated" in text and "public static void __Load()" in text
+            for text in sources
+        ), "control: a generated spy module declares its public load entry"
+        assert any(
+            "public static ref global::System.Random _Random" in text for text in sources
+        ), "control: random's private value is a public `ref` property in the generated C#"
+        members = [m for page in stdlib_pages for m in page.members] + [
+            m for page in stdlib_pages for t in page.types for m in t.members
+        ]
+        assert [m.cs_name for m in members if m.cs_name == "__Load"] == []
+        assert [
+            m.name for m in members if m.kind == "property" and m.name.startswith("_")
+        ] == []
+
     def test_roster_allowlist_is_live(self, stdlib_pages):
         # Drain on fix: an allowlisted token the pages no longer carry must be deleted.
         assert all(re.fullmatch(r"#\d+", issue) for issue in _ROSTER_ALLOWLIST.values())
@@ -3614,9 +3638,19 @@ class TestRenderedNameProseAndLayout:
         for cref, rendered in crefs:
             if rendered.startswith("System."):
                 continue
+            # A cref's type arguments (`Result{T,E}`) are type positions: a name there is a type
+            # parameter or a type, never a member reference, however a member elsewhere is spelled
+            # (math's value `E`, a `ref double E` property since plan-775c50 D4). A renamed type is
+            # still a leak there.
+            type_arguments = {
+                name
+                for group in re.findall(r"\{([^{}]*)\}", cref)
+                for name in re.findall(r"[A-Za-z_]\w*", group)
+            }
             for segment in re.findall(r"[A-Za-z_]\w*", rendered):
                 member = (
-                    segment in generator._DECLARED_MEMBERS
+                    segment not in type_arguments
+                    and segment in generator._DECLARED_MEMBERS
                     and segment not in generator._DECLARED_TYPES
                     and segment not in documented
                     and segment[0].isupper()

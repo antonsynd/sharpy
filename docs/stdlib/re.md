@@ -6,6 +6,23 @@ Regular expression operations.
 import re
 ```
 
+## Properties
+
+| Name | Type | Description |
+|------|------|-------------|
+| `IGNORECASE` | `int` |  |
+| `I` | `int` |  |
+| `MULTILINE` | `int` |  |
+| `M` | `int` |  |
+| `DOTALL` | `int` |  |
+| `S` | `int` |  |
+| `VERBOSE` | `int` |  |
+| `X` | `int` |  |
+| `UNICODE` | `int` |  |
+| `U` | `int` |  |
+| `ASCII` | `int` |  |
+| `A` | `int` |  |
+
 ## Functions
 
 ### `re.compile(pattern: str, flags: int = 0) -> Pattern`

@@ -10,6 +10,11 @@ import os
 
 | Name | Type | Description |
 |------|------|-------------|
+| `sep` | `str` |  |
+| `linesep` | `str` |  |
+| `name` | `str` |  |
+| `pathsep` | `str` |  |
+| `altsep` | `str` |  |
 | `environ` | `dict[str, str]` |  |
 
 ## Functions
