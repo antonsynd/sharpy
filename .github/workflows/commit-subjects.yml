@@ -37,12 +37,15 @@ jobs:
         HEAD_SHA: ${{ github.event.pull_request.head.sha }}
         BEFORE: ${{ github.event.before }}
         AFTER: ${{ github.sha }}
+        PR_AUTHOR: ${{ github.event.pull_request.user.login }}
       run: |
+        extra=()
         if [ "$EVENT" = "pull_request" ]; then
           range="$BASE_SHA..$HEAD_SHA"
+          extra=(--pr-author "$PR_AUTHOR")
         elif [ "$BEFORE" = "0000000000000000000000000000000000000000" ]; then
           echo "new branch push: no range to check"; exit 0
         else
           range="$BEFORE..$AFTER"
         fi
-        bash build_tools/check_commit_subjects.sh "$range"
+        bash build_tools/check_commit_subjects.sh "$range" "${extra[@]}"
