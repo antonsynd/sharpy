@@ -342,6 +342,23 @@ public partial class NameResolutionDifferentialTests
         Assert.StartsWith(expected + " ", ProposedCite(cell, verdict, run), StringComparison.Ordinal);
     }
 
+    /// <summary>The owner's ruling of 2026-11-16 (#2422 comment 6920337855): a later module variable refused at a module
+    /// initializer is a name that is not visible, which is N1's (#2423), and not a value that is not ready (#2422).</summary>
+    [Fact]
+    public void Cite_ALaterModuleVariableRefusedAtAModuleInitializer_IsTheVisibilityIssue()
+    {
+        var cell = CellTagged(SharpyTag.MustRun, "5") with
+        {
+            Id = "read/ModuleVar/ModuleInitializer/Later/Bare/outer=None",
+            Family = Family.Read,
+            Target = BindingKind.ModuleVar,
+            Position = ReadPosition.ModuleInitializer,
+            Rule = "N3",
+        };
+
+        Assert.Equal("#2423 false-refusal", ProposedCite(cell, VerdictClass.FalseRefusal, Literal("SPY0200")));
+    }
+
     [Theory]
     [InlineData("SPY0134", "#2424")]
     [InlineData("SPY0600", "#2144")]
