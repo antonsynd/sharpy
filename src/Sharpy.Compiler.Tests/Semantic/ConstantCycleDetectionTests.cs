@@ -10,9 +10,9 @@ using Xunit.Abstractions;
 namespace Sharpy.Compiler.Tests.Semantic;
 
 /// <summary>
-/// Tests the DFS-based const-cycle detection in <c>TypeChecker.DetectConstantCycles</c>.
-/// The structural walk via <c>AstHelper.ContainsDescendant</c> names every constant on a
-/// cycle regardless of expression kind (#1728).
+/// Tests the const-cycle half of the cycle graph, <c>InitializerCycleValidator</c> (plan-775c50 D8;
+/// before it, <c>TypeChecker.DetectConstantCycles</c>, #1728): every constant on a cycle of reads is
+/// named, whatever the expression kind and the slot the read sits in (a const cycle is lexical).
 /// </summary>
 public class ConstantCycleDetectionTests
 {

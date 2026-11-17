@@ -144,7 +144,7 @@ public class DispatchSiteInventoryTests
         // The F1 order rule's "which bare member name does this type-body statement declare": a
         // statement kind that declares no member (a nested type, an alias, a pass) names none, so
         // it is never a sibling's declaration (P21h, owner ruling F1 2026-10-29).
-        // (Moved into TypeBodyMembership by P75 — one anchor rule for F1 and StaticInitializerOrderValidator.)
+        // (Moved into TypeBodyMembership by P75 — one anchor rule for F1 and the retired StaticInitializerOrderValidator.)
         ["Semantic/TypeBodyMembership.cs::TypeBodyMembership.DeclaredMemberName"] = "documented-by-design:Semantic/TypeBodyMembership.cs:DeclaredMemberName",
         // plan-775c50 D6 (P77 T6): which uses of a Guarded value in an `async def` body take the ensure
         // arm. Each switch is deliberately partial — a scope kind, the two value spellings, the receiver
@@ -155,11 +155,19 @@ public class DispatchSiteInventoryTests
         ["Semantic/AsyncGuardedUseAnalyzer.cs::AsyncGuardedUseAnalyzer.IsReceiverOf"] = "refusal-net:AsyncGuardedUseFactTests",
         ["Semantic/AsyncGuardedUseAnalyzer.cs::AsyncGuardedUseAnalyzer.IsStoreTarget"] = "refusal-net:AsyncGuardedUseFactTests",
         ["Semantic/AsyncGuardedUseAnalyzer.cs::AsyncGuardedUseAnalyzer.IsElementOf"] = "refusal-net:AsyncGuardedUseFactTests",
-        // The static-initializer order validator (P75, #2396): which statements declare a static initializer,
-        // which nodes of one it reads, and which sibling kinds are ordered storage — each deliberately partial.
-        ["Semantic/Validation/StaticInitializerOrderValidator.cs::StaticInitializerOrderValidator.ValidateTypeBody"] = "documented-by-design:Semantic/Validation/StaticInitializerOrderValidator.cs:ValidateTypeBody",
-        ["Semantic/Validation/StaticInitializerOrderValidator.cs::StaticInitializerOrderValidator.Walk"] = "documented-by-design:Semantic/Validation/StaticInitializerOrderValidator.cs:Walk",
-        ["Semantic/Validation/StaticInitializerOrderValidator.cs::StaticInitializerOrderValidator.OrderedKind"] = "documented-by-design:Semantic/Validation/StaticInitializerOrderValidator.cs:OrderedKind",
+        // plan-775c50 D8 (P77 T9): the cycle graph. Its slot walk over the Expression subclasses is total and
+        // equal to the stage-0 generator's map (CycleGraph_SlotMapAndNodeKinds_AreTheGenerators); the node,
+        // read, pattern and store switches are covered by the generator's Slot family and the order matrix.
+        ["Semantic/Validation/InitializerCycleValidator.cs::InitializerCycleValidator.SlotsOf"] = "refusal-net:InitializerDependencyDifferentialTests",
+        ["Semantic/Validation/InitializerCycleValidator.cs::InitializerCycleValidator.Clauses"] = "refusal-net:InitializerDependencyDifferentialTests",
+        ["Semantic/Validation/InitializerCycleValidator.cs::InitializerCycleValidator.CollectModule"] = "refusal-net:InitializerDependencyDifferentialTests",
+        ["Semantic/Validation/InitializerCycleValidator.cs::InitializerCycleValidator.CollectType"] = "refusal-net:StaticInitializerOrderMatrixTests",
+        ["Semantic/Validation/InitializerCycleValidator.cs::InitializerCycleValidator.CollectStores"] = "refusal-net:InitializerDependencyDifferentialTests",
+        ["Semantic/Validation/InitializerCycleValidator.cs::InitializerCycleValidator.StoreLeaves"] = "refusal-net:InitializerDependencyDifferentialTests",
+        ["Semantic/Validation/InitializerCycleValidator.cs::InitializerCycleValidator.ValueRead"] = "refusal-net:InitializerDependencyDifferentialTests",
+        ["Semantic/Validation/InitializerCycleValidator.cs::InitializerCycleValidator.WalkInitializer"] = "refusal-net:InitializerDependencyDifferentialTests",
+        ["Semantic/Validation/InitializerCycleValidator.cs::InitializerCycleValidator.WalkPattern"] = "refusal-net:InitializerDependencyDifferentialTests",
+        ["Semantic/Validation/InitializerCycleValidator.cs::InitializerCycleValidator.WalkStoreTarget"] = "refusal-net:InitializerDependencyDifferentialTests",
         // IsMutableDefault (both copies) folded onto ConstantDefaultClassifier's
         // Collection/Comprehension kinds (#1684, R-A) — the shape-switching dispatch these two rows
         // named is gone, drained here rather than left phantom.
@@ -375,9 +383,6 @@ public class DispatchSiteInventoryTests
         ["Analysis/ControlFlow/NarrowingFlowAnalysis.cs::NarrowingConditionInterpreter.DescribeTypeExpression"] = "documented-by-design:Analysis/ControlFlow/NarrowingFlowAnalysis.cs:DescribeTypeExpression",
         // GetLruCacheMaxSize deleted: emitter reads FunctionSymbol.CacheMaxSize (#1716)
         ["Semantic/TypeChecker.cs::TypeChecker.CheckStatementCore"] = "guarded-by:CheckStatementCoreTotalityTests",
-        // DetectConstantCycles: the type-body const graph's member-name switch and qualified-path reader
-        // (P21h, #2384) — partial by design; a kind it does not list leaves a bare name to the module lookup.
-        ["Semantic/TypeChecker.cs::TypeChecker.DetectConstantCycles"] = "documented-by-design:Semantic/TypeChecker.cs:DetectConstantCycles",
         ["Semantic/TypeChecker.Definitions.cs::TypeChecker.DetectGeneratorAttributes"] = "guarded-by:DeclarationKindDispatchTotalityTests",
         // TypeChecker.ExtractCacheConfig: dispatch moved to AstHelper.TryGetLiteralValue (#1716)
         ["Semantic/TypeChecker.Expressions.Access.Calls.cs::TypeChecker.MarkTypeFactoryArguments"] = "refusal-net:FileBasedIntegrationTests",

@@ -503,8 +503,8 @@ internal partial class TypeChecker
     /// member the body does not declare (an inherited one, a synthesized one) is never later.
     /// A <c>const</c> sibling is exempt here: a compile-time const is order-free (#1795), and the
     /// compile-time fact is recorded after this walk (<c>ConstEligibility.AnalyzeModule</c>), so a
-    /// forward read of a const that is NOT one (<c>static readonly</c> storage, ordered like a
-    /// <c>@static</c> field) is refused by <c>StaticInitializerOrderValidator</c> (SPY0618, P75).
+    /// forward read of a const that is NOT one (Guarded storage, like a <c>@static</c> field) runs:
+    /// under rule N3 a value is initialized before its first read (plan-775c50 D9 retired P75's SPY0618).
     /// Positions are the unwrapped declarations' starts on both sides, so a decorator never moves
     /// one of them.
     /// </summary>

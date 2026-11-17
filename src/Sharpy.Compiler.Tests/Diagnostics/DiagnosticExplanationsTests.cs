@@ -213,6 +213,19 @@ public class DiagnosticExplanationsTests
     }
 
     [Fact]
+    public void StaticInitializerForwardRead_IsRetiredIntoN3()
+    {
+        // SPY0618 retired (plan-775c50 D9): a forward static read runs under rule N3, and a value that reads
+        // itself on every run is the cycle graph's SPY0278. No site emits it.
+        var explanation = DiagnosticExplanations.Get(DiagnosticCodes.SemanticOverflow.StaticInitializerForwardRead);
+
+        Assert.NotNull(explanation);
+        Assert.Equal("SPY0618", explanation!.Code);
+        Assert.Contains("RETIRED", explanation.Description);
+        Assert.Contains("SPY0278", explanation.Description);
+    }
+
+    [Fact]
     public void GenericTypeInPattern_IsRetiredIntoTheClosedSpelling()
     {
         // SPY0125 retired (#1708/#1619): explicit type arguments in a pattern head are now accepted;

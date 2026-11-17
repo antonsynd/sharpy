@@ -939,7 +939,12 @@ public static partial class DiagnosticExplanations
             "Two or more const declarations reference each other, forming a cycle that cannot " +
             "be evaluated. Unlike Python (which raises NameError at runtime), Sharpy requires " +
             "const values to be statically resolvable. Break the cycle by computing one of the " +
-            "values independently.",
+            "values independently. The same holds of any module or '@static' value (rule N3, " +
+            "plan-775c50 D8): a value whose initializer reads it back on every run — itself, or " +
+            "through other values, in a place evaluated whenever the initializer is — can never be " +
+            "given a value, and is refused here. A read in a branch that may not run (an 'if' arm, " +
+            "the right of 'and' / 'or', a lambda's body) or a cycle through a value some plain store " +
+            "in the module names is no compile error; if it closes at run time it raises NameError.",
             "const A: int = B\nconst B: int = A  # error: circular reference",
             "Break the cycle:\n    const A: int = 42\n    const B: int = A");
 
@@ -1432,22 +1437,14 @@ public static partial class DiagnosticExplanations
         Add(dict, DiagnosticCodes.SemanticOverflow.StaticInitializerForwardRead,
             "Static initializer reads a static sibling declared later",
             "Semantic",
-            "A type's static initializers — a '@static' field's initializer, a '@static' property's default, " +
-            "and a 'const' whose initializer is not a compile-time constant (it is stored like a '@static' " +
-            "field) — run once, top to bottom, in the order the type body declares them. A static initializer " +
-            "that reads a '@static' field, a '@static' property or such a 'const' declared LATER in the same " +
-            "type, or reads itself, would see that member's default value (0, None, ...), because its " +
-            "initializer has not run yet; one that calls a '@static' method declared later could read statics " +
-            "that are not initialized yet. The read is refused in every spelling — bare ('b'), through the " +
-            "type name ('Host.b'), through an alias of the type. A compile-time 'const' ('const B: int = 3') " +
-            "is a constant, not storage, and can be read from anywhere. A bare forward read of a '@static' " +
-            "member is SPY0200 (the class body's own order rule); this code covers the spellings that rule " +
-            "does not see. A read of an EARLIER member is always allowed, and so is a call of an earlier " +
-            "'@static' method — but that method's body runs at the call and reads only the statics " +
-            "initialized so far.",
-            "class Host:\n    @static\n    a: int = Host.b  # SPY0618: 'b' is declared later than 'a'\n" +
+            "RETIRED (plan-775c50 D9, rule N3): no site emits SPY0618 any longer; this explanation is retained only " +
+            "for old build logs. Every module and '@static' value is now initialized before its first read, by any " +
+            "spelling or path, so a static initializer that reads a sibling declared later runs and sees that " +
+            "sibling's value. A value whose initializer reads it back on every run — itself, or through other " +
+            "values — can never be given one, and is SPY0278.",
+            "class Host:\n    @static\n    a: int = Host.b  # runs: 2\n" +
             "    @static\n    b: int = 2",
-            "Move the member above its reader, read it in a method, or make a 'const' a compile-time constant:\n" +
-            "  class Host:\n      @static\n      b: int = 2\n      @static\n      a: int = Host.b  # 2");
+            "Nothing to fix for a forward read. A value that reads itself is SPY0278:\n" +
+            "  class Host:\n      @static\n      a: int = Host.a + 1  # SPY0278");
     }
 }

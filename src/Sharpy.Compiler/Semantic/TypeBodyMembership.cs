@@ -99,8 +99,7 @@ internal static class TypeBodyMembership
     /// statement of <paramref name="body"/> that declares <paramref name="name"/>
     /// (<see cref="DeclaredMemberName"/>), or null. A split property is emitted as ONE C# property
     /// at its FIRST half, so a default carried by a later half runs where the first half stands — the
-    /// checker's order rule (<c>TypeChecker.IsDeclaredLater</c>) and
-    /// <c>StaticInitializerOrderValidator</c> both anchor a member here (P21h verify C2).
+    /// checker's order rule (<c>TypeChecker.IsDeclaredLater</c>) anchors a member here (P21h verify C2).
     /// </summary>
     internal static Node? FirstDeclarationOf(IEnumerable<Statement> body, string? name)
     {

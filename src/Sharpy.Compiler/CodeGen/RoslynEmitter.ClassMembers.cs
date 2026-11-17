@@ -209,7 +209,7 @@ internal partial class RoslynEmitter
                 case PropertyDef propDef:
                     // A property's halves (getter + setter, or an auto half + a function-style accessor)
                     // combine into ONE C# property, emitted at the first half — the anchor the checker's
-                    // order rule and StaticInitializerOrderValidator read (TypeBodyMembership).
+                    // order rule reads (TypeBodyMembership).
                     var propGroup = propertyGroups[propDef.MemberKey()];
                     if (ReferenceEquals(propGroup[0], propDef))
                     {
