@@ -1435,16 +1435,24 @@ public static partial class DiagnosticExplanations
             "      property set level(self, v: int): ...");
 
         Add(dict, DiagnosticCodes.SemanticOverflow.StaticInitializerForwardRead,
-            "Static initializer reads a static sibling declared later",
+            "Class-body initializer reads a later 'const' whose name is ambiguous there",
             "Semantic",
-            "RETIRED (plan-775c50 D9, rule N3): no site emits SPY0618 any longer; this explanation is retained only " +
-            "for old build logs. Every module and '@static' value is now initialized before its first read, by any " +
-            "spelling or path, so a static initializer that reads a sibling declared later runs and sees that " +
-            "sibling's value. A value whose initializer reads it back on every run — itself, or through other " +
-            "values — can never be given one, and is SPY0278.",
-            "class Host:\n    @static\n    a: int = Host.b  # runs: 2\n" +
-            "    @static\n    b: int = 2",
-            "Nothing to fix for a forward read. A value that reads itself is SPY0278:\n" +
-            "  class Host:\n      @static\n      a: int = Host.a + 1  # SPY0278");
+            "Narrowed by plan-775c50 to N2's order-vs-scope shape until P78 (#2423) replaces it with N2's own code. " +
+            "A '@static' field's initializer, a '@static' property's default or a 'const' initializer reads, by " +
+            "bare name, a 'const' of its own type that is not a compile-time constant and is declared LATER, while " +
+            "a binding outside the class (a module value, a function, a builtin, an enclosing scope) holds the " +
+            "same name. Python reads the outer binding there, because the class body has not bound the name yet; " +
+            "reading by scope finds the later member. The two give the name different meanings, so the read is " +
+            "refused rather than given either one silently. The same read inside a comprehension's body (its " +
+            "element, a condition, a later iterable) is refused with or without an outer binding: a " +
+            "comprehension's body does not see the class body's names. Every other forward read runs — each " +
+            "value is initialized before its first read (rule N3) — and a value that reads itself on every run " +
+            "is SPY0278.",
+            "def seven() -> int:\n    return 7\n\nk: int = 9\n\nclass Host:\n    @static\n" +
+            "    a: int = k + 1  # SPY0618: the module 'k' or the later 'Host.k'?\n" +
+            "    const k: int = seven()",
+            "Say which one you mean, or rename one of them:\n" +
+            "  class Host:\n      @static\n      a: int = Host.k + 1  # the member: 8\n" +
+            "      const k: int = seven()");
     }
 }

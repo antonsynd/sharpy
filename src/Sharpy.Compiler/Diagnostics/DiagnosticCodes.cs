@@ -1029,10 +1029,12 @@ public static class DiagnosticCodes
         // accessors are all abstract or all default implementations (Roslyn's CS0525 for
         // `{ get; set { … } }`). Refused at the later half (#2382, R-JG).
         public const string InterfaceAccessorsMustAgreeOnBody = "SPY0617"; // Active (#2382)
-        // Retired by rule N3 (plan-775c50 D9, R-KD): a forward read of a static sibling now runs — every
-        // value is initialized before its first read — and a value that reads itself on every run is the
-        // cycle graph's SPY0278. Reserved, never reused.
-        public const string StaticInitializerForwardRead = "SPY0618"; // Retired — superseded by N3's readiness and SPY0278 (plan-775c50 D9, #2422)
+        // Narrowed by plan-775c50 (rule N3 retired the forward-read rule, D9) to N2's order-vs-scope shape
+        // until P78 (#2423) replaces it with N2's own code: a static or const initializer reads, by bare
+        // name, a later non-compile-time `const` of its own type while a binding outside the type holds the
+        // name, or from a comprehension's body. Every other forward read runs (N3); a value that reads itself
+        // on every run is the cycle graph's SPY0278.
+        public const string StaticInitializerForwardRead = "SPY0618"; // Active (#2396; narrowed to N2's shape until P78, #2423)
     }
 
     /// <summary>

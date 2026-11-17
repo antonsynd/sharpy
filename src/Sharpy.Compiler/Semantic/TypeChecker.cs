@@ -749,6 +749,10 @@ internal partial class TypeChecker
         new ConstEligibility(_symbolTable, SemanticBinding, _semanticInfo)
             .AnalyzeModule(module);
 
+        // N2's order-vs-scope reads of a later const, held by the class-scope rule until the
+        // compile-time fact above exists (SPY0618, narrowed until P78; TypeChecker.ClassScopeRule).
+        ReportAmbiguousLaterConstReads();
+
         // Run pipeline validators (always enabled)
         var context = CreateSemanticContext();
         context.Diagnostics.Merge(_diagnostics);

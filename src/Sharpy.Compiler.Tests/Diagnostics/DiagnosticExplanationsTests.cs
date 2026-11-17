@@ -213,15 +213,17 @@ public class DiagnosticExplanationsTests
     }
 
     [Fact]
-    public void StaticInitializerForwardRead_IsRetiredIntoN3()
+    public void StaticInitializerForwardRead_IsNarrowedToN2UntilP78()
     {
-        // SPY0618 retired (plan-775c50 D9): a forward static read runs under rule N3, and a value that reads
-        // itself on every run is the cycle graph's SPY0278. No site emits it.
+        // SPY0618 narrowed (plan-775c50, owner ruling at P77 T9): rule N3 runs every other forward static read, a
+        // value that reads itself on every run is the cycle graph's SPY0278, and the one shape left is N2's
+        // order-vs-scope ambiguity, until P78 (#2423) gives it N2's own code. It is active, not retired.
         var explanation = DiagnosticExplanations.Get(DiagnosticCodes.SemanticOverflow.StaticInitializerForwardRead);
 
         Assert.NotNull(explanation);
         Assert.Equal("SPY0618", explanation!.Code);
-        Assert.Contains("RETIRED", explanation.Description);
+        Assert.DoesNotContain("RETIRED", explanation.Description);
+        Assert.Contains("until P78 (#2423)", explanation.Description);
         Assert.Contains("SPY0278", explanation.Description);
     }
 

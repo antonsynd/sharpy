@@ -64,9 +64,9 @@ public class StaticInitializerOrderMatrixTests : IntegrationTestBase
         MuteCompilePath = true;
     }
 
-    /// <summary>The retired SPY0618 code (<c>DiagnosticCodes.SemanticOverflow.StaticInitializerForwardRead</c>, plan-775c50
-    /// D9), spelled as a literal so the contract does not read the compiler's table. Only the shadowed cell still names
-    /// it: its refusal is N2's verdict (R-KJ), and its code is P78's.</summary>
+    /// <summary>The SPY0618 code (<c>DiagnosticCodes.SemanticOverflow.StaticInitializerForwardRead</c>), spelled as a literal
+    /// so the contract does not read the compiler's table. Rule N3 retired its forward-read rule (plan-775c50 D9); it is
+    /// narrowed to N2's order-vs-scope shape until P78 (#2423) gives N2 its own code, so only the shadowed cell names it.</summary>
     internal const string ForwardReadCode = "SPY0618";
 
     /// <summary>The const reader reading itself — the constant cycle, pinned by code alone.</summary>
@@ -284,9 +284,8 @@ public class StaticInitializerOrderMatrixTests : IntegrationTestBase
 
         // SHADOWED later non-literal const (P75 verify F2; #2415, closed by R-KJ): a module binding `K` above the
         // class, and `@static b: int = K + 0` above `const K: int = seven()`. python3 prints 9; reading by scope (N1)
-        // names the class const. N2 refuses the read (R-KJ; #2423's C08), so the refusal stays this cell's verdict. Its
-        // code is N2's, which P78 adds: SPY0618 is retired (plan-775c50 D9), the program runs `7` meanwhile, and the
-        // cell is allowlisted citing #2423 until then (the lead's ruling on T9).
+        // names the class const. N2 refuses the read (R-KJ; #2423's C08), so the refusal stays this cell's verdict:
+        // SPY0618, narrowed to this shape (plan-775c50, the owner's ruling at T9) until P78 adds N2's own code.
         {
             var (source, line, column) = Program(new[] { "class Host:" }, null, new[] { "@static", "b: int = § + 0" }, "K",
                 new[] { "const K: int = seven()" }, alias: false, "Host.b");
@@ -362,8 +361,8 @@ public class StaticInitializerOrderMatrixTests : IntegrationTestBase
         // F1 (unchanged; N1's, #2423): the bare forward @static field, property and method per host × reader (27), and
         // the bare self read of the two non-const readers per host (6).
         Assert.Equal(27 + 6, cells.Count(c => Has(c, "SPY0200")));
-        // SPY0618 is retired (D9). The one cell that keeps its refusal is the shadowed later const: N2 (#2423, C08)
-        // rules it refused (R-KJ), and it is allowlisted until P78 gives it N2's code.
+        // SPY0618's forward-read rule is retired (D9). The one cell that keeps its refusal is the shadowed later const:
+        // N2 (#2423, C08) rules it refused (R-KJ), under SPY0618 narrowed to N2's shape until P78 gives it N2's code.
         Assert.Equal(1, cells.Count(c => Has(c, ForwardReadCode)));
         // The cycle graph (D8): the const reader reading itself in every spelling (9), and the qualified and alias
         // self read of the two non-const readers per host (12).

@@ -433,6 +433,17 @@ internal partial class TypeChecker
             return SemanticType.Unknown;
         }
 
+        // A later const read from a static or const initializer may be N2's ambiguous read; whether
+        // the const is a compile-time one (order-free, never ambiguous by this arm) is known only
+        // after the walk, so the read is held for ReportAmbiguousLaterConstReads.
+        if (member.IsConstant
+            && reader.Position is ClassBodyReadPosition.StaticInitializer or ClassBodyReadPosition.ConstInitializer
+            && OrderAgainstReader(member, reader) > 0)
+        {
+            _laterConstReads.Add(new LaterConstRead(id, _currentClass, member.Name, reader,
+                OuterBinds: IsBoundOutsideTheTypeBody(id.Name)));
+        }
+
         // The emitter writes the member's C# name bare — what C# resolves in this position — rather
         // than looking up a local the read does not have (SemanticInfo.MergeFrom carries it to the
         // project's merged info).
@@ -491,6 +502,23 @@ internal partial class TypeChecker
         return false;
     }
 
+    /// <summary>Whether a scope outside the type body being checked binds <paramref name="name"/> — the
+    /// module, an enclosing function or type, a builtin — whatever the type body itself binds: the binding
+    /// python's class body reads before the class binds the name.</summary>
+    private bool IsBoundOutsideTheTypeBody(string name)
+    {
+        for (var scope = _symbolTable.CurrentScope; scope != null; scope = scope.Parent)
+        {
+            if (SymbolTable.ClassifyScope(scope.Name) != SymbolTable.ScopeKind.TypeBody)
+                continue;
+            return scope.Parent?.ResolveName(name, fromFunctionLikeContext: false).Bound != null
+                || _symbolTable.BuiltinRegistry.GetFunction(name) != null
+                || _symbolTable.BuiltinRegistry.GetType(name) != null;
+        }
+
+        return false;
+    }
+
     /// <summary>Whether <paramref name="bound"/> is a binding of the type body itself.</summary>
     private bool IsBoundInTypeBody(string name, Symbol bound)
         => _symbolTable.Resolve(name) is { DeclaringScope: { } declaringScope } resolution
@@ -504,17 +532,23 @@ internal partial class TypeChecker
     /// A <c>const</c> sibling is exempt here: a compile-time const is order-free (#1795), and the
     /// compile-time fact is recorded after this walk (<c>ConstEligibility.AnalyzeModule</c>), so a
     /// forward read of a const that is NOT one (Guarded storage, like a <c>@static</c> field) runs:
-    /// under rule N3 a value is initialized before its first read (plan-775c50 D9 retired P75's SPY0618).
+    /// under rule N3 a value is initialized before its first read (plan-775c50 D9) — unless an outer
+    /// binding of its name makes the read ambiguous, N2's shape, which <see cref="ReportAmbiguousLaterConstReads"/>
+    /// refuses once the fact exists.
     /// Positions are the unwrapped declarations' starts on both sides, so a decorator never moves
     /// one of them.
     /// </summary>
     private bool IsDeclaredLater(TypeBodyMember member, ClassBodyReader reader)
+        => !member.IsConstant && OrderAgainstReader(member, reader) >= 0;
+
+    /// <summary>Where <paramref name="member"/>'s declaration stands against the reader's in the current
+    /// type body, under the one anchor rule: 0 for the same anchor (a self read), positive when the
+    /// member is declared after the reader, negative before; null when the body does not declare the
+    /// member (inherited, synthesized) or the reader has no declaration.</summary>
+    private int? OrderAgainstReader(TypeBodyMember member, ClassBodyReader reader)
     {
-        if (member.IsInherited || member.IsConstant || reader.Declaration is not { } readerDeclaration
-            || _currentTypeBody.IsDefault)
-        {
-            return false;
-        }
+        if (member.IsInherited || reader.Declaration is not { } readerDeclaration || _currentTypeBody.IsDefault)
+            return null;
 
         // Both sides are anchored where the emitter places them: a split property is emitted as ONE
         // C# property at its FIRST half (RoslynEmitter.ClassMembers groups the halves in first-seen
@@ -525,11 +559,12 @@ internal partial class TypeChecker
             ? FirstDeclarationOf(TypeBodyMembership.DeclaredMemberName(readerDeclaration)) ?? readerDeclaration
             : readerDeclaration;
         if (FirstDeclarationOf(member.Name) is not { } memberAnchor)
-            return false;
+            return null;
 
         return ReferenceEquals(memberAnchor, readerAnchor)
-            || (memberAnchor.LineStart, memberAnchor.ColumnStart).CompareTo(
-                (readerAnchor.LineStart, readerAnchor.ColumnStart)) >= 0;
+            ? 0
+            : (memberAnchor.LineStart, memberAnchor.ColumnStart).CompareTo(
+                (readerAnchor.LineStart, readerAnchor.ColumnStart));
     }
 
     /// <summary>The first declaration of <paramref name="name"/> in the current type body — the
@@ -581,6 +616,117 @@ internal partial class TypeChecker
             ? message + $" ('{spelling}'), but a parameter default must be a compile-time constant (a 'const'), "
                 + $"which '{spelling}' is not"
             : message + $". Use '{spelling}'";
+    }
+
+    /// <summary>A bare read of a later <c>const</c> of the type being checked, from a static or const
+    /// initializer: held until <see cref="ConstEligibility"/> says whether the const is a compile-time one.
+    /// <paramref name="OuterBinds"/> is whether a binding outside the type body (the module, a builtin, an
+    /// enclosing scope) holds the name.</summary>
+    private readonly record struct LaterConstRead(
+        Identifier Read, TypeSymbol Owner, string Member, ClassBodyReader Reader, bool OuterBinds);
+
+    private readonly List<LaterConstRead> _laterConstReads = new();
+
+    /// <summary>
+    /// N2's order-vs-scope refusal, NARROWED by plan-775c50 (owner ruling, P77 T9) to the shape SPY0618
+    /// refused before rule N3 retired the forward-read rule, until P78 (#2423) gives N2 its own code: a
+    /// static or const initializer reads, by bare name, a <c>const</c> of its own type that is not a
+    /// compile-time constant and is declared AFTER the reader, while
+    /// <list type="bullet">
+    /// <item>a binding outside the type body holds the name — python reads that outer binding (the class
+    /// body has not bound the name yet), scope reads the later member: N2's ambiguity; or</item>
+    /// <item>the read sits in a comprehension's body (its element, a condition, a later iterable), which
+    /// python resolves outside the class body (N1's class-scope rule).</item>
+    /// </list>
+    /// Runs after <see cref="ConstEligibility"/> has recorded the compile-time fact, before the validation
+    /// pipeline. A compile-time const is order-free (a later literal const outranking an outer binding is
+    /// #2423's, not this arm's), and a forward read with no outer binding runs (N3).
+    /// </summary>
+    private void ReportAmbiguousLaterConstReads()
+    {
+        foreach (var read in _laterConstReads)
+        {
+            if (read.Owner.Fields.FirstOrDefault(f => f.IsConstant && f.Name == read.Member) is not { } constant
+                || ConstEligibility.IsCompileTimeConstant(SemanticBinding, constant))
+            {
+                continue;
+            }
+
+            var inComprehensionBody = InitializerOf(read.Reader.Declaration) is { } initializer
+                && IsInComprehensionBody(initializer, read.Read, inBody: false) == true;
+            if (!read.OuterBinds && !inComprehensionBody)
+                continue;
+
+            AddError(DescribeAmbiguousLaterConstRead(read, inComprehensionBody),
+                read.Read.LineStart, read.Read.ColumnStart,
+                code: DiagnosticCodes.SemanticOverflow.StaticInitializerForwardRead,
+                span: read.Read.Span);
+        }
+
+        _laterConstReads.Clear();
+    }
+
+    private static Expression? InitializerOf(Node? declaration) => declaration switch
+    {
+        VariableDeclaration field => field.InitialValue,
+        PropertyDef property => property.DefaultValue,
+        _ => null,
+    };
+
+    /// <summary>Whether <paramref name="read"/> lies in the body of a comprehension under
+    /// <paramref name="node"/>: anywhere in it but its first iterable, which python evaluates where the
+    /// comprehension stands. Null when <paramref name="read"/> is not under <paramref name="node"/>.</summary>
+    private static bool? IsInComprehensionBody(Node node, Identifier read, bool inBody)
+    {
+        if (ReferenceEquals(node, read))
+            return inBody;
+
+        var clauses = node switch
+        {
+            ListComprehension list => list.Clauses,
+            SetComprehension set => set.Clauses,
+            DictComprehension dict => dict.Clauses,
+            DictSpreadComprehension spread => spread.Clauses,
+            GeneratorExpression generator => generator.Clauses,
+            _ => default,
+        };
+        if (!clauses.IsDefaultOrEmpty && clauses[0] is ForClause first
+            && IsInComprehensionBody(first.Iterator, read, inBody) is { } inFirstIterable)
+        {
+            return inFirstIterable;
+        }
+
+        var childrenInBody = inBody || !clauses.IsDefault;
+        foreach (var child in node.GetChildNodes())
+        {
+            if (IsInComprehensionBody(child, read, childrenInBody) is { } found)
+                return found;
+        }
+
+        return null;
+    }
+
+    /// <summary>The SPY0618 text for N2's narrowed shape (<see cref="ReportAmbiguousLaterConstReads"/>).</summary>
+    private static string DescribeAmbiguousLaterConstRead(LaterConstRead read, bool inComprehensionBody)
+    {
+        var name = read.Member;
+        var qualified = $"{read.Owner.Name}.{name}";
+        var readerName = read.Reader.Declaration is { } declaration && TypeBodyMembership.DeclaredMemberName(declaration) is { } declared
+            ? declared
+            : read.Reader.Name;
+        var phrase = ReadPositionPhrase(read.Reader);
+        var later = $"'{qualified}' is a 'const' {DeclaredLaterPhrase} than '{readerName}'";
+        if (inComprehensionBody)
+        {
+            var python = read.OuterBinds ? $"python reads the outer '{name}' there" : "python raises NameError there";
+            return $"'{name}' is ambiguous in the body of a comprehension in {phrase}: {later}, but a comprehension's "
+                + $"body does not see the class body's names, so {python}. Write '{qualified}' to read the member, or "
+                + "rename one of them";
+        }
+
+        return $"'{name}' is ambiguous in {phrase}: {later}, and a '{name}' outside the class is in scope. Python reads "
+            + $"the outer '{name}' here, because the class body has not bound '{name}' yet; scope reads the later member. "
+            + $"Write '{qualified}' to read the member, qualify the outer name, or rename one of them";
     }
 
     /// <summary>The SPY0200 text for a sibling read before its declaration (F1).</summary>

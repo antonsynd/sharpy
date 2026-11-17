@@ -168,6 +168,11 @@ public class DispatchSiteInventoryTests
         ["Semantic/Validation/InitializerCycleValidator.cs::InitializerCycleValidator.WalkInitializer"] = "refusal-net:InitializerDependencyDifferentialTests",
         ["Semantic/Validation/InitializerCycleValidator.cs::InitializerCycleValidator.WalkPattern"] = "refusal-net:InitializerDependencyDifferentialTests",
         ["Semantic/Validation/InitializerCycleValidator.cs::InitializerCycleValidator.WalkStoreTarget"] = "refusal-net:InitializerDependencyDifferentialTests",
+        // N2's narrowed refusal (SPY0618 until P78): the initializer a held read sits in, and whether it lies in a
+        // comprehension's body. The ComprehensionElement and ComprehensionIterable cells of the name-resolution sweep
+        // refuse and run by them (a missing comprehension kind runs a refused cell).
+        ["Semantic/TypeChecker.ClassScopeRule.cs::TypeChecker.InitializerOf"] = "refusal-net:NameResolutionDifferentialTests",
+        ["Semantic/TypeChecker.ClassScopeRule.cs::TypeChecker.IsInComprehensionBody"] = "refusal-net:NameResolutionDifferentialTests",
         // IsMutableDefault (both copies) folded onto ConstantDefaultClassifier's
         // Collection/Comprehension kinds (#1684, R-A) — the shape-switching dispatch these two rows
         // named is gone, drained here rather than left phantom.
