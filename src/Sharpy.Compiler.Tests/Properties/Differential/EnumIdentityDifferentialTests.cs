@@ -47,8 +47,8 @@ namespace Sharpy.Compiler.Tests.Properties.Differential;
 /// objects, in a chain link as in the binary form).</para>
 /// <para><b>Emitted shape</b> (<see cref="ShapeViolation"/>): every cell that runs and compares two operands of ONE
 /// int-backed enum must emit the enum's native operator, and every pair of two different non-string enums
-/// <c>object.Equals</c> (the probe's positive control). The answers alone cannot see a same-enum pair that was
-/// boxed: <c>object.Equals</c> answers it correctly. An <c>==</c> / <c>!=</c> between two different string-backed
+/// <c>Builtins.EnumIdentity</c> for <c>is</c> (#2680) and <c>object.Equals</c> for <c>==</c> (the probe's positive
+/// control). The answers alone cannot see a same-enum pair that was boxed: either call answers it correctly. An <c>==</c> / <c>!=</c> between two different string-backed
 /// enums must NOT be <c>object.Equals</c> (it would answer False): it is the native string comparison.</para>
 /// <para>No cell may draw SPY0465 ("always False due to boxing"): an enum's <c>is</c> is value equality. The
 /// absence is read from the same diagnostics a positive control (<c>is</c> on two ints) is shown to hit.</para>
@@ -458,14 +458,18 @@ public class EnumIdentityDifferentialTests : IntegrationTestBase
 
     /// <summary>
     /// The emitted-shape rule (#2670 follow-up): a comparison of two operands of ONE int-backed enum is the enum's
-    /// native operator — never a boxing <c>object.Equals</c> / <c>object.ReferenceEquals</c> — whichever symbols the
-    /// two operands' types reached the checker through (an imported CLR enum name against a CLR property's type
-    /// were two symbols of one enum, and every such stdlib comparison was boxed). The positive control is the
-    /// cross-family pair of the same run, which must be <c>object.Equals</c>: the probe is shown to see the call.
+    /// native operator — never a boxing <c>object.Equals</c> / <c>object.ReferenceEquals</c> /
+    /// <c>Builtins.EnumIdentity</c> — whichever symbols the two operands' types reached the checker through (an
+    /// imported CLR enum name against a CLR property's type were two symbols of one enum, and every such stdlib
+    /// comparison was boxed). The positive control is the cross-family pair of the same run, which must be
+    /// <c>Builtins.EnumIdentity</c> for <c>is</c> and <c>object.Equals</c> for <c>==</c>: the probe is shown to see the call.
     /// An <c>==</c> / <c>!=</c> between two DIFFERENT string-backed enums must not be <c>object.Equals</c>, which
     /// answers False where <c>StrEnum</c> compares the strings: it is the native string comparison.
     /// Returns null when the cell meets the rule or the rule does not speak of it.
     /// </summary>
+    /// <summary>The Core helper an <c>is</c> between an enum and a non-same-enum operand lowers to (#2680).</summary>
+    private const string EnumIdentityHelper = "global::Sharpy.Builtins.EnumIdentity(";
+
     private static string? ShapeViolation(Cell cell, string body)
     {
         if (Family(cell.Left) is not { } left || Family(cell.Right) is not { } right)
@@ -481,12 +485,15 @@ public class EnumIdentityDifferentialTests : IntegrationTestBase
             return null;
 
         var boxes = body.Contains("object.Equals(", StringComparison.Ordinal)
-            || body.Contains("object.ReferenceEquals(", StringComparison.Ordinal);
+            || body.Contains("object.ReferenceEquals(", StringComparison.Ordinal)
+            || body.Contains(EnumIdentityHelper, StringComparison.Ordinal);
         if (left == right)
             return boxes ? "a same-enum pair must lower to the native operator, but the cell boxes" : null;
-        return body.Contains("object.Equals(", StringComparison.Ordinal)
+        // `is` asks Builtins.EnumIdentity, which never calls an operand's Equals (#2680); `==` is object.Equals.
+        var crossEnumCall = IsIdentity(cell.Op) ? EnumIdentityHelper : "object.Equals(";
+        return body.Contains(crossEnumCall, StringComparison.Ordinal)
             ? null
-            : "a pair of two different enums must lower to object.Equals (the shape probe's positive control)";
+            : $"a pair of two different enums must lower to {crossEnumCall}…) (the shape probe's positive control)";
     }
 
     private static string ReportDirectory()
@@ -629,5 +636,247 @@ public class EnumIdentityDifferentialTests : IntegrationTestBase
         var control = CompileAndExecute("def main():\n    x: int = 1\n    y: int = 1\n    print(x is y)\n", "control.spy");
         Assert.True(RanToCompletion(control), control.FailureSummary());
         Assert.Contains(control.RawDiagnostics, d => d.Code == DiagnosticCodes.Validation.IsWithValueTypes);
+    }
+
+    // ---- `is` never runs user code (#2680) ------------------------------------------------------------------
+
+    /// <summary>The enum the cell's enum operand belongs to: int-backed (<c>Color</c>) or string-backed (<c>Tone</c>).</summary>
+    private enum Backing { Int, Str }
+
+    /// <summary>How the enum operand is written: a variable, the member itself (the spelling the parser reads as a
+    /// type name, checked by the type-test rule), or an <c>E | None</c> variable holding the member.</summary>
+    private enum EnumSpelling { Variable, Member, OptionalVariable }
+
+    /// <summary>Which side of <c>is</c> the enum operand is on; the other operand takes the other side.</summary>
+    private enum EnumSide { Left, Right }
+
+    /// <summary>
+    /// The operand the enum is tested against: a class whose <c>__eq__</c> prints the cell id and answers True, one
+    /// whose <c>__eq__</c> prints and answers False, an <c>object</c> holding the same member and another member,
+    /// another int-backed enum with an equal value (<c>Size.S</c>, value 1), another string-backed enum
+    /// (<c>Mood.A</c> against <c>Tone</c>, <c>Tone.A</c> against <c>Color</c>), and the <c>None</c> literal.
+    /// </summary>
+    private enum OtherOperand { EqTrue, EqFalse, ObjectSameMember, ObjectOtherMember, IntEnumEqualValue, StrEnum, None }
+
+    private static readonly BinaryOperator[] IdentityOperators = { BinaryOperator.Is, BinaryOperator.IsNot };
+
+    private sealed record UserCodeCell(
+        int Id, Backing Backing, EnumSpelling Spelling, EnumSide Side, OtherOperand Other, BinaryOperator Op,
+        Position Position)
+    {
+        public string Key => $"{Backing}/{Spelling} {Side} {Spell(Op)} {Other} @{Position}";
+
+        private string EnumOperand => Spelling switch
+        {
+            EnumSpelling.Member => Backing == Backing.Int ? "Color.RED" : "Tone.A",
+            _ => "e",
+        };
+
+        private string OtherOperandText => Other == OtherOperand.None ? "None" : "o";
+
+        public string? EnumDeclaration => Spelling switch
+        {
+            EnumSpelling.Variable => Backing == Backing.Int ? "e: Color = Color.RED" : "e: Tone = Tone.A",
+            EnumSpelling.OptionalVariable => Backing == Backing.Int ? "e: Color | None = Color.RED" : "e: Tone | None = Tone.A",
+            _ => null,
+        };
+
+        public string? OtherDeclaration
+        {
+            get
+            {
+                var id = Id.ToString(CultureInfo.InvariantCulture);
+                return Other switch
+                {
+                    OtherOperand.EqTrue => $"o: EqTrue = EqTrue({id})",
+                    OtherOperand.EqFalse => $"o: EqFalse = EqFalse({id})",
+                    OtherOperand.ObjectSameMember => Backing == Backing.Int ? "o: object = Color.RED" : "o: object = Tone.A",
+                    OtherOperand.ObjectOtherMember => Backing == Backing.Int ? "o: object = Color.GREEN" : "o: object = Tone.B",
+                    OtherOperand.IntEnumEqualValue => "o: Size = Size.S",
+                    OtherOperand.StrEnum => Backing == Backing.Int ? "o: Tone = Tone.A" : "o: Mood = Mood.A",
+                    OtherOperand.None => null,
+                    _ => throw new ArgumentOutOfRangeException(nameof(Other)),
+                };
+            }
+        }
+
+        public string Expression
+        {
+            get
+            {
+                var (left, right) = Side == EnumSide.Left ? (EnumOperand, OtherOperandText) : (OtherOperandText, EnumOperand);
+                var link = $"{left} {Spell(Op)} {right}";
+                // A chain's last operand is the right operand again: `l op r op r`.
+                return Position == Position.ChainLink ? $"{link} {Spell(Op)} {right}" : link;
+            }
+        }
+    }
+
+    private static List<UserCodeCell> GenerateUserCodeCells()
+    {
+        var cells = new List<UserCodeCell>();
+        foreach (var op in IdentityOperators)
+            foreach (var position in Enum.GetValues<Position>())
+                foreach (var backing in Enum.GetValues<Backing>())
+                    foreach (var spelling in Enum.GetValues<EnumSpelling>())
+                        foreach (var side in Enum.GetValues<EnumSide>())
+                            foreach (var other in Enum.GetValues<OtherOperand>())
+                                cells.Add(new UserCodeCell(cells.Count + 1, backing, spelling, side, other, op, position));
+        return cells;
+    }
+
+    /// <summary>The two user classes, the same source in both languages: each <c>__eq__</c> prints its cell's id, so
+    /// a call is a line of that cell's output and is compared with CPython's (which has none for <c>is</c>).</summary>
+    private const string UserEqClasses = """
+        class EqTrue:
+            cell: int
+
+            def __init__(self, cell: int):
+                self.cell = cell
+
+            def __eq__(self, other: object) -> bool:
+                print(self.cell, "eq-true called")
+                return True
+
+            def __hash__(self) -> int:
+                return 0
+
+        class EqFalse:
+            cell: int
+
+            def __init__(self, cell: int):
+                self.cell = cell
+
+            def __eq__(self, other: object) -> bool:
+                print(self.cell, "eq-false called")
+                return False
+
+            def __hash__(self) -> int:
+                return 0
+
+
+        """;
+
+    private static string UserCodeProgram(IEnumerable<UserCodeCell> cells)
+    {
+        var lines = new List<string>();
+        foreach (var cell in cells)
+        {
+            var id = cell.Id.ToString(CultureInfo.InvariantCulture);
+            lines.Add($"def cell_{id}() -> bool:");
+            if (cell.EnumDeclaration is { } enumDeclaration)
+                lines.Add("    " + enumDeclaration);
+            if (cell.OtherDeclaration is { } otherDeclaration)
+                lines.Add("    " + otherDeclaration);
+            switch (cell.Position)
+            {
+                case Position.Print:
+                case Position.ChainLink:
+                    lines.Add($"    return {cell.Expression}");
+                    break;
+                case Position.IfCondition:
+                    lines.Add($"    if {cell.Expression}:");
+                    lines.Add("        return True");
+                    lines.Add("    return False");
+                    break;
+                case Position.ComprehensionFilter:
+                    lines.Add($"    return len([k for k in [0] if {cell.Expression}]) == 1");
+                    break;
+                default:
+                    throw new ArgumentOutOfRangeException(nameof(cells));
+            }
+            lines.Add("");
+        }
+        lines.Add("def main():");
+        foreach (var cell in cells)
+        {
+            var id = cell.Id.ToString(CultureInfo.InvariantCulture);
+            lines.Add($"    print({id}, cell_{id}())");
+        }
+        lines.Add("    print(\"done\")");
+        return string.Join("\n", lines) + "\n";
+    }
+
+    /// <summary>
+    /// The class guard for #2680 (owner ruling 2026-11-17, "1) your rec"): <c>is</c> / <c>is not</c> with an enum
+    /// operand on either side never runs user code and answers what CPython 3.15 answers — the same member → True,
+    /// anything else → False, an <c>object</c> holding the member compares by member. Generated, never listed: the
+    /// product of enum backing {int, string} × enum spelling {variable, member, <c>E | None</c>} × the enum's side
+    /// {left, right} × the other operand (<see cref="OtherOperand"/>) × {<c>is</c>, <c>is not</c>} × position (a
+    /// returned value, an <c>if</c> condition, a chain link, a comprehension filter). Every cell is compared to
+    /// CPython's lines, which include any <c>__eq__</c> call (each prints its cell id): CPython prints none for
+    /// <c>is</c>. The positive control shows the probe sees an <c>__eq__</c> call: <c>==</c> on the same classes
+    /// prints its line in both languages.
+    /// </summary>
+    [SkippableFact]
+    public void EnumIdentity_NeverRunsUserEq_MatchesCPython()
+    {
+        var oracle = PythonBatchOracle.Over(PythonInterpreter.RequireOrSkip(minMinor: 15));
+
+        var cells = GenerateUserCodeCells();
+        // Totality: the count is the product of the axis sizes, never read back from the generator.
+        Assert.Equal(2, Enum.GetValues<Backing>().Length);
+        Assert.Equal(3, Enum.GetValues<EnumSpelling>().Length);
+        Assert.Equal(2, Enum.GetValues<EnumSide>().Length);
+        Assert.Equal(7, Enum.GetValues<OtherOperand>().Length);
+        Assert.Equal(2 * 3 * 2 * 7 * IdentityOperators.Length * Enum.GetValues<Position>().Length, cells.Count);
+
+        var groups = cells.GroupBy(c => (c.Op, c.Position))
+            .Select(g => (Name: $"{Spell(g.Key.Op)}/{g.Key.Position}", Cells: g.ToList())).ToList();
+        // The positive control: `==` runs __eq__ in both languages, and the probe reads its line.
+        const string controlBody = "def main():\n    print(1, EqTrue(1) == EqFalse(2))\n    print(\"done\")\n";
+
+        var requests = groups.Select((g, i) =>
+            new PyRequest(i, PythonHeader + UserEqClasses + UserCodeProgram(g.Cells) + "main()\n")).ToList();
+        requests.Add(new PyRequest(groups.Count, PythonHeader + UserEqClasses + controlBody + "main()\n"));
+        var py = oracle.RunBatch(requests);
+        var pythonById = new Dictionary<int, List<string>>();
+        for (var i = 0; i < groups.Count; i++)
+        {
+            Assert.True(py.TryGetValue(i, out var result) && result.Ok,
+                $"python3 did not run the {groups[i].Name} program: " + (result?.Stderr ?? "no verdict"));
+            foreach (var (id, values) in ParseLines(result!.Stdout))
+                pythonById[id] = values;
+        }
+        Assert.Equal(cells.Count, pythonById.Count);
+
+        var divergences = new List<string>();
+        var eqCallsInCPython = 0;
+        foreach (var group in groups)
+        {
+            var run = CompileAndExecute(SharpyHeader + UserEqClasses + UserCodeProgram(group.Cells),
+                "enum_identity_user_eq.spy", executionTimeoutMs: 120_000);
+            Assert.True(RanToCompletion(run) && run.StandardOutput.Contains("done", StringComparison.Ordinal),
+                $"{group.Name}: the program did not run to completion: " + run.FailureSummary());
+            var sharpyById = ParseLines(run.StandardOutput);
+            foreach (var cell in group.Cells)
+            {
+                var python = pythonById[cell.Id];
+                eqCallsInCPython += python.Count(l => l.EndsWith(" called", StringComparison.Ordinal));
+                var sharpy = sharpyById.TryGetValue(cell.Id, out var v) ? v : new List<string>();
+                if (!sharpy.SequenceEqual(python))
+                {
+                    divergences.Add($"{cell.Key}: `{cell.Expression}` sharpy [{string.Join(" | ", sharpy)}], "
+                        + $"CPython [{string.Join(" | ", python)}]");
+                }
+            }
+        }
+
+        var summary = $"cells: {cells.Count}; divergences: {divergences.Count}";
+        File.WriteAllLines(Path.Combine(ReportDirectory(), "enum-identity-user-eq-divergences.txt"),
+            divergences.Prepend("# " + summary));
+        Output.WriteLine(summary);
+        Assert.True(divergences.Count == 0,
+            $"{divergences.Count} of {cells.Count} cell(s) diverge:\n" + string.Join("\n", divergences.Take(40)));
+        // CPython's `is` never calls __eq__: every compared line set is free of one.
+        Assert.Equal(0, eqCallsInCPython);
+
+        // Positive control: the same classes' `==` prints the __eq__ line in both languages, and the probe reads it.
+        Assert.True(py.TryGetValue(groups.Count, out var controlPy) && controlPy.Ok, controlPy?.Stderr ?? "no verdict");
+        var expectedControl = new[] { "eq-true called", "True" };
+        Assert.Equal(expectedControl, ParseLines(controlPy!.Stdout)[1]);
+        var controlRun = CompileAndExecute(SharpyHeader + UserEqClasses + controlBody, "enum_identity_user_eq_control.spy");
+        Assert.True(RanToCompletion(controlRun), controlRun.FailureSummary());
+        Assert.Equal(expectedControl, ParseLines(controlRun.StandardOutput)[1]);
     }
 }

@@ -2717,8 +2717,9 @@ internal partial class TypeChecker
     /// <item>the same enum on both sides (either possibly <c>E | None</c>) →
     /// <see cref="OperatorLoweringKind.EnumIdentityEquals"/>, the native (lifted) <c>==</c>;</item>
     /// <item>an enum against anything else — <c>object</c>, another enum type, an untyped operand —
-    /// → <see cref="OperatorLoweringKind.EnumIdentityObjectEquals"/>, <c>object.Equals</c>, which
-    /// is right for every pair: a boxed member equals only the same member of the same enum. So a
+    /// → <see cref="OperatorLoweringKind.EnumIdentityObjectEquals"/>, <c>Builtins.EnumIdentity</c>,
+    /// which is right for every pair and runs no user code (#2680): a boxed member is identical only
+    /// to the same member of the same enum, and any other pair compares by reference. So a
     /// same-enum pair this classifier fails to recognise as one (two import clones of one
     /// declaration) still gets the right answer, and a different-enum pair never reaches the native
     /// <c>==</c> C# refuses (CS0019).</item>
@@ -2791,7 +2792,7 @@ internal partial class TypeChecker
     /// singleton; for an int-backed one the classifier answers from the operand types, and when it
     /// has no answer (the member's own access is left untyped — a nested enum's chain, #2038 — and the
     /// value is not an enum either), the member is still a member of <paramref name="memberEnum"/>,
-    /// and object.Equals is right for every pair.
+    /// and <c>Builtins.EnumIdentity</c> is right for every pair.
     /// </summary>
     private OperatorLoweringKind TypeSpelledIdentityKind(
         TypeSymbol memberEnum, SemanticType valueType, SemanticType memberType)

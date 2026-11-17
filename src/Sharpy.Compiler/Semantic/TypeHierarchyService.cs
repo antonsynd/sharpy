@@ -305,7 +305,8 @@ internal static class TypeHierarchyService
 
     /// <summary>
     /// Whether two enum symbols name ONE enum declaration, for the decisions that pick between the
-    /// enum's native operator and <c>object.Equals</c> (#2669 <c>is</c>, #2670 <c>==</c>). One
+    /// enum's native operator and a boxed comparison (#2669 <c>is</c>: <c>Builtins.EnumIdentity</c>;
+    /// #2670 <c>==</c>: <c>object.Equals</c>). One
     /// declaration is reached through more than one symbol: an import clone (same
     /// <see cref="Symbol.DeclarationRoot"/>), and — for a CLR enum — the symbol an import binds
     /// against the one the bridge builds for a member's or property's type
