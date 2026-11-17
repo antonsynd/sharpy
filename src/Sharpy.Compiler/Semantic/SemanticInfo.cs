@@ -294,6 +294,15 @@ public class SemanticInfo : ISemanticQuery
     // slot (#2249) and a needle only the CLR call seam takes. Read by the emitter's needle-first bind.
     private readonly ConcurrentDictionary<Expression, SemanticType> _membershipNeedleBindings = new(ReferenceEqualityComparer.Instance);
 
+    // plan-775c50 D6 (P77 T6): inside an `async def` body, a use of a Guarded module or `@static` value
+    // that is neither a plain read nor a plain store — a ref / in / out operand, or the receiver root of
+    // a member or element path that is stored to, passed by modifier, or a method call's receiver. The
+    // value's accessor returns by reference (D4) and a reference cannot live across an `await`
+    // (CS8178), so the emitter hoists the value's ensure (or, for an `out` operand, its arm pick) before
+    // the enclosing statement and names the backing field at the use. Node-keyed on the use node (the
+    // Identifier or MemberAccess that names the value); recorded by AsyncGuardedUseAnalyzer.
+    private readonly ConcurrentDictionary<Expression, AsyncGuardedUse> _asyncGuardedUses = new(ReferenceEqualityComparer.Instance);
+
     // #1747: a null-conditional access (`obj?.member`, `obj?.method()`) whose member/result type
     // is a bare T that the checker WRAPPED into Optional<T> (the "flatten" rule leaves an already
     // Optional member unwrapped). The recorded type of the node is Optional<T> in both cases, so
@@ -1633,6 +1642,28 @@ public class SemanticInfo : ISemanticQuery
         return _membershipNeedleBindings.TryGetValue(needle, out bindingType);
     }
 
+    /// <summary>
+    /// Records that <paramref name="node"/>, inside an <c>async def</c> body, names the Guarded value
+    /// <paramref name="value"/> by a use other than a plain read or a plain store (plan-775c50 D6), and
+    /// the arm it takes. Set only by <c>AsyncGuardedUseAnalyzer</c>, after the storage facts are computed.
+    /// </summary>
+    public void SetAsyncGuardedUse(Expression node, Symbol value, AsyncGuardedUseKind kind)
+    {
+        Put(_asyncGuardedUses, node, new AsyncGuardedUse(node, value, kind));
+    }
+
+    /// <summary>
+    /// The D6 fact recorded on <paramref name="node"/> (an Identifier or MemberAccess naming a Guarded
+    /// value in an <c>async def</c> body), or null for every other node: a plain read, a plain store,
+    /// a use outside an <c>async def</c> body, or a node naming no Guarded value.
+    /// <para><b>Contract (the emitter).</b> For <see cref="AsyncGuardedUseKind.Ensure"/> the emitter
+    /// hoists the value's ensure call before the enclosing statement and names the backing field at the
+    /// node; for <see cref="AsyncGuardedUseKind.OutOperand"/> it picks the <c>out</c> arm before the
+    /// statement. Recorded whether or not the statement holds an <c>await</c>.</para>
+    /// </summary>
+    public AsyncGuardedUse? GetAsyncGuardedUse(Expression node)
+        => _asyncGuardedUses.TryGetValue(node, out var use) ? use : null;
+
     public SemanticType? GetConditionalBranchNarrowing(Expression branch)
         => _conditionalBranchNarrowing.TryGetValue(branch, out var t) ? t : null;
 
@@ -2427,6 +2458,9 @@ public class SemanticInfo : ISemanticQuery
 
         foreach (var kvp in other._membershipNeedleBindings)
             MergeEntry(_membershipNeedleBindings, kvp, other);
+
+        foreach (var kvp in other._asyncGuardedUses)
+            MergeEntry(_asyncGuardedUses, kvp, other);
 
         foreach (var kvp in other._charMaterializations)
             MergeEntry(_charMaterializations, kvp, other);

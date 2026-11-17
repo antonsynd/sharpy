@@ -65,8 +65,11 @@ public class SemanticInfoMergeConformanceTests
     /// 85: <c>_membershipNeedleBindings</c> added by P93 D2 (plan-67a01f, #2645): the converged plan
     /// rules the needle's binding type a new node-keyed <c>SemanticInfo</c> dictionary in
     /// <c>MergeFrom</c>, read by the emitter's needle-first bind; it drains with the operator facts.
+    /// 86: <c>_asyncGuardedUses</c> added by P77 D6 (plan-775c50, T6): the converged plan rules which
+    /// uses of a Guarded value in an <c>async def</c> body take the ensure arm "a <c>SemanticInfo</c>
+    /// fact (in <c>MergeFrom</c>)", node-keyed on the use, read by the emitter's async arms.
     /// </summary>
-    private const int MaximumSideTableFieldCount = 85;
+    private const int MaximumSideTableFieldCount = 86;
 
     /// <summary>
     /// #1887: the real property — an entry recorded on one SemanticInfo survives <c>MergeFrom</c>

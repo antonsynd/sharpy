@@ -792,6 +792,9 @@ internal partial class TypeChecker
             // working for an entry file whose symbol paths are nulled for the #1087 contract.
             codeGenInfoComputer.ComputeForModule(module, ModuleIdentityFilePath ?? _currentFilePath, _isEntryPoint,
                 SourceRootPath, ImportFactsBinding, RootNamespace, DeferredCycleFiles);
+
+            // plan-775c50 D6: the async uses of Guarded values, read from the storage facts just computed.
+            AsyncGuardedUseAnalyzer.Analyze(module, _semanticInfo, SemanticBinding, ImportFactsBinding);
         }
 
         _logger.LogInfo($"Completed type checking ({module.Body.Length} statements, {_diagnostics.ErrorCount} errors)");

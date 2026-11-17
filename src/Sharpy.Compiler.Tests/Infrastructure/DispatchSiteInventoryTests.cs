@@ -146,6 +146,15 @@ public class DispatchSiteInventoryTests
         // it is never a sibling's declaration (P21h, owner ruling F1 2026-10-29).
         // (Moved into TypeBodyMembership by P75 — one anchor rule for F1 and StaticInitializerOrderValidator.)
         ["Semantic/TypeBodyMembership.cs::TypeBodyMembership.DeclaredMemberName"] = "documented-by-design:Semantic/TypeBodyMembership.cs:DeclaredMemberName",
+        // plan-775c50 D6 (P77 T6): which uses of a Guarded value in an `async def` body take the ensure
+        // arm. Each switch is deliberately partial — a scope kind, the two value spellings, the receiver
+        // and element-path kinds, the store sites with a target — and the generated use × spelling cells
+        // (positive, plain-store, read and non-async controls) are the net over every arm.
+        ["Semantic/AsyncGuardedUseAnalyzer.cs::AsyncGuardedUseAnalyzer.Walk"] = "refusal-net:AsyncGuardedUseFactTests",
+        ["Semantic/AsyncGuardedUseAnalyzer.cs::AsyncGuardedUseAnalyzer.GuardedValue"] = "refusal-net:AsyncGuardedUseFactTests",
+        ["Semantic/AsyncGuardedUseAnalyzer.cs::AsyncGuardedUseAnalyzer.IsReceiverOf"] = "refusal-net:AsyncGuardedUseFactTests",
+        ["Semantic/AsyncGuardedUseAnalyzer.cs::AsyncGuardedUseAnalyzer.IsStoreTarget"] = "refusal-net:AsyncGuardedUseFactTests",
+        ["Semantic/AsyncGuardedUseAnalyzer.cs::AsyncGuardedUseAnalyzer.IsElementOf"] = "refusal-net:AsyncGuardedUseFactTests",
         // The static-initializer order validator (P75, #2396): which statements declare a static initializer,
         // which nodes of one it reads, and which sibling kinds are ordered storage — each deliberately partial.
         ["Semantic/Validation/StaticInitializerOrderValidator.cs::StaticInitializerOrderValidator.ValidateTypeBody"] = "documented-by-design:Semantic/Validation/StaticInitializerOrderValidator.cs:ValidateTypeBody",
