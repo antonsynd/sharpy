@@ -4,7 +4,7 @@
 |----------|-------------|------------|
 | `is` | Identity comparison | `object.ReferenceEquals()` |
 | `is not` | Negated identity | `!object.ReferenceEquals()` |
-| `is` / `is not` on an enum | Member identity | `==` / `!=` (same enum), `object.Equals()` (otherwise) |
+| `is` / `is not` on an enum | Member identity | `==` / `!=` (same enum), `Builtins.EnumIdentity()` (otherwise) |
 | `is None` | None check | `x is null` (reference / `T \| None`), `(object)x is null` (value type), `.IsNone` (Optional) |
 | `is not None` | Non-None check | `x is not null` (reference / `T \| None`), `(object)x is not null` (value type), `.IsSome` (Optional) |
 
@@ -114,8 +114,9 @@ def main() -> None:
 - Both operands of the same enum type (either may be `E | None`) lower to the enum's own
   `==` / `!=`; with `E | None` a `None` is identical only to another `None`.
 - An enum against any other operand — `object`, another enum type — lowers to
-  `object.Equals()`: both operands are evaluated exactly once, and members of two different
-  enums are never identical, even with equal values.
+  `Builtins.EnumIdentity()`: both operands are evaluated exactly once, members of two different
+  enums are never identical, even with equal values, and neither operand's `__eq__` is called
+  (#2680).
 - A member written after `is` (`c is Color.RED`) is a value, not a type name, so it is this
   comparison and not the retired type test; `c is Color`, naming the enum type itself, is still
   SPY0349. This holds for a Sharpy enum (top-level, nested or module-qualified) and a top-level
@@ -140,5 +141,5 @@ x == y    # correct — value equality
 
 *Implementation*
 - *✅ Native for None checks; 🔄 Lowered for general identity.*
-- *✅ Enum operands: native `==` / `!=` for one enum type, `object.Equals()` otherwise (#2669).*
+- *✅ Enum operands: native `==` / `!=` for one enum type, `Builtins.EnumIdentity()` otherwise (#2669, #2680).*
 - *⚠️ SPY0465 warning when both operands are value types (never for an enum operand).*
