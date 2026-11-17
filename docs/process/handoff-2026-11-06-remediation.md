@@ -1,5 +1,7 @@
 # Remediation Handoff — from the 2026-11-06 health check to the orchestrator
 
+> **Closed 2026-11-17** (owner: "i think we've finished it already, so we should create a new one"). Waves 0–3 landed; the goals, scorecard and stop rules now in force are in [`handoff-2026-11-17-arc.md`](handoff-2026-11-17-arc.md). §6's recap format and §8's hazards still apply.
+
 > **For:** a Fable orchestrator session that coordinates Opus subagents (each may spawn its own for verification).
 > **From:** the health-check session (`docs/audits/health-check-2026-11-06.md`), which also filed #2443 and placed it in the charter as P82.
 > **Revision 2, 2026-11-07 @ 1fa2340f7**, after a read-only smoke run of revision 1 by three Opus agents (§11). Revision 1 was written at ee9a007a1; five of its items landed the same day and PR #2455 changed the gate, so its §2, its gate text and 11 of its 14 scorecard rows were stale or unmeasurable. This revision records what landed, builds on #2455, and makes every metric one command.
