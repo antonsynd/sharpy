@@ -5,7 +5,8 @@
 > "i think we've finished it already, so we should create a new one").
 > **This is not a plan and not a charter.** It changes no order, tier or ruling. It says what
 > "improving" means until the arc below closes, how to measure it, and when to stop and ask. Where
-> it departs from the 11-06 handoff, §4 lists the change.
+> its stop rules depart from the 11-06 handoff's §5.3, §4 lists the change; §3's scorecard
+> replaces §5.1's, and the line under its table lists what changed.
 > Numbers are measured @ `af14cc69f` unless a row says otherwise.
 
 ## 1. Goals
@@ -21,7 +22,8 @@ The three goals stand, in priority order. An item that serves none is dropped.
 The 11-06 handoff's non-goals stand: no new hand matrix (contract §11); no new node-keyed
 `SemanticInfo` table (R-LK); no new process document, skill, label, tier letter or ruling vocabulary
 (this file replaces one); no re-ordering of the charter without an owner ruling; no whole-solution
-test run in a container (the gate is `/ci-gate`).
+test run in a container under 16 GB (the gate is `/ci-gate`; CLAUDE.md's local command is the
+fallback when it exits 3).
 
 Where the last round left each:
 
@@ -48,25 +50,31 @@ Read at the start and the end of each group. Sources, after a build:
   replaces it.
 - `python3 build_tools/scorecard_metrics.py --check` (`--json` for the numbers): procedure key,
   `CLAUDE.md`, rows outside the seed.
-- `python3 build_tools/check_plan_refs.py --caps-all`: verify passes and plan-body sizes.
+- `python3 build_tools/check_plan_refs.py docs/process/plans/<plan>.md`: its `caps (R-LW)` line
+  gives body bytes and verify passes; `--caps-all` prints only cap violations across every plan.
 - Known-red rows by owner: the row count of each `*allowlist*.txt`, attributed by the issues it cites.
 - Read set: the bytes of `CLAUDE.md`, `docs/process/README.md`, `docs/design/verification-contract.md`
   and every `.claude/skills/*/SKILL.md`.
-- Regressions, reviewer-found defects, `mainline` runs and CI wall: the `/health-watch` entry.
+- PR shard times, regressions, reviewer-found defects and `mainline` reds: the `/health-watch`
+  report (the script prints the `mainline` CI wall and nightly).
 
 | Metric | Now | Wanted by the end of the arc |
 |---|---|---|
-| Regressions found after merge (correct or refused at the base, wrong at the head) | 4 in the week (#2679 ×2; #2682 ×2, the helper cells on #2110) | 0 per group |
+| Regressions found after merge (correct at the base, wrong at the head; a compile-time refusal of a program CPython rejects is correct, tie-break 2) | 4 in the week (#2679 ×2; #2682 ×2, the helper cells on #2110) | 0 per group |
 | Reviewer-found defects per merged behaviour PR, after the fact | 6 over 5 PRs | falling |
 | Open SPY0908 / CS-leak titles | 91 | down |
 | Open issues; closed ÷ filed | 352; 15 ÷ 39 | closed ≥ filed over the arc; a rise during a generator's stage 0 is discovery and is said so |
-| Known-red rows, by owner of the row | P77 668 · P94's membership rows 57 (#2674 48 · #2651 8 · #2644 2 · #1931 1) · emitter inspection 213 (#2443) · other 305 (1,243 outside the seed) | each plan drains what its stage 0 added; emitter inspection falls each P82 tranche |
+| Known-red rows, by owner of the row | P77 668 · membership rows 57 (P94: #2674 46 · #2644 2; band #2651 6; both #2674 and #2651 2; P17 #1931 1) · emitter inspection 213 (#2443) · other 305 (1,243 outside the seed) | each plan drains what its stage 0 added; emitter inspection falls each P82 tranche |
 | `SemanticInfo` side tables | 85 | ≤ 84 after tranche 4; never up |
 | Read set, bytes | 299,372 (299,488 @ `0b8d894c0`, after #2725 on the owner's word) | not up; a new skill or section deletes as much as it adds |
-| Counted procedure key; `CLAUDE.md` | 143,159 (133,747 before #2725 counted `/plan-flow`, owner's word quoted there); 9,304 | not up |
+| Counted procedure key; `CLAUDE.md` | 143,159 (133,747 before #2725 counted `/plan-flow`, owner's word quoted there); 9,304 | down; `CLAUDE.md` ≤ 8 KB (the 11-06 targets) |
 | Verify passes per plan | 6, 2, 5 (the counter read 5 for the first before #2725 fixed it) | ≤ 2 |
 | `mainline` push runs green | `.NET 10` and Dev Staleness Gates red since 2026-11-16 14:30Z; the `.NET 10` fix (#2724) is on `dev`; both clear at the next promotion, after the sync #2728 | green within a day of any red |
-| CI median wall / slowest shard | 19 / 15 min (shard 7 up to 24 on PRs) | not up |
+| CI median wall / slowest shard | 19 / 15 min (shard 7 up to 24 on PRs) | down, to ≤ 12 / ≤ 8 (W0.4's targets) |
+
+Changed from §5.1: no target is relaxed. Dropped here (the script still prints them): test ÷
+compiler LOC, distinct cites, gate citations per item (now a stop rule), nightly, warm build, hello
+world, fresh-session commands, hooks.
 
 ## 4. Stop rules
 
@@ -74,10 +82,11 @@ Stop the group, write the recap, and bring the decision to the owner when one ho
 
 - The scorecard moves the wrong way on two metrics in one group.
 - Procedure bytes, `CLAUDE.md` bytes or the side-table pin rise in a group, or allowlist rows
-  outside the seed rise outside a generator's stage 0. A raise lands only with the owner's words
-  quoted in the pull request body.
-- A plan's verification record would merge with more allowlist rows outside the seed than `dev`
-  had before its stage 0, beyond a residue the owner ruled (`scorecard_metrics.py --json` at both shas).
+  outside the seed rise outside a generator's stage 0, even on the owner's word (a raise lands only
+  with it quoted in the pull request body).
+- A plan's verification record would merge with a case its stage 0 listed as known-red still
+  listed, beyond a residue the owner ruled (`git diff <stage-0 base>..<record sha> -- <the
+  allowlist files its plan names>`).
 - A plan body passes 20 KB (R-LW; `check_plan_refs.py --caps-all`).
 - A second `/verify-plan` pass stamps NEEDS REVISION. The open finding goes to the owner as a
   decision; no further pass is offered unless the owner asks for one (R-LW; owner 2026-11-17, #2725).
@@ -90,12 +99,15 @@ Stop the group, write the recap, and bring the decision to the owner when one ho
   answer and stay green.
 - `mainline` or a scheduled run on it is red and no issue or tracker cell names the failing test
   as the log prints it within a day.
-- The same class produces a third cell after its class fix landed.
+- The same class produces a third cell after its class fix landed (the fix commit is on `dev` and
+  cited on the class issue; a cell is a new issue or comment on that class after that commit's date).
 
-Changed from the 11-06 handoff §5.3, the three revisions the owner accepted ("all your recs"): the
-15 KB plan cap is R-LW's 20 KB; "CONVERGED on a NEEDS REVISION" is the second-pass rule above; the
-rule on rows outside the seed allows a generator's stage 0 and judges a plan at its record.
-Added: the `mainline` rule, the direction rule (contract §3), and the regenerated-row clause.
+Changed from the 11-06 handoff §5.3. The three revisions the watch recommended and the owner
+accepted ("all your recs", decision 7): the 15 KB plan cap is R-LW's 20 KB; "CONVERGED on a NEEDS
+REVISION" is the second-pass rule above (decision 4); the rule on rows outside the seed allows a
+generator's stage 0 and judges a plan at its record. Proposed here, for the owner's acceptance:
+`CLAUDE.md` bytes join the rise rule; the `mainline` rule; the direction rule (contract §3); the
+regenerated-row clause, which widens decision 5 from P77 to every group.
 
 ## 5. What a review must run
 
@@ -117,12 +129,13 @@ added that others must read, which stop rule came closest.
 |---|---|---|
 | 1 | Add root `Directory.Build.props`, `Directory.Build.targets` and `global.json` to the process README item 6's code paths, so a PR touching them needs a review line? | not added: green alone, as item 6 reads today |
 | 2 | Run the coverage-on path on pull requests that change package versions? | no: bumps go through `dev`, and the daily coverage run meets them |
-| 3 | Whether `:=` keeps its Python role once `let`/`var` land (11-06 handoff D17; owner note 2026-11-08); belongs to P21b/P21c | unchanged: `:=` stays as the spec has it |
+| 3 | Whether `:=` keeps its Python role once `let`/`var` land (11-06 handoff D17; owner note 2026-11-08); charter row 19 carries it to P21b's plan (R-LR) | unchanged: `:=` stays as the spec has it |
 | 4 | Add §5's axes to `/implement-plan` step 4 (raises the procedure key)? | not added: the watch's reviews carry them |
 
-Ruled since this document was drafted (owner, 2026-11-17), answering its first decision in two
-parts (fix `a is c`, file the watch's cells): "1) your rec; 2) yes, file them". The cells are filed;
-`a is c` running a user `__eq__` goes to a no-plan lane, in progress (Refs #2680). Then "yes" to
-closing #2713 and holding packages versioned with .NET below 11 until #2548: #2713 is closed and
-#2729 adds the hold. With #2719's `target-branch: "dev"`, it lives in `.github/dependabot.yml`,
-which Dependabot reads from `mainline`, so both take effect at the next promotion.
+Ruled since this document was drafted (owner, 2026-11-17), answering the draft's first decision,
+since removed, in two parts (fix `a is c`, file the watch's cells): "1) your rec; 2) yes, file
+them". The cells are filed; `a is c` running a user `__eq__` goes to a no-plan lane (Refs #2680).
+Then "yes" to closing #2713 and to a Dependabot rule for version 11: #2713 is closed, and #2729 holds
+six packages versioned with .NET below 11 until #2548. The hold and #2719's `target-branch: "dev"`
+both live in `.github/dependabot.yml`, which Dependabot reads from the default branch, `mainline`,
+so both take effect at the next promotion.
