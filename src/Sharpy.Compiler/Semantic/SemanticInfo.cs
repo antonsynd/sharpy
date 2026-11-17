@@ -288,6 +288,12 @@ public class SemanticInfo : ISemanticQuery
     // formal, `x == (T?)null`, so C# binds the same-type overload instead of reporting CS9342.
     private readonly ConcurrentDictionary<Expression, SemanticType> _argumentSlotCasts = new(ReferenceEqualityComparer.Instance);
 
+    // P93 D2 (#2645): the type a membership NEEDLE is bound as — the first slot the store seam
+    // admits it into, or its own `T | None` — node-keyed on the needle of an `in` / `not in`, binary
+    // or chain link. Recorded only by TypeChecker.ClassifyMembership; absent for a container with no
+    // slot (#2249) and a needle only the CLR call seam takes. Read by the emitter's needle-first bind.
+    private readonly ConcurrentDictionary<Expression, SemanticType> _membershipNeedleBindings = new(ReferenceEqualityComparer.Instance);
+
     // #1747: a null-conditional access (`obj?.member`, `obj?.method()`) whose member/result type
     // is a bare T that the checker WRAPPED into Optional<T> (the "flatten" rule leaves an already
     // Optional member unwrapped). The recorded type of the node is Optional<T> in both cases, so
@@ -1590,6 +1596,43 @@ public class SemanticInfo : ISemanticQuery
         return _argumentSlotCasts.TryGetValue(argument, out var slot) ? slot : null;
     }
 
+    /// <summary>
+    /// Records the type the needle of an <c>in</c> / <c>not in</c> (a binary operator or a chain link)
+    /// is bound as (P93 D2, #2645). Set only by <c>TypeChecker.ClassifyMembership</c>: the first
+    /// membership slot the store seam (<c>IsArgumentAssignable</c>) takes the needle into, or the
+    /// needle's own type when that is <c>T | None</c> — so a cast to the recorded type never unwraps.
+    /// <paramref name="bindingType"/> null forgets the record: the fact is recorded — or forgotten — on
+    /// every check, so a lambda body re-checked under other parameter types keeps no stale binding.
+    /// </summary>
+    public void SetMembershipNeedleBinding(Expression needle, SemanticType? bindingType)
+    {
+        if (bindingType == null)
+            Forget(_membershipNeedleBindings, needle);
+        else
+            Put(_membershipNeedleBindings, needle, bindingType);
+    }
+
+    /// <summary>
+    /// The type the membership needle <paramref name="needle"/> is bound as (P93 D2, #2645), or false
+    /// when none is recorded.
+    /// <para><b>Contract (the emitter's needle-first bind).</b> A recorded needle is evaluated BEFORE
+    /// its container: where the emitted form reads the container first (<c>y.Contains(x)</c>, a LINQ
+    /// <c>Enumerable.Contains&lt;E&gt;(y, x)</c>), the emitter binds the needle first through a cast
+    /// to <paramref name="bindingType"/> — <c>((Slot)x) is var t &amp;&amp; y.Contains(t)</c>, negated
+    /// whole for <c>not in</c> — and where the container hoists, hoists the needle ahead of it into a
+    /// local of that type. The cast gives C# the type the argument position gave the needle (a tuple of
+    /// narrower literals, a <c>None</c> arm, a lambda, a function name), and since the recorded type of a
+    /// <c>T | None</c> needle is its own, the cast never unwraps one.</para>
+    /// <para>No record — and the plain emission — for a container with no membership slot (#2249) and
+    /// for a needle only the CLR call seam takes (<c>Point in RectangleF</c>, #2647): C# alone types
+    /// that argument.</para>
+    /// </summary>
+    public bool TryGetMembershipNeedleBinding(
+        Expression needle, [System.Diagnostics.CodeAnalysis.NotNullWhen(true)] out SemanticType? bindingType)
+    {
+        return _membershipNeedleBindings.TryGetValue(needle, out bindingType);
+    }
+
     public SemanticType? GetConditionalBranchNarrowing(Expression branch)
         => _conditionalBranchNarrowing.TryGetValue(branch, out var t) ? t : null;
 
@@ -2381,6 +2424,9 @@ public class SemanticInfo : ISemanticQuery
 
         foreach (var kvp in other._argumentSlotCasts)
             MergeEntry(_argumentSlotCasts, kvp, other);
+
+        foreach (var kvp in other._membershipNeedleBindings)
+            MergeEntry(_membershipNeedleBindings, kvp, other);
 
         foreach (var kvp in other._charMaterializations)
             MergeEntry(_charMaterializations, kvp, other);
@@ -3377,6 +3423,35 @@ public enum OperatorLoweringKind
     /// CS0037 on a value type and <c>x == null</c> would bind a struct's <c>operator ==</c>.
     /// </summary>
     BoxedNoneTest,
+
+    /// <summary>
+    /// <c>is</c> / <c>is not</c> whose operands are the SAME int-backed enum type, either side
+    /// possibly <c>E | None</c> (#2669, owner ruling 2026-11-12). An enum member is a singleton in
+    /// Python, so identity is equality; an int-backed enum is a C# value type, so
+    /// <c>object.ReferenceEquals</c> boxes each operand and always answers False. Emitted as the
+    /// native <c>l == r</c> / <c>l != r</c> — the enum's built-in operator, lifted over
+    /// <c>Nullable&lt;E&gt;</c> (None is None → True, None against a member → False).
+    /// </summary>
+    EnumIdentityEquals,
+
+    /// <summary>
+    /// <c>is</c> / <c>is not</c> with an int-backed enum operand against anything that is not the same
+    /// enum type — <c>object</c>, another enum type, a type parameter, any other value (#2669).
+    /// Emitted as <c>object.Equals(l, r)</c> / <c>!object.Equals(l, r)</c>: each operand is evaluated
+    /// once, a boxed enum equals only a boxed member of the same enum with the same value (an
+    /// <c>object</c> holding the member → True; a different enum type → False, the owner's ruling).
+    /// </summary>
+    EnumIdentityObjectEquals,
+
+    /// <summary>
+    /// A <see cref="Parser.Ast.TypeCheck"/> the checker resolved as an identity comparison against an
+    /// enum MEMBER (<c>t is Tone.A</c>, parsed as a type test because the member is spelled like a
+    /// type name) whose operands need no enum lowering — a string-backed enum's members are reference
+    /// singletons (#2669). Emitted as <c>object.ReferenceEquals(value, member)</c>, exactly what the
+    /// binary <c>is</c> emits with no record; the kind exists so the emitter reads "this type-test node
+    /// is an identity comparison" as a recorded fact instead of inferring it from the node's shape.
+    /// </summary>
+    EnumMemberReferenceIdentity,
     OptionalCoalesceBothOptional,
     OptionalUnwrapOr,
     StringRepeatStrLeft,
@@ -3428,6 +3503,24 @@ public enum OperatorLoweringKind
     /// method — see <see cref="CodeGenInfo.RequiresInstanceImpl"/>.
     /// </summary>
     SuperOperatorApplication,
+
+    /// <summary>
+    /// <c>x in y</c> / <c>x not in y</c> whose needle is a VALUE-type <c>T | None</c> lifted into a
+    /// <c>T</c> slot (#2635): <c>None</c> equals no element, so the test answers <c>False</c>
+    /// (<c>True</c> for <c>not in</c>) without calling the container, and otherwise calls its
+    /// <c>Contains</c> with the unwrapped value — <c>Builtins.ContainsOptional</c>. Recorded because a
+    /// CLR <c>Contains(T)</c> takes no <c>T?</c>. Decided only by <c>TypeChecker.ClassifyMembership</c>;
+    /// a reference needle and a needle assignable as it stands record nothing.
+    /// </summary>
+    MembershipNoneIsFalse,
+    /// <summary>
+    /// <c>x in y</c> / <c>x not in y</c> whose container is a SUBSEQUENCE container — its CLR type has
+    /// a <c>Contains</c> taking the type itself (<c>str</c>, <c>bytes</c>) — and whose needle is a
+    /// <c>T | None</c>, value or reference, whose <c>T</c> fits a slot (#2635): a <c>None</c> needle
+    /// raises <c>TypeError</c> at run time as Python does — <c>Builtins.ContainsNoneRaises</c>.
+    /// Decided only by <c>TypeChecker.ClassifyMembership</c>, before its assignability test.
+    /// </summary>
+    MembershipNoneRaises,
 }
 
 public sealed record OperatorLowering(OperatorLoweringKind Kind, SemanticType? NarrowTo = null);
@@ -3436,13 +3529,49 @@ public enum IterationLoweringKind { EnumValues, StringEnumValues, StringChars }
 public sealed record IterationLowering(IterationLoweringKind Kind);
 
 /// <summary>
-/// The lowering of one comparison — a binary <c>==</c>/<c>!=</c>/<c>&lt;</c>/… or one link of a
-/// <see cref="ComparisonChain"/>. <see cref="Kind"/> is the ordering lowering
-/// (<see cref="OperatorLoweringKind.StringOrdinalCompare"/>, <see cref="OperatorLoweringKind.TypeParameterCompareTo"/>
-/// or <see cref="OperatorLoweringKind.Native"/>); <see cref="Equality"/> is the <c>==</c>/<c>!=</c> strategy
-/// (<c>null</c> for ordering operators). Both positions are classified by the same TypeChecker helper (#1642).
+/// Which of the binary emitters a comparison-chain link lowers through (P93 D3, #2648): a link is its
+/// binary twin, so the shape is the arm the binary operator <c>Operands[i] op Operands[i+1]</c> takes.
 /// </summary>
-public sealed record ComparisonLinkLowering(OperatorLoweringKind Kind, BinaryOpLowering? Equality);
+public enum ComparisonLinkShape
+{
+    /// <summary><c>==</c>, <c>!=</c>, <c>&lt;</c>, <c>&lt;=</c>, <c>&gt;</c>, <c>&gt;=</c> — the lowered comparison
+    /// (<see cref="ComparisonLinkLowering.Kind"/> the ordering kind, <see cref="ComparisonLinkLowering.Equality"/>
+    /// the equality strategy).</summary>
+    Comparison,
+
+    /// <summary><c>is</c> / <c>is not</c> between two values, neither the <c>None</c> literal: reference identity,
+    /// or the enum identity <see cref="ComparisonLinkLowering.Kind"/> names
+    /// (<see cref="OperatorLoweringKind.EnumIdentityEquals"/>, <see cref="OperatorLoweringKind.EnumIdentityObjectEquals"/>,
+    /// <see cref="OperatorLoweringKind.EnumMemberReferenceIdentity"/>; <see cref="OperatorLoweringKind.Native"/> is
+    /// <c>object.ReferenceEquals</c>).</summary>
+    Identity,
+
+    /// <summary><c>is</c> / <c>is not</c> with the <c>None</c> literal on either side (the subject is the other
+    /// operand, as for the binary form): <see cref="ComparisonLinkLowering.Kind"/> is the recorded None-test kind
+    /// (<see cref="OperatorLoweringKind.OptionalNoneTest"/>, <see cref="OperatorLoweringKind.ReferenceNoneTest"/>,
+    /// <see cref="OperatorLoweringKind.BoxedNoneTest"/>), <see cref="OperatorLoweringKind.Native"/> for
+    /// <c>None is None</c>.</summary>
+    NoneTest,
+
+    /// <summary><c>in</c> / <c>not in</c>: <see cref="ComparisonLinkLowering.Kind"/> is the membership kind
+    /// <c>TypeChecker.ClassifyMembership</c> decided (<see cref="OperatorLoweringKind.MembershipNoneIsFalse"/>,
+    /// <see cref="OperatorLoweringKind.MembershipNoneRaises"/>, or <see cref="OperatorLoweringKind.Native"/>).</summary>
+    Membership,
+}
+
+/// <summary>
+/// The lowering of one comparison, identity or membership test — a binary operator, or one link of a
+/// <see cref="ComparisonChain"/> — as the ONE link routine of the type checker decides it for both positions
+/// (#1642; P93 D3, #2648: a chain link is its binary twin). <see cref="Kind"/> is the operator lowering kind the
+/// binary form records on its node (the ordering kind of a comparison, the None-test, enum-identity or membership
+/// kind); <see cref="Equality"/> is the <c>==</c>/<c>!=</c> strategy (<c>null</c> for every other operator);
+/// <see cref="Shape"/> names the binary emitter the link lowers through. A refused link records
+/// <see cref="OperatorLoweringKind.Native"/> under its operator's shape.
+/// </summary>
+public sealed record ComparisonLinkLowering(
+    OperatorLoweringKind Kind,
+    BinaryOpLowering? Equality,
+    ComparisonLinkShape Shape = ComparisonLinkShape.Comparison);
 
 /// <summary>Per-link lowering of a <see cref="ComparisonChain"/>; <c>Links[i]</c> is operator <c>i</c> (#1642).</summary>
 public sealed record ComparisonChainLowering(

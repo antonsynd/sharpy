@@ -1,0 +1,40 @@
+# #2669 (owner ruling 2026-11-12): `is` / `is not` with an int-backed enum operand answers what
+# CPython answers. Enum members are singletons, so identity is equality; the old lowering,
+# object.ReferenceEquals, boxed both operands and always printed False. This fixture reaches each
+# recorded identity lowering once (the differential test owns the matrix):
+#   EnumIdentityEquals           same enum on both sides, either possibly `E | None`
+#   EnumIdentityObjectEquals     an enum against object / another enum type
+#   EnumMemberReferenceIdentity  `t is Tone.A`: a string-backed member spelled like a type name
+
+enum Color:
+    RED = 1
+    GREEN = 2
+
+enum Size:
+    S = 1
+
+enum Tone:
+    A = "a"
+    B = "b"
+
+def main():
+    c: Color = Color.RED
+    d: Color = Color.RED
+    s: Size = Size.S
+    t: Tone = Tone.A
+    oc: Color | None = Color.RED
+    on: Color | None = None
+    o: object = c
+    print(c is d)
+    print(c is not d)
+    print(c is Color.GREEN)
+    print(c is Color.RED)
+    print(oc is c)
+    print(on is c)
+    print(on is not c)
+    print(o is c)
+    print(c is s)
+    print(c is not s)
+    print(t is Tone.A)
+    print(t is Tone.B)
+    print(oc is None)

@@ -1,0 +1,18 @@
+# The nearest `__iter__` decides (plan P93 D1). `Relisted` overrides an iterating base's `__iter__` with
+# one that returns a list, which names no producer (#1915): the class no longer iterates, so it does not
+# answer `in`, and the base's elements are not its own. CPython 3.15 raises TypeError at run time
+# ("argument of type 'Relisted' is not a container or iterable"); Sharpy refuses it with SPY0320. An
+# answer through the base's `__iter__` printed `True False`: the base's elements, not the override's.
+
+class Counted:
+    def __iter__(self) -> Iterator[int]:
+        return iter([1, 2])
+
+
+class Relisted(Counted):
+    def __iter__(self) -> list[int]:
+        return [7]
+
+
+def main() -> None:
+    print(1 in Relisted(), 7 in Relisted())

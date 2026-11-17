@@ -339,8 +339,12 @@ public class StoreSeamConformanceTests
     /// (<c>g: () -> None? = lambda: None()</c>) checks its body in its own error-recovery arm, which
     /// pushes the recovered slot through <c>EnterStore(LambdaBody, …)</c> like the admitted arm above
     /// it (49 pushes + 14 clears, measured by this scan).
+    /// 63 -> 62 (P93 D3, plan-67a01f, #2648): the membership needle's push of its container's slot
+    /// — two identical <c>EnterStore(ArgumentPositional, …)</c> call sites, the binary <c>in</c> and
+    /// the chain's needle pass — unified into the one <c>CheckMembershipNeedle</c> helper both now
+    /// call (48 pushes + 14 clears, measured by this scan).
     /// </summary>
-    private const int ExpectedSeamCallSiteCount = 63;
+    private const int ExpectedSeamCallSiteCount = 62;
 
     private record CallSite(string File, string Method, int Line, string Text)
     {

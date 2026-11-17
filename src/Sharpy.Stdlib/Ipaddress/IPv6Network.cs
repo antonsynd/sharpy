@@ -244,6 +244,14 @@ namespace Sharpy
         /// </summary>
         public bool Contains(IPv6Address address)
         {
+            // CPython: `None in ip_network(...)` raises AttributeError (`__contains__` reads
+            // `other.version`). A `T | None` needle reaches here as null at run time; without
+            // this it surfaces as a CLR NullReferenceException.
+            if (address is null)
+            {
+                throw new AttributeError("'NoneType' object has no attribute 'version'");
+            }
+
             byte[] addrBytes = address.Address.GetAddressBytes();
             byte[] masked = ApplyMask(addrBytes, _prefixLength);
 

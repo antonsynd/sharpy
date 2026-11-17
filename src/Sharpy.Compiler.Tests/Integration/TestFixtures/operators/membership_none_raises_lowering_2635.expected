@@ -1,0 +1,5 @@
+TypeError | True False | False True
+TypeError | True
+TypeError | True | False
+TypeError | True False | False True
+TypeError | True

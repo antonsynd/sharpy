@@ -225,3 +225,75 @@ def test_an_unknown_grandfather_sha_exempts_nothing(repo):
     assert result.returncode == 1 and "81 chars" in result.stdout
     default = _run(repo, f"{base}..HEAD")
     assert default.returncode == 1 and "81 chars" in default.stdout
+
+
+# ── Dependabot commits (owner, 2026-11-17) ────────────────────────────────────
+
+
+def test_dependabot_authored_long_subject_is_exempt_and_a_human_one_is_not():
+    long = "chore: Bump Microsoft.AspNetCore.Components.WebAssembly.DevServer from 10.0.14 to 11.0.0"
+    bot = mod.Commit("a" * 40, long, 1, mod.DEPENDABOT_EMAIL)
+    human = mod.Commit("b" * 40, long, 1, "someone@example.com")
+    unknown = mod.Commit("c" * 40, long, 1)
+    assert mod.offences([bot]) == []
+    assert mod.offences([bot, human, unknown]) == [human, unknown]
+
+
+def test_parse_rev_list_reads_the_author_email_when_present():
+    text = (
+        "commit 1111\n1111\0p1\0chore: Bump x\0" + mod.DEPENDABOT_EMAIL + "\n"
+        "commit 2222\n2222\0p1\0fix: no email field\n"
+    )
+    bot, plain = mod.parse_rev_list(text)
+    assert bot.author_email == mod.DEPENDABOT_EMAIL and bot.subject == "chore: Bump x"
+    assert plain.author_email == ""
+
+
+def test_range_with_a_long_dependabot_commit_exits_0_but_a_human_one_exits_1(repo):
+    base = _git(repo, "rev-parse", "HEAD").strip()
+    subject = "chore: Bump " + "p" * 80
+
+    def run():
+        return subprocess.run(
+            [sys.executable, mod.__file__, f"{base}..HEAD"],
+            cwd=repo,
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+
+    (repo / "f").write_text("bot\n")
+    _git(
+        repo,
+        "commit",
+        "-q",
+        "-am",
+        subject,
+        env={"GIT_AUTHOR_EMAIL": mod.DEPENDABOT_EMAIL},
+    )
+    result = run()
+    assert result.returncode == 0, result.stdout + result.stderr
+    # Control: the same subject from a human on top is still red.
+    _commit(repo, subject)
+    assert run().returncode == 1
+
+
+def test_a_human_author_with_a_dependabot_committer_is_still_judged(repo):
+    base = _git(repo, "rev-parse", "HEAD").strip()
+    (repo / "f").write_text("x\n")
+    _git(
+        repo,
+        "commit",
+        "-q",
+        "-am",
+        "chore: Bump " + "p" * 80,
+        env={"GIT_COMMITTER_EMAIL": mod.DEPENDABOT_EMAIL},
+    )
+    result = subprocess.run(
+        [sys.executable, mod.__file__, f"{base}..HEAD"],
+        cwd=repo,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    assert result.returncode == 1, result.stdout + result.stderr

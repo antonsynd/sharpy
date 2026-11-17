@@ -353,7 +353,8 @@ internal static class NameResolutionRosters
     /// four <c>SymbolTable</c> receivers, plus <c>_globalScope</c> ×3, <c>merged</c> and <c>CurrentScope</c> ×2.</summary>
     internal const int BinderSiteCensus = 73;
 
-    internal const int TypeAnnotationScalarCensus = 22;
+    /// <summary><c>TypeAnnotation</c>-typed AST properties: 23 since P93 D4 added <c>ComparisonChain.HeadCheckType</c>.</summary>
+    internal const int TypeAnnotationScalarCensus = 23;
 
     /// <summary><c>IEnumerable&lt;TypeAnnotation&gt;</c>-typed AST properties (finding 5).</summary>
     internal const int TypeAnnotationCollectionCensus = 6;
@@ -845,6 +846,9 @@ internal static class NameResolutionRosters
         ("ModifiedArgument.InlineType", Roster.To(TypePosition.OutInlineType)),
         ("TypeCoercion.TargetType", Roster.To(TypePosition.Coercion)),
         ("TypeCheck.CheckType", Roster.To(TypePosition.IsInstance)),
+        // P93 D4: the type spelling of a chain head `c is Color.RED is d`, moved off its TypeCheck by the parser;
+        // the checker gives it CheckTypeCheck's rule, so it is the same position.
+        ("ComparisonChain.HeadCheckType", Roster.To(TypePosition.IsInstance)),
         ("TryExpression.ExceptionTypes", Roster.To(TypePosition.TryExceptionType)),
         ("TypeAnnotation.ErrorType", Roster.To(TypePosition.ResultError)),
         ("TypeAnnotation.TypeArguments", Roster.To(TypePosition.GenericArgument)),

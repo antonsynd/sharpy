@@ -6,6 +6,10 @@
 #      does not support .NET 11 yet (a net10.0 sharpyc refuses to start on the .NET 11
 #      runtime alone; #2548 tracks the work, #2549 the measurements). It is installed so it
 #      is there when that work lands; call it as `dotnet11` after sourcing the env file.
+#      The root global.json pins the SDK to 10.0.x and the .NET 11 host honours it, so inside
+#      the repo `dotnet11` fails ("A compatible .NET SDK was not found") until the branch
+#      doing the #2548 work sets sdk.version in global.json to 11.0.100. Outside the repo it
+#      runs as is. The pin itself stays on dev: CI images carry both SDKs and rely on it.
 #   3. Local .NET tools from dotnet-tools.json (`dotnet tool restore`: dotnet-stryker).
 #   4. CPython via uv: the requested version (3.15 by default) and the CI oracle minor
 #      pinned in .python-version, if different.
@@ -101,11 +105,12 @@ install_sdk "$DOTNET_DIR" 10
 ((DOTNET11)) && install_sdk "$DOTNET11_DIR" 11
 
 cd "$ROOT"
-sdk="$("$DOTNET" --version)"
+sdk="$("$DOTNET" --version)" \
+  || die "\`dotnet\` finds no SDK in $DOTNET_DIR that $ROOT/global.json accepts (it pins 10.0.x)"
 log "dotnet in $ROOT uses SDK $sdk"
 if [[ "$sdk" != 10.* ]]; then
-  log "warning: $DOTNET_DIR also holds a newer SDK, which \`dotnet\` prefers; Sharpy needs .NET 10."
-  log "         Remove it from there (keep it in $DOTNET11_DIR) or pin 10.0 with a global.json."
+  log "warning: \`dotnet\` here uses SDK $sdk, not 10.0.x, so global.json is missing or edited."
+  log "         Sharpy needs .NET 10: restore the pin (the #2548 branch moves it to 11 on purpose)."
 fi
 
 # 3. local .NET tools --------------------------------------------------------------
@@ -203,6 +208,8 @@ SH
 if ((DOTNET11)); then
   cat >> "$ENV_FILE" <<SH
 # .NET 11 SDK, off PATH until Sharpy supports it (#2548): \`dotnet11 --info\`
+# Inside the repo it fails while global.json pins SDK 10.0.x: on the #2548 branch, set
+# sdk.version there to 11.0.100. Outside the repo it runs as is.
 export DOTNET11_ROOT=$(q "$DOTNET11_DIR")
 dotnet11() { DOTNET_ROOT="\$DOTNET11_ROOT" "\$DOTNET11_ROOT/dotnet" "\$@"; }
 SH

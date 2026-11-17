@@ -1,0 +1,64 @@
+# A chain link is its binary twin (#2648): the subject of an `is None` / `is not None` link reads the
+# honest value, not a narrowed one, as `x is None` alone does. Each line prints the chain forms, then
+# the same tests written as their twins; the two halves are equal, and equal to CPython 3.15.
+# "stale" lines clear the field after an enclosing `if` narrowed it: read narrowed, the chain's link
+# unwrapped an empty value and threw (InvalidOperationException) where its twin prints the answer.
+
+class Box:
+    v: int | None
+    s: str | None
+    one: int
+
+    def __init__(self):
+        self.v = 1
+        self.s = "a"
+        self.one = 1
+
+    def clear(self) -> int:
+        self.v = None
+        self.s = None
+        return 1
+
+    def fill(self) -> None:
+        self.v = 1
+        self.s = "a"
+
+    def tail(self) -> None:
+        if self.v is not None:
+            print("tail live ", self.one == self.one is not None is not self.v, self.one == self.one is not None is self.v,
+                  None is not self.v, None is self.v)
+        if self.v is not None:
+            print("tail stale", self.clear() == self.one is not None is not self.v, self.one == self.one is not None is self.v,
+                  None is not self.v, None is self.v)
+        self.fill()
+        if self.s is not None:
+            print("tail str  ", self.clear() == self.one is not None is not self.s, self.one == self.one is not None is self.s,
+                  None is not self.s, None is self.s)
+        self.fill()
+
+    def head(self) -> None:
+        if self.v is not None:
+            print("head live ", self.v is None is None, self.v is not None is None,
+                  self.v is None, self.v is not None)
+        if self.v is not None:
+            self.clear()
+            print("head stale", self.v is None is None, self.v is not None is None,
+                  self.v is None, self.v is not None)
+        self.fill()
+
+    def between(self) -> None:
+        if self.v is not None:
+            print("mid live  ", None is self.v is None, None is not self.v is not None,
+                  None is self.v, None is not self.v)
+        if self.v is not None:
+            self.clear()
+            print("mid stale ", None is self.v is None, None is not self.v is not None,
+                  None is self.v, None is not self.v)
+        self.fill()
+
+
+def main() -> None:
+    b = Box()
+    b.tail()
+    b.head()
+    b.between()

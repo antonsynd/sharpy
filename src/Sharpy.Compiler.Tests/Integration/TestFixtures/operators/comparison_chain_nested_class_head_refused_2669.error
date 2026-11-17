@@ -1,0 +1,1 @@
+SPY0349: Use 'isinstance(x, Outer.Inner)' to test a value's type. @13:11

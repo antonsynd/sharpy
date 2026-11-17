@@ -263,15 +263,15 @@ public partial class NameResolutionDifferentialTests
         }
     }
 
-    private static IEnumerable<string> Indent(IEnumerable<string> lines, int by = 4)
+    internal static IEnumerable<string> Indent(IEnumerable<string> lines, int by = 4)
     {
         var pad = new string(' ', by);
         return lines.Select(l => pad + l);
     }
 
-    private static string Join(IEnumerable<string> lines) => string.Join("\n", lines) + "\n";
+    internal static string Join(IEnumerable<string> lines) => string.Join("\n", lines) + "\n";
 
-    private static string MainBlock(params string[] body)
+    internal static string MainBlock(params string[] body)
         => Join(new[] { "def main() -> None:" }.Concat(Indent(body)));
 
     /// <summary>The helpers a program needs, first in the file: declared at most once and only when referenced.</summary>
@@ -294,7 +294,7 @@ public partial class NameResolutionDifferentialTests
     // ------------------------------------------------------------------------------------------- //
 
     /// <summary>Where a reader sits inside a type body and how <c>main</c> reaches it.</summary>
-    private sealed record Placed(IReadOnlyList<string> Members, string Access, string[]? Setup = null, IReadOnlyList<string>? Inits = null);
+    internal sealed record Placed(IReadOnlyList<string> Members, string Access, string[]? Setup = null, IReadOnlyList<string>? Inits = null);
 
     /// <summary>The class-body positions of roster 1 × the host only where the dispatch routes on it.</summary>
     private static readonly ReadPosition[] ClassBodyInitializers =
@@ -339,17 +339,17 @@ public partial class NameResolutionDifferentialTests
 
     /// <summary>The SPY0401 class: a position whose value must be a compile-time constant, because the C# target is an
     /// optional parameter (a parameter default, or a dataclass / struct field through the synthesized constructor).</summary>
-    private static bool IsConstantOnly(ReadPosition p) => p is ReadPosition.ParameterDefault
+    internal static bool IsConstantOnly(ReadPosition p) => p is ReadPosition.ParameterDefault
         or ReadPosition.DataclassFieldInitializer or ReadPosition.StructFieldInitializer;
 
-    private static string HostHeader(ReadPosition p) => p switch
+    internal static string HostHeader(ReadPosition p) => p switch
     {
         ReadPosition.DataclassFieldInitializer or ReadPosition.DataclassInitFieldInitializer => "@dataclass\nclass H:",
         ReadPosition.StructFieldInitializer or ReadPosition.StructInitFieldInitializer => "struct H:",
         _ => "class H:",
     };
 
-    private static Placed PlaceInClass(ReadPosition p, Nesting nesting, string e)
+    internal static Placed PlaceInClass(ReadPosition p, Nesting nesting, string e)
     {
         switch (p)
         {
@@ -417,7 +417,7 @@ public partial class NameResolutionDifferentialTests
 
     /// <summary>The positions of roster 5 (module level) and the function hosted body positions: reader lines at module
     /// level and how <c>main</c> reaches them.</summary>
-    private static (List<string> Lines, string Access) PlaceAtModule(ReadPosition p, Nesting nesting, string e)
+    internal static (List<string> Lines, string Access) PlaceAtModule(ReadPosition p, Nesting nesting, string e)
     {
         switch (p)
         {
@@ -460,6 +460,6 @@ public partial class NameResolutionDifferentialTests
     private static string CellId(params object?[] parts)
         => string.Join("/", parts.Where(p => p != null).Select(p => Convert.ToString(p, CultureInfo.InvariantCulture)!.Replace(' ', '_')));
 
-    private static string MainPrinting(string access, string[]? setup)
+    internal static string MainPrinting(string access, string[]? setup)
         => MainBlock((setup ?? Array.Empty<string>()).Append($"print({access})").ToArray());
 }

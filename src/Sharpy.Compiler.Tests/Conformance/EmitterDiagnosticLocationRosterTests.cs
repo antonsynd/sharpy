@@ -45,7 +45,8 @@ public class EmitterDiagnosticLocationRosterTests
     /// the emitter's SPY0340 duplicate, which no program reaches (ModuleLevelValidator refuses every
     /// module-level executable statement first), was deleted with <c>ReportAt</c>.
     /// </summary>
-    private const int ReportingSiteCount = 25;
+    // 24 since P93 D3 removed the comparison chain's SPY0519 site (a link emits through its binary twin).
+    private const int ReportingSiteCount = 24;
 
     /// <summary>
     /// Reporting method names. <c>Add</c> counts only on a receiver that is a diagnostic bag.

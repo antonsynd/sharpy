@@ -236,7 +236,8 @@ public sealed class StructuralEqualityComparer : IEqualityComparer<Node>
     }
 
     private bool ComparisonChainEquals(ComparisonChain a, ComparisonChain b) =>
-        a.Operators.SequenceEqual(b.Operators) && NodesEqual(a.Operands, b.Operands);
+        a.Operators.SequenceEqual(b.Operators) && NodesEqual(a.Operands, b.Operands)
+        && NullableTypeEquals(a.HeadCheckType, b.HeadCheckType);
 
     private bool LambdaEquals(LambdaExpression a, LambdaExpression b) =>
         a.IsArrowSyntax == b.IsArrowSyntax

@@ -1,0 +1,53 @@
+# The `T?` twin of comparison_chain_none_test_unnarrowed_2648: the subject of an `is None` /
+# `is not None` chain link reads the honest Optional, as `x is None` alone does (#2648). Each line
+# prints the chain forms, then the same tests written as their twins. Read narrowed, the "stale" lines
+# threw "Called Unwrap on empty Optional" at the chain's link.
+
+class Box:
+    v: int?
+    one: int
+
+    def __init__(self):
+        self.v = Some(1)
+        self.one = 1
+
+    def clear(self) -> int:
+        self.v = None()
+        return 1
+
+    def tail(self) -> None:
+        if self.v is not None:
+            print("tail live ", self.one == self.one is not None is not self.v, None is not self.v)
+        if self.v is not None:
+            print("tail stale", self.clear() == self.one is not None is not self.v, None is not self.v)
+        self.v = Some(1)
+
+    def head(self) -> None:
+        if self.v is not None:
+            print("head live ", self.v is None is None, self.v is None)
+        if self.v is not None:
+            self.clear()
+            print("head stale", self.v is None is None, self.v is None)
+        self.v = Some(1)
+
+    def between(self) -> None:
+        if self.v is not None:
+            print("mid live  ", None is self.v is None, None is self.v)
+        if self.v is not None:
+            self.clear()
+            print("mid stale ", None is self.v is None, None is self.v)
+        self.v = Some(1)
+
+
+def main() -> None:
+    b = Box()
+    b.tail()
+    b.head()
+    b.between()
+    # A local the chain itself rebinds, after an `if` narrowed it.
+    w: int? = Some(6)
+    if w is not None:
+        print("walrus    ", 0 < len([(w := None())]) is not None is not w, None is not w)
+    y: int? = Some(6)
+    if y is not None:
+        print("walrus tw ", 0 < len([(y := None())]) and None is not y)

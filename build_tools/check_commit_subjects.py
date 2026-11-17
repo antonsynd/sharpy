@@ -2,10 +2,13 @@
 """Gate: every commit subject in a range is at most 72 characters (W3.4, owner ruling D5 of 2026-11-07).
 
 The figure is the `/commit` skill's ("Keep the first line under 72 characters"); this script is what
-makes it a gate instead of advice. Two kinds of subject are exempt because another tool writes them
+makes it a gate instead of advice. Some subjects are exempt because another tool writes them
 and quotes text the author did not choose: a merge commit (more than one parent — GitHub's
 "Merge pull request #N from owner/branch" runs past 72 on a long branch name) and a `Revert "..."`
-commit (it quotes the reverted subject verbatim). A third kind is exempt because it predates the
+commit (it quotes the reverted subject verbatim). A third kind is a commit authored by Dependabot
+(owner, 2026-11-17: its "chore: Bump <package> from X to Y" subject, long with the `include: scope`
+form, is generated; matched on the author email, so a human commit pushed onto a `dependabot/*`
+branch is still judged). A fourth kind is exempt because it predates the
 gate: any commit reachable from the commit that introduced this script (GATE_COMMIT, 2026-11-07) was
 written when the figure was advice, so a range that reaches back past it — the dev → mainline
 promotion PR #2522 spanned 187 commits, six of them long — is judged only on what came after.
@@ -34,16 +37,25 @@ REVERT_PREFIX = 'Revert "'
 GATE_COMMIT = "026e6e19d03c211e1212e1f49ffb981369226a43"
 
 
+# GitHub's noreply address for the Dependabot app (user id 49699333).
+DEPENDABOT_EMAIL = "49699333+dependabot[bot]@users.noreply.github.com"
+
+
 @dataclass(frozen=True)
 class Commit:
     sha: str
     subject: str
     parent_count: int
+    author_email: str = ""
 
 
 def is_exempt(commit: Commit) -> bool:
-    """Merge commits and `Revert "..."` commits carry subjects another tool wrote."""
-    return commit.parent_count > 1 or commit.subject.startswith(REVERT_PREFIX)
+    """Merge, `Revert "..."` and Dependabot commits carry subjects another tool wrote."""
+    return (
+        commit.parent_count > 1
+        or commit.subject.startswith(REVERT_PREFIX)
+        or commit.author_email.lower() == DEPENDABOT_EMAIL
+    )
 
 
 def offences(commits: list[Commit], max_len: int = DEFAULT_MAX) -> list[Commit]:
@@ -52,14 +64,20 @@ def offences(commits: list[Commit], max_len: int = DEFAULT_MAX) -> list[Commit]:
 
 
 def parse_rev_list(text: str) -> list[Commit]:
-    """Parse `git rev-list --format=%H%x00%P%x00%s` output (one `commit <sha>` header line, then a record)."""
+    """Parse `git rev-list --format=%H%x00%P%x00%s%x00%ae` output (one `commit <sha>` header line, then a
+    record; the author email is optional, so a record without it parses with an empty one)."""
     commits: list[Commit] = []
     for line in text.splitlines():
         if not line or line.startswith("commit "):
             continue
-        sha, parents, subject = line.split("\0", 2)
+        sha, parents, subject, *rest = line.split("\0")
         commits.append(
-            Commit(sha, subject, len(parents.split()) if parents.strip() else 0)
+            Commit(
+                sha,
+                subject,
+                len(parents.split()) if parents.strip() else 0,
+                rest[0] if rest else "",
+            )
         )
     return commits
 
@@ -81,7 +99,7 @@ def rev_list(
     rev_range: str, cwd: str | None = None, exclude_reachable_from: str | None = None
 ) -> list[Commit]:
     """The commits of `rev_range`; with `exclude_reachable_from`, minus every ancestor of that commit."""
-    args = ["git", "rev-list", "--format=%H%x00%P%x00%s", rev_range]
+    args = ["git", "rev-list", "--format=%H%x00%P%x00%s%x00%ae", rev_range]
     if exclude_reachable_from:
         args.append(f"^{exclude_reachable_from}")
     result = subprocess.run(args, capture_output=True, text=True, cwd=cwd, check=False)

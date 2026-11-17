@@ -879,7 +879,8 @@ public static partial class DiagnosticExplanations
             "'isinstance(x, Dog)'. The negated form 'x is not TypeName' was never a type test in " +
             "Sharpy (it is parsed as an identity comparison against a bare type reference, which " +
             "draws its own diagnostic). 'x is None' and 'x is not None' are unaffected — None is " +
-            "not a type name.",
+            "not a type name. Neither is an enum member: 'x is Color.RED' is an identity comparison " +
+            "against the member and compiles, while 'x is Color' names the enum type and is this error.",
             "if x is Dog:  # error: 'is' compares references, not types\n    print(x.name)",
             "Use isinstance to test types:\nif isinstance(x, Dog):\n    print(x.name)");
 
