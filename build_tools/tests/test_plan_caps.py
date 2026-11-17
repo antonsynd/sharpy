@@ -152,6 +152,7 @@ def test_grandfathered_real_plan_copy_growing_is_red(monkeypatch):
         ("plan-460cbf.md", 6),  # `## Verification Summary — round 6`
         ("plan-ed89b6.md", 10),  # nine NEEDS REVISION records + the current stamp
         ("plan-16cca3.md", 2),  # `Verified by /verify-plan (round 2`
+        ("plan-4e2867.md", 6),  # 4 NEEDS REVISION + 1 revised (CONVERGED) + stamp
     ],
 )
 def test_pass_count_on_committed_plans(name, passes):
