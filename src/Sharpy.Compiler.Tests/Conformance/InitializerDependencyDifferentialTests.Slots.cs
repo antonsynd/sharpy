@@ -32,6 +32,12 @@ namespace Sharpy.Compiler.Tests.Conformance;
 /// is no edge to another value. And a value some plain store names closes no cycle of two or more
 /// (<see cref="StoredCells"/>): the store may run before the value's initializer, which then replaces it, so the reads
 /// around the cycle never meet a value that is being initialized.
+///
+/// The seventh stage-0 commit applies the independent review of the pull request. A template's format spec is
+/// evaluated as an f-string's is (<c>template_strings.md</c>); a first arm's value pattern is evaluated whenever the
+/// match is; a comprehension's target is a store site, and a member access there stores another host's value as an
+/// <c>out</c> operand does. And an excluded slot is a claim about a program: it carries that program, with the read in
+/// the slot it names, and what the program draws.
 /// </summary>
 public sealed partial class InitializerDependencyDifferentialTests
 {
@@ -45,7 +51,8 @@ public sealed partial class InitializerDependencyDifferentialTests
     /// <see cref="Value"/> is what the whole text is worth when the read is not evaluated.</summary>
     internal sealed record SlotEntry(Evaluated When, string Sharpy, int Value = 0, string? Twin = null, string? Case = null)
     {
-        /// <summary>The slot's child is stored to, not read: evaluated whenever its parent is, and no edge to another value.</summary>
+        /// <summary>The slot's child is stored to, not read: no edge to another value. In the entry's text the store runs
+        /// on every run of its parent.</summary>
         public bool Stores { get; init; }
     }
 
@@ -60,6 +67,8 @@ public sealed partial class InitializerDependencyDifferentialTests
 
     private static SlotEntry Conditionally(string sharpy, int value, string? twin = null, string? @case = null) => new(Evaluated.Conditionally, sharpy, value, twin, @case);
 
+    private static SlotEntry Stored(string sharpy, int value) => new(Evaluated.Always, sharpy, value) { Stores = true };
+
     private static SlotEntry[] ComprehensionIterator(string open, string close) => new[]
     {
         Always($"len({open}v0 for v0 in range({{d}}){close})", @case: "First"),
@@ -71,6 +80,8 @@ public sealed partial class InitializerDependencyDifferentialTests
         ["FStringLiteral.Parts.Expression"] = new[] { Always("int(f\"{{d}}5\")") },
         ["FStringLiteral.Parts.Spec"] = new[] { Always("len(f\"{5:{{d}}}\")") },
         ["TStringLiteral.Parts.Expression"] = new[] { Always("len(t\"{{d}}\".interpolations)", twin: "len([{d}])") },
+        // A template evaluates the nested fields of its format spec, as an f-string does (`template_strings.md`).
+        ["TStringLiteral.Parts.Spec"] = new[] { Always("len(t\"{5:{{d}}}\".interpolations)", twin: "len([{d}])") },
         ["ListLiteral.Elements"] = new[] { Always("[{d}][0]") },
         ["DictLiteral.Entries.Key"] = new[] { Always("len({{d}: 1})") },
         ["DictLiteral.Entries.Value"] = new[] { Always("{1: {d}}[1]") },
@@ -78,6 +89,7 @@ public sealed partial class InitializerDependencyDifferentialTests
         ["TupleLiteral.Elements"] = new[] { Always("({d}, 1)[0]") },
         ["ListComprehension.Element"] = new[] { Conditionally("len([{d} for v0 in range(0)])", 0) },
         ["ListComprehension.Clauses:ForClause.Iterator"] = ComprehensionIterator("[", "]"),
+        ["ListComprehension.Clauses:ForClause.Target"] = new[] { Stored("len([0 for {d} in [5]])", 1) },
         ["ListComprehension.Clauses:IfClause.Condition"] = new[] { Conditionally("len([v0 for v0 in range(0) if {d} > 0])", 0) },
         ["GeneratorExpression.Element"] = new[] { Conditionally("sum({d} for v0 in range(0))", 0) },
         ["GeneratorExpression.Clauses:ForClause.Iterator"] = new[]
@@ -85,9 +97,12 @@ public sealed partial class InitializerDependencyDifferentialTests
             Always("sum(v0 for v0 in range({d}))", @case: "First"),
             Conditionally("sum(v1 for v0 in range(0) for v1 in range({d}))", 0, @case: "Later"),
         },
+        // The generator is consumed where it is written, so its target's store runs inside the initializer as the others' do.
+        ["GeneratorExpression.Clauses:ForClause.Target"] = new[] { Stored("sum(1 for {d} in [5])", 1) },
         ["GeneratorExpression.Clauses:IfClause.Condition"] = new[] { Conditionally("sum(v0 for v0 in range(0) if {d} > 0)", 0) },
         ["SetComprehension.Element"] = new[] { Conditionally("len({{d} for v0 in range(0)})", 0) },
         ["SetComprehension.Clauses:ForClause.Iterator"] = ComprehensionIterator("{", "}"),
+        ["SetComprehension.Clauses:ForClause.Target"] = new[] { Stored("len({0 for {d} in [5]})", 1) },
         ["SetComprehension.Clauses:IfClause.Condition"] = new[] { Conditionally("len({v0 for v0 in range(0) if {d} > 0})", 0) },
         ["DictComprehension.Key"] = new[] { Conditionally("len({{d}: v0 for v0 in range(0)})", 0) },
         ["DictComprehension.Value"] = new[] { Conditionally("len({v0: {d} for v0 in range(0)})", 0) },
@@ -96,6 +111,7 @@ public sealed partial class InitializerDependencyDifferentialTests
             Always("len({v0: 1 for v0 in range({d})})", @case: "First"),
             Conditionally("len({v1: 1 for v0 in range(0) for v1 in range({d})})", 0, @case: "Later"),
         },
+        ["DictComprehension.Clauses:ForClause.Target"] = new[] { Stored("len({0: 0 for {d} in [5]})", 1) },
         ["DictComprehension.Clauses:IfClause.Condition"] = new[] { Conditionally("len({v0: 1 for v0 in range(0) if {d} > 0})", 0) },
         ["DictSpreadComprehension.Spread"] = new[] { Conditionally("len({**{v0: {d}} for v0 in range(0)})", 0, twin: "len({v0: {d} for v0 in range(0)})") },
         ["DictSpreadComprehension.Clauses:ForClause.Iterator"] = new[]
@@ -103,6 +119,7 @@ public sealed partial class InitializerDependencyDifferentialTests
             Always("len({**{v0: 1} for v0 in range({d})})", twin: "len({v0: 1 for v0 in range({d})})", @case: "First"),
             Conditionally("len({**{v1: 1} for v0 in range(0) for v1 in range({d})})", 0, twin: "len({v1: 1 for v0 in range(0) for v1 in range({d})})", @case: "Later"),
         },
+        ["DictSpreadComprehension.Clauses:ForClause.Target"] = new[] { Stored("len({**{0: 0} for {d} in [5]})", 1) },
         ["DictSpreadComprehension.Clauses:IfClause.Condition"] = new[]
         {
             Conditionally("len({**{v0: 1} for v0 in range(0) if {d} > 0})", 0, twin: "len({v0: 1 for v0 in range(0) if {d} > 0})"),
@@ -136,22 +153,22 @@ public sealed partial class InitializerDependencyDifferentialTests
         ["MaybeExpression.Operand"] = new[] { Always("(maybe opt({d})).unwrap()", twin: "opt({d})") },
         ["SpreadElement.Value"] = new[] { Always("[*[{d}]][0]") },
         ["MatchExpression.Scrutinee"] = new[] { Always("match {d}:\n    case 3: 30\n    case _: 0", twin: "30 if {d} == 3 else 0") },
+        // The first arm's pattern is tried on every run of the match; a later arm's only when the arms before it fail.
         ["MatchExpression.Arms.Pattern"] = new[]
         {
-            Conditionally("match 1:\n    case 1: 5\n    case {d}: 6\n    case _: 0", 5, twin: "5 if 1 == 1 else (6 if 1 == {d} else 0)"),
+            Always("match 1:\n    case {d}: 6\n    case _: 0", twin: "6 if 1 == {d} else 0", @case: "First"),
+            Conditionally("match 1:\n    case 1: 5\n    case {d}: 6\n    case _: 0", 5, twin: "5 if 1 == 1 else (6 if 1 == {d} else 0)", @case: "Later"),
         },
         ["MatchExpression.Arms.Guard"] = new[] { Conditionally("match 1:\n    case 2 if {d} > 0: 3\n    case _: 5", 5, twin: "3 if 1 == 2 and {d} > 0 else 5") },
         ["MatchExpression.Arms.Result"] = new[] { Conditionally("match 1:\n    case 2: {d}\n    case _: 5", 5, twin: "{d} if 1 == 2 else 5") },
     };
 
+    /// <summary>A slot with no cell. Each entry is a claim about the program that holds the family's read in the slot, so
+    /// it carries that program and what it draws: totality checks that the read sits in the slot the entry names, and
+    /// <see cref="Exclusions_ThatRestOnADiagnostic_StillDrawIt"/> that the program still draws its code. A sentence
+    /// alone excludes no slot.</summary>
     internal static readonly IReadOnlyDictionary<string, Exclusion> ExcludedSlots = new Dictionary<string, Exclusion>
     {
-        ["TStringLiteral.Parts.Spec"] = new("a template keeps its format spec as text for its consumer: the f-string's slot is the cell"),
-        ["ListComprehension.Clauses:ForClause.Target"] = new("a binder: it reads nothing"),
-        ["GeneratorExpression.Clauses:ForClause.Target"] = new("a binder: it reads nothing"),
-        ["SetComprehension.Clauses:ForClause.Target"] = new("a binder: it reads nothing"),
-        ["DictComprehension.Clauses:ForClause.Target"] = new("a binder: it reads nothing"),
-        ["DictSpreadComprehension.Clauses:ForClause.Target"] = new("a binder: it reads nothing"),
         ["LambdaExpression.Parameters.DefaultValue"] = new(
             "a lambda parameter's default is a compile-time constant: a `@static` value is refused there",
             "class B:\n    @static\n    q: int = 3\ndef ap1(f: (int) -> int) -> int:\n    return 5\nt: int = ap1(lambda v: int = B.q: v)\n" + MainPrintingT,
@@ -202,9 +219,12 @@ public sealed partial class InitializerDependencyDifferentialTests
         [ParameterModifier.Out] = new(Evaluated.Always, "fill(out {d})", 1) { Stores = true },
     };
 
+    /// <summary>Totality parses the plain call of <see cref="Slots"/> and finds its argument in <c>FunctionCall.Arguments</c>, under no modifier.</summary>
+    private const string UnmodifiedArgument = "the parser builds no ModifiedArgument without a modifier: a plain argument sits in FunctionCall.Arguments, which has its entry";
+
     internal static readonly IReadOnlyDictionary<ParameterModifier, Exclusion> ExcludedModifiedArguments = new Dictionary<ParameterModifier, Exclusion>
     {
-        [ParameterModifier.None] = new("the parser builds no ModifiedArgument without a modifier: a plain argument sits in FunctionCall.Arguments, which has its entry"),
+        [ParameterModifier.None] = new(UnmodifiedArgument),
     };
 
     private const string OperatorProbeHead = "class B:\n    @static\n    q: int = 3\n";
@@ -272,6 +292,14 @@ public sealed partial class InitializerDependencyDifferentialTests
                     yield return found;
     }
 
+    /// <summary>A slot that is the target of a store site: its last holder is an AST node that carries a <c>Target</c>
+    /// (<see cref="TargetBearingNodes"/>), and the slot is that property.</summary>
+    internal static bool IsStoreTarget(string slot)
+    {
+        var path = slot.Split('.');
+        return path.Length >= 2 && path[^1] == "Target" && TargetBearingNodes().Any(n => n.Name == path[^2].Split(':')[^1]);
+    }
+
     /// <summary>Every slot of a concrete <see cref="Expression"/> subclass: <c>Subclass.Property</c>, through the holders between.</summary>
     internal static IEnumerable<string> SlotKeys(Type node) =>
         AstProperties(node).SelectMany(p => SlotPaths(p.PropertyType, $"{node.Name}.{p.Name}", node)).Distinct(StringComparer.Ordinal);
@@ -335,13 +363,17 @@ public sealed partial class InitializerDependencyDifferentialTests
         return new SharpyParser(tokens).ParseModule();
     }
 
-    /// <summary>The slots of a text the read sits in, and the operators of the binary operations whose right operand holds it.</summary>
-    private static (HashSet<string> Slots, HashSet<BinaryOperator> Rights, HashSet<ParameterModifier> Modifiers) ReadSlots(string text)
+    /// <summary>The slots of an initializer's text the read sits in, and the operators of the binary operations whose right operand holds it.</summary>
+    private static (HashSet<string> Slots, HashSet<BinaryOperator> Rights, HashSet<ParameterModifier> Modifiers) ReadSlots(string text) =>
+        ReadSlots(ParseInitializer(text));
+
+    /// <summary>The same of a whole program: an excluded slot's.</summary>
+    private static (HashSet<string> Slots, HashSet<BinaryOperator> Rights, HashSet<ParameterModifier> Modifiers) ReadSlots(Sharpy.Compiler.Parser.Ast.Module module)
     {
         var slots = new HashSet<string>(StringComparer.Ordinal);
         var rights = new HashSet<BinaryOperator>();
         var modifiers = new HashSet<ParameterModifier>();
-        foreach (var node in Reachable(ParseInitializer(text)).OfType<Expression>())
+        foreach (var node in Reachable(module).OfType<Expression>())
         {
             foreach (var property in AstProperties(node.GetType()))
                 foreach (var (key, child) in SlotChildren(property.GetValue(node), property.PropertyType, $"{node.GetType().Name}.{property.Name}", node.GetType()))
@@ -406,8 +438,10 @@ public sealed partial class InitializerDependencyDifferentialTests
     /// initializer stores <c>B.q</c> while that initializer is still running: the store is allowed, and <c>q</c>'s
     /// initializer then replaces it with its result (the owner's Q21). Nothing reads a value that has none, so the program
     /// runs, and a graph that takes the stored operand for a read refuses it. Today it prints the stored value: C# starts
-    /// with the class <c>main</c> names first, and <c>q</c>'s initializer reads a default. Python has no modifier: neither
-    /// cell has a twin.</summary>
+    /// with the class <c>main</c> names first, and <c>q</c>'s initializer reads a default. A comprehension's target that
+    /// names <c>B.q</c> is the same store, run once for the one item its iterator yields. Neither cell has a twin: python
+    /// has no modifier, and its class bodies run where they are written, so each of the two classes names one that does
+    /// not exist yet whichever is written first.</summary>
     private static IEnumerable<Cell> StoredSlotCells(string id, SlotEntry entry)
     {
         yield return new Cell(id, Family.Slot, SlotProgram(entry.Sharpy, readerFirst: false), null, $"{entry.Value} {entry.Value + 1}")
@@ -439,6 +473,8 @@ public sealed partial class InitializerDependencyDifferentialTests
                 // A read that is not evaluated makes no cycle: the program runs today and must keep running.
                 IsControl = !always,
                 Python = always ? PythonExpectation.NameError : PythonExpectation.Prints,
+                // Python's reader sits first, so the read names a class that does not exist yet.
+                NameErrorOn = always ? SlotMarker : null,
                 Route = SlotRoute(entry.When),
             };
         }
@@ -509,12 +545,9 @@ public sealed partial class InitializerDependencyDifferentialTests
         if (SlotRead != "B.q" || !Slots.TryGetValue("BinaryOp.Left", out var left) || left.Any(e => e.When != Evaluated.Always))
             failures.Add("the stored-node program's two reads sit in BinaryOp.Left, which is no longer evaluated whenever its parent is");
 
-        var ids = pool.Where(c => c.Id.StartsWith(StoredPrefix, StringComparison.Ordinal)).Select(c => c.Id).ToHashSet(StringComparer.Ordinal);
-        var owed = uses.Select(u => $"{StoredPrefix}{u}").ToHashSet(StringComparer.Ordinal);
-        foreach (var id in owed.Where(id => !ids.Contains(id)))
-            failures.Add($"the stored-node axis owes {id} and the pool does not hold it");
-        foreach (var id in ids.Where(id => !owed.Contains(id)))
-            failures.Add($"the pool holds {id} and the stored-node axis does not owe it");
+        // A control is a use the rule lets run: a plain store.
+        var owed = uses.ToDictionary(u => $"{StoredPrefix}{u}", IsPlainStore, StringComparer.Ordinal);
+        failures.AddRange(PoolAgainstOwed("the stored-node uses", owed, pool.Where(c => c.Id.StartsWith(StoredPrefix, StringComparison.Ordinal))));
         return failures;
     }
 
@@ -547,6 +580,10 @@ public sealed partial class InitializerDependencyDifferentialTests
         TypeNode(BindingKind.ClassComputedConst, "const ", isStatic: false, isConst: true),
     };
 
+    private const string RingPrefix = "Slot/Ring/";
+
+    private const string NoBinding = "no binding: a ring's values are named";
+
     private const string LiteralOnNoCycle = "a literal const reads no value, so it is on no cycle: a const that reads its neighbour is the computed const's cell";
 
     private const string PerObject = "its initializer runs once per object, in a constructor: the graph of static initializers does not hold it";
@@ -566,7 +603,7 @@ public sealed partial class InitializerDependencyDifferentialTests
         [BindingKind.ClassLiteralConst] = new(LiteralOnNoCycle),
         [BindingKind.InstanceField] = new(PerObject),
         [BindingKind.InstanceProperty] = new(PerObject),
-        [BindingKind.None] = new("no binding: a ring's values are named"),
+        [BindingKind.None] = new(NoBinding),
     });
 
     internal static IReadOnlyDictionary<BindingKind, Exclusion> ExcludedNodeKinds => LazyExcludedNodeKinds.Value;
@@ -606,7 +643,7 @@ public sealed partial class InitializerDependencyDifferentialTests
     }
 
     private static string RingId(NodeKind x, NodeKind y, NodeKind? through, string slot) =>
-        $"Slot/Ring/{x.Kind}>{y.Kind}{(through == null ? "" : ">" + through.Kind)}/{slot}";
+        $"{RingPrefix}{x.Kind}>{y.Kind}{(through == null ? "" : ">" + through.Kind)}/{slot}";
 
     /// <summary>The reader <c>x</c> holds its read of <c>y</c> in the slot; <c>y</c> reads <c>x</c> again, through <c>z</c> where
     /// there is one. Declared in the order python needs: the reader, the value between, the value read.</summary>
@@ -635,6 +672,8 @@ public sealed partial class InitializerDependencyDifferentialTests
                 // What must not move: a ring that runs today, and a ring of consts, which is refused today.
                 IsControl = !always || everyNodeIsConst,
                 Python = always ? PythonExpectation.NameError : PythonExpectation.Prints,
+                // The reader is declared first: its read names the value read, which python has not made yet.
+                NameErrorOn = always ? RootName(y.Read("y")) : null,
                 Route = SlotRoute(always && !everyNodeIsConst ? Evaluated.Always : Evaluated.Conditionally),
             };
         }
@@ -681,12 +720,26 @@ public sealed partial class InitializerDependencyDifferentialTests
                 failures.Add($"no ring closes a conditional read between two consts through {what}");
         }
 
-        var ids = pool.Where(c => c.Family == Family.Slot && c.Id.StartsWith("Slot/Ring/", StringComparison.Ordinal)).Select(c => c.Id).ToHashSet(StringComparer.Ordinal);
+        var held = pool.Where(c => c.Id.StartsWith(RingPrefix, StringComparison.Ordinal)).ToList();
         var owed = rings.Select(r => RingId(r.X, r.Y, r.Through, r.Slot)).ToHashSet(StringComparer.Ordinal);
-        foreach (var id in owed.Where(id => !ids.Contains(id)).Take(20))
+        foreach (var id in owed.Where(id => held.All(c => c.Id != id)).Take(20))
             failures.Add($"the ring axes owe {id} and the pool does not hold it");
-        foreach (var id in ids.Where(id => !owed.Contains(id)).Take(20))
-            failures.Add($"the pool holds {id} and the ring axes do not owe it");
+        foreach (var cell in held.Where(c => !owed.Contains(c.Id)).Take(20))
+            failures.Add($"the pool holds {cell.Id} and the ring axes do not owe it");
+
+        // The census by arithmetic, from the sizes of the axes alone and never from the rings. On each ring slot: every
+        // reader on every kind a read may name, and each const pair again through every kind. A control is a ring on a
+        // slot whose read is not evaluated whenever its parent is, or a ring of consts only.
+        int kinds = NodeKinds.Count, consts = NodeKinds.Count(n => n.IsConst);
+        int targets = NodeKinds.Count(n => !ExcludedRingTargets.ContainsKey(n.Kind)), constTargets = NodeKinds.Count(n => n.IsConst && !ExcludedRingTargets.ContainsKey(n.Kind));
+        var certain = RingSlots.Count(s => Slots.TryGetValue(s, out var entries) && entries[0].When == Evaluated.Always);
+        var perSlot = (kinds * targets) + (consts * constTargets * kinds);
+        var constRings = (consts * constTargets) + (consts * constTargets * consts);
+        var controls = (perSlot * (RingSlots.Count - certain)) + (constRings * certain);
+        if (held.Count != perSlot * RingSlots.Count)
+            failures.Add($"the pool holds {held.Count} rings and the sizes of the ring axes give {perSlot * RingSlots.Count}");
+        if (held.Count(c => c.IsControl) != controls)
+            failures.Add($"the pool tags {held.Count(c => c.IsControl)} rings as controls and the sizes of the ring axes give {controls}");
         return failures;
     }
 
@@ -736,11 +789,33 @@ public sealed partial class InitializerDependencyDifferentialTests
         // An operand is stored by the one modifier whose callee must write it, and by no other.
         foreach (var (modifier, entry) in ModifiedArguments.Where(m => m.Value.Stores != (m.Key == ParameterModifier.Out)))
             failures.Add($"slot case ParameterModifier.{modifier} is {(entry.Stores ? "classified as a store and is read" : "classified as a read and is stored")}");
+        // A slot is stored to where it is the target of a store site (the AST's own: a node that carries a Target, which
+        // the location family's store sites are the image of), and nowhere else outside a modified argument.
         foreach (var (key, entries) in Slots)
         {
-            foreach (var entry in entries.Where(e => e.Stores))
-                failures.Add($"slot {key} is classified as a store: only a modified argument's operand is one ('{entry.Sharpy}')");
+            var isTarget = IsStoreTarget(key);
+            foreach (var entry in entries.Where(e => e.Stores != isTarget))
+                failures.Add($"slot {key} is {(isTarget ? "the target of a store site and is classified as a read" : "classified as a store and is no store site's target")} ('{entry.Sharpy}')");
         }
+        foreach (var key in ExcludedSlots.Keys.Where(IsStoreTarget))
+            failures.Add($"slot {key} is the target of a store site and is excluded: a member access there stores a value");
+
+        // An excluded slot is a claim about the program that holds the read in it: the program is there, and the read sits where it says.
+        foreach (var (key, exclusion) in ExcludedSlots)
+        {
+            if (exclusion.Program == null)
+            {
+                failures.Add($"slot {key} is excluded on a sentence: give it the program that holds '{SlotRead}' in the slot, and what it draws");
+                continue;
+            }
+            var held = ReadSlots(new SharpyParser(new SharpyLexer(exclusion.Program).TokenizeAll()).ParseModule()).Slots;
+            if (!held.Contains(key))
+                failures.Add($"slot {key} is excluded for a program whose read sits in [{string.Join(", ", held.OrderBy(s => s, StringComparer.Ordinal))}], not in the slot");
+        }
+        // The plain argument's exclusion is the parser's: the call of the map's own entry holds its read in no ModifiedArgument.
+        var plain = ReadSlots(Slots["FunctionCall.Arguments"][0].Sharpy.Replace(Operand, SlotRead, StringComparison.Ordinal));
+        if (!plain.Slots.Contains("FunctionCall.Arguments") || plain.Modifiers.Count != 0 || plain.Slots.Contains(ModifiedArgumentSlot))
+            failures.Add("a plain argument parses to a ModifiedArgument: ParameterModifier.None is excluded on a false sentence");
 
         // Each entry's read sits in the slot it names, in both texts, and each slot with cases has one of each kind it claims.
         foreach (var (id, key, entry) in SlotProduct())
@@ -769,13 +844,26 @@ public sealed partial class InitializerDependencyDifferentialTests
         failures.AddRange(RingTotalityFailures(pool));
         failures.AddRange(StoredTotalityFailures(pool));
 
-        var ids = pool.Where(c => c.Family == Family.Slot && !c.Id.StartsWith("Slot/Ring/", StringComparison.Ordinal) && !c.Id.StartsWith(StoredPrefix, StringComparison.Ordinal))
-            .Select(c => c.Id).ToHashSet(StringComparer.Ordinal);
-        var owed = SlotProduct().SelectMany(p => p.Entry.Stores ? new[] { p.Id, p.Id + KeptSuffix } : new[] { p.Id }).ToHashSet(StringComparer.Ordinal);
-        foreach (var id in owed.Where(id => !ids.Contains(id)).Take(20))
-            failures.Add($"the slot map owes {id} and the pool does not hold it");
-        foreach (var id in ids.Where(id => !owed.Contains(id)).Take(20))
-            failures.Add($"the pool holds {id} and the slot map does not owe it");
+        // What the three maps owe, read from the maps and never from SlotProduct. A control is an entry whose read is not
+        // evaluated, and the kept cell of an entry that stores.
+        var owed = new Dictionary<string, bool>(StringComparer.Ordinal);
+        void Owe(string id, SlotEntry entry)
+        {
+            owed[id] = !entry.Stores && entry.When == Evaluated.Conditionally;
+            if (entry.Stores)
+                owed[id + KeptSuffix] = true;
+        }
+        foreach (var (key, entries) in Slots)
+            foreach (var entry in entries)
+                Owe($"Slot/{key}{(entry.Case == null ? "" : "/" + entry.Case)}", entry);
+        foreach (var (op, entry) in BinaryRights)
+            Owe($"Slot/{BinaryRight}/{op}", entry);
+        foreach (var (modifier, entry) in ModifiedArguments)
+            Owe($"Slot/{ModifiedArgumentSlot}/{modifier}", entry);
+        failures.AddRange(PoolAgainstOwed(
+            "the slot maps",
+            owed,
+            pool.Where(c => c.Family == Family.Slot && !c.Id.StartsWith(RingPrefix, StringComparison.Ordinal) && !c.Id.StartsWith(StoredPrefix, StringComparison.Ordinal))));
         return failures;
     }
 }

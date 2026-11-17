@@ -157,9 +157,11 @@ public sealed partial class InitializerDependencyDifferentialTests
         [nameof(IndexAccess)] = new[] { LocationUse.IndexAssign },
     };
 
+    private const string TupleArmStoresNothing = "stores nothing itself: its leaves come back to this switch through the unpacking rule, and the leaf uses are their cells";
+
     internal static readonly IReadOnlyDictionary<string, Exclusion> ExcludedTargetArms = new Dictionary<string, Exclusion>
     {
-        [nameof(TupleLiteral)] = new("stores nothing itself: its leaves come back to this switch through the unpacking rule, and the leaf uses are their cells"),
+        [nameof(TupleLiteral)] = new(TupleArmStoresNothing),
     };
 
     /// <summary>The whole-value forms are the store forms of the binder-site census: each maps to a use or says why not.</summary>
@@ -170,10 +172,18 @@ public sealed partial class InitializerDependencyDifferentialTests
         [StoreForm.Walrus] = LocationUse.Walrus,
     };
 
+    private const string DeclaresALocal = "declares a new local, beside a module value of its name too: it stores no module or type value";
+
     internal static readonly IReadOnlyDictionary<StoreForm, Exclusion> ExcludedStoreForms = new Dictionary<StoreForm, Exclusion>
     {
-        [StoreForm.OutLet] = new("declares a new local: it stores no module or type value"),
-        [StoreForm.LetOrVar] = new("declares a new local: it stores no module or type value"),
+        [StoreForm.OutLet] = new(
+            DeclaresALocal,
+            "def fill(a: out int) -> int:\n    a = 42\n    return 1\nt: int = 7\ndef use() -> int:\n    r0 = fill(out let t)\n    return t\ndef main() -> None:\n    print(use(), t)\n")
+        { Prints = "42 7" },
+        [StoreForm.LetOrVar] = new(
+            DeclaresALocal,
+            "t: int = 7\ndef use() -> int:\n    let t = 5\n    return t\ndef use2() -> int:\n    t: int = 6\n    return t\ndef main() -> None:\n    print(use(), use2(), t)\n")
+        { Prints = "5 6 7" },
     };
 
     /// <summary>The operand uses are the image of <see cref="ParameterModifier"/>: the value itself, and a member of it.</summary>
@@ -187,7 +197,10 @@ public sealed partial class InitializerDependencyDifferentialTests
 
     internal static readonly IReadOnlyDictionary<ParameterModifier, Exclusion> ExcludedOperandModifiers = new Dictionary<ParameterModifier, Exclusion>
     {
-        [ParameterModifier.None] = new("the plain argument passes a copy: a read, which the use `Read` is"),
+        [ParameterModifier.None] = new(
+            "the plain argument passes a copy, which the callee's store does not reach: a read, which the use `Read` is",
+            "def set9(a: int) -> int:\n    a = 9\n    return a\nt: int = 7\ndef main() -> None:\n    print(set9(t), t)\n")
+        { Prints = "9 7" },
     };
 
     /// <summary>The uses no store site and no modifier feeds: a read of the value, and a call on it.</summary>
@@ -248,14 +261,22 @@ public sealed partial class InitializerDependencyDifferentialTests
         BindingKind.ModuleVar, BindingKind.StaticField, BindingKind.ModuleComputedConst, BindingKind.ClassComputedConst,
     };
 
-    private const string NoStorage = "a literal const is a C# `const`: it has no storage, and `in` on it is unruled (the operand family's excluded pair carries its program)";
+    private const string NoStorage = "a literal const is a C# `const`: it has no storage, and `in` on it is unruled, an internal error today (the operand family's excluded pair)";
+
+    private const string ObjectStorage = "its storage is the object's: not a value rule N3 initializes";
 
     /// <summary>Lazy: it starts from the operand family's exclusions, which another file of this type declares.</summary>
     private static readonly Lazy<IReadOnlyDictionary<BindingKind, Exclusion>> LazyExcludedHolders = new(() => new Dictionary<BindingKind, Exclusion>(
         ExcludedOperandKinds.Where(e => !LocationHolders.Contains(e.Key)))
     {
-        [BindingKind.ModuleLiteralConst] = new(NoStorage),
-        [BindingKind.ClassLiteralConst] = new(NoStorage),
+        [BindingKind.ModuleLiteralConst] = new(
+            NoStorage,
+            "const t: int = 3\ndef peek(a: in int) -> int:\n    return a\ndef main() -> None:\n    print(peek(in t))\n",
+            "SPY0908 CS8156"),
+        [BindingKind.ClassLiteralConst] = new(
+            NoStorage,
+            "class H:\n    const t: int = 3\ndef peek(a: in int) -> int:\n    return a\ndef main() -> None:\n    print(peek(in H.t))\n",
+            "SPY0908 CS8156"),
         [BindingKind.ModuleProperty] = new(
             "a property hands out a copy of a struct, which is C#'s rule and not this plan's emission: its member store is an internal error today and its mutating call changes the copy (#2268's class)",
             "struct P:\n    x: int\n    def __init__(self, x: int) -> None:\n        self.x = x\nproperty t: P = P(7)\ndef main() -> None:\n    t.x = 5\n    print(t.x)\n",
@@ -264,8 +285,8 @@ public sealed partial class InitializerDependencyDifferentialTests
             "a property hands out a copy of a struct, as the module property does (#2268's class)",
             "struct P:\n    x: int\n    def __init__(self, x: int) -> None:\n        self.x = x\nclass H:\n    @static\n    property t: P = P(7)\ndef main() -> None:\n    H.t.x = 5\n    print(H.t.x)\n",
             "SPY0908 CS1612"),
-        [BindingKind.InstanceField] = new("its storage is the object's: not a value rule N3 initializes"),
-        [BindingKind.InstanceProperty] = new("its storage is the object's: not a value rule N3 initializes"),
+        [BindingKind.InstanceField] = new(ObjectStorage),
+        [BindingKind.InstanceProperty] = new(ObjectStorage),
     });
 
     internal static IReadOnlyDictionary<BindingKind, Exclusion> ExcludedHolders => LazyExcludedHolders.Value;
@@ -318,10 +339,38 @@ public sealed partial class InitializerDependencyDifferentialTests
         if (IsConstHolder(holder) && kind != ValueKind.Int)
             return "the int cell is the const's";
         if (use == LocationUse.Walrus && holder != BindingKind.ModuleVar)
-            return "a walrus target is a bare name, which a `@static` value is not outside its type";
+            return WalrusTargetIsABareName;
         if (use is LocationUse.ForTarget or LocationUse.WithTarget or LocationUse.ComprehensionTarget && holder == BindingKind.ModuleVar)
-            return "a bare name there declares a local of the loop, the block or the comprehension: it stores no module value";
+            return BareNameDeclaresALocal;
         return null;
+    }
+
+    private const string WalrusTargetIsABareName = "a walrus target is a bare name, which a `@static` value is not outside its type";
+
+    private const string BareNameDeclaresALocal = "a bare name there declares a local of the loop, the block or the comprehension: it stores no module value";
+
+    /// <summary>The reasons of <see cref="UseExclusion"/> that say what the compiler does with the use, each with what
+    /// the excluded cell's own program does: the code it draws, or what it prints when the store misses the value
+    /// (the use's function returns the value read back, then <c>main</c> reads it).</summary>
+    private static readonly IReadOnlyDictionary<string, (string? Code, string? Prints)> UseExclusionProbes = new Dictionary<string, (string?, string?)>
+    {
+        [WalrusTargetIsABareName] = ("SPY0143", null),
+        [BareNameDeclaresALocal] = (null, $"{InitialValue} {InitialValue}"),
+    };
+
+    /// <summary>Every use and holder <see cref="UseExclusion"/> leaves out for a reason with a probe, as the program the
+    /// generator would write for the cell: an exclusion widened to a use that does store is red.</summary>
+    private static IEnumerable<(string What, Exclusion Exclusion)> UseExclusions()
+    {
+        foreach (var use in Enum.GetValues<LocationUse>())
+            foreach (var holder in LocationHolders)
+            {
+                if (UseExclusion(use, ValueKind.Int, holder) is { } reason && UseExclusionProbes.TryGetValue(reason, out var probe))
+                {
+                    var program = LocationProgram(holder, HostForm.Plain, ValueKind.Int, use, When.Ready, twin: false);
+                    yield return ($"location {use} on {holder}", new Exclusion(reason, program, probe.Code) { Prints = probe.Prints });
+                }
+            }
     }
 
     /// <summary>A cell another class's defect or the parser takes today. Its program is the cell's own, as the generator writes it.</summary>
@@ -362,6 +411,8 @@ public sealed partial class InitializerDependencyDifferentialTests
 
     private const string WalrusBindsALocal =
         "a walrus in a module initializer binds a local of that initializer (`a: int = (t := 5) + 1` beside `t: int = 7` prints `6 7`): it stores no module value";
+
+    private static string RootName(string read) => read.Split('.', '[')[0];
 
     /// <summary>A holder a store in the initializer's own text has no cell on, with the program that shows why.</summary>
     internal static readonly IReadOnlyDictionary<BindingKind, Exclusion> ExcludedTextHolders = new Dictionary<BindingKind, Exclusion>
@@ -591,6 +642,8 @@ public sealed partial class InitializerDependencyDifferentialTests
                 IsControl = when is When.Ready or When.ReadyAcrossAwait
                     || (IsPlainStore(use) && (when is When.BeforeInitializer or When.DuringInitializer or When.DuringInitializerThenRead)),
                 Python = python,
+                // The twin's value is a module name: python reaches it before its line has run.
+                NameErrorOn = python == PythonExpectation.NameError ? "t" : null,
                 Route = LocationRoute(use, when),
             };
         }
@@ -777,6 +830,8 @@ public sealed partial class InitializerDependencyDifferentialTests
                 // is made ready by it. A store into a later class lands on the class's initialized value, as C# has it.
                 IsControl = !readBack && !UseRunsInsideTheTargetSweep(user, target, order),
                 Python = python,
+                // With the user first its function runs before the target host exists; with the target first, the read back names a user that does not.
+                NameErrorOn = python != PythonExpectation.NameError ? null : RootName(order == CrossOrder.UserFirst ? CrossName("B", target, "p") : CrossName("A", user, "x")),
                 Route = static (verdict, _, _) => ValueRoute(verdict),
             };
         }
@@ -858,14 +913,23 @@ public sealed partial class InitializerDependencyDifferentialTests
         foreach (var order in Enum.GetValues<CrossOrder>().Where(o => cells.All(c => c.Order != o)))
             failures.Add($"CrossOrder.{order} has no cell");
 
-        var held = pool.Where(c => c.Id.StartsWith(CrossPrefix, StringComparison.Ordinal)).Select(c => c.Id).ToHashSet(StringComparer.Ordinal);
-        var owed = cells.Select(c => CrossId(c.User, c.Target, c.Order, c.Use, c.ReadBack))
-            .Concat(ObservedCrossProduct().Select(c => ObservedId(CrossId(c.User, c.Target, c.Order, c.Use, readBack: false), c.Observed)))
-            .ToHashSet(StringComparer.Ordinal);
-        foreach (var id in owed.Where(id => !held.Contains(id)).Take(20))
-            failures.Add($"the cross axes owe {id} and the pool does not hold it");
-        foreach (var id in held.Where(id => !owed.Contains(id)).Take(20))
-            failures.Add($"the pool holds {id} and the cross axes do not owe it");
+        // What the axes owe, written again from the enumerations and the exclusion predicates. A control reads nothing
+        // back and uses a value that is ready or that the use makes ready; an observed operand is one always.
+        var owed = new Dictionary<string, bool>(StringComparer.Ordinal);
+        foreach (var user in hosts)
+            foreach (var target in hosts)
+                foreach (var order in Enum.GetValues<CrossOrder>())
+                    foreach (var use in Enum.GetValues<LocationUse>())
+                        foreach (var readBack in new[] { false, true }.Where(r => CrossExclusion(user, target, order, use, r) == null))
+                        {
+                            var id = CrossId(user, target, order, use, readBack);
+                            owed[id] = !readBack && !UseRunsInsideTheTargetSweep(user, target, order);
+                            if (!ObservedUses().Contains(use) || ObservedCrossExclusion(user, target, order, readBack) != null)
+                                continue;
+                            foreach (var observed in Enum.GetValues<OutObservation>())
+                                owed[ObservedId(id, observed)] = true;
+                        }
+        failures.AddRange(PoolAgainstOwed("the cross axes", owed, pool.Where(c => c.Id.StartsWith(CrossPrefix, StringComparison.Ordinal))));
         return failures;
     }
 
@@ -996,7 +1060,8 @@ public sealed partial class InitializerDependencyDifferentialTests
         }
         if (ObservedWhenExclusion(When.Ready) != null)
             failures.Add("an operand naming a ready value is not observed");
-        var byId = pool.ToDictionary(c => c.Id, StringComparer.Ordinal);
+        // An id listed twice is the pool's own totality line: here the first cell stands for it.
+        var byId = pool.GroupBy(c => c.Id, StringComparer.Ordinal).ToDictionary(g => g.Key, g => g.First(), StringComparer.Ordinal);
 
         // Every cell of the two products whose use is an operand that stores is observed in every way, or says why not.
         var owed = new List<(string Id, string? Excluded)>();
@@ -1052,6 +1117,10 @@ public sealed partial class InitializerDependencyDifferentialTests
             .Concat(ExcludedTargetArms.Select(e => ($"target arm {e.Key}", e.Value)))
             .Concat(ExcludedOperandModifiers.Select(e => ($"operand use ParameterModifier.{e.Key}", e.Value)))
             .Concat(ExcludedTextHolders.Select(e => ($"a store in the initializer text of BindingKind.{e.Key}", e.Value)))
+            .Concat(UseExclusions())
+            .Append((
+                "a walrus in a module initializer's text",
+                new Exclusion(WalrusBindsALocal, "a: int = (t := 5) + 1\nt: int = 7\ndef main() -> None:\n    print(a, t)\n") { Prints = "6 7" }))
             .Concat(CrossExclusions())
             .Concat(ExcludedLocationCells.Select(e => (
                 $"location {e.Key.Use} on {e.Key.Holder}+{e.Key.Form}",
@@ -1178,14 +1247,23 @@ public sealed partial class InitializerDependencyDifferentialTests
         failures.AddRange(CrossTotalityFailures(pool));
         failures.AddRange(OutObservationTotalityFailures(pool));
 
-        var ids = pool.Where(c => c.Family == Family.Location && !c.Id.StartsWith(CrossPrefix, StringComparison.Ordinal)).Select(c => c.Id).ToHashSet(StringComparer.Ordinal);
-        var owed = cells.Select(k => LocationId(k.Holder, k.Form, k.Kind, k.Use, k.When))
-            .Concat(ObservedLocationProduct().Select(k => ObservedId(LocationId(k.Holder, k.Form, k.Kind, k.Use, k.When), k.Observed)))
-            .ToHashSet(StringComparer.Ordinal);
-        foreach (var id in owed.Where(id => !ids.Contains(id)).Take(20))
-            failures.Add($"the location axes owe {id} and the pool does not hold it");
-        foreach (var id in ids.Where(id => !owed.Contains(id)).Take(20))
-            failures.Add($"the pool holds {id} and the location axes do not owe it");
+        // What the axes owe, written again from the enumerations and the exclusion predicates. A control uses a value
+        // that is ready, or is a plain store that runs wherever it is called from; an observed operand is one always.
+        var owed = new Dictionary<string, bool>(StringComparer.Ordinal);
+        foreach (var holder in LocationHolders)
+            foreach (var form in Enum.GetValues<HostForm>().Where(f => FormExclusion(holder, f) == null))
+                foreach (var kind in Enum.GetValues<ValueKind>())
+                    foreach (var use in Enum.GetValues<LocationUse>().Where(u => UseExclusion(u, kind, holder) == null && !ExcludedLocationCells.ContainsKey((u, holder, form))))
+                        foreach (var when in Enum.GetValues<When>().Where(w => WhenExclusion(use, holder, w) == null))
+                        {
+                            var id = LocationId(holder, form, kind, use, when);
+                            owed[id] = (!IsOwnInitializer(when) && when != When.BeforeInitializer) || (IsPlainStore(use) && when != When.InInitializerText);
+                            if (!ObservedUses().Contains(use) || ObservedWhenExclusion(when) != null)
+                                continue;
+                            foreach (var observed in Enum.GetValues<OutObservation>())
+                                owed[ObservedId(id, observed)] = true;
+                        }
+        failures.AddRange(PoolAgainstOwed("the location axes", owed, pool.Where(c => c.Family == Family.Location && !c.Id.StartsWith(CrossPrefix, StringComparison.Ordinal))));
         return failures;
     }
 }

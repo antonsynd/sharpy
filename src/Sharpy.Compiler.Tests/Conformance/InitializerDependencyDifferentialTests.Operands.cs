@@ -48,9 +48,15 @@ public sealed partial class InitializerDependencyDifferentialTests
 
     private const string PositionLocal = "position-local: it lives in a body of its own, no rule of N3 names it, and the fixtures of `parameter_modifiers.md` hold it";
 
+    private const string OtherModule = "a value of another module: it needs the project route, which is the hand controls' axis";
+
+    private const string LiteralOperandProgram = "def bump(a: ref int) -> int:\n    a = a + 1\n    return a\ndef main() -> None:\n    print(bump(ref 3))\n";
+
+    private const string InLiteralProgram = "def peek(a: in int) -> int:\n    return a\ndef main() -> None:\n    print(peek(in 3))\n";
+
     internal static readonly IReadOnlyDictionary<BindingKind, Exclusion> ExcludedOperandKinds = new Dictionary<BindingKind, Exclusion>
     {
-        [BindingKind.ModuleLet] = new("a module `let` is refused where it is declared (SPY0340; the dependency axis carries its program)"),
+        [BindingKind.ModuleLet] = new("a module `let` is refused where it is declared: no program holds one", "let t = 3\n" + MainPrintingT, "SPY0340"),
         [BindingKind.ModuleDef] = new(NotAnIntValue),
         [BindingKind.ModuleClass] = new(NotAnIntValue),
         [BindingKind.ModuleStruct] = new(NotAnIntValue),
@@ -72,8 +78,12 @@ public sealed partial class InitializerDependencyDifferentialTests
         [BindingKind.LocalDef] = new(PositionLocal),
         [BindingKind.LambdaTypedLocal] = new(PositionLocal),
         [BindingKind.Builtin] = new(NotAnIntValue),
-        [BindingKind.ImportedName] = new("a value of another module: it needs the project route, which is the hand controls' axis"),
-        [BindingKind.None] = new("no binding: a literal operand is SPY0389 by its shape, before any name is resolved"),
+        [BindingKind.ImportedName] = new(OtherModule),
+        // Under `in` a literal is the literal const's internal error, the excluded pair's (OperandExclusions carries its program).
+        [BindingKind.None] = new(
+            "no binding: a literal names no value a call could store to, and under `ref` and `out` it is refused by its shape, before any name is resolved",
+            LiteralOperandProgram,
+            OperandRule),
     };
 
     /// <summary>The pairs of the product no rule decides. The exclusion's program draws the internal error the pair is today.</summary>
@@ -147,7 +157,10 @@ public sealed partial class InitializerDependencyDifferentialTests
 
     private static IEnumerable<(string What, Exclusion Exclusion)> OperandExclusions() =>
         ExcludedOperandKinds.Select(e => ($"operand BindingKind.{e.Key}", e.Value))
-            .Concat(ExcludedOperandPairs.Select(e => ($"operand {e.Key.Modifier} on {e.Key.Class}", e.Value)));
+            .Concat(ExcludedOperandPairs.Select(e => ($"operand {e.Key.Modifier} on {e.Key.Class}", e.Value)))
+            .Append((
+                "operand In on a literal",
+                new Exclusion("unruled, as `in` on a literal const is (#2025's class): the literal has no storage to pass, and it is an internal error today", InLiteralProgram, "SPY0908 CS8156")));
 
     internal static List<string> OperandTotalityFailures(IReadOnlyList<Cell> pool)
     {
@@ -181,12 +194,14 @@ public sealed partial class InitializerDependencyDifferentialTests
                     failures.Add($"operand {modifier} on {cls} is {(ruled ? "both ruled and excluded" : "neither ruled nor excluded")}");
             }
 
+        // What the axes owe, written again from the enumerations and the one exclusion map: the plain argument is the control.
+        var owed = new Dictionary<string, bool>(StringComparer.Ordinal);
+        foreach (var site in SweepSites)
+            foreach (var modifier in Enum.GetValues<ParameterModifier>())
+                foreach (var operand in Operands.Where(o => !ExcludedOperandPairs.ContainsKey((modifier, o.Class))))
+                    owed[OperandId(site, modifier, operand)] = modifier == ParameterModifier.None;
+        failures.AddRange(PoolAgainstOwed("the operand axes", owed, pool.Where(c => c.Family == Family.Operand)));
         var ids = pool.Where(c => c.Family == Family.Operand).Select(c => c.Id).ToHashSet(StringComparer.Ordinal);
-        var owed = OperandProduct().Select(k => OperandId(k.Site, k.Modifier, k.Operand)).ToHashSet(StringComparer.Ordinal);
-        foreach (var id in owed.Where(id => !ids.Contains(id)).Take(20))
-            failures.Add($"the operand axes owe {id} and the pool does not hold it");
-        foreach (var id in ids.Where(id => !owed.Contains(id)).Take(20))
-            failures.Add($"the pool holds {id} and the operand axes do not owe it");
         foreach (var (site, modifier, operand) in OperandProduct().Where(k => k.Modifier != ParameterModifier.None))
         {
             if (!ids.Contains(OperandId(site, ParameterModifier.None, operand)))
