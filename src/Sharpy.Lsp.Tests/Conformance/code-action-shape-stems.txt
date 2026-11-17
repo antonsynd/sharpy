@@ -8,8 +8,8 @@
 # GENERATED, HUMAN-REVIEWED: bash build_tools/regenerate_corpus_pins.sh rewrites the rows and the `# total` lines; review
 # the diff (a new stem's rows are its own; a moved row of an existing stem is a finding until explained). A new key's cite row in
 # code-action-shape-allowlist.txt is written by hand (the loader names it), and so is a drained key's deletion.
-# total stems identity keys=14 rows=2088
-# total stems crlf keys=8 rows=285
+# total stems identity keys=14 rows=2089
+# total stems crlf keys=8 rows=284
 # total stems cr keys=8 rows=293
 # total stems comment keys=7 rows=288
 extract-method identity diagnostics Formatting/module_docstring_then_statement # #2294
@@ -176,6 +176,7 @@ extract-method identity diagnostics classes/overload_modifier_dispatch_1721 # #2
 extract-method identity diagnostics classes/shape_calculator # #2294
 extract-method identity diagnostics classes/simple_class_0039 # #2294
 extract-method identity diagnostics classes/simple_class_0043 # #2294
+extract-method identity diagnostics classes/static_prop_default_calls_static_method_2396 # #2294
 extract-method identity diagnostics classes/super_init_not_first_0001 # #2294
 extract-method identity diagnostics clr_reference_none_equality # #2294
 extract-method identity diagnostics codegen/class_and_module_docstring # #2294
@@ -2303,7 +2304,6 @@ extract-variable crlf parse events/event_with_lambda_subscribe_0059 # #2294
 extract-variable crlf parse functions/operator_sections # #2294
 extract-variable crlf parse indirect_callee/bound_callable_ref # #2294
 inline-function crlf diagnostics async/async_comprehension_iterator_nested # #2296
-inline-function crlf diagnostics classes/static_prop_default_calls_static_method_2396 # #2296
 inline-variable crlf diagnostics basics/arithmetic_operators_0015 # #2296
 inline-variable crlf diagnostics basics/decimal_literal_exponent_forms # #2296
 inline-variable crlf diagnostics basics/escaped_wildcard_binds_2166 # #2296
