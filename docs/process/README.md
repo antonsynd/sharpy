@@ -63,7 +63,8 @@ The shared rules for `/create-plan`, `/verify-plan`, `/implement-plan` and `/ver
    verdict is not `do not merge` (`/implement-plan` › Cleanup and Report step 4). It changes code when
    its diff touches `src/`, `build_tools/`, `.claude/scripts/`, `.claude/hooks/`, `.github/` or
    `docs/language_specification/`; any other pull request needs green alone. Green never stands in
-   for a required review. Merge with a merge commit, the head sha the gate measured as the expected
+   for a required review. A Dependabot pull request that changes only package manifests (`*.csproj`,
+   `Directory.Packages.props`, `packages.lock.json`) needs green alone (owner, 2026-11-17). Merge with a merge commit, the head sha the gate measured as the expected
    head, so a later push cannot ride in unmeasured. A red or a pending check is never merged over:
    the red is fixed, or — a flake with an open issue — its job is re-run once and the re-run decides.
    After the merge, `git pull origin dev`. `mainline` stays the owner's.

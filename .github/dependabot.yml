@@ -9,6 +9,7 @@ updates:
       day: "monday"
       time: "02:00"
       timezone: "America/New_York"
+    target-branch: "dev"
     labels: ["dependencies", "github-actions"]
     open-pull-requests-limit: 10
     rebase-strategy: "auto"
@@ -24,6 +25,7 @@ updates:
       day: "monday"
       time: "02:00"
       timezone: "America/New_York"
+    target-branch: "dev"
     labels: ["dependencies", "dotnet", "nuget"]
     open-pull-requests-limit: 10
     # Group some common packages to reduce PR noise

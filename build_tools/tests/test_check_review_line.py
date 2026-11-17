@@ -529,11 +529,24 @@ def test_no_code_path_and_other_bases_are_not_required() -> None:
         )
 
 
-def test_there_is_no_bot_or_head_exemption() -> None:
-    # README item 6 names none; the CLI no longer takes an author or a head ref.
+def test_dependabot_manifest_only_pr_is_not_required() -> None:
+    g, bot = mod.Git(), "dependabot[bot]"
+    paths = ["src/Sharpy.Core/Sharpy.Core.csproj", "Directory.Packages.props", "src/x/packages.lock.json"]
+    result = mod.judge("", paths, "h", "b", g, author=bot)
+    assert result.verdict == mod.NOT_REQUIRED, result.detail
+    # Controls: the same paths from a human, a lookalike login, and a bot PR that also edits code.
+    assert mod.judge("", paths, "h", "b", g).verdict == mod.MISSING
+    assert mod.judge("", paths, "h", "b", g, author="dependabot").verdict == mod.MISSING
+    assert mod.judge("", paths, "h", "b", g, author="someone").verdict == mod.MISSING
+    for extra in ("src/a.cs", ".github/workflows/x.yml", "build_tools/x.py"):
+        assert mod.judge("", paths + [extra], "h", "b", g, author=bot).verdict == mod.MISSING
+
+
+def test_there_is_no_head_exemption() -> None:
+    # No exemption by head ref; the author exemption is manifest-only (tested above).
     assert mod.judge("", ["src/a.cs"], "h", "b", mod.Git()).verdict == mod.MISSING
     with pytest.raises(SystemExit):
-        mod.main(["--head", "h", "--author", "dependabot[bot]"])
+        mod.main(["--head", "h", "--head-ref", "dependabot/nuget/x"])
 
 
 # --- main() -------------------------------------------------------------------------------------

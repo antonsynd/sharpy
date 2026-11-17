@@ -65,8 +65,9 @@ jobs:
         HEAD_SHA: ${{ github.event.pull_request.head.sha }}
         BASE_REF: ${{ github.event.pull_request.base.ref }}
         DRAFT: ${{ github.event.pull_request.draft }}
+        AUTHOR: ${{ github.event.pull_request.user.login }}
       run: |
         git fetch --no-tags origin "+refs/heads/$BASE_REF:refs/remotes/origin/$BASE_REF"
-        args=(--head "$HEAD_SHA" --base "origin/$BASE_REF" --base-ref "$BASE_REF")
+        args=(--head "$HEAD_SHA" --base "origin/$BASE_REF" --base-ref "$BASE_REF" --author "$AUTHOR")
         if [ "$DRAFT" = "true" ]; then args+=(--draft); fi
         python3 build_tools/check_review_line.py "${args[@]}"
