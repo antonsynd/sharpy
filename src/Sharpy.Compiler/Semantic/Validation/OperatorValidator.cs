@@ -31,8 +31,20 @@ internal class OperatorValidator : ValidatingAstWalker
 
     public override void VisitBinaryOp(BinaryOp node)
     {
-        ValidateBinaryOp(node);
+        ValidateOperatorSite(OperatorSite.Of(node));
         base.VisitBinaryOp(node);
+    }
+
+    /// <summary>
+    /// Every link of a comparison chain is validated as its binary twin (P93 D3, #2648): an <c>==</c>
+    /// link draws the SPY0402 its binary form draws, at the twin's position (owner ruling, #2648 comment
+    /// 6865267508: a link is refused as its twin).
+    /// </summary>
+    public override void VisitComparisonChain(ComparisonChain node)
+    {
+        foreach (var link in OperatorSite.LinksOf(node))
+            ValidateOperatorSite(link);
+        base.VisitComparisonChain(node);
     }
 
     public override void VisitUnaryOp(UnaryOp node)
@@ -46,10 +58,11 @@ internal class OperatorValidator : ValidatingAstWalker
         base.VisitAssignment(node);
     }
 
-    private void ValidateBinaryOp(BinaryOp binOp)
+    /// <summary>The operator constraints of one operator site — a binary operator or a chain link.</summary>
+    private void ValidateOperatorSite(OperatorSite site)
     {
-        var leftType = Context.SemanticInfo.GetExpressionType(binOp.Left);
-        var rightType = Context.SemanticInfo.GetExpressionType(binOp.Right);
+        var leftType = Context.SemanticInfo.GetExpressionType(site.Left);
+        var rightType = Context.SemanticInfo.GetExpressionType(site.Right);
 
         if (leftType == null || rightType == null)
             return;
@@ -57,10 +70,10 @@ internal class OperatorValidator : ValidatingAstWalker
             return;
 
         // Validate specific operators
-        switch (binOp.Operator)
+        switch (site.Operator)
         {
             case BinaryOperator.NullCoalesce:
-                ValidateNullCoalesce(binOp, leftType, rightType);
+                ValidateNullCoalesce(site, leftType, rightType);
                 break;
 
             case BinaryOperator.And:
@@ -75,7 +88,7 @@ internal class OperatorValidator : ValidatingAstWalker
             default:
                 // For arithmetic, comparison, and bitwise operators,
                 // validate that the types support the operation
-                ValidateArithmeticOrComparisonOp(binOp, leftType, rightType);
+                ValidateArithmeticOrComparisonOp(site, leftType, rightType);
                 break;
         }
     }
@@ -99,7 +112,7 @@ internal class OperatorValidator : ValidatingAstWalker
         return false;
     }
 
-    private void ValidateNullCoalesce(BinaryOp binOp, SemanticType leftType, SemanticType rightType)
+    private void ValidateNullCoalesce(OperatorSite site, SemanticType leftType, SemanticType rightType)
     {
         // No HasErrorAtPosition guard here: this validator provides a more specific
         // diagnostic (SPY0403: "must be nullable") than the TypeChecker's generic
@@ -109,14 +122,14 @@ internal class OperatorValidator : ValidatingAstWalker
         {
             AddError(
                 $"Left operand of null coalescing operator must be nullable, but got '{leftType.GetDisplayName()}'",
-                binOp.LineStart, binOp.ColumnStart, code: DiagnosticCodes.Validation.InvalidNullCoalesce,
-                span: binOp.Span);
+                site.Line, site.Column, code: DiagnosticCodes.Validation.InvalidNullCoalesce,
+                span: site.Span);
         }
     }
 
-    private void ValidateArithmeticOrComparisonOp(BinaryOp binOp, SemanticType leftType, SemanticType rightType)
+    private void ValidateArithmeticOrComparisonOp(OperatorSite site, SemanticType leftType, SemanticType rightType)
     {
-        var dunderName = BinaryOperatorToDunder(binOp.Operator);
+        var dunderName = BinaryOperatorToDunder(site.Operator);
         if (dunderName == null)
             return;
 
@@ -127,9 +140,9 @@ internal class OperatorValidator : ValidatingAstWalker
             // named CLR instance method (e.g. NdArray.MatMul) that SupportsOperator cannot see —
             // it only inspects dunder tables. The inference service resolves that path, so treat
             // a successful inference as support.
-            if (binOp.Operator == BinaryOperator.MatMul
+            if (site.Operator == BinaryOperator.MatMul
                 && Context.TypeInference != null
-                && Context.TypeInference.InferBinaryOpType(binOp.Operator, leftType, rightType) != null)
+                && Context.TypeInference.InferBinaryOpType(site.Operator, leftType, rightType) != null)
                 return;
 
             // C# NullableType (T?, the loose interop form) supports comparison/equality operators
@@ -137,21 +150,21 @@ internal class OperatorValidator : ValidatingAstWalker
             // the authority on whether the underlying types compare, so defer to it; this keeps
             // genuinely incompatible nullable comparisons (e.g. unrelated underlying types) erroring.
             // OptionalType (Sharpy T?) is deliberately excluded — it must be narrowed/unwrapped first.
-            if (IsComparisonOperator(binOp.Operator)
+            if (IsComparisonOperator(site.Operator)
                 && (leftType is NullableType || rightType is NullableType)
                 && Context.TypeInference != null
-                && Context.TypeInference.InferBinaryOpType(binOp.Operator, leftType, rightType) != null)
+                && Context.TypeInference.InferBinaryOpType(site.Operator, leftType, rightType) != null)
                 return;
 
             // Enum types support comparison operators natively (backed by integers in C#)
-            if (IsEnumType(leftType) && IsComparisonOperator(binOp.Operator))
+            if (IsEnumType(leftType) && IsComparisonOperator(site.Operator))
                 return;
 
             // A reflected user comparison (#1719): the dunder is on the RIGHT operand's type and
             // inference selected it — supported by python3's reflected rule.
-            if (IsComparisonOperator(binOp.Operator)
+            if (IsComparisonOperator(site.Operator)
                 && Context.TypeInference != null
-                && Context.TypeInference.IsReflectedUserComparison(binOp.Operator, leftType, rightType))
+                && Context.TypeInference.IsReflectedUserComparison(site.Operator, leftType, rightType))
                 return;
 
             // Tuple equality and CLR Equals-based equality (==/!= on types that implement
@@ -161,30 +174,30 @@ internal class OperatorValidator : ValidatingAstWalker
             // `== (T?)null` that runs its operator (#2238). Those are genuinely supported, so don't emit
             // SPY0402 — but only for these specific cases, to preserve the error for user-defined types
             // (and generics) that lack __eq__ entirely (#886), and for value-type == None (SPY0222).
-            if (binOp.Operator is BinaryOperator.Equal or BinaryOperator.NotEqual
+            if (site.Operator is BinaryOperator.Equal or BinaryOperator.NotEqual
                 && Context.TypeInference != null
-                && (Context.TypeInference.GetBinaryOpLowering(binOp.Operator, leftType, rightType)
+                && (Context.TypeInference.GetBinaryOpLowering(site.Operator, leftType, rightType)
                         is BinaryOpLowering.EqualsCallInstance or BinaryOpLowering.EqualsCallStatic
                             or BinaryOpLowering.NoneCheck or BinaryOpLowering.EqualityComparerDefault
-                    || Context.TypeInference.IsClrReferenceNoneEquality(binOp.Operator, leftType, rightType)))
+                    || Context.TypeInference.IsClrReferenceNoneEquality(site.Operator, leftType, rightType)))
             {
                 return;
             }
 
             // Check if it's a comparison operator - primitives and constrained type parameters support these
-            if (!IsComparisonOperator(binOp.Operator) || !IsPrimitiveType(leftType))
+            if (!IsComparisonOperator(site.Operator) || !IsPrimitiveType(leftType))
             {
                 // Type parameters with IComparable constraint support comparison operators,
                 // and all type parameters support equality (== / !=)
-                if (IsTypeParameterOperatorAllowed(binOp.Operator, leftType, rightType))
+                if (IsTypeParameterOperatorAllowed(site.Operator, leftType, rightType))
                     return;
 
-                if (!HasErrorAtPosition(binOp.LineStart, binOp.ColumnStart))
+                if (!HasErrorAtPosition(site.Line, site.Column))
                 {
                     AddError(
-                        $"Type '{leftType.GetDisplayName()}' does not support operator '{OperatorToString(binOp.Operator)}' with right operand of type '{rightType.GetDisplayName()}'",
-                        binOp.LineStart, binOp.ColumnStart, code: DiagnosticCodes.Validation.UnsupportedOperator,
-                        span: binOp.Span);
+                        $"Type '{leftType.GetDisplayName()}' does not support operator '{OperatorToString(site.Operator)}' with right operand of type '{rightType.GetDisplayName()}'",
+                        site.Line, site.Column, code: DiagnosticCodes.Validation.UnsupportedOperator,
+                        span: site.Span);
                 }
             }
         }

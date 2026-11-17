@@ -590,9 +590,10 @@ public partial class NameResolutionDifferentialTests
                 // A nested-scope `def` over a same-function `def` of the name is SPY0204: #1974's question, whose B-rules admit nested shadowing.
                 if (cell.Rule == "#1974")
                     return "#1974";
-                return cell.Position == ReadPosition.ModuleInitializer && cell.Rule.StartsWith("N3", StringComparison.Ordinal)
-                    ? "#2422"
-                    : "#2423";
+                // A read refused at a module initializer is refused because a later module VARIABLE is not visible yet (SPY0200): N1's
+                // order-free resolution is the cure, and values-ready (#2422) cannot make a name visible (owner, 2026-11-16, #2422
+                // comment 6920337855).
+                return "#2423";
             case VerdictClass.RuntimeThrow:
                 return "#2422";
             case VerdictClass.SilentWrong:

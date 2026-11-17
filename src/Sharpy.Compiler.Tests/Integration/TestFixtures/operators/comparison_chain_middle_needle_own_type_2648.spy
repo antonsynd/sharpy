@@ -1,0 +1,94 @@
+# A chain's middle operand that is also the next link's `in` needle (plan P93 D3, #2648; owner ruling
+# 2026-11-15, plan-67a01f R2, "own type, cast at needle"). CPython parses `t == (1, 2) in ts` as ONE
+# chain, `(t == (1, 2)) and ((1, 2) in ts)`, the middle evaluated once. The middle is typed as its LEFT
+# link's binary twin types it (`t == (1, 2)` compares two `tuple[int, int]`), and cast to the `in`
+# link's slot only where that link reads it as its needle, exactly as a named needle (`t == p in ts`)
+# is. Typed under the slot instead, the comparison link compared a `tuple[float, float]` (False) or
+# reached C# (SPY0908).
+
+def g(n: int) -> int:
+    print("g", n)
+    return n
+
+
+def pt() -> tuple[int, int]:
+    print("pt")
+    return (1, 2)
+
+
+def pair(a: int, b: int) -> tuple[int, int]:
+    print("pair")
+    return (a, b)
+
+
+class Foo:
+    def __eq__(self, other: int) -> bool:
+        print("Foo.eq", other)
+        return other == 2
+
+
+def main() -> None:
+    # a tuple literal middle needle, compared at tuple[int, int], bound as tuple[float, float]
+    t: tuple[int, int] = (1, 2)
+    ts: list[tuple[float, float]] = [(1.0, 2.0)]
+    print(t == (1, 2) in ts)
+    print(t == (1, 2) not in ts)
+    print(t != (1, 2) in ts)
+    print(t == t == (1, 2) in ts)
+    print(t == (g(1), 2) in ts)
+    print(t != (g(1), 2) not in ts)
+    # control: a call typed tuple[int, int] on its own
+    print(t == pt() in ts)
+    print(t != pt() in ts)
+    p: tuple[int, int] = (1, 2)
+    print(t == p in ts)
+
+    # an int middle needle into `int | None` slots
+    n = 1
+    on: list[int | None] = [1]
+    print(n == g(1) in on)
+    print(n < g(2) in on)
+    print(n == (g(1) + 0) in on in [on])
+
+    # the left twin is a user __eq__(self, other: int): the middle is its int operand
+    c = Foo()
+    xs: list[int] = [1, 2]
+    ys: list[int | None] = [2, None]
+    print(c == len(xs) in ys)
+    print(len(xs) in ys)
+
+    # an `in` link's container that is the next link's needle, into `tuple[int, int] | None` slots
+    opt: list[tuple[int, int] | None] = [(1, 2), None]
+    print(1 in pair(1, 2) in opt)
+    print(3 not in pair(1, 2) in opt)
+
+    # a list literal middle needle whose own type is the slot's
+    xss: list[list[int]] = [[1, 2]]
+    print(xs == [1, 2] in xss)
+    print(xs != [1, 2] in xss)
+    print(xs == [1, 2] not in xss)
+    print(xs == [2, 1] in xss)
+
+    # a constant middle admitted at a narrower slot by its value, as `-1 in i8` is (owner ruling
+    # 2026-11-15, plan-67a01f R3, "By value, cast"), compared at int and cast at the `in` read
+    h8: int = 1
+    i8: list[int8] = [1, -1]
+    u8: list[uint8] = [2]
+    print(h8 == 1 in i8)
+    print(h8 == -1 in i8)
+    print(h8 == (1 + 1) in i8)
+    print(h8 == (1 + 1) in u8)
+    print(h8 == +2 in i8)
+    print(h8 == (1) in i8)
+    print(h8 < -1 not in i8)
+
+    # a constant middle admitted at a wider slot: compared at int, read as a float
+    f: float = 1.0
+    fs: list[float] = [1.0, 2.0]
+    print(f == 1 in fs)
+    print(f == (0 + 1) in fs)
+    print(f != -1 not in fs)
+
+    # a head needle's walrus binds before the later links read it
+    print((y := 2) in xs == [y])
+    print((z := 3) not in xs != [z])

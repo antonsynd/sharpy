@@ -1,0 +1,43 @@
+# A membership needle over literals whose operator can raise (`//`, `%`, `/`, `**`) is an evaluation
+# (plan P93 D2, #2645): it runs, and raises, before its container is read, so no container trace is
+# printed. An operator that cannot raise over literals stays unbound, and a needle that does not raise
+# still runs first.
+
+def items() -> list[int]:
+    print("container")
+    return [1, 2]
+
+
+def fitems() -> list[float]:
+    print("fcontainer")
+    return [1.0, 2.0]
+
+
+def main() -> None:
+    try:
+        print((1 // 0) in items())
+    except ZeroDivisionError:
+        print("zde floordiv")
+    try:
+        print((1 % 0) not in items())
+    except ZeroDivisionError:
+        print("zde mod")
+    try:
+        print((1 / 0) in fitems())
+    except ZeroDivisionError:
+        print("zde div")
+    try:
+        print((0 ** -1) in fitems())
+    except ZeroDivisionError:
+        print("zde pow")
+    try:
+        print(-(1 // 0) in items())
+    except ZeroDivisionError:
+        print("zde neg floordiv")
+    try:
+        print((1 // 0) in items() == [1, 2])
+    except ZeroDivisionError:
+        print("zde chain")
+    print((5 // 2) in items())
+    print((7 % 3) not in items())
+    print((2 + 0) in items())

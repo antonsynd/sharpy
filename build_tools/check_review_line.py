@@ -36,7 +36,12 @@ branch gets the rebase hint; every one of them fails the check):
 
   not required   the base is not `dev` (a promotion into `mainline`, a stacked PR), or no changed
                  path is a code path (a sync of `mainline` into `dev` changes none). README item 6
-                 names no other exemption, so there is none for bots or for a head named `dev`;
+                 names no exemption for a head named `dev`; the only bot exemption (owner,
+                 2026-11-17) is `--author dependabot[bot]` with every changed code path a package
+                 manifest under `src/` (`*.csproj`, `packages.lock.json`; the root
+                 `Directory.Packages.props` is no code path). Residual risk, accepted: a `.csproj`
+                 can hold MSBuild logic, and a writer with push access to a `dependabot/*` branch
+                 keeps the PR's author, so the exemption trusts that branch protection;
   missing        no line counts;
   malformed      the last counted line does not parse;
   sha not an ancestor of head
@@ -70,7 +75,7 @@ fetchable: such a PR reads as `sha not an ancestor of head` until the line's sha
 
 Usage:
     python3 build_tools/check_review_line.py --head <sha> [--base <rev>] [--base-ref dev]
-        [--body-env PR_BODY] [--draft]
+        [--body-env PR_BODY] [--draft] [--author <login>]
 
 --base defaults to `origin/<base-ref>`: the base branch's tip in this clone, not the event payload's
 `base.sha`, which is frozen when the PR opens (#2626 was opened on eabb480c6 and merged onto
@@ -101,6 +106,13 @@ CODE_PREFIXES = (
     "docs/language_specification/",
 )
 RULE_BASE = "dev"
+# Owner ruling (2026-11-17): a dependency bump opened by Dependabot needs no review line. The author
+# login is set by GitHub and cannot be chosen by a PR (a branch name can), and the exemption holds
+# only while every changed code path is a package manifest, so a bot PR that also edits source,
+# scripts or workflows still needs the line.
+DEPENDENCY_BOT = "dependabot[bot]"
+MANIFEST_NAMES = ("Directory.Packages.props", "packages.lock.json")
+MANIFEST_SUFFIXES = (".csproj",)
 
 NOT_REQUIRED = "not required"
 OK = "ok"
@@ -150,6 +162,13 @@ REBASE_HINT = "; if the branch was rebased with changes, the review must be repe
 
 def is_code_path(path: str) -> bool:
     return path.startswith(CODE_PREFIXES)
+
+
+def is_manifest_path(path: str) -> bool:
+    # Under src/ only: a `.csproj` under `.github/` or `build_tools/` is not a package manifest.
+    return path.startswith("src/") and (
+        path.endswith(MANIFEST_SUFFIXES) or path.rsplit("/", 1)[-1] in MANIFEST_NAMES
+    )
 
 
 def strip_comments(line: str, in_comment: bool) -> tuple:
@@ -326,6 +345,7 @@ def judge(
     base: str,
     git: Git,
     base_ref: str = RULE_BASE,
+    author: Optional[str] = None,
 ) -> Result:
     if base_ref != RULE_BASE:
         return Result(
@@ -336,6 +356,12 @@ def judge(
     if not code:
         return Result(
             NOT_REQUIRED, f"no changed path is a code path ({len(paths)} changed)"
+        )
+
+    if author == DEPENDENCY_BOT and all(is_manifest_path(p) for p in code):
+        return Result(
+            NOT_REQUIRED,
+            f"{DEPENDENCY_BOT} changed only package manifests ({len(code)} code path(s))",
         )
 
     parsed = parse_body(body)
@@ -430,6 +456,9 @@ def main(argv: Optional[List[str]] = None, git_factory: Callable[[], Git] = Git)
     parser.add_argument("--base", help="the base tip (default origin/<base-ref>)")
     parser.add_argument("--base-ref", default=RULE_BASE)
     parser.add_argument(
+        "--author", help="the PR author's login (exempts a Dependabot manifest-only PR)"
+    )
+    parser.add_argument(
         "--body-env", default="PR_BODY", help="environment variable holding the PR body"
     )
     parser.add_argument(
@@ -451,6 +480,7 @@ def main(argv: Optional[List[str]] = None, git_factory: Callable[[], Git] = Git)
                 base,
                 git,
                 base_ref=args.base_ref,
+                author=args.author,
             )
     except RuntimeError as exc:
         print(f"check_review_line: {exc}", file=sys.stderr)

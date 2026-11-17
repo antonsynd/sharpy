@@ -1,0 +1,20 @@
+# A class with only `__len__` and `__getitem__` does not answer `in` (owner ruling R-OA, #2653 comment
+# 6826280413: "maybe let's say no on __getitem__ with __len__"; deviation membership-legacy-sequence-protocol).
+# CPython answers through the legacy sequence protocol (`4 in Squares()` is True); Sharpy refuses it with
+# SPY0320 at the membership test, the same verdict as before plan P93.
+
+class Squares:
+    _items: list[int]
+
+    def __init__(self):
+        self._items = [0, 1, 4]
+
+    def __len__(self) -> int:
+        return len(self._items)
+
+    def __getitem__(self, i: int) -> int:
+        return self._items[i]
+
+
+def main() -> None:
+    print(4 in Squares())

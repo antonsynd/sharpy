@@ -1,0 +1,42 @@
+True
+False
+False
+True
+g 1
+True
+g 1
+False
+pt
+True
+pt
+False
+True
+g 1
+True
+g 2
+False
+g 1
+True
+Foo.eq 2
+True
+True
+pair
+True
+pair
+True
+True
+False
+False
+False
+True
+False
+False
+False
+False
+True
+False
+True
+True
+True
+False
+True

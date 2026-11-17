@@ -276,14 +276,16 @@ public class RoslynEmitterOperatorLoweringTests
     }
 
     [Fact]
-    public void Multiply_StringRepeatStrRight_SameAst_SwapsTheArguments()
+    public void Multiply_StringRepeatStrRight_SameAst_PassesTheCountFirst()
     {
+        // P93 D2 (#2645): `n * s` takes Core's count-first overload, Repeat(count, str), so the left
+        // operand is still evaluated first; the swapped Repeat(b, a) evaluated the string first.
         var binOp = new BinaryOp { Left = Id("a"), Operator = BinaryOperator.Multiply, Right = Id("b") };
         var info = new SemanticInfo();
         info.SetOperatorLowering(binOp, new OperatorLowering(OperatorLoweringKind.StringRepeatStrRight));
         UseLoweredFacts(info, binOp);
 
-        Emit(binOp).Should().Be("global::Sharpy.StringHelpers.Repeat(b, a)");
+        Emit(binOp).Should().Be("global::Sharpy.StringHelpers.Repeat(a, b)");
     }
 
     [Fact]

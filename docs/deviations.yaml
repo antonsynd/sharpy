@@ -1250,6 +1250,35 @@ deviations:
         if x is 1:    # SPY0465: 'is' with value types is unreliable
             ...
 
+  - id: enum-identity-is
+    code: null
+    category: operators
+    audience: python
+    severity: none
+    python_behavior: "Enum members are singletons, so `is` between any two references to the same member is `True`, whatever the static types."
+    sharpy_behavior: "`is` / `is not` with an operand statically typed as an enum compares by member, as Python does (#2669): `c is d`, `c is Color.RED`, `oc is c` on `Color | None`, and `o is c` with `o: object`. The residue: when BOTH operands are typed `object` (or an interface) and hold int-backed enum members, the compiler cannot see an enum, `is` lowers to reference equality on two boxes, and the answer is `False`. String-backed enums are reference types and are unaffected. Axiom precedence: .NET (1) > Python (2)."
+    spec_ref: docs/language_specification/identity_operators.md
+    existing_diagnostic: null
+    planned_diagnostic: null
+    example:
+      python: |
+        from enum import Enum
+        class Color(Enum):
+            RED = 1
+        o = Color.RED
+        p = Color.RED
+        print(o is p)   # True
+      sharpy: |
+        enum Color:
+            RED = 1
+
+        def main():
+            o: object = Color.RED
+            p: object = Color.RED
+            print(o is p)          # False: two boxes
+            c: Color = Color.RED
+            print(o is c)          # True: one operand is typed as the enum
+
   - id: dunder-direct-invocation
     code: SPY0427
     category: semantics
@@ -2105,18 +2134,53 @@ deviations:
     category: operators
     audience: python
     severity: error
-    python_behavior: "`x in xs` never fails on a type mismatch; a needle no element can equal is simply `False`."
-    sharpy_behavior: "The needle is an argument into the container's element slot: a constant converts when in range, a variable C# cannot implicitly convert is refused by name with a cast steer, and a non-numeric mismatch is refused — a value the element type cannot hold can never be a member, so the test is a type error rather than a constant False (plan-757fbb, #1750, R-U)."
+    python_behavior: "`x in xs` never fails on a type mismatch: a needle no element can equal is simply `False`, and a needle that equals an element of another type is a member (`True in range(3)` is `True`, `2.0 in range(5)` is `True`, `None in [1, 2]` is `False`)."
+    sharpy_behavior: "The needle is an argument into the container's needle slot and must convert to it implicitly, as an argument does. The slot of `range` (and the integer slot of `bytes`) holds `int`: a constant converts when in range, and a variable C# cannot implicitly convert (a `bool`, `float` or `decimal` needle, a wider integer) is refused by name, where a cast cures it (`int(flag) in range(3)`); a non-numeric mismatch is refused. The literal `None` into a non-optional slot is refused the same way, and accepted where the element type is optional. A `T | None` needle is NOT this deviation: it is accepted and its `None` answers as Python's does (`False` in an equality scan, `TypeError` in `str`/`bytes`); where it does not yet (a user `__contains__` whose parameter is a plain value type; an int-backed enum or generic struct needle), that is a cell of #2674, not a deviation. (plan-757fbb, #1750, R-U; plan-4e2867, #2635: owner rulings A and B, 2026-11-12.)"
     spec_ref: docs/language_specification/membership_operators.md#needle-type
     existing_diagnostic: SPY0222
     planned_diagnostic: null
     example:
       python: |
-        xs = [1, 2]
-        print("a" in xs)     # False
+        flag = True
+        print(flag in range(3))        # True
+        print(None in [1, 2])          # False
       sharpy: |
+        flag: bool = True
+        print(flag in range(3))        # ERROR SPY0222: Type 'bool' does not support operator 'in' with operand of type 'RangeIterator'
+        print(int(flag) in range(3))   # True — the cast cures it
         xs: list[int] = [1, 2]
-        print("a" in xs)     # ERROR SPY0222: Type 'str' does not support operator 'in' with operand of type 'list[int32]'
+        print(None in xs)              # ERROR SPY0222: Type 'None' does not support operator 'in' with operand of type 'list[int32]'
+
+  - id: membership-legacy-sequence-protocol
+    code: SPY0320
+    category: operators
+    audience: python
+    severity: error
+    python_behavior: "A class with no `__contains__` and no `__iter__` but a `__getitem__` answers `x in obj` through the legacy sequence protocol: Python calls `__getitem__(0)`, `__getitem__(1)`, … and compares each result with the needle until one is equal (`True`) or `__getitem__` raises `IndexError` (`False`). A class with `__len__` + `__getitem__` over a list of `0, 1, 4` answers `4 in obj` with `True`."
+    sharpy_behavior: "Refused at compile time (SPY0320: the type does not support membership testing). `in` is answered by `__contains__` or, for a class that only iterates, by `__iter__` (owner ruling R-NZ, #2653); `__getitem__` with `__len__` never answers it. Owner ruling R-OA (#2653 comment 6826280413, 2026-11-12): \"maybe let's say no on __getitem__ with __len__\" — the index `__getitem__` takes need not be an integer, and an integer index need not be dense, so probing it from 0 upward is not a membership test the class declared. Declare `__contains__` or `__iter__` instead. (plan-67a01f, P93 D1.)"
+    spec_ref: docs/language_specification/membership_operators.md#validation
+    existing_diagnostic: SPY0320
+    planned_diagnostic: null
+    example:
+      python: |
+        class Squares:
+            def __init__(self):
+                self._items = [0, 1, 4]
+            def __len__(self):
+                return len(self._items)
+            def __getitem__(self, i):
+                return self._items[i]
+        print(4 in Squares())          # True
+      sharpy: |
+        class Squares:
+            _items: list[int]
+            def __init__(self):
+                self._items = [0, 1, 4]
+            def __len__(self) -> int:
+                return len(self._items)
+            def __getitem__(self, i: int) -> int:
+                return self._items[i]
+        print(4 in Squares())          # ERROR SPY0320: Type 'Squares' does not support membership testing (missing '__contains__' method).
 
 
   - id: chainmap-reversed-admitted

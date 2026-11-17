@@ -62,8 +62,11 @@ public class SemanticInfoMergeConformanceTests
     /// 85: <c>_optionalStoreWraps</c> moved onto <c>IrOptionalStoreWrap</c>,
     /// <c>IrOptionalWrappedElement</c> and <c>IrOptionalWalrusStore</c> (P82 tranche 1).
     /// 84: <c>_matchScrutineeLowerings</c> moved onto <c>IrTypedNullScrutinee</c> (P82 tranche 2).
+    /// 85: <c>_membershipNeedleBindings</c> added by P93 D2 (plan-67a01f, #2645): the converged plan
+    /// rules the needle's binding type a new node-keyed <c>SemanticInfo</c> dictionary in
+    /// <c>MergeFrom</c>, read by the emitter's needle-first bind; it drains with the operator facts.
     /// </summary>
-    private const int MaximumSideTableFieldCount = 84;
+    private const int MaximumSideTableFieldCount = 85;
 
     /// <summary>
     /// #1887: the real property — an entry recorded on one SemanticInfo survives <c>MergeFrom</c>

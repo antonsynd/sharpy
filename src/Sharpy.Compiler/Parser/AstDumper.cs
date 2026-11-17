@@ -1009,6 +1009,11 @@ internal class AstDumper : AstVisitor
             VisitChild(node.Operands[i], depth + 2, i == node.Operands.Length - 1);
         }
         _output.AppendLine(CultureInfo.InvariantCulture, $"{indent}{childPrefix}Operators: [{string.Join(", ", node.Operators)}]");
+        if (node.HeadCheckType != null)
+        {
+            _output.AppendLine(CultureInfo.InvariantCulture, $"{indent}{childPrefix}HeadCheckType:");
+            DumpTypeAnnotation(node.HeadCheckType, depth + 2, true);
+        }
     }
 
     #endregion
