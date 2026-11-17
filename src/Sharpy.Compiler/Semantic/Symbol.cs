@@ -762,6 +762,23 @@ public record PropertySymbol
     public bool IsConstructorParameter { get; init; }
 
     /// <summary>
+    /// For a <c>@static</c> property: its storage (plan-775c50 D2) — <see cref="Semantic.StaticStorage.Guarded"/>
+    /// for an auto-property with a default, <see cref="Semantic.StaticStorage.Plain"/> for one without,
+    /// null for an instance property or one made only of function-style accessors (no storage). The
+    /// <see cref="CodeGenInfo.StaticStorage"/> fact of a class-level property, which has no
+    /// <see cref="Symbol"/> to carry a CodeGenInfo (lead's ruling on T2). Set at
+    /// <c>CodeGenInfoComputer.ProcessTypeMembers</c> by <see cref="StaticStorageFacts"/>; round-tripped by
+    /// the incremental cache.
+    /// </summary>
+    public StaticStorage? StaticStorage { get; init; }
+
+    /// <summary>
+    /// For a <c>@static</c> property with <see cref="StaticStorage"/> set: its host type, or a type
+    /// enclosing it, declares a type parameter (plan-775c50 D2; <see cref="CodeGenInfo.IsOnGenericHost"/>).
+    /// </summary>
+    public bool IsOnGenericHost { get; init; }
+
+    /// <summary>
     /// Store-time observer clauses (<c>before_set</c>/<c>after_set</c>) declared on this
     /// auto-property. Empty for properties without observers. Populated during name resolution
     /// from <see cref="PropertyDef.Observers"/>; consumed by hover/completion and the codegen

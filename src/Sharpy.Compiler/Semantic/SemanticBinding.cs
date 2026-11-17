@@ -123,6 +123,11 @@ public class SemanticBinding
     // class (e.g. "email" -> "EmailModule"), null if not available from discovery.
     private readonly ConcurrentDictionary<string, string?> _netModuleClassNames = new();
 
+    // Each Sharpy module's own HasSweep fact (plan-775c50 D2), keyed by its normalized file path:
+    // recorded declarer-side by CodeGenInfoComputer, read by an importer through ModuleSweepFacts,
+    // persisted on the incremental cache's FileCacheEntry and restored on a warm build.
+    private readonly ConcurrentDictionary<string, bool> _moduleHasSweep = new(StringComparer.Ordinal);
+
     // Phase-gating freeze flags - prevent mutations after a phase completes.
     // Volatile for thread safety when per-file bindings are frozen concurrently.
     private volatile bool _inheritanceFrozen;
@@ -619,6 +624,12 @@ public class SemanticBinding
             // `from system import Action as A` would alias an open generic group (#2320).
             if (!merged.IsOpenGenericDefinition && info.IsOpenGenericDefinition)
                 merged = merged with { IsOpenGenericDefinition = true };
+            // The storage and sweep facts are recorded by CodeGenInfoComputer only (plan-775c50 D2):
+            // an earlier import-resolution entry gains them here, as it gains the layout.
+            if (merged.StaticStorage == null && info.StaticStorage != null)
+                merged = merged with { StaticStorage = info.StaticStorage, IsOnGenericHost = info.IsOnGenericHost };
+            if (!merged.HasSweep && info.HasSweep)
+                merged = merged with { HasSweep = true };
             if (!ReferenceEquals(merged, existing))
                 _codeGenInfo[symbol] = merged;
         }
@@ -665,6 +676,9 @@ public class SemanticBinding
 
         foreach (var (stmt, symbols) in other._reExportedSymbols)
             _reExportedSymbols.TryAdd(stmt, symbols);
+
+        foreach (var (path, hasSweep) in other._moduleHasSweep)
+            _moduleHasSweep.TryAdd(path, hasSweep);
     }
 
     #region Module Resolution
@@ -695,6 +709,21 @@ public class SemanticBinding
     /// </summary>
     public string? GetResolvedModuleFilePath(FromImportStatement stmt)
         => _resolvedModuleFilePaths.TryGetValue(stmt, out var path) ? path : null;
+
+    /// <summary>
+    /// Records a module's own <c>HasSweep</c> fact (plan-775c50 D2) under its file path: written once
+    /// by the declaring module's <c>CodeGenInfoComputer</c>, or restored from the incremental cache.
+    /// </summary>
+    public void SetModuleHasSweep(string filePath, bool hasSweep)
+        => _moduleHasSweep[Utilities.PathNormalizer.Normalize(filePath)] = hasSweep;
+
+    /// <summary>
+    /// The <c>HasSweep</c> fact the module at <paramref name="filePath"/> recorded, or null when it has
+    /// none (not compiled from Sharpy source here, or a deferred-cycle peer not yet checked). Read
+    /// through <see cref="ModuleSweepFacts.Imported"/>, the one predicate.
+    /// </summary>
+    public bool? GetModuleHasSweep(string filePath)
+        => _moduleHasSweep.TryGetValue(Utilities.PathNormalizer.Normalize(filePath), out var hasSweep) ? hasSweep : null;
 
     /// <summary>
     /// Sets the re-exported symbols for a FromImportStatement.

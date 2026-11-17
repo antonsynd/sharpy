@@ -254,6 +254,37 @@ public sealed record CodeGenInfo
     public bool IsOpenGenericDefinition { get; init; }
 
     /// <summary>
+    /// For a module or static value (plan-775c50 D2, rule N3): how its storage is initialized —
+    /// <see cref="Semantic.StaticStorage.Const"/> for a C# <c>const</c> (a <c>const</c> whose
+    /// initializer is compile-time foldable, <see cref="IsCompileTimeConstant"/>),
+    /// <see cref="Semantic.StaticStorage.Guarded"/> for any other value with an initializer (a module
+    /// variable, a computed <c>const</c>, a property default, a <c>@static</c> field, in every host),
+    /// <see cref="Semantic.StaticStorage.Plain"/> for a value with no initializer. Null for anything
+    /// that is not a module or static value: a function, a type, an instance field, an enum member, a
+    /// module variable emitted as a <c>Main</c> local (<see cref="HasExecutionOrderIssues"/>, #2125).
+    /// Computed once by <c>CodeGenInfoComputer</c> (<see cref="StaticStorageFacts"/>); code generation
+    /// picks a value's declaration and store arms by it and never re-decides. A class-level
+    /// <c>@static</c> property carries the same fact on <see cref="PropertySymbol.StaticStorage"/>.
+    /// </summary>
+    public StaticStorage? StaticStorage { get; init; }
+
+    /// <summary>
+    /// For a static value (<see cref="StaticStorage"/> set): its host type, or a type enclosing it,
+    /// declares a type parameter, so the value is stored per closed generic type (plan-775c50 D2, D5).
+    /// False for a module value.
+    /// </summary>
+    public bool IsOnGenericHost { get; init; }
+
+    /// <summary>
+    /// For an imported <see cref="ModuleSymbol"/> (<c>import m</c>): the module has a sweep the
+    /// importer requires at the import's position (plan-775c50 D2, D5) — it declares a
+    /// <see cref="Semantic.StaticStorage.Guarded"/> value in any host, or imports a module that has a
+    /// sweep. Read from the declaring module's own record by <see cref="ModuleSweepFacts"/>, the one
+    /// predicate; a <c>from m import x</c> carries the same fact on its <see cref="ModuleLayout"/>.
+    /// </summary>
+    public bool HasSweep { get; init; }
+
+    /// <summary>
     /// Get the versioned C# name (includes version suffix for redeclared variables).
     /// </summary>
     public string GetVersionedCSharpName()
@@ -274,6 +305,22 @@ public enum EqualityParameterShape
     Reference,
     /// <summary>The parameter is a value type or Optional&lt;T&gt; — no null pattern.</summary>
     ValueOrOptional,
+}
+
+/// <summary>
+/// How a module or static value's storage is initialized (plan-775c50 D2): the fact code generation
+/// picks a value's declaration and store arms by (<see cref="CodeGenInfo.StaticStorage"/>).
+/// </summary>
+public enum StaticStorage
+{
+    /// <summary>A C# <c>const</c>: a <c>const</c> whose initializer is compile-time foldable. No storage.</summary>
+    Const,
+
+    /// <summary>Has an initializer and is no C# <c>const</c>: initialized before its first use (rule N3).</summary>
+    Guarded,
+
+    /// <summary>Has no initializer: plain storage, as today (owner Q4).</summary>
+    Plain,
 }
 
 /// <summary>

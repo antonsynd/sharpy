@@ -91,6 +91,10 @@ internal partial class ProjectCompiler
                 servedUnit.CachedReferencedClrTypeNames = new HashSet<string>(
                     cachedFile.ReferencedClrTypeNames ?? new List<string>(), StringComparer.Ordinal);
             }
+            // The module's own HasSweep (plan-775c50 D2), recorded by its cold build: a recompiled
+            // importer reads it through ModuleSweepFacts.Imported, as it reads a cold-checked one.
+            if (_incrementalCache.GetFileCache(filePath) is { HasSweep: { } hasSweep })
+                semanticBinding.SetModuleHasSweep(filePath, hasSweep);
             if (_incrementalCache.RestoreSymbols(filePath, _restoredSymbols, semanticBinding, _moduleRegistry?.Visibility))
             {
                 restoredByFile.Add((filePath, _restoredSymbols

@@ -907,6 +907,7 @@ def main() -> None:
             ["FileCacheEntry.LayoutNamespaceSegments"] = (Input.NotAnInput, "per-unit entry type; the layout is a function of the facts and the source set"),
             ["FileCacheEntry.LayoutMembersClassName"] = (Input.NotAnInput, "per-unit entry type; the layout is a function of the facts and the source set"),
             ["FileCacheEntry.ReferencedClrTypeNames"] = (Input.NotAnInput, "the SPY0615 check over newly compiled units; an up-to-date build compiles none"),
+            ["FileCacheEntry.HasSweep"] = (Input.NotAnInput, "per-unit restore for a recompiled importer (plan-775c50 D2); a function of the source set, and an up-to-date build compiles none"),
             ["FileCacheEntry.EqualityContract"] = (Input.NotAnInput, "compiler-generated record member"),
         };
 
