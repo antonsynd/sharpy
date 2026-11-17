@@ -49,11 +49,18 @@ namespace TryElseReturn
 
         public static void Main()
         {
+            __Load();
 #line (13, 5) - (13, 30) 12 "try_else_return.spy"
             global::Sharpy.Builtins.Print(global::TryElseReturn.TryElseReturnModule.SafeDivide(10, 5));
 #line (14, 5) - (14, 29) 12 "try_else_return.spy"
             global::Sharpy.Builtins.Print(global::TryElseReturn.TryElseReturnModule.SafeDivide(3, 7));
 #line hidden
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        [global::Sharpy.SharpyLoadEntry(false)]
+        public static void __Load()
+        {
         }
     }
 }

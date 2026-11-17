@@ -926,7 +926,7 @@ public sealed partial class InitializerDependencyDifferentialTests
                             if (!ObservedUses().Contains(use) || ObservedCrossExclusion(user, target, order, readBack) != null)
                                 continue;
                             foreach (var observed in Enum.GetValues<OutObservation>())
-                                owed[ObservedId(id, observed)] = true;
+                                owed[ObservedId(id, observed)] = !UseRunsInsideTheTargetSweep(user, target, order);
                         }
         failures.AddRange(PoolAgainstOwed("the cross axes", owed, pool.Where(c => c.Id.StartsWith(CrossPrefix, StringComparison.Ordinal))));
         return failures;
@@ -950,9 +950,6 @@ public sealed partial class InitializerDependencyDifferentialTests
     /// <summary>The uses observed: the whole-value operand uses that store without reading, the image of
     /// <see cref="ParameterModifier"/> through <see cref="OperandUses"/> and <see cref="IsPlainStore"/>.</summary>
     internal static IEnumerable<LocationUse> ObservedUses() => OperandUses.Values.Select(o => o.Whole).Where(IsPlainStore);
-
-    private const string NotReadyYet =
-        "the value has none yet, so the operand is the temporary stored when the call returns (the owner's Q12), which the cell without an observation holds by its own model: what the callee reads there is a read before the initializer, the `Read` use's cell";
 
     private const string OperandInItsOwnText =
         "the operand sits in the initializer's own text, as `fill2`'s argument: no callee of the observer's is there, and the cell without an observation is the one in that text";
@@ -983,11 +980,11 @@ public sealed partial class InitializerDependencyDifferentialTests
         _ => throw new ArgumentOutOfRangeException(nameof(when), $"When.{when} is a time the value is ready, or is excluded"),
     };
 
-    /// <summary>Why a pair's operand is not observed, or null: the target value is ready when the use runs, in a host
-    /// that has swept, that the use sweeps, or that is still sweeping below the value.</summary>
+    /// <summary>Why a pair's operand is not observed, or null. Every pair without a read back is observed: where the use
+    /// runs inside the target host's own sweep above the value, the value is not ready yet and the operand is the
+    /// temporary (F14, the cross half: <see cref="NotReadyObservedModel"/> at <see cref="When.BeforeInitializer"/>).</summary>
     internal static string? ObservedCrossExclusion(CrossHost user, CrossHost target, CrossOrder order, bool readBack) =>
         readBack ? "the read back observes the user's value, not the operand: the cell without it is the one observed"
-        : UseRunsInsideTheTargetSweep(user, target, order) ? NotReadyYet
         : null;
 
     /// <summary>The use runs inside the target host's OWN sweep, below the target value's place: the value is ready
@@ -1078,6 +1075,25 @@ public sealed partial class InitializerDependencyDifferentialTests
         }
         foreach (var (user, target, order, use, observed) in ObservedCrossProduct())
         {
+            if (UseRunsInsideTheTargetSweep(user, target, order))
+            {
+                // The use runs in the target's own sweep above the value: not ready, the operand is the temporary (F14),
+                // and the callee's read initializes the value, as the one-host cell before the initializer has it.
+                var notReady = NotReadyObservedModel(observed, When.BeforeInitializer, HostForm.Plain);
+                yield return new Cell(
+                    ObservedId(CrossId(user, target, order, use, readBack: false), observed),
+                    Family.Location,
+                    CrossProgram(user, target, order, use, readBack: false, twin: false, observed),
+                    null,
+                    notReady ?? CycleError)
+                {
+                    Raises = notReady == null ? CycleError : null,
+                    IsControl = false,
+                    Python = PythonExpectation.NoTwin,
+                    Route = static (verdict, _, _) => ValueRoute(verdict),
+                };
+                continue;
+            }
             var (_, after, returned) = ObservedText(observed, "p", "1");
             yield return new Cell(
                 ObservedId(CrossId(user, target, order, use, readBack: false), observed),
@@ -1212,7 +1228,8 @@ public sealed partial class InitializerDependencyDifferentialTests
 
         // An observed cell on a ready value tells the two emissions apart, and is a control: green today.
         var generated = location.Where(c => ReadyAt(c.When)).Select(c => ObservedId(LocationId(c.Holder, c.Form, c.Kind, c.Use, c.When), c.Observed))
-            .Concat(cross.Select(c => ObservedId(CrossId(c.User, c.Target, c.Order, c.Use, readBack: false), c.Observed)));
+            .Concat(cross.Where(c => !UseRunsInsideTheTargetSweep(c.User, c.Target, c.Order))
+                .Select(c => ObservedId(CrossId(c.User, c.Target, c.Order, c.Use, readBack: false), c.Observed)));
         foreach (var id in generated)
         {
             if (!byId.TryGetValue(id, out var cell))

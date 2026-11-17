@@ -15,8 +15,146 @@ namespace Sharpy.RandomModule
     /// </summary>
     public static partial class RandomModuleModule
     {
-        public static global::System.Random _Random = new global::System.Random();
-        public static global::Sharpy.Lock _Lock = new global::Sharpy.Lock();
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        internal static global::System.Random _Random__field = default!;
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        private static byte _Random__state;
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        private static void _Random__init()
+        {
+            _Random__field = new global::System.Random();
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        private static void _Random__slow() => global::Sharpy.StaticInit.Read(ref __host, __Sweep, ref _Random__state, "_random", _Random__init);
+        [global::Sharpy.SharpyStaticStorage(global::Sharpy.StaticStorageKind.Guarded)]
+        public static ref global::System.Random _Random
+        {
+            get
+            {
+                if (!__Swept.Done)
+                    _Random__slow();
+                return ref _Random__field;
+            }
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        internal static void _Random__ensure()
+        {
+            if (!__Swept.Done)
+                _Random__slow();
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        internal static global::System.Random _Random__set(global::System.Random value)
+        {
+            if (__Swept.Done)
+                _Random__field = value;
+            else
+                global::Sharpy.StaticInit.Store(ref __host, __Sweep, ref _Random__state, ref _Random__field, value);
+            return value;
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        internal static global::System.Runtime.CompilerServices.StrongBox<global::System.Random>? _Random__pick()
+        {
+            if (!__Swept.Done)
+            {
+                global::Sharpy.StaticInit.Load(ref __host, __Sweep);
+                if (!global::Sharpy.StaticInit.IsReady(ref _Random__state))
+                    return new global::System.Runtime.CompilerServices.StrongBox<global::System.Random>();
+            }
+
+            return null;
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        internal static ref global::System.Random _Random__out(out global::System.Runtime.CompilerServices.StrongBox<global::System.Random>? spill)
+        {
+            spill = _Random__pick();
+            if (spill != null)
+                return ref spill.Value!;
+            return ref _Random__field;
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        internal static R _Random__commit<R>(R result, global::System.Runtime.CompilerServices.StrongBox<global::System.Random>? spill)
+        {
+            if (spill != null)
+                _Random__set(spill.Value!);
+            return result;
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        internal static global::Sharpy.Lock _Lock__field = default!;
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        private static byte _Lock__state;
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        private static void _Lock__init()
+        {
+            _Lock__field = new global::Sharpy.Lock();
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        private static void _Lock__slow() => global::Sharpy.StaticInit.Read(ref __host, __Sweep, ref _Lock__state, "_lock", _Lock__init);
+        [global::Sharpy.SharpyStaticStorage(global::Sharpy.StaticStorageKind.Guarded)]
+        public static ref global::Sharpy.Lock _Lock
+        {
+            get
+            {
+                if (!__Swept.Done)
+                    _Lock__slow();
+                return ref _Lock__field;
+            }
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        internal static void _Lock__ensure()
+        {
+            if (!__Swept.Done)
+                _Lock__slow();
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        internal static global::Sharpy.Lock _Lock__set(global::Sharpy.Lock value)
+        {
+            if (__Swept.Done)
+                _Lock__field = value;
+            else
+                global::Sharpy.StaticInit.Store(ref __host, __Sweep, ref _Lock__state, ref _Lock__field, value);
+            return value;
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        internal static global::System.Runtime.CompilerServices.StrongBox<global::Sharpy.Lock>? _Lock__pick()
+        {
+            if (!__Swept.Done)
+            {
+                global::Sharpy.StaticInit.Load(ref __host, __Sweep);
+                if (!global::Sharpy.StaticInit.IsReady(ref _Lock__state))
+                    return new global::System.Runtime.CompilerServices.StrongBox<global::Sharpy.Lock>();
+            }
+
+            return null;
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        internal static ref global::Sharpy.Lock _Lock__out(out global::System.Runtime.CompilerServices.StrongBox<global::Sharpy.Lock>? spill)
+        {
+            spill = _Lock__pick();
+            if (spill != null)
+                return ref spill.Value!;
+            return ref _Lock__field;
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        internal static R _Lock__commit<R>(R result, global::System.Runtime.CompilerServices.StrongBox<global::Sharpy.Lock>? spill)
+        {
+            if (spill != null)
+                _Lock__set(spill.Value!);
+            return result;
+        }
+
         /// <summary>
         /// Initialize the random number generator with the given seed.
         /// </summary>
@@ -27,7 +165,7 @@ namespace Sharpy.RandomModule
                 __ctx_0.Enter();
                 try
                 {
-                    _Random = new global::System.Random(s);
+                    _Random__set(new global::System.Random(s));
                 }
                 finally
                 {
@@ -388,6 +526,33 @@ namespace Sharpy.RandomModule
             }
 
             return result;
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        private static global::Sharpy.StaticInitHost __host;
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        private static void __Sweep()
+        {
+            global::Sharpy.StaticInit.Run(ref _Random__state, "_random", _Random__init);
+            global::Sharpy.StaticInit.Run(ref _Lock__state, "_lock", _Lock__init);
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        private static class __Swept
+        {
+            internal static readonly bool Done;
+            static __Swept()
+            {
+                Done = global::Sharpy.StaticInit.TryLoad(ref __host, __Sweep);
+            }
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        [global::Sharpy.SharpyLoadEntry(true)]
+        public static void __Load()
+        {
+            if (!__Swept.Done)
+                global::Sharpy.StaticInit.Load(ref __host, __Sweep);
         }
     }
 }

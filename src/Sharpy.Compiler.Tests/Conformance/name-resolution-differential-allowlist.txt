@@ -1961,18 +1961,7 @@ read/cycle/SelfDot/TypeOtherType/ThroughDef/StaticField/ClassComputedConst Ice #
 read/cycle/SelfDot/TypeOtherType/ThroughDef/StaticField/StaticProperty Ice # #2147 ice
 read/cycle/SelfDot/TypeOtherType/ThroughDef/StaticProperty/ClassComputedConst Ice # #2147 ice
 read/cycle/SelfDot/TypeOtherType/ThroughDef/StaticProperty/StaticProperty Ice # #2147 ice
-read/order-observation/ClassComputedConst/Earlier SilentWrong # #2422 silent-wrong
-read/order-observation/ClassComputedConst/Later SilentWrong # #2422 silent-wrong
-read/order-observation/ModuleComputedConst/Earlier SilentWrong # #2422 silent-wrong
-read/order-observation/ModuleComputedConst/Later SilentWrong # #2422 silent-wrong
-read/order-observation/ModuleProperty/Earlier SilentWrong # #2422 silent-wrong
-read/order-observation/ModuleProperty/Later SilentWrong # #2422 silent-wrong
-read/order-observation/ModuleVar/Earlier SilentWrong # #2422 silent-wrong
 read/order-observation/ModuleVar/Later FalseRefusal # #2423 false-refusal
-read/order-observation/StaticField/Earlier SilentWrong # #2422 silent-wrong
-read/order-observation/StaticField/Later SilentWrong # #2422 silent-wrong
-read/order-observation/StaticProperty/Earlier SilentWrong # #2422 silent-wrong
-read/order-observation/StaticProperty/Later SilentWrong # #2422 silent-wrong
 read/result-form/BareValue/Later Ice # #2249 ice
 read/sibling/Bare/NestedClassMethodBody/Earlier Ice # #2397 ice
 read/sibling/Bare/NestedClassMethodBody/Later Ice # #2397 ice
@@ -2010,7 +1999,6 @@ read/type-position-alias/isinstance/Earlier Ice # #1925 ice
 read/type-position-alias/isinstance/Later Ice # #1925 ice
 seed/A02 FalseRefusal # #2423 false-refusal
 seed/A05 FalseRefusal # #2423 false-refusal
-seed/A11 SilentWrong # #2422 silent-wrong
 seed/A12 SilentWrong # #1974 missing-refusal
 seed/A15 FalseRefusal # #2423 false-refusal
 seed/A20 FalseRefusal # #2424 false-refusal

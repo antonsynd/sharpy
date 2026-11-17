@@ -97,6 +97,7 @@ namespace MatchScrutineeIsinstanceNarrowed
 
         public static void Main()
         {
+            __Load();
 #line (48, 5) - (48, 40) 12 "match_scrutinee_isinstance_narrowed.spy"
             global::MatchScrutineeIsinstanceNarrowed.MatchScrutineeIsinstanceNarrowedModule.NarrowedUserGeneric(new global::MatchScrutineeIsinstanceNarrowed.Box<int>(42));
 #line (49, 5) - (49, 29) 12 "match_scrutinee_isinstance_narrowed.spy"
@@ -104,6 +105,12 @@ namespace MatchScrutineeIsinstanceNarrowed
 #line (50, 5) - (50, 34) 12 "match_scrutinee_isinstance_narrowed.spy"
             global::MatchScrutineeIsinstanceNarrowed.MatchScrutineeIsinstanceNarrowedModule.NarrowedOptional(Optional<string>.Some("hi"));
 #line hidden
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        [global::Sharpy.SharpyLoadEntry(false)]
+        public static void __Load()
+        {
         }
     }
 

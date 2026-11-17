@@ -18,6 +18,11 @@ namespace Sharpy.Stdlib.Tests.Spy.Base64.Base64Tests
     [global::Sharpy.SharpyModule("base64.base64_tests")]
     public static partial class Base64TestsModule
     {
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        [global::Sharpy.SharpyLoadEntry(false)]
+        public static void __Load()
+        {
+        }
     }
 
     public partial class Base64TestsModuleTests

@@ -13,6 +13,7 @@ namespace DictComprehension
     {
         public static void Main()
         {
+            __Load();
             var __src_1 = global::Sharpy.Builtins.Range(5);
             var __comp_0 = new Sharpy.Dict<int, int>(((global::Sharpy.ISized)__src_1).Count);
             foreach (var __loopVar_2 in __src_1)
@@ -36,6 +37,12 @@ namespace DictComprehension
 #line (9, 5) - (9, 21) 12 "dict_comprehension.spy"
             global::Sharpy.Builtins.Print(result[4]);
 #line hidden
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        [global::Sharpy.SharpyLoadEntry(false)]
+        public static void __Load()
+        {
         }
     }
 }

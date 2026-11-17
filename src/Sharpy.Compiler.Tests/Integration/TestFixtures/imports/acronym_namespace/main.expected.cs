@@ -14,6 +14,11 @@ namespace Sharpy.Test.API
     [global::Sharpy.SharpyModule("api")]
     public static partial class APIModule
     {
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        [global::Sharpy.SharpyLoadEntry(false)]
+        public static void __Load()
+        {
+        }
     }
 }
 
@@ -32,6 +37,11 @@ namespace Sharpy.Test.API.UI
     [global::Sharpy.SharpyModule("api.ui")]
     public static partial class UIModule
     {
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        [global::Sharpy.SharpyLoadEntry(false)]
+        public static void __Load()
+        {
+        }
     }
 
     [global::Sharpy.SharpyModuleType("api.ui", "Widget")]
@@ -73,6 +83,11 @@ namespace Sharpy.Test.DB
     [global::Sharpy.SharpyModule("db")]
     public static partial class DBModule
     {
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        [global::Sharpy.SharpyLoadEntry(false)]
+        public static void __Load()
+        {
+        }
     }
 
     [global::Sharpy.SharpyModuleType("db", "Record")]
@@ -122,6 +137,7 @@ namespace Sharpy.Test.Main
 
         public static void Main()
         {
+            __Load();
 #line (16, 5) - (16, 30) 12 "main.spy"
             var madeRecord = new global::Sharpy.Test.DB.Record("k");
 #line (17, 5) - (17, 31) 12 "main.spy"
@@ -137,6 +153,12 @@ namespace Sharpy.Test.Main
 #line (25, 5) - (25, 55) 12 "main.spy"
             global::Sharpy.Builtins.Print(global::Sharpy.Test.Main.MainModule.Combine(annotatedRecord, annotatedWidget));
 #line hidden
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        [global::Sharpy.SharpyLoadEntry(false)]
+        public static void __Load()
+        {
         }
     }
 }

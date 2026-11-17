@@ -34,6 +34,7 @@ namespace ModuleOverloadByArity
 
         public static void Main()
         {
+            __Load();
 #line (11, 5) - (11, 26) 12 "module_overload_by_arity.spy"
             global::Sharpy.Builtins.Print(global::ModuleOverloadByArity.ModuleOverloadByArityModule.Greet("World"));
 #line (12, 5) - (12, 32) 12 "module_overload_by_arity.spy"
@@ -41,6 +42,12 @@ namespace ModuleOverloadByArity
 #line (13, 5) - (13, 38) 12 "module_overload_by_arity.spy"
             global::Sharpy.Builtins.Print(global::ModuleOverloadByArity.ModuleOverloadByArityModule.Greet("World", "Hey", "!"));
 #line hidden
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        [global::Sharpy.SharpyLoadEntry(false)]
+        public static void __Load()
+        {
         }
     }
 }

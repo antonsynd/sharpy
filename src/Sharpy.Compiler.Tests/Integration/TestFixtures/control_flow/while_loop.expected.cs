@@ -27,9 +27,16 @@ namespace WhileLoop
 
         public static void Main()
         {
+            __Load();
 #line (7, 5) - (7, 17) 12 "while_loop.spy"
             global::WhileLoop.WhileLoopModule.Countdown(3);
 #line hidden
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        [global::Sharpy.SharpyLoadEntry(false)]
+        public static void __Load()
+        {
         }
     }
 }

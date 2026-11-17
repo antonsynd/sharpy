@@ -21,7 +21,8 @@ internal partial class RoslynEmitter
     /// namespace, and its types are declared beside <c>&lt;X&gt;</c> in it (#2039).
     /// </summary>
     private ClassDeclarationSyntax GenerateModuleMembers(
-        List<Statement> statements, List<FromImportStatement>? reExportImports = null)
+        List<Statement> statements, List<FromImportStatement>? reExportImports = null,
+        IReadOnlyList<Statement>? body = null)
     {
         // Clear tracking field for module field names (still needed to prevent duplicate field declarations)
         _moduleFieldNames.Clear();
@@ -96,7 +97,7 @@ internal partial class RoslynEmitter
         var moduleDeclarations = new List<MemberDeclarationSyntax>();
 
         // The module is a host (plan-775c50 D5): its Guarded values' sweep steps collect here.
-        var moduleHost = OpenStaticHost(out var enclosingHost);
+        var moduleHost = OpenStaticHost(out var enclosingHost, isModule: true);
         var executableStatements = new List<Statement>();
 
         // Whether the module declares the entry-point main() — ModuleShape's answer, computed once by
@@ -145,8 +146,16 @@ internal partial class RoslynEmitter
             }
         }
 
-        foreach (var stmt in statements)
+        // The whole body in source order: an import is no member, but the module's sweep requires the
+        // module it imports at its position (plan-775c50 D5).
+        foreach (var stmt in body ?? statements)
         {
+            if (stmt.UnwrapDecorated() is ImportStatement or FromImportStatement)
+            {
+                AddImportRequirements(stmt.UnwrapDecorated());
+                continue;
+            }
+
             // Module-level @test.fixture functions are emitted as standalone sibling classes,
             // not as static methods on the module class. They were pre-registered above; here
             // we just queue them for emission.
@@ -211,6 +220,16 @@ internal partial class RoslynEmitter
             }
 
             var member = GenerateStatement(stmt);
+
+            // Main requires its module first (plan-775c50 D5): the module's sweep runs, or rethrows
+            // its original exception, before the user's main body.
+            if (_context.IsEntryPoint
+                && stmt.UnwrapDecorated() is FunctionDef entryMain && ModuleIdentifiers.IsEntryMain(entryMain)
+                && member is MethodDeclarationSyntax mainMethod && mainMethod.Body != null)
+            {
+                member = mainMethod.WithBody(mainMethod.Body.WithStatements(mainMethod.Body.Statements.Insert(0,
+                    ExpressionStatement(InvocationExpression(IdentifierName(ModuleLoadName))))));
+            }
 
             // After generating class/struct/function declarations, clear local scope tracking
             // so that parameter names from their methods don't leak into module-level code

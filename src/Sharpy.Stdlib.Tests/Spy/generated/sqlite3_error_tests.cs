@@ -18,6 +18,11 @@ namespace Sharpy.Stdlib.Tests.Spy.Sqlite3.Sqlite3ErrorTests
     [global::Sharpy.SharpyModule("sqlite3.sqlite3_error_tests")]
     public static partial class Sqlite3ErrorTestsModule
     {
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        [global::Sharpy.SharpyLoadEntry(false)]
+        public static void __Load()
+        {
+        }
     }
 
     public partial class Sqlite3ErrorTestsModuleTests

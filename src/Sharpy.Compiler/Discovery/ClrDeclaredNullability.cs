@@ -41,7 +41,7 @@ internal static class ClrDeclaredNullability
     /// <summary>The nullability the property DECLARES, at every position of its type.</summary>
     internal static ClrNullabilityShape Describe(PropertyInfo property)
     {
-        if (DeclaredAsGenericParameter(property, m => ((PropertyInfo)m).PropertyType,
+        if (DeclaredAsGenericParameter(property, m => ClrTypeHelper.ValueTypeOf(((PropertyInfo)m).PropertyType),
                 m => ((PropertyInfo)m).CustomAttributes, out var annotated))
             return annotated ? ClrNullabilityShape.TopLevel : ClrNullabilityShape.Oblivious;
 
@@ -60,7 +60,7 @@ internal static class ClrDeclaredNullability
 
     /// <summary>The nullability the method's RETURN declares, at every position of its type.</summary>
     internal static ClrNullabilityShape DescribeReturn(MethodInfo method)
-        => DeclaredAsGenericParameter(method, m => ((MethodInfo)m).ReturnType,
+        => DeclaredAsGenericParameter(method, m => ClrTypeHelper.ValueTypeOf(((MethodInfo)m).ReturnType),
                 m => ((MethodInfo)m).ReturnParameter.CustomAttributes, out var annotated)
             ? (annotated ? ClrNullabilityShape.TopLevel : ClrNullabilityShape.Oblivious)
             : Shape(Create(() => Context.Create(method.ReturnParameter)), i => i.ReadState == NullabilityState.Nullable);

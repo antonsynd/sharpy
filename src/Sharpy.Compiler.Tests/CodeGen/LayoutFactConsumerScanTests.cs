@@ -81,13 +81,17 @@ public class LayoutFactConsumerScanTests
         // F14: the test class and the fixture classes.
         ("CodeGen/RoslynEmitter.ModuleClass.cs", "GenerateModuleTestClass", "TestClassName"),
         ("CodeGen/RoslynEmitter.TestFixtures.cs", "RegisterFixture", "FixtureClassNames"),
+        // plan-775c50 D5: a module sweep's requirement — a relative one under the own module's namespace, and
+        // an import's, from the layout each requirement records (D10: a by-reference one by its CLR class).
+        ("CodeGen/RoslynEmitter.StaticValues.cs", "RequirementPath", "_moduleShape"),
+        ("CodeGen/RoslynEmitter.StaticValues.cs", "AddImportRequirements", "MembersClassName"),
         // The CLI's self-contained publish entry type.
         ("../Sharpy.Cli/Commands/RunCommand.cs", "HandleRunCommand", "EntryTypeName"),
         ("../Sharpy.Cli/Commands/CompileCommand.cs", "CompileSingleFile", "EntryTypeName"),
     };
 
     /// <summary>The reader count @ this commit — a literal, so neither the roster nor the scan can drift.</summary>
-    private const int ReaderCount = 15;
+    private const int ReaderCount = 17;
 
     /// <summary>(file, member) → the reader it must route through.</summary>
     private static readonly (string File, string Member, string CallsReader)[] Routes =

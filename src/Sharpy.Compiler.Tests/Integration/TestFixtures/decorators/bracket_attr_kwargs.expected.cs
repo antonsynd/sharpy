@@ -12,11 +12,18 @@ namespace BracketAttrKwargs
     {
         public static void Main()
         {
+            __Load();
 #line (8, 5) - (8, 19) 12 "bracket_attr_kwargs.spy"
             var s = new global::BracketAttrKwargs.Settings();
 #line (9, 5) - (9, 37) 12 "bracket_attr_kwargs.spy"
             global::Sharpy.Builtins.Print(s.GetDefaultThreshold());
 #line hidden
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        [global::Sharpy.SharpyLoadEntry(false)]
+        public static void __Load()
+        {
         }
     }
 

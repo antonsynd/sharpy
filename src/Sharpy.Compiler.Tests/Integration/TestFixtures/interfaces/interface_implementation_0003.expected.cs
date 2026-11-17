@@ -13,6 +13,7 @@ namespace InterfaceImplementation0003
     {
         public static void Main()
         {
+            __Load();
 #line (42, 5) - (42, 31) 12 "interface_implementation_0003.spy"
             var cc = new global::InterfaceImplementation0003.CreditCardProcessor();
 #line (43, 5) - (43, 27) 12 "interface_implementation_0003.spy"
@@ -32,6 +33,12 @@ namespace InterfaceImplementation0003
 #line (53, 5) - (53, 26) 12 "interface_implementation_0003.spy"
             global::Sharpy.Builtins.Print(cash.GetFee());
 #line hidden
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        [global::Sharpy.SharpyLoadEntry(false)]
+        public static void __Load()
+        {
         }
     }
 

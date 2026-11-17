@@ -19,6 +19,11 @@ namespace Sharpy.Stdlib.Tests.Spy.Yaml.YamlRoundtripTests
     [global::Sharpy.SharpyModule("yaml.yaml_roundtrip_tests")]
     public static partial class YamlRoundtripTestsModule
     {
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        [global::Sharpy.SharpyLoadEntry(false)]
+        public static void __Load()
+        {
+        }
     }
 
     public partial class YamlRoundtripTestsModuleTests

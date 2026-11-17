@@ -15,9 +15,16 @@ namespace TmpPathOverride
     {
         public static void Main()
         {
+            __Load();
 #line (13, 5) - (13, 16) 12 "tmp_path_override.spy"
             global::Sharpy.Builtins.Print("ok");
 #line hidden
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        [global::Sharpy.SharpyLoadEntry(false)]
+        public static void __Load()
+        {
         }
     }
 

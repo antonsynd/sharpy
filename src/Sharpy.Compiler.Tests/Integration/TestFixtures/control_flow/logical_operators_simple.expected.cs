@@ -13,6 +13,7 @@ namespace LogicalOperatorsSimple
     {
         public static void Main()
         {
+            __Load();
 #line (3, 5) - (3, 20) 12 "logical_operators_simple.spy"
             bool a = true;
 #line (4, 5) - (4, 21) 12 "logical_operators_simple.spy"
@@ -50,6 +51,12 @@ namespace LogicalOperatorsSimple
 #line (30, 5) - (30, 19) 12 "logical_operators_simple.spy"
             global::Sharpy.Builtins.Print(result7);
 #line hidden
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        [global::Sharpy.SharpyLoadEntry(false)]
+        public static void __Load()
+        {
         }
     }
 }

@@ -13,6 +13,7 @@ namespace ClassWithInit
     {
         public static void Main()
         {
+            __Load();
 #line (26, 5) - (26, 66) 12 "class_with_init.spy"
             var converter = new global::ClassWithInit.TemperatureConverter(0.0d, "Water freezing point");
 #line (27, 5) - (27, 35) 12 "class_with_init.spy"
@@ -34,6 +35,12 @@ namespace ClassWithInit
 #line (37, 5) - (37, 30) 12 "class_with_init.spy"
             global::Sharpy.Builtins.Print(second.ToKelvin());
 #line hidden
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        [global::Sharpy.SharpyLoadEntry(false)]
+        public static void __Load()
+        {
         }
     }
 

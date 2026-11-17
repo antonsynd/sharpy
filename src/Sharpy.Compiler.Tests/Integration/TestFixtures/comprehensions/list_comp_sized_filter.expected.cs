@@ -13,6 +13,7 @@ namespace ListCompSizedFilter
     {
         public static void Main()
         {
+            __Load();
 #line (2, 5) - (2, 41) 12 "list_comp_sized_filter.spy"
             Sharpy.List<int> nums = new Sharpy.List<int>()
 #line hidden
@@ -45,6 +46,12 @@ namespace ListCompSizedFilter
                 global::Sharpy.Builtins.Print(r);
 #line hidden
             }
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        [global::Sharpy.SharpyLoadEntry(false)]
+        public static void __Load()
+        {
         }
     }
 }

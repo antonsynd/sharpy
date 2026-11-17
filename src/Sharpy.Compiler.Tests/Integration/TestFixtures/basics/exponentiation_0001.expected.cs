@@ -13,6 +13,7 @@ namespace Exponentiation0001
     {
         public static void Main()
         {
+            __Load();
 #line (2, 5) - (2, 21) 12 "exponentiation_0001.spy"
             int x = 9;
 #line (3, 5) - (3, 13) 12 "exponentiation_0001.spy"
@@ -26,6 +27,12 @@ namespace Exponentiation0001
 #line (7, 5) - (7, 13) 12 "exponentiation_0001.spy"
             global::Sharpy.Builtins.Print(z);
 #line hidden
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        [global::Sharpy.SharpyLoadEntry(false)]
+        public static void __Load()
+        {
         }
     }
 }

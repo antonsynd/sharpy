@@ -18,6 +18,11 @@ namespace Sharpy.Stdlib.Tests.Spy.Collections.CollectionsAdditionalTests
     [global::Sharpy.SharpyModule("collections.collections_additional_tests")]
     public static partial class CollectionsAdditionalTestsModule
     {
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        [global::Sharpy.SharpyLoadEntry(false)]
+        public static void __Load()
+        {
+        }
     }
 
     public partial class CollectionsAdditionalTestsModuleTests

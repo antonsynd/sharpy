@@ -88,6 +88,7 @@ public class SinkPushingTotalityTests
         // --- plan-775c50 D4/D6: the readiness shape's own tests; no user sub-expression is in an arm alone. ---
         ["GuardedReadPrelude/IfStatement"] = "the readiness prelude `if (!__Swept.Done) N__slow();` tests generated state, no user expression",
         ["GuardedStoreStatement/IfStatement"] = "the guarded store tests `__Swept.Done`; both arms store the same value, the accessor's `value` or a store generated before it",
+        ["LoadStatement/IfStatement"] = "D5: a host's load entry tests generated state (`__Swept.Done`) and calls the runtime; no user expression",
         ["GenerateGuardedValue/IfStatement"] = "the generated `__pick` / `__out` / `__commit` members test generated state, no user expression",
         ["GenerateCallWithOutCommits/ConditionalExpression"] = "D6: both arms are the one generated call (its operands' hoists already precede the statement), differing only in the `out` operand; the test reads the spill the pick hoisted",
         ["PlaceVoidCallCommits/IfStatement"] = "D6: both arms are the one generated void call statement, differing only in the `out` operand; the test reads the spill the pick hoisted",

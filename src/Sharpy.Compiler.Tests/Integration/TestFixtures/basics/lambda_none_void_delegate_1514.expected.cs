@@ -13,6 +13,7 @@ namespace LambdaNoneVoidDelegate1514
     {
         public static void Main()
         {
+            __Load();
 #line (6, 5) - (6, 21) 12 "lambda_none_void_delegate_1514.spy"
             global::System.Action f = () =>
 #line hidden
@@ -40,6 +41,12 @@ namespace LambdaNoneVoidDelegate1514
 #line (13, 5) - (13, 16) 12 "lambda_none_void_delegate_1514.spy"
             global::Sharpy.Builtins.Print("ok");
 #line hidden
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        [global::Sharpy.SharpyLoadEntry(false)]
+        public static void __Load()
+        {
         }
     }
 }

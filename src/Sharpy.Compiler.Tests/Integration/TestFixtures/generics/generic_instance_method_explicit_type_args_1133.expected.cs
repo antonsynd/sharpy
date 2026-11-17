@@ -12,6 +12,7 @@ namespace GenericInstanceMethodExplicitTypeArgs1133
     {
         public static void Main()
         {
+            __Load();
 #line (24, 5) - (24, 20) 12 "generic_instance_method_explicit_type_args_1133.spy"
             global::GenericInstanceMethodExplicitTypeArgs1133.Box b = new global::GenericInstanceMethodExplicitTypeArgs1133.Box();
 #line (25, 5) - (25, 29) 12 "generic_instance_method_explicit_type_args_1133.spy"
@@ -23,6 +24,12 @@ namespace GenericInstanceMethodExplicitTypeArgs1133
 #line (28, 5) - (28, 34) 12 "generic_instance_method_explicit_type_args_1133.spy"
             global::Sharpy.Builtins.Print(h.Box.Convert<int>(99));
 #line hidden
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        [global::Sharpy.SharpyLoadEntry(false)]
+        public static void __Load()
+        {
         }
     }
 

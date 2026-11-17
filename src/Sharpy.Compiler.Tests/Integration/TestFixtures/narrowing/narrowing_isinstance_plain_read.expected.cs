@@ -19,6 +19,7 @@ namespace NarrowingIsinstancePlainRead
 
         public static void Main()
         {
+            __Load();
 #line (9, 5) - (9, 29) 12 "narrowing_isinstance_plain_read.spy"
             object r = global::NarrowingIsinstancePlainRead.NarrowingIsinstancePlainReadModule.GetValue();
 #line (10, 5) - (10, 31) 12 "narrowing_isinstance_plain_read.spy"
@@ -40,6 +41,12 @@ namespace NarrowingIsinstancePlainRead
 #line (13, 5) - (13, 13) 12 "narrowing_isinstance_plain_read.spy"
             global::Sharpy.Builtins.Print(((int)r!));
 #line hidden
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        [global::Sharpy.SharpyLoadEntry(false)]
+        public static void __Load()
+        {
         }
     }
 }

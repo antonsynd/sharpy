@@ -41,6 +41,7 @@ namespace QuestionMarkNestedResult
 
         public static void Main()
         {
+            __Load();
 #line (12, 5) - (12, 23) 12 "question_mark_nested_result.spy"
             var result = global::QuestionMarkNestedResult.QuestionMarkNestedResultModule.Process();
 #line (13, 5) - (17, 21) 12 "question_mark_nested_result.spy"
@@ -60,6 +61,12 @@ namespace QuestionMarkNestedResult
                 default:
                     throw new System.InvalidOperationException("Unreachable: exhaustive match");
             }
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        [global::Sharpy.SharpyLoadEntry(false)]
+        public static void __Load()
+        {
         }
     }
 }

@@ -13,9 +13,16 @@ namespace HelloWorld
     {
         public static void Main()
         {
+            __Load();
 #line (2, 5) - (2, 27) 12 "hello_world.spy"
             global::Sharpy.Builtins.Print("Hello, World!");
 #line hidden
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        [global::Sharpy.SharpyLoadEntry(false)]
+        public static void __Load()
+        {
         }
     }
 }

@@ -18,6 +18,11 @@ namespace Sharpy.Stdlib.Tests.Spy.Sys.SysModuleTests
     [global::Sharpy.SharpyModule("sys.sys_module_tests")]
     public static partial class SysModuleTestsModule
     {
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        [global::Sharpy.SharpyLoadEntry(false)]
+        public static void __Load()
+        {
+        }
     }
 
     public partial class SysModuleTestsModuleTests

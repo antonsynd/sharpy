@@ -12,6 +12,7 @@ namespace AccessorTypeAliasControl
     {
         public static void Main()
         {
+            __Load();
 #line (21, 5) - (21, 34) 12 "accessor_type_alias_control.spy"
             global::AccessorTypeAliasControl.Thermostat t = new global::AccessorTypeAliasControl.Thermostat();
 #line (22, 5) - (22, 20) 12 "accessor_type_alias_control.spy"
@@ -19,6 +20,12 @@ namespace AccessorTypeAliasControl
 #line (23, 5) - (23, 20) 12 "accessor_type_alias_control.spy"
             global::Sharpy.Builtins.Print(t.Target);
 #line hidden
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        [global::Sharpy.SharpyLoadEntry(false)]
+        public static void __Load()
+        {
         }
     }
 

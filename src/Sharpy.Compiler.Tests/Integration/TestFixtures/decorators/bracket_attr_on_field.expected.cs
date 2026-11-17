@@ -12,11 +12,18 @@ namespace BracketAttrOnField
     {
         public static void Main()
         {
+            __Load();
 #line (10, 5) - (10, 19) 12 "bracket_attr_on_field.spy"
             var s = new global::BracketAttrOnField.Settings();
 #line (11, 5) - (11, 23) 12 "bracket_attr_on_field.spy"
             global::Sharpy.Builtins.Print(s.Threshold);
 #line hidden
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        [global::Sharpy.SharpyLoadEntry(false)]
+        public static void __Load()
+        {
         }
     }
 

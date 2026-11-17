@@ -13,9 +13,16 @@ namespace CustomAssertions
     {
         public static void Main()
         {
+            __Load();
 #line (38, 5) - (38, 16) 12 "custom_assertions.spy"
             global::Sharpy.Builtins.Print("ok");
 #line hidden
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        [global::Sharpy.SharpyLoadEntry(false)]
+        public static void __Load()
+        {
         }
     }
 

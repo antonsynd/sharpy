@@ -15,9 +15,16 @@ namespace TestParametrizeClass
     {
         public static void Main()
         {
+            __Load();
 #line (11, 5) - (11, 16) 12 "test_parametrize_class.spy"
             global::Sharpy.Builtins.Print("ok");
 #line hidden
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        [global::Sharpy.SharpyLoadEntry(false)]
+        public static void __Load()
+        {
         }
     }
 

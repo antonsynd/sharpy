@@ -354,5 +354,11 @@ namespace Sharpy.ShutilModule
 
             return fullDst.StartsWith(fullSrc);
         }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        [global::Sharpy.SharpyLoadEntry(false)]
+        public static void __Load()
+        {
+        }
     }
 }

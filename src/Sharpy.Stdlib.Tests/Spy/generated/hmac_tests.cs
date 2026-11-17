@@ -18,6 +18,11 @@ namespace Sharpy.Stdlib.Tests.Spy.Hmac.HmacTests
     [global::Sharpy.SharpyModule("hmac.hmac_tests")]
     public static partial class HmacTestsModule
     {
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        [global::Sharpy.SharpyLoadEntry(false)]
+        public static void __Load()
+        {
+        }
     }
 
     public partial class HmacTestsModuleTests

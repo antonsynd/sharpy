@@ -12,6 +12,7 @@ namespace OperatorPrecedence
     {
         public static void Main()
         {
+            __Load();
 #line (4, 5) - (4, 23) 12 "operator_precedence.spy"
             global::Sharpy.Builtins.Print(global::Sharpy.Builtins.CheckedIntPow((int)(2), (int)(9)));
 #line (6, 5) - (6, 21) 12 "operator_precedence.spy"
@@ -25,6 +26,12 @@ namespace OperatorPrecedence
 #line (12, 5) - (12, 13) 12 "operator_precedence.spy"
             global::Sharpy.Builtins.Print(y);
 #line hidden
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        [global::Sharpy.SharpyLoadEntry(false)]
+        public static void __Load()
+        {
         }
     }
 }

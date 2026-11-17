@@ -22,6 +22,7 @@ namespace DunderEqReversed1719
 
         public static void Main()
         {
+            __Load();
 #line (22, 5) - (22, 12) 12 "dunder_eq_reversed_1719.spy"
             var d = new global::DunderEqReversed1719.D();
 #line (23, 5) - (23, 18) 12 "dunder_eq_reversed_1719.spy"
@@ -37,6 +38,12 @@ namespace DunderEqReversed1719
 #line (28, 5) - (28, 26) 12 "dunder_eq_reversed_1719.spy"
             global::Sharpy.Builtins.Print(Optional<int>.Some(1) is var __refl_1 && new global::DunderEqReversed1719.S() == __refl_1);
 #line hidden
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        [global::Sharpy.SharpyLoadEntry(false)]
+        public static void __Load()
+        {
         }
     }
 

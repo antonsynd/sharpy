@@ -16,7 +16,7 @@ namespace Sharpy.Compiler.CodeGen;
 /// <c>Sharpy.StaticInit</c> (Sharpy.Core, D3).
 /// <para>Per Guarded value <c>N</c> of type <c>T</c>, in place of today's initialized field:</para>
 /// <code>
-/// private static T N__field;  private static byte N__state;       // no initializers
+/// private static T N__field = default!;  private static byte N__state;   // the CLR default (F15)
 /// private static void N__init() { N__field = &lt;initializer&gt;; }
 /// private static void N__slow() =&gt; StaticInit.Read(ref __host, __Sweep, ref N__state, "n", N__init);
 /// public static ref T N { get { if (!__Swept.Done) N__slow(); return ref N__field; } }   // ref readonly for a const
@@ -45,34 +45,104 @@ internal partial class RoslynEmitter
     internal const string GuardedFieldSuffix = "__field";
 
     private static string GuardedFieldName(string name) => name + GuardedFieldSuffix;
+
+    /// <summary>
+    /// <c>= default!</c>: a Guarded value's storage holds the CLR default its type initializer gives
+    /// it, written out so a nullable-enabled consumer (Sharpy.Stdlib, warnings as errors) sees the
+    /// field assigned (F15). It is no initializer of the value: the slow path never reads it before
+    /// the value's own initializer or a store (D4).
+    /// </summary>
+    private static EqualsValueClauseSyntax ClrDefaultInitializer()
+        => EqualsValueClause(PostfixUnaryExpression(SyntaxKind.SuppressNullableWarningExpression,
+            LiteralExpression(SyntaxKind.DefaultLiteralExpression, Token(SyntaxKind.DefaultKeyword))));
     private static string GuardedStateName(string name) => name + "__state";
     private static string GuardedInitName(string name) => name + "__init";
     private static string GuardedSlowName(string name) => name + "__slow";
 
-    /// <summary>The sweep of the host being emitted (a module, or a class / struct / interface with
-    /// Guarded values): one <c>StaticInit.Run</c> per value, in declaration order (D5).</summary>
+    /// <summary>
+    /// The sweep of the host being emitted (a module, or a class / struct / interface with Guarded
+    /// values), in declaration order (D5): one <c>StaticInit.Run</c> per value, and the requirement
+    /// of each host it requires at its position: an imported module at its import, a non-generic
+    /// nested type at its line (W7). A type with no value is no host: its nested requirements pass
+    /// to the sweep around it.
+    /// </summary>
     private sealed class StaticHostFrame
     {
-        public readonly List<StatementSyntax> Sweep = new();
+        public readonly List<SweepStep> Sweep = new();
         public bool HasValues;
+
+        /// <summary>A value's recorded <see cref="CodeGenInfo.IsOnGenericHost"/> (or the property's): a
+        /// closed generic type is swept by the first use of one of its values, never at a line.</summary>
+        public bool IsGenericHost;
+
+        /// <summary>The module host (always emitted, with its load entry); else a type's.</summary>
+        public bool IsModule;
+
+        /// <summary>The type's C# identifier (a type frame).</summary>
+        public string? TypeName;
     }
+
+    /// <summary>One step of a host's sweep.</summary>
+    private abstract record SweepStep;
+
+    /// <summary>A value's <c>StaticInit.Run</c>.</summary>
+    private sealed record RunStep(StatementSyntax Statement) : SweepStep;
+
+    /// <summary>The requirement of another host, <c>Path.Load()</c>: relative to the host the step is in
+    /// (a nested type), or global (an imported module's members class).</summary>
+    private sealed record RequireStep(IReadOnlyList<string> Path, string Load, bool IsGlobal) : SweepStep;
 
     private StaticHostFrame? _staticHost;
 
-    /// <summary>Opens a host frame for a type or module body; the returned frame is closed by
-    /// <see cref="CloseStaticHost"/>, which restores the enclosing one.</summary>
-    private StaticHostFrame OpenStaticHost(out StaticHostFrame? enclosing)
+    /// <summary>A type's load entry: <c>__Load_&lt;Name&gt;</c>, per type, so a derived host's entry
+    /// hides no base host's (CS0108).</summary>
+    private static string TypeLoadName(string typeName) => "__Load_" + typeName;
+
+    /// <summary>A module's load entry, <c>public static void __Load()</c>, on every Sharpy module.</summary>
+    internal const string ModuleLoadName = "__Load";
+
+    /// <summary>Opens the host frame of a type body; closed by <see cref="CloseStaticHost"/>,
+    /// which restores the enclosing one.</summary>
+    private StaticHostFrame OpenStaticHost(out StaticHostFrame? enclosing, string? typeName = null, bool isModule = false)
     {
         enclosing = _staticHost;
-        _staticHost = new StaticHostFrame();
+        _staticHost = new StaticHostFrame { TypeName = typeName, IsModule = isModule };
         return _staticHost;
     }
 
-    /// <summary>Closes <paramref name="frame"/>: its host members when it has a value, none otherwise.</summary>
+    /// <summary>
+    /// Closes <paramref name="frame"/> and returns its host members: the module's always; a type's
+    /// when it has a value, and then the sweep around it requires a non-generic one at its line
+    /// (D5). A type with no value passes its own requirements to the sweep around it.
+    /// </summary>
     private IEnumerable<MemberDeclarationSyntax> CloseStaticHost(StaticHostFrame frame, StaticHostFrame? enclosing)
     {
         _staticHost = enclosing;
-        return frame.HasValues ? GenerateStaticHostMembers(frame) : Array.Empty<MemberDeclarationSyntax>();
+        if (frame.IsModule)
+        {
+            // A module with nothing to sweep (no value, no requirement) still has its entry, which
+            // does nothing: no host, sweep or Swept class is emitted for it.
+            return frame.Sweep.Count == 0
+                ? new[] { ModuleLoadEntry(Block()) }
+                : GenerateStaticHostMembers(frame, ModuleLoadName, SyntaxKind.PublicKeyword);
+        }
+
+        if (!frame.HasValues)
+        {
+            if (enclosing != null)
+            {
+                foreach (var step in frame.Sweep.OfType<RequireStep>())
+                    enclosing.Sweep.Add(step.IsGlobal ? step : step with { Path = step.Path.Prepend(frame.TypeName!).ToList() });
+            }
+            return Array.Empty<MemberDeclarationSyntax>();
+        }
+
+        if (frame.IsGenericHost)
+            return GenerateStaticHostMembers(frame, null, SyntaxKind.InternalKeyword);
+
+        var load = TypeLoadName(frame.TypeName!);
+        enclosing?.Sweep.Add(new RequireStep(new[] { frame.TypeName! }, load, IsGlobal: false));
+        return GenerateStaticHostMembers(frame, load, SyntaxKind.InternalKeyword);
     }
 
     private StaticHostFrame CurrentStaticHost
@@ -91,20 +161,59 @@ internal partial class RoslynEmitter
         => TokenList(Token(SyntaxKind.PrivateKeyword), Token(SyntaxKind.StaticKeyword));
 
     /// <summary>
+    /// A helper's access (D10): within the assembly, never wider than its value's. A consumer by
+    /// reference names only the value's property, after the module's entry ran, so no helper is
+    /// public; a private value's stays private, a protected one's is <c>private protected</c>.
+    /// </summary>
+    private static SyntaxTokenList HelperAccess(SyntaxKind valueAccess) => valueAccess switch
+    {
+        SyntaxKind.PrivateKeyword => PrivateStatic(),
+        SyntaxKind.ProtectedKeyword => TokenList(Token(SyntaxKind.PrivateKeyword), Token(SyntaxKind.ProtectedKeyword), Token(SyntaxKind.StaticKeyword)),
+        _ => TokenList(Token(SyntaxKind.InternalKeyword), Token(SyntaxKind.StaticKeyword)),
+    };
+
+    /// <summary><c>[global::System.Runtime.CompilerServices.CompilerGenerated]</c>, on every member D4
+    /// and D5 add (D10): discovery skips a member that carries it.</summary>
+    private static AttributeListSyntax CompilerGeneratedAttribute()
+        => AttributeList(SingletonSeparatedList(Attribute(
+            (NameSyntax)MakeGlobalQualifiedName("System", "Runtime", "CompilerServices", "CompilerGenerated"))));
+
+    private static SyntaxList<AttributeListSyntax> Generated() => SingletonList(CompilerGeneratedAttribute());
+
+    /// <summary><c>[global::Sharpy.SharpyStaticStorage(global::Sharpy.StaticStorageKind.Guarded)]</c>, on the
+    /// property a Guarded value's consumers name (D10): the storage discovery reads.</summary>
+    private static AttributeListSyntax GuardedStorageAttribute()
+        => AttributeList(SingletonSeparatedList(Attribute((NameSyntax)MakeGlobalQualifiedName("Sharpy", "SharpyStaticStorage"))
+            .WithArgumentList(AttributeArgumentList(SingletonSeparatedList(AttributeArgument(
+                MakeGlobalQualifiedName("Sharpy", "StaticStorageKind", "Guarded")))))));
+
+    /// <summary><c>[CompilerGenerated, global::Sharpy.SharpyLoadEntry(hasSweep)]</c>, on a module's load entry (D10).</summary>
+    private static SyntaxList<AttributeListSyntax> LoadEntryAttributes(bool hasSweep)
+        => List(new[]
+        {
+            CompilerGeneratedAttribute(),
+            AttributeList(SingletonSeparatedList(Attribute((NameSyntax)MakeGlobalQualifiedName("Sharpy", "SharpyLoadEntry"))
+                .WithArgumentList(AttributeArgumentList(SingletonSeparatedList(AttributeArgument(
+                    LiteralExpression(hasSweep ? SyntaxKind.TrueLiteralExpression : SyntaxKind.FalseLiteralExpression))))))),
+        });
+
+    /// <summary>
     /// The host's own members: <c>__host</c>, <c>__Sweep</c> and <c>__Swept</c> (D5; the documented
     /// shape on <c>Sharpy.StaticInit</c>). Private: a host's sweep is required through its own values.
     /// </summary>
-    private static IEnumerable<MemberDeclarationSyntax> GenerateStaticHostMembers(StaticHostFrame frame)
+    private IEnumerable<MemberDeclarationSyntax> GenerateStaticHostMembers(StaticHostFrame frame, string? loadName, SyntaxKind loadAccess)
     {
         // private static global::Sharpy.StaticInitHost __host;
         yield return FieldDeclaration(VariableDeclaration(MakeGlobalQualifiedName("Sharpy", "StaticInitHost"))
                 .WithVariables(SingletonSeparatedList(VariableDeclarator(Identifier(HostFieldName)))))
-            .WithModifiers(PrivateStatic());
+            .WithModifiers(PrivateStatic())
+            .WithAttributeLists(Generated());
 
         // private static void __Sweep() { StaticInit.Run(ref a__state, "a", a__init); ... }
         yield return MethodDeclaration(PredefinedType(Token(SyntaxKind.VoidKeyword)), Identifier(SweepMethodName))
             .WithModifiers(PrivateStatic())
-            .WithBody(Block(frame.Sweep));
+            .WithAttributeLists(Generated())
+            .WithBody(Block(frame.Sweep.Select(step => SweepStatement(step, frame))));
 
         // private static class __Swept { internal static readonly bool Done; static __Swept() { Done = StaticInit.TryLoad(ref __host, __Sweep); } }
         var done = FieldDeclaration(VariableDeclaration(PredefinedType(Token(SyntaxKind.BoolKeyword)))
@@ -123,7 +232,69 @@ internal partial class RoslynEmitter
                     })))))));
         yield return ClassDeclaration(SweptClassName)
             .WithModifiers(PrivateStatic())
+            .WithAttributeLists(Generated())
             .WithMembers(List(new MemberDeclarationSyntax[] { done, cctor }));
+
+        if (loadName == null)
+            yield break;
+
+        // <access> static void __Load() { if (!__Swept.Done) StaticInit.Load(ref __host, __Sweep); }
+        if (frame.IsModule)
+        {
+            yield return ModuleLoadEntry(Block(LoadStatement()));
+            yield break;
+        }
+        yield return MethodDeclaration(PredefinedType(Token(SyntaxKind.VoidKeyword)), Identifier(loadName))
+            .WithModifiers(TokenList(Token(loadAccess), Token(SyntaxKind.StaticKeyword)))
+            .WithAttributeLists(Generated())
+            .WithBody(Block(LoadStatement()));
+    }
+
+    /// <summary>
+    /// <c>[CompilerGenerated, SharpyLoadEntry(hasSweep)] public static void __Load() { body }</c>: a
+    /// module's entry carries its sweep fact for an importer by reference (D10) — the module's own
+    /// recorded HasSweep, else true (a load of a host with nothing to sweep returns at once).
+    /// </summary>
+    private MethodDeclarationSyntax ModuleLoadEntry(BlockSyntax body)
+        => MethodDeclaration(PredefinedType(Token(SyntaxKind.VoidKeyword)), Identifier(ModuleLoadName))
+            .WithModifiers(TokenList(Token(SyntaxKind.PublicKeyword), Token(SyntaxKind.StaticKeyword)))
+            .WithAttributeLists(LoadEntryAttributes(
+                (_context.SourceFilePath is { } sourcePath ? _context.SemanticBinding.GetModuleHasSweep(sourcePath) : null) ?? true))
+            .WithBody(body);
+
+    /// <summary><c>if (!__Swept.Done) StaticInit.Load(ref __host, __Sweep);</c></summary>
+    private static StatementSyntax LoadStatement()
+        => IfStatement(
+            PrefixUnaryExpression(SyntaxKind.LogicalNotExpression, SweptDone()),
+            ExpressionStatement(InvocationExpression(StaticInitName("Load"))
+                .WithArgumentList(ArgumentList(SeparatedList(new[]
+                {
+                    RefArgument(HostFieldName),
+                    Argument(IdentifierName(SweepMethodName)),
+                })))));
+
+    /// <summary>A sweep step's statement in <paramref name="frame"/>: a value's run, or a requirement,
+    /// spelled from the module's namespace in the module host and relative to a type host.</summary>
+    private StatementSyntax SweepStatement(SweepStep step, StaticHostFrame frame) => step switch
+    {
+        RunStep run => run.Statement,
+        RequireStep require => ExpressionStatement(InvocationExpression(MemberAccessExpression(
+            SyntaxKind.SimpleMemberAccessExpression,
+            RequirementPath(require, frame),
+            IdentifierName(require.Load)))),
+        _ => throw new InternalCompilerErrorException("RoslynEmitter", $"unknown sweep step {step} (plan-775c50 D5)"),
+    };
+
+    private ExpressionSyntax RequirementPath(RequireStep require, StaticHostFrame frame)
+    {
+        if (require.IsGlobal)
+            return MakeGlobalQualifiedName(require.Path.ToArray());
+        if (frame.IsModule)
+            return MakeGlobalQualifiedName(_moduleShape!.NamespaceParts.Concat(require.Path).ToArray());
+        ExpressionSyntax path = EscapedIdentifierName(require.Path[0]);
+        foreach (var segment in require.Path.Skip(1))
+            path = MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression, path, EscapedIdentifierName(segment));
+        return path;
     }
 
     /// <summary>One Guarded value's declaration, read from its declaration and its recorded facts.</summary>
@@ -151,14 +322,16 @@ internal partial class RoslynEmitter
         if (declareField)
         {
             yield return FieldDeclaration(VariableDeclaration(type)
-                    .WithVariables(SingletonSeparatedList(VariableDeclarator(EscapedIdentifier(fieldName)))))
+                    .WithVariables(SingletonSeparatedList(VariableDeclarator(EscapedIdentifier(fieldName))
+                        .WithInitializer(ClrDefaultInitializer()))))
                 .WithModifiers(fieldModifiers ?? PrivateStatic())
-                .WithAttributeLists(fieldAttributes);
+                .WithAttributeLists(fieldAttributes.Add(CompilerGeneratedAttribute()));
         }
 
         yield return FieldDeclaration(VariableDeclaration(PredefinedType(Token(SyntaxKind.ByteKeyword)))
                 .WithVariables(SingletonSeparatedList(VariableDeclarator(Identifier(stateName)))))
-            .WithModifiers(PrivateStatic());
+            .WithModifiers(PrivateStatic())
+            .WithAttributeLists(Generated());
 
         // private static void N__init() { <hoisted>; N__field = <initializer>; }
         ExpressionSyntax value = generatedInitializer!;
@@ -172,11 +345,13 @@ internal partial class RoslynEmitter
         };
         yield return MethodDeclaration(PredefinedType(Token(SyntaxKind.VoidKeyword)), Identifier(initName))
             .WithModifiers(PrivateStatic())
+            .WithAttributeLists(Generated())
             .WithBody(Block(initBody));
 
         // private static void N__slow() => StaticInit.Read(ref __host, __Sweep, ref N__state, "n", N__init);
         yield return MethodDeclaration(PredefinedType(Token(SyntaxKind.VoidKeyword)), Identifier(GuardedSlowName(csharpName)))
             .WithModifiers(PrivateStatic())
+            .WithAttributeLists(Generated())
             .WithExpressionBody(ArrowExpressionClause(InvocationExpression(StaticInitName("Read"))
                 .WithArgumentList(ArgumentList(SeparatedList(new[]
                 {
@@ -189,13 +364,13 @@ internal partial class RoslynEmitter
             .WithSemicolonToken(Token(SyntaxKind.SemicolonToken));
 
         // The sweep step, at the value's declaration position: StaticInit.Run(ref N__state, "n", N__init);
-        host.Sweep.Add(ExpressionStatement(InvocationExpression(StaticInitName("Run"))
+        host.Sweep.Add(new RunStep(ExpressionStatement(InvocationExpression(StaticInitName("Run"))
             .WithArgumentList(ArgumentList(SeparatedList(new[]
             {
                 RefArgument(stateName),
                 Argument(LiteralExpression(SyntaxKind.StringLiteralExpression, Literal(sourceName))),
                 Argument(IdentifierName(initName)),
-            })))));
+            }))))));
     }
 
     /// <summary><c>if (!__Swept.Done) N__slow();</c></summary>
@@ -235,9 +410,10 @@ internal partial class RoslynEmitter
     {
         var name = v.CSharpName;
         var fieldName = GuardedFieldName(name);
-        var access = TokenList(Token(v.Access), Token(SyntaxKind.StaticKeyword));
-        // The backing field has the value's accessibility: an `async def` body names it after
-        // N__ensure() (D6), from wherever it can name the value.
+        var valueAccess = TokenList(Token(v.Access), Token(SyntaxKind.StaticKeyword));
+        // The backing field and the helpers are the assembly's (D10): an `async def` body names the
+        // field after N__ensure() (D6), and every store and `out` site is compiled here.
+        var access = HelperAccess(v.Access);
         foreach (var member in GenerateGuardedStorage(name, v.SourceName, fieldName, v.Type, v.Initializer, v.FieldAttributes,
                      fieldModifiers: access))
             yield return member;
@@ -247,8 +423,8 @@ internal partial class RoslynEmitter
         if (v.IsReadOnly)
             refType = refType.WithReadOnlyKeyword(Token(SyntaxKind.ReadOnlyKeyword));
         yield return PropertyDeclaration(refType, EscapedIdentifier(name))
-            .WithModifiers(access)
-            .WithAttributeLists(v.PropertyAttributes)
+            .WithModifiers(valueAccess)
+            .WithAttributeLists(v.PropertyAttributes.Add(GuardedStorageAttribute()))
             .WithAccessorList(AccessorList(SingletonList(AccessorDeclaration(SyntaxKind.GetAccessorDeclaration)
                 .WithBody(Block(
                     GuardedReadPrelude(name),
@@ -257,6 +433,7 @@ internal partial class RoslynEmitter
         // public static void N__ensure() { if (!__Swept.Done) N__slow(); }   (D6)
         yield return MethodDeclaration(PredefinedType(Token(SyntaxKind.VoidKeyword)), Identifier(name + GuardedEnsureSuffix))
             .WithModifiers(access)
+            .WithAttributeLists(Generated())
             .WithBody(Block(GuardedReadPrelude(name)));
 
         if (v.IsReadOnly)
@@ -265,6 +442,7 @@ internal partial class RoslynEmitter
         // public static T N__set(T value) { if (__Swept.Done) N__field = value; else StaticInit.Store(...); return value; }
         yield return MethodDeclaration(v.Type, Identifier(name + GuardedSetSuffix))
             .WithModifiers(access)
+            .WithAttributeLists(Generated())
             .WithParameterList(ParameterList(SingletonSeparatedList(Parameter(Identifier("value")).WithType(v.Type))))
             .WithBody(Block(
                 GuardedStoreStatement(name, fieldName, IdentifierName("value")),
@@ -284,6 +462,7 @@ internal partial class RoslynEmitter
         var box = StrongBoxOf(v.Type);
         yield return MethodDeclaration(box, Identifier(name + GuardedPickSuffix))
             .WithModifiers(access)
+            .WithAttributeLists(Generated())
             .WithBody(Block(
                 IfStatement(
                     PrefixUnaryExpression(SyntaxKind.LogicalNotExpression, SweptDone()),
@@ -310,9 +489,13 @@ internal partial class RoslynEmitter
         // }
         // The temporary is a heap box, so the method returns no `out` parameter by reference (F15:
         // no [UnscopedRef], which netstandard2.1 lacks, on either target).
-        var boxValue = MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression, IdentifierName("spill"), IdentifierName("Value"));
+        // The box's Value is [MaybeNull] on net10.0: a pick's box is only ever read after the call
+        // that assigns it through `out` (F15: nullable-clean on both targets).
+        var boxValue = PostfixUnaryExpression(SyntaxKind.SuppressNullableWarningExpression,
+            MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression, IdentifierName("spill"), IdentifierName("Value")));
         yield return MethodDeclaration(RefType(v.Type), Identifier(name + GuardedOutSuffix))
             .WithModifiers(access)
+            .WithAttributeLists(Generated())
             .WithParameterList(ParameterList(SingletonSeparatedList(Parameter(Identifier("spill"))
                 .WithModifiers(TokenList(Token(SyntaxKind.OutKeyword)))
                 .WithType(box))))
@@ -327,6 +510,7 @@ internal partial class RoslynEmitter
         // public static R N__commit<R>(R result, StrongBox<T>? spill) { if (spill != null) N__set(spill.Value); return result; }
         yield return MethodDeclaration(IdentifierName("R"), Identifier(name + GuardedCommitSuffix))
             .WithModifiers(access)
+            .WithAttributeLists(Generated())
             .WithTypeParameterList(TypeParameterList(SingletonSeparatedList(TypeParameter("R"))))
             .WithParameterList(ParameterList(SeparatedList(new[]
             {
@@ -362,6 +546,9 @@ internal partial class RoslynEmitter
     /// </summary>
     private IEnumerable<MemberDeclarationSyntax> GuardPropertyGroup(List<MemberDeclarationSyntax> members, PropertyDef first)
     {
+        // A closed generic type is swept by first use, never at a line (D5): the property's own fact.
+        if (_currentTypeSymbol?.FindProperty(first.Name, first.ExplicitInterface) is { IsOnGenericHost: true })
+            CurrentStaticHost.IsGenericHost = true;
         var property = members.OfType<PropertyDeclarationSyntax>().Single();
         var backing = members.OfType<FieldDeclarationSyntax>()
             .SingleOrDefault(f => f.Declaration.Variables[0].Initializer != null);
@@ -381,16 +568,18 @@ internal partial class RoslynEmitter
             {
                 output.AddRange(GenerateGuardedStorage(name, first.Name, fieldName, type, null,
                     new SyntaxList<AttributeListSyntax>(), declareField: backing == null, generatedInitializer: initializer));
-                var guarded = GuardPropertyAccessors(property, name, fieldName);
+                var guarded = GuardPropertyAccessors(property, name, fieldName).AddAttributeLists(GuardedStorageAttribute());
                 output.Add(guarded);
                 // The plain-store seam is one spelling for every Guarded value (D4): a property
                 // default's N__set stores through its setter, which keeps get / set.
                 if (guarded.AccessorList!.Accessors.Any(a => a.IsKind(SyntaxKind.SetAccessorDeclaration)))
                 {
+                    var propertyAccess = guarded.Modifiers.Any(m => m.IsKind(SyntaxKind.PrivateKeyword)) ? SyntaxKind.PrivateKeyword
+                        : guarded.Modifiers.Any(m => m.IsKind(SyntaxKind.ProtectedKeyword)) ? SyntaxKind.ProtectedKeyword
+                        : SyntaxKind.InternalKeyword;
                     output.Add(MethodDeclaration(type, Identifier(name + GuardedSetSuffix))
-                        .WithModifiers(TokenList(guarded.Modifiers.Where(m => m.IsKind(SyntaxKind.PublicKeyword)
-                            || m.IsKind(SyntaxKind.InternalKeyword) || m.IsKind(SyntaxKind.ProtectedKeyword)
-                            || m.IsKind(SyntaxKind.PrivateKeyword) || m.IsKind(SyntaxKind.StaticKeyword))))
+                        .WithModifiers(HelperAccess(propertyAccess))
+                        .WithAttributeLists(Generated())
                         .WithParameterList(ParameterList(SingletonSeparatedList(Parameter(Identifier("value")).WithType(type))))
                         .WithBody(Block(
                             ExpressionStatement(AssignmentExpression(SyntaxKind.SimpleAssignmentExpression,
@@ -400,7 +589,7 @@ internal partial class RoslynEmitter
             }
             else if (ReferenceEquals(member, backing))
             {
-                var variable = backing.Declaration.Variables[0].WithInitializer(null);
+                var variable = backing.Declaration.Variables[0].WithInitializer(ClrDefaultInitializer());
                 output.Add(backing
                     .WithDeclaration(backing.Declaration.WithVariables(SingletonSeparatedList(variable)))
                     .WithModifiers(PrivateStatic()));
@@ -461,6 +650,40 @@ internal partial class RoslynEmitter
         } && assignment.IsKind(SyntaxKind.SimpleAssignmentExpression) && left.Identifier.ValueText == fieldName
             ? GuardedStoreStatement(name, fieldName, assignment.Right)
             : statement;
+
+    /// <summary>
+    /// An import's requirements in the module's sweep, at its position (D5): each Sharpy module the
+    /// statement makes Python run, in the order <c>SemanticInfo.GetImportRequirements</c> records
+    /// (ancestor packages, the module, a from-import's submodules), through its load entry, when its
+    /// layout records a sweep: a source module's under the project namespace, a module imported by
+    /// reference's by its members class's CLR name (D10). A module the fact does not list (a CLR
+    /// module with no load entry) is not required.
+    /// </summary>
+    private void AddImportRequirements(Statement import)
+    {
+        foreach (var module in _context.SemanticInfo?.GetImportRequirements(import) ?? [])
+        {
+            if (!module.HasSweep)
+                continue;
+            if (module.ClrMembersClass is { } clrMembersClass)
+            {
+                // A module imported by reference (D10): its discovered members class, by its CLR name.
+                CurrentStaticHost.Sweep.Add(new RequireStep(clrMembersClass.Replace('+', '.').Split('.'), ModuleLoadName, IsGlobal: true));
+                continue;
+            }
+            AddModuleRequirement(module.NamespaceSegments, module.MembersClassName);
+        }
+    }
+
+    private void AddModuleRequirement(IReadOnlyList<string> namespaceSegments, string membersClass)
+    {
+        var path = new List<string>();
+        if (!string.IsNullOrEmpty(_context.ProjectNamespace))
+            path.AddRange(_context.ProjectNamespace!.Split('.'));
+        path.AddRange(namespaceSegments);
+        path.Add(membersClass);
+        CurrentStaticHost.Sweep.Add(new RequireStep(path, ModuleLoadName, IsGlobal: true));
+    }
 
     // ------------------------------------------------------------------------------------------- //
     // The use sites: a plain store and an `out` operand (D4)

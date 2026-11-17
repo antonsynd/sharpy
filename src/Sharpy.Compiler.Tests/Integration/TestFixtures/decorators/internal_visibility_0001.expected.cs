@@ -13,6 +13,7 @@ namespace InternalVisibility0001
     {
         public static void Main()
         {
+            __Load();
 #line (22, 5) - (22, 28) 12 "internal_visibility_0001.spy"
             global::InternalVisibility0001.Service s = new global::InternalVisibility0001.Service();
 #line (23, 5) - (23, 29) 12 "internal_visibility_0001.spy"
@@ -20,6 +21,12 @@ namespace InternalVisibility0001
 #line (24, 5) - (24, 19) 12 "internal_visibility_0001.spy"
             global::Sharpy.Builtins.Print(s.Label);
 #line hidden
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        [global::Sharpy.SharpyLoadEntry(false)]
+        public static void __Load()
+        {
         }
     }
 

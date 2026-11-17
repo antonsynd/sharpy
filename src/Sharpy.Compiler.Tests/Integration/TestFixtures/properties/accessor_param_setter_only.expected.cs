@@ -12,6 +12,7 @@ namespace AccessorParamSetterOnly
     {
         public static void Main()
         {
+            __Load();
 #line (16, 5) - (16, 20) 12 "accessor_param_setter_only.spy"
             global::AccessorParamSetterOnly.Box b = new global::AccessorParamSetterOnly.Box();
 #line (17, 5) - (17, 18) 12 "accessor_param_setter_only.spy"
@@ -19,6 +20,12 @@ namespace AccessorParamSetterOnly
 #line (18, 5) - (18, 25) 12 "accessor_param_setter_only.spy"
             global::Sharpy.Builtins.Print(b.GetValue());
 #line hidden
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        [global::Sharpy.SharpyLoadEntry(false)]
+        public static void __Load()
+        {
         }
     }
 

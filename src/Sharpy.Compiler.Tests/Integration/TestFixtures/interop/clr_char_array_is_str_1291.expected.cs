@@ -34,6 +34,7 @@ namespace ClrCharArrayIsStr1291
 
         public static void Main()
         {
+            __Load();
 #line (28, 5) - (28, 33) 12 "clr_char_array_is_str_1291.spy"
             var cs = global::System.Array.ConvertAll<char, string>("hello".ToCharArray(), char.ToString);
 #line (31, 5) - (31, 20) 12 "clr_char_array_is_str_1291.spy"
@@ -73,6 +74,12 @@ namespace ClrCharArrayIsStr1291
 #line (53, 5) - (53, 26) 12 "clr_char_array_is_str_1291.spy"
             global::Sharpy.Builtins.Print(global::ClrCharArrayIsStr1291.ClrCharArrayIsStr1291Module.Echo(global::Sharpy.ArrayHelpers.GetItem(named, 1)));
 #line hidden
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        [global::Sharpy.SharpyLoadEntry(false)]
+        public static void __Load()
+        {
         }
     }
 }

@@ -555,6 +555,47 @@ internal class CachedModuleDiscovery
     }
 
     /// <summary>
+    /// The load entry of the Sharpy module <paramref name="moduleName"/> imported by reference (plan-775c50
+    /// D10): its members class and sweep fact, read from the <c>Sharpy.SharpyLoadEntryAttribute</c> on
+    /// the module class's entry. Keyed by the Sharpy import name (<c>math</c>, <c>os.path</c>), as
+    /// <see cref="GetModuleFields"/> is; each module of a package has its own. Null for a module that is
+    /// not discovered or whose class declares no entry (a hand-written C# module, a .NET namespace).
+    /// </summary>
+    public ModuleLoadEntry? GetModuleLoadEntry(string moduleName)
+    {
+        foreach (var lazy in _loadedIndices.Values)
+        {
+            if (lazy.Value.Modules.TryGetValue(moduleName, out var moduleOverloads)
+                && moduleOverloads.LoadEntry is { } entry)
+            {
+                return new ModuleLoadEntry(entry.MembersClassFullName, entry.HasSweep);
+            }
+        }
+
+        return null;
+    }
+
+    /// <summary>
+    /// Whether the discovered module value <paramref name="fieldName"/> (its Sharpy spelling) of
+    /// <paramref name="moduleName"/> records a Guarded storage (plan-775c50 D10), from its
+    /// <c>Sharpy.SharpyStaticStorageAttribute</c> alone; null for no such value. Held by discovery only:
+    /// an importer by reference reads the value as Plain (lead ruling).
+    /// </summary>
+    internal bool? IsModuleFieldGuarded(string moduleName, string fieldName)
+    {
+        foreach (var lazy in _loadedIndices.Values)
+        {
+            if (lazy.Value.Modules.TryGetValue(moduleName, out var moduleOverloads)
+                && moduleOverloads.Fields.TryGetValue(fieldName, out var field))
+            {
+                return field.IsGuarded;
+            }
+        }
+
+        return null;
+    }
+
+    /// <summary>
     /// Whether a loaded assembly declares <paramref name="moduleName"/> as a Sharpy module by
     /// attribute — a <c>[SharpyModule("name")]</c> members class or a
     /// <c>[SharpyModuleType("name", …)]</c> type — rather than the namespace-derived name
@@ -1004,3 +1045,7 @@ internal class CachedModuleDiscovery
         return new UnmappedClrType { ClrTypeName = signature.ClrTypeName ?? signature.Name };
     }
 }
+
+/// <summary>A by-reference Sharpy module's load entry (plan-775c50 D10): the CLR full name of its members
+/// class (nested types joined by '.') and whether it has a sweep an importer requires.</summary>
+public sealed record ModuleLoadEntry(string MembersClassFullName, bool HasSweep);

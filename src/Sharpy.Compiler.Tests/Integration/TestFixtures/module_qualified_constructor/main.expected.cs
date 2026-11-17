@@ -15,6 +15,7 @@ namespace Sharpy.Test.Main
     {
         public static void Main()
         {
+            __Load();
 #line (10, 5) - (10, 27) 12 "main.spy"
             var p = new global::Sharpy.Test.Shapes.Point(3, 4);
 #line (11, 5) - (11, 13) 12 "main.spy"
@@ -28,6 +29,12 @@ namespace Sharpy.Test.Main
 #line (19, 5) - (19, 14) 12 "main.spy"
             global::Sharpy.Builtins.Print(c2);
 #line hidden
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        [global::Sharpy.SharpyLoadEntry(false)]
+        public static void __Load()
+        {
         }
     }
 }
@@ -49,6 +56,11 @@ namespace Sharpy.Test.Shapes
     [global::Sharpy.SharpyModule("shapes")]
     public static partial class ShapesModule
     {
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        [global::Sharpy.SharpyLoadEntry(false)]
+        public static void __Load()
+        {
+        }
     }
 
     [global::Sharpy.SharpyModuleType("shapes", "Point")]

@@ -12,6 +12,7 @@ namespace DunderLen
     {
         public static void Main()
         {
+            __Load();
 #line (15, 5) - (15, 18) 12 "dunder_len.spy"
             var ml = new global::DunderLen.MyList();
 #line (16, 5) - (16, 14) 12 "dunder_len.spy"
@@ -27,6 +28,12 @@ namespace DunderLen
 #line (21, 5) - (21, 22) 12 "dunder_len.spy"
             global::Sharpy.Builtins.Print(global::Sharpy.Builtins.Len(empty));
 #line hidden
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        [global::Sharpy.SharpyLoadEntry(false)]
+        public static void __Load()
+        {
         }
     }
 

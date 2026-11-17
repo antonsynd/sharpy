@@ -29,9 +29,18 @@ namespace Sharpy.Stdlib.Tests.Conformance;
 /// in the literal <see cref="MutatorRoster"/> (<c>F.Add(...)</c>, <c>F?.Clear()</c>,
 /// <c>F[k].Add(...)</c>). The target must BIND to the field symbol, so a local or an instance field
 /// that shares the name is not a write. The ~60 spy "constants" (<c>math.pi</c>,
-/// <c>socket.AF_INET</c>, …) are emitted as <c>public static</c> non-readonly fields and are
+/// <c>socket.AF_INET</c>, …) are emitted as writable module values and are
 /// excluded by this predicate — never written after their initializer — not by a list
 /// (<see cref="NegativeControl_ASpyConstantIsScannedAndNotWritten"/>).</para>
+///
+/// <para><b>A Guarded value (plan-775c50 D4, D10).</b> A spy module value with an initializer is the
+/// <c>ref</c> property carrying <c>Sharpy.SharpyStaticStorageAttribute(Guarded)</c>, keyed by the
+/// property; its storage is the field its getter returns by reference. The value's own
+/// <c>[CompilerGenerated]</c> members — its initializer <c>N__init</c>, its store seam and its state
+/// byte — are its machinery, not writes and not globals. A write is the predicate above with the
+/// target bound to the property or its storage, outside a generated member, or a call to the
+/// value's store seam (D4: a plain store is <c>N__set(v)</c>, an <c>out</c> operand
+/// <c>N__out(...)</c>) from a member the compiler did not generate.</para>
 ///
 /// <para>A written static without a row is red (a new process-wide global needs its CPython model
 /// and synchronization named); a row the census no longer finds is red (stale — drain it). The
@@ -192,19 +201,21 @@ public class StdlibModuleGlobalRosterTests
             Roster.Where(r => r.CuredBy == "#2250").Select(r => r.Field).OrderBy(f => f, StringComparer.Ordinal));
     }
 
-    /// <summary>Positive control: the generated random module's seed() assigns <c>_Random = new …</c>.</summary>
+    /// <summary>Positive control: the generated random module's seed() stores <c>_Random</c> through its
+    /// store seam, <c>_Random__set(new …)</c> (plan-775c50 D4: a plain store to a Guarded value).</summary>
     [Fact]
     public void PositiveControl_GeneratedRandomSeedIsAWrite()
     {
         var census = StdlibCensus.Value;
         Assert.True(census.Written.TryGetValue("Sharpy.RandomModule.RandomModuleModule._Random", out var writes),
             "the census must find random.seed()'s write to _Random");
-        Assert.Contains(writes, w => w.File == "src/Sharpy.Stdlib/Random/Random.cs" && w.Member == "Seed" && w.Kind == "SimpleAssignmentExpression");
+        Assert.Contains(writes, w => w.File == "src/Sharpy.Stdlib/Random/Random.cs" && w.Member == "Seed" && w.Kind == "store-call ._Random__set");
     }
 
     /// <summary>
-    /// Negative control: a spy constant is a static NON-readonly field (as every spy module-level
-    /// binding is), it is scanned, and it is not written — excluded by the predicate, not a list.
+    /// Negative control: a spy constant is a writable module value (a Guarded value's <c>ref</c>
+    /// property, as every initialized spy module-level binding is), it is scanned, and it is not
+    /// written — excluded by the predicate, not a list.
     /// </summary>
     [Fact]
     public void NegativeControl_ASpyConstantIsScannedAndNotWritten()
@@ -374,6 +385,9 @@ public class StdlibModuleGlobalRosterTests
         /// <summary>The written statics → their write sites.</summary>
         public Dictionary<string, System.Collections.Generic.List<WriteSite>> Written { get; } = new(StringComparer.Ordinal);
 
+        /// <summary>A Guarded value's property → its key; its storage field → the same key (D4).</summary>
+        private readonly Dictionary<ISymbol, string> _guarded = new(SymbolEqualityComparer.Default);
+
         public static Census Run(CSharpCompilation compilation)
         {
             var census = new Census { Files = compilation.SyntaxTrees.Count() };
@@ -384,12 +398,34 @@ public class StdlibModuleGlobalRosterTests
             foreach (var tree in compilation.SyntaxTrees)
             {
                 var model = compilation.GetSemanticModel(tree);
+                foreach (var property in tree.GetRoot().DescendantNodes().OfType<PropertyDeclarationSyntax>())
+                {
+                    if (model.GetDeclaredSymbol(property) is not IPropertySymbol { IsStatic: true } symbol || !IsGuarded(symbol))
+                        continue;
+                    var key = symbol.ContainingType.ToDisplayString() + "." + symbol.Name;
+                    census._guarded[symbol] = key;
+                    census.Declared[key] = $"{tree.FilePath}:{Line(property)}";
+                    if (symbol.RefKind == RefKind.Ref)
+                        census.NonReadonly.Add(key);
+                    var storage = property.AccessorList?.Accessors
+                        .SelectMany(a => a.DescendantNodes().OfType<ReturnStatementSyntax>())
+                        .Select(r => r.Expression is RefExpressionSyntax refReturn ? model.GetSymbolInfo(refReturn.Expression).Symbol : null)
+                        .OfType<IFieldSymbol>().FirstOrDefault();
+                    if (storage != null)
+                        census._guarded[storage] = key;
+                }
+            }
+
+            foreach (var tree in compilation.SyntaxTrees)
+            {
+                var model = compilation.GetSemanticModel(tree);
                 var root = tree.GetRoot();
 
                 foreach (var declarator in root.DescendantNodes().OfType<VariableDeclaratorSyntax>()
                              .Where(v => v.Parent?.Parent is FieldDeclarationSyntax))
                 {
-                    if (model.GetDeclaredSymbol(declarator) is IFieldSymbol { IsStatic: true, IsConst: false } field)
+                    if (model.GetDeclaredSymbol(declarator) is IFieldSymbol { IsStatic: true, IsConst: false } field
+                        && !IsCompilerGenerated(field))
                     {
                         census.Declared[Key(field)] = $"{tree.FilePath}:{Line(declarator)}";
                         if (!field.IsReadOnly)
@@ -423,6 +459,7 @@ public class StdlibModuleGlobalRosterTests
                             var receiver = MutatorReceiver(invocation);
                             if (receiver != null)
                                 census.Record(model, receiver, invocation, "mutator ." + MemberName(invocation));
+                            census.RecordStoreSeamCall(model, invocation);
                             break;
                     }
                 }
@@ -430,6 +467,39 @@ public class StdlibModuleGlobalRosterTests
 
             return census;
         }
+
+        /// <summary>D4's store seams of a Guarded value <c>N</c>: <c>N__set</c> (a plain store) and
+        /// <c>N__out</c> (an <c>out</c> operand), each a generated member of N's type.</summary>
+        private static readonly string[] StoreSeamSuffixes = { "__set", "__out" };
+
+        private void RecordStoreSeamCall(SemanticModel model, InvocationExpressionSyntax invocation)
+        {
+            if (model.GetSymbolInfo(invocation).Symbol is not IMethodSymbol { IsStatic: true } method || !IsCompilerGenerated(method))
+                return;
+            var value = _guarded.FirstOrDefault(g => g.Key is IPropertySymbol property
+                && SymbolEqualityComparer.Default.Equals(property.ContainingType, method.ContainingType)
+                && StoreSeamSuffixes.Any(suffix => method.Name == property.Name + suffix));
+            if (value.Key == null || InGeneratedMember(model, invocation))
+                return;
+            AddSite(value.Value, invocation, "store-call ." + method.Name);
+        }
+
+        private static bool IsGuarded(IPropertySymbol property)
+            => property.GetAttributes().Any(a => a.AttributeClass?.ToDisplayString() == "Sharpy.SharpyStaticStorageAttribute"
+                && a.ConstructorArguments.Length == 1 && a.ConstructorArguments[0].Value is int kind && kind == 1);
+
+        /// <summary>The symbol, or a type containing it, carries <c>[CompilerGenerated]</c> (a host's
+        /// <c>__Swept</c> holder's <c>Done</c> is the holder's).</summary>
+        private static bool IsCompilerGenerated(ISymbol symbol)
+            => symbol.GetAttributes().Any(a => a.AttributeClass?.ToDisplayString() == "System.Runtime.CompilerServices.CompilerGeneratedAttribute")
+                || (symbol.ContainingType is { } containing && IsCompilerGenerated(containing));
+
+        /// <summary>Whether <paramref name="site"/> is in a member the compiler generated (a Guarded value's machinery).</summary>
+        private static bool InGeneratedMember(SemanticModel model, SyntaxNode site)
+            => site.Ancestors().OfType<MemberDeclarationSyntax>()
+                .Any(m => (m is BaseFieldDeclarationSyntax f
+                        ? f.Declaration.Variables.Select(v => model.GetDeclaredSymbol(v)).FirstOrDefault()
+                        : model.GetDeclaredSymbol(m)) is { } declared && IsCompilerGenerated(declared));
 
         private static readonly HashSet<string> ReadOnlyRefCallees = new(StringComparer.Ordinal)
         {
@@ -491,16 +561,33 @@ public class StdlibModuleGlobalRosterTests
                 return;
             }
 
-            if (symbol is not IFieldSymbol { IsStatic: true, IsConst: false } field
-                || !field.Locations.Any(l => l.IsInSource))
-                return;
+            string key;
+            if (_guarded.TryGetValue(symbol, out var guardedKey))
+            {
+                // A Guarded value, through its property or its storage: its own machinery is no write.
+                if (InGeneratedMember(model, site))
+                    return;
+                key = guardedKey;
+            }
+            else
+            {
+                if (symbol is not IFieldSymbol { IsStatic: true, IsConst: false } field
+                    || !field.Locations.Any(l => l.IsInSource) || IsCompilerGenerated(field))
+                    return;
 
-            // Outside the field's own initializer.
-            var ownDeclarator = site.Ancestors().OfType<VariableDeclaratorSyntax>()
-                .FirstOrDefault(v => v.Parent?.Parent is FieldDeclarationSyntax);
-            if (ownDeclarator != null && SymbolEqualityComparer.Default.Equals(model.GetDeclaredSymbol(ownDeclarator), field))
-                return;
+                // Outside the field's own initializer.
+                var ownDeclarator = site.Ancestors().OfType<VariableDeclaratorSyntax>()
+                    .FirstOrDefault(v => v.Parent?.Parent is FieldDeclarationSyntax);
+                if (ownDeclarator != null && SymbolEqualityComparer.Default.Equals(model.GetDeclaredSymbol(ownDeclarator), field))
+                    return;
+                key = Key(field);
+            }
 
+            AddSite(key, site, kind);
+        }
+
+        private void AddSite(string key, SyntaxNode site, string kind)
+        {
             var member = site.Ancestors().OfType<MemberDeclarationSyntax>().FirstOrDefault() switch
             {
                 MethodDeclarationSyntax m => m.Identifier.Text,
@@ -511,7 +598,6 @@ public class StdlibModuleGlobalRosterTests
                 var other => other?.Kind().ToString() ?? "?",
             };
 
-            var key = Key(field);
             if (!Written.TryGetValue(key, out var sites))
                 Written[key] = sites = new System.Collections.Generic.List<WriteSite>();
             sites.Add(new WriteSite(site.SyntaxTree.FilePath, Line(site), member, kind));

@@ -18,6 +18,11 @@ namespace Sharpy.Stdlib.Tests.Spy.Ipaddress.IpaddressTests
     [global::Sharpy.SharpyModule("ipaddress.ipaddress_tests")]
     public static partial class IpaddressTestsModule
     {
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        [global::Sharpy.SharpyLoadEntry(false)]
+        public static void __Load()
+        {
+        }
     }
 
     public partial class IpaddressTestsModuleTests

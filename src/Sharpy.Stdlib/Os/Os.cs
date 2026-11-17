@@ -15,11 +15,356 @@ namespace Sharpy.OsModule
     /// </summary>
     public static partial class OsModuleModule
     {
-        public static string Sep = global::Sharpy.Builtins.Str(global::System.IO.Path.DirectorySeparatorChar.ToString());
-        public static string Linesep = global::System.Environment.NewLine;
-        public static string Name = global::Sharpy.OsModule.OsModuleModule.Sep == "\\" ? "nt" : "posix";
-        public static string Pathsep = global::Sharpy.Builtins.Str(global::System.IO.Path.PathSeparator.ToString());
-        public static string Altsep = global::System.IO.Path.AltDirectorySeparatorChar.ToString() == global::System.IO.Path.DirectorySeparatorChar.ToString() ? "" : global::Sharpy.Builtins.Str(global::System.IO.Path.AltDirectorySeparatorChar.ToString());
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        internal static string Sep__field = default!;
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        private static byte Sep__state;
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        private static void Sep__init()
+        {
+            Sep__field = global::Sharpy.Builtins.Str(global::System.IO.Path.DirectorySeparatorChar.ToString());
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        private static void Sep__slow() => global::Sharpy.StaticInit.Read(ref __host, __Sweep, ref Sep__state, "sep", Sep__init);
+        [global::Sharpy.SharpyStaticStorage(global::Sharpy.StaticStorageKind.Guarded)]
+        public static ref string Sep
+        {
+            get
+            {
+                if (!__Swept.Done)
+                    Sep__slow();
+                return ref Sep__field;
+            }
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        internal static void Sep__ensure()
+        {
+            if (!__Swept.Done)
+                Sep__slow();
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        internal static string Sep__set(string value)
+        {
+            if (__Swept.Done)
+                Sep__field = value;
+            else
+                global::Sharpy.StaticInit.Store(ref __host, __Sweep, ref Sep__state, ref Sep__field, value);
+            return value;
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        internal static global::System.Runtime.CompilerServices.StrongBox<string>? Sep__pick()
+        {
+            if (!__Swept.Done)
+            {
+                global::Sharpy.StaticInit.Load(ref __host, __Sweep);
+                if (!global::Sharpy.StaticInit.IsReady(ref Sep__state))
+                    return new global::System.Runtime.CompilerServices.StrongBox<string>();
+            }
+
+            return null;
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        internal static ref string Sep__out(out global::System.Runtime.CompilerServices.StrongBox<string>? spill)
+        {
+            spill = Sep__pick();
+            if (spill != null)
+                return ref spill.Value!;
+            return ref Sep__field;
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        internal static R Sep__commit<R>(R result, global::System.Runtime.CompilerServices.StrongBox<string>? spill)
+        {
+            if (spill != null)
+                Sep__set(spill.Value!);
+            return result;
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        internal static string Linesep__field = default!;
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        private static byte Linesep__state;
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        private static void Linesep__init()
+        {
+            Linesep__field = global::System.Environment.NewLine;
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        private static void Linesep__slow() => global::Sharpy.StaticInit.Read(ref __host, __Sweep, ref Linesep__state, "linesep", Linesep__init);
+        [global::Sharpy.SharpyStaticStorage(global::Sharpy.StaticStorageKind.Guarded)]
+        public static ref string Linesep
+        {
+            get
+            {
+                if (!__Swept.Done)
+                    Linesep__slow();
+                return ref Linesep__field;
+            }
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        internal static void Linesep__ensure()
+        {
+            if (!__Swept.Done)
+                Linesep__slow();
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        internal static string Linesep__set(string value)
+        {
+            if (__Swept.Done)
+                Linesep__field = value;
+            else
+                global::Sharpy.StaticInit.Store(ref __host, __Sweep, ref Linesep__state, ref Linesep__field, value);
+            return value;
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        internal static global::System.Runtime.CompilerServices.StrongBox<string>? Linesep__pick()
+        {
+            if (!__Swept.Done)
+            {
+                global::Sharpy.StaticInit.Load(ref __host, __Sweep);
+                if (!global::Sharpy.StaticInit.IsReady(ref Linesep__state))
+                    return new global::System.Runtime.CompilerServices.StrongBox<string>();
+            }
+
+            return null;
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        internal static ref string Linesep__out(out global::System.Runtime.CompilerServices.StrongBox<string>? spill)
+        {
+            spill = Linesep__pick();
+            if (spill != null)
+                return ref spill.Value!;
+            return ref Linesep__field;
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        internal static R Linesep__commit<R>(R result, global::System.Runtime.CompilerServices.StrongBox<string>? spill)
+        {
+            if (spill != null)
+                Linesep__set(spill.Value!);
+            return result;
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        internal static string Name__field = default!;
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        private static byte Name__state;
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        private static void Name__init()
+        {
+            Name__field = global::Sharpy.OsModule.OsModuleModule.Sep == "\\" ? "nt" : "posix";
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        private static void Name__slow() => global::Sharpy.StaticInit.Read(ref __host, __Sweep, ref Name__state, "name", Name__init);
+        [global::Sharpy.SharpyStaticStorage(global::Sharpy.StaticStorageKind.Guarded)]
+        public static ref string Name
+        {
+            get
+            {
+                if (!__Swept.Done)
+                    Name__slow();
+                return ref Name__field;
+            }
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        internal static void Name__ensure()
+        {
+            if (!__Swept.Done)
+                Name__slow();
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        internal static string Name__set(string value)
+        {
+            if (__Swept.Done)
+                Name__field = value;
+            else
+                global::Sharpy.StaticInit.Store(ref __host, __Sweep, ref Name__state, ref Name__field, value);
+            return value;
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        internal static global::System.Runtime.CompilerServices.StrongBox<string>? Name__pick()
+        {
+            if (!__Swept.Done)
+            {
+                global::Sharpy.StaticInit.Load(ref __host, __Sweep);
+                if (!global::Sharpy.StaticInit.IsReady(ref Name__state))
+                    return new global::System.Runtime.CompilerServices.StrongBox<string>();
+            }
+
+            return null;
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        internal static ref string Name__out(out global::System.Runtime.CompilerServices.StrongBox<string>? spill)
+        {
+            spill = Name__pick();
+            if (spill != null)
+                return ref spill.Value!;
+            return ref Name__field;
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        internal static R Name__commit<R>(R result, global::System.Runtime.CompilerServices.StrongBox<string>? spill)
+        {
+            if (spill != null)
+                Name__set(spill.Value!);
+            return result;
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        internal static string Pathsep__field = default!;
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        private static byte Pathsep__state;
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        private static void Pathsep__init()
+        {
+            Pathsep__field = global::Sharpy.Builtins.Str(global::System.IO.Path.PathSeparator.ToString());
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        private static void Pathsep__slow() => global::Sharpy.StaticInit.Read(ref __host, __Sweep, ref Pathsep__state, "pathsep", Pathsep__init);
+        [global::Sharpy.SharpyStaticStorage(global::Sharpy.StaticStorageKind.Guarded)]
+        public static ref string Pathsep
+        {
+            get
+            {
+                if (!__Swept.Done)
+                    Pathsep__slow();
+                return ref Pathsep__field;
+            }
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        internal static void Pathsep__ensure()
+        {
+            if (!__Swept.Done)
+                Pathsep__slow();
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        internal static string Pathsep__set(string value)
+        {
+            if (__Swept.Done)
+                Pathsep__field = value;
+            else
+                global::Sharpy.StaticInit.Store(ref __host, __Sweep, ref Pathsep__state, ref Pathsep__field, value);
+            return value;
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        internal static global::System.Runtime.CompilerServices.StrongBox<string>? Pathsep__pick()
+        {
+            if (!__Swept.Done)
+            {
+                global::Sharpy.StaticInit.Load(ref __host, __Sweep);
+                if (!global::Sharpy.StaticInit.IsReady(ref Pathsep__state))
+                    return new global::System.Runtime.CompilerServices.StrongBox<string>();
+            }
+
+            return null;
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        internal static ref string Pathsep__out(out global::System.Runtime.CompilerServices.StrongBox<string>? spill)
+        {
+            spill = Pathsep__pick();
+            if (spill != null)
+                return ref spill.Value!;
+            return ref Pathsep__field;
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        internal static R Pathsep__commit<R>(R result, global::System.Runtime.CompilerServices.StrongBox<string>? spill)
+        {
+            if (spill != null)
+                Pathsep__set(spill.Value!);
+            return result;
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        internal static string Altsep__field = default!;
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        private static byte Altsep__state;
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        private static void Altsep__init()
+        {
+            Altsep__field = global::System.IO.Path.AltDirectorySeparatorChar.ToString() == global::System.IO.Path.DirectorySeparatorChar.ToString() ? "" : global::Sharpy.Builtins.Str(global::System.IO.Path.AltDirectorySeparatorChar.ToString());
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        private static void Altsep__slow() => global::Sharpy.StaticInit.Read(ref __host, __Sweep, ref Altsep__state, "altsep", Altsep__init);
+        [global::Sharpy.SharpyStaticStorage(global::Sharpy.StaticStorageKind.Guarded)]
+        public static ref string Altsep
+        {
+            get
+            {
+                if (!__Swept.Done)
+                    Altsep__slow();
+                return ref Altsep__field;
+            }
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        internal static void Altsep__ensure()
+        {
+            if (!__Swept.Done)
+                Altsep__slow();
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        internal static string Altsep__set(string value)
+        {
+            if (__Swept.Done)
+                Altsep__field = value;
+            else
+                global::Sharpy.StaticInit.Store(ref __host, __Sweep, ref Altsep__state, ref Altsep__field, value);
+            return value;
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        internal static global::System.Runtime.CompilerServices.StrongBox<string>? Altsep__pick()
+        {
+            if (!__Swept.Done)
+            {
+                global::Sharpy.StaticInit.Load(ref __host, __Sweep);
+                if (!global::Sharpy.StaticInit.IsReady(ref Altsep__state))
+                    return new global::System.Runtime.CompilerServices.StrongBox<string>();
+            }
+
+            return null;
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        internal static ref string Altsep__out(out global::System.Runtime.CompilerServices.StrongBox<string>? spill)
+        {
+            spill = Altsep__pick();
+            if (spill != null)
+                return ref spill.Value!;
+            return ref Altsep__field;
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        internal static R Altsep__commit<R>(R result, global::System.Runtime.CompilerServices.StrongBox<string>? spill)
+        {
+            if (spill != null)
+                Altsep__set(spill.Value!);
+            return result;
+        }
+
         /// <summary>
         /// Remove a file (same as unlink).
         /// </summary>
@@ -322,6 +667,36 @@ namespace Sharpy.OsModule
         public static global::Sharpy.Iterator<global::System.ValueTuple<string, Sharpy.List<string>, Sharpy.List<string>>> Walk(string top)
         {
             return global::Sharpy.Builtins.Iter<global::System.ValueTuple<string, Sharpy.List<string>, Sharpy.List<string>>>(global::Sharpy.OsModule.OsModuleModule._WalkCore(top));
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        private static global::Sharpy.StaticInitHost __host;
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        private static void __Sweep()
+        {
+            global::Sharpy.StaticInit.Run(ref Sep__state, "sep", Sep__init);
+            global::Sharpy.StaticInit.Run(ref Linesep__state, "linesep", Linesep__init);
+            global::Sharpy.StaticInit.Run(ref Name__state, "name", Name__init);
+            global::Sharpy.StaticInit.Run(ref Pathsep__state, "pathsep", Pathsep__init);
+            global::Sharpy.StaticInit.Run(ref Altsep__state, "altsep", Altsep__init);
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        private static class __Swept
+        {
+            internal static readonly bool Done;
+            static __Swept()
+            {
+                Done = global::Sharpy.StaticInit.TryLoad(ref __host, __Sweep);
+            }
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        [global::Sharpy.SharpyLoadEntry(true)]
+        public static void __Load()
+        {
+            if (!__Swept.Done)
+                global::Sharpy.StaticInit.Load(ref __host, __Sweep);
         }
     }
 

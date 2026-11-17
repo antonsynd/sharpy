@@ -18,6 +18,11 @@ namespace Sharpy.Stdlib.Tests.Spy.Numpy.NdarrayReshapeTests
     [global::Sharpy.SharpyModule("numpy.ndarray_reshape_tests")]
     public static partial class NdarrayReshapeTestsModule
     {
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        [global::Sharpy.SharpyLoadEntry(false)]
+        public static void __Load()
+        {
+        }
     }
 
     public partial class NdarrayReshapeTestsModuleTests

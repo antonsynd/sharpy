@@ -18,6 +18,11 @@ namespace Sharpy.Stdlib.Tests.Spy.Logging.LoggingCompleteTests
     [global::Sharpy.SharpyModule("logging.logging_complete_tests")]
     public static partial class LoggingCompleteTestsModule
     {
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        [global::Sharpy.SharpyLoadEntry(false)]
+        public static void __Load()
+        {
+        }
     }
 
     public partial class LoggingCompleteTestsModuleTests

@@ -13,6 +13,7 @@ namespace MatchBareNoneScrutinee1526
     {
         public static void Main()
         {
+            __Load();
 #line (4, 5) - (8, 30) 12 "match_bare_none_scrutinee_1526.spy"
             switch ((object?)null)
 #line hidden
@@ -55,6 +56,12 @@ namespace MatchBareNoneScrutinee1526
 #line (19, 5) - (19, 13) 12 "match_bare_none_scrutinee_1526.spy"
             global::Sharpy.Builtins.Print(v);
 #line hidden
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        [global::Sharpy.SharpyLoadEntry(false)]
+        public static void __Load()
+        {
         }
     }
 }

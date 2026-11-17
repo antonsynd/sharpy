@@ -20,6 +20,7 @@ namespace EventAutoBasic0001
 
         public static void Main()
         {
+            __Load();
 #line (14, 5) - (14, 32) 12 "event_auto_basic_0001.spy"
             global::EventAutoBasic0001.Publisher p = new global::EventAutoBasic0001.Publisher();
 #line (15, 5) - (15, 24) 12 "event_auto_basic_0001.spy"
@@ -33,6 +34,12 @@ namespace EventAutoBasic0001
 #line (19, 5) - (19, 18) 12 "event_auto_basic_0001.spy"
             global::Sharpy.Builtins.Print("done");
 #line hidden
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        [global::Sharpy.SharpyLoadEntry(false)]
+        public static void __Load()
+        {
         }
     }
 

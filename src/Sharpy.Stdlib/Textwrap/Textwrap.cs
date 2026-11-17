@@ -357,5 +357,11 @@ namespace Sharpy.Textwrap
 
             return lines;
         }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        [global::Sharpy.SharpyLoadEntry(false)]
+        public static void __Load()
+        {
+        }
     }
 }

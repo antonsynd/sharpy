@@ -1024,7 +1024,7 @@ internal partial class RoslynEmitter
         _currentTypeSymbol = typeSymbol;
 
         // Generate interface members
-        var members = GenerateInterfaceMembers(interfaceDef.Body);
+        var members = GenerateInterfaceMembers(interfaceDef.Body, interfaceName);
         interfaceDecl = interfaceDecl.WithMembers(List(members));
 
         _currentTypeSymbol = previousTypeSymbol;

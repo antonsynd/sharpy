@@ -12,6 +12,7 @@ namespace DunderBool
     {
         public static void Main()
         {
+            __Load();
 #line (12, 5) - (12, 18) 12 "dunder_bool.spy"
             var t = new global::DunderBool.Truthy(1);
 #line (13, 5) - (13, 18) 12 "dunder_bool.spy"
@@ -39,6 +40,12 @@ namespace DunderBool
                 global::Sharpy.Builtins.Print("falsy");
 #line hidden
             }
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        [global::Sharpy.SharpyLoadEntry(false)]
+        public static void __Load()
+        {
         }
     }
 

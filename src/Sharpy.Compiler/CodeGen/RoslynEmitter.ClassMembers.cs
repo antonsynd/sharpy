@@ -47,7 +47,7 @@ internal partial class RoslynEmitter
         _currentTypeSymbol = typeSymbol;
 
         // The type is a host when it declares a Guarded value (plan-775c50 D5).
-        var typeHost = OpenStaticHost(out var enclosingHost);
+        var typeHost = OpenStaticHost(out var enclosingHost, className);
 
         bool isDataclass = typeSymbol is { IsDataclass: true };
         bool isFrozen = typeSymbol is { DataclassInfo.Frozen: true };
@@ -84,6 +84,7 @@ internal partial class RoslynEmitter
                 // A Guarded value (plan-775c50 D4) is emitted in the source-order pass below, so its
                 // sweep step lands in declaration order beside the properties' (D5).
                 fieldName = codeGenInfo!.CSharpName;
+                typeHost.IsGenericHost |= codeGenInfo.IsOnGenericHost;
             }
             else if (isDataclass && IsSynthesizedConstructorField(varDecl))
             {
@@ -507,13 +508,13 @@ internal partial class RoslynEmitter
         return eventGroups;
     }
 
-    private List<MemberDeclarationSyntax> GenerateInterfaceMembers(IReadOnlyList<Statement> body)
+    private List<MemberDeclarationSyntax> GenerateInterfaceMembers(IReadOnlyList<Statement> body, string interfaceName)
     {
         var members = new List<MemberDeclarationSyntax>();
 
         // An interface is a host too when it declares a Guarded value (plan-775c50 D5: the rule names
         // no host kind; lead's ruling on T4).
-        var interfaceHost = OpenStaticHost(out var enclosingHost);
+        var interfaceHost = OpenStaticHost(out var enclosingHost, interfaceName);
         members.AddRange(GenerateInterfaceMembersCore(body));
         members.AddRange(CloseStaticHost(interfaceHost, enclosingHost));
         return members;
@@ -568,7 +569,10 @@ internal partial class RoslynEmitter
                         // A Guarded value: a computed const, or a `@static` field (plan-775c50 D4; the lead's
                         // ruling on T4: the interface's recorded fact decides, as in every host).
                         if (fieldCodeGenInfo != null && IsGuardedField(fieldDecl, fieldCodeGenInfo))
+                        {
+                            CurrentStaticHost.IsGenericHost |= fieldCodeGenInfo.IsOnGenericHost;
                             members.AddRange(GenerateGuardedField(fieldDecl, fieldCodeGenInfo.CSharpName));
+                        }
                         else
                             members.Add(GenerateField(fieldDecl, fieldCodeGenInfo?.CSharpName));
                         break;

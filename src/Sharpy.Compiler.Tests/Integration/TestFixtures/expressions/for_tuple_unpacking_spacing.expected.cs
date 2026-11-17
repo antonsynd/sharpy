@@ -13,6 +13,7 @@ namespace ForTupleUnpackingSpacing
     {
         public static void Main()
         {
+            __Load();
 #line (2, 5) - (2, 57) 12 "for_tuple_unpacking_spacing.spy"
             Sharpy.List<global::System.ValueTuple<int, string>> pairs = new Sharpy.List<global::System.ValueTuple<int, string>>()
 #line hidden
@@ -30,6 +31,12 @@ namespace ForTupleUnpackingSpacing
                 global::Sharpy.Builtins.Print(label);
 #line hidden
             }
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        [global::Sharpy.SharpyLoadEntry(false)]
+        public static void __Load()
+        {
         }
     }
 }

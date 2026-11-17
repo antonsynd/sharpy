@@ -15,9 +15,16 @@ namespace AsyncTestParametrize
     {
         public static void Main()
         {
+            __Load();
 #line (7, 5) - (7, 16) 12 "async_test_parametrize.spy"
             global::Sharpy.Builtins.Print("ok");
 #line hidden
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        [global::Sharpy.SharpyLoadEntry(false)]
+        public static void __Load()
+        {
         }
     }
 

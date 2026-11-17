@@ -21,6 +21,7 @@ namespace OutInlineInIf
 
         public static void Main()
         {
+            __Load();
 #line (6, 5) - (7, 21) 12 "out_inline_in_if.spy"
             if (global::OutInlineInIf.OutInlineInIfModule.TryParse("42", out int value))
 #line hidden
@@ -29,6 +30,12 @@ namespace OutInlineInIf
                 global::Sharpy.Builtins.Print(value);
 #line hidden
             }
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        [global::Sharpy.SharpyLoadEntry(false)]
+        public static void __Load()
+        {
         }
     }
 }

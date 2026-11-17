@@ -27,7 +27,8 @@ namespace Sharpy.Compiler.Tests.CodeGen;
 /// emitter's units before anything reparses them, and lists every static field or property with an initializer and
 /// every static constructor. What is allowed carries no user expression by construction
 /// (<see cref="IsScaffolding"/>): a <c>const</c>; a private parameterless construction the emitter synthesizes (a
-/// memoization cache); and the one static constructor of a host's <c>__Swept</c> holder.</para>
+/// memoization cache); a Guarded value's storage written as its CLR default (<c>N__field = default!</c>, F15); and the
+/// one static constructor of a host's <c>__Swept</c> holder.</para>
 /// </summary>
 [Trait("Category", "GapDiscovery")]
 public class StaticInitializerCensusTests
@@ -76,6 +77,12 @@ public class StaticInitializerCensusTests
         var isReadOnly = field.Modifiers.Any(m => m.IsKind(SyntaxKind.ReadOnlyKeyword));
         return initializer switch
         {
+            // A Guarded value's storage holds its CLR default, written out for a nullable-enabled
+            // consumer (F15): `default!` is no user expression.
+            PostfixUnaryExpressionSyntax { Operand: LiteralExpressionSyntax defaultLiteral } suppressed
+                when suppressed.IsKind(SyntaxKind.SuppressNullableWarningExpression)
+                && defaultLiteral.IsKind(SyntaxKind.DefaultLiteralExpression)
+                => field.Declaration.Variables.Single().Identifier.ValueText.EndsWith(RoslynEmitter.GuardedFieldSuffix, StringComparison.Ordinal),
             ObjectCreationExpressionSyntax { Initializer: null, ArgumentList: null or { Arguments.Count: 0 } } => isPrivate,
             ImplicitObjectCreationExpressionSyntax { Initializer: null, ArgumentList.Arguments.Count: 0 } => isPrivate,
             ObjectCreationExpressionSyntax { Type: IdentifierNameSyntax type, Initializer: null } member

@@ -13,6 +13,7 @@ namespace SpreadUnpackDict
     {
         public static void Main()
         {
+            __Load();
 #line (2, 5) - (2, 64) 12 "spread_unpack_dict.spy"
             Sharpy.List<Sharpy.Dict<string, int>> dicts = new Sharpy.List<Sharpy.Dict<string, int>>()
 #line hidden
@@ -56,6 +57,12 @@ namespace SpreadUnpackDict
                 global::Sharpy.Builtins.Print(k, result[k]);
 #line hidden
             }
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        [global::Sharpy.SharpyLoadEntry(false)]
+        public static void __Load()
+        {
         }
     }
 }

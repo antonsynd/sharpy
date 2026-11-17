@@ -18,6 +18,11 @@ namespace Sharpy.Stdlib.Tests.Spy.Toml.TomlTypedDeserializationTests
     [global::Sharpy.SharpyModule("toml.toml_typed_deserialization_tests")]
     public static partial class TomlTypedDeserializationTestsModule
     {
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        [global::Sharpy.SharpyLoadEntry(false)]
+        public static void __Load()
+        {
+        }
     }
 
     [global::Sharpy.SharpyModuleType("toml.toml_typed_deserialization_tests", "ServerConfig")]

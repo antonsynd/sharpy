@@ -12,6 +12,7 @@ namespace DunderEqIequatableSynthesis
     {
         public static void Main()
         {
+            __Load();
 #line (13, 5) - (13, 20) 12 "dunder_eq_iequatable_synthesis.spy"
             var a = new global::DunderEqIequatableSynthesis.Point(1, 2);
 #line (14, 5) - (14, 20) 12 "dunder_eq_iequatable_synthesis.spy"
@@ -27,6 +28,12 @@ namespace DunderEqIequatableSynthesis
 #line (23, 5) - (23, 18) 12 "dunder_eq_iequatable_synthesis.spy"
             global::Sharpy.Builtins.Print(a != c);
 #line hidden
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        [global::Sharpy.SharpyLoadEntry(false)]
+        public static void __Load()
+        {
         }
     }
 

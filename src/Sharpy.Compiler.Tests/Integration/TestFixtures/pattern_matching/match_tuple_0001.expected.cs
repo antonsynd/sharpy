@@ -12,6 +12,7 @@ namespace MatchTuple0001
     {
         public static void Main()
         {
+            __Load();
 #line (2, 5) - (2, 21) 12 "match_tuple_0001.spy"
             global::System.ValueTuple<int, int> point = (10, 20);
 #line (3, 5) - (6, 21) 12 "match_tuple_0001.spy"
@@ -26,6 +27,12 @@ namespace MatchTuple0001
 #line hidden
                     break;
             }
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        [global::Sharpy.SharpyLoadEntry(false)]
+        public static void __Load()
+        {
         }
     }
 }

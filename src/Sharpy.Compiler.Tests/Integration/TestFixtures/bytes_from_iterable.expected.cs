@@ -12,6 +12,7 @@ namespace BytesFromIterable
     {
         public static void Main()
         {
+            __Load();
 #line (4, 5) - (4, 41) 12 "bytes_from_iterable.spy"
             Sharpy.Bytes data = new global::Sharpy.Bytes(new Sharpy.List<int>() { 104, 105, 33 });
 #line (5, 5) - (5, 16) 12 "bytes_from_iterable.spy"
@@ -45,6 +46,12 @@ namespace BytesFromIterable
 #line (22, 5) - (22, 20) 12 "bytes_from_iterable.spy"
             global::Sharpy.Builtins.Print(fromVar);
 #line hidden
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        [global::Sharpy.SharpyLoadEntry(false)]
+        public static void __Load()
+        {
         }
     }
 }

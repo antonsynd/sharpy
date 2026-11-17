@@ -12,6 +12,7 @@ namespace FunctionStyleGetterSetter
     {
         public static void Main()
         {
+            __Load();
 #line (14, 5) - (14, 27) 12 "function_style_getter_setter.spy"
             var t = new global::FunctionStyleGetterSetter.Temperature(100.0d);
 #line (15, 5) - (15, 21) 12 "function_style_getter_setter.spy"
@@ -21,6 +22,12 @@ namespace FunctionStyleGetterSetter
 #line (17, 5) - (17, 21) 12 "function_style_getter_setter.spy"
             global::Sharpy.Builtins.Print(t.Celsius);
 #line hidden
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        [global::Sharpy.SharpyLoadEntry(false)]
+        public static void __Load()
+        {
         }
     }
 

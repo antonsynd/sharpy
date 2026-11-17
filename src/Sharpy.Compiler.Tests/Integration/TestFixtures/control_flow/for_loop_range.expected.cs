@@ -13,6 +13,7 @@ namespace ForLoopRange
     {
         public static void Main()
         {
+            __Load();
 #line (2, 5) - (3, 17) 12 "for_loop_range.spy"
             foreach (var __loopVar_0 in global::Sharpy.Builtins.Range(5))
 #line hidden
@@ -22,6 +23,12 @@ namespace ForLoopRange
                 global::Sharpy.Builtins.Print(i);
 #line hidden
             }
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        [global::Sharpy.SharpyLoadEntry(false)]
+        public static void __Load()
+        {
         }
     }
 }

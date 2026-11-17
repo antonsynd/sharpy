@@ -12,6 +12,7 @@ namespace NestedComprehension
     {
         public static void Main()
         {
+            __Load();
 #line (2, 5) - (2, 56) 12 "nested_comprehension.spy"
             Sharpy.List<Sharpy.List<int>> matrix = new Sharpy.List<Sharpy.List<int>>()
 #line hidden
@@ -48,6 +49,12 @@ namespace NestedComprehension
 #line (4, 5) - (4, 16) 12 "nested_comprehension.spy"
             global::Sharpy.Builtins.Print(flat);
 #line hidden
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        [global::Sharpy.SharpyLoadEntry(false)]
+        public static void __Load()
+        {
         }
     }
 }

@@ -7,149 +7,6 @@
 # Slot/<Expression subclass>.<slot>[/<case>][/Kept], Slot/Stored/<use> and
 # Slot/Ring/<reader kind>><read kind>[><kind between>]/<slot>.
 # The issue is the one whose fix turns the cell green; a green row is STALE and a row whose class moved is MOVED, both red.
-# T4-transient (plan-775c50): NameError until Main requires its module; P77 T5 clears the next row.
-Location/Cross/Generic>Module/TargetFirst/Assign/ReadBack RuntimeThrow # #2422 runtime-throw
-# T4-transient (plan-775c50): NameError until Main requires its module; P77 T5 clears the next row.
-Location/Cross/Generic>Module/TargetFirst/Augmented/ReadBack RuntimeThrow # #2422 runtime-throw
-# T4-transient (plan-775c50): NameError until Main requires its module; P77 T5 clears the next row.
-Location/Cross/Generic>Module/TargetFirst/InOperand/ReadBack RuntimeThrow # #2422 runtime-throw
-# T4-transient (plan-775c50): NameError until Main requires its module; P77 T5 clears the next row.
-Location/Cross/Generic>Module/TargetFirst/NestedTupleLeaf/ReadBack RuntimeThrow # #2422 runtime-throw
-# T4-transient (plan-775c50): NameError until Main requires its module; P77 T5 clears the next row.
-Location/Cross/Generic>Module/TargetFirst/OutOperand/ReadBack RuntimeThrow # #2422 runtime-throw
-# T4-transient (plan-775c50): NameError until Main requires its module; P77 T5 clears the next row.
-Location/Cross/Generic>Module/TargetFirst/Read/ReadBack RuntimeThrow # #2422 runtime-throw
-# T4-transient (plan-775c50): NameError until Main requires its module; P77 T5 clears the next row.
-Location/Cross/Generic>Module/TargetFirst/RefOperand/ReadBack RuntimeThrow # #2422 runtime-throw
-# T4-transient (plan-775c50): NameError until Main requires its module; P77 T5 clears the next row.
-Location/Cross/Generic>Module/TargetFirst/TupleLeaf/ReadBack RuntimeThrow # #2422 runtime-throw
-# T4-transient (plan-775c50): NameError until Main requires its module; P77 T5 clears the next row.
-Location/Cross/Generic>Module/TargetFirst/Walrus/ReadBack RuntimeThrow # #2422 runtime-throw
-# T4-transient (plan-775c50): NameError until Main requires its module; P77 T5 clears the next row.
-Location/Cross/Generic>Module/UserFirst/Assign/ReadBack RuntimeThrow # #2422 runtime-throw
-# T4-transient (plan-775c50): NameError until Main requires its module; P77 T5 clears the next row.
-Location/Cross/Generic>Module/UserFirst/Augmented/ReadBack RuntimeThrow # #2422 runtime-throw
-# T4-transient (plan-775c50): NameError until Main requires its module; P77 T5 clears the next row.
-Location/Cross/Generic>Module/UserFirst/InOperand/ReadBack RuntimeThrow # #2422 runtime-throw
-# T4-transient (plan-775c50): NameError until Main requires its module; P77 T5 clears the next row.
-Location/Cross/Generic>Module/UserFirst/NestedTupleLeaf/ReadBack RuntimeThrow # #2422 runtime-throw
-# T4-transient (plan-775c50): NameError until Main requires its module; P77 T5 clears the next row.
-Location/Cross/Generic>Module/UserFirst/OutOperand/ReadBack RuntimeThrow # #2422 runtime-throw
-# T4-transient (plan-775c50): NameError until Main requires its module; P77 T5 clears the next row.
-Location/Cross/Generic>Module/UserFirst/Read/ReadBack RuntimeThrow # #2422 runtime-throw
-# T4-transient (plan-775c50): NameError until Main requires its module; P77 T5 clears the next row.
-Location/Cross/Generic>Module/UserFirst/RefOperand/ReadBack RuntimeThrow # #2422 runtime-throw
-# T4-transient (plan-775c50): NameError until Main requires its module; P77 T5 clears the next row.
-Location/Cross/Generic>Module/UserFirst/TupleLeaf/ReadBack RuntimeThrow # #2422 runtime-throw
-# T4-transient (plan-775c50): NameError until Main requires its module; P77 T5 clears the next row.
-Location/Cross/Generic>Module/UserFirst/Walrus/ReadBack RuntimeThrow # #2422 runtime-throw
-# T4-transient (plan-775c50): NameError until Main requires its module; P77 T5 clears the next row.
-Location/Cross/Generic>Plain/TargetFirst/Assign/ReadBack RuntimeThrow # #2422 runtime-throw
-# T4-transient (plan-775c50): NameError until Main requires its module; P77 T5 clears the next row.
-Location/Cross/Generic>Plain/TargetFirst/Augmented/ReadBack RuntimeThrow # #2422 runtime-throw
-# T4-transient (plan-775c50): NameError until Main requires its module; P77 T5 clears the next row.
-Location/Cross/Generic>Plain/TargetFirst/ComprehensionTarget/ReadBack RuntimeThrow # #2422 runtime-throw
-# T4-transient (plan-775c50): NameError until Main requires its module; P77 T5 clears the next row.
-Location/Cross/Generic>Plain/TargetFirst/ForTarget/ReadBack RuntimeThrow # #2422 runtime-throw
-# T4-transient (plan-775c50): NameError until Main requires its module; P77 T5 clears the next row.
-Location/Cross/Generic>Plain/TargetFirst/InOperand/ReadBack RuntimeThrow # #2422 runtime-throw
-# T4-transient (plan-775c50): NameError until Main requires its module; P77 T5 clears the next row.
-Location/Cross/Generic>Plain/TargetFirst/NestedTupleLeaf/ReadBack RuntimeThrow # #2422 runtime-throw
-# T4-transient (plan-775c50): NameError until Main requires its module; P77 T5 clears the next row.
-Location/Cross/Generic>Plain/TargetFirst/OutOperand/ReadBack RuntimeThrow # #2422 runtime-throw
-# T4-transient (plan-775c50): NameError until Main requires its module; P77 T5 clears the next row.
-Location/Cross/Generic>Plain/TargetFirst/Read/ReadBack RuntimeThrow # #2422 runtime-throw
-# T4-transient (plan-775c50): NameError until Main requires its module; P77 T5 clears the next row.
-Location/Cross/Generic>Plain/TargetFirst/RefOperand/ReadBack RuntimeThrow # #2422 runtime-throw
-# T4-transient (plan-775c50): NameError until Main requires its module; P77 T5 clears the next row.
-Location/Cross/Generic>Plain/TargetFirst/TupleLeaf/ReadBack RuntimeThrow # #2422 runtime-throw
-# T4-transient (plan-775c50): NameError until Main requires its module; P77 T5 clears the next row.
-Location/Cross/Generic>Plain/TargetFirst/WithTarget/ReadBack RuntimeThrow # #2422 runtime-throw
-# T4-transient (plan-775c50): NameError until Main requires its module; P77 T5 clears the next row.
-Location/Cross/Generic>Plain/UserFirst/Assign/ReadBack RuntimeThrow # #2422 runtime-throw
-# T4-transient (plan-775c50): NameError until Main requires its module; P77 T5 clears the next row.
-Location/Cross/Generic>Plain/UserFirst/Augmented/ReadBack RuntimeThrow # #2422 runtime-throw
-# T4-transient (plan-775c50): NameError until Main requires its module; P77 T5 clears the next row.
-Location/Cross/Generic>Plain/UserFirst/ComprehensionTarget/ReadBack RuntimeThrow # #2422 runtime-throw
-# T4-transient (plan-775c50): NameError until Main requires its module; P77 T5 clears the next row.
-Location/Cross/Generic>Plain/UserFirst/ForTarget/ReadBack RuntimeThrow # #2422 runtime-throw
-# T4-transient (plan-775c50): NameError until Main requires its module; P77 T5 clears the next row.
-Location/Cross/Generic>Plain/UserFirst/InOperand/ReadBack RuntimeThrow # #2422 runtime-throw
-# T4-transient (plan-775c50): NameError until Main requires its module; P77 T5 clears the next row.
-Location/Cross/Generic>Plain/UserFirst/NestedTupleLeaf/ReadBack RuntimeThrow # #2422 runtime-throw
-# T4-transient (plan-775c50): NameError until Main requires its module; P77 T5 clears the next row.
-Location/Cross/Generic>Plain/UserFirst/OutOperand/ReadBack RuntimeThrow # #2422 runtime-throw
-# T4-transient (plan-775c50): NameError until Main requires its module; P77 T5 clears the next row.
-Location/Cross/Generic>Plain/UserFirst/Read/ReadBack RuntimeThrow # #2422 runtime-throw
-# T4-transient (plan-775c50): NameError until Main requires its module; P77 T5 clears the next row.
-Location/Cross/Generic>Plain/UserFirst/RefOperand/ReadBack RuntimeThrow # #2422 runtime-throw
-# T4-transient (plan-775c50): NameError until Main requires its module; P77 T5 clears the next row.
-Location/Cross/Generic>Plain/UserFirst/TupleLeaf/ReadBack RuntimeThrow # #2422 runtime-throw
-# T4-transient (plan-775c50): NameError until Main requires its module; P77 T5 clears the next row.
-Location/Cross/Generic>Plain/UserFirst/WithTarget/ReadBack RuntimeThrow # #2422 runtime-throw
-# T4-transient (plan-775c50): NameError until Main requires its module; P77 T5 clears the next row.
-Location/Cross/Plain>Module/TargetFirst/Assign/ReadBack RuntimeThrow # #2422 runtime-throw
-# T4-transient (plan-775c50): NameError until Main requires its module; P77 T5 clears the next row.
-Location/Cross/Plain>Module/TargetFirst/Augmented/ReadBack RuntimeThrow # #2422 runtime-throw
-# T4-transient (plan-775c50): NameError until Main requires its module; P77 T5 clears the next row.
-Location/Cross/Plain>Module/TargetFirst/InOperand/ReadBack RuntimeThrow # #2422 runtime-throw
-# T4-transient (plan-775c50): NameError until Main requires its module; P77 T5 clears the next row.
-Location/Cross/Plain>Module/TargetFirst/NestedTupleLeaf/ReadBack RuntimeThrow # #2422 runtime-throw
-# T4-transient (plan-775c50): NameError until Main requires its module; P77 T5 clears the next row.
-Location/Cross/Plain>Module/TargetFirst/OutOperand/ReadBack RuntimeThrow # #2422 runtime-throw
-# T4-transient (plan-775c50): NameError until Main requires its module; P77 T5 clears the next row.
-Location/Cross/Plain>Module/TargetFirst/Read/ReadBack RuntimeThrow # #2422 runtime-throw
-# T4-transient (plan-775c50): NameError until Main requires its module; P77 T5 clears the next row.
-Location/Cross/Plain>Module/TargetFirst/RefOperand/ReadBack RuntimeThrow # #2422 runtime-throw
-# T4-transient (plan-775c50): NameError until Main requires its module; P77 T5 clears the next row.
-Location/Cross/Plain>Module/TargetFirst/TupleLeaf/ReadBack RuntimeThrow # #2422 runtime-throw
-# T4-transient (plan-775c50): NameError until Main requires its module; P77 T5 clears the next row.
-Location/Cross/Plain>Module/TargetFirst/Walrus/ReadBack RuntimeThrow # #2422 runtime-throw
-Location/Cross/Plain>Module/UserFirst/Assign SilentWrong # #2422 silent-wrong
-# T4-transient (plan-775c50): NameError until Main requires its module; P77 T5 clears the next row.
-Location/Cross/Plain>Module/UserFirst/Assign/ReadBack RuntimeThrow # #2422 runtime-throw
-# T4-transient (plan-775c50): NameError until Main requires its module; P77 T5 clears the next row.
-Location/Cross/Plain>Module/UserFirst/Augmented/ReadBack RuntimeThrow # #2422 runtime-throw
-# T4-transient (plan-775c50): NameError until Main requires its module; P77 T5 clears the next row.
-Location/Cross/Plain>Module/UserFirst/InOperand/ReadBack RuntimeThrow # #2422 runtime-throw
-Location/Cross/Plain>Module/UserFirst/NestedTupleLeaf SilentWrong # #2422 silent-wrong
-# T4-transient (plan-775c50): NameError until Main requires its module; P77 T5 clears the next row.
-Location/Cross/Plain>Module/UserFirst/NestedTupleLeaf/ReadBack RuntimeThrow # #2422 runtime-throw
-Location/Cross/Plain>Module/UserFirst/OutOperand SilentWrong # #2422 silent-wrong
-# T4-transient (plan-775c50): NameError until Main requires its module; P77 T5 clears the next row.
-Location/Cross/Plain>Module/UserFirst/OutOperand/ReadBack RuntimeThrow # #2422 runtime-throw
-# T4-transient (plan-775c50): NameError until Main requires its module; P77 T5 clears the next row.
-Location/Cross/Plain>Module/UserFirst/Read/ReadBack RuntimeThrow # #2422 runtime-throw
-# T4-transient (plan-775c50): NameError until Main requires its module; P77 T5 clears the next row.
-Location/Cross/Plain>Module/UserFirst/RefOperand/ReadBack RuntimeThrow # #2422 runtime-throw
-Location/Cross/Plain>Module/UserFirst/TupleLeaf SilentWrong # #2422 silent-wrong
-# T4-transient (plan-775c50): NameError until Main requires its module; P77 T5 clears the next row.
-Location/Cross/Plain>Module/UserFirst/TupleLeaf/ReadBack RuntimeThrow # #2422 runtime-throw
-Location/Cross/Plain>Module/UserFirst/Walrus SilentWrong # #2422 silent-wrong
-# T4-transient (plan-775c50): NameError until Main requires its module; P77 T5 clears the next row.
-Location/Cross/Plain>Module/UserFirst/Walrus/ReadBack RuntimeThrow # #2422 runtime-throw
-# T4-transient (plan-775c50): NameError until Main requires its module; P77 T5 clears the next row.
-Location/Cross/Plain>Plain/TargetFirst/Assign/ReadBack RuntimeThrow # #2422 runtime-throw
-# T4-transient (plan-775c50): NameError until Main requires its module; P77 T5 clears the next row.
-Location/Cross/Plain>Plain/TargetFirst/Augmented/ReadBack RuntimeThrow # #2422 runtime-throw
-# T4-transient (plan-775c50): NameError until Main requires its module; P77 T5 clears the next row.
-Location/Cross/Plain>Plain/TargetFirst/ComprehensionTarget/ReadBack RuntimeThrow # #2422 runtime-throw
-# T4-transient (plan-775c50): NameError until Main requires its module; P77 T5 clears the next row.
-Location/Cross/Plain>Plain/TargetFirst/ForTarget/ReadBack RuntimeThrow # #2422 runtime-throw
-# T4-transient (plan-775c50): NameError until Main requires its module; P77 T5 clears the next row.
-Location/Cross/Plain>Plain/TargetFirst/InOperand/ReadBack RuntimeThrow # #2422 runtime-throw
-# T4-transient (plan-775c50): NameError until Main requires its module; P77 T5 clears the next row.
-Location/Cross/Plain>Plain/TargetFirst/NestedTupleLeaf/ReadBack RuntimeThrow # #2422 runtime-throw
-# T4-transient (plan-775c50): NameError until Main requires its module; P77 T5 clears the next row.
-Location/Cross/Plain>Plain/TargetFirst/OutOperand/ReadBack RuntimeThrow # #2422 runtime-throw
-# T4-transient (plan-775c50): NameError until Main requires its module; P77 T5 clears the next row.
-Location/Cross/Plain>Plain/TargetFirst/Read/ReadBack RuntimeThrow # #2422 runtime-throw
-# T4-transient (plan-775c50): NameError until Main requires its module; P77 T5 clears the next row.
-Location/Cross/Plain>Plain/TargetFirst/RefOperand/ReadBack RuntimeThrow # #2422 runtime-throw
-# T4-transient (plan-775c50): NameError until Main requires its module; P77 T5 clears the next row.
-Location/Cross/Plain>Plain/TargetFirst/TupleLeaf/ReadBack RuntimeThrow # #2422 runtime-throw
-# T4-transient (plan-775c50): NameError until Main requires its module; P77 T5 clears the next row.
-Location/Cross/Plain>Plain/TargetFirst/WithTarget/ReadBack RuntimeThrow # #2422 runtime-throw
 Location/StaticField+Generic/Int/ComprehensionTarget/InInitializerText FalseRefusal # #2422 false-refusal
 Location/StaticField+Generic/Int/OutOperand/InInitializerText FalseRefusal # #2422 false-refusal
 Location/StaticField/Int/ComprehensionTarget/InInitializerText FalseRefusal # #2422 false-refusal
@@ -206,16 +63,12 @@ Slot/ComparisonChain.Operands/Second RuntimeThrow # #2422 runtime-throw
 Slot/ConditionalExpression.Test RuntimeThrow # #2422 runtime-throw
 # Moved by P77 T4 (SilentWrong -> NameError: the cycle read no longer sees a default); P77 T9 (D8, SPY0278) clears the next row.
 Slot/DictComprehension.Clauses:ForClause.Iterator/First RuntimeThrow # #2422 runtime-throw
-# T4-transient (plan-775c50): NameError until the class-at-line sweep; P77 T5 clears the next row.
-Slot/DictComprehension.Clauses:ForClause.Target RuntimeThrow # #2422 runtime-throw
 # Moved by P77 T4 (SilentWrong -> NameError: the cycle read no longer sees a default); P77 T9 (D8, SPY0278) clears the next row.
 Slot/DictLiteral.Entries.Key RuntimeThrow # #2422 runtime-throw
 # Moved by P77 T4 (SilentWrong -> NameError: the cycle read no longer sees a default); P77 T9 (D8, SPY0278) clears the next row.
 Slot/DictLiteral.Entries.Value RuntimeThrow # #2422 runtime-throw
 # Moved by P77 T4 (SilentWrong -> NameError: the cycle read no longer sees a default); P77 T9 (D8, SPY0278) clears the next row.
 Slot/DictSpreadComprehension.Clauses:ForClause.Iterator/First RuntimeThrow # #2422 runtime-throw
-# T4-transient (plan-775c50): NameError until the class-at-line sweep; P77 T5 clears the next row.
-Slot/DictSpreadComprehension.Clauses:ForClause.Target RuntimeThrow # #2422 runtime-throw
 # Moved by P77 T4 (SilentWrong -> NameError: the cycle read no longer sees a default); P77 T9 (D8, SPY0278) clears the next row.
 Slot/FStringLiteral.Parts.Expression RuntimeThrow # #2422 runtime-throw
 # Moved by P77 T4 (SilentWrong -> NameError: the cycle read no longer sees a default); P77 T9 (D8, SPY0278) clears the next row.
@@ -228,16 +81,12 @@ Slot/FunctionCall.Function RuntimeThrow # #2422 runtime-throw
 Slot/FunctionCall.KeywordArguments.Value RuntimeThrow # #2422 runtime-throw
 # Moved by P77 T4 (SilentWrong -> NameError: the cycle read no longer sees a default); P77 T9 (D8, SPY0278) clears the next row.
 Slot/GeneratorExpression.Clauses:ForClause.Iterator/First RuntimeThrow # #2422 runtime-throw
-# T4-transient (plan-775c50): NameError until the class-at-line sweep; P77 T5 clears the next row.
-Slot/GeneratorExpression.Clauses:ForClause.Target RuntimeThrow # #2422 runtime-throw
 # Moved by P77 T4 (SilentWrong -> NameError: the cycle read no longer sees a default); P77 T9 (D8, SPY0278) clears the next row.
 Slot/IndexAccess.Index RuntimeThrow # #2422 runtime-throw
 # Moved by P77 T4 (SilentWrong -> NameError: the cycle read no longer sees a default); P77 T9 (D8, SPY0278) clears the next row.
 Slot/IndexAccess.Object RuntimeThrow # #2422 runtime-throw
 # Moved by P77 T4 (SilentWrong -> NameError: the cycle read no longer sees a default); P77 T9 (D8, SPY0278) clears the next row.
 Slot/ListComprehension.Clauses:ForClause.Iterator/First RuntimeThrow # #2422 runtime-throw
-# T4-transient (plan-775c50): NameError until the class-at-line sweep; P77 T5 clears the next row.
-Slot/ListComprehension.Clauses:ForClause.Target RuntimeThrow # #2422 runtime-throw
 # Moved by P77 T4 (SilentWrong -> NameError: the cycle read no longer sees a default); P77 T9 (D8, SPY0278) clears the next row.
 Slot/ListLiteral.Elements RuntimeThrow # #2422 runtime-throw
 # Moved by P77 T4 (SilentWrong -> NameError: the cycle read no longer sees a default); P77 T9 (D8, SPY0278) clears the next row.
@@ -250,8 +99,6 @@ Slot/MaybeExpression.Operand RuntimeThrow # #2422 runtime-throw
 Slot/MemberAccess.Object RuntimeThrow # #2422 runtime-throw
 # Moved by P77 T4 (SilentWrong -> NameError: the cycle read no longer sees a default); P77 T9 (D8, SPY0278) clears the next row.
 Slot/ModifiedArgument.Argument/In RuntimeThrow # #2422 runtime-throw
-# T4-transient (plan-775c50): NameError until the class-at-line sweep; P77 T5 clears the next row.
-Slot/ModifiedArgument.Argument/Out RuntimeThrow # #2422 runtime-throw
 # Moved by P77 T4 (SilentWrong -> NameError: the cycle read no longer sees a default); P77 T9 (D8, SPY0278) clears the next row.
 Slot/ModifiedArgument.Argument/Ref RuntimeThrow # #2422 runtime-throw
 # Moved by P77 T4 (SilentWrong -> NameError: the cycle read no longer sees a default); P77 T9 (D8, SPY0278) clears the next row.
@@ -342,8 +189,6 @@ Slot/Ring/StaticProperty>StaticField/Parenthesized.Expression RuntimeThrow # #24
 Slot/Ring/StaticProperty>StaticProperty/Parenthesized.Expression RuntimeThrow # #2422 runtime-throw
 # Moved by P77 T4 (SilentWrong -> NameError: the cycle read no longer sees a default); P77 T9 (D8, SPY0278) clears the next row.
 Slot/SetComprehension.Clauses:ForClause.Iterator/First RuntimeThrow # #2422 runtime-throw
-# T4-transient (plan-775c50): NameError until the class-at-line sweep; P77 T5 clears the next row.
-Slot/SetComprehension.Clauses:ForClause.Target RuntimeThrow # #2422 runtime-throw
 # Moved by P77 T4 (SilentWrong -> NameError: the cycle read no longer sees a default); P77 T9 (D8, SPY0278) clears the next row.
 Slot/SetLiteral.Elements RuntimeThrow # #2422 runtime-throw
 # Moved by P77 T4 (SilentWrong -> NameError: the cycle read no longer sees a default); P77 T9 (D8, SPY0278) clears the next row.

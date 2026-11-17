@@ -13,9 +13,16 @@ namespace AssertCountEqual
     {
         public static void Main()
         {
+            __Load();
 #line (18, 5) - (18, 16) 12 "assert_count_equal.spy"
             global::Sharpy.Builtins.Print("ok");
 #line hidden
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        [global::Sharpy.SharpyLoadEntry(false)]
+        public static void __Load()
+        {
         }
     }
 

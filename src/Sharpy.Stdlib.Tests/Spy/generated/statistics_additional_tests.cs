@@ -18,6 +18,11 @@ namespace Sharpy.Stdlib.Tests.Spy.Statistics.StatisticsAdditionalTests
     [global::Sharpy.SharpyModule("statistics.statistics_additional_tests")]
     public static partial class StatisticsAdditionalTestsModule
     {
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        [global::Sharpy.SharpyLoadEntry(false)]
+        public static void __Load()
+        {
+        }
     }
 
     public partial class StatisticsAdditionalTestsModuleTests

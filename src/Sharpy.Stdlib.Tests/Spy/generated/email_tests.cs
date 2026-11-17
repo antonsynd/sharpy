@@ -18,6 +18,11 @@ namespace Sharpy.Stdlib.Tests.Spy.Email.EmailTests
     [global::Sharpy.SharpyModule("email.email_tests")]
     public static partial class EmailTestsModule
     {
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        [global::Sharpy.SharpyLoadEntry(false)]
+        public static void __Load()
+        {
+        }
     }
 
     public partial class EmailTestsModuleTests

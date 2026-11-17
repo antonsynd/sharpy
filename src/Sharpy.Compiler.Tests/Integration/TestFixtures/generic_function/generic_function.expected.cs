@@ -31,6 +31,7 @@ namespace GenericFunction
 
         public static void Main()
         {
+            __Load();
 #line (12, 5) - (12, 41) 12 "generic_function.spy"
             int resultInt = Identity<int>(42);
 #line (13, 5) - (13, 22) 12 "generic_function.spy"
@@ -52,6 +53,12 @@ namespace GenericFunction
 #line (25, 5) - (25, 20) 12 "generic_function.spy"
             global::Sharpy.Builtins.Print(resultF);
 #line hidden
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        [global::Sharpy.SharpyLoadEntry(false)]
+        public static void __Load()
+        {
         }
     }
 }

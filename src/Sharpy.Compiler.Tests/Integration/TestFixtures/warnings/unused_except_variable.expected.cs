@@ -13,6 +13,7 @@ namespace UnusedExceptVariable
     {
         public static void Main()
         {
+            __Load();
 #line (3, 5) - (6, 24) 12 "unused_except_variable.spy"
             try
 #line hidden
@@ -27,6 +28,12 @@ namespace UnusedExceptVariable
                 global::Sharpy.Builtins.Print("caught");
 #line hidden
             }
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        [global::Sharpy.SharpyLoadEntry(false)]
+        public static void __Load()
+        {
         }
     }
 }

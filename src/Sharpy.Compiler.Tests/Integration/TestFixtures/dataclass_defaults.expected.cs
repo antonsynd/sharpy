@@ -12,6 +12,7 @@ namespace DataclassDefaults
     {
         public static void Main()
         {
+            __Load();
 #line (8, 5) - (8, 23) 12 "dataclass_defaults.spy"
             var c1 = new global::DataclassDefaults.Config("app");
 #line (9, 5) - (9, 14) 12 "dataclass_defaults.spy"
@@ -27,6 +28,12 @@ namespace DataclassDefaults
 #line (14, 5) - (14, 14) 12 "dataclass_defaults.spy"
             global::Sharpy.Builtins.Print(c2);
 #line hidden
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        [global::Sharpy.SharpyLoadEntry(false)]
+        public static void __Load()
+        {
         }
     }
 

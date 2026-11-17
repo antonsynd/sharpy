@@ -13,6 +13,7 @@ namespace NullableScoreEvaluator
     {
         public static void Main()
         {
+            __Load();
 #line (29, 5) - (29, 35) 12 "nullable_score_evaluator.spy"
             var evaluator = new global::NullableScoreEvaluator.ScoreEvaluator(60);
 #line (31, 5) - (31, 35) 12 "nullable_score_evaluator.spy"
@@ -46,6 +47,12 @@ namespace NullableScoreEvaluator
 #line (47, 5) - (47, 20) 12 "nullable_score_evaluator.spy"
             global::Sharpy.Builtins.Print(status3);
 #line hidden
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        [global::Sharpy.SharpyLoadEntry(false)]
+        public static void __Load()
+        {
         }
     }
 
