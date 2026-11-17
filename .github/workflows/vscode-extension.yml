@@ -16,6 +16,7 @@ on:
 
 jobs:
   build:
+    name: VSIX build
     runs-on: ubuntu-latest
 
     permissions:
