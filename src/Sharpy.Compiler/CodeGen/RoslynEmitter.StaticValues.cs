@@ -578,7 +578,17 @@ internal partial class RoslynEmitter
                 $"a Guarded property '{first.Name}' has no default in its emission (plan-775c50 D4)", first);
 
         var name = property.Identifier.ValueText;
-        var fieldName = backing?.Declaration.Variables[0].Identifier.ValueText ?? GuardedFieldName(name);
+        var fieldName = GuardedFieldName(name);
+        if (backing != null)
+        {
+            // An expanded arm's backing field (`_name`, with observers or a function-style accessor) is
+            // this value's storage: it is named as every Guarded value's storage is, `N__field`, the
+            // name the D6 helpers spell and the one its CLR default (`= default!`, F15) is written on.
+            var backingName = backing.Declaration.Variables[0].Identifier.ValueText;
+            members = members.Select(m => RenameStorage(m, backingName, fieldName)).ToList();
+            property = members.OfType<PropertyDeclarationSyntax>().Single();
+            backing = members.OfType<FieldDeclarationSyntax>().Single(f => f.Declaration.Variables[0].Initializer != null);
+        }
         var type = property.Type;
 
         var output = new List<MemberDeclarationSyntax>();
@@ -622,6 +632,15 @@ internal partial class RoslynEmitter
         }
         return output;
     }
+
+    /// <summary><paramref name="member"/> with the emitter-named storage <paramref name="from"/> renamed
+    /// <paramref name="to"/>: its declarator and each name of it.</summary>
+    private static MemberDeclarationSyntax RenameStorage(MemberDeclarationSyntax member, string from, string to)
+        => member.ReplaceTokens(
+            member.DescendantTokens().Where(token => token.IsKind(SyntaxKind.IdentifierToken)
+                && token.ValueText == from
+                && token.Parent is VariableDeclaratorSyntax or IdentifierNameSyntax),
+            (token, _) => Identifier(token.LeadingTrivia, to, token.TrailingTrivia));
 
     private static PropertyDeclarationSyntax GuardPropertyAccessors(PropertyDeclarationSyntax property, string name, string fieldName)
     {
