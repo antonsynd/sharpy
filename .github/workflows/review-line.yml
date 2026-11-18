@@ -71,3 +71,12 @@ jobs:
         args=(--head "$HEAD_SHA" --base "origin/$BASE_REF" --base-ref "$BASE_REF" --author "$AUTHOR")
         if [ "$DRAFT" = "true" ]; then args+=(--draft); fi
         python3 build_tools/check_review_line.py "${args[@]}"
+
+    # The `sharpy-issues` block (build_tools/issue_block.py): the issues the PR closes and files, read
+    # by `/close-issues pr:<N>` after the merge; no workflow closes issues. It runs even when the line
+    # check above failed, so both are reported; the body reaches it through env only.
+    - name: Check the sharpy-issues block
+      if: ${{ !cancelled() }}
+      env:
+        PR_BODY: ${{ github.event.pull_request.body }}
+      run: python3 build_tools/issue_block.py --check
