@@ -799,6 +799,11 @@ internal partial class RoslynEmitter
     /// </summary>
     private ExpressionSyntax GuardedOutOperand(Expression operand, ExpressionSyntax target)
     {
+        // The operand's commit is its own call's (W10): a call whose arguments are generated outside
+        // GenerateCallWithOutCommits would leave the commit to an enclosing call, or to none.
+        if (_outCommitCall == null || !IsOwnOutOperand(_outCommitCall, operand))
+            throw new InternalCompilerErrorException("RoslynEmitter",
+                "an `out` operand on a Guarded value was generated outside its call's commit seam (plan-775c50 D4)", operand);
         var spill = $"__spill{_tempVarCounter++}";
         var commit = GuardedMember(target, GuardedCommitSuffix, operand);
         if (AsyncGuardedUseOf(operand) == AsyncGuardedUseKind.OutOperand)
@@ -832,7 +837,9 @@ internal partial class RoslynEmitter
     private ExpressionSyntax GenerateCallWithOutCommits(FunctionCall call, Func<ExpressionSyntax> generate)
     {
         var saved = _outCommits;
+        var savedCall = _outCommitCall;
         _outCommits = null;
+        _outCommitCall = call;
         var perArm = IsEmittedPerArm(call);
         if (perArm)
             _callsEmittedPerArm++;
@@ -846,6 +853,7 @@ internal partial class RoslynEmitter
         {
             commits = _outCommits;
             _outCommits = saved;
+            _outCommitCall = savedCall;
             if (perArm)
                 _callsEmittedPerArm--;
         }
@@ -884,6 +892,16 @@ internal partial class RoslynEmitter
         }
         return result;
     }
+
+    /// <summary>The call whose arguments are being generated under <see cref="GenerateCallWithOutCommits"/>.</summary>
+    private FunctionCall? _outCommitCall;
+
+    /// <summary>Whether <paramref name="operand"/> is an <c>out</c> operand of <paramref name="call"/>
+    /// itself, positional or keyword, rather than of a call nested in or around it.</summary>
+    private static bool IsOwnOutOperand(FunctionCall call, Expression operand)
+        => call.Arguments.Concat(call.KeywordArguments.Select(k => k.Value)).Any(argument =>
+            argument is ModifiedArgument { Modifier: ParameterModifier.Out, InlineName: null } own
+            && ReferenceEquals(own.Argument, operand));
 
     /// <summary>The depth of calls being generated that are emitted once per arm (D6): an inline
     /// <c>out</c> declaration under one is declared before the statement, so no copy redeclares it.</summary>
