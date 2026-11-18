@@ -46,8 +46,7 @@ their gates (R-PM). The arc closes when P21c's verification record merges. P77 i
 Read at the start and the end of each group. Sources, after a build:
 
 - `.claude/scripts/scorecard --since <date> --base <sha>`: open issues, closed ÷ filed, SPY0908
-  titles, side tables, commit mix. Its footer still names the 11-06 handoff's §5.1; this table
-  replaces it.
+  titles, side tables, commit mix; it still prints the rows this table drops.
 - `python3 build_tools/scorecard_metrics.py --check` (`--json` for the numbers): procedure key,
   `CLAUDE.md`, rows outside the seed.
 - `python3 build_tools/check_plan_refs.py docs/process/plans/<plan>.md`: its `caps (R-LW)` line

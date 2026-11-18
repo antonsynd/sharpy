@@ -3,8 +3,9 @@
 #
 #   .claude/scripts/scorecard [--since YYYY-MM-DD] [--base SHA] [--no-network] [--no-probe]
 #
-# Prints a markdown table, one row per metric of docs/process/handoff-2026-11-06-remediation.md §5.1,
-# each value tagged with the HEAD sha it was measured at. The smoke run of 2026-11-07 found that 11 of
+# Prints a markdown table, one row per metric of the closed docs/process/handoff-2026-11-06-remediation.md
+# §5.1, each value tagged with the HEAD sha it was measured at; the goals document now in force,
+# docs/process/handoff-2026-11-17-arc.md §3, says which rows it reads and their directions. The smoke run of 2026-11-07 found that 11 of
 # the 14 rows could not be measured from the prose "how to measure" column without guessing (globstar,
 # a markdown-escaped regex, the LOC denominator, the .spyproj path, the hello-world program, manual
 # paging because `gh api --paginate` is refused by the cloud proxy). This script is that column.
@@ -188,4 +189,4 @@ if [ -x .claude/hooks/test-hooks.sh ]; then
 fi
 
 echo
-echo "Baselines and directions: docs/process/handoff-2026-11-06-remediation.md §5.1."
+echo "Baselines and directions: docs/process/handoff-2026-11-17-arc.md §3 (rows it drops still print here)."
