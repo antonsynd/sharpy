@@ -352,3 +352,12 @@ def test_the_workflow_checks_the_block_after_the_review_line_even_when_that_fail
     ]
     assert index == review + 1
     assert steps[index]["if"] == "${{ !cancelled() }}"
+
+
+def test_the_workflow_installs_pyyaml_before_the_block_step():
+    # #2741's first CI run: the step died with ModuleNotFoundError: No module named 'yaml'.
+    steps, index = _issue_block_step()
+    installs = [
+        i for i, s in enumerate(steps) if "pyyaml==" in s.get("run", "").lower()
+    ]
+    assert installs and installs[0] < index
