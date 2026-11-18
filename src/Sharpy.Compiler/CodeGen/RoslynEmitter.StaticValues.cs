@@ -693,14 +693,15 @@ internal partial class RoslynEmitter
     /// Whether a store or operand <paramref name="target"/> names a Guarded value that takes a store:
     /// the recorded <see cref="CodeGenInfo.StaticStorage"/> of the symbol the checker bound, no const.
     /// Every such value has <c>N__set</c> (a property default's calls its setter, D4); the checker
-    /// refuses an <c>out</c> operand on a const or a property (D7).
+    /// refuses an <c>out</c> operand on a const or a property (D7). The bound symbol is the only
+    /// source, on a bare name as on a qualified one, as <c>AsyncGuardedUseAnalyzer</c> reads it: never
+    /// a lookup by the spelling, which the use's position would decide (plan-775c50 Defect Class).
     /// </summary>
     private bool IsGuardedVariableTarget(Expression target)
     {
         var symbol = target switch
         {
-            Identifier id => _context.SemanticInfo?.GetIdentifierSymbol(id)
-                ?? (StoreAssignsExistingSlot(id) ? _context.LookupSymbol(id.Name) : null),
+            Identifier id => _context.SemanticInfo?.GetIdentifierSymbol(id),
             MemberAccess ma => _context.SemanticInfo?.GetMemberAccessResolution(ma)?.Member
                 ?? _context.SemanticInfo?.GetModuleMemberResolution(ma)?.Member,
             _ => null,

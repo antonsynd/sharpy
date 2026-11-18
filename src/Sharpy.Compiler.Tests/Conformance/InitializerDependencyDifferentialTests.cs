@@ -750,7 +750,7 @@ public sealed partial class InitializerDependencyDifferentialTests : Integration
     internal static readonly IReadOnlySet<string> ReasonsNoProgramShows = new HashSet<string>(StringComparer.Ordinal)
     {
         // Structure, which totality checks without a compile: a leaf has no slot, and a plain argument parses to no ModifiedArgument.
-        Leaf, ControlLeaf, UnmodifiedArgument,
+        Leaf, ControlLeaf, UnmodifiedArgument, NoFunctionToPlace,
         // What the kind is: a local or a parameter lives in a body, a function or a type is no int, a literal reads nothing, no binding has no name.
         NoEnclosingBody, NotAnIntValue, NoStaticInitializer, LiteralOnNoCycle, NoBinding,
         // Scope: another harness holds the value, or the plan's graph leaves it out by decision (D8).

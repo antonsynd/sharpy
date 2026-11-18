@@ -1324,9 +1324,12 @@ internal partial class TypeChecker
 
                 if (fieldDecl != null)
                 {
+                    // In place, never a copy: a use checked before this body (a function declared above the
+                    // type) already bound this symbol, and the emitter reads the facts CodeGenInfoComputer
+                    // records on it (plan-775c50 D2, D4). A copy left that use on a symbol with none.
                     var resolvedType = _typeResolver.ResolveTypeAnnotation(fieldDecl.Type, AnnotationPosition.Value);
-                    classSymbol.Fields[i] = fieldSymbol with { Type = resolvedType };
-                    SemanticBinding.SetVariableType(classSymbol.Fields[i], resolvedType);
+                    fieldSymbol.Type = resolvedType;
+                    SemanticBinding.SetVariableType(fieldSymbol, resolvedType);
                 }
             }
         }
@@ -1622,9 +1625,12 @@ internal partial class TypeChecker
 
                 if (fieldDecl != null)
                 {
+                    // In place, never a copy: a use checked before this body (a function declared above the
+                    // type) already bound this symbol, and the emitter reads the facts CodeGenInfoComputer
+                    // records on it (plan-775c50 D2, D4). A copy left that use on a symbol with none.
                     var resolvedType = _typeResolver.ResolveTypeAnnotation(fieldDecl.Type, AnnotationPosition.Value);
-                    structSymbol.Fields[i] = fieldSymbol with { Type = resolvedType };
-                    SemanticBinding.SetVariableType(structSymbol.Fields[i], resolvedType);
+                    fieldSymbol.Type = resolvedType;
+                    SemanticBinding.SetVariableType(fieldSymbol, resolvedType);
                 }
             }
         }

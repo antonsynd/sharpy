@@ -232,7 +232,6 @@ public class DispatchSiteInventoryTests
         ["CodeGen/RoslynEmitter.ModuleClass.cs::RoslynEmitter.GenerateModuleMembers"] = "refusal-net:FileBasedIntegrationTests",
         ["CodeGen/RoslynEmitter.ModuleClass.cs::RoslynEmitter.GenerateParametrizeMemberDataProperties"] = "refusal-net:FileBasedIntegrationTests",
         ["CodeGen/RoslynEmitter.ModuleClass.cs::RoslynEmitter.GenerateStatement"] = "refusal-net:FileBasedIntegrationTests",
-        ["CodeGen/RoslynEmitter.Operators.cs::RoslynEmitter.CollectReferencedIdentifiers"] = "refusal-net:FileBasedIntegrationTests",
         // The operand pair of a reported node (#1699, 94e87ff99; moved out of OperandSpellings in
         // 414009c45 so the #1819 augmented-store arm reads the same switch): a switch over the
         // reported node's shape (binary operation / augmented assignment) that names the two
