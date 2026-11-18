@@ -36,7 +36,22 @@ branch gets the rebase hint; every one of them fails the check):
 
   not required   the base is not `dev` (a promotion into `mainline`, a stacked PR), or no changed
                  path is a code path (a sync of `mainline` into `dev` changes none). README item 6
-                 names no other exemption, so there is none for bots or for a head named `dev`;
+                 names no exemption for a head named `dev`; the only bot exemption (owner,
+                 2026-11-17) is `--author dependabot[bot]` with every changed code path a package
+                 manifest under `src/` (`*.csproj`, `Directory.Packages.props`,
+                 `packages.lock.json`) modified in place, and every hunk of its diff a version
+                 change (version_only): as many removed as added lines, the i-th removed paired
+                 with the i-th added, each pair identical but for a different version value, in
+                 the `Version` attribute of a `<PackageReference>`/`<PackageVersion>` tag that
+                 parses as a strict attribute sequence (a concrete version on both sides, never a
+                 float or range) or a lock-file `resolved`, `requested`, `contentHash` or
+                 `"<package>": "<version>"` value. The diff is read as bytes and decoded as UTF-8
+                 with no newline translation. It is judged line by line and parses no context, so
+                 a tag-shaped line inside a multi-line construct already on the base (an
+                 `<Exec Command="...">` value spanning lines) is judged as a tag. Anything else
+                 (an added or binary file, no patch, a moved line, a `<Target>`, a property, a
+                 new package, a line holding a line separator other than `\n`, a diff that is
+                 not UTF-8) needs the line;
   missing        no line counts;
   malformed      the last counted line does not parse;
   sha not an ancestor of head
@@ -70,7 +85,7 @@ fetchable: such a PR reads as `sha not an ancestor of head` until the line's sha
 
 Usage:
     python3 build_tools/check_review_line.py --head <sha> [--base <rev>] [--base-ref dev]
-        [--body-env PR_BODY] [--draft]
+        [--body-env PR_BODY] [--draft] [--author <login>]
 
 --base defaults to `origin/<base-ref>`: the base branch's tip in this clone, not the event payload's
 `base.sha`, which is frozen when the PR opens (#2626 was opened on eabb480c6 and merged onto
@@ -101,6 +116,35 @@ CODE_PREFIXES = (
     "docs/language_specification/",
 )
 RULE_BASE = "dev"
+# Owner ruling (2026-11-17): a dependency bump opened by Dependabot needs no review line. The author
+# login is set by GitHub and cannot be chosen by a PR (a branch name can), and the exemption holds
+# only while every changed code path is a package manifest whose diff changes versions and nothing
+# else (version_only), so a bot PR that also edits source, scripts, workflows or MSBuild logic still
+# needs the line.
+DEPENDENCY_BOT = "dependabot[bot]"
+MANIFEST_NAMES = ("Directory.Packages.props", "packages.lock.json")
+MANIFEST_SUFFIXES = (".csproj",)
+# A version change in an MSBuild manifest: one PackageReference/PackageVersion tag on the line, in
+# attribute form (`/>`, or `>` opening an element whose unchanged children stay context), its
+# attributes a strict `name="value"` / `name='value'` sequence, so a `Version="..."` inside another
+# attribute's value is text, not the attribute.
+VERSION_TAG = re.compile(
+    r"\s*<(?:PackageReference|PackageVersion)"
+    r"((?:\s+[\w.:-]+\s*=\s*(?:\"[^\"]*\"|'[^']*'))*)\s*/?>\s*"
+)
+TAG_ATTR = re.compile(r"\s+([\w.:-]+)\s*=\s*(?:\"([^\"]*)\"|'([^']*)')")
+# A lock-file line `"<key>": "<value>",`; `resolved`/`requested`/`contentHash` take any value, any
+# other key (a dependency's name) only a version or version range on both sides.
+LOCK_LINE = re.compile(r'\s*"([^"]+)": "([^"]*)",?\s*')
+LOCK_ANY_VALUE = ("resolved", "requested", "contentHash")
+# A version or NuGet range (`1.2.3-rc.1`, `10.*`, `[1.0, )`): never `$(...)`, which MSBuild evaluates.
+VERSION = re.compile(r"[\[(]?\d[0-9A-Za-z.*+-]*(?:\s*,\s*[0-9A-Za-z.*+-]*)?[\])]?")
+# A concrete version (`10.0.15`, `1.2.3-rc.1+build`), the only kind a manifest tag may change to or
+# from: a float (`1.*`) or range (`[1.0,)`) lets later restores pick unreviewed versions.
+CONCRETE_VERSION = re.compile(r"\d+(?:\.\d+)*(?:-[0-9A-Za-z.-]+)?(?:\+[0-9A-Za-z.-]+)?")
+# Characters Python or other readers may take as a line end inside one git diff line (a `\r` is
+# allowed only as the line's last character, a CRLF file).
+LINE_BREAKS = re.compile("[\r\x0b\x0c\x1c\x1d\x1e\x85\u2028\u2029]")
 
 NOT_REQUIRED = "not required"
 OK = "ok"
@@ -150,6 +194,109 @@ REBASE_HINT = "; if the branch was rebased with changes, the review must be repe
 
 def is_code_path(path: str) -> bool:
     return path.startswith(CODE_PREFIXES)
+
+
+def is_manifest_path(path: str) -> bool:
+    # Under src/ only: a `.csproj` under `.github/` or `build_tools/` is not a package manifest.
+    return path.startswith("src/") and (
+        path.endswith(MANIFEST_SUFFIXES) or path.rsplit("/", 1)[-1] in MANIFEST_NAMES
+    )
+
+
+def _version_key(path: str, line: str) -> Optional[tuple]:
+    """(the line with its version value blanked, the version value(s)) for a changed manifest line
+    that may be one side of a version change; None when it cannot be."""
+    if LINE_BREAKS.search(line[:-1] if line.endswith("\r") else line):
+        return None
+    if path.endswith("packages.lock.json"):
+        m = LOCK_LINE.fullmatch(line)
+        if not m or (
+            m.group(1) not in LOCK_ANY_VALUE and not VERSION.fullmatch(m.group(2))
+        ):
+            return None
+        return line[: m.start(2)] + line[m.end(2) :], (m.group(2),)
+    m = VERSION_TAG.fullmatch(line)
+    if not m:
+        return None
+    attrs = [
+        a
+        for a in TAG_ATTR.finditer(line, m.start(1), m.end(1))
+        if a.group(1) == "Version"
+    ]
+    if len(attrs) != 1:
+        return None
+    group = 2 if attrs[0].group(2) is not None else 3
+    value = attrs[0].group(group)
+    if not CONCRETE_VERSION.fullmatch(value):
+        return None
+    return line[: attrs[0].start(group)] + line[attrs[0].end(group) :], (value,)
+
+
+NO_NEWLINE = "\\ No newline at end of file"
+
+
+def version_only(diff, paths: Sequence[str]) -> Optional[str]:
+    """None when `diff` (`git diff -U0` of `paths`, bytes or str) changes nothing but versions in
+    every one of `paths`, each modified in place; else why not. No patch for a path is a reason, and
+    so is a diff that is not UTF-8."""
+    if isinstance(diff, bytes):
+        try:
+            diff = diff.decode("utf-8")
+        except UnicodeDecodeError as exc:
+            return f"the manifest diff is not UTF-8 ({exc.reason} at byte {exc.start})"
+    changes: dict = {}  # path -> [(removed lines, added lines)], one entry per hunk
+    path = None
+    in_hunk = False
+    # git ends a diff line at "\n" only (str.splitlines also splits on \r, U+2028, ...).
+    lines = diff.split("\n")
+    if lines and lines[-1] == "":
+        lines.pop()
+    for line in lines:
+        if line.startswith("diff --git "):
+            rest = line[len("diff --git a/") :]
+            half = (len(rest) - 3) // 2
+            path = rest[:half] if rest == rest[:half] + " b/" + rest[:half] else None
+            if path is None or path in changes:
+                return f"unreadable diff header: {line[:120]}"
+            changes[path], in_hunk = [], False
+        elif path is None:
+            return f"diff text before a header: {line[:120]}"
+        elif line.startswith("@@"):
+            in_hunk = True
+            changes[path].append(([], []))
+        elif not in_hunk:
+            # Extended headers: only the index line and the two file names are a modification.
+            if not line.startswith(("index ", "--- a/", "+++ b/")):
+                return f"{path}: {line.strip()[:120]}"
+        elif line.startswith("-"):
+            changes[path][-1][0].append(line[1:])
+        elif line.startswith("+"):
+            changes[path][-1][1].append(line[1:])
+        elif line != NO_NEWLINE:
+            return f"{path}: unexpected diff line: {line[:120]}"
+    for p in paths:
+        if p not in changes or not any(r or a for r, a in changes[p]):
+            return f"{p}: no patch"
+    for p, hunks in changes.items():
+        if p not in paths:
+            return f"{p}: not a changed manifest"
+        for removed, added in hunks:
+            for text in removed + added:
+                if _version_key(p, text) is None:
+                    return f"{p}: not a version change: {text.strip()[:120]}"
+            if len(removed) != len(added):
+                return (
+                    f"{p}: a hunk removes {len(removed)} and adds {len(added)} line(s)"
+                )
+            # Paired by position: a line that moves (another ItemGroup, a Condition) is no pair.
+            for old, new in zip(removed, added):
+                (old_rest, old_v), (new_rest, new_v) = (
+                    _version_key(p, old),
+                    _version_key(p, new),
+                )
+                if old_rest != new_rest or old_v == new_v:
+                    return f"{p}: not a version change: {old.strip()[:60]} -> {new.strip()[:60]}"
+    return None
 
 
 def strip_comments(line: str, in_comment: bool) -> tuple:
@@ -312,6 +459,33 @@ class Git:
                 out.append(sha)
         return out
 
+    def manifest_diff(self, base: str, head: str, paths: Sequence[str]) -> bytes:
+        """`git diff -U0 base...head` of `paths`, the same comparison as changed_paths, as bytes:
+        text mode would turn a lone `\r` into `\n` and fail on bytes that are not UTF-8."""
+        r = subprocess.run(
+            [
+                "git",
+                "diff",
+                "--no-renames",
+                "--no-color",
+                "--no-ext-diff",
+                "--no-textconv",
+                "--src-prefix=a/",
+                "--dst-prefix=b/",
+                "-U0",
+                f"{base}...{head}",
+                "--",
+                *paths,
+            ],
+            capture_output=True,
+            cwd=self.cwd,
+            check=False,
+        )
+        if r.returncode != 0:
+            message = r.stderr.decode("utf-8", "replace").strip()
+            raise RuntimeError(message or "git diff failed")
+        return r.stdout
+
     def changed_paths(self, base: str, head: str) -> List[str]:
         r = self._run("diff", "--no-renames", "--name-only", f"{base}...{head}")
         if r.returncode != 0:
@@ -326,6 +500,7 @@ def judge(
     base: str,
     git: Git,
     base_ref: str = RULE_BASE,
+    author: Optional[str] = None,
 ) -> Result:
     if base_ref != RULE_BASE:
         return Result(
@@ -338,12 +513,22 @@ def judge(
             NOT_REQUIRED, f"no changed path is a code path ({len(paths)} changed)"
         )
 
+    not_exempt = ""
+    if author == DEPENDENCY_BOT and all(is_manifest_path(p) for p in code):
+        why = version_only(git.manifest_diff(base, head, code), code)
+        if why is None:
+            return Result(
+                NOT_REQUIRED,
+                f"{DEPENDENCY_BOT} changed only package versions ({len(code)} manifest(s))",
+            )
+        not_exempt = f" ({DEPENDENCY_BOT} exemption not taken: {why})"
+
     parsed = parse_body(body)
     if not parsed.lines:
         return Result(
             MISSING,
             f"{len(code)} code path(s) changed (e.g. {code[0]}) and no line starts with `Independent review @`"
-            " outside code, quotes and comments",
+            " outside code, quotes and comments" + not_exempt,
         )
     if not parsed.last_line_parses:
         return Result(
@@ -430,6 +615,9 @@ def main(argv: Optional[List[str]] = None, git_factory: Callable[[], Git] = Git)
     parser.add_argument("--base", help="the base tip (default origin/<base-ref>)")
     parser.add_argument("--base-ref", default=RULE_BASE)
     parser.add_argument(
+        "--author", help="the PR author's login (exempts a Dependabot manifest-only PR)"
+    )
+    parser.add_argument(
         "--body-env", default="PR_BODY", help="environment variable holding the PR body"
     )
     parser.add_argument(
@@ -451,6 +639,7 @@ def main(argv: Optional[List[str]] = None, git_factory: Callable[[], Git] = Git)
                 base,
                 git,
                 base_ref=args.base_ref,
+                author=args.author,
             )
     except RuntimeError as exc:
         print(f"check_review_line: {exc}", file=sys.stderr)

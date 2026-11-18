@@ -62,8 +62,13 @@ public class SemanticInfoMergeConformanceTests
     /// 85: <c>_optionalStoreWraps</c> moved onto <c>IrOptionalStoreWrap</c>,
     /// <c>IrOptionalWrappedElement</c> and <c>IrOptionalWalrusStore</c> (P82 tranche 1).
     /// 84: <c>_matchScrutineeLowerings</c> moved onto <c>IrTypedNullScrutinee</c> (P82 tranche 2).
+    /// 85: <c>_membershipNeedleBindings</c> (P93, PR #2699), raised by the implementing session
+    /// without the owner's word; owner, 2026-11-17: not a precedent, the table moves onto an IR node
+    /// in the next P82 tranche.
+    /// This pin is raised only on the owner's word, quoted in the pull request body, as a scorecard
+    /// baseline is.
     /// </summary>
-    private const int MaximumSideTableFieldCount = 84;
+    private const int MaximumSideTableFieldCount = 85;
 
     /// <summary>
     /// #1887: the real property — an entry recorded on one SemanticInfo survives <c>MergeFrom</c>

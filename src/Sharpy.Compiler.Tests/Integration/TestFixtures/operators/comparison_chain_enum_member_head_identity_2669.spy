@@ -1,0 +1,14 @@
+# `c is Color.RED is d` is a comparison CHAIN headed by a dotted name the parser reads like a type.
+# Before P93 it kept the SPY0349 type-test refusal; under P93 D4 (plan-67a01f, owner-ruled) the chain
+# is built over [c, Color.RED, d] and its first link takes the type test's rule: `Color.RED` is an enum
+# member, so the link is an identity comparison, and the chain prints what CPython 3.15 prints.
+
+enum Color:
+    RED = 1
+    GREEN = 2
+
+
+def main() -> None:
+    c: Color = Color.RED
+    d: Color = Color.RED
+    print(c is Color.RED is d)

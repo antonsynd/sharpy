@@ -55,6 +55,14 @@ namespace Sharpy
 
         public bool Contains(string name)
         {
+            // CPython: `None in EmailMessage()` raises AttributeError (`__contains__` calls
+            // `name.lower()`). A `T | None` needle reaches here as null at run time; without
+            // this the ordinal comparison below answers False.
+            if (name is null)
+            {
+                throw new AttributeError("'NoneType' object has no attribute 'lower'");
+            }
+
             for (int i = 0; i < _headers.Count; i++)
             {
                 if (string.Equals(_headers[i].name, name, StringComparison.OrdinalIgnoreCase))

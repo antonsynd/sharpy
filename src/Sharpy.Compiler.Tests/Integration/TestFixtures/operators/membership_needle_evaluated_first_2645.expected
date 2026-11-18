@@ -1,0 +1,23 @@
+needle list
+container list
+True
+needle list not
+container list not
+False
+needle tuple
+needle first
+False
+needle dict
+container dict
+True
+needle str
+container str
+True
+needle bag
+container bag
+True
+needle comprehension
+container comprehension
+True
+False
+5

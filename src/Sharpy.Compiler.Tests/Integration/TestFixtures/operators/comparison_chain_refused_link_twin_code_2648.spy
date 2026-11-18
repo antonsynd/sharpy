@@ -1,0 +1,8 @@
+# A comparison-chain link is refused with its binary twin's code (plan P93 D3, #2648; owner ruling
+# 2026-11-13, "Refuse, as the twin"): the link `2 in n` of `1 < 2 in n` is refused as the expression
+# `2 in n` is, with SPY0320 (an int is not a container), where it was SPY0519 at code generation before.
+# CPython raises TypeError at run time ("argument of type 'int' is not a container or iterable").
+
+def main() -> None:
+    n: int = 5
+    print(1 < 2 in n)

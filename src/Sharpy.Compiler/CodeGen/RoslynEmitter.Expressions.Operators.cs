@@ -37,9 +37,10 @@ internal partial class RoslynEmitter
     /// None test. A right-hand literal wins when both sides are literals (<c>None is None</c>), which
     /// keeps that spelling's lowering unchanged.
     /// </summary>
-    private static ExpressionSyntax? NoneTestSubject(BinaryOp binOp, ExpressionSyntax left, ExpressionSyntax right)
-        => binOp.Right is NoneLiteral ? left
-            : binOp.Left is NoneLiteral ? right
+    private static ExpressionSyntax? NoneTestSubject(
+        Expression leftNode, Expression rightNode, ExpressionSyntax left, ExpressionSyntax right)
+        => rightNode is NoneLiteral ? left
+            : leftNode is NoneLiteral ? right
             : null;
 
     /// <summary>
@@ -48,9 +49,11 @@ internal partial class RoslynEmitter
     /// user code). Every recorded arm is a form that cannot bind a user <c>operator ==</c>:
     /// <c>.IsNone</c>/<c>.IsSome</c> on an Optional, the null pattern on a C#-nullable subject, the
     /// null pattern on the boxed subject otherwise. Only the unrecorded <c>None is None</c> keeps
-    /// <c>null == null</c> — two null literals, a C# constant, no operator in reach.
+    /// <c>null == null</c> — two null literals, a C# constant, no operator in reach. The binary
+    /// operator passes the kind recorded on its node, a chain link its
+    /// <see cref="ComparisonLinkLowering.Kind"/> (P93 D3: a link is its binary twin).
     /// </summary>
-    private ExpressionSyntax GenerateNoneTest(BinaryOp binOp, ExpressionSyntax subject, bool negated)
+    private static ExpressionSyntax GenerateNoneTest(OperatorLoweringKind kind, ExpressionSyntax subject, bool negated)
     {
         PatternSyntax NullPattern()
         {
@@ -58,7 +61,7 @@ internal partial class RoslynEmitter
             return negated ? UnaryPattern(Token(SyntaxKind.NotKeyword), pattern) : pattern;
         }
 
-        switch (OperatorLoweringOf(binOp).Kind)
+        switch (kind)
         {
             case OperatorLoweringKind.OptionalNoneTest:
                 return Member(subject, negated ? "IsSome" : "IsNone");
@@ -72,6 +75,50 @@ internal partial class RoslynEmitter
                     LiteralExpression(SyntaxKind.NullLiteralExpression));
         }
     }
+
+    /// <summary>
+    /// The lowering of one <c>is</c> / <c>is not</c> between two values (neither the None literal),
+    /// read from the kind the checker recorded (<c>TypeChecker.ClassifyEnumIdentity</c>, #2669) — the
+    /// ONE emission the binary operator and the enum-member type-test spelling
+    /// (<see cref="GenerateTypeCheck"/>) share:
+    /// <list type="bullet">
+    /// <item><see cref="OperatorLoweringKind.EnumIdentityEquals"/> — the native <c>l == r</c> /
+    /// <c>l != r</c> of one int-backed enum type (lifted over <c>E?</c>);</item>
+    /// <item><see cref="OperatorLoweringKind.EnumIdentityObjectEquals"/> —
+    /// <c>global::Sharpy.EnumHelpers.Identity(l, r)</c>, negated for <c>is not</c>;</item>
+    /// <item>anything else — <c>object.ReferenceEquals(l, r)</c>, negated for <c>is not</c>.</item>
+    /// </list>
+    /// Each operand syntax is spliced exactly once in every arm.
+    /// </summary>
+    private static ExpressionSyntax GenerateIdentityComparison(
+        OperatorLoweringKind kind, ExpressionSyntax left, ExpressionSyntax right, bool negated)
+    {
+        if (kind == OperatorLoweringKind.EnumIdentityEquals)
+        {
+            return Binary(negated ? SyntaxKind.NotEqualsExpression : SyntaxKind.EqualsExpression, left, right);
+        }
+
+        ExpressionSyntax comparer = kind == OperatorLoweringKind.EnumIdentityObjectEquals
+            ? MakeGlobalQualifiedName("Sharpy", "EnumHelpers", "Identity")
+            : MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression,
+                PredefinedType(Token(SyntaxKind.ObjectKeyword)),
+                IdentifierName("ReferenceEquals"));
+        ExpressionSyntax call = InvocationExpression(comparer)
+            .AddArgumentListArguments(
+                Argument(left),
+                Argument(right));
+        return negated ? Prefix(SyntaxKind.LogicalNotExpression, call) : call;
+    }
+
+    /// <summary>
+    /// Whether <paramref name="kind"/> is one of the identity lowerings the checker records for an
+    /// <c>is</c> with an enum operand (#2669): the comparison is then a VALUE comparison, which a
+    /// reference assertion (<c>Xunit.Assert.Same</c>) cannot observe.
+    /// </summary>
+    private static bool IsEnumIdentityLowering(OperatorLoweringKind kind)
+        => kind is OperatorLoweringKind.EnumIdentityEquals
+            or OperatorLoweringKind.EnumIdentityObjectEquals
+            or OperatorLoweringKind.EnumMemberReferenceIdentity;
 
     private ExpressionSyntax GenerateBinaryOp(BinaryOp binOp)
     {
@@ -103,6 +150,13 @@ internal partial class RoslynEmitter
         if (binOp.Operator == BinaryOperator.NullCoalesce)
         {
             return GenerateNullCoalesceOp(binOp);
+        }
+
+        // `in` / `not in` order their operands themselves (P93 D2, #2645): a recorded needle is hoisted
+        // ahead of a hoisting container into a local of its binding type, not a `var` capture.
+        if (binOp.Operator is BinaryOperator.In or BinaryOperator.NotIn)
+        {
+            return GenerateMembershipOperator(binOp);
         }
 
         // Left-to-right: a hoist producer in the right operand must not move its effects ahead
@@ -183,61 +237,32 @@ internal partial class RoslynEmitter
                 // __matmul__ methods and stdlib NdArray expose. See DunderNameMapping.
                 return GenerateMatMulCall(left, right);
 
-            case BinaryOperator.In:
-                {
-                    // x in y → y.Contains(x); apply the iterable projection so tuple/dict
-                    // containers are bridged to an IEnumerable with Contains (#1771).
-                    var projectedRight = ApplyIterableProjection(binOp.Right, right);
-                    return InvocationExpression(Member(projectedRight, "Contains"))
-                        .AddArgumentListArguments(Argument(left));
-                }
-
-            case BinaryOperator.NotIn:
-                {
-                    // x not in y → !y.Contains(x)
-                    var projectedRight = ApplyIterableProjection(binOp.Right, right);
-                    return Prefix(SyntaxKind.LogicalNotExpression,
-                        InvocationExpression(Member(projectedRight, "Contains"))
-                            .AddArgumentListArguments(Argument(left)));
-                }
-
             case BinaryOperator.Is:
                 // `x is None` and `None is x` are one test (#2171): the subject is the operand on the
                 // side that is NOT the None literal, and the recorded None-test kind — which the
                 // checker records for EITHER side — selects the arm (#2224: never `x == null`, which
                 // bound a user operator ==). Keying the arm on `Right is NoneLiteral` alone sent
                 // `None is x` on an Optional to ReferenceEquals on a boxed struct: always false.
-                if (NoneTestSubject(binOp, left, right) is { } isNoneSubject)
-                    return GenerateNoneTest(binOp, isNoneSubject, negated: false);
-                return InvocationExpression(
-                    MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression,
-                        PredefinedType(Token(SyntaxKind.ObjectKeyword)),
-                        IdentifierName("ReferenceEquals")))
-                    .AddArgumentListArguments(
-                        Argument(left),
-                        Argument(right));
+                if (NoneTestSubject(binOp.Left, binOp.Right, left, right) is { } isNoneSubject)
+                    return GenerateNoneTest(OperatorLoweringOf(binOp).Kind, isNoneSubject, negated: false);
+                return GenerateIdentityComparison(OperatorLoweringOf(binOp).Kind, left, right, negated: false);
 
             case BinaryOperator.IsNot:
                 // Mirror of the Is arm (#2171): `None is not x` is `x is not None`.
-                if (NoneTestSubject(binOp, left, right) is { } isNotNoneSubject)
-                    return GenerateNoneTest(binOp, isNotNoneSubject, negated: true);
-                return Prefix(SyntaxKind.LogicalNotExpression,
-                    InvocationExpression(
-                        MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression,
-                            PredefinedType(Token(SyntaxKind.ObjectKeyword)),
-                            IdentifierName("ReferenceEquals")))
-                        .AddArgumentListArguments(
-                            Argument(left),
-                            Argument(right)));
+                if (NoneTestSubject(binOp.Left, binOp.Right, left, right) is { } isNotNoneSubject)
+                    return GenerateNoneTest(OperatorLoweringOf(binOp).Kind, isNotNoneSubject, negated: true);
+                return GenerateIdentityComparison(OperatorLoweringOf(binOp).Kind, left, right, negated: true);
 
             case BinaryOperator.Multiply:
                 {
-                    // String repetition: the tag says which operand is the string (#1623).
+                    // String repetition: the tag says which operand is the string (#1623). With the
+                    // string on the right the count goes first (P93 D2, #2645): Core's count-first
+                    // overload keeps the left operand's evaluation ahead of the right's.
                     var repeatKind = OperatorLoweringOf(binOp).Kind;
                     if (repeatKind == OperatorLoweringKind.StringRepeatStrLeft)
                         return GenerateStringRepeat(left, right);
                     if (repeatKind == OperatorLoweringKind.StringRepeatStrRight)
-                        return GenerateStringRepeat(right, left);
+                        return GenerateCountFirstStringRepeat(left, right);
                     break;
                 }
 
@@ -305,10 +330,262 @@ internal partial class RoslynEmitter
     }
 
     /// <summary>
+    /// The membership test of <c>x in y</c> (the caller negates it for <c>not in</c>), selected by
+    /// the operator lowering <c>TypeChecker.ClassifyMembership</c> recorded on the node (#2635,
+    /// plan-4e2867 D1/D2). The emitter decides nothing: it switches on the recorded kind.
+    /// <list type="bullet">
+    /// <item><see cref="OperatorLoweringKind.MembershipNoneIsFalse"/> →
+    /// <c>global::Sharpy.Builtins.ContainsOptional(x, y, static (c, n) =&gt; c.Contains(n))</c>.</item>
+    /// <item><see cref="OperatorLoweringKind.MembershipNoneRaises"/> →
+    /// <c>global::Sharpy.Builtins.ContainsNoneRaises(x, y, static (c, n) =&gt; c.Contains(n))</c>.</item>
+    /// <item>anything else → <c>y.Contains(x)</c>.</item>
+    /// </list>
+    /// The lambda body is <see cref="GenerateContainsCall"/> over the lambda's own parameters — the
+    /// ONE spelling of the container test, so the helper form and the plain form cannot drift (the
+    /// tuple array bridge and the dict key view of #1771 apply inside the lambda, to its container
+    /// parameter). The needle is argument 1 and the container argument 2, so a helper cell
+    /// evaluates <c>x</c> before <c>y</c>, as Python does (D4). The lambda is <c>static</c>: it
+    /// captures nothing, so it allocates no closure.
+    /// <para>The plain form reads its container first, so a recorded needle goes through
+    /// <see cref="BindMembershipNeedle"/> (P93 D2, #2645). One emission for the binary operator and
+    /// every chain link (P93 D3): <paramref name="kind"/> is the recorded kind, the operand nodes are
+    /// the needle and the container, and <paramref name="needleEvaluated"/> says the needle syntax
+    /// is a local its caller already bound (a hoist ahead of the container, a chain capture).
+    /// <paramref name="negated"/> negates the whole test, the bind included.</para>
+    /// </summary>
+    private ExpressionSyntax GenerateMembershipTest(
+        OperatorLoweringKind kind, Expression needleNode, Expression containerNode,
+        ExpressionSyntax needle, ExpressionSyntax container, bool negated, bool needleEvaluated)
+    {
+        string helper;
+        switch (kind)
+        {
+            case OperatorLoweringKind.MembershipNoneIsFalse:
+                helper = "ContainsOptional";
+                break;
+            case OperatorLoweringKind.MembershipNoneRaises:
+                helper = "ContainsNoneRaises";
+                break;
+            default:
+                {
+                    var binding = needleEvaluated ? null : BoundNeedleType(needleNode, containerNode);
+                    var plain = binding != null
+                        ? BindMembershipNeedle(binding, containerNode, needle, container)
+                        : GenerateContainsCall(containerNode, container, needle);
+                    return negated ? Prefix(SyntaxKind.LogicalNotExpression, plain) : plain;
+                }
+        }
+
+        // Synthesized, counter-suffixed names (the `__callable_p_N` convention): no user identifier
+        // is spelled with a leading double underscore and a numeric suffix the emitter hands out.
+        var containerParam = GenerateTempVarName("in_container");
+        var needleParam = GenerateTempVarName("in_needle");
+        var test = ParenthesizedLambdaExpression(
+                ParameterList(SeparatedList(new[]
+                {
+                    Parameter(Identifier(containerParam)),
+                    Parameter(Identifier(needleParam))
+                })),
+                GenerateContainsCall(containerNode, IdentifierName(containerParam), IdentifierName(needleParam)))
+            .WithModifiers(TokenList(Token(SyntaxKind.StaticKeyword)));
+
+        ExpressionSyntax call = InvocationExpression(MakeGlobalQualifiedName("Sharpy", "Builtins", helper))
+            .AddArgumentListArguments(Argument(needle), Argument(container), Argument(test));
+        // `not in`: the helper raises (or answers) before the negation.
+        return negated ? Prefix(SyntaxKind.LogicalNotExpression, call) : call;
+    }
+
+    /// <summary>
+    /// The binary <c>x in y</c> / <c>x not in y</c>: its operands in source order
+    /// (<see cref="GenerateMembershipOperands"/>), then the one membership emission.
+    /// </summary>
+    private ExpressionSyntax GenerateMembershipOperator(BinaryOp binOp)
+    {
+        var (needle, container, needleEvaluated) = GenerateMembershipOperands(binOp.Left, binOp.Right);
+        return GenerateMembershipTest(
+            OperatorLoweringOf(binOp).Kind, binOp.Left, binOp.Right, needle, container,
+            negated: binOp.Operator == BinaryOperator.NotIn, needleEvaluated);
+    }
+
+    /// <summary>
+    /// The operands of a binary membership test, needle first (P93 D2, #2645). A bound needle
+    /// (<see cref="BoundNeedleType"/>) beside a container that hoists statements (a comprehension, a
+    /// spread, <c>?</c>, a walrus) is hoisted ahead of those statements into a local of its binding
+    /// type, so the needle is evaluated first and keeps the type its argument position gave it (a
+    /// <c>var</c> capture cannot type a conditional of narrower constants, a <c>None</c> arm, a lambda,
+    /// a function name), and a bare name is read before the container rebinds it. Any other needle
+    /// takes the shared operand order (<see cref="GenerateExpressionsInOrder"/>) — today's emission.
+    /// </summary>
+    private (ExpressionSyntax Needle, ExpressionSyntax Container, bool NeedleEvaluated) GenerateMembershipOperands(
+        Expression needleNode, Expression containerNode)
+    {
+        var binding = BoundNeedleType(needleNode, containerNode);
+        if (binding == null)
+        {
+            var inOrder = GenerateExpressionsInOrder(new[] { needleNode, containerNode });
+            return (inOrder[0], inOrder[1], false);
+        }
+
+        ExpressionSyntax needle = null!;
+        ExpressionSyntax container = null!;
+        var needleEvals = WithEvaluationSink(() => needle = GenerateExpression(needleNode));
+        var containerEvals = WithEvaluationSink(() => container = GenerateExpression(containerNode));
+
+        foreach (var stmt in needleEvals)
+            HoistEvaluation(stmt);
+
+        var needleEvaluated = false;
+        if (containerEvals.Count > 0)
+        {
+            needle = HoistBoundNeedle(binding, needle, GenerateTempVarName("in"));
+            needleEvaluated = true;
+        }
+
+        foreach (var stmt in containerEvals)
+            HoistEvaluation(stmt);
+
+        return (needle, container, needleEvaluated);
+    }
+
+    /// <summary>
+    /// The type a membership needle is bound as before its container is read (P93 D2, #2645), spelled
+    /// by the type mapper, or null when it is not bound. Read from the checker's record
+    /// (<see cref="SemanticInfo.TryGetMembershipNeedleBinding"/>: none for a slot-less container,
+    /// #2249, or a needle only the CLR call seam takes, #2647). A recorded needle is still not bound
+    /// when its order cannot be observed: a literal-only needle (<see cref="IsLiteralOnly"/>: it has
+    /// no evaluation), or two trivial operands (<see cref="IsTrivialExpression"/>). A bare name IS
+    /// bound beside a container that is not trivial: the container may rebind it.
+    /// </summary>
+    private TypeSyntax? BoundNeedleType(Expression needleNode, Expression containerNode)
+    {
+        if (IsLiteralOnly(needleNode)
+            || (IsTrivialExpression(needleNode) && IsTrivialExpression(containerNode)))
+        {
+            return null;
+        }
+
+        return RecordedNeedleBindingType(needleNode);
+    }
+
+    /// <summary>
+    /// The checker's recorded binding of a membership needle (<see cref="SemanticInfo.TryGetMembershipNeedleBinding"/>),
+    /// spelled by the type mapper, with none of <see cref="BoundNeedleType"/>'s exemptions: the cast a
+    /// chain's captured middle needle takes at its membership read (P93 D3, owner ruling R2).
+    /// </summary>
+    private TypeSyntax? RecordedNeedleBindingType(Expression needleNode)
+        => _context.SemanticInfo is { } info && info.TryGetMembershipNeedleBinding(needleNode, out var binding)
+            ? _typeMapper.MapSemanticType(binding)
+            : null;
+
+    /// <summary>
+    /// A literal, or operators over literals (<c>-1</c>, <c>(2 + 3)</c>): an operand with no
+    /// evaluation, whose order beside its container cannot be observed (P93 D2). Deliberately
+    /// partial: every other form answers <c>false</c> and is bound, which is always correct. An
+    /// operator that can raise over literals (<c>1 // 0</c>, <c>1 % 0</c>, <c>1 / 0</c>, <c>**</c>) is
+    /// an evaluation whose exception must precede the container's (#2645), so it is not literal-only.
+    /// </summary>
+    private static bool IsLiteralOnly(Expression expr) => expr switch
+    {
+        IntegerLiteral or FloatLiteral or StringLiteral or BytesLiteralExpression or BooleanLiteral
+            or NoneLiteral or EllipsisLiteral => true,
+        Parenthesized parenthesized => IsLiteralOnly(parenthesized.Expression),
+        UnaryOp unary => IsLiteralOnly(unary.Operand),
+        BinaryOp binary => !CanRaiseOverLiterals(binary.Operator)
+            && IsLiteralOnly(binary.Left) && IsLiteralOnly(binary.Right),
+        _ => false,
+    };
+
+    /// <summary>
+    /// A binary operator whose value over literal operands can be an exception: a division by zero
+    /// (<c>/</c>, <c>//</c>, <c>%</c>) or a power that raises (<c>0 ** -1</c>) (P93 D2, #2645).
+    /// </summary>
+    private static bool CanRaiseOverLiterals(BinaryOperator op) => op is BinaryOperator.Divide
+        or BinaryOperator.FloorDivide or BinaryOperator.Modulo or BinaryOperator.Power;
+
+    /// <summary>
+    /// Hoists a bound needle into <c>Binding name = needle;</c> and returns the local — the needle
+    /// evaluated ahead of a container that hoists (P93 D2). The declared type is the recorded binding
+    /// type, so the local has the type the argument position gave the needle.
+    /// </summary>
+    private ExpressionSyntax HoistBoundNeedle(TypeSyntax binding, ExpressionSyntax needle, string name)
+    {
+        HoistEvaluation(LocalDeclarationStatement(
+            VariableDeclaration(binding)
+                .WithVariables(SingletonSeparatedList(
+                    VariableDeclarator(Identifier(name))
+                        .WithInitializer(EqualsValueClause(needle))))));
+        return IdentifierName(name);
+    }
+
+    /// <summary>
+    /// THE needle-first bind of a membership test whose emitted form reads its container first
+    /// (P93 D2, #2645): <c>((Binding)x is var t &amp;&amp; y.Contains(t))</c>. The cast gives C# the
+    /// type the argument position gave the needle; since a <c>T | None</c> needle's binding is its own
+    /// type, the cast never unwraps one. A var pattern always matches, so the container's test always
+    /// runs. When the container test itself hoists a statement (a tuple's array bridge captures a
+    /// non-name tuple), the needle is hoisted first, into a local of its binding type, and the test
+    /// reads the local.
+    /// </summary>
+    private ExpressionSyntax BindMembershipNeedle(
+        TypeSyntax binding, Expression containerNode, ExpressionSyntax needle, ExpressionSyntax container)
+    {
+        var bound = GenerateTempVarName("in");
+        ExpressionSyntax test = null!;
+        var containerTestEvals = WithEvaluationSink(
+            () => test = GenerateContainsCall(containerNode, container, IdentifierName(bound)));
+
+        if (containerTestEvals.Count > 0)
+        {
+            HoistBoundNeedle(binding, needle, bound);
+            foreach (var stmt in containerTestEvals)
+                HoistEvaluation(stmt);
+            return test;
+        }
+
+        // Parenthesized: the bind is one primary operand wherever it stands (a chain's `&&`, a `!`).
+        return ParenthesizedExpression(BinaryExpression(
+            SyntaxKind.LogicalAndExpression,
+            IsPattern(
+                Cast(binding, needle),
+                VarPattern(SingleVariableDesignation(Identifier(bound)))),
+            test));
+    }
+
+    /// <summary>
+    /// <c>container.Contains(needle)</c>, with the iterable projection recorded on the container's
+    /// AST node applied to <paramref name="container"/> so tuple/dict containers are bridged to an
+    /// <c>IEnumerable</c> with <c>Contains</c> (#1771). Shared by the plain membership test and the
+    /// None-needle helper's lambda (<see cref="GenerateMembershipTest"/>).
+    /// <para>A container the checker answers by iteration (P93 D1, R-NZ: a Sharpy class with
+    /// <c>__iter__</c> and no <c>__contains__</c>) carries a <c>Direct</c> projection of its element,
+    /// and is tested by LINQ over the <c>IEnumerable&lt;E&gt;</c> the class implements, named in full —
+    /// <c>global::System.Linq.Enumerable.Contains&lt;E&gt;(container, needle)</c> — so a member the
+    /// class happens to call <c>contains</c> (emitted <c>Contains</c>) is never bound.</para>
+    /// </summary>
+    private ExpressionSyntax GenerateContainsCall(
+        Expression containerNode, ExpressionSyntax container, ExpressionSyntax needle)
+    {
+        if (_context.SemanticInfo?.GetIterableProjection(containerNode) is
+            { Kind: IterableProjectionKind.Direct } iterated)
+        {
+            return InvocationExpression(
+                    MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression,
+                        MakeGlobalQualifiedName("System", "Linq", "Enumerable"),
+                        GenericName(Identifier("Contains"))
+                            .WithTypeArgumentList(TypeArgumentList(SingletonSeparatedList(
+                                _typeMapper.MapSemanticType(iterated.ElementType))))))
+                .AddArgumentListArguments(Argument(container), Argument(needle));
+        }
+
+        var projected = ApplyIterableProjection(containerNode, container);
+        return InvocationExpression(Member(projected, "Contains"))
+            .AddArgumentListArguments(Argument(needle));
+    }
+
+    /// <summary>
     /// <c>global::Sharpy.StringHelpers.Repeat(str, count)</c> — the string-repetition lowering shared
-    /// by the binary <c>*</c> and the augmented <c>*=</c> sites. The caller passes the operands in
-    /// the order the recorded <see cref="OperatorLoweringKind.StringRepeatStrLeft"/> /
-    /// <see cref="OperatorLoweringKind.StringRepeatStrRight"/> tag dictates (#1623).
+    /// by the binary <c>*</c> and the augmented <c>*=</c> sites when the string is the left operand
+    /// (<see cref="OperatorLoweringKind.StringRepeatStrLeft"/>, #1623).
     /// </summary>
     private ExpressionSyntax GenerateStringRepeat(ExpressionSyntax str, ExpressionSyntax count)
     {
@@ -319,6 +596,22 @@ internal partial class RoslynEmitter
             .AddArgumentListArguments(
                 Argument(str),
                 Argument(count));
+    }
+
+    /// <summary>
+    /// <c>global::Sharpy.StringHelpers.Repeat(count, str)</c> — <c>n * s</c> with the string on the
+    /// right (<see cref="OperatorLoweringKind.StringRepeatStrRight"/>): Core's count-first overload
+    /// (<c>int</c> and <c>long</c>), so the left operand is evaluated first (P93 D2, #2645).
+    /// </summary>
+    private ExpressionSyntax GenerateCountFirstStringRepeat(ExpressionSyntax count, ExpressionSyntax str)
+    {
+        return InvocationExpression(
+            MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression,
+                MakeGlobalQualifiedName("Sharpy", "StringHelpers"),
+                IdentifierName("Repeat")))
+            .AddArgumentListArguments(
+                Argument(count),
+                Argument(str));
     }
 
     /// <summary>
@@ -648,8 +941,10 @@ internal partial class RoslynEmitter
         // For non-trivial intermediate expressions (function calls, member access, etc.),
         // we use the C# "is var" pattern to capture the value inline:
         //   a < (f() is var __cmp_0 ? __cmp_0 : __cmp_0) && __cmp_0 < c
-        // Each link applies the lowering the TypeChecker recorded for it — the same
-        // classification its binary form would get (#1642) — through GenerateLoweredComparison.
+        // A link is its binary twin (P93 D3, #2648): it lowers through the binary operator's own
+        // emitter for the shape the TypeChecker recorded — GenerateLoweredComparison,
+        // GenerateIdentityComparison, GenerateNoneTest or GenerateMembershipTest — with the kind the
+        // binary form records on its node, so the two positions share one emission (#1642).
 
         if (chain.Operands.Length < 2 || chain.Operators.Length != chain.Operands.Length - 1)
         {
@@ -667,10 +962,29 @@ internal partial class RoslynEmitter
                 + $"{chain.Operators.Length} operator(s) (#1642)");
         }
 
+        var operandCount = chain.Operands.Length;
+        var linkCount = chain.Operators.Length;
+
+        // The type each membership link binds its needle as (P93 D2, #2645); null for a link that is
+        // not a membership test or whose needle is not bound (BoundNeedleType).
+        var needleBindings = new TypeSyntax?[linkCount];
+        // The recorded binding of a membership link's needle with no exemption (RecordedNeedleBindingType):
+        // the cast a CAPTURED middle needle takes at that link's read, literal-only or not, since the
+        // capture holds the value at its own type (owner ruling R2).
+        var captureBindings = new TypeSyntax?[linkCount];
+        for (int i = 0; i < linkCount; i++)
+        {
+            if (chainLowering.Links[i].Shape == ComparisonLinkShape.Membership)
+            {
+                needleBindings[i] = BoundNeedleType(chain.Operands[i], chain.Operands[i + 1]);
+                captureBindings[i] = RecordedNeedleBindingType(chain.Operands[i]);
+            }
+        }
+
         // For intermediate operands (indices 1..n-2), decide if they need a temp variable.
         // First and last operands are only used once and don't need temps.
-        var tempNames = new string?[chain.Operands.Length];
-        for (int i = 1; i < chain.Operands.Length - 1; i++)
+        var tempNames = new string?[operandCount];
+        for (int i = 1; i < operandCount - 1; i++)
         {
             if (!IsTrivialExpression(chain.Operands[i]))
             {
@@ -682,39 +996,112 @@ internal partial class RoslynEmitter
         // unconditionally. Generate every operand under an evaluation sink so a hoist producer
         // (comprehension, spread, `?`) inside operand k lands in the block that owns operand k's
         // evaluation, not above the whole chain (plan-0667c5 Design Decision 6).
-        var operandCount = chain.Operands.Length;
+        //
+        // A middle operand is generated once and read by two links. Its receiver unwrap (#1792: the
+        // container of a membership link over a value-type `T | None`) belongs to the read that is that
+        // link's container, so it is deferred to link i-1's right read; link i reads the value as its
+        // binary twin does (P93 D3).
         var operandExprs = new ExpressionSyntax[operandCount];
         var operandEvals = new List<StatementSyntax>[operandCount];
+        var deferredUnwraps = new ReceiverUnwrapKind?[operandCount];
         for (int i = 0; i < operandCount; i++)
         {
             int captured = i;
+            var isMiddle = i > 0 && i < operandCount - 1;
             operandEvals[i] = WithEvaluationSink(
-                () => operandExprs[captured] = GenerateExpression(chain.Operands[captured]));
+                () => operandExprs[captured] = isMiddle
+                    ? GenerateExpressionDeferringReceiverUnwrap(chain.Operands[captured], out deferredUnwraps[captured])
+                    : GenerateExpression(chain.Operands[captured]));
         }
 
-        for (int i = 0; i < chain.Operators.Length; i++)
+        // A bare-name middle operand is read by link i-1 and again by link i, after operand i+1's
+        // hoists: when those rebind it (a walrus in a spread, `0 < y == len([*keep((y := 5), xs)])`),
+        // it is captured by link i-1 like a non-trivial middle, so link i reads the value Python
+        // evaluated once (P93 D2). Read from the emitted syntax alone (HoistRebindsARead).
+        for (int i = 1; i < operandCount - 1; i++)
         {
-            if (MapComparisonOperator(chain.Operators[i]) == SyntaxKind.None)
+            if (tempNames[i] == null
+                && chain.Operands[i] is Parser.Ast.Identifier
+                && HoistRebindsARead(operandEvals[i + 1], operandExprs[i]))
             {
-                return EmitNotImplementedExpression(
-                    $"Unsupported operator in code generation: comparison operator '{chain.Operators[i]}' in chains",
-                    DiagnosticCodes.CodeGen.UnsupportedOperator, chain.LineStart, chain.ColumnStart);
+                tempNames[i] = GenerateTempVarName("cmp");
             }
         }
 
-        // Builds link i (operator between operands i and i+1), applying the recorded lowering and
-        // the `is var` capture for an intermediate operand read twice.
+        // Whether link i's left operand syntax is a local already holding its value: a middle operand
+        // captured by link i-1, or operand 0 captured ahead of operand 1's hoists (below).
+        var leftEvaluated = new bool[linkCount];
+        for (int i = 1; i < linkCount; i++)
+            leftEvaluated[i] = tempNames[i] != null;
+
+        // Operands 0 and 1 always run, in that order. Operand 1's hoists are flushed as statements
+        // before the chain expression, so operand 0 is captured after its own hoists and ahead of
+        // operand 1's when it has an effect (the ordering rule of GenerateExpressionsInOrder, applied
+        // to the chain) or is a bare name operand 1's hoists rebind, or when link 0 binds it as a
+        // membership needle: then the local takes the needle's binding type, and a bare name is read
+        // before the container can rebind it (P93 D2).
+        foreach (var stmt in operandEvals[0])
+            HoistEvaluation(stmt);
+        if (operandEvals[1].Count > 0)
+        {
+            if (needleBindings[0] is { } headBinding)
+            {
+                operandExprs[0] = HoistBoundNeedle(headBinding, operandExprs[0], GenerateTempVarName("cmpOrder"));
+                leftEvaluated[0] = true;
+            }
+            else if (!IsSideEffectFree(chain.Operands[0])
+                || (chain.Operands[0] is Parser.Ast.Identifier && HoistRebindsARead(operandEvals[1], operandExprs[0])))
+            {
+                var orderTemp = GenerateTempVarName("cmpOrder");
+                HoistEvaluation(LocalDeclarationStatement(
+                    VariableDeclaration(IdentifierName("var"))
+                        .WithVariables(SingletonSeparatedList(
+                            VariableDeclarator(Identifier(orderTemp))
+                                .WithInitializer(EqualsValueClause(operandExprs[0]))))));
+                operandExprs[0] = IdentifierName(orderTemp);
+            }
+        }
+        foreach (var stmt in operandEvals[1])
+            HoistEvaluation(stmt);
+
+        // Builds link i (operator between operands i and i+1) through its twin's emitter, with the
+        // `is var` capture for an intermediate operand read twice. For i >= 1 it first places operand
+        // i+1's own hoists, which run only when every earlier link held — preceded, for a membership
+        // link whose needle is still a re-read (a bare-name middle operand), by the needle's hoist.
         ExpressionSyntax BuildLink(int i)
         {
+            var leftNode = chain.Operands[i];
+            var rightNode = chain.Operands[i + 1];
             ExpressionSyntax left = i > 0 && tempNames[i] != null
                 ? IdentifierName(tempNames[i]!)
                 : operandExprs[i];
+            var needleEvaluated = leftEvaluated[i];
+
+            // A middle operand captured by link i-1 holds its own value, the one link i-1 compared
+            // (P93 D3: a link is its binary twin; owner ruling R2: the checker typed it as that twin
+            // does). Link i, binding it as a membership needle, takes it through the recorded binding
+            // cast here, at the read that is its needle (P93 D2), as it would a named needle.
+            if (i > 0 && tempNames[i] != null && captureBindings[i] is { } capturedBinding)
+                left = Cast(capturedBinding, left);
+
+            if (i >= 1 && operandEvals[i + 1].Count > 0)
+            {
+                if (needleBindings[i] is { } binding && !needleEvaluated)
+                {
+                    left = HoistBoundNeedle(binding, left, GenerateTempVarName("in"));
+                    needleEvaluated = true;
+                }
+                foreach (var stmt in operandEvals[i + 1])
+                    HoistEvaluation(stmt);
+            }
 
             ExpressionSyntax right;
             if (tempNames[i + 1] != null)
             {
                 // Wrap in: (expr is var __cmp_N ? __cmp_N : __cmp_N)
-                // This evaluates expr once, binds to __cmp_N, and returns the value
+                // This evaluates expr once, binds to __cmp_N, and returns the value. The capture is
+                // uncast: link i reads the operand as its binary twin does, and a link i+1 that binds
+                // it as a membership needle casts it at its own read (above), never here (P93 D3).
                 right = ParenthesizedExpression(
                     ConditionalExpression(
                         IsPattern(
@@ -728,51 +1115,65 @@ internal partial class RoslynEmitter
                 right = operandExprs[i + 1];
             }
 
+            if (deferredUnwraps[i + 1] is { } unwrap)
+                right = ApplyReceiverUnwrap(right, unwrap);
+
             var link = chainLowering.Links[i];
-            return GenerateLoweredComparison(
-                MapComparisonOperator(chain.Operators[i]), left, right,
-                chain.Operands[i], chain.Operands[i + 1],
-                link.Kind, link.Equality ?? BinaryOpLowering.NativeOperator);
+            var op = chain.Operators[i];
+            switch (link.Shape)
+            {
+                case ComparisonLinkShape.Membership:
+                    ExpectLinkOperator(op, link.Shape, ComparisonOperator.In, ComparisonOperator.NotIn);
+                    return GenerateMembershipTest(link.Kind, leftNode, rightNode, left, right,
+                        negated: op == ComparisonOperator.NotIn, needleEvaluated);
+                case ComparisonLinkShape.NoneTest:
+                    ExpectLinkOperator(op, link.Shape, ComparisonOperator.Is, ComparisonOperator.IsNot);
+                    return GenerateNoneTest(link.Kind,
+                        NoneTestSubject(leftNode, rightNode, left, right)
+                            ?? throw new InvalidOperationException(
+                                "A NoneTest chain link has no None literal operand (P93 D3)"),
+                        negated: op == ComparisonOperator.IsNot);
+                case ComparisonLinkShape.Identity:
+                    ExpectLinkOperator(op, link.Shape, ComparisonOperator.Is, ComparisonOperator.IsNot);
+                    return GenerateIdentityComparison(link.Kind, left, right, negated: op == ComparisonOperator.IsNot);
+                default:
+                    return GenerateLoweredComparison(
+                        MapComparisonOperator(op), left, right, leftNode, rightNode,
+                        link.Kind, link.Equality ?? BinaryOpLowering.NativeOperator);
+            }
         }
 
-        // Operands 2..n-1 are evaluated only if every earlier link held. A hoist there must run
+        // Every link is built once, in order, under its own sink: what it hoists (link 0's lands
+        // with operands 0 and 1; a later link's are operand i+1's hoists, the needle's and the
+        // container test's own, such as a tuple's array bridge) runs where the link is evaluated.
+        var linkExprs = new ExpressionSyntax[linkCount];
+        var linkEvals = new List<StatementSyntax>[linkCount];
+        for (int i = 0; i < linkCount; i++)
+        {
+            int captured = i;
+            linkEvals[i] = WithEvaluationSink(() => linkExprs[captured] = BuildLink(captured));
+        }
+
+        foreach (var stmt in linkEvals[0])
+            HoistEvaluation(stmt);
+
+        // Links 1..n-1 are evaluated only if every earlier link held. A hoist there must run
         // inside the conditional block, so the chain becomes imperative.
         bool hasConditionalHoist = false;
-        for (int i = 2; i < operandCount; i++)
+        for (int i = 1; i < linkCount; i++)
         {
-            if (operandEvals[i].Count > 0)
+            if (linkEvals[i].Count > 0)
                 hasConditionalHoist = true;
         }
 
         if (!hasConditionalHoist)
         {
-            // Operands 0 and 1 always run, in that order. Operand 1's hoists are flushed as
-            // statements before the chain expression, so an effectful operand 0 must be captured
-            // first or it would be evaluated after them (the ordering rule of
-            // GenerateExpressionsInOrder, applied to the chain).
-            if (operandEvals[1].Count > 0 && !IsSideEffectFree(chain.Operands[0]))
-            {
-                var orderTemp = GenerateTempVarName("cmpOrder");
-                HoistEvaluation(LocalDeclarationStatement(
-                    VariableDeclaration(IdentifierName("var"))
-                        .WithVariables(SingletonSeparatedList(
-                            VariableDeclarator(Identifier(orderTemp))
-                                .WithInitializer(EqualsValueClause(operandExprs[0]))))));
-                operandExprs[0] = IdentifierName(orderTemp);
-            }
-
-            foreach (var stmt in operandEvals[0])
-                HoistEvaluation(stmt);
-            foreach (var stmt in operandEvals[1])
-                HoistEvaluation(stmt);
-
             ExpressionSyntax? result = null;
-            for (int i = 0; i < chain.Operators.Length; i++)
+            for (int i = 0; i < linkCount; i++)
             {
-                var comparison = BuildLink(i);
                 result = result == null
-                    ? comparison
-                    : BinaryExpression(SyntaxKind.LogicalAndExpression, result, comparison);
+                    ? linkExprs[i]
+                    : BinaryExpression(SyntaxKind.LogicalAndExpression, result, linkExprs[i]);
             }
 
             return result ?? throw new InvalidOperationException("Empty comparison chain");
@@ -780,42 +1181,26 @@ internal partial class RoslynEmitter
 
         // Manufactured sink, nested so each operand's `is var` capture stays in scope:
         //   bool __chainTmp = link0;
-        //   if (__chainTmp) { evals[2]; __chainTmp = link1; if (__chainTmp) { evals[3]; … } }
+        //   if (__chainTmp) { evals[1]; __chainTmp = link1; if (__chainTmp) { evals[2]; … } }
         var chainTmp = GenerateTempVarName("chain");
 
         StatementSyntax BuildTail(int linkIndex)
         {
             var body = new List<StatementSyntax>();
-            body.AddRange(operandEvals[linkIndex + 1]);
+            body.AddRange(linkEvals[linkIndex]);
             body.Add(ExpressionStatement(
                 AssignmentExpression(SyntaxKind.SimpleAssignmentExpression,
-                    EscapedIdentifierName(chainTmp), BuildLink(linkIndex))));
-            if (linkIndex + 1 < chain.Operators.Length)
+                    EscapedIdentifierName(chainTmp), linkExprs[linkIndex])));
+            if (linkIndex + 1 < linkCount)
                 body.Add(BuildTail(linkIndex + 1));
             return IfStatement(EscapedIdentifierName(chainTmp), Block(body));
         }
-
-        if (operandEvals[1].Count > 0 && !IsSideEffectFree(chain.Operands[0]))
-        {
-            var orderTemp = GenerateTempVarName("cmpOrder");
-            HoistEvaluation(LocalDeclarationStatement(
-                VariableDeclaration(IdentifierName("var"))
-                    .WithVariables(SingletonSeparatedList(
-                        VariableDeclarator(Identifier(orderTemp))
-                            .WithInitializer(EqualsValueClause(operandExprs[0]))))));
-            operandExprs[0] = IdentifierName(orderTemp);
-        }
-
-        foreach (var stmt in operandEvals[0])
-            HoistEvaluation(stmt);
-        foreach (var stmt in operandEvals[1])
-            HoistEvaluation(stmt);
 
         HoistEvaluation(LocalDeclarationStatement(
             VariableDeclaration(PredefinedType(Token(SyntaxKind.BoolKeyword)))
                 .WithVariables(SingletonSeparatedList(
                     VariableDeclarator(EscapedIdentifier(chainTmp))
-                        .WithInitializer(EqualsValueClause(BuildLink(0)))))));
+                        .WithInitializer(EqualsValueClause(linkExprs[0]))))));
 
         HoistEvaluation(BuildTail(1));
 
@@ -823,9 +1208,26 @@ internal partial class RoslynEmitter
     }
 
     /// <summary>
-    /// Maps a comparison operator to the corresponding C# syntax kind.
+    /// The invariant of a recorded chain link (P93 D3): its shape names the binary emitter of its own
+    /// operator. A shape recorded for another operator is a checker defect, reported loudly.
     /// </summary>
-    private SyntaxKind MapComparisonOperator(ComparisonOperator op)
+    private static void ExpectLinkOperator(
+        ComparisonOperator op, ComparisonLinkShape shape, ComparisonOperator first, ComparisonOperator second)
+    {
+        if (op != first && op != second)
+        {
+            throw new InvalidOperationException(
+                $"A {shape} chain link was recorded for operator '{op}' (P93 D3: the shape is the arm the "
+                + "binary twin of the link takes)");
+        }
+    }
+
+    /// <summary>
+    /// Maps a comparison operator (<c>==</c> <c>!=</c> <c>&lt;</c> <c>&lt;=</c> <c>&gt;</c>
+    /// <c>&gt;=</c>) to the corresponding C# syntax kind. An <c>in</c> or <c>is</c> link never
+    /// reaches here: it lowers through its own twin's emitter (P93 D3).
+    /// </summary>
+    private static SyntaxKind MapComparisonOperator(ComparisonOperator op)
     {
         return op switch
         {
@@ -835,7 +1237,9 @@ internal partial class RoslynEmitter
             ComparisonOperator.LessThanOrEqual => SyntaxKind.LessThanOrEqualExpression,
             ComparisonOperator.GreaterThan => SyntaxKind.GreaterThanExpression,
             ComparisonOperator.GreaterThanOrEqual => SyntaxKind.GreaterThanOrEqualExpression,
-            _ => SyntaxKind.None
+            _ => throw new InvalidOperationException(
+                $"'{op}' is not an ordering or equality operator: its chain link lowers through its "
+                + "binary twin's emitter (P93 D3)")
         };
     }
 
@@ -1275,6 +1679,18 @@ internal partial class RoslynEmitter
         // annotation. That distinction is why it is written this way (Critical Rule 2): mapping the
         // annotation directly is what emitted the unspellable open generic `Box<T>` (CS0305 →
         // SPY0908, #1235) back when this arm was live.
+        //
+        // The one LIVE path (#2669): a type test the checker resolved as an identity comparison
+        // against an enum member (`x is Color.RED`) — it recorded an identity lowering on the node
+        // and type-checked the expression reading of the name, so this is the binary `is` emission
+        // over (value, member), operands generated left to right.
+        var identityKind = OperatorLoweringOf(check).Kind;
+        if (check.IdentityOperand is { } identityOperand && IsEnumIdentityLowering(identityKind))
+        {
+            var identityOperands = GenerateExpressionsInOrder(new[] { check.Value, identityOperand });
+            return GenerateIdentityComparison(identityKind, identityOperands[0], identityOperands[1], negated: false);
+        }
+
         var value = GenerateExpression(check.Value);
         var checkType = MapClassifiedTypeOperand(check.CheckType);
 

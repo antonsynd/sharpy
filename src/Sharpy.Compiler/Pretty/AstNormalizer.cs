@@ -191,7 +191,8 @@ public sealed class AstNormalizer : AstVisitor<Node>
         Zero(node) with
         {
             Operands = VisitExpressions(node.Operands),
-            OperatorPositions = node.OperatorPositions.Select(_ => (0, 0)).ToImmutableArray()
+            OperatorPositions = node.OperatorPositions.Select(_ => (0, 0)).ToImmutableArray(),
+            HeadCheckType = NormalizeType(node.HeadCheckType)
         };
 
     #endregion

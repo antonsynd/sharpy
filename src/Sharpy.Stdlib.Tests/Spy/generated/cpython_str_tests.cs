@@ -708,7 +708,7 @@ namespace Sharpy.Stdlib.Tests.Spy.Cpython.CpythonStrTests
 #line (391, 5) - (391, 37) 12 "src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_str_tests.spy"
             Xunit.Assert.Equal("abcabcabc", global::Sharpy.StringHelpers.Repeat("abc", 3));
 #line (392, 5) - (392, 37) 12 "src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_str_tests.spy"
-            Xunit.Assert.Equal("abcabcabc", global::Sharpy.StringHelpers.Repeat("abc", 3));
+            Xunit.Assert.Equal("abcabcabc", global::Sharpy.StringHelpers.Repeat(3, "abc"));
 #line (393, 5) - (393, 28) 12 "src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_str_tests.spy"
             Xunit.Assert.Equal("", global::Sharpy.StringHelpers.Repeat("abc", 0));
 #line (394, 5) - (394, 31) 12 "src/Sharpy.Stdlib.Tests/Spy/cpython/cpython_str_tests.spy"

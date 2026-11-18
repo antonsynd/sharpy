@@ -217,6 +217,10 @@ public class UnparserRoundTripTests
     [Fact] public void FailableCastNull() => AssertRoundTrip("x as? int\n");
     [Fact] public void TypeCheck() => AssertRoundTrip("x is int\n");
     [Fact] public void TypeCheckNot() => AssertRoundTrip("x is not int\n");
+    // P93 D4: a chain head spelled like a type is the chain's first `is` link (ComparisonChain.HeadCheckType).
+    [Fact] public void ChainHeadSpelledLikeAType_Is() => AssertRoundTrip("c is Color.RED is d\n");
+    [Fact] public void ChainHeadSpelledLikeAType_Equal() => AssertRoundTrip("c is Color.RED == d\n");
+    [Fact] public void ChainHeadSpelledLikeAType_Nested() => AssertRoundTrip("x is Outer.Inner is d\n");
     [Fact] public void MultiAxisAccess() => AssertRoundTrip("arr[0, 1]\n");
     [Fact] public void MultiAxisSlice() => AssertRoundTrip("arr[0:5, 1:3]\n");
     [Fact] public void MultiAxisMixed() => AssertRoundTrip("arr[0, 1:3]\n");

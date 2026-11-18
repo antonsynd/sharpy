@@ -456,7 +456,7 @@ namespace Sharpy.Stdlib.Tests.Spy.Random.RandomAdditional2Tests
 #line (206, 5) - (206, 29) 12 "src/Sharpy.Stdlib.Tests/Spy/random/random_additional2_tests.spy"
             Xunit.Assert.Equal(1, global::Sharpy.Builtins.Len(result));
 #line (207, 5) - (207, 29) 12 "src/Sharpy.Stdlib.Tests/Spy/random/random_additional2_tests.spy"
-            Xunit.Assert.True(pop.Contains(result.GetItemUnchecked(0)));
+            Xunit.Assert.True(((int)result.GetItemUnchecked(0) is var __in_1 && pop.Contains(__in_1)));
 #line hidden
         }
 
@@ -474,10 +474,10 @@ namespace Sharpy.Stdlib.Tests.Spy.Random.RandomAdditional2Tests
 #line (213, 5) - (213, 51) 12 "src/Sharpy.Stdlib.Tests/Spy/random/random_additional2_tests.spy"
             Sharpy.List<int> result = random.Choices(pop, k: 10);
 #line (214, 5) - (215, 26) 12 "src/Sharpy.Stdlib.Tests/Spy/random/random_additional2_tests.spy"
-            foreach (var __loopVar_1 in result)
+            foreach (var __loopVar_2 in result)
 #line hidden
             {
-                var item = __loopVar_1;
+                var item = __loopVar_2;
 #line (215, 9) - (215, 26) 16 "src/Sharpy.Stdlib.Tests/Spy/random/random_additional2_tests.spy"
                 Xunit.Assert.Equal(7, item);
 #line hidden

@@ -1,0 +1,56 @@
+# The needle of `in` / `not in` is evaluated before the container, as CPython does (plan P93 D2, #2645).
+# Each operand is a traced call, so the printed order differs under the defect (container first). The
+# containers cover a list, a tuple (hoisted to an array), a dict, a str, a user `__contains__` class and a
+# comprehension (hoisted), and the walrus case reads `x` before the list rebinds it: False, not True.
+
+class Bag:
+    _items: list[int]
+
+    def __init__(self, items: list[int]):
+        self._items = items
+
+    def __contains__(self, item: int) -> bool:
+        return item in self._items
+
+
+def needle(label: str, v: int) -> int:
+    print("needle", label)
+    return v
+
+
+def items(label: str) -> list[int]:
+    print("container", label)
+    return [1, 2]
+
+
+def keys(label: str) -> dict[int, str]:
+    print("container", label)
+    return {1: "a"}
+
+
+def text(label: str) -> str:
+    print("container", label)
+    return "ab"
+
+
+def word(label: str) -> str:
+    print("needle", label)
+    return "b"
+
+
+def bag(label: str) -> Bag:
+    print("container", label)
+    return Bag([1, 2])
+
+
+def main() -> None:
+    print(needle("list", 2) in items("list"))
+    print(needle("list not", 2) not in items("list not"))
+    print(needle("tuple", 3) in (needle("first", 1), 2))
+    print(needle("dict", 1) in keys("dict"))
+    print(word("str") in text("str"))
+    print(needle("bag", 2) in bag("bag"))
+    print(needle("comprehension", 4) in [v * 2 for v in items("comprehension")])
+    x: int = 1
+    print(x in [(x := 5), 2])
+    print(x)

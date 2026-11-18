@@ -1,5 +1,5 @@
 # Chained identity operators (a is b is c) — GAP-39
-# Currently produces SPY0519 (unsupported in codegen chains)
+# Each `is` link is its binary twin (P93 D3, #2648): object.ReferenceEquals per link, as CPython 3.15.
 def main():
     x: object = "hello"
     y: object = x

@@ -13,25 +13,29 @@ if item in collection:
 
 ## Dispatch Priority
 
-The `in` operator always emits a `.Contains()` call on the right-hand operand:
+The `in` operator emits a `.Contains()` call on the right-hand operand:
 
 ```
 x in y    -->  y.Contains(x)
 x not in y --> !y.Contains(x)
 ```
 
-This single codegen strategy works uniformly because:
+This single codegen strategy works for every container but the class that only iterates (item 5) because:
 
 1. **User-defined classes with `__contains__`**: The `__contains__` dunder compiles to a C# method named `Contains` (via `DunderNameMapping`). So `x in obj` emits `obj.Contains(x)`, which resolves to the user's `__contains__` implementation.
 2. **Sharpy built-in collections** (`list`, `dict`, `set`): These Sharpy.Core types define a `Contains` method that implements the membership test.
 3. **.NET types** (`HashSet<T>`, `List<T>`, etc.): These already have a `.Contains()` method from `ICollection<T>` or similar interfaces.
 4. **Strings**: `str.Contains()` performs a substring test.
+5. **User-defined classes that only iterate** (`__iter__` and no `__contains__`, declared or inherited): the class is tested by iterating it, as Python does. It implements `IEnumerable<T>`, and the test is LINQ's `Enumerable.Contains` over it, named in full, so a method the class happens to call `contains` is never the one called.
 
 ### Validation
 
-The `ProtocolValidator` checks that the right-hand operand of `in`/`not in` supports membership testing. For user-defined types, the class must define `__contains__`. For .NET types, the validator checks for a `Contains` method via CLR interface discovery (`ICollection<T>`, `IDictionary<K,V>`, etc.).
+The `ProtocolValidator` checks that the right-hand operand of `in`/`not in` supports membership testing. A user-defined class supports it when it defines `__contains__` (declared or inherited), or when it iterates: its `__iter__` is a generator, returns a producer (`Iterator[T]`, `IEnumerator[T]`, `IEnumerable[T]`), or returns the object itself beside a `__next__`. For .NET types, the validator checks for a `Contains` method via CLR interface discovery (`ICollection<T>`, `IDictionary<K,V>`, etc.).
 
-If the type does not support membership testing, the compiler reports `SPY0320` ("Type does not support membership testing (missing `__contains__` method)").
+If the type does not support membership testing, the compiler reports `SPY0320` ("Type does not support membership testing (missing `__contains__` method)"). Two user classes CPython answers are refused this way:
+
+- an `__iter__` that returns something other than a producer (`def __iter__(self) -> list[int]`): it is not an iterator, and CPython raises `TypeError` when `in` calls it;
+- a class with only `__len__` and `__getitem__`. CPython answers `in` through the legacy sequence protocol, calling `__getitem__(0)`, `__getitem__(1)`, … until `IndexError`; Sharpy does not, because the index need not be an integer and an integer index need not be dense. Declare `__contains__` or `__iter__`. Catalogued as `membership-legacy-sequence-protocol` in `docs/deviations.yaml`.
 
 ### `__contains__` Protocol
 
@@ -93,6 +97,11 @@ print(2 in xs)            # True — constant 2 converts to uint64
 print(1 in [1, 2, 3])     # True  — same-width, always works
 ```
 
+A needle that is also the middle operand of a comparison chain (`a == x in c`) is typed first by the
+link on its left, as `a == x` types it, and converted to the element slot where the membership link
+reads it, as a named needle is ([comparison chaining](comparison_chaining.md#membership-and-identity-links);
+owner ruling 2026-11-15, plan-67a01f R2).
+
 ### Container kinds
 
 `in` works on every container kind the iteration ring accepts, and the needle is checked against
@@ -103,15 +112,75 @@ that container's ELEMENT type in each case:
 | `list[T]`, `set[T]`, `frozenset[T]`, `array[T]` | `T` | `2 in [1, 2]` |
 | `dict[K, V]` | `K` (keys, as in Python) | `"a" in {"a": 1}` |
 | `str` | `str` (substring test) | `"a" in "ab"` |
-| `bytes` | `int` | `97 in b"ab"` |
+| `bytes` | `int` or `bytes` | `97 in b"ab"`, `b"b" in b"ab"` |
 | `tuple[...]` | the tuple's best common element type | `2 in (1, 2)` |
 | `range(...)` | `int` | `3 in range(10)` |
 | a class with `__contains__` (declared or inherited) | that method's parameter type | `2 in bag` |
+| a class with `__iter__` and no `__contains__` | the iterator's element type | `2 in numbers` |
 | a CLR type with a public `Contains`, or any `IEnumerable[T]` | `T` | `2 in clr_list` |
 
 A tuple is a container: `2 in (1, 2)` is `True`, and a heterogeneous tuple's element type is the
 best common type of its elements, so `2 in (1, 2.5)` compares `2.0` against `1.0` and `2.5` and is
 `False` — the same answer Python gives for a different reason (`2.0 != 2.5`).
+
+A class that only iterates (an `__iter__` and no `__contains__`) is tested by iterating it, as in
+Python: the needle is checked against the iterator's element type, and the test stops at the first
+equal element. A method the class calls `contains` plays no part:
+
+<!-- spec-sweep: output -->
+```python
+class Numbers:
+    _items: list[int]
+
+    def __init__(self, items: list[int]):
+        self._items = items
+
+    def __iter__(self) -> Iterator[int]:
+        return iter(self._items)
+
+    def contains(self, item: int) -> bool:
+        return False
+
+class Evens:
+    _limit: int
+
+    def __init__(self, limit: int):
+        self._limit = limit
+
+    def __iter__(self) -> int:
+        n: int = 0
+        while n < self._limit:
+            yield n
+            n += 2
+
+def main():
+    numbers: Numbers = Numbers([1, 2, 3])
+    print(2 in numbers)          # True
+    print(5 not in numbers)      # True
+    print(4 in Evens(10))        # True
+    print(3 in Evens(10))        # False
+```
+
+A class with only `__len__` and `__getitem__` is refused (SPY0320; Validation, above), where Python
+answers through the legacy sequence protocol:
+
+<!-- spec-sweep: error SPY0320 -->
+```python
+class Squares:
+    _items: list[int]
+
+    def __init__(self):
+        self._items = [0, 1, 4]
+
+    def __len__(self) -> int:
+        return len(self._items)
+
+    def __getitem__(self, i: int) -> int:
+        return self._items[i]
+
+def main():
+    print(4 in Squares())        # SPY0320 (Python: True)
+```
 
 Range membership is arithmetic, not a scan: `3 in range(10)` is answered in constant time from
 `start`, `stop` and `step`, so it does not consume the range.
@@ -126,5 +195,126 @@ float needle against a range with SPY0222, because the needle slot is `int` (the
 never be a member, so the test is a type error rather than a constant `False` (Axiom 2, type safety
 over Python syntax). Catalogued as `membership-needle-type-mismatch` in `docs/deviations.yaml`.
 
+### Evaluation order
+
+The needle is evaluated before the container, as in Python (`expressions.md`, Expression Evaluation
+Order): every operand of a binary operator is evaluated left to right.
+
+<!-- spec-sweep: output -->
+```python
+def needle() -> int:
+    print("needle")
+    return 2
+
+def container() -> list[int]:
+    print("container")
+    return [1, 2]
+
+def main():
+    print(needle() in container())
+    print(needle() not in container())
+    x: int = 1
+    print(x in [(x := 5), 2])
+```
+
+```output
+needle
+container
+True
+needle
+container
+False
+False
+```
+
+The last test reads `x` (1) before the list rebinds it to 5, so `1` is not a member.
+
+### None needles
+
+A needle whose own type is `T | None` (a name, an attribute, a call, a subscript) is accepted
+wherever the `T` needle is: it is checked against the needle slot as `T`. A needle written as a
+conditional expression or as a new `:=` binding is instead an argument into the slot, like the
+argument of a call. With a value-type `T`, an optional branch or value is refused there. With a
+reference `T` it is accepted, but it is not a `None` needle: the `str`/`bytes` answer below does not
+hold for it (#2644). Bind it to a `T | None` name first. What the `None` of an accepted needle answers at run time is what Python
+answers:
+
+- in an equality scan (a list, set, dict, tuple or range), `None` equals no element, so `in` is
+  `False` and `not in` is `True`;
+- in `str` and `bytes`, whose `in` is a subsequence test, `None` raises `TypeError`;
+- in a CLR-backed container, the receiver's own `Contains` answers: `False` for a `Counter` or an
+  argparse `Namespace`, `AttributeError` for an IP network or an `EmailMessage`.
+
+Not every receiver and needle type gives Python's answer yet (#2674). A value-type `T | None` needle (`int | None`, a
+struct) into a class whose `__contains__` parameter is the plain `T` answers `False` for `None`
+without calling `__contains__`, where Python calls it with `None`. A `__contains__` that tests
+equality agrees with Python either way; one that does not (it returns `True` for every value) differs.
+Declaring the parameter `T | None` passes the `None` through and gives Python's answer. A `T | None`
+needle whose `T` is an int-backed enum, a generic struct or `Self` in a struct is not lifted yet.
+
+<!-- spec-sweep: output -->
+```python
+errno: int | None = None
+print(errno in (111, 98))       # False
+print(errno not in (111, 98))   # True
+print(errno in range(200))      # False
+
+code: int | None = 98
+print(code in (111, 98))        # True
+
+name: str | None = None
+print(name in ["a", "b"])       # False
+```
+
+<!-- spec-sweep: output -->
+```python
+from collections import Counter
+from ipaddress import IPv4Address, IPv4Network
+
+name: str | None = None
+try:
+    print(name in "abc")
+except TypeError:
+    print("TypeError")
+
+words: list[str] = ["a", "b"]
+counts: Counter[str] = Counter(words)
+print(name in counts)
+
+address: IPv4Address | None = None
+try:
+    print(address in IPv4Network("10.0.0.0/8"))
+except AttributeError:
+    print("AttributeError")
+```
+
+```output
+TypeError
+False
+AttributeError
+```
+
+The literal `None` is refused (SPY0222) unless the container's element type is itself optional:
+written out, it is a needle the slot cannot hold, the same `membership-needle-type-mismatch`
+departure. Into an optional element type it is a plain needle, and `None` can be a member:
+
+<!-- spec-sweep: error SPY0222 -->
+```python
+xs: list[int] = [1, 2]
+print(None in xs)               # SPY0222 — the slot is int, not int | None
+```
+
+<!-- spec-sweep: output -->
+```python
+ys: list[int | None] = [1, None]
+print(None in ys)               # True
+y: int | None = None
+print(y in ys)                  # True
+print(y in [1, 2])              # False
+```
+
 *Implementation*
 - *Lowered: `x in y` emits `y.Contains(x)`. For Sharpy classes, `__contains__` compiles to a C# `Contains` method, so the same `.Contains()` call dispatches correctly for both Sharpy and .NET types.*
+- *The needle is evaluated first. Where both operands are trivial (a name, a literal) or the needle is literal-only, `y.Contains(x)` is emitted as is. Otherwise the needle is bound first, as the type the checker took it into the needle slot as: `((S)x) is var t && y.Contains(t)`, negated whole for `not in`. A container that hoists a statement (a tuple's array, a comprehension, a spread, `?`) has the needle hoisted ahead of it, into a local of that type.*
+- *A class that only iterates is tested by LINQ over the `IEnumerable<E>` it implements: `global::System.Linq.Enumerable.Contains<E>(y, x)`, bound the same way.*
+- *A `T | None` needle the checker lifts (None needles, above) emits a Core helper instead, `Builtins.ContainsOptional(x, y, …)` for a value-type needle in an equality scan and `Builtins.ContainsNoneRaises(x, y, …)` for `str`/`bytes`: it tests the needle for `None`, then makes the same `.Contains()` call. The helper takes the needle first.*

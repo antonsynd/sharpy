@@ -325,8 +325,13 @@ internal partial class RoslynEmitter : ICodeEmitter
                 continue;
             for (int j = 0; j < k; j++)
             {
-                if (!IsSideEffectFree(operands[j]))
+                // A bare name has no effect of its own, but a later operand's hoist can rebind it
+                // (`x == len([*keep((x := 5), xs)])`): read first, it must be captured first (P93 D2).
+                if (!IsSideEffectFree(operands[j])
+                    || (operands[j] is Parser.Ast.Identifier && HoistRebindsARead(capturedEvals[k], results[j])))
+                {
                     needsCapture[j] = true;
+                }
             }
         }
 
@@ -348,6 +353,29 @@ internal partial class RoslynEmitter : ICodeEmitter
         }
 
         return results;
+    }
+
+    /// <summary>
+    /// Whether <paramref name="hoisted"/> — statements a later operand hoists ahead of the expression
+    /// its operands sit in — assigns a name that the emitted <paramref name="read"/> reads (P93 D2,
+    /// #2645). A bare-name operand is side-effect free, so the ordering rule does not capture it, but a
+    /// walrus inside a hoisting operand (a spread, a comprehension, <c>?</c>) runs before the bare name
+    /// is read and would hand it the new value. Read from the emitted syntax alone: the assignment
+    /// targets of the hoisted statements against the identifiers the read names.
+    /// </summary>
+    private static bool HoistRebindsARead(IReadOnlyList<StatementSyntax> hoisted, ExpressionSyntax read)
+    {
+        var readNames = read.DescendantNodesAndSelf()
+            .OfType<IdentifierNameSyntax>()
+            .Select(name => name.Identifier.ValueText)
+            .ToHashSet(StringComparer.Ordinal);
+        if (readNames.Count == 0)
+            return false;
+
+        return hoisted.Any(statement => statement.DescendantNodesAndSelf()
+            .OfType<AssignmentExpressionSyntax>()
+            .Any(assignment => assignment.Left is IdentifierNameSyntax target
+                && readNames.Contains(target.Identifier.ValueText)));
     }
 
     /// <summary>
