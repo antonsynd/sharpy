@@ -35,8 +35,9 @@ Usage:
 
 --check exits 0 when there is no block or a valid one (and says which), 1 when the block is
 malformed (one `::error::` line). --pr prints one JSON object
-{"pr", "url", "base", "merged", "merge_commit_sha", "closes", "files"} and exits 0, 1 when the
-block is malformed, 2 when `gh` fails.
+{"pr", "block", "url", "base", "merged", "merge_commit_sha", "closes", "files"} ("block" is false
+when the description has no block, and both lists are then empty) and exits 0, 1 when the block is
+malformed, 2 when `gh` fails.
 """
 
 from __future__ import annotations

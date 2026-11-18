@@ -54,8 +54,8 @@ Categorize: **VERIFIED** (found, tests pass), **PARTIAL** (gaps remain), **NOT F
 For each VERIFIED issue:
 
 ```bash
-# $SCRATCH/comment.md (the session scratchpad, not the repo): "Closed — implemented in <sha or PR url>. Verified in codebase: <evidence>."
-gh api -X POST repos/antonsynd/sharpy/issues/<number>/comments -F body=@"$SCRATCH/comment.md"
+# <scratchpad>/comment.md (the session scratchpad, not the repo): "Closed — implemented in <sha or PR url>. Verified in codebase: <evidence>."
+gh api -X POST repos/antonsynd/sharpy/issues/<number>/comments -F body=@<scratchpad>/comment.md
 gh api -X PATCH repos/antonsynd/sharpy/issues/<number> -f state=closed -f state_reason=completed
 ```
 
@@ -65,8 +65,8 @@ From a `pr:` source, cite that PR's `url`. Otherwise cite `git log --oneline --a
 
 PARTIAL: do **not** close; comment what landed and what remains:
   ```bash
-  # $SCRATCH/comment.md: "Partial implementation found: <description>. Remaining work: <gaps>."
-  gh api -X POST repos/antonsynd/sharpy/issues/<number>/comments -F body=@"$SCRATCH/comment.md"
+  # <scratchpad>/comment.md: "Partial implementation found: <description>. Remaining work: <gaps>."
+  gh api -X POST repos/antonsynd/sharpy/issues/<number>/comments -F body=@<scratchpad>/comment.md
   ```
 
 NOT FOUND: do not close; report it.
