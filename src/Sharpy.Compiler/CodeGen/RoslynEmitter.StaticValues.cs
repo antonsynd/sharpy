@@ -712,13 +712,7 @@ internal partial class RoslynEmitter
     /// </summary>
     private bool IsGuardedVariableTarget(Expression target)
     {
-        var symbol = target switch
-        {
-            Identifier id => _context.SemanticInfo?.GetIdentifierSymbol(id),
-            MemberAccess ma => _context.SemanticInfo?.GetMemberAccessResolution(ma)?.Member
-                ?? _context.SemanticInfo?.GetModuleMemberResolution(ma)?.Member,
-            _ => null,
-        };
+        var symbol = _context.SemanticInfo?.GetBoundValueSymbol(target);
         return IsGuardedStore(symbol == null ? null : GetCodeGenInfo(symbol));
     }
 

@@ -24,12 +24,17 @@ internal class CodeGenInfoComputer
     private string? _sourceFilePath;
     private string? _sourceRootPath;
     private SemanticBinding? _importFacts;
+
+    /// <summary>The binding import resolution wrote to (see <see cref="ComputeForModule"/>'s
+    /// <c>importFacts</c>), else this computer's own.</summary>
+    private SemanticBinding ImportFacts => _importFacts ?? _semanticBinding;
+
     private string? _rootNamespace;
     private bool _isEntryPoint;
     private IReadOnlySet<string>? _deferredCycleFiles;
 
     // The module's own HasSweep inputs (plan-775c50 D2): a Guarded value declared in any host, and an
-    // import of a module that has a sweep. Combined by ImportedStaticFacts.HasSweep once, at the end.
+    // import of a module that has a sweep. Combined (either one) once, at the end of ComputeForModule.
     private bool _declaresGuardedValue;
     private bool _anyImportHasSweep;
 
@@ -156,8 +161,7 @@ internal class CodeGenInfoComputer
         // (plan-775c50 D2): every importer reads it through ImportedStaticFacts.ImportedSweep. A module with
         // no file identity (the LSP single-document analysis) is never imported and records nothing.
         if (!string.IsNullOrEmpty(_sourceFilePath))
-            (_importFacts ?? _semanticBinding).SetModuleHasSweep(_sourceFilePath,
-                ImportedStaticFacts.HasSweep(_declaresGuardedValue, _anyImportHasSweep));
+            ImportFacts.SetModuleHasSweep(_sourceFilePath, _declaresGuardedValue || _anyImportHasSweep);
 
         // Fourth pass: name every local of every function-like scope. Runs last so that a chain
         // whose head is a module-level variable (write-through from a function) inherits the
@@ -249,6 +253,8 @@ internal class CodeGenInfoComputer
 
     private void ProcessModuleLevelDeclarations(Module module)
     {
+        // Split accessors merge into one module property: its defs, by member key, indexed once.
+        var propertyDefs = module.Body.Select(s => s.UnwrapDecorated()).OfType<PropertyDef>().ToLookup(p => p.MemberKey());
         foreach (var stmt in module.Body)
         {
             // Unwrap for classification only: a suppress-decorated import (#1124) must still
@@ -269,13 +275,13 @@ internal class CodeGenInfoComputer
                     ProcessFromImport(fromImport);
                     break;
                 case PropertyDef propDef:
-                    ProcessModuleLevelProperty(module, propDef);
+                    ProcessModuleLevelProperty(propDef, propertyDefs[propDef.MemberKey()]);
                     break;
             }
         }
     }
 
-    private void ProcessModuleLevelProperty(Module module, PropertyDef propDef)
+    private void ProcessModuleLevelProperty(PropertyDef propDef, IEnumerable<PropertyDef> memberDefs)
     {
         var symbol = _symbolTable.Lookup(propDef.Name);
         if (symbol is VariableSymbol { IsModuleProperty: true } varSymbol && !_semanticBinding.HasCodeGenInfo(varSymbol))
@@ -292,9 +298,7 @@ internal class CodeGenInfoComputer
                 IsConstant = false,
                 HasExecutionOrderIssues = false,
                 // Split accessors merge into one module property: every def of its member key decides.
-                StaticStorage = RecordModuleValue(propDef.Name, StaticStorageFacts.ForProperty(
-                    module.Body.Select(s => s.UnwrapDecorated()).OfType<PropertyDef>()
-                        .Where(p => p.MemberKey() == propDef.MemberKey()))),
+                StaticStorage = RecordModuleValue(propDef.Name, StaticStorageFacts.ForProperty(memberDefs)),
             });
         }
     }
@@ -320,7 +324,7 @@ internal class CodeGenInfoComputer
     {
         NoteStorage(storage);
         if (storage is { } recorded && !string.IsNullOrEmpty(_sourceFilePath))
-            (_importFacts ?? _semanticBinding).SetModuleValueStorage(_sourceFilePath, name, recorded);
+            ImportFacts.SetModuleValueStorage(_sourceFilePath, name, recorded);
         return storage;
     }
 
@@ -391,7 +395,7 @@ internal class CodeGenInfoComputer
     /// </summary>
     private bool NoteImportedSweep(string? importedFilePath)
     {
-        var hasSweep = ImportedStaticFacts.ImportedSweep(_importFacts ?? _semanticBinding, importedFilePath, _deferredCycleFiles);
+        var hasSweep = ImportedStaticFacts.ImportedSweep(ImportFacts, importedFilePath, _deferredCycleFiles);
         if (hasSweep)
             _anyImportHasSweep = true;
         return hasSweep;
@@ -445,7 +449,7 @@ internal class CodeGenInfoComputer
     {
         if (_semanticInfo == null)
             return;
-        var facts = _importFacts ?? _semanticBinding;
+        var facts = ImportFacts;
         var requirements = new List<ModuleLayout>();
         foreach (var requirement in facts.GetImportChain(statement) ?? Array.Empty<ImportRequirement>())
         {
@@ -482,7 +486,7 @@ internal class CodeGenInfoComputer
             if (export is not ModuleSymbol submodule)
                 continue;
             if (_semanticBinding.GetCodeGenInfo(submodule) == null
-                && (_importFacts ?? _semanticBinding).GetCodeGenInfo(submodule) == null
+                && ImportFacts.GetCodeGenInfo(submodule) == null
                 && ImportedModuleLayout(submodule.FilePath, submodule.CSharpNamespace, submodule.CSharpClassName,
                     submodule.IsNetModule) is { } layout)
             {
@@ -516,7 +520,7 @@ internal class CodeGenInfoComputer
     {
         if (module.IsNetModule)
             return;
-        var facts = _importFacts ?? _semanticBinding;
+        var facts = ImportFacts;
         foreach (var (name, export) in module.Exports)
         {
             if (export is not VariableSymbol)
@@ -547,7 +551,7 @@ internal class CodeGenInfoComputer
         // The source module's layout, on the import node (a from-import names no ModuleSymbol, #2039).
         // Read from the binding import resolution wrote to: in a project build `_semanticBinding` is
         // the per-file binding, which holds neither the resolved path nor the .NET-module marks.
-        var importFacts = _importFacts ?? _semanticBinding;
+        var importFacts = ImportFacts;
         var sourceIsNetModule = importFacts.IsNetModule(fromImport.Module);
         var sourceLayout = ImportedModuleLayout(
             importFacts.GetResolvedModuleFilePath(fromImport),
@@ -623,7 +627,7 @@ internal class CodeGenInfoComputer
         // clone roots at ModuleLoader's extracted symbol, not the declared one, and the predicate reads
         // the declarer's keyed record instead (findings ledger, P77 T2: the identity split, candidate
         // class P78 / #2423). A .NET module's member has no record here (D10's attributes).
-        var (importedStorage, importedOnGenericHost) = ImportedStaticFacts.ImportedStorage(_importFacts ?? _semanticBinding, symbol);
+        var (importedStorage, importedOnGenericHost) = ImportedStaticFacts.ImportedStorage(ImportFacts, symbol);
 
         SetCodeGenInfo(symbol, new CodeGenInfo
         {
@@ -666,7 +670,7 @@ internal class CodeGenInfoComputer
         // alias binds a clone whose origin chain ends at the declaration. Its module was checked
         // first (dependency order), so the declaration's fact is in the import-facts binding. A .NET
         // module's member has no such record and keeps the casing rule below.
-        if ((_importFacts ?? _semanticBinding).GetCodeGenInfo(symbol.DeclarationRoot()) is
+        if (ImportFacts.GetCodeGenInfo(symbol.DeclarationRoot()) is
             { IsModuleLevel: true, CSharpName: { } declaredName })
         {
             return declaredName;

@@ -1362,6 +1362,18 @@ public class SemanticInfo : ISemanticQuery
     }
 
     /// <summary>
+    /// The symbol a use binds, as the checker recorded it: an identifier's bound symbol, or a member
+    /// access's type-member resolution, else its module-member resolution. Null for any other
+    /// expression and for an unresolved use. A reader over the tables above, never a lookup by spelling.
+    /// </summary>
+    public Symbol? GetBoundValueSymbol(Expression use) => use switch
+    {
+        Identifier id => GetIdentifierSymbol(id),
+        MemberAccess ma => GetMemberAccessResolution(ma)?.Member ?? GetModuleMemberResolution(ma)?.Member,
+        _ => null,
+    };
+
+    /// <summary>
     /// Records that a pattern was resolved to a specific union case type symbol, together with the
     /// scrutinee union's SUBSTITUTED type-argument vector (<paramref name="parentTypeArgs"/>): the
     /// closed <c>[int, str]</c> for a <c>Result[int, str]</c> scrutinee, the declaration's own

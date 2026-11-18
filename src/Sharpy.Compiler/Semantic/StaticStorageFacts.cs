@@ -75,10 +75,6 @@ internal static class StaticStorageFacts
 /// </summary>
 internal static class ImportedStaticFacts
 {
-    /// <summary>A module's own fact: it declares a Guarded value, or one of its imports has a sweep.</summary>
-    public static bool HasSweep(bool declaresGuardedValue, bool anyImportHasSweep)
-        => declaresGuardedValue || anyImportHasSweep;
-
     /// <summary>
     /// What an importer reads for the module at <paramref name="importedFilePath"/>: the declaring
     /// module's recorded fact. A module this compilation does not compile from Sharpy source has no

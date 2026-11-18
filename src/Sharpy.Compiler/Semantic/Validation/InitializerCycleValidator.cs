@@ -425,13 +425,17 @@ internal sealed class InitializerCycleValidator : ISemanticValidator
             WalkInitializer(node, node.Initializer, isCertain: true, certain[node], lexical[node]);
         }
 
-        // A plain store that names a node may run before its initializer: no certain cycle closes through it (Q23).
-        var stored = new HashSet<ValueNode>(ReferenceEqualityComparer.Instance);
-        CollectStores(module.Body, stored);
-
         var refused = new Dictionary<ValueNode, bool>(ReferenceEqualityComparer.Instance);
-        foreach (var node in OnCycle(certain, n => !stored.Contains(n)))
-            refused[node] = false;
+        // A plain store that names a node may run before its initializer: no certain cycle closes through it
+        // (Q23). The stores only remove nodes, so a certain cycle among the kept nodes is one among all of
+        // them, and the module is walked for its stores only when there is one.
+        if (OnCycle(certain, _ => true).Count > 0)
+        {
+            var stored = new HashSet<ValueNode>(ReferenceEqualityComparer.Instance);
+            CollectStores(module.Body, stored);
+            foreach (var node in OnCycle(certain, n => !stored.Contains(n)))
+                refused[node] = false;
+        }
         foreach (var node in OnCycle(lexical, n => n.IsConst))
             refused[node] = true;
 
@@ -536,13 +540,17 @@ internal sealed class InitializerCycleValidator : ISemanticValidator
     private void CollectType(Statement declaration, NestedDeclaration nested, string path)
     {
         var owner = _context.DeclaredTypes?.SymbolFor(declaration, nested.Name, _context.SymbolTable);
+        // The owner's first field of each name, indexed once (the field a by-name scan finds).
+        var fields = new Dictionary<string, VariableSymbol>(StringComparer.Ordinal);
+        foreach (var f in owner?.Fields ?? Enumerable.Empty<VariableSymbol>())
+            fields.TryAdd(f.Name, f);
         var properties = new List<PropertyDef>();
         foreach (var member in nested.Body.Select(m => m.UnwrapDecorated()))
         {
             switch (member)
             {
                 case VariableDeclaration { InitialValue: { } initializer } field:
-                    if (owner?.Fields.FirstOrDefault(f => f.Name == field.Name) is { } symbol && (field.IsConst || symbol.IsStatic))
+                    if (owner != null && fields.TryGetValue(field.Name, out var symbol) && (field.IsConst || symbol.IsStatic))
                         AddTypeValue(owner, field.Name, field.IsConst ? NodeKind.TypeConst : NodeKind.StaticField, $"{path}.{field.Name}", field, initializer);
                     break;
                 case PropertyDef property when property.ExplicitInterface == null:

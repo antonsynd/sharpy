@@ -151,7 +151,6 @@ public class DispatchSiteInventoryTests
         // and element-path kinds, the store sites with a target — and the generated use × spelling cells
         // (positive, plain-store, read and non-async controls) are the net over every arm.
         ["Semantic/AsyncGuardedUseAnalyzer.cs::AsyncGuardedUseAnalyzer.Walk"] = "refusal-net:AsyncGuardedUseFactTests",
-        ["Semantic/AsyncGuardedUseAnalyzer.cs::AsyncGuardedUseAnalyzer.GuardedValue"] = "refusal-net:AsyncGuardedUseFactTests",
         ["Semantic/AsyncGuardedUseAnalyzer.cs::AsyncGuardedUseAnalyzer.IsReceiverOf"] = "refusal-net:AsyncGuardedUseFactTests",
         ["Semantic/AsyncGuardedUseAnalyzer.cs::AsyncGuardedUseAnalyzer.IsStoreTarget"] = "refusal-net:AsyncGuardedUseFactTests",
         ["Semantic/AsyncGuardedUseAnalyzer.cs::AsyncGuardedUseAnalyzer.IsElementOf"] = "refusal-net:AsyncGuardedUseFactTests",
@@ -220,7 +219,7 @@ public class DispatchSiteInventoryTests
         // plan-775c50 D4: a store or `out` target names a Guarded variable through the symbol the checker
         // bound on a bare name or a qualified one; every other target is no Guarded value. The generated
         // Location cells write each store site on both spellings.
-        ["CodeGen/RoslynEmitter.StaticValues.cs::RoslynEmitter.IsGuardedVariableTarget"] = "refusal-net:InitializerDependencyDifferentialTests",
+        ["Semantic/SemanticInfo.cs::SemanticInfo.GetBoundValueSymbol"] = "refusal-net:InitializerDependencyDifferentialTests",
         ["CodeGen/RoslynEmitter.Expressions.Access.Calls.cs::RoslynEmitter.IsMethodGroup"] = "refusal-net:FileBasedIntegrationTests",
         ["CodeGen/RoslynEmitter.Expressions.Access.Calls.cs::RoslynEmitter.IsMethodGroupOrLambda"] = "refusal-net:FileBasedIntegrationTests",
         ["CodeGen/RoslynEmitter.Expressions.cs::RoslynEmitter.GenerateExpressionCore"] = "refusal-net:FileBasedIntegrationTests",

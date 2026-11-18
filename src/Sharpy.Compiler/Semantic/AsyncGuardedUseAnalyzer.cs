@@ -68,12 +68,16 @@ internal sealed class AsyncGuardedUseAnalyzer
 
     private void Walk(Node node, bool inAsync)
     {
+        // Only a FunctionDef opens an async scope, and no expression holds a statement, so nothing under
+        // an expression outside an async def body is in one.
+        if (!inAsync && node is Expression)
+            return;
         if (inAsync && node is Identifier or MemberAccess)
             Classify((Expression)node);
 
         // The scope of the children: a function body is async exactly when its def is; a lambda or a
         // type body is never (its methods are their own FunctionDefs). A parameter default is not in
-        // the body.
+        // the body, and is not walked.
         var childInAsync = node switch
         {
             FunctionDef def => def.IsAsync,
@@ -85,11 +89,6 @@ internal sealed class AsyncGuardedUseAnalyzer
         _ancestors.Add(node);
         if (node is FunctionDef function)
         {
-            foreach (var parameter in function.Parameters)
-            {
-                if (parameter.DefaultValue != null)
-                    Walk(parameter.DefaultValue, inAsync: false);
-            }
             foreach (var statement in function.Body)
                 Walk(statement, childInAsync);
         }
@@ -116,13 +115,7 @@ internal sealed class AsyncGuardedUseAnalyzer
     /// <c>@static</c> field or a computed const, by any spelling), or null.</summary>
     private Symbol? GuardedValue(Expression node)
     {
-        var symbol = node switch
-        {
-            Identifier id => _info.GetIdentifierSymbol(id),
-            MemberAccess ma => _info.GetMemberAccessResolution(ma)?.Member ?? _info.GetModuleMemberResolution(ma)?.Member,
-            _ => null,
-        };
-        if (symbol is not VariableSymbol { IsModuleProperty: false } variable)
+        if (_info.GetBoundValueSymbol(node) is not VariableSymbol { IsModuleProperty: false } variable)
             return null;
         var storage = _binding.GetCodeGenInfo(variable)?.StaticStorage
             ?? ImportedStaticFacts.ImportedStorage(_importFacts, variable).Storage;
