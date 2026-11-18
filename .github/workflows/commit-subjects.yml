@@ -3,6 +3,8 @@
 # made a gate by build_tools/check_commit_subjects.py (merges, reverts and Dependabot bump commits — `chore: Bump`, `chore(deps): Bump`, `chore(deps-dev): Bump` — in Dependabot's PRs or already on dev/mainline are exempt). No path filter: a docs-only PR has subjects too.
 # The same script fails a commit message with a GitHub closing keyword (`close`/`fix`/`resolve` #N, owner
 # 2026-11-18): such a commit closes the issue when it reaches mainline (#2736 closed #2422 that way).
+# It judges the PR title too (it becomes the merge commit's body) and, on a PR into the default
+# branch, the description; `edited` re-runs it when either changes.
 # The two gate workflows (dotnet10.yml, python-build-tools.yml) are path-filtered and dispatched by
 # `.claude/scripts/ci-gate`, which needs no subject check (a dispatch has no range), so this is its own
 # small workflow rather than a job on either of them.

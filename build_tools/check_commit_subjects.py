@@ -129,8 +129,10 @@ def offences(
 
 
 def closing_keywords(message: str) -> list[str]:
-    """Each closing keyword and the reference it names in `message`, in order, on one line."""
-    return [" ".join(m.group(0).split()) for m in CLOSING_KEYWORD.finditer(message)]
+    """Each closing keyword and the reference it names in `message`, in order, on one line. CR and
+    CRLF count as a line break: a description edited on GitHub arrives through argv with them."""
+    text = message.replace("\r\n", "\n").replace("\r", "\n")
+    return [" ".join(m.group(0).split()) for m in CLOSING_KEYWORD.finditer(text)]
 
 
 def parse_messages(text: str) -> dict[str, str]:

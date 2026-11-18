@@ -768,9 +768,9 @@ def test_the_workflow_passes_the_pr_body_only_into_the_default_branch():
 def _workflow_bash(env):
     """Run the step's script with `bash` swapped for an echo of its arguments."""
     step = _workflow_step()
-    script = step["run"].replace(
-        "bash build_tools/check_commit_subjects.sh", "printf '%s\\n'"
-    )
+    call = "bash build_tools/check_commit_subjects.sh"
+    assert call in step["run"]
+    script = step["run"].replace(call, "printf '%s\\n'")
     return subprocess.run(
         ["bash", "-euo", "pipefail", "-c", script],
         capture_output=True,
@@ -791,3 +791,14 @@ def test_the_workflow_judges_the_body_by_base(base_ref, judged):
     }
     args = _workflow_bash(env)
     assert ("--pr-body=fixes #1" in args) is judged
+
+
+@pytest.mark.parametrize(
+    "body", ["Closes\r\n#12", "Closes:\r\n#12", "Closes \r\n#12", "Closes\r#12"]
+)
+def test_a_crlf_wrapped_description_is_red(repo, body):
+    # Fourth review of #2740: a GitHub-edited description reaches argv with CRLF intact.
+    base = _git(repo, "rev-parse", "HEAD").strip()
+    _commit(repo, "fix(core): short")
+    result = _run(repo, f"{base}..HEAD", f"--pr-body=Promotes dev.\r\n\r\n{body}\r\n")
+    assert result.returncode == 1, result.stdout + result.stderr
