@@ -630,6 +630,11 @@ internal partial class RoslynEmitter
                 body = Block(GuardStoresOf(ExpressionStatement(accessor.ExpressionBody.Expression), name, fieldName));
             else
                 body = Block(accessor.Body!.Statements.Select(st => GuardStoresOf(st, name, fieldName)));
+            // A generated setter that also READS the backing field (an `after_set` observer's
+            // `var __old = _name;`) reads it like any other read: initialized first (D4), never a
+            // CLR default for a value not yet given one.
+            if (ReadsField(body, fieldName))
+                body = body.WithStatements(body.Statements.Insert(0, GuardedReadPrelude(name)));
             accessors.Add(accessor.WithExpressionBody(null).WithSemicolonToken(default).WithBody(body));
         }
 
@@ -642,6 +647,14 @@ internal partial class RoslynEmitter
             .WithModifiers(modifiers)
             .WithAccessorList(AccessorList(List(accessors)));
     }
+
+    /// <summary>Whether <paramref name="body"/> names the backing field anywhere but as a simple
+    /// store's target.</summary>
+    private static bool ReadsField(BlockSyntax body, string fieldName)
+        => body.DescendantNodes().OfType<IdentifierNameSyntax>().Any(id =>
+            id.Identifier.ValueText == fieldName
+            && !(id.Parent is AssignmentExpressionSyntax store
+                && store.IsKind(SyntaxKind.SimpleAssignmentExpression) && store.Left == id));
 
     private static StatementSyntax GuardStoresOf(StatementSyntax statement, string name, string fieldName)
         => statement is ExpressionStatementSyntax
