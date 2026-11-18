@@ -391,9 +391,32 @@ bare name in any order: a compile-time-constant `const` (`const SIZE: int = 8`) 
 resolves its constants in dependency order, and a `const` whose initializer is not a compile-time
 constant (`const K: int = seven()`) because the read runs its initializer first
 ([N3](#values-are-ready-before-use-n3)). When an outer binding of the name exists, a later `@static`
-sibling and the member itself yield to it instead (below). A later `const` does not: the read takes the
-class's `const`, where Python reads the outer binding. **Pending #2423 (N2):** that read is refused as
-ambiguous.
+sibling and the member itself yield to it instead (below). A later `const` does not, because the
+outer binding (Python's reading) and the class's `const` (scope's reading) would give the name two
+meanings (rule N2):
+
+- a later `const` whose initializer is not a compile-time constant is refused as ambiguous
+  (SPY0618), and so is a bare read of it in a comprehension's body, where Python reads the outer
+  binding or, with none, raises `NameError`. `Box.LIMIT` reads the member;
+- a later compile-time-constant `const` is read as the class's value (`7` below, where python3
+  3.15.2 prints the outer `9`). **Pending #2423 (N2):** this read is refused as well, under N2's own
+  code, which also replaces SPY0618.
+
+<!-- spec-sweep: error SPY0618 -->
+```python
+LIMIT: int = 9
+
+class Box:
+    @static
+    v: int = LIMIT              # SPY0618 — "'LIMIT' is ambiguous in a '@static' initializer: 'Box.LIMIT' is a 'const' declared later than 'v', and a 'LIMIT' outside the class is in scope"
+    const LIMIT: int = seven()
+
+def seven() -> int:
+    return 7
+
+def main() -> None:
+    print(Box.v)
+```
 
 <!-- spec-sweep: error SPY0200 -->
 ```python

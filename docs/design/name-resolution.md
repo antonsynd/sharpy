@@ -93,7 +93,10 @@ The second: **a module-level initializer that reads a builtin or imported name a
 same-named declaration is refused.**
 
 *Today:* a later `@static`, property or method yields to the outer binding (prints `64`, Python's
-value), and a later literal `const` outranks it (prints Sharpy's value, not Python's). Census @
+value). A later `const` whose initializer is not a compile-time constant is refused as ambiguous
+(SPY0618, narrowed to this shape by plan-775c50 until N2's own code replaces it), and so is a bare
+read of one in a comprehension's body. A later literal `const` still outranks the outer binding
+(prints Sharpy's value, not Python's), and the instance positions are not refused yet. Census @
 d2d5cbcab: 2 sites in the corpus, both in the fixture written for the old rule. Implemented by #2423.
 
 ### N3. Values are ready before use
@@ -319,7 +322,7 @@ are lazily ready", and Python's run order and write declarations.
 
 | Ruling or behavior | Was | Now |
 |---|---|---|
-| R-JT forward refusal (P75, SPY0618) | Forward static read refused | Works (N3). P75's source-order emission stays as the sweep order. |
+| R-JT forward refusal (P75, SPY0618) | Forward static read refused | Works (N3). P75's source-order emission stays as the sweep order. SPY0618 is kept only for N2's computed-const shape until #2423. |
 | F1: initializers read only earlier siblings (SPY0200 "declared later") | Refused | Works (N1 + N3) |
 | F1-const / L16: a literal const is unordered and outranks the outer binding | Sharpy's value, not Python's | Refused as ambiguous (N2 + N4) |
 | F2: a later member yields to the outer binding | Python's value by a special rule | Refused as ambiguous (N2) |
