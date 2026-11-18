@@ -185,6 +185,11 @@ internal partial class TypeChecker
         // Sharpy.StringExtensions call rather than an instance call a shadowing BCL method captures (#1071, #1072, #1085).
         RecordStaticExtensionDispatch(memberAccess, objectType);
 
+        // A static or const field through ANY type-denoting receiver spelling binds here, by the ONE
+        // resolver (plan-775c50): the arms below never bind a static value of their own.
+        if (BindStaticValueThroughType(memberAccess, objectType) is { } staticValueType)
+            return staticValueType;
+
         // Resolve type-name member access (int.parse(), Color.RED, MyClass.FIELD, Shape.Circle)
         // regardless of what CheckIdentifier returned for the type name. This handles cases
         // where primitive TypeSymbols return FunctionType instead of Unknown (#432).
@@ -595,9 +600,12 @@ internal partial class TypeChecker
                 return effectiveMember == "name" || isStringEnum ? SemanticType.Str : SemanticType.Int;
             }
 
-            // Look for field or property (including inherited fields)
+            // Look for field or property (including inherited fields). A field binds only where its
+            // type is the FIRST on the chain to declare the name (MRO by name, plan-775c50): a
+            // subclass's property or method of that name hides a base's field.
             var (field, fieldOwner) = FindFieldInHierarchy(udt.Symbol, effectiveMember);
-            if (field != null && fieldOwner != null)
+            if (field != null && fieldOwner != null
+                && ReferenceEquals(TypeHierarchyService.FirstDeclaringType(udt.Symbol, effectiveMember, SemanticBinding), fieldOwner))
             {
                 // Access level validation is handled by AccessValidator in the validation pipeline
 
@@ -2048,7 +2056,8 @@ internal partial class TypeChecker
         var member = memberAccess.Member;
 
         var (field, fieldOwner) = FindFieldInHierarchy(genDef, member);
-        if (field != null && fieldOwner != null)
+        if (field != null && fieldOwner != null
+            && ReferenceEquals(TypeHierarchyService.FirstDeclaringType(genDef, member, SemanticBinding), fieldOwner))
         {
             // A const is reached through the type exactly as a @static field is (`G[int].K`), so the
             // emitter needs the resolution to spell the owner from the denoted closed type (#1817).
@@ -2620,26 +2629,8 @@ internal partial class TypeChecker
                 return SemanticType.Unknown;
             }
 
-            var field = typeSym.Fields.FirstOrDefault(f => f.Name == memberAccess.Member);
-            var fieldOwner = typeSym;
-            // A static or const a subclass inherits (`class D(C)`, `D.s`) is the base's own value, bound
-            // to its declaring symbol as `C.s` is, so every reader (a read, a store, an `out` operand,
-            // the D6 facts) sees the one value (plan-775c50: one rule for every spelling). A generic
-            // base's member keeps today's route: its open owner names no closed type.
-            if (field == null
-                && FindFieldInHierarchy(typeSym, memberAccess.Member) is ({ } inherited, { IsGeneric: false } inheritedOwner)
-                && (inherited.IsConstant || inherited.IsStatic))
-            {
-                field = inherited;
-                fieldOwner = inheritedOwner;
-            }
-            if (field != null && (field.IsConstant || field.IsStatic))
-            {
-                var fieldType = GetVariableType(field);
-                _semanticInfo.SetExpressionType(memberAccess, fieldType);
-                _semanticInfo.SetMemberAccessResolution(memberAccess, fieldOwner, field);
-                return fieldType;
-            }
+            // A static or const field never binds here: BindStaticValueThroughType, the one resolver every
+            // receiver spelling reaches, bound it before this seam (plan-775c50).
 
             // An instance field reached here is NOT refused a second time: TryRefuseInstanceMemberViaTypeName
             // owns that refusal for every receiver spelling (SPY0290) and runs before this seam, so a

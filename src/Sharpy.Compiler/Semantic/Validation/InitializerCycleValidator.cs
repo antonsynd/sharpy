@@ -764,7 +764,7 @@ internal sealed class InitializerCycleValidator : ISemanticValidator
         }
 
         return receiver is MemberAccess { IsNullConditional: false } nested && DenotedType(nested.Object) is { } outer
-            ? outer.NestedTypes.FirstOrDefault(n => n.Name == nested.Member)
+            ? TypeHierarchyService.FindNestedType(outer, nested.Member)
             : null;
     }
 

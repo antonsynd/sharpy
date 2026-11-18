@@ -578,12 +578,15 @@ internal partial class NameResolver
     private TypeSymbol? ResolveBaseReference(TypeAnnotation baseAnnot, out Symbol? rawSymbol,
         TypeSymbol? resolvingType = null)
     {
-        rawSymbol = _symbolTable.Lookup(baseAnnot.Name);
+        rawSymbol = null;
 
         // For nested types, the base name may be a sibling nested type whose class scope
         // is transient and gone by pass 2. Walk the enclosing chain's NestedTypes
-        // (innermost first — an inner name shadows an outer one, the #1371 rule).
-        if (rawSymbol == null && resolvingType?.DeclaringType != null
+        // (innermost first — an inner name shadows an outer one, the #1371 rule) BEFORE the
+        // module scope: a sibling `C` shadows a module-level `C`, as the emitted C# base clause
+        // (`class D : Outer.C`) binds it. Looked up after the module scope, the checker bound
+        // `Outer.D.s` to the module class's field while the program ran the sibling's (plan-775c50).
+        if (resolvingType?.DeclaringType != null
             && !baseAnnot.Name.Contains('.', StringComparison.Ordinal))
         {
             var enclosing = resolvingType.DeclaringType;
@@ -598,6 +601,8 @@ internal partial class NameResolver
                 enclosing = enclosing.DeclaringType;
             }
         }
+
+        rawSymbol ??= _symbolTable.Lookup(baseAnnot.Name);
 
         if (rawSymbol != null)
         {
