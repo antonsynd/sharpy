@@ -3,8 +3,10 @@ using System;
 namespace Sharpy
 {
     /// <summary>
-    /// Static helpers for enum operations emitted by the Sharpy compiler. Not a builtins class: a Sharpy
-    /// program cannot name it (#2110 is the class of lowering targets on <c>Builtins</c> that a program can call).
+    /// Static helpers for enum operations emitted by the Sharpy compiler. Not a builtins class: builtin
+    /// discovery does not see it, so a program reaches it only through an explicit .NET import of the
+    /// <c>Sharpy</c> namespace, like <see cref="StringHelpers"/> (#2110 is the class of lowering targets on
+    /// <c>Builtins</c> that a program can call by name).
     /// </summary>
     public static class EnumHelpers
     {
