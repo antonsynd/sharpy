@@ -99,7 +99,7 @@ public class AsyncGuardedNarrowedUseTests
     private static bool IsQualified(Spelling spelling) => spelling is Spelling.StaticQualified or Spelling.GenericStatic or Spelling.ModuleQualified;
 
     private const string QualifiedCastDropped =
-        "pre-existing, outside P77 (findings ledger): a read of `H.v` or `lib.v` narrowed by isinstance emits no cast, CS1061 behind SPY0908";
+        "pre-existing, outside P77 (#2494): a read of `H.v` or `lib.v` narrowed by isinstance emits no cast, CS1061 behind SPY0908";
 
     /// <summary>Why a cell's plain <c>def</c> twin is not generated, or null: the twin fails today for a
     /// reason outside D6, and the async cell alone is held to the model.</summary>
@@ -108,7 +108,7 @@ public class AsyncGuardedNarrowedUseTests
         if (cell.Narrowing == Narrowing.Isinstance && IsQualified(cell.Spelling) && cell.Use is not (Use.OutOperand or Use.RefOperand))
             return QualifiedCastDropped;
         if (cell.Narrowing == Narrowing.Isinstance && cell.Use == Use.RefOperand && !IsQualified(cell.Spelling))
-            return "pre-existing, outside P77 (findings ledger): a `ref` operand narrowed by isinstance is the cast `ref ((Q)v!)`, CS1510 behind SPY0908";
+            return "pre-existing, outside P77 (#2494): a `ref` operand narrowed by isinstance is the cast `ref ((Q)v!)`, CS1510 behind SPY0908";
         return null;
     }
 

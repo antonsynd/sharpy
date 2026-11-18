@@ -1251,7 +1251,7 @@ internal partial class RoslynEmitter
         if (symbol == null || GetCodeGenInfo(symbol) is not { StaticStorage: StaticStorage.Guarded } || varDecl.InitialValue == null)
             return null;
         var (varName, typeSyntax) = ModuleFieldNameAndType(varDecl);
-        if (!ClaimModuleField(symbol != null && HasExecutionOrderIssues(symbol), varName))
+        if (!ClaimModuleField(HasExecutionOrderIssues(symbol), varName))
             return null;
 
         var propertyAttributes = new SyntaxList<AttributeListSyntax>();
