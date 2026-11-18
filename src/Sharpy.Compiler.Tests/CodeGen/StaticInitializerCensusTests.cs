@@ -27,7 +27,8 @@ namespace Sharpy.Compiler.Tests.CodeGen;
 /// emitter's units before anything reparses them, and lists every static field or property with an initializer and
 /// every static constructor. What is allowed carries no user expression by construction
 /// (<see cref="IsScaffolding"/>): a <c>const</c>; a private parameterless construction the emitter synthesizes (a
-/// memoization cache); a Guarded value's storage written as its CLR default (<c>N__field = default!</c>, F15); and the
+/// memoization cache); a Guarded value's storage written as its CLR default (<c>N__field = default!</c>, F15), known
+/// by its host's sweep registration (<see cref="GuardedStorage"/>), never by its name; and the
 /// one static constructor of a host's <c>__Swept</c> holder.</para>
 /// </summary>
 [Trait("Category", "GapDiscovery")]
@@ -40,6 +41,7 @@ public class StaticInitializerCensusTests
     /// <summary>A static member the census flags: its owner and declaration, as written.</summary>
     internal static IEnumerable<string> Violations(CompilationUnitSyntax unit)
     {
+        var guardedStorage = GuardedStorage(unit);
         foreach (var field in unit.DescendantNodes().OfType<FieldDeclarationSyntax>())
         {
             var isStatic = field.Modifiers.Any(m => m.IsKind(SyntaxKind.StaticKeyword))
@@ -48,7 +50,7 @@ public class StaticInitializerCensusTests
                 continue;
             foreach (var variable in field.Declaration.Variables.Where(v => v.Initializer != null))
             {
-                if (!IsScaffolding(field, variable.Initializer!.Value))
+                if (!IsScaffolding(field, variable.Initializer!.Value, guardedStorage))
                     yield return $"{Owner(field)}: static field {variable.Identifier.ValueText} = {Flat(variable.Initializer.Value)}";
             }
         }
@@ -70,7 +72,8 @@ public class StaticInitializerCensusTests
     /// no storage fact), in the two shapes the enum arm writes: a <c>static readonly</c> member constructed from
     /// literals as its own type (<c>new Tone("A", "a")</c>), and its <c>Values</c> list of those members.
     /// </summary>
-    internal static bool IsScaffolding(FieldDeclarationSyntax field, ExpressionSyntax initializer)
+    internal static bool IsScaffolding(FieldDeclarationSyntax field, ExpressionSyntax initializer,
+        IReadOnlySet<(TypeDeclarationSyntax Host, string Field)> guardedStorage)
     {
         var isPrivate = field.Modifiers.Any(m => m.IsKind(SyntaxKind.PrivateKeyword));
         var owner = (field.Parent as TypeDeclarationSyntax)?.Identifier.ValueText;
@@ -78,11 +81,13 @@ public class StaticInitializerCensusTests
         return initializer switch
         {
             // A Guarded value's storage holds its CLR default, written out for a nullable-enabled
-            // consumer (F15): `default!` is no user expression.
+            // consumer (F15): `default!` is no user expression. The storage is known by its host's own
+            // record of the value, its sweep's registration (GuardedStorage), never by its name.
             PostfixUnaryExpressionSyntax { Operand: LiteralExpressionSyntax defaultLiteral } suppressed
                 when suppressed.IsKind(SyntaxKind.SuppressNullableWarningExpression)
                 && defaultLiteral.IsKind(SyntaxKind.DefaultLiteralExpression)
-                => field.Declaration.Variables.Single().Identifier.ValueText.EndsWith(RoslynEmitter.GuardedFieldSuffix, StringComparison.Ordinal),
+                => field.Parent is TypeDeclarationSyntax host
+                   && guardedStorage.Contains((host, field.Declaration.Variables.Single().Identifier.ValueText)),
             ObjectCreationExpressionSyntax { Initializer: null, ArgumentList: null or { Arguments.Count: 0 } } => isPrivate,
             ImplicitObjectCreationExpressionSyntax { Initializer: null, ArgumentList.Arguments.Count: 0 } => isPrivate,
             ObjectCreationExpressionSyntax { Type: IdentifierNameSyntax type, Initializer: null } member
@@ -94,6 +99,38 @@ public class StaticInitializerCensusTests
                    && members.Expressions.All(e => e is IdentifierNameSyntax),
             _ => false,
         };
+    }
+
+    /// <summary>
+    /// The storage of every Guarded value a host of <paramref name="unit"/> registers: a host's
+    /// <c>__Sweep</c> runs each of its values as <c>StaticInit.Run(ref N__state, "n", N__init)</c>, and
+    /// the field <c>N__init</c> assigns is that value's storage, whatever it is named (<c>N__field</c>,
+    /// or an expanded property arm's <c>_name</c>).
+    /// </summary>
+    internal static IReadOnlySet<(TypeDeclarationSyntax Host, string Field)> GuardedStorage(CompilationUnitSyntax unit)
+    {
+        var storage = new HashSet<(TypeDeclarationSyntax, string)>();
+        foreach (var host in unit.DescendantNodes().OfType<TypeDeclarationSyntax>())
+        {
+            var methods = host.Members.OfType<MethodDeclarationSyntax>().ToList();
+            var inits = methods
+                .Where(m => m.Identifier.ValueText == RoslynEmitter.SweepMethodName)
+                .SelectMany(m => m.DescendantNodes().OfType<InvocationExpressionSyntax>())
+                .Where(run => run.Expression.ToString() == "global::Sharpy.StaticInit.Run"
+                    && run.ArgumentList.Arguments.Count == 3
+                    && run.ArgumentList.Arguments[2].Expression is IdentifierNameSyntax)
+                .Select(run => ((IdentifierNameSyntax)run.ArgumentList.Arguments[2].Expression).Identifier.ValueText)
+                .ToHashSet(StringComparer.Ordinal);
+            foreach (var init in methods.Where(m => inits.Contains(m.Identifier.ValueText)))
+            {
+                foreach (var store in init.DescendantNodes().OfType<AssignmentExpressionSyntax>())
+                {
+                    if (store.IsKind(SyntaxKind.SimpleAssignmentExpression) && store.Left is IdentifierNameSyntax target)
+                        storage.Add((host, target.Identifier.ValueText));
+                }
+            }
+        }
+        return storage;
     }
 
     /// <summary>The static constructor of a host's <c>__Swept</c> holder, which calls <c>StaticInit.TryLoad</c> only.</summary>
@@ -117,9 +154,15 @@ public class StaticInitializerCensusTests
         var unit = SyntaxFactory.ParseCompilationUnit(
             "class A { public static int T = 7; private static readonly object O = new object(); public const int K = 3; static A() { } }"
             + " class E { public static readonly E X = new E(\"X\", \"x\"); public static readonly E Y = new E(Make(), \"y\"); public static readonly global::Sharpy.List<E> Values = new global::Sharpy.List<E>(new E[] { X }); }"
-            + " class B { private static class __Swept { internal static readonly bool Done; static __Swept() { Done = global::Sharpy.StaticInit.TryLoad(ref __host, __Sweep); } } }");
+            + " class B { private static class __Swept { internal static readonly bool Done; static __Swept() { Done = global::Sharpy.StaticInit.TryLoad(ref __host, __Sweep); } } }"
+            + " class G { private static int X__field = default!; private static int _Hp = default!; private static byte Hp__state;"
+            + " private static void Hp__init() { _Hp = 7; } private static void __Sweep() { global::Sharpy.StaticInit.Run(ref Hp__state, \"hp\", Hp__init); } }");
         var found = Violations(unit).ToList();
-        Assert.Equal(new[] { "A: static field T = 7", "E: static field Y = new E(Make(), \"y\")", "A: static constructor" }, found);
+        Assert.Equal(new[]
+        {
+            "A: static field T = 7", "E: static field Y = new E(Make(), \"y\")",
+            "G: static field X__field = default!", "A: static constructor",
+        }, found);
     }
 
     [Fact]

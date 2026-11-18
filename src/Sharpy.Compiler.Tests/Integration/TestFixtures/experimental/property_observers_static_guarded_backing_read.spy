@@ -1,0 +1,17 @@
+# A Guarded @static property default with an after_set observer (plan-775c50 D4): its backing
+# field keeps the name the property form gives it, `_hp`, so the type's own members read it as
+# `H._hp`, in the observer and in a static method, as for a plain property.
+class H:
+    @static
+    property hp: int = 7
+        after_set(old_value):
+            print("old", old_value, H._hp)
+
+    @static
+    def peek() -> int:
+        return H._hp
+
+def main() -> None:
+    print(H.peek())
+    H.hp = 5
+    print(H.hp, H.peek())
