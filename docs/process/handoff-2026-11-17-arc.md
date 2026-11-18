@@ -104,9 +104,10 @@ Stop the group, write the recap, and bring the decision to the owner when one ho
 Changed from the 11-06 handoff §5.3. The three revisions the watch recommended and the owner
 accepted ("all your recs", decision 7): the 15 KB plan cap is R-LW's 20 KB; "CONVERGED on a NEEDS
 REVISION" is the second-pass rule above (decision 4); the rule on rows outside the seed allows a
-generator's stage 0 and judges a plan at its record. Proposed here, for the owner's acceptance:
-`CLAUDE.md` bytes join the rise rule; the `mainline` rule; the direction rule (contract §3); the
-regenerated-row clause, which widens decision 5 from P77 to every group.
+generator's stage 0 and judges a plan at its record. Proposed in the draft and accepted by the
+owner on 2026-11-18 ("accept all 4"): `CLAUDE.md` bytes join the rise rule; the `mainline` rule;
+the direction rule (contract §3); the regenerated-row clause, which widens decision 5 from P77 to
+every group.
 
 ## 5. What a review must run
 
