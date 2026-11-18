@@ -42,11 +42,11 @@
 # over the 20 mainline push runs before it (42372810738 back to 40623113848; for `compiler`, 2x
 # the ~11 min projected for the class-split shard 6 at first, and since #2690 the 40 given at the
 # end of this paragraph), never under 5, in place of the 6-hour
-# default; every test run has `--blame-hang-timeout 10m`, so a test silent for 10 min aborts the
+# default; every test run but one (below) has `--blame-hang-timeout 10m`, so a test silent for 10 min aborts the
 # run red ("The active test run was aborted") long before the job limit. The longest single test,
 # NameResolutionDifferential_Sweep, took 372 s in 42372810738; with P77 (#2742) it took 10 m 06 s
 # and 10 m 29 s (runs 44347230877, 44370550669; dev 6 m 25 s to 8 m 13 s, its last three runs),
-# so its step alone has `--blame-hang-timeout 20m` and `sweeps-quick` 40, 2x, by the owner's
+# so its step alone has `--blame-hang-timeout 22m` and `sweeps-quick` 40, 2x, by the owner's
 # ruling of 2026-11-18 ("raise then shard after to claw back"; sharding it is #2458's). No dump is taken
 # (`--blame-hang-dump-type none`): a full one is ~700 MB and nothing uploads it.
 # Coverage-on runs (COVERAGE_ON below) carry their own limit, 2x their coverage-on duration: the
@@ -800,7 +800,7 @@ jobs:
       # suitable python3, like the sweeps above: its roster facts would still pass and keep
       # ci-summary's zero-test check green.
       if: ${{ !cancelled() && steps.unpack.outcome == 'success' }}
-      run: dotnet test src/Sharpy.Compiler.Tests --no-build --verbosity normal --filter "Category=GapDiscovery&FullyQualifiedName~NameResolutionDifferential" --logger "trx;LogFileName=sweep-name-resolution-differential.trx" --results-directory TestResults --blame-hang-timeout 20m --blame-hang-dump-type none
+      run: dotnet test src/Sharpy.Compiler.Tests --no-build --verbosity normal --filter "Category=GapDiscovery&FullyQualifiedName~NameResolutionDifferential" --logger "trx;LogFileName=sweep-name-resolution-differential.trx" --results-directory TestResults --blame-hang-timeout 22m --blame-hang-dump-type none
     - name: Sweep formatter-emit-invariance
       # Formatter emit-invariance sweep (#2062, #2068). Every executing single-file fixture
       # P: the Roslyn-normalised C# of Format(P) equals P's with every #line directive line
