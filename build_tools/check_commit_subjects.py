@@ -25,11 +25,13 @@ the default branch, `mainline`. The promotion #2736 closed the in-flight tracker
 from a commit body quoting a ruling ("Move cell, close #2422"). Every commit of the range is
 judged, merges, reverts and Dependabot's included (none of them is exempt from GitHub's reading),
 except those behind the grandfather line. On a PR run, `--pr-title` judges the title too: merging
-the PR writes it into the merge commit's body, which no PR run sees. An issue is cited as `Refs #N`.
+the PR writes it into the merge commit's body, which no PR run sees. `--pr-body` judges a PR's
+description, which GitHub reads only when the PR targets the default branch: the workflow passes
+it for a PR into `mainline` (the promotion; owner, 2026-11-18). An issue is cited as `Refs #N`.
 
 Usage:
     python3 build_tools/check_commit_subjects.py [<range>] [--max 72] [--grandfather <sha>|none]
-        [--pr-author=<login>] [--pr-title=<title>]
+        [--pr-author=<login>] [--pr-title=<title>] [--pr-body=<description>]
 
 <range> is any `git rev-list` range (`origin/dev..HEAD`, `A...B`); it defaults to `@{upstream}..HEAD`.
 An empty range is clean. An unknown grandfather sha (a clone that lacks it) exempts nothing. Exit 0 if clean, 1 if any subject is over the limit
@@ -254,6 +256,11 @@ def main(argv: list[str] | None = None) -> int:
         " for closing keywords",
     )
     parser.add_argument(
+        "--pr-body",
+        help="the description of a pull request into the default branch: merging it closes the"
+        " issues its closing keywords name, so it is judged",
+    )
+    parser.add_argument(
         "--pr-author",
         help="the pull request author's login (a PR run); a Dependabot commit is exempt only when it"
         f" is {DEPENDABOT_LOGIN} or the commit is already on {' or '.join(JUDGED_REFS)}",
@@ -301,12 +308,18 @@ def main(argv: list[str] | None = None) -> int:
             f"::error::the PR title has a closing keyword ({'; '.join(title_keys)}): merging writes it"
             f" into the merge commit's body, which closes that issue on mainline; use `Refs #N`"
         )
+    body_keys = closing_keywords(args.pr_body) if args.pr_body else []
+    if body_keys:
+        print(
+            f"::error::the PR description has a closing keyword ({'; '.join(body_keys)}): merging"
+            f" this PR into the default branch closes that issue; use `Refs #N`"
+        )
     for c, found in keyed:
         print(
             f"::error::commit {c.sha[:9]} message has a closing keyword ({'; '.join(found)}): GitHub"
             f" closes that issue when the commit reaches mainline; reword it to `Refs #N`: {c.subject}"
         )
-    if bad or keyed or title_keys:
+    if bad or keyed or title_keys or body_keys:
         if bad:
             print(
                 f"check_commit_subjects: {len(bad)} of {checked} subjects over {args.max} chars in {args.range}"

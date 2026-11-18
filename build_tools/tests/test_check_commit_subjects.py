@@ -733,3 +733,61 @@ def test_an_extra_message_record_exits_2(repo, monkeypatch):
     monkeypatch.chdir(repo)
     monkeypatch.setattr(mod, "messages", lambda *a, **k: {head: "x\n", "close #1": ""})
     assert mod.main([f"{base}..HEAD"]) == 2
+
+
+def test_a_pr_body_with_a_closing_keyword_is_red(repo):
+    # Owner 2026-11-18: a promotion PR's description closes the issues it names on merge.
+    base = _git(repo, "rev-parse", "HEAD").strip()
+    _commit(repo, "fix(core): short")
+    red = _run(repo, f"{base}..HEAD", "--pr-body=Promotes dev.\n\nCloses #12")
+    assert (
+        red.returncode == 1
+        and "PR description" in red.stdout
+        and "Closes #12" in red.stdout
+    )
+    assert (
+        _run(repo, f"{base}..HEAD", "--pr-body=Promotes dev. Refs #12").returncode == 0
+    )
+    assert _run(repo, f"{base}..HEAD", "--pr-body=").returncode == 0
+
+
+def test_the_workflow_passes_the_pr_body_only_into_the_default_branch():
+    step = _workflow_step()
+    assert step["env"]["PR_BODY"] == "${{ github.event.pull_request.body }}"
+    assert step["env"]["BASE_REF"] == "${{ github.event.pull_request.base.ref }}"
+    assert (
+        step["env"]["DEFAULT_BRANCH"] == "${{ github.event.repository.default_branch }}"
+    )
+    assert (
+        'if [ "$BASE_REF" = "$DEFAULT_BRANCH" ]; then extra+=(--pr-body="$PR_BODY"); fi'
+        in step["run"]
+    )
+    assert "${{" not in step["run"]
+
+
+def _workflow_bash(env):
+    """Run the step's script with `bash` swapped for an echo of its arguments."""
+    step = _workflow_step()
+    script = step["run"].replace(
+        "bash build_tools/check_commit_subjects.sh", "printf '%s\\n'"
+    )
+    return subprocess.run(
+        ["bash", "-euo", "pipefail", "-c", script],
+        capture_output=True,
+        text=True,
+        check=True,
+        env={**os.environ, **env},
+    ).stdout.splitlines()
+
+
+@pytest.mark.parametrize("base_ref, judged", [("mainline", True), ("dev", False)])
+def test_the_workflow_judges_the_body_by_base(base_ref, judged):
+    env = {
+        **_pr_env("a" * 40, "b" * 40, "someone"),
+        "PR_TITLE": "Merge dev to mainline",
+        "PR_BODY": "fixes #1",
+        "BASE_REF": base_ref,
+        "DEFAULT_BRANCH": "mainline",
+    }
+    args = _workflow_bash(env)
+    assert ("--pr-body=fixes #1" in args) is judged

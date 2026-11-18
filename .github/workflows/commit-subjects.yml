@@ -43,12 +43,17 @@ jobs:
         AFTER: ${{ github.sha }}
         PR_AUTHOR: ${{ github.event.pull_request.user.login }}
         PR_TITLE: ${{ github.event.pull_request.title }}
+        PR_BODY: ${{ github.event.pull_request.body }}
+        BASE_REF: ${{ github.event.pull_request.base.ref }}
+        DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
       run: |
         extra=()
         if [ "$EVENT" = "pull_request" ]; then
           range="$BASE_SHA..$HEAD_SHA"
           # `=`: a one-word title that starts with `-` is still the option's value.
           extra=(--pr-author="$PR_AUTHOR" --pr-title="$PR_TITLE")
+          # A description closes issues only on a PR into the default branch (the promotion).
+          if [ "$BASE_REF" = "$DEFAULT_BRANCH" ]; then extra+=(--pr-body="$PR_BODY"); fi
         elif [ "$BEFORE" = "0000000000000000000000000000000000000000" ]; then
           echo "new branch push: no range to check"; exit 0
         else
