@@ -542,3 +542,111 @@ def test_without_the_remote_refs_a_promotion_is_a_clean_red(repo):
     result = _run_workflow_step(repo, _pr_env(base, head, "owner"))
     assert result.returncode == 1 and "::error::" in result.stdout
     assert "Traceback" not in result.stderr, result.stderr
+
+
+# ── Closing keywords (owner 2026-11-18: #2736 closed #2422 from a commit body) ─
+
+
+@pytest.mark.parametrize(
+    "message",
+    [
+        'The owner\'s answer, "Move cell, close #2422", replaces it.',  # c6497393c's body
+        "ci(nightly): stop the census (fixes #2392)",  # 64f1c214b's subject
+        "Closes #1",
+        "closed #1",
+        "Fix #1",
+        "FIXED #1",
+        "resolves #1",
+        "Resolved #1",
+        "resolve #1",
+        "Closes: #1",
+        "fixes:#1",
+        "fix antonsynd/sharpy#12",
+        "closes https://github.com/antonsynd/sharpy/issues/12",
+        "body line\n\nfixes #3 and more",
+    ],
+)
+def test_closing_keywords_are_found(message):
+    assert mod.closing_keywords(message) != []
+
+
+@pytest.mark.parametrize(
+    "message",
+    [
+        "Refs #2422",
+        "refs #2680, #2110",
+        "prefix #1",
+        "fixture #1",
+        "closer #1",
+        "the fix for #1",
+        "fixes issue #1",
+        "close the #1 gap",
+        "fix(core): close a leak (Refs #1)",
+        "closes #",
+        "fix\n#1",
+    ],
+)
+def test_lookalikes_are_not_closing_keywords(message):
+    assert mod.closing_keywords(message) == []
+
+
+def test_parse_messages_keeps_multi_line_bodies():
+    text = "1111\0subj one\n\nbody, close #5\n\x1e\n2222\0subj two\n\x1e\n"
+    assert mod.parse_messages(text) == {
+        "1111": "subj one\n\nbody, close #5\n",
+        "2222": "subj two\n",
+    }
+
+
+def test_a_closing_keyword_in_a_body_exits_1_and_names_it(repo):
+    base = _git(repo, "rev-parse", "HEAD").strip()
+    (repo / "f").write_text("kw\n")
+    _git(repo, "commit", "-q", "-am", "docs(plan): short", "-m", 'Quoting "close #7".')
+    result = _run(repo, f"{base}..HEAD")
+    assert result.returncode == 1, result.stdout + result.stderr
+    assert "::error::" in result.stdout and "close #7" in result.stdout
+    assert "1 of 1 messages have a closing keyword" in result.stdout
+
+
+def test_a_merge_commit_with_a_closing_keyword_is_judged(repo):
+    # Merges are exempt from the length rule, not from GitHub's reading of their message.
+    base = _git(repo, "rev-parse", "HEAD").strip()
+    _git(repo, "checkout", "-q", "-b", "side", base)
+    (repo / "g").write_text("side\n")
+    _git(repo, "add", "g")
+    _git(repo, "commit", "-q", "-m", "test(side): short")
+    _git(repo, "checkout", "-q", "main")
+    _commit(repo, "fix(core): short")
+    _git(
+        repo,
+        "merge",
+        "-q",
+        "--no-ff",
+        "-m",
+        "Merge pull request #1 from x/y",
+        "-m",
+        "fixes #9",
+        "side",
+    )
+    result = _run(repo, f"{base}..HEAD")
+    assert result.returncode == 1, result.stdout + result.stderr
+    assert "fixes #9" in result.stdout
+
+
+def test_refs_is_clean_and_the_summary_counts_messages(repo):
+    base = _git(repo, "rev-parse", "HEAD").strip()
+    (repo / "f").write_text("refs\n")
+    _git(repo, "commit", "-q", "-am", "fix(core): short", "-m", "Refs #7")
+    result = _run(repo, f"{base}..HEAD")
+    assert result.returncode == 0, result.stdout + result.stderr
+    assert "1 messages, no closing keyword" in result.stdout
+
+
+def test_a_closing_keyword_behind_the_grandfather_is_not_judged(repo):
+    base = _git(repo, "rev-parse", "HEAD").strip()
+    (repo / "f").write_text("old\n")
+    _git(repo, "commit", "-q", "-am", "fix(core): old", "-m", "fixes #3")
+    gate = _git(repo, "rev-parse", "HEAD").strip()
+    _commit(repo, "fix(core): new")
+    assert _run(repo, f"{base}..HEAD", "--grandfather", gate).returncode == 0
+    assert _run(repo, f"{base}..HEAD", "--grandfather", "none").returncode == 1
