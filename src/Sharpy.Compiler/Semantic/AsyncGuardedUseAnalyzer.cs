@@ -1,3 +1,4 @@
+using Sharpy.Compiler.Diagnostics;
 using Sharpy.Compiler.Parser.Ast;
 
 namespace Sharpy.Compiler.Semantic;
@@ -49,19 +50,25 @@ internal sealed class AsyncGuardedUseAnalyzer
     private readonly SemanticInfo _info;
     private readonly SemanticBinding _binding;
     private readonly SemanticBinding _importFacts;
+    private readonly bool _requireBound;
     private readonly List<Node> _ancestors = new();
 
-    private AsyncGuardedUseAnalyzer(SemanticInfo info, SemanticBinding binding, SemanticBinding? importFacts)
+    private AsyncGuardedUseAnalyzer(
+        SemanticInfo info, SemanticBinding binding, SemanticBinding? importFacts, bool requireBound)
     {
         _info = info;
         _binding = binding;
         _importFacts = importFacts ?? binding;
+        _requireBound = requireBound;
     }
 
-    /// <summary>Records every D6 use in <paramref name="module"/> on <paramref name="info"/>.</summary>
-    public static void Analyze(Module module, SemanticInfo info, SemanticBinding binding, SemanticBinding? importFacts)
+    /// <summary>Records every D6 use in <paramref name="module"/> on <paramref name="info"/>.
+    /// <paramref name="requireBound"/> arms the totality guard (<see cref="RequireBound"/>); a module
+    /// the checker refused is not held to it, so a refusal is never masked by an internal error.</summary>
+    public static void Analyze(
+        Module module, SemanticInfo info, SemanticBinding binding, SemanticBinding? importFacts, bool requireBound = true)
     {
-        var analyzer = new AsyncGuardedUseAnalyzer(info, binding, importFacts);
+        var analyzer = new AsyncGuardedUseAnalyzer(info, binding, importFacts, requireBound);
         foreach (var statement in module.Body)
             analyzer.Walk(statement, inAsync: false);
     }
@@ -106,7 +113,10 @@ internal sealed class AsyncGuardedUseAnalyzer
     private void Classify(Expression node)
     {
         if (GuardedValue(node) is not { } value)
+        {
+            RequireBound(node);
             return;
+        }
         if (UseKind(node) is { } kind)
             _info.SetAsyncGuardedUse(node, value, kind);
     }
@@ -117,10 +127,53 @@ internal sealed class AsyncGuardedUseAnalyzer
     {
         if (_info.GetBoundValueSymbol(node) is not VariableSymbol { IsModuleProperty: false } variable)
             return null;
-        var storage = _binding.GetCodeGenInfo(variable)?.StaticStorage
-            ?? ImportedStaticFacts.ImportedStorage(_importFacts, variable).Storage;
-        return storage == StaticStorage.Guarded ? variable : null;
+        return IsGuarded(variable) ? variable : null;
     }
+
+    private bool IsGuarded(VariableSymbol variable)
+        => (_binding.GetCodeGenInfo(variable)?.StaticStorage
+            ?? ImportedStaticFacts.ImportedStorage(_importFacts, variable).Storage) == StaticStorage.Guarded;
+
+    /// <summary>
+    /// The totality guard (plan-775c50 D6): a member access in a D6 position that names a Guarded
+    /// static through a type-denoting receiver must carry the checker's binding, or the emitter would
+    /// pass the value's by-reference accessor across an <c>await</c> (CS8178 behind SPY0908). The
+    /// receiver is read STRUCTURALLY here — a type name, a module's exported type, a nested type by
+    /// name, a constructed generic's definition, a recorded type reference — never through the
+    /// checker's resolver, so a spelling the resolver misses is an internal error at its node instead.
+    /// </summary>
+    private void RequireBound(Expression node)
+    {
+        if (!_requireBound || node is not MemberAccess access || _info.GetBoundValueSymbol(access) != null
+            || StructuralType(access.Object) is not { } type
+            || TypeHierarchyService.FindStaticValueField(type, access.Member, _binding).field is not { } field
+            || !IsGuarded(field)
+            || UseKind(access) == null)
+            return;
+
+        throw new InternalCompilerErrorException("AsyncGuardedUseAnalyzer",
+            $"'{access.Member}' names the Guarded value '{field.Name}' through '{type.Name}' in an async def "
+            + "body, but the checker bound no value symbol to the access (plan-775c50 D6)", access);
+    }
+
+    /// <summary>The type a receiver spells, read from its shape and the symbols its names bind.</summary>
+    private TypeSymbol? StructuralType(Expression receiver) => receiver switch
+    {
+        Identifier id when _info.GetIdentifierSymbol(id) is TypeSymbol type => type,
+        MemberAccess { Object: Identifier moduleName } qualified
+            when _info.GetIdentifierSymbol(moduleName) is ModuleSymbol module
+            => module.Exports.TryGetValue(qualified.Member, out var exported) ? exported as TypeSymbol : null,
+        MemberAccess nested when StructuralType(nested.Object) is { } outer
+            => TypeHierarchyService.FindNestedType(outer, nested.Member, _binding),
+        IndexAccess constructed => StructuralType(constructed.Object),
+        _ when _info.IsTypeReference(receiver) => _info.GetExpressionType(receiver) switch
+        {
+            UserDefinedType { Symbol: { } symbol } => symbol,
+            GenericType { GenericDefinition: { } definition } => definition,
+            _ => null,
+        },
+        _ => null,
+    };
 
     /// <summary>D4's taxonomy of the use, read from the node's ancestors: null for a plain read or a
     /// plain store.</summary>

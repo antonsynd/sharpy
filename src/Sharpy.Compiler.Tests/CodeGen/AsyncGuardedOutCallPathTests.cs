@@ -20,7 +20,9 @@ namespace Sharpy.Compiler.Tests.CodeGen;
 /// stored values after it) × <see cref="Inline"/> (the operand beside the Guarded one: another
 /// Guarded value, or an inline <c>out let</c> / <c>auto</c> / annotated declaration) ×
 /// <see cref="Spelling"/> (the Guarded operand: a module value bare and module-qualified, a
-/// <c>@static</c> through its own class, a subclass, a type alias and <c>self</c>), each tuple a cell
+/// <c>@static</c> through its own class, a subclass, a type alias, <c>self</c>, a nested type and a
+/// nested subclass, a subclass of a generic base, a constructed generic and its alias, a subclass
+/// imported by name, a local subclass of another module's class, and a struct), each tuple a cell
 /// unless <see cref="Excluded"/> says why not. Each cell is an <c>async def</c> whose call holds an
 /// <c>await</c>, and its plain <c>def</c> twin, the control, on values of their own; both must print
 /// the model. One project per route and callee.</para>
@@ -75,6 +77,14 @@ public class AsyncGuardedOutCallPathTests
         Subclass,
         Alias,
         Self,
+        NestedOwn,
+        NestedSubclass,
+        GenericBaseSubclass,
+        ClosedGeneric,
+        ClosedGenericAlias,
+        FromImportSubclass,
+        LocalSubclassOfLib,
+        Struct,
     }
 
     /// <summary>Why a tuple has no cell, or null.</summary>
@@ -140,8 +150,28 @@ public class AsyncGuardedOutCallPathTests
             Spelling.Subclass => $"D{Key}.s",
             Spelling.Alias => $"E{Key}.s",
             Spelling.Self => "self.s",
+            Spelling.NestedOwn => $"O{Key}.C.s",
+            Spelling.NestedSubclass => $"O{Key}.D.s",
+            Spelling.GenericBaseSubclass => $"GD{Key}.s",
+            Spelling.ClosedGeneric => $"G{Key}[int].s",
+            Spelling.ClosedGenericAlias => $"GA{Key}.s",
+            Spelling.FromImportSubclass => $"LD{Key}.s",
+            Spelling.LocalSubclassOfLib => $"SL{Key}.s",
+            Spelling.Struct => $"St{Key}.s",
             _ => throw new ArgumentOutOfRangeException(),
         };
+
+        /// <summary>Whether the value is a <c>@static</c> of the host class <c>H</c> (its own, a
+        /// subclass's, an alias's or <c>self</c>'s spelling).</summary>
+        private bool OnHost => Cell.Spelling is Spelling.OwnClass or Spelling.Subclass or Spelling.Alias
+            || (Cell.Spelling == Spelling.Self && Cell.Route != Route.ConstructorChain);
+
+        /// <summary>The import the cell's module needs: a subclass imported by name.</summary>
+        public IEnumerable<string> Imports()
+        {
+            if (Cell.Spelling == Spelling.FromImportSubclass)
+                yield return $"from lib import LD{Key}";
+        }
 
         private bool IsMethodCell => Cell.Spelling == Spelling.Self && Cell.Route != Route.ConstructorChain;
 
@@ -151,7 +181,7 @@ public class AsyncGuardedOutCallPathTests
                 yield return $"g{Key}: int = 1";
             if (Cell.Inline == Inline.Guarded)
                 yield return $"{H}: {X} = {(IsGeneric(Cell.Callee) ? "\"i\"" : "0")}";
-            if (Cell.Spelling is not (Spelling.ModuleBare or Spelling.ModuleQualified) && !(Cell.Spelling == Spelling.Self && Cell.Route == Route.ConstructorChain))
+            if (OnHost)
             {
                 yield return $"class {Host}:";
                 yield return "    @static";
@@ -171,6 +201,42 @@ public class AsyncGuardedOutCallPathTests
             }
             if (Cell.Spelling == Spelling.Alias)
                 yield return $"type E{Key} = {Host}";
+            if (Cell.Spelling is Spelling.NestedOwn or Spelling.NestedSubclass)
+            {
+                yield return $"class O{Key}:";
+                yield return "    class C:";
+                yield return "        @static";
+                yield return "        s: int = 1";
+                if (Cell.Spelling == Spelling.NestedSubclass)
+                {
+                    yield return "    class D(C):";
+                    yield return "        pass";
+                }
+            }
+            if (Cell.Spelling is Spelling.GenericBaseSubclass or Spelling.ClosedGeneric or Spelling.ClosedGenericAlias)
+            {
+                yield return $"class G{Key}[T]:";
+                yield return "    @static";
+                yield return "    s: int = 1";
+                if (Cell.Spelling == Spelling.GenericBaseSubclass)
+                {
+                    yield return $"class GD{Key}(G{Key}[int]):";
+                    yield return "    pass";
+                }
+                if (Cell.Spelling == Spelling.ClosedGenericAlias)
+                    yield return $"type GA{Key} = G{Key}[int]";
+            }
+            if (Cell.Spelling == Spelling.LocalSubclassOfLib)
+            {
+                yield return $"class SL{Key}(lib.LC{Key}):";
+                yield return "    pass";
+            }
+            if (Cell.Spelling == Spelling.Struct)
+            {
+                yield return $"struct St{Key}:";
+                yield return "    @static";
+                yield return "    s: int = 1";
+            }
             if (Cell.Route == Route.ConstructorChain)
             {
                 yield return $"class Chain{Key}(Base):";
@@ -191,6 +257,14 @@ public class AsyncGuardedOutCallPathTests
         {
             if (Cell.Spelling == Spelling.ModuleQualified)
                 yield return $"g{Key}: int = 1";
+            if (Cell.Spelling is Spelling.FromImportSubclass or Spelling.LocalSubclassOfLib)
+            {
+                yield return $"class LC{Key}:";
+                yield return "    @static";
+                yield return "    s: int = 1";
+                yield return $"class LD{Key}(LC{Key}):";
+                yield return "    pass";
+            }
         }
 
         /// <summary>The cell's function: a module function, or for <c>self</c> its host's method.</summary>
@@ -296,7 +370,8 @@ public class AsyncGuardedOutCallPathTests
         var key = 0;
         var uses = cells.SelectMany(c => new[] { new Use(key++, c, true), new Use(key++, c, false) }).ToList();
 
-        var main = new List<string> { Helpers };
+        var main = uses.SelectMany(u => u.Imports()).ToList();
+        main.Add(Helpers);
         foreach (var use in uses)
         {
             main.AddRange(use.Declarations());

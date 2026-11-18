@@ -154,6 +154,11 @@ public class DispatchSiteInventoryTests
         ["Semantic/AsyncGuardedUseAnalyzer.cs::AsyncGuardedUseAnalyzer.IsReceiverOf"] = "refusal-net:AsyncGuardedUseFactTests",
         ["Semantic/AsyncGuardedUseAnalyzer.cs::AsyncGuardedUseAnalyzer.IsStoreTarget"] = "refusal-net:AsyncGuardedUseFactTests",
         ["Semantic/AsyncGuardedUseAnalyzer.cs::AsyncGuardedUseAnalyzer.IsElementOf"] = "refusal-net:AsyncGuardedUseFactTests",
+        // The D6 totality guard's structural reading of a receiver (a type name, a module's exported
+        // type, a nested type, a constructed generic, a recorded type reference): deliberately partial —
+        // a receiver it cannot read is no type-denoting spelling — and the spelling generator's cells
+        // (each Guarded spelling an `out` operand across an `await`) are the net over every arm.
+        ["Semantic/AsyncGuardedUseAnalyzer.cs::AsyncGuardedUseAnalyzer.StructuralType"] = "refusal-net:AsyncGuardedOutCallPathTests",
         // plan-775c50 D4/D6: a Guarded value's own spelling, by its two value spellings (a name, a member
         // access); any other node is an internal error. The run generator crosses every narrowing form.
         ["CodeGen/RoslynEmitter.StaticValues.cs::RoslynEmitter.GuardedValueSpelling"] = "refusal-net:AsyncGuardedNarrowedUseTests",

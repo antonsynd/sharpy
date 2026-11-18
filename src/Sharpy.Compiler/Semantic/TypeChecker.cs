@@ -796,7 +796,8 @@ internal partial class TypeChecker
                 SourceRootPath, ImportFactsBinding, RootNamespace, DeferredCycleFiles);
 
             // plan-775c50 D6: the async uses of Guarded values, read from the storage facts just computed.
-            AsyncGuardedUseAnalyzer.Analyze(module, _semanticInfo, SemanticBinding, ImportFactsBinding);
+            AsyncGuardedUseAnalyzer.Analyze(module, _semanticInfo, SemanticBinding, ImportFactsBinding,
+                requireBound: _diagnostics.ErrorCount == 0);
         }
 
         _logger.LogInfo($"Completed type checking ({module.Body.Length} statements, {_diagnostics.ErrorCount} errors)");
