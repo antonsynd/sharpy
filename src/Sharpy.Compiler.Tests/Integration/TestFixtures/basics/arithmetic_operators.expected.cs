@@ -42,12 +42,14 @@ namespace ArithmeticOperators
         }
 
         [global::System.Runtime.CompilerServices.CompilerGenerated]
+        private static void A__storeSlow(int value) => global::Sharpy.StaticInit.Store(ref __host, __Sweep, ref A__state, ref A__field, value);
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
         internal static int A__set(int value)
         {
             if (__Swept.Done)
                 A__field = value;
             else
-                global::Sharpy.StaticInit.Store(ref __host, __Sweep, ref A__state, ref A__field, value);
+                A__storeSlow(value);
             return value;
         }
 
@@ -112,12 +114,14 @@ namespace ArithmeticOperators
         }
 
         [global::System.Runtime.CompilerServices.CompilerGenerated]
+        private static void B__storeSlow(int value) => global::Sharpy.StaticInit.Store(ref __host, __Sweep, ref B__state, ref B__field, value);
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
         internal static int B__set(int value)
         {
             if (__Swept.Done)
                 B__field = value;
             else
-                global::Sharpy.StaticInit.Store(ref __host, __Sweep, ref B__state, ref B__field, value);
+                B__storeSlow(value);
             return value;
         }
 
@@ -182,12 +186,14 @@ namespace ArithmeticOperators
         }
 
         [global::System.Runtime.CompilerServices.CompilerGenerated]
+        private static void SumResult__storeSlow(int value) => global::Sharpy.StaticInit.Store(ref __host, __Sweep, ref SumResult__state, ref SumResult__field, value);
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
         internal static int SumResult__set(int value)
         {
             if (__Swept.Done)
                 SumResult__field = value;
             else
-                global::Sharpy.StaticInit.Store(ref __host, __Sweep, ref SumResult__state, ref SumResult__field, value);
+                SumResult__storeSlow(value);
             return value;
         }
 
@@ -252,12 +258,14 @@ namespace ArithmeticOperators
         }
 
         [global::System.Runtime.CompilerServices.CompilerGenerated]
+        private static void DiffResult__storeSlow(int value) => global::Sharpy.StaticInit.Store(ref __host, __Sweep, ref DiffResult__state, ref DiffResult__field, value);
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
         internal static int DiffResult__set(int value)
         {
             if (__Swept.Done)
                 DiffResult__field = value;
             else
-                global::Sharpy.StaticInit.Store(ref __host, __Sweep, ref DiffResult__state, ref DiffResult__field, value);
+                DiffResult__storeSlow(value);
             return value;
         }
 
@@ -322,12 +330,14 @@ namespace ArithmeticOperators
         }
 
         [global::System.Runtime.CompilerServices.CompilerGenerated]
+        private static void ProdResult__storeSlow(int value) => global::Sharpy.StaticInit.Store(ref __host, __Sweep, ref ProdResult__state, ref ProdResult__field, value);
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
         internal static int ProdResult__set(int value)
         {
             if (__Swept.Done)
                 ProdResult__field = value;
             else
-                global::Sharpy.StaticInit.Store(ref __host, __Sweep, ref ProdResult__state, ref ProdResult__field, value);
+                ProdResult__storeSlow(value);
             return value;
         }
 
@@ -392,12 +402,14 @@ namespace ArithmeticOperators
         }
 
         [global::System.Runtime.CompilerServices.CompilerGenerated]
+        private static void DivResult__storeSlow(int value) => global::Sharpy.StaticInit.Store(ref __host, __Sweep, ref DivResult__state, ref DivResult__field, value);
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
         internal static int DivResult__set(int value)
         {
             if (__Swept.Done)
                 DivResult__field = value;
             else
-                global::Sharpy.StaticInit.Store(ref __host, __Sweep, ref DivResult__state, ref DivResult__field, value);
+                DivResult__storeSlow(value);
             return value;
         }
 
@@ -462,12 +474,14 @@ namespace ArithmeticOperators
         }
 
         [global::System.Runtime.CompilerServices.CompilerGenerated]
+        private static void ModResult__storeSlow(int value) => global::Sharpy.StaticInit.Store(ref __host, __Sweep, ref ModResult__state, ref ModResult__field, value);
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
         internal static int ModResult__set(int value)
         {
             if (__Swept.Done)
                 ModResult__field = value;
             else
-                global::Sharpy.StaticInit.Store(ref __host, __Sweep, ref ModResult__state, ref ModResult__field, value);
+                ModResult__storeSlow(value);
             return value;
         }
 

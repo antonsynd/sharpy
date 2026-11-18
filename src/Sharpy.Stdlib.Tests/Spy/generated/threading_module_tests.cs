@@ -52,12 +52,14 @@ namespace Sharpy.Stdlib.Tests.Spy.Threading.ThreadingModuleTests
         }
 
         [global::System.Runtime.CompilerServices.CompilerGenerated]
+        private static void Executed__storeSlow(Sharpy.List<bool> value) => global::Sharpy.StaticInit.Store(ref __host, __Sweep, ref Executed__state, ref Executed__field, value);
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
         internal static Sharpy.List<bool> Executed__set(Sharpy.List<bool> value)
         {
             if (__Swept.Done)
                 Executed__field = value;
             else
-                global::Sharpy.StaticInit.Store(ref __host, __Sweep, ref Executed__state, ref Executed__field, value);
+                Executed__storeSlow(value);
             return value;
         }
 
@@ -125,12 +127,14 @@ namespace Sharpy.Stdlib.Tests.Spy.Threading.ThreadingModuleTests
         }
 
         [global::System.Runtime.CompilerServices.CompilerGenerated]
+        private static void RanFlag__storeSlow(Sharpy.List<bool> value) => global::Sharpy.StaticInit.Store(ref __host, __Sweep, ref RanFlag__state, ref RanFlag__field, value);
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
         internal static Sharpy.List<bool> RanFlag__set(Sharpy.List<bool> value)
         {
             if (__Swept.Done)
                 RanFlag__field = value;
             else
-                global::Sharpy.StaticInit.Store(ref __host, __Sweep, ref RanFlag__state, ref RanFlag__field, value);
+                RanFlag__storeSlow(value);
             return value;
         }
 
@@ -198,12 +202,14 @@ namespace Sharpy.Stdlib.Tests.Spy.Threading.ThreadingModuleTests
         }
 
         [global::System.Runtime.CompilerServices.CompilerGenerated]
+        private static void FiredFlag__storeSlow(Sharpy.List<bool> value) => global::Sharpy.StaticInit.Store(ref __host, __Sweep, ref FiredFlag__state, ref FiredFlag__field, value);
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
         internal static Sharpy.List<bool> FiredFlag__set(Sharpy.List<bool> value)
         {
             if (__Swept.Done)
                 FiredFlag__field = value;
             else
-                global::Sharpy.StaticInit.Store(ref __host, __Sweep, ref FiredFlag__state, ref FiredFlag__field, value);
+                FiredFlag__storeSlow(value);
             return value;
         }
 
@@ -271,12 +277,14 @@ namespace Sharpy.Stdlib.Tests.Spy.Threading.ThreadingModuleTests
         }
 
         [global::System.Runtime.CompilerServices.CompilerGenerated]
+        private static void ReceivedFlag__storeSlow(Sharpy.List<bool> value) => global::Sharpy.StaticInit.Store(ref __host, __Sweep, ref ReceivedFlag__state, ref ReceivedFlag__field, value);
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
         internal static Sharpy.List<bool> ReceivedFlag__set(Sharpy.List<bool> value)
         {
             if (__Swept.Done)
                 ReceivedFlag__field = value;
             else
-                global::Sharpy.StaticInit.Store(ref __host, __Sweep, ref ReceivedFlag__state, ref ReceivedFlag__field, value);
+                ReceivedFlag__storeSlow(value);
             return value;
         }
 
@@ -344,12 +352,14 @@ namespace Sharpy.Stdlib.Tests.Spy.Threading.ThreadingModuleTests
         }
 
         [global::System.Runtime.CompilerServices.CompilerGenerated]
+        private static void BarrierCount__storeSlow(Sharpy.List<int> value) => global::Sharpy.StaticInit.Store(ref __host, __Sweep, ref BarrierCount__state, ref BarrierCount__field, value);
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
         internal static Sharpy.List<int> BarrierCount__set(Sharpy.List<int> value)
         {
             if (__Swept.Done)
                 BarrierCount__field = value;
             else
-                global::Sharpy.StaticInit.Store(ref __host, __Sweep, ref BarrierCount__state, ref BarrierCount__field, value);
+                BarrierCount__storeSlow(value);
             return value;
         }
 

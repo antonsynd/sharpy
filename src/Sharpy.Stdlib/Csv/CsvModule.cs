@@ -46,12 +46,14 @@ namespace Sharpy.CsvModule
         }
 
         [global::System.Runtime.CompilerServices.CompilerGenerated]
+        private static void QUOTE_ALL__storeSlow(int value) => global::Sharpy.StaticInit.Store(ref __host, __Sweep, ref QUOTE_ALL__state, ref QUOTE_ALL__field, value);
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
         internal static int QUOTE_ALL__set(int value)
         {
             if (__Swept.Done)
                 QUOTE_ALL__field = value;
             else
-                global::Sharpy.StaticInit.Store(ref __host, __Sweep, ref QUOTE_ALL__state, ref QUOTE_ALL__field, value);
+                QUOTE_ALL__storeSlow(value);
             return value;
         }
 
@@ -116,12 +118,14 @@ namespace Sharpy.CsvModule
         }
 
         [global::System.Runtime.CompilerServices.CompilerGenerated]
+        private static void QUOTE_MINIMAL__storeSlow(int value) => global::Sharpy.StaticInit.Store(ref __host, __Sweep, ref QUOTE_MINIMAL__state, ref QUOTE_MINIMAL__field, value);
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
         internal static int QUOTE_MINIMAL__set(int value)
         {
             if (__Swept.Done)
                 QUOTE_MINIMAL__field = value;
             else
-                global::Sharpy.StaticInit.Store(ref __host, __Sweep, ref QUOTE_MINIMAL__state, ref QUOTE_MINIMAL__field, value);
+                QUOTE_MINIMAL__storeSlow(value);
             return value;
         }
 
@@ -186,12 +190,14 @@ namespace Sharpy.CsvModule
         }
 
         [global::System.Runtime.CompilerServices.CompilerGenerated]
+        private static void QUOTE_NONE__storeSlow(int value) => global::Sharpy.StaticInit.Store(ref __host, __Sweep, ref QUOTE_NONE__state, ref QUOTE_NONE__field, value);
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
         internal static int QUOTE_NONE__set(int value)
         {
             if (__Swept.Done)
                 QUOTE_NONE__field = value;
             else
-                global::Sharpy.StaticInit.Store(ref __host, __Sweep, ref QUOTE_NONE__state, ref QUOTE_NONE__field, value);
+                QUOTE_NONE__storeSlow(value);
             return value;
         }
 
@@ -256,12 +262,14 @@ namespace Sharpy.CsvModule
         }
 
         [global::System.Runtime.CompilerServices.CompilerGenerated]
+        private static void QUOTE_NONNUMERIC__storeSlow(int value) => global::Sharpy.StaticInit.Store(ref __host, __Sweep, ref QUOTE_NONNUMERIC__state, ref QUOTE_NONNUMERIC__field, value);
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
         internal static int QUOTE_NONNUMERIC__set(int value)
         {
             if (__Swept.Done)
                 QUOTE_NONNUMERIC__field = value;
             else
-                global::Sharpy.StaticInit.Store(ref __host, __Sweep, ref QUOTE_NONNUMERIC__state, ref QUOTE_NONNUMERIC__field, value);
+                QUOTE_NONNUMERIC__storeSlow(value);
             return value;
         }
 

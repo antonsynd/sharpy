@@ -46,12 +46,14 @@ namespace Sharpy.RandomModule
         }
 
         [global::System.Runtime.CompilerServices.CompilerGenerated]
+        private static void _Random__storeSlow(global::System.Random value) => global::Sharpy.StaticInit.Store(ref __host, __Sweep, ref _Random__state, ref _Random__field, value);
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
         internal static global::System.Random _Random__set(global::System.Random value)
         {
             if (__Swept.Done)
                 _Random__field = value;
             else
-                global::Sharpy.StaticInit.Store(ref __host, __Sweep, ref _Random__state, ref _Random__field, value);
+                _Random__storeSlow(value);
             return value;
         }
 
@@ -116,12 +118,14 @@ namespace Sharpy.RandomModule
         }
 
         [global::System.Runtime.CompilerServices.CompilerGenerated]
+        private static void _Lock__storeSlow(global::Sharpy.Lock value) => global::Sharpy.StaticInit.Store(ref __host, __Sweep, ref _Lock__state, ref _Lock__field, value);
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
         internal static global::Sharpy.Lock _Lock__set(global::Sharpy.Lock value)
         {
             if (__Swept.Done)
                 _Lock__field = value;
             else
-                global::Sharpy.StaticInit.Store(ref __host, __Sweep, ref _Lock__state, ref _Lock__field, value);
+                _Lock__storeSlow(value);
             return value;
         }
 

@@ -42,12 +42,14 @@ namespace EnumTrafficLight
         }
 
         [global::System.Runtime.CompilerServices.CompilerGenerated]
+        private static void Current__storeSlow(global::EnumTrafficLight.TrafficLight value) => global::Sharpy.StaticInit.Store(ref __host, __Sweep, ref Current__state, ref Current__field, value);
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
         internal static global::EnumTrafficLight.TrafficLight Current__set(global::EnumTrafficLight.TrafficLight value)
         {
             if (__Swept.Done)
                 Current__field = value;
             else
-                global::Sharpy.StaticInit.Store(ref __host, __Sweep, ref Current__state, ref Current__field, value);
+                Current__storeSlow(value);
             return value;
         }
 

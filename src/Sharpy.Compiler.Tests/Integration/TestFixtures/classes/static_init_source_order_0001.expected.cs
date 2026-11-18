@@ -81,12 +81,14 @@ namespace StaticInitSourceOrder0001
         }
 
         [global::System.Runtime.CompilerServices.CompilerGenerated]
+        private static void A__storeSlow(int value) => global::Sharpy.StaticInit.Store(ref __host, __Sweep, ref A__state, ref A__field, value);
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
         internal static int A__set(int value)
         {
             if (__Swept.Done)
                 A__field = value;
             else
-                global::Sharpy.StaticInit.Store(ref __host, __Sweep, ref A__state, ref A__field, value);
+                A__storeSlow(value);
             return value;
         }
 
@@ -147,10 +149,12 @@ namespace StaticInitSourceOrder0001
                 if (__Swept.Done)
                     Sp__field = value;
                 else
-                    global::Sharpy.StaticInit.Store(ref __host, __Sweep, ref Sp__state, ref Sp__field, value);
+                    Sp__storeSlow(value);
             }
         }
 
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        private static void Sp__storeSlow(int value) => global::Sharpy.StaticInit.Store(ref __host, __Sweep, ref Sp__state, ref Sp__field, value);
         [global::System.Runtime.CompilerServices.CompilerGenerated]
         internal static int Sp__set(int value)
         {
@@ -189,12 +193,14 @@ namespace StaticInitSourceOrder0001
         }
 
         [global::System.Runtime.CompilerServices.CompilerGenerated]
+        private static void G__storeSlow(int value) => global::Sharpy.StaticInit.Store(ref __host, __Sweep, ref G__state, ref G__field, value);
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
         internal static int G__set(int value)
         {
             if (__Swept.Done)
                 G__field = value;
             else
-                global::Sharpy.StaticInit.Store(ref __host, __Sweep, ref G__state, ref G__field, value);
+                G__storeSlow(value);
             return value;
         }
 

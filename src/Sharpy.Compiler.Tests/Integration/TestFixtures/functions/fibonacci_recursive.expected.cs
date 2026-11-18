@@ -58,12 +58,14 @@ namespace FibonacciRecursive
         }
 
         [global::System.Runtime.CompilerServices.CompilerGenerated]
+        private static void Result__storeSlow(int value) => global::Sharpy.StaticInit.Store(ref __host, __Sweep, ref Result__state, ref Result__field, value);
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
         internal static int Result__set(int value)
         {
             if (__Swept.Done)
                 Result__field = value;
             else
-                global::Sharpy.StaticInit.Store(ref __host, __Sweep, ref Result__state, ref Result__field, value);
+                Result__storeSlow(value);
             return value;
         }
 

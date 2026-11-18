@@ -46,12 +46,14 @@ namespace Sharpy.OsModule
         }
 
         [global::System.Runtime.CompilerServices.CompilerGenerated]
+        private static void Sep__storeSlow(string value) => global::Sharpy.StaticInit.Store(ref __host, __Sweep, ref Sep__state, ref Sep__field, value);
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
         internal static string Sep__set(string value)
         {
             if (__Swept.Done)
                 Sep__field = value;
             else
-                global::Sharpy.StaticInit.Store(ref __host, __Sweep, ref Sep__state, ref Sep__field, value);
+                Sep__storeSlow(value);
             return value;
         }
 
@@ -116,12 +118,14 @@ namespace Sharpy.OsModule
         }
 
         [global::System.Runtime.CompilerServices.CompilerGenerated]
+        private static void Linesep__storeSlow(string value) => global::Sharpy.StaticInit.Store(ref __host, __Sweep, ref Linesep__state, ref Linesep__field, value);
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
         internal static string Linesep__set(string value)
         {
             if (__Swept.Done)
                 Linesep__field = value;
             else
-                global::Sharpy.StaticInit.Store(ref __host, __Sweep, ref Linesep__state, ref Linesep__field, value);
+                Linesep__storeSlow(value);
             return value;
         }
 
@@ -186,12 +190,14 @@ namespace Sharpy.OsModule
         }
 
         [global::System.Runtime.CompilerServices.CompilerGenerated]
+        private static void Name__storeSlow(string value) => global::Sharpy.StaticInit.Store(ref __host, __Sweep, ref Name__state, ref Name__field, value);
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
         internal static string Name__set(string value)
         {
             if (__Swept.Done)
                 Name__field = value;
             else
-                global::Sharpy.StaticInit.Store(ref __host, __Sweep, ref Name__state, ref Name__field, value);
+                Name__storeSlow(value);
             return value;
         }
 
@@ -256,12 +262,14 @@ namespace Sharpy.OsModule
         }
 
         [global::System.Runtime.CompilerServices.CompilerGenerated]
+        private static void Pathsep__storeSlow(string value) => global::Sharpy.StaticInit.Store(ref __host, __Sweep, ref Pathsep__state, ref Pathsep__field, value);
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
         internal static string Pathsep__set(string value)
         {
             if (__Swept.Done)
                 Pathsep__field = value;
             else
-                global::Sharpy.StaticInit.Store(ref __host, __Sweep, ref Pathsep__state, ref Pathsep__field, value);
+                Pathsep__storeSlow(value);
             return value;
         }
 
@@ -326,12 +334,14 @@ namespace Sharpy.OsModule
         }
 
         [global::System.Runtime.CompilerServices.CompilerGenerated]
+        private static void Altsep__storeSlow(string value) => global::Sharpy.StaticInit.Store(ref __host, __Sweep, ref Altsep__state, ref Altsep__field, value);
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
         internal static string Altsep__set(string value)
         {
             if (__Swept.Done)
                 Altsep__field = value;
             else
-                global::Sharpy.StaticInit.Store(ref __host, __Sweep, ref Altsep__state, ref Altsep__field, value);
+                Altsep__storeSlow(value);
             return value;
         }
 

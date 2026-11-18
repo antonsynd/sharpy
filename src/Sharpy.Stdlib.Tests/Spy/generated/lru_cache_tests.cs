@@ -61,12 +61,14 @@ namespace Sharpy.Stdlib.Tests.Spy.Functools.LruCacheTests
         }
 
         [global::System.Runtime.CompilerServices.CompilerGenerated]
+        private static void UnboundedCalls__storeSlow(Sharpy.List<int> value) => global::Sharpy.StaticInit.Store(ref __host, __Sweep, ref UnboundedCalls__state, ref UnboundedCalls__field, value);
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
         internal static Sharpy.List<int> UnboundedCalls__set(Sharpy.List<int> value)
         {
             if (__Swept.Done)
                 UnboundedCalls__field = value;
             else
-                global::Sharpy.StaticInit.Store(ref __host, __Sweep, ref UnboundedCalls__state, ref UnboundedCalls__field, value);
+                UnboundedCalls__storeSlow(value);
             return value;
         }
 
@@ -157,12 +159,14 @@ namespace Sharpy.Stdlib.Tests.Spy.Functools.LruCacheTests
         }
 
         [global::System.Runtime.CompilerServices.CompilerGenerated]
+        private static void CountedCalls__storeSlow(Sharpy.List<int> value) => global::Sharpy.StaticInit.Store(ref __host, __Sweep, ref CountedCalls__state, ref CountedCalls__field, value);
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
         internal static Sharpy.List<int> CountedCalls__set(Sharpy.List<int> value)
         {
             if (__Swept.Done)
                 CountedCalls__field = value;
             else
-                global::Sharpy.StaticInit.Store(ref __host, __Sweep, ref CountedCalls__state, ref CountedCalls__field, value);
+                CountedCalls__storeSlow(value);
             return value;
         }
 
@@ -253,12 +257,14 @@ namespace Sharpy.Stdlib.Tests.Spy.Functools.LruCacheTests
         }
 
         [global::System.Runtime.CompilerServices.CompilerGenerated]
+        private static void TouchCalls__storeSlow(Sharpy.List<int> value) => global::Sharpy.StaticInit.Store(ref __host, __Sweep, ref TouchCalls__state, ref TouchCalls__field, value);
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
         internal static Sharpy.List<int> TouchCalls__set(Sharpy.List<int> value)
         {
             if (__Swept.Done)
                 TouchCalls__field = value;
             else
-                global::Sharpy.StaticInit.Store(ref __host, __Sweep, ref TouchCalls__state, ref TouchCalls__field, value);
+                TouchCalls__storeSlow(value);
             return value;
         }
 

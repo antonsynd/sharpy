@@ -42,12 +42,14 @@ namespace AugmentedAssignment0001
         }
 
         [global::System.Runtime.CompilerServices.CompilerGenerated]
+        private static void CurrentTemp__storeSlow(int value) => global::Sharpy.StaticInit.Store(ref __host, __Sweep, ref CurrentTemp__state, ref CurrentTemp__field, value);
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
         internal static int CurrentTemp__set(int value)
         {
             if (__Swept.Done)
                 CurrentTemp__field = value;
             else
-                global::Sharpy.StaticInit.Store(ref __host, __Sweep, ref CurrentTemp__state, ref CurrentTemp__field, value);
+                CurrentTemp__storeSlow(value);
             return value;
         }
 

@@ -46,12 +46,14 @@ namespace Sharpy.StringModule
         }
 
         [global::System.Runtime.CompilerServices.CompilerGenerated]
+        private static void AsciiLowercase__storeSlow(string value) => global::Sharpy.StaticInit.Store(ref __host, __Sweep, ref AsciiLowercase__state, ref AsciiLowercase__field, value);
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
         internal static string AsciiLowercase__set(string value)
         {
             if (__Swept.Done)
                 AsciiLowercase__field = value;
             else
-                global::Sharpy.StaticInit.Store(ref __host, __Sweep, ref AsciiLowercase__state, ref AsciiLowercase__field, value);
+                AsciiLowercase__storeSlow(value);
             return value;
         }
 
@@ -116,12 +118,14 @@ namespace Sharpy.StringModule
         }
 
         [global::System.Runtime.CompilerServices.CompilerGenerated]
+        private static void AsciiUppercase__storeSlow(string value) => global::Sharpy.StaticInit.Store(ref __host, __Sweep, ref AsciiUppercase__state, ref AsciiUppercase__field, value);
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
         internal static string AsciiUppercase__set(string value)
         {
             if (__Swept.Done)
                 AsciiUppercase__field = value;
             else
-                global::Sharpy.StaticInit.Store(ref __host, __Sweep, ref AsciiUppercase__state, ref AsciiUppercase__field, value);
+                AsciiUppercase__storeSlow(value);
             return value;
         }
 
@@ -186,12 +190,14 @@ namespace Sharpy.StringModule
         }
 
         [global::System.Runtime.CompilerServices.CompilerGenerated]
+        private static void AsciiLetters__storeSlow(string value) => global::Sharpy.StaticInit.Store(ref __host, __Sweep, ref AsciiLetters__state, ref AsciiLetters__field, value);
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
         internal static string AsciiLetters__set(string value)
         {
             if (__Swept.Done)
                 AsciiLetters__field = value;
             else
-                global::Sharpy.StaticInit.Store(ref __host, __Sweep, ref AsciiLetters__state, ref AsciiLetters__field, value);
+                AsciiLetters__storeSlow(value);
             return value;
         }
 
@@ -256,12 +262,14 @@ namespace Sharpy.StringModule
         }
 
         [global::System.Runtime.CompilerServices.CompilerGenerated]
+        private static void Digits__storeSlow(string value) => global::Sharpy.StaticInit.Store(ref __host, __Sweep, ref Digits__state, ref Digits__field, value);
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
         internal static string Digits__set(string value)
         {
             if (__Swept.Done)
                 Digits__field = value;
             else
-                global::Sharpy.StaticInit.Store(ref __host, __Sweep, ref Digits__state, ref Digits__field, value);
+                Digits__storeSlow(value);
             return value;
         }
 
@@ -326,12 +334,14 @@ namespace Sharpy.StringModule
         }
 
         [global::System.Runtime.CompilerServices.CompilerGenerated]
+        private static void Hexdigits__storeSlow(string value) => global::Sharpy.StaticInit.Store(ref __host, __Sweep, ref Hexdigits__state, ref Hexdigits__field, value);
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
         internal static string Hexdigits__set(string value)
         {
             if (__Swept.Done)
                 Hexdigits__field = value;
             else
-                global::Sharpy.StaticInit.Store(ref __host, __Sweep, ref Hexdigits__state, ref Hexdigits__field, value);
+                Hexdigits__storeSlow(value);
             return value;
         }
 
@@ -396,12 +406,14 @@ namespace Sharpy.StringModule
         }
 
         [global::System.Runtime.CompilerServices.CompilerGenerated]
+        private static void Octdigits__storeSlow(string value) => global::Sharpy.StaticInit.Store(ref __host, __Sweep, ref Octdigits__state, ref Octdigits__field, value);
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
         internal static string Octdigits__set(string value)
         {
             if (__Swept.Done)
                 Octdigits__field = value;
             else
-                global::Sharpy.StaticInit.Store(ref __host, __Sweep, ref Octdigits__state, ref Octdigits__field, value);
+                Octdigits__storeSlow(value);
             return value;
         }
 
@@ -466,12 +478,14 @@ namespace Sharpy.StringModule
         }
 
         [global::System.Runtime.CompilerServices.CompilerGenerated]
+        private static void Punctuation__storeSlow(string value) => global::Sharpy.StaticInit.Store(ref __host, __Sweep, ref Punctuation__state, ref Punctuation__field, value);
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
         internal static string Punctuation__set(string value)
         {
             if (__Swept.Done)
                 Punctuation__field = value;
             else
-                global::Sharpy.StaticInit.Store(ref __host, __Sweep, ref Punctuation__state, ref Punctuation__field, value);
+                Punctuation__storeSlow(value);
             return value;
         }
 
@@ -536,12 +550,14 @@ namespace Sharpy.StringModule
         }
 
         [global::System.Runtime.CompilerServices.CompilerGenerated]
+        private static void Whitespace__storeSlow(string value) => global::Sharpy.StaticInit.Store(ref __host, __Sweep, ref Whitespace__state, ref Whitespace__field, value);
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
         internal static string Whitespace__set(string value)
         {
             if (__Swept.Done)
                 Whitespace__field = value;
             else
-                global::Sharpy.StaticInit.Store(ref __host, __Sweep, ref Whitespace__state, ref Whitespace__field, value);
+                Whitespace__storeSlow(value);
             return value;
         }
 
@@ -606,12 +622,14 @@ namespace Sharpy.StringModule
         }
 
         [global::System.Runtime.CompilerServices.CompilerGenerated]
+        private static void Printable__storeSlow(string value) => global::Sharpy.StaticInit.Store(ref __host, __Sweep, ref Printable__state, ref Printable__field, value);
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
         internal static string Printable__set(string value)
         {
             if (__Swept.Done)
                 Printable__field = value;
             else
-                global::Sharpy.StaticInit.Store(ref __host, __Sweep, ref Printable__state, ref Printable__field, value);
+                Printable__storeSlow(value);
             return value;
         }
 

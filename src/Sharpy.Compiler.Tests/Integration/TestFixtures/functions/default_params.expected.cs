@@ -88,12 +88,14 @@ namespace DefaultParams
         }
 
         [global::System.Runtime.CompilerServices.CompilerGenerated]
+        private static void Price1__storeSlow(int value) => global::Sharpy.StaticInit.Store(ref __host, __Sweep, ref Price1__state, ref Price1__field, value);
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
         internal static int Price1__set(int value)
         {
             if (__Swept.Done)
                 Price1__field = value;
             else
-                global::Sharpy.StaticInit.Store(ref __host, __Sweep, ref Price1__state, ref Price1__field, value);
+                Price1__storeSlow(value);
             return value;
         }
 
@@ -158,12 +160,14 @@ namespace DefaultParams
         }
 
         [global::System.Runtime.CompilerServices.CompilerGenerated]
+        private static void Price2__storeSlow(int value) => global::Sharpy.StaticInit.Store(ref __host, __Sweep, ref Price2__state, ref Price2__field, value);
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
         internal static int Price2__set(int value)
         {
             if (__Swept.Done)
                 Price2__field = value;
             else
-                global::Sharpy.StaticInit.Store(ref __host, __Sweep, ref Price2__state, ref Price2__field, value);
+                Price2__storeSlow(value);
             return value;
         }
 
@@ -228,12 +232,14 @@ namespace DefaultParams
         }
 
         [global::System.Runtime.CompilerServices.CompilerGenerated]
+        private static void Price3__storeSlow(int value) => global::Sharpy.StaticInit.Store(ref __host, __Sweep, ref Price3__state, ref Price3__field, value);
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
         internal static int Price3__set(int value)
         {
             if (__Swept.Done)
                 Price3__field = value;
             else
-                global::Sharpy.StaticInit.Store(ref __host, __Sweep, ref Price3__state, ref Price3__field, value);
+                Price3__storeSlow(value);
             return value;
         }
 
@@ -298,12 +304,14 @@ namespace DefaultParams
         }
 
         [global::System.Runtime.CompilerServices.CompilerGenerated]
+        private static void Squared__storeSlow(int value) => global::Sharpy.StaticInit.Store(ref __host, __Sweep, ref Squared__state, ref Squared__field, value);
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
         internal static int Squared__set(int value)
         {
             if (__Swept.Done)
                 Squared__field = value;
             else
-                global::Sharpy.StaticInit.Store(ref __host, __Sweep, ref Squared__state, ref Squared__field, value);
+                Squared__storeSlow(value);
             return value;
         }
 
@@ -368,12 +376,14 @@ namespace DefaultParams
         }
 
         [global::System.Runtime.CompilerServices.CompilerGenerated]
+        private static void Cubed__storeSlow(int value) => global::Sharpy.StaticInit.Store(ref __host, __Sweep, ref Cubed__state, ref Cubed__field, value);
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
         internal static int Cubed__set(int value)
         {
             if (__Swept.Done)
                 Cubed__field = value;
             else
-                global::Sharpy.StaticInit.Store(ref __host, __Sweep, ref Cubed__state, ref Cubed__field, value);
+                Cubed__storeSlow(value);
             return value;
         }
 
@@ -438,12 +448,14 @@ namespace DefaultParams
         }
 
         [global::System.Runtime.CompilerServices.CompilerGenerated]
+        private static void Price4__storeSlow(int value) => global::Sharpy.StaticInit.Store(ref __host, __Sweep, ref Price4__state, ref Price4__field, value);
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
         internal static int Price4__set(int value)
         {
             if (__Swept.Done)
                 Price4__field = value;
             else
-                global::Sharpy.StaticInit.Store(ref __host, __Sweep, ref Price4__state, ref Price4__field, value);
+                Price4__storeSlow(value);
             return value;
         }
 
@@ -508,12 +520,14 @@ namespace DefaultParams
         }
 
         [global::System.Runtime.CompilerServices.CompilerGenerated]
+        private static void Price5__storeSlow(int value) => global::Sharpy.StaticInit.Store(ref __host, __Sweep, ref Price5__state, ref Price5__field, value);
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
         internal static int Price5__set(int value)
         {
             if (__Swept.Done)
                 Price5__field = value;
             else
-                global::Sharpy.StaticInit.Store(ref __host, __Sweep, ref Price5__state, ref Price5__field, value);
+                Price5__storeSlow(value);
             return value;
         }
 

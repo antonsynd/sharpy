@@ -41,12 +41,14 @@ namespace AccessorParamModuleLevel
         }
 
         [global::System.Runtime.CompilerServices.CompilerGenerated]
+        private static void _Backing__storeSlow(int value) => global::Sharpy.StaticInit.Store(ref __host, __Sweep, ref _Backing__state, ref _Backing__field, value);
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
         internal static int _Backing__set(int value)
         {
             if (__Swept.Done)
                 _Backing__field = value;
             else
-                global::Sharpy.StaticInit.Store(ref __host, __Sweep, ref _Backing__state, ref _Backing__field, value);
+                _Backing__storeSlow(value);
             return value;
         }
 

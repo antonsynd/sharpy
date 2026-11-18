@@ -42,12 +42,14 @@ namespace NullCoalescing0003
         }
 
         [global::System.Runtime.CompilerServices.CompilerGenerated]
+        private static void X__storeSlow(Optional<int> value) => global::Sharpy.StaticInit.Store(ref __host, __Sweep, ref X__state, ref X__field, value);
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
         internal static Optional<int> X__set(Optional<int> value)
         {
             if (__Swept.Done)
                 X__field = value;
             else
-                global::Sharpy.StaticInit.Store(ref __host, __Sweep, ref X__state, ref X__field, value);
+                X__storeSlow(value);
             return value;
         }
 
@@ -112,12 +114,14 @@ namespace NullCoalescing0003
         }
 
         [global::System.Runtime.CompilerServices.CompilerGenerated]
+        private static void Y__storeSlow(int value) => global::Sharpy.StaticInit.Store(ref __host, __Sweep, ref Y__state, ref Y__field, value);
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
         internal static int Y__set(int value)
         {
             if (__Swept.Done)
                 Y__field = value;
             else
-                global::Sharpy.StaticInit.Store(ref __host, __Sweep, ref Y__state, ref Y__field, value);
+                Y__storeSlow(value);
             return value;
         }
 
@@ -182,12 +186,14 @@ namespace NullCoalescing0003
         }
 
         [global::System.Runtime.CompilerServices.CompilerGenerated]
+        private static void A__storeSlow(Optional<int> value) => global::Sharpy.StaticInit.Store(ref __host, __Sweep, ref A__state, ref A__field, value);
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
         internal static Optional<int> A__set(Optional<int> value)
         {
             if (__Swept.Done)
                 A__field = value;
             else
-                global::Sharpy.StaticInit.Store(ref __host, __Sweep, ref A__state, ref A__field, value);
+                A__storeSlow(value);
             return value;
         }
 
@@ -252,12 +258,14 @@ namespace NullCoalescing0003
         }
 
         [global::System.Runtime.CompilerServices.CompilerGenerated]
+        private static void B__storeSlow(int value) => global::Sharpy.StaticInit.Store(ref __host, __Sweep, ref B__state, ref B__field, value);
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
         internal static int B__set(int value)
         {
             if (__Swept.Done)
                 B__field = value;
             else
-                global::Sharpy.StaticInit.Store(ref __host, __Sweep, ref B__state, ref B__field, value);
+                B__storeSlow(value);
             return value;
         }
 
@@ -322,12 +330,14 @@ namespace NullCoalescing0003
         }
 
         [global::System.Runtime.CompilerServices.CompilerGenerated]
+        private static void Name__storeSlow(Optional<string> value) => global::Sharpy.StaticInit.Store(ref __host, __Sweep, ref Name__state, ref Name__field, value);
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
         internal static Optional<string> Name__set(Optional<string> value)
         {
             if (__Swept.Done)
                 Name__field = value;
             else
-                global::Sharpy.StaticInit.Store(ref __host, __Sweep, ref Name__state, ref Name__field, value);
+                Name__storeSlow(value);
             return value;
         }
 
@@ -392,12 +402,14 @@ namespace NullCoalescing0003
         }
 
         [global::System.Runtime.CompilerServices.CompilerGenerated]
+        private static void DefaultName__storeSlow(string value) => global::Sharpy.StaticInit.Store(ref __host, __Sweep, ref DefaultName__state, ref DefaultName__field, value);
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
         internal static string DefaultName__set(string value)
         {
             if (__Swept.Done)
                 DefaultName__field = value;
             else
-                global::Sharpy.StaticInit.Store(ref __host, __Sweep, ref DefaultName__state, ref DefaultName__field, value);
+                DefaultName__storeSlow(value);
             return value;
         }
 
@@ -462,12 +474,14 @@ namespace NullCoalescing0003
         }
 
         [global::System.Runtime.CompilerServices.CompilerGenerated]
+        private static void First__storeSlow(Optional<int> value) => global::Sharpy.StaticInit.Store(ref __host, __Sweep, ref First__state, ref First__field, value);
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
         internal static Optional<int> First__set(Optional<int> value)
         {
             if (__Swept.Done)
                 First__field = value;
             else
-                global::Sharpy.StaticInit.Store(ref __host, __Sweep, ref First__state, ref First__field, value);
+                First__storeSlow(value);
             return value;
         }
 
@@ -532,12 +546,14 @@ namespace NullCoalescing0003
         }
 
         [global::System.Runtime.CompilerServices.CompilerGenerated]
+        private static void Second__storeSlow(Optional<int> value) => global::Sharpy.StaticInit.Store(ref __host, __Sweep, ref Second__state, ref Second__field, value);
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
         internal static Optional<int> Second__set(Optional<int> value)
         {
             if (__Swept.Done)
                 Second__field = value;
             else
-                global::Sharpy.StaticInit.Store(ref __host, __Sweep, ref Second__state, ref Second__field, value);
+                Second__storeSlow(value);
             return value;
         }
 
@@ -602,12 +618,14 @@ namespace NullCoalescing0003
         }
 
         [global::System.Runtime.CompilerServices.CompilerGenerated]
+        private static void Third__storeSlow(int value) => global::Sharpy.StaticInit.Store(ref __host, __Sweep, ref Third__state, ref Third__field, value);
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
         internal static int Third__set(int value)
         {
             if (__Swept.Done)
                 Third__field = value;
             else
-                global::Sharpy.StaticInit.Store(ref __host, __Sweep, ref Third__state, ref Third__field, value);
+                Third__storeSlow(value);
             return value;
         }
 
@@ -672,12 +690,14 @@ namespace NullCoalescing0003
         }
 
         [global::System.Runtime.CompilerServices.CompilerGenerated]
+        private static void Result__storeSlow(int value) => global::Sharpy.StaticInit.Store(ref __host, __Sweep, ref Result__state, ref Result__field, value);
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
         internal static int Result__set(int value)
         {
             if (__Swept.Done)
                 Result__field = value;
             else
-                global::Sharpy.StaticInit.Store(ref __host, __Sweep, ref Result__state, ref Result__field, value);
+                Result__storeSlow(value);
             return value;
         }
 

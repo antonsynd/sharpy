@@ -102,12 +102,14 @@ namespace EnumComparisonAndAssignment0000
         }
 
         [global::System.Runtime.CompilerServices.CompilerGenerated]
+        private static void CurrentStatus__storeSlow(global::EnumComparisonAndAssignment0000.OrderStatus value) => global::Sharpy.StaticInit.Store(ref __host, __Sweep, ref CurrentStatus__state, ref CurrentStatus__field, value);
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
         internal static global::EnumComparisonAndAssignment0000.OrderStatus CurrentStatus__set(global::EnumComparisonAndAssignment0000.OrderStatus value)
         {
             if (__Swept.Done)
                 CurrentStatus__field = value;
             else
-                global::Sharpy.StaticInit.Store(ref __host, __Sweep, ref CurrentStatus__state, ref CurrentStatus__field, value);
+                CurrentStatus__storeSlow(value);
             return value;
         }
 

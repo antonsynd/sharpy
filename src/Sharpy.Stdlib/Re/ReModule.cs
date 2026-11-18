@@ -46,12 +46,14 @@ namespace Sharpy.ReModule
         }
 
         [global::System.Runtime.CompilerServices.CompilerGenerated]
+        private static void IGNORECASE__storeSlow(int value) => global::Sharpy.StaticInit.Store(ref __host, __Sweep, ref IGNORECASE__state, ref IGNORECASE__field, value);
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
         internal static int IGNORECASE__set(int value)
         {
             if (__Swept.Done)
                 IGNORECASE__field = value;
             else
-                global::Sharpy.StaticInit.Store(ref __host, __Sweep, ref IGNORECASE__state, ref IGNORECASE__field, value);
+                IGNORECASE__storeSlow(value);
             return value;
         }
 
@@ -117,12 +119,14 @@ namespace Sharpy.ReModule
         }
 
         [global::System.Runtime.CompilerServices.CompilerGenerated]
+        private static void I__storeSlow(int value) => global::Sharpy.StaticInit.Store(ref __host, __Sweep, ref I__state, ref I__field, value);
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
         internal static int I__set(int value)
         {
             if (__Swept.Done)
                 I__field = value;
             else
-                global::Sharpy.StaticInit.Store(ref __host, __Sweep, ref I__state, ref I__field, value);
+                I__storeSlow(value);
             return value;
         }
 
@@ -187,12 +191,14 @@ namespace Sharpy.ReModule
         }
 
         [global::System.Runtime.CompilerServices.CompilerGenerated]
+        private static void MULTILINE__storeSlow(int value) => global::Sharpy.StaticInit.Store(ref __host, __Sweep, ref MULTILINE__state, ref MULTILINE__field, value);
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
         internal static int MULTILINE__set(int value)
         {
             if (__Swept.Done)
                 MULTILINE__field = value;
             else
-                global::Sharpy.StaticInit.Store(ref __host, __Sweep, ref MULTILINE__state, ref MULTILINE__field, value);
+                MULTILINE__storeSlow(value);
             return value;
         }
 
@@ -258,12 +264,14 @@ namespace Sharpy.ReModule
         }
 
         [global::System.Runtime.CompilerServices.CompilerGenerated]
+        private static void M__storeSlow(int value) => global::Sharpy.StaticInit.Store(ref __host, __Sweep, ref M__state, ref M__field, value);
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
         internal static int M__set(int value)
         {
             if (__Swept.Done)
                 M__field = value;
             else
-                global::Sharpy.StaticInit.Store(ref __host, __Sweep, ref M__state, ref M__field, value);
+                M__storeSlow(value);
             return value;
         }
 
@@ -328,12 +336,14 @@ namespace Sharpy.ReModule
         }
 
         [global::System.Runtime.CompilerServices.CompilerGenerated]
+        private static void DOTALL__storeSlow(int value) => global::Sharpy.StaticInit.Store(ref __host, __Sweep, ref DOTALL__state, ref DOTALL__field, value);
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
         internal static int DOTALL__set(int value)
         {
             if (__Swept.Done)
                 DOTALL__field = value;
             else
-                global::Sharpy.StaticInit.Store(ref __host, __Sweep, ref DOTALL__state, ref DOTALL__field, value);
+                DOTALL__storeSlow(value);
             return value;
         }
 
@@ -399,12 +409,14 @@ namespace Sharpy.ReModule
         }
 
         [global::System.Runtime.CompilerServices.CompilerGenerated]
+        private static void S__storeSlow(int value) => global::Sharpy.StaticInit.Store(ref __host, __Sweep, ref S__state, ref S__field, value);
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
         internal static int S__set(int value)
         {
             if (__Swept.Done)
                 S__field = value;
             else
-                global::Sharpy.StaticInit.Store(ref __host, __Sweep, ref S__state, ref S__field, value);
+                S__storeSlow(value);
             return value;
         }
 
@@ -469,12 +481,14 @@ namespace Sharpy.ReModule
         }
 
         [global::System.Runtime.CompilerServices.CompilerGenerated]
+        private static void VERBOSE__storeSlow(int value) => global::Sharpy.StaticInit.Store(ref __host, __Sweep, ref VERBOSE__state, ref VERBOSE__field, value);
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
         internal static int VERBOSE__set(int value)
         {
             if (__Swept.Done)
                 VERBOSE__field = value;
             else
-                global::Sharpy.StaticInit.Store(ref __host, __Sweep, ref VERBOSE__state, ref VERBOSE__field, value);
+                VERBOSE__storeSlow(value);
             return value;
         }
 
@@ -540,12 +554,14 @@ namespace Sharpy.ReModule
         }
 
         [global::System.Runtime.CompilerServices.CompilerGenerated]
+        private static void X__storeSlow(int value) => global::Sharpy.StaticInit.Store(ref __host, __Sweep, ref X__state, ref X__field, value);
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
         internal static int X__set(int value)
         {
             if (__Swept.Done)
                 X__field = value;
             else
-                global::Sharpy.StaticInit.Store(ref __host, __Sweep, ref X__state, ref X__field, value);
+                X__storeSlow(value);
             return value;
         }
 
@@ -610,12 +626,14 @@ namespace Sharpy.ReModule
         }
 
         [global::System.Runtime.CompilerServices.CompilerGenerated]
+        private static void UNICODE__storeSlow(int value) => global::Sharpy.StaticInit.Store(ref __host, __Sweep, ref UNICODE__state, ref UNICODE__field, value);
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
         internal static int UNICODE__set(int value)
         {
             if (__Swept.Done)
                 UNICODE__field = value;
             else
-                global::Sharpy.StaticInit.Store(ref __host, __Sweep, ref UNICODE__state, ref UNICODE__field, value);
+                UNICODE__storeSlow(value);
             return value;
         }
 
@@ -681,12 +699,14 @@ namespace Sharpy.ReModule
         }
 
         [global::System.Runtime.CompilerServices.CompilerGenerated]
+        private static void U__storeSlow(int value) => global::Sharpy.StaticInit.Store(ref __host, __Sweep, ref U__state, ref U__field, value);
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
         internal static int U__set(int value)
         {
             if (__Swept.Done)
                 U__field = value;
             else
-                global::Sharpy.StaticInit.Store(ref __host, __Sweep, ref U__state, ref U__field, value);
+                U__storeSlow(value);
             return value;
         }
 
@@ -751,12 +771,14 @@ namespace Sharpy.ReModule
         }
 
         [global::System.Runtime.CompilerServices.CompilerGenerated]
+        private static void ASCII__storeSlow(int value) => global::Sharpy.StaticInit.Store(ref __host, __Sweep, ref ASCII__state, ref ASCII__field, value);
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
         internal static int ASCII__set(int value)
         {
             if (__Swept.Done)
                 ASCII__field = value;
             else
-                global::Sharpy.StaticInit.Store(ref __host, __Sweep, ref ASCII__state, ref ASCII__field, value);
+                ASCII__storeSlow(value);
             return value;
         }
 
@@ -822,12 +844,14 @@ namespace Sharpy.ReModule
         }
 
         [global::System.Runtime.CompilerServices.CompilerGenerated]
+        private static void A__storeSlow(int value) => global::Sharpy.StaticInit.Store(ref __host, __Sweep, ref A__state, ref A__field, value);
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
         internal static int A__set(int value)
         {
             if (__Swept.Done)
                 A__field = value;
             else
-                global::Sharpy.StaticInit.Store(ref __host, __Sweep, ref A__state, ref A__field, value);
+                A__storeSlow(value);
             return value;
         }
 

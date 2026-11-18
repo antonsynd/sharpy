@@ -46,12 +46,14 @@ namespace Sharpy.MathModule
         }
 
         [global::System.Runtime.CompilerServices.CompilerGenerated]
+        private static void Pi__storeSlow(double value) => global::Sharpy.StaticInit.Store(ref __host, __Sweep, ref Pi__state, ref Pi__field, value);
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
         internal static double Pi__set(double value)
         {
             if (__Swept.Done)
                 Pi__field = value;
             else
-                global::Sharpy.StaticInit.Store(ref __host, __Sweep, ref Pi__state, ref Pi__field, value);
+                Pi__storeSlow(value);
             return value;
         }
 
@@ -116,12 +118,14 @@ namespace Sharpy.MathModule
         }
 
         [global::System.Runtime.CompilerServices.CompilerGenerated]
+        private static void E__storeSlow(double value) => global::Sharpy.StaticInit.Store(ref __host, __Sweep, ref E__state, ref E__field, value);
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
         internal static double E__set(double value)
         {
             if (__Swept.Done)
                 E__field = value;
             else
-                global::Sharpy.StaticInit.Store(ref __host, __Sweep, ref E__state, ref E__field, value);
+                E__storeSlow(value);
             return value;
         }
 
@@ -186,12 +190,14 @@ namespace Sharpy.MathModule
         }
 
         [global::System.Runtime.CompilerServices.CompilerGenerated]
+        private static void Tau__storeSlow(double value) => global::Sharpy.StaticInit.Store(ref __host, __Sweep, ref Tau__state, ref Tau__field, value);
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
         internal static double Tau__set(double value)
         {
             if (__Swept.Done)
                 Tau__field = value;
             else
-                global::Sharpy.StaticInit.Store(ref __host, __Sweep, ref Tau__state, ref Tau__field, value);
+                Tau__storeSlow(value);
             return value;
         }
 
@@ -256,12 +262,14 @@ namespace Sharpy.MathModule
         }
 
         [global::System.Runtime.CompilerServices.CompilerGenerated]
+        private static void Inf__storeSlow(double value) => global::Sharpy.StaticInit.Store(ref __host, __Sweep, ref Inf__state, ref Inf__field, value);
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
         internal static double Inf__set(double value)
         {
             if (__Swept.Done)
                 Inf__field = value;
             else
-                global::Sharpy.StaticInit.Store(ref __host, __Sweep, ref Inf__state, ref Inf__field, value);
+                Inf__storeSlow(value);
             return value;
         }
 
@@ -326,12 +334,14 @@ namespace Sharpy.MathModule
         }
 
         [global::System.Runtime.CompilerServices.CompilerGenerated]
+        private static void Nan__storeSlow(double value) => global::Sharpy.StaticInit.Store(ref __host, __Sweep, ref Nan__state, ref Nan__field, value);
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
         internal static double Nan__set(double value)
         {
             if (__Swept.Done)
                 Nan__field = value;
             else
-                global::Sharpy.StaticInit.Store(ref __host, __Sweep, ref Nan__state, ref Nan__field, value);
+                Nan__storeSlow(value);
             return value;
         }
 

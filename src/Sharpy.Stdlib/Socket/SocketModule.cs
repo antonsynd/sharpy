@@ -46,12 +46,14 @@ namespace Sharpy.SocketModule
         }
 
         [global::System.Runtime.CompilerServices.CompilerGenerated]
+        private static void AF_INET__storeSlow(int value) => global::Sharpy.StaticInit.Store(ref __host, __Sweep, ref AF_INET__state, ref AF_INET__field, value);
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
         internal static int AF_INET__set(int value)
         {
             if (__Swept.Done)
                 AF_INET__field = value;
             else
-                global::Sharpy.StaticInit.Store(ref __host, __Sweep, ref AF_INET__state, ref AF_INET__field, value);
+                AF_INET__storeSlow(value);
             return value;
         }
 
@@ -116,12 +118,14 @@ namespace Sharpy.SocketModule
         }
 
         [global::System.Runtime.CompilerServices.CompilerGenerated]
+        private static void AF_INET6__storeSlow(int value) => global::Sharpy.StaticInit.Store(ref __host, __Sweep, ref AF_INET6__state, ref AF_INET6__field, value);
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
         internal static int AF_INET6__set(int value)
         {
             if (__Swept.Done)
                 AF_INET6__field = value;
             else
-                global::Sharpy.StaticInit.Store(ref __host, __Sweep, ref AF_INET6__state, ref AF_INET6__field, value);
+                AF_INET6__storeSlow(value);
             return value;
         }
 
@@ -186,12 +190,14 @@ namespace Sharpy.SocketModule
         }
 
         [global::System.Runtime.CompilerServices.CompilerGenerated]
+        private static void AF_UNIX__storeSlow(int value) => global::Sharpy.StaticInit.Store(ref __host, __Sweep, ref AF_UNIX__state, ref AF_UNIX__field, value);
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
         internal static int AF_UNIX__set(int value)
         {
             if (__Swept.Done)
                 AF_UNIX__field = value;
             else
-                global::Sharpy.StaticInit.Store(ref __host, __Sweep, ref AF_UNIX__state, ref AF_UNIX__field, value);
+                AF_UNIX__storeSlow(value);
             return value;
         }
 
@@ -256,12 +262,14 @@ namespace Sharpy.SocketModule
         }
 
         [global::System.Runtime.CompilerServices.CompilerGenerated]
+        private static void SOCK_STREAM__storeSlow(int value) => global::Sharpy.StaticInit.Store(ref __host, __Sweep, ref SOCK_STREAM__state, ref SOCK_STREAM__field, value);
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
         internal static int SOCK_STREAM__set(int value)
         {
             if (__Swept.Done)
                 SOCK_STREAM__field = value;
             else
-                global::Sharpy.StaticInit.Store(ref __host, __Sweep, ref SOCK_STREAM__state, ref SOCK_STREAM__field, value);
+                SOCK_STREAM__storeSlow(value);
             return value;
         }
 
@@ -326,12 +334,14 @@ namespace Sharpy.SocketModule
         }
 
         [global::System.Runtime.CompilerServices.CompilerGenerated]
+        private static void SOCK_DGRAM__storeSlow(int value) => global::Sharpy.StaticInit.Store(ref __host, __Sweep, ref SOCK_DGRAM__state, ref SOCK_DGRAM__field, value);
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
         internal static int SOCK_DGRAM__set(int value)
         {
             if (__Swept.Done)
                 SOCK_DGRAM__field = value;
             else
-                global::Sharpy.StaticInit.Store(ref __host, __Sweep, ref SOCK_DGRAM__state, ref SOCK_DGRAM__field, value);
+                SOCK_DGRAM__storeSlow(value);
             return value;
         }
 
@@ -396,12 +406,14 @@ namespace Sharpy.SocketModule
         }
 
         [global::System.Runtime.CompilerServices.CompilerGenerated]
+        private static void SOCK_RAW__storeSlow(int value) => global::Sharpy.StaticInit.Store(ref __host, __Sweep, ref SOCK_RAW__state, ref SOCK_RAW__field, value);
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
         internal static int SOCK_RAW__set(int value)
         {
             if (__Swept.Done)
                 SOCK_RAW__field = value;
             else
-                global::Sharpy.StaticInit.Store(ref __host, __Sweep, ref SOCK_RAW__state, ref SOCK_RAW__field, value);
+                SOCK_RAW__storeSlow(value);
             return value;
         }
 
@@ -466,12 +478,14 @@ namespace Sharpy.SocketModule
         }
 
         [global::System.Runtime.CompilerServices.CompilerGenerated]
+        private static void IPPROTO_IP__storeSlow(int value) => global::Sharpy.StaticInit.Store(ref __host, __Sweep, ref IPPROTO_IP__state, ref IPPROTO_IP__field, value);
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
         internal static int IPPROTO_IP__set(int value)
         {
             if (__Swept.Done)
                 IPPROTO_IP__field = value;
             else
-                global::Sharpy.StaticInit.Store(ref __host, __Sweep, ref IPPROTO_IP__state, ref IPPROTO_IP__field, value);
+                IPPROTO_IP__storeSlow(value);
             return value;
         }
 
@@ -536,12 +550,14 @@ namespace Sharpy.SocketModule
         }
 
         [global::System.Runtime.CompilerServices.CompilerGenerated]
+        private static void IPPROTO_TCP__storeSlow(int value) => global::Sharpy.StaticInit.Store(ref __host, __Sweep, ref IPPROTO_TCP__state, ref IPPROTO_TCP__field, value);
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
         internal static int IPPROTO_TCP__set(int value)
         {
             if (__Swept.Done)
                 IPPROTO_TCP__field = value;
             else
-                global::Sharpy.StaticInit.Store(ref __host, __Sweep, ref IPPROTO_TCP__state, ref IPPROTO_TCP__field, value);
+                IPPROTO_TCP__storeSlow(value);
             return value;
         }
 
@@ -606,12 +622,14 @@ namespace Sharpy.SocketModule
         }
 
         [global::System.Runtime.CompilerServices.CompilerGenerated]
+        private static void IPPROTO_UDP__storeSlow(int value) => global::Sharpy.StaticInit.Store(ref __host, __Sweep, ref IPPROTO_UDP__state, ref IPPROTO_UDP__field, value);
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
         internal static int IPPROTO_UDP__set(int value)
         {
             if (__Swept.Done)
                 IPPROTO_UDP__field = value;
             else
-                global::Sharpy.StaticInit.Store(ref __host, __Sweep, ref IPPROTO_UDP__state, ref IPPROTO_UDP__field, value);
+                IPPROTO_UDP__storeSlow(value);
             return value;
         }
 
@@ -676,12 +694,14 @@ namespace Sharpy.SocketModule
         }
 
         [global::System.Runtime.CompilerServices.CompilerGenerated]
+        private static void SOL_SOCKET__storeSlow(int value) => global::Sharpy.StaticInit.Store(ref __host, __Sweep, ref SOL_SOCKET__state, ref SOL_SOCKET__field, value);
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
         internal static int SOL_SOCKET__set(int value)
         {
             if (__Swept.Done)
                 SOL_SOCKET__field = value;
             else
-                global::Sharpy.StaticInit.Store(ref __host, __Sweep, ref SOL_SOCKET__state, ref SOL_SOCKET__field, value);
+                SOL_SOCKET__storeSlow(value);
             return value;
         }
 
@@ -746,12 +766,14 @@ namespace Sharpy.SocketModule
         }
 
         [global::System.Runtime.CompilerServices.CompilerGenerated]
+        private static void SO_REUSEADDR__storeSlow(int value) => global::Sharpy.StaticInit.Store(ref __host, __Sweep, ref SO_REUSEADDR__state, ref SO_REUSEADDR__field, value);
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
         internal static int SO_REUSEADDR__set(int value)
         {
             if (__Swept.Done)
                 SO_REUSEADDR__field = value;
             else
-                global::Sharpy.StaticInit.Store(ref __host, __Sweep, ref SO_REUSEADDR__state, ref SO_REUSEADDR__field, value);
+                SO_REUSEADDR__storeSlow(value);
             return value;
         }
 
@@ -816,12 +838,14 @@ namespace Sharpy.SocketModule
         }
 
         [global::System.Runtime.CompilerServices.CompilerGenerated]
+        private static void SO_KEEPALIVE__storeSlow(int value) => global::Sharpy.StaticInit.Store(ref __host, __Sweep, ref SO_KEEPALIVE__state, ref SO_KEEPALIVE__field, value);
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
         internal static int SO_KEEPALIVE__set(int value)
         {
             if (__Swept.Done)
                 SO_KEEPALIVE__field = value;
             else
-                global::Sharpy.StaticInit.Store(ref __host, __Sweep, ref SO_KEEPALIVE__state, ref SO_KEEPALIVE__field, value);
+                SO_KEEPALIVE__storeSlow(value);
             return value;
         }
 
@@ -886,12 +910,14 @@ namespace Sharpy.SocketModule
         }
 
         [global::System.Runtime.CompilerServices.CompilerGenerated]
+        private static void SO_BROADCAST__storeSlow(int value) => global::Sharpy.StaticInit.Store(ref __host, __Sweep, ref SO_BROADCAST__state, ref SO_BROADCAST__field, value);
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
         internal static int SO_BROADCAST__set(int value)
         {
             if (__Swept.Done)
                 SO_BROADCAST__field = value;
             else
-                global::Sharpy.StaticInit.Store(ref __host, __Sweep, ref SO_BROADCAST__state, ref SO_BROADCAST__field, value);
+                SO_BROADCAST__storeSlow(value);
             return value;
         }
 
@@ -956,12 +982,14 @@ namespace Sharpy.SocketModule
         }
 
         [global::System.Runtime.CompilerServices.CompilerGenerated]
+        private static void SO_RCVBUF__storeSlow(int value) => global::Sharpy.StaticInit.Store(ref __host, __Sweep, ref SO_RCVBUF__state, ref SO_RCVBUF__field, value);
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
         internal static int SO_RCVBUF__set(int value)
         {
             if (__Swept.Done)
                 SO_RCVBUF__field = value;
             else
-                global::Sharpy.StaticInit.Store(ref __host, __Sweep, ref SO_RCVBUF__state, ref SO_RCVBUF__field, value);
+                SO_RCVBUF__storeSlow(value);
             return value;
         }
 
@@ -1026,12 +1054,14 @@ namespace Sharpy.SocketModule
         }
 
         [global::System.Runtime.CompilerServices.CompilerGenerated]
+        private static void SO_SNDBUF__storeSlow(int value) => global::Sharpy.StaticInit.Store(ref __host, __Sweep, ref SO_SNDBUF__state, ref SO_SNDBUF__field, value);
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
         internal static int SO_SNDBUF__set(int value)
         {
             if (__Swept.Done)
                 SO_SNDBUF__field = value;
             else
-                global::Sharpy.StaticInit.Store(ref __host, __Sweep, ref SO_SNDBUF__state, ref SO_SNDBUF__field, value);
+                SO_SNDBUF__storeSlow(value);
             return value;
         }
 
@@ -1096,12 +1126,14 @@ namespace Sharpy.SocketModule
         }
 
         [global::System.Runtime.CompilerServices.CompilerGenerated]
+        private static void TCP_NODELAY__storeSlow(int value) => global::Sharpy.StaticInit.Store(ref __host, __Sweep, ref TCP_NODELAY__state, ref TCP_NODELAY__field, value);
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
         internal static int TCP_NODELAY__set(int value)
         {
             if (__Swept.Done)
                 TCP_NODELAY__field = value;
             else
-                global::Sharpy.StaticInit.Store(ref __host, __Sweep, ref TCP_NODELAY__state, ref TCP_NODELAY__field, value);
+                TCP_NODELAY__storeSlow(value);
             return value;
         }
 
@@ -1166,12 +1198,14 @@ namespace Sharpy.SocketModule
         }
 
         [global::System.Runtime.CompilerServices.CompilerGenerated]
+        private static void SHUT_RD__storeSlow(int value) => global::Sharpy.StaticInit.Store(ref __host, __Sweep, ref SHUT_RD__state, ref SHUT_RD__field, value);
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
         internal static int SHUT_RD__set(int value)
         {
             if (__Swept.Done)
                 SHUT_RD__field = value;
             else
-                global::Sharpy.StaticInit.Store(ref __host, __Sweep, ref SHUT_RD__state, ref SHUT_RD__field, value);
+                SHUT_RD__storeSlow(value);
             return value;
         }
 
@@ -1236,12 +1270,14 @@ namespace Sharpy.SocketModule
         }
 
         [global::System.Runtime.CompilerServices.CompilerGenerated]
+        private static void SHUT_WR__storeSlow(int value) => global::Sharpy.StaticInit.Store(ref __host, __Sweep, ref SHUT_WR__state, ref SHUT_WR__field, value);
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
         internal static int SHUT_WR__set(int value)
         {
             if (__Swept.Done)
                 SHUT_WR__field = value;
             else
-                global::Sharpy.StaticInit.Store(ref __host, __Sweep, ref SHUT_WR__state, ref SHUT_WR__field, value);
+                SHUT_WR__storeSlow(value);
             return value;
         }
 
@@ -1306,12 +1342,14 @@ namespace Sharpy.SocketModule
         }
 
         [global::System.Runtime.CompilerServices.CompilerGenerated]
+        private static void SHUT_RDWR__storeSlow(int value) => global::Sharpy.StaticInit.Store(ref __host, __Sweep, ref SHUT_RDWR__state, ref SHUT_RDWR__field, value);
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
         internal static int SHUT_RDWR__set(int value)
         {
             if (__Swept.Done)
                 SHUT_RDWR__field = value;
             else
-                global::Sharpy.StaticInit.Store(ref __host, __Sweep, ref SHUT_RDWR__state, ref SHUT_RDWR__field, value);
+                SHUT_RDWR__storeSlow(value);
             return value;
         }
 
@@ -1376,12 +1414,14 @@ namespace Sharpy.SocketModule
         }
 
         [global::System.Runtime.CompilerServices.CompilerGenerated]
+        private static void SOMAXCONN__storeSlow(int value) => global::Sharpy.StaticInit.Store(ref __host, __Sweep, ref SOMAXCONN__state, ref SOMAXCONN__field, value);
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
         internal static int SOMAXCONN__set(int value)
         {
             if (__Swept.Done)
                 SOMAXCONN__field = value;
             else
-                global::Sharpy.StaticInit.Store(ref __host, __Sweep, ref SOMAXCONN__state, ref SOMAXCONN__field, value);
+                SOMAXCONN__storeSlow(value);
             return value;
         }
 
@@ -1446,12 +1486,14 @@ namespace Sharpy.SocketModule
         }
 
         [global::System.Runtime.CompilerServices.CompilerGenerated]
+        private static void _DefaultTimeout__storeSlow(double? value) => global::Sharpy.StaticInit.Store(ref __host, __Sweep, ref _DefaultTimeout__state, ref _DefaultTimeout__field, value);
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
         internal static double? _DefaultTimeout__set(double? value)
         {
             if (__Swept.Done)
                 _DefaultTimeout__field = value;
             else
-                global::Sharpy.StaticInit.Store(ref __host, __Sweep, ref _DefaultTimeout__state, ref _DefaultTimeout__field, value);
+                _DefaultTimeout__storeSlow(value);
             return value;
         }
 
@@ -1516,12 +1558,14 @@ namespace Sharpy.SocketModule
         }
 
         [global::System.Runtime.CompilerServices.CompilerGenerated]
+        private static void _Lock__storeSlow(global::Sharpy.Lock value) => global::Sharpy.StaticInit.Store(ref __host, __Sweep, ref _Lock__state, ref _Lock__field, value);
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
         internal static global::Sharpy.Lock _Lock__set(global::Sharpy.Lock value)
         {
             if (__Swept.Done)
                 _Lock__field = value;
             else
-                global::Sharpy.StaticInit.Store(ref __host, __Sweep, ref _Lock__state, ref _Lock__field, value);
+                _Lock__storeSlow(value);
             return value;
         }
 

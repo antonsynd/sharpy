@@ -42,12 +42,14 @@ namespace VirtualOverrideShapes
         }
 
         [global::System.Runtime.CompilerServices.CompilerGenerated]
+        private static void Rect__storeSlow(global::VirtualOverrideShapes.Rectangle value) => global::Sharpy.StaticInit.Store(ref __host, __Sweep, ref Rect__state, ref Rect__field, value);
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
         internal static global::VirtualOverrideShapes.Rectangle Rect__set(global::VirtualOverrideShapes.Rectangle value)
         {
             if (__Swept.Done)
                 Rect__field = value;
             else
-                global::Sharpy.StaticInit.Store(ref __host, __Sweep, ref Rect__state, ref Rect__field, value);
+                Rect__storeSlow(value);
             return value;
         }
 
@@ -112,12 +114,14 @@ namespace VirtualOverrideShapes
         }
 
         [global::System.Runtime.CompilerServices.CompilerGenerated]
+        private static void Circ__storeSlow(global::VirtualOverrideShapes.Circle value) => global::Sharpy.StaticInit.Store(ref __host, __Sweep, ref Circ__state, ref Circ__field, value);
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
         internal static global::VirtualOverrideShapes.Circle Circ__set(global::VirtualOverrideShapes.Circle value)
         {
             if (__Swept.Done)
                 Circ__field = value;
             else
-                global::Sharpy.StaticInit.Store(ref __host, __Sweep, ref Circ__state, ref Circ__field, value);
+                Circ__storeSlow(value);
             return value;
         }
 

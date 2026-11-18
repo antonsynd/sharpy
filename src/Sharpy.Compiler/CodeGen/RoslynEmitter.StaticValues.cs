@@ -20,7 +20,8 @@ namespace Sharpy.Compiler.CodeGen;
 /// private static void N__init() { N__field = &lt;initializer&gt;; }
 /// private static void N__slow() =&gt; StaticInit.Read(ref __host, __Sweep, ref N__state, "n", N__init);
 /// public static ref T N { get { if (!__Swept.Done) N__slow(); return ref N__field; } }   // ref readonly for a const
-/// public static T N__set(T value) { ... StaticInit.Store(...) ...; return value; }           // every plain store
+/// private static void N__storeSlow(T value) =&gt; StaticInit.Store(ref __host, __Sweep, ref N__state, ref N__field, value);
+/// public static T N__set(T value) { if (__Swept.Done) N__field = value; else N__storeSlow(value); return value; }  // every plain store
 /// public static ref T N__out(out StrongBox&lt;T&gt;? spill) { ... }                             // an `out` operand
 /// public static R N__commit&lt;R&gt;(R result, StrongBox&lt;T&gt;? spill) { ... }                // stores the spill
 /// public static void N__ensure() { if (!__Swept.Done) N__slow(); }                          // D6: before the statement
@@ -58,6 +59,7 @@ internal partial class RoslynEmitter
     private static string GuardedStateName(string name) => name + "__state";
     private static string GuardedInitName(string name) => name + "__init";
     private static string GuardedSlowName(string name) => name + "__slow";
+    private static string GuardedStoreSlowName(string name) => name + "__storeSlow";
 
     /// <summary>
     /// The sweep of the host being emitted (a module, or a class / struct / interface with Guarded
@@ -379,16 +381,31 @@ internal partial class RoslynEmitter
             PrefixUnaryExpression(SyntaxKind.LogicalNotExpression, SweptDone()),
             ExpressionStatement(InvocationExpression(IdentifierName(GuardedSlowName(csharpName)))));
 
-    /// <summary><c>if (__Swept.Done) field = value; else StaticInit.Store(ref __host, __Sweep, ref N__state, ref field, value);</c></summary>
+    /// <summary>
+    /// <c>if (__Swept.Done) field = value; else N__storeSlow(value);</c>: the store's slow path is out
+    /// of line, as the read's is in <c>N__slow</c>, so the store stays small enough for the JIT to
+    /// inline it into its caller (the module value store measured 4.26x V0 with it inline, A12).
+    /// </summary>
     private static StatementSyntax GuardedStoreStatement(string csharpName, string fieldName, ExpressionSyntax value)
         => IfStatement(
             SweptDone(),
             ExpressionStatement(AssignmentExpression(
                 SyntaxKind.SimpleAssignmentExpression, EscapedIdentifierName(fieldName), value)),
-            ElseClause(ExpressionStatement(HostCall("Store",
+            ElseClause(ExpressionStatement(InvocationExpression(IdentifierName(GuardedStoreSlowName(csharpName)))
+                .WithArgumentList(ArgumentList(SingletonSeparatedList(Argument(value)))))));
+
+    /// <summary><c>private static void N__storeSlow(T value) =&gt; StaticInit.Store(ref __host, __Sweep,
+    /// ref N__state, ref N__field, value);</c>: a store before the sweep is done (D4).</summary>
+    private static MethodDeclarationSyntax GuardedStoreSlow(string csharpName, string fieldName, TypeSyntax fieldType)
+        => MethodDeclaration(PredefinedType(Token(SyntaxKind.VoidKeyword)), Identifier(GuardedStoreSlowName(csharpName)))
+            .WithModifiers(PrivateStatic())
+            .WithAttributeLists(Generated())
+            .WithParameterList(ParameterList(SingletonSeparatedList(Parameter(Identifier("value")).WithType(fieldType))))
+            .WithExpressionBody(ArrowExpressionClause(HostCall("Store",
                 RefArgument(GuardedStateName(csharpName)),
                 Argument(EscapedIdentifierName(fieldName)).WithRefKindKeyword(Token(SyntaxKind.RefKeyword)),
-                Argument(value)))));
+                Argument(IdentifierName("value")))))
+            .WithSemicolonToken(Token(SyntaxKind.SemicolonToken));
 
     /// <summary><c>&lt;access&gt; T N__set(T value) { store; return value; }</c>: the plain-store seam of
     /// every Guarded value that takes a store (D4).</summary>
@@ -445,7 +462,8 @@ internal partial class RoslynEmitter
         if (v.IsReadOnly)
             yield break;
 
-        // public static T N__set(T value) { if (__Swept.Done) N__field = value; else StaticInit.Store(...); return value; }
+        // public static T N__set(T value) { if (__Swept.Done) N__field = value; else N__storeSlow(value); return value; }
+        yield return GuardedStoreSlow(name, fieldName, v.Type);
         yield return SetMethod(name, v.Type, access, GuardedStoreStatement(name, fieldName, IdentifierName("value")));
 
         // public static StrongBox<T>? N__pick()
@@ -564,6 +582,10 @@ internal partial class RoslynEmitter
                     isOnGenericHost, new SyntaxList<AttributeListSyntax>(), declareField: backing == null));
                 var guarded = GuardPropertyAccessors(property, name, fieldName).AddAttributeLists(GuardedStorageAttribute());
                 output.Add(guarded);
+                // A writing accessor's guarded stores call the out-of-line slow path (a custom
+                // setter with no store of the field has none).
+                if (CallsMethod(guarded, GuardedStoreSlowName(name)))
+                    output.Add(GuardedStoreSlow(name, fieldName, backing?.Declaration.Type ?? type));
                 // The plain-store seam is one spelling for every Guarded value (D4): a property
                 // default's N__set stores through its setter, which keeps get / set.
                 if (guarded.AccessorList!.Accessors.Any(a => a.IsKind(SyntaxKind.SetAccessorDeclaration)))
@@ -637,6 +659,11 @@ internal partial class RoslynEmitter
             .WithModifiers(modifiers)
             .WithAccessorList(AccessorList(List(accessors)));
     }
+
+    /// <summary>Whether <paramref name="node"/> calls the simple name <paramref name="method"/>.</summary>
+    private static bool CallsMethod(SyntaxNode node, string method)
+        => node.DescendantNodes().OfType<InvocationExpressionSyntax>()
+            .Any(call => call.Expression is IdentifierNameSyntax id && id.Identifier.ValueText == method);
 
     /// <summary>Whether <paramref name="body"/> names the backing field anywhere but as a simple
     /// store's target.</summary>

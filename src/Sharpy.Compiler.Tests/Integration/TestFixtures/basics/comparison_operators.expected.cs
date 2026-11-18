@@ -42,12 +42,14 @@ namespace ComparisonOperators
         }
 
         [global::System.Runtime.CompilerServices.CompilerGenerated]
+        private static void X__storeSlow(int value) => global::Sharpy.StaticInit.Store(ref __host, __Sweep, ref X__state, ref X__field, value);
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
         internal static int X__set(int value)
         {
             if (__Swept.Done)
                 X__field = value;
             else
-                global::Sharpy.StaticInit.Store(ref __host, __Sweep, ref X__state, ref X__field, value);
+                X__storeSlow(value);
             return value;
         }
 
@@ -112,12 +114,14 @@ namespace ComparisonOperators
         }
 
         [global::System.Runtime.CompilerServices.CompilerGenerated]
+        private static void Y__storeSlow(int value) => global::Sharpy.StaticInit.Store(ref __host, __Sweep, ref Y__state, ref Y__field, value);
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
         internal static int Y__set(int value)
         {
             if (__Swept.Done)
                 Y__field = value;
             else
-                global::Sharpy.StaticInit.Store(ref __host, __Sweep, ref Y__state, ref Y__field, value);
+                Y__storeSlow(value);
             return value;
         }
 
@@ -182,12 +186,14 @@ namespace ComparisonOperators
         }
 
         [global::System.Runtime.CompilerServices.CompilerGenerated]
+        private static void Z__storeSlow(int value) => global::Sharpy.StaticInit.Store(ref __host, __Sweep, ref Z__state, ref Z__field, value);
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
         internal static int Z__set(int value)
         {
             if (__Swept.Done)
                 Z__field = value;
             else
-                global::Sharpy.StaticInit.Store(ref __host, __Sweep, ref Z__state, ref Z__field, value);
+                Z__storeSlow(value);
             return value;
         }
 
