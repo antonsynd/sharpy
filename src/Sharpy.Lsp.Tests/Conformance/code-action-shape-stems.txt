@@ -8,7 +8,7 @@
 # GENERATED, HUMAN-REVIEWED: bash build_tools/regenerate_corpus_pins.sh rewrites the rows and the `# total` lines; review
 # the diff (a new stem's rows are its own; a moved row of an existing stem is a finding until explained). A new key's cite row in
 # code-action-shape-allowlist.txt is written by hand (the loader names it), and so is a drained key's deletion.
-# total stems identity keys=14 rows=2090
+# total stems identity keys=14 rows=2098
 # total stems crlf keys=8 rows=284
 # total stems cr keys=8 rows=293
 # total stems comment keys=7 rows=288
@@ -26,6 +26,8 @@ extract-method identity diagnostics assignment/assignment_parenthesized_target_r
 extract-method identity diagnostics async/async_comprehension_await_element # #2294
 extract-method identity diagnostics async/async_generator_basic # #2294
 extract-method identity diagnostics async/async_generator_yield_from # #2294
+extract-method identity diagnostics async/async_guarded_out_inline_decl # #2294
+extract-method identity diagnostics async/async_guarded_out_inline_decl_sync # #2294
 extract-method identity diagnostics async/async_return_none_1514 # #2294
 extract-method identity diagnostics async/async_with_0036 # #2294
 extract-method identity diagnostics async/async_with_basic # #2294
@@ -906,6 +908,9 @@ extract-method identity parse async/async_forward_ref_plain_reverse # #2294
 extract-method identity parse async/async_gather_basic # #2294
 extract-method identity parse async/async_generator_expression_refused # #2294
 extract-method identity parse async/async_generator_yield_from # #2294
+extract-method identity parse async/async_guarded_narrowed_uses # #2294
+extract-method identity parse async/async_guarded_out_inline_decl # #2294
+extract-method identity parse async/async_guarded_out_inline_decl_sync # #2294
 extract-method identity parse async/async_return_none_1514 # #2294
 extract-method identity parse async/async_sleep_basic # #2294
 extract-method identity parse async/async_unreachable_after_return # #2294
@@ -1607,6 +1612,7 @@ prefix-underscore identity diagnostics exception_handling/except_when_bool_expr 
 remove-annotation identity diagnostics algorithms/binary_search_tree # #2296
 remove-annotation identity diagnostics algorithms/merge_sort # #2296
 remove-annotation identity diagnostics algorithms/word_frequency # #2296
+remove-annotation identity diagnostics async/async_guarded_narrowed_uses # #2296
 remove-annotation identity diagnostics basics/arithmetic_operators # #2296
 remove-annotation identity diagnostics basics/comparison_operators_0013 # #2296
 remove-annotation identity diagnostics basics/emitter_type_name_compare_controls # #2296
@@ -1732,6 +1738,8 @@ wrap-try identity diagnostics async/async_comprehension_await_and_async_for # #2
 wrap-try identity diagnostics async/async_for_0028 # #2296
 wrap-try identity diagnostics async/async_for_basic # #2296
 wrap-try identity diagnostics async/async_forward_ref_plain_reverse # #2296
+wrap-try identity diagnostics async/async_guarded_out_inline_decl # #2296
+wrap-try identity diagnostics async/async_guarded_out_inline_decl_sync # #2296
 wrap-try identity diagnostics async/async_unreachable_after_return # #2296
 wrap-try identity diagnostics async/async_with_generators_0074 # #2296
 wrap-try identity diagnostics basics/augmented_collection_mutation_targets # #2296

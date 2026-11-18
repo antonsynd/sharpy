@@ -18,10 +18,10 @@
 # total known-limit-S6ok identity ontype rows=13 n=45
 # total known-limit-S6ok identity range-line rows=13 n=45
 # total known-limit-S6ok identity range-whole rows=13 n=39
-# total refused-work identity range-block rows=7 n=9 withwork=2435
+# total refused-work identity range-block rows=7 n=9 withwork=2438
 # total refused-work identity range-line rows=4 n=10 withwork=138
 # total refused-work identity range-statement rows=1 n=1 withwork=1054
-# total refused-work identity range-whole rows=0 n=0 withwork=2259
+# total refused-work identity range-whole rows=0 n=0 withwork=2262
 # total s7-parity-exempt identity full rows=489 n=489
 # total s7-parity-exempt identity ontype rows=484 n=484
 # total s7-parity-exempt identity range-line rows=484 n=484
@@ -32,10 +32,10 @@
 # total known-limit-S6ok comment ontype rows=2 n=18
 # total known-limit-S6ok comment range-line rows=2 n=18
 # total known-limit-S6ok comment range-whole rows=2 n=6
-# total refused-work comment range-block rows=1 n=4 withwork=2506
+# total refused-work comment range-block rows=1 n=4 withwork=2511
 # total refused-work comment range-line rows=0 n=0 withwork=33
 # total refused-work comment range-statement rows=0 n=0 withwork=732
-# total refused-work comment range-whole rows=0 n=0 withwork=3407
+# total refused-work comment range-whole rows=0 n=0 withwork=3410
 # total s7-parity-exempt comment full rows=1672 n=1672
 # total s7-parity-exempt comment ontype rows=1667 n=1667
 # total s7-parity-exempt comment range-line rows=1667 n=1667
@@ -46,10 +46,10 @@
 # total known-limit-S6ok wide ontype rows=13 n=45
 # total known-limit-S6ok wide range-line rows=13 n=45
 # total known-limit-S6ok wide range-whole rows=13 n=39
-# total refused-work wide range-block rows=1176 n=4394 withwork=13935
+# total refused-work wide range-block rows=1179 n=4397 withwork=13984
 # total refused-work wide range-line rows=196 n=2802 withwork=5180
-# total refused-work wide range-statement rows=254 n=374 withwork=7212
-# total refused-work wide range-whole rows=0 n=0 withwork=3401
+# total refused-work wide range-statement rows=254 n=374 withwork=7240
+# total refused-work wide range-whole rows=0 n=0 withwork=3404
 # total s7-parity-exempt wide full rows=489 n=489
 # total s7-parity-exempt wide range-whole rows=489 n=489
 # total known-limit-S6k crlf ontype rows=2 n=2
@@ -8849,6 +8849,9 @@ refused-work wide range-block algorithms/tower_of_hanoi 1 # #2538
 refused-work wide range-block arrays/array_case_list_pattern 3 # #2538
 refused-work wide range-block assignment/assignment_parenthesized_target_routes 3 # #2538
 refused-work wide range-block async/async_class_method 2 # #2538
+refused-work wide range-block async/async_guarded_narrowed_uses 1 # #2538
+refused-work wide range-block async/async_guarded_out_inline_decl 1 # #2538
+refused-work wide range-block async/async_guarded_out_inline_decl_sync 1 # #2538
 refused-work wide range-block async/async_with_0007 7 # #2538
 refused-work wide range-block async/async_with_0036 8 # #2538
 refused-work wide range-block async/async_with_basic 3 # #2538
