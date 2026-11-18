@@ -85,7 +85,7 @@ internal partial class RoslynEmitter
     /// <item><see cref="OperatorLoweringKind.EnumIdentityEquals"/> — the native <c>l == r</c> /
     /// <c>l != r</c> of one int-backed enum type (lifted over <c>E?</c>);</item>
     /// <item><see cref="OperatorLoweringKind.EnumIdentityObjectEquals"/> —
-    /// <c>global::Sharpy.Builtins.EnumIdentity(l, r)</c>, negated for <c>is not</c>;</item>
+    /// <c>global::Sharpy.EnumHelpers.Identity(l, r)</c>, negated for <c>is not</c>;</item>
     /// <item>anything else — <c>object.ReferenceEquals(l, r)</c>, negated for <c>is not</c>.</item>
     /// </list>
     /// Each operand syntax is spliced exactly once in every arm.
@@ -99,7 +99,7 @@ internal partial class RoslynEmitter
         }
 
         ExpressionSyntax comparer = kind == OperatorLoweringKind.EnumIdentityObjectEquals
-            ? MakeGlobalQualifiedName("Sharpy", "Builtins", "EnumIdentity")
+            ? MakeGlobalQualifiedName("Sharpy", "EnumHelpers", "Identity")
             : MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression,
                 PredefinedType(Token(SyntaxKind.ObjectKeyword)),
                 IdentifierName("ReferenceEquals"));

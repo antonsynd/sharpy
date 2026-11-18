@@ -47,7 +47,7 @@ namespace Sharpy.Compiler.Tests.Properties.Differential;
 /// objects, in a chain link as in the binary form).</para>
 /// <para><b>Emitted shape</b> (<see cref="ShapeViolation"/>): every cell that runs and compares two operands of ONE
 /// int-backed enum must emit the enum's native operator, and every pair of two different non-string enums
-/// <c>Builtins.EnumIdentity</c> for <c>is</c> (#2680) and <c>object.Equals</c> for <c>==</c> (the probe's positive
+/// <c>EnumHelpers.Identity</c> for <c>is</c> (#2680) and <c>object.Equals</c> for <c>==</c> (the probe's positive
 /// control). The answers alone cannot see a same-enum pair that was boxed: either call answers it correctly. An <c>==</c> / <c>!=</c> between two different string-backed
 /// enums must NOT be <c>object.Equals</c> (it would answer False): it is the native string comparison.</para>
 /// <para>No cell may draw SPY0465 ("always False due to boxing"): an enum's <c>is</c> is value equality. The
@@ -456,20 +456,20 @@ public class EnumIdentityDifferentialTests : IntegrationTestBase
         return end < 0 ? generated[start..] : generated[start..end];
     }
 
+    /// <summary>The Core helper an <c>is</c> between an enum and a non-same-enum operand lowers to (#2680).</summary>
+    private const string EnumIdentityHelper = "global::Sharpy.EnumHelpers.Identity(";
+
     /// <summary>
     /// The emitted-shape rule (#2670 follow-up): a comparison of two operands of ONE int-backed enum is the enum's
     /// native operator — never a boxing <c>object.Equals</c> / <c>object.ReferenceEquals</c> /
-    /// <c>Builtins.EnumIdentity</c> — whichever symbols the two operands' types reached the checker through (an
+    /// <c>EnumHelpers.Identity</c> — whichever symbols the two operands' types reached the checker through (an
     /// imported CLR enum name against a CLR property's type were two symbols of one enum, and every such stdlib
     /// comparison was boxed). The positive control is the cross-family pair of the same run, which must be
-    /// <c>Builtins.EnumIdentity</c> for <c>is</c> and <c>object.Equals</c> for <c>==</c>: the probe is shown to see the call.
+    /// <c>EnumHelpers.Identity</c> for <c>is</c> and <c>object.Equals</c> for <c>==</c>: the probe is shown to see the call.
     /// An <c>==</c> / <c>!=</c> between two DIFFERENT string-backed enums must not be <c>object.Equals</c>, which
     /// answers False where <c>StrEnum</c> compares the strings: it is the native string comparison.
     /// Returns null when the cell meets the rule or the rule does not speak of it.
     /// </summary>
-    /// <summary>The Core helper an <c>is</c> between an enum and a non-same-enum operand lowers to (#2680).</summary>
-    private const string EnumIdentityHelper = "global::Sharpy.Builtins.EnumIdentity(";
-
     private static string? ShapeViolation(Cell cell, string body)
     {
         if (Family(cell.Left) is not { } left || Family(cell.Right) is not { } right)
@@ -489,7 +489,7 @@ public class EnumIdentityDifferentialTests : IntegrationTestBase
             || body.Contains(EnumIdentityHelper, StringComparison.Ordinal);
         if (left == right)
             return boxes ? "a same-enum pair must lower to the native operator, but the cell boxes" : null;
-        // `is` asks Builtins.EnumIdentity, which never calls an operand's Equals (#2680); `==` is object.Equals.
+        // `is` asks EnumHelpers.Identity, which never calls an operand's Equals (#2680); `==` is object.Equals.
         var crossEnumCall = IsIdentity(cell.Op) ? EnumIdentityHelper : "object.Equals(";
         return body.Contains(crossEnumCall, StringComparison.Ordinal)
             ? null

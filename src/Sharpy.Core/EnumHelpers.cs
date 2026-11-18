@@ -2,7 +2,11 @@ using System;
 
 namespace Sharpy
 {
-    public static partial class Builtins
+    /// <summary>
+    /// Static helpers for enum operations emitted by the Sharpy compiler. Not a builtins class: a Sharpy
+    /// program cannot name it (#2110 is the class of lowering targets on <c>Builtins</c> that a program can call).
+    /// </summary>
+    public static class EnumHelpers
     {
         /// <summary>
         /// Python's <c>left is right</c> where one operand may be an enum member (#2669, #2680). Enum
@@ -28,13 +32,13 @@ namespace Sharpy
         /// (two <c>None</c>s included); otherwise <c>false</c></returns>
         /// <example>
         /// <code>
-        /// EnumIdentity(Color.Red, (object)Color.Red)   // true: the same member
-        /// EnumIdentity(Color.Red, Size.S)              // false: different enums, equal values
-        /// EnumIdentity(loud, Color.Red)                // false, and loud's __eq__ is not called
+        /// EnumHelpers.Identity(Color.Red, (object)Color.Red)   // true: the same member
+        /// EnumHelpers.Identity(Color.Red, Size.S)              // false: different enums, equal values
+        /// EnumHelpers.Identity(loud, Color.Red)                // false, and loud's __eq__ is not called
         /// </code>
         /// </example>
         [System.ComponentModel.EditorBrowsable(System.ComponentModel.EditorBrowsableState.Never)]
-        public static bool EnumIdentity(object? left, object? right)
+        public static bool Identity(object? left, object? right)
         {
             if (left is Enum || right is Enum)
             {
