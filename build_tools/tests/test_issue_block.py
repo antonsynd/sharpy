@@ -264,6 +264,7 @@ def test_pr_prints_one_json_object(capsys):
     assert code == 0 and seen == [2740]
     assert json.loads(out) == {
         "pr": 2740,
+        "block": True,
         "url": "https://github.com/antonsynd/sharpy/pull/2740",
         "base": "dev",
         "merged": True,
@@ -361,3 +362,22 @@ def test_the_workflow_installs_pyyaml_before_the_block_step():
         i for i, s in enumerate(steps) if "pyyaml==" in s.get("run", "").lower()
     ]
     assert installs and installs[0] < index
+
+
+@pytest.mark.parametrize("item", ['!!int "012"', '!!int "1:20"', '!!int "2_680"', '!!int "0x1f"'])
+def test_an_explicit_int_tag_takes_the_decimal_rule(item):
+    # Review of #2741: the implicit resolver was decimal-only, but an explicit tag was not.
+    with pytest.raises(ValueError):
+        mod.parse(f"```yaml\nsharpy-issues:\n  closes: [{item}]\n```\n")
+
+
+def test_an_explicit_decimal_int_tag_still_parses():
+    assert mod.parse('```yaml\nsharpy-issues:\n  closes: [!!int "12"]\n```\n').closes == (12,)
+
+
+@pytest.mark.parametrize("body, found", [(None, False), ("no block here", False), (
+    "```yaml\nsharpy-issues:\n  closes: []\n```\n", True)])
+def test_pr_json_says_whether_a_block_was_found(capsys, body, found):
+    pr = {"body": body, "html_url": "u", "base": {"ref": "dev"}, "merged": True}
+    assert mod.main(["--pr", "7"], fetch=lambda n: pr) == 0
+    assert json.loads(capsys.readouterr().out)["block"] is found

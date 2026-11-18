@@ -94,6 +94,17 @@ _Loader.yaml_implicit_resolvers = {
 _Loader.add_implicit_resolver("tag:yaml.org,2002:int", _DECIMAL, list("0123456789"))
 
 
+def _decimal_int(loader: yaml.SafeLoader, node: yaml.Node) -> int:
+    """An explicit `!!int` tag takes the same decimal-only rule (`!!int "012"` would read as 10)."""
+    text = loader.construct_scalar(node)  # type: ignore[arg-type]
+    if not isinstance(text, str) or not _DECIMAL.match(text):
+        raise ValueError(f"{text!r} is not a plain decimal issue number")
+    return int(text)
+
+
+_Loader.add_constructor("tag:yaml.org,2002:int", _decimal_int)
+
+
 def _yaml_fences(body: str) -> List[str]:
     """The text of every fenced code block whose info string's first word is `yaml`."""
     lines = body.replace("\r\n", "\n").replace("\r", "\n").split("\n")
@@ -249,10 +260,12 @@ def main(
     except ValueError as e:
         print(f"issue-block: PR #{args.pr}: {e}", file=sys.stderr)
         return 1
+    found = block is not None
     block = block or IssueBlock()
     base = pr.get("base")
     out: Dict[str, object] = {
         "pr": args.pr,
+        "block": found,
         "url": pr.get("html_url"),
         "base": base.get("ref") if isinstance(base, dict) else None,
         "merged": bool(pr.get("merged")),

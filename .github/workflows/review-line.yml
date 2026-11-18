@@ -8,8 +8,9 @@
 # independent, that the fixes were read, the counts, an empty-diff history rewrite).
 #
 # ADVISORY as shipped: the check `review-line` is not in the `dev` ruleset's required set; making it
-# required is the owner's ruleset change. A draft PR is judged but never failed (a warning), so work
-# in progress stays green; marking it ready re-runs the check.
+# required is the owner's ruleset change. A draft PR's review line is judged but never failed (a
+# warning), so work in progress stays green; marking it ready re-runs the check. The sharpy-issues
+# step (build_tools/issue_block.py) fails a malformed block on drafts too.
 #
 # Evidence, not a control: a pull_request run uses the PR's OWN copy of this workflow and of the
 # script, so a PR can change the check it is judged by. Even if made required, it would only show

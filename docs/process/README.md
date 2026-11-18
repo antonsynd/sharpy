@@ -74,7 +74,8 @@ The shared rules for `/create-plan`, `/verify-plan`, `/implement-plan` and `/ver
 An issue whose charter tier is `band`, or that has no charter row and earns no §12 letter (a)–(e),
 whose behaviour has an owner ruling (or needs none) and whose fix is contained, goes straight to a
 pull request with a generated or differential test and its mutation record (Rule 12): no plan file,
-no verify stage, the body and the independent review as in item 5, with `Refs #N`. A `light` or `full` group takes the plan path
+no verify stage, the body and the independent review as in item 5, with `Refs #N` and the
+`sharpy-issues` block (`build_tools/issue_block.py`) that `/close-issues pr:<N>` reads. A `light` or `full` group takes the plan path
 (contract §12: no tier is lowered). After the merge, `/close-issues` closes the issue on evidence.
 
 ### Every other change, and the release

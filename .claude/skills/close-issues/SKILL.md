@@ -12,13 +12,13 @@ Close GitHub issues after verifying their implementation. `$ARGUMENTS`: merged p
 
 From a plan file, deduplicate its `#NNN` references and confirm the list with the user first.
 
-From a pull request, read the `sharpy-issues` block of its description:
+From a pull request, read the `sharpy-issues` block of its description (run it, like every `gh` call here, with `dangerouslyDisableSandbox: true`; in a cloud session begin with `. .venv/sharpy-env.sh &&` for PyYAML):
 
 ```bash
-python3 build_tools/issue_block.py --pr <N>   # {"pr", "url", "base", "merged", "merge_commit_sha", "closes", "files"}
+python3 build_tools/issue_block.py --pr <N>   # {"pr", "block", "url", "base", "merged", "merge_commit_sha", "closes", "files"}
 ```
 
-Exit 1 (malformed block) or 2 (`gh` failed): report and stop for that PR. Unless `merged` is true and `base` is `dev`, report and stop for that PR. Otherwise its `closes` list is the issue list, and each close comment in step 4 cites the PR's `url`.
+Exit 1 (malformed block) or 2 (`gh` failed): report and stop for that PR. Unless `merged` is true and `base` is `dev`, report and stop for that PR. `block` false (a PR from before the block, or one that omitted it): report it, and take the list from its description by hand, confirmed with the user. Otherwise its `closes` list is the issue list, and each close comment in step 4 cites the PR's `url`.
 
 ### 2. Fetch issue details
 
@@ -54,8 +54,8 @@ Categorize: **VERIFIED** (found, tests pass), **PARTIAL** (gaps remain), **NOT F
 For each VERIFIED issue:
 
 ```bash
-# comment.md: "Closed — implemented in <sha or PR url>. Verified in codebase: <evidence>."
-gh api -X POST repos/antonsynd/sharpy/issues/<number>/comments -F body=@comment.md
+# $SCRATCH/comment.md (the session scratchpad, not the repo): "Closed — implemented in <sha or PR url>. Verified in codebase: <evidence>."
+gh api -X POST repos/antonsynd/sharpy/issues/<number>/comments -F body=@"$SCRATCH/comment.md"
 gh api -X PATCH repos/antonsynd/sharpy/issues/<number> -f state=closed -f state_reason=completed
 ```
 
@@ -65,8 +65,8 @@ From a `pr:` source, cite that PR's `url`. Otherwise cite `git log --oneline --a
 
 PARTIAL: do **not** close; comment what landed and what remains:
   ```bash
-  # comment.md: "Partial implementation found: <description>. Remaining work: <gaps>."
-  gh api -X POST repos/antonsynd/sharpy/issues/<number>/comments -F body=@comment.md
+  # $SCRATCH/comment.md: "Partial implementation found: <description>. Remaining work: <gaps>."
+  gh api -X POST repos/antonsynd/sharpy/issues/<number>/comments -F body=@"$SCRATCH/comment.md"
   ```
 
 NOT FOUND: do not close; report it.
