@@ -823,11 +823,19 @@ internal partial class RoslynEmitter
     /// <c>N__commit(call, __spillK)</c>, so the store lands before the operand to its right (W10); a
     /// void call leaves its commits to the expression statement it is. In an <c>async def</c> body a
     /// valued call is <c>(__spillK == null ? call(out N__field) : N__commit(call(out __spillK.Value), __spillK))</c> (D6).
+    /// Such a call is emitted once per arm, as D4 asks of a Ready value's storage across an
+    /// <c>await</c> (C# has no <c>ref</c> conditional beside an <c>await</c>, CS8325). One arm runs, so
+    /// each operand is evaluated once; no copy redeclares a name: an inline <c>out</c> declaration is
+    /// declared before the statement (<see cref="IsEmittedPerArm"/>), and a temporary the call declares
+    /// is renamed in the spill arm (<see cref="RenameDeclaredTemporaries"/>).
     /// </summary>
     private ExpressionSyntax GenerateCallWithOutCommits(FunctionCall call, Func<ExpressionSyntax> generate)
     {
         var saved = _outCommits;
         _outCommits = null;
+        var perArm = IsEmittedPerArm(call);
+        if (perArm)
+            _callsEmittedPerArm++;
         ExpressionSyntax result;
         List<OutCommit>? commits;
         try
@@ -838,7 +846,13 @@ internal partial class RoslynEmitter
         {
             commits = _outCommits;
             _outCommits = saved;
+            if (perArm)
+                _callsEmittedPerArm--;
         }
+        // The arms the operands took are the ones IsEmittedPerArm read before the call was generated.
+        if ((commits?.Any(c => c.IsAsync) ?? false) != perArm)
+            throw new InternalCompilerErrorException("RoslynEmitter",
+                "a call's `out` arms disagree with its operands' D6 facts (plan-775c50 D6)", call);
         if (commits == null)
             return result;
 
@@ -863,7 +877,7 @@ internal partial class RoslynEmitter
                 result = ParenthesizedExpression(ConditionalExpression(
                     SpillIsNull(commit.Spill),
                     ReplacePlaceholder(result, commit.Placeholder!, commit.Field!),
-                    CommitCall(commit, ReplacePlaceholder(result, commit.Placeholder!, SpillValue(commit.Spill)))));
+                    CommitCall(commit, RenameDeclaredTemporaries(ReplacePlaceholder(result, commit.Placeholder!, SpillValue(commit.Spill))))));
                 continue;
             }
             result = CommitCall(commit, result);
@@ -871,12 +885,52 @@ internal partial class RoslynEmitter
         return result;
     }
 
+    /// <summary>The depth of calls being generated that are emitted once per arm (D6): an inline
+    /// <c>out</c> declaration under one is declared before the statement, so no copy redeclares it.</summary>
+    private int _callsEmittedPerArm;
+
+    /// <summary>
+    /// Whether <paramref name="call"/> is emitted once per arm (D6): an <c>out</c> operand of it names
+    /// a Guarded value that takes a store and carries the <see cref="AsyncGuardedUseKind.OutOperand"/>
+    /// fact, the condition on which <see cref="GuardedOutOperand"/> picks the arm before the statement.
+    /// Read from the operands' facts before the call is generated.
+    /// </summary>
+    private bool IsEmittedPerArm(FunctionCall call)
+        => call.Arguments.Concat(call.KeywordArguments.Select(k => k.Value)).Any(argument =>
+            argument is ModifiedArgument { Modifier: ParameterModifier.Out, InlineName: null } operand
+            && IsGuardedVariableTarget(operand.Argument)
+            && AsyncGuardedUseOf(operand.Argument) == AsyncGuardedUseKind.OutOperand);
+
     private static ExpressionSyntax CommitCall(OutCommit commit, ExpressionSyntax result)
         => InvocationExpression(commit.Commit).WithArgumentList(ArgumentList(SeparatedList(new[]
         {
             Argument(result),
             Argument(IdentifierName(commit.Spill)),
         })));
+
+    /// <summary>
+    /// The spill arm's copy of a valued call emitted once per arm (D6), each name it declares renamed:
+    /// both arms of the conditional are one C# scope, so a temporary the call declares
+    /// (<c>x is var __opt_N</c>) would be declared twice (CS0128). Such a temporary is read only in the
+    /// expression that declares it; an inline <c>out</c> declaration, read after the statement, is
+    /// declared before it instead (<see cref="IsEmittedPerArm"/>).
+    /// </summary>
+    private ExpressionSyntax RenameDeclaredTemporaries(ExpressionSyntax copy)
+    {
+        var renames = new Dictionary<string, string>(StringComparer.Ordinal);
+        foreach (var designation in copy.DescendantNodes().OfType<SingleVariableDesignationSyntax>())
+        {
+            if (!renames.ContainsKey(designation.Identifier.ValueText))
+                renames[designation.Identifier.ValueText] = $"{designation.Identifier.ValueText}__arm{_tempVarCounter++}";
+        }
+        return renames.Count == 0
+            ? copy
+            : copy.ReplaceTokens(
+                copy.DescendantTokens().Where(token => token.IsKind(SyntaxKind.IdentifierToken)
+                    && token.Parent is SingleVariableDesignationSyntax or IdentifierNameSyntax
+                    && renames.ContainsKey(token.ValueText)),
+                (token, _) => Identifier(renames[token.ValueText]));
+    }
 
     private static ExpressionSyntax SpillIsNull(string spill)
         => BinaryExpression(SyntaxKind.EqualsExpression, IdentifierName(spill), LiteralExpression(SyntaxKind.NullLiteralExpression));

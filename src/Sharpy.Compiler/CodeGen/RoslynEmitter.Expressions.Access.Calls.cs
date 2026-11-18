@@ -1273,6 +1273,21 @@ internal partial class RoslynEmitter
                         yield return Argument(EscapedIdentifierName(mangledName))
                             .WithRefKindKeyword(Token(SyntaxKind.OutKeyword));
                     }
+                    else if (_callsEmittedPerArm > 0
+                             && (typeSyntax is not IdentifierNameSyntax { Identifier.ValueText: "var" }
+                                 ? typeSyntax
+                                 : positionalParams != null && !sawSpread && argIndex < positionalParams.Count
+                                     ? _typeMapper.MapSemanticType(positionalParams[argIndex].Type)
+                                     : null) is { } declaredType)
+                    {
+                        // A call emitted once per arm (plan-775c50 D6) would declare the name in each
+                        // copy: it is declared before the statement, typed as annotated or (`auto`,
+                        // `let`) as the callee's parameter, and each copy assigns it.
+                        HoistDeclaration(LocalDeclarationStatement(VariableDeclaration(declaredType)
+                            .WithVariables(SingletonSeparatedList(VariableDeclarator(EscapedIdentifier(mangledName))))));
+                        yield return Argument(EscapedIdentifierName(mangledName))
+                            .WithRefKindKeyword(Token(SyntaxKind.OutKeyword));
+                    }
                     else
                     {
                         yield return Argument(
