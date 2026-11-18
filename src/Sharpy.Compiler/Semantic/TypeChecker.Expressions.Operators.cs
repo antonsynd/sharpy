@@ -1138,8 +1138,9 @@ internal partial class TypeChecker
             }
 
             // The signature the call binds, as a direct call binds it (InferFunctionTypeSignature): a
-            // method's receiver-substituted formals, its method-level type parameters inferred.
-            var (pipeParamTypes, _) = InferFunctionTypeSignature(ft, allArgTypes);
+            // method's receiver-substituted formals, its method-level type parameters inferred, and the
+            // return type at the same inferred arguments (`"s" |> Box().gm()` is `str`, not `U`).
+            var (pipeParamTypes, pipeReturnType) = InferFunctionTypeSignature(ft, allArgTypes);
 
             // Validate positional argument types
             for (int i = 0; i < allArgTypes.Count; i++)
@@ -1165,7 +1166,7 @@ internal partial class TypeChecker
                 }
             }
 
-            return ft.ReturnType;
+            return pipeReturnType;
         }
 
         AddError($"Pipe target must be callable, got '{calleeType.GetDisplayName()}'",
