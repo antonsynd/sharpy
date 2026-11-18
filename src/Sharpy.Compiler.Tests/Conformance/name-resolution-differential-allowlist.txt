@@ -497,7 +497,6 @@ read/ClassComputedConst/MethodBody/Later/SelfDot/outer=None Ice # #2147 ice
 read/ClassComputedConst/MethodBody/base/self.x Ice # #2147 ice
 read/ClassComputedConst/NestedDefInMethod/Earlier/SelfDot/outer=None Ice # #2147 ice
 read/ClassComputedConst/NestedDefInMethod/Later/SelfDot/outer=None Ice # #2147 ice
-read/ClassComputedConst/ParameterDefault/base/H.x Ice # #2432 ice
 read/ClassComputedConst/StaticInitializer/ComprehensionElement/Earlier/Bare/outer=ModuleDef FalseRefusal # #2423 false-refusal
 read/ClassComputedConst/StaticInitializer/ComprehensionElement/Earlier/Bare/outer=ModuleVar SilentWrong # #2423 silent-wrong
 read/ClassComputedConst/StaticInitializer/ComprehensionElement/Earlier/Bare/outer=None SilentWrong # #2423 missing-refusal
@@ -1421,7 +1420,6 @@ read/StaticField/MethodBody/Earlier/Bare/outer=ModuleTypeAlias Ice # #1925 ice
 read/StaticField/MethodBody/Later/Bare/outer=ModuleTypeAlias Ice # #1925 ice
 read/StaticField/ParameterDefault/Later/Bare/outer=ModuleEnum SilentWrong # #2423 missing-refusal
 read/StaticField/ParameterDefault/Later/Bare/outer=ModuleLiteralConst SilentWrong # #2423 missing-refusal
-read/StaticField/ParameterDefault/base/H.x Ice # #2432 ice
 read/StaticField/StaticInitializer/ComprehensionElement/Earlier/Bare/outer=ModuleDef FalseRefusal # #2423 false-refusal
 read/StaticField/StaticInitializer/ComprehensionElement/Earlier/Bare/outer=ModuleVar SilentWrong # #2423 silent-wrong
 read/StaticField/StaticInitializer/ComprehensionElement/Earlier/Bare/outer=None SilentWrong # #2423 missing-refusal
