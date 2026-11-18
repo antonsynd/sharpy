@@ -45,9 +45,9 @@ The `/spy-*` and `/quick-check` skills accept inline source via the Write tool, 
 | Skill | Arguments | Purpose |
 |-------|-----------|---------|
 | `/commit` | `[optional commit message override]` | Stage and commit current changes with an auto-generated message |
-| `/push` | `[--close-issues 123,456]` | Push current branch to remote origin (runs the generated-artifact staleness gates CI enforces) |
+| `/push` | — | Push current branch to remote origin (runs the generated-artifact staleness gates CI enforces; closes no issue) |
 | `/bump-version` | `[--apply] [--major\|--minor\|--patch]` | Suggest and apply a semver version bump based on commits since the last tag, on its own `claude/bump-X.Y.Z` lane with a pull request into `dev` (the release is the owner's later `dev` → `mainline` merge) |
-| `/close-issues` | `<plan.md or issue numbers: 123,456>` | Close GitHub issues that have been implemented, with verification |
+| `/close-issues` | `<pr:2740[,2741] \| plan.md \| issue numbers: 123,456>` | Close GitHub issues that have been implemented, with verification (a merged PR's `sharpy-issues` block, `build_tools/issue_block.py`) |
 
 ## Planning & Verification
 

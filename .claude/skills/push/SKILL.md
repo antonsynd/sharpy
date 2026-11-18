@@ -1,19 +1,9 @@
 ---
 name: push
 description: Push current branch to remote origin
-argument-hint: "[--close-issues 123,456]"
 ---
 
-Push the current branch to the remote and optionally close GitHub issues.
-
-**Usage:**
-- `/push` — push current branch
-- `/push --close-issues 208,210` — push and close the specified issues
-
-## Argument Handling
-
-Parse `$ARGUMENTS` for:
-- `--close-issues` — comma-separated list of issue numbers to close after pushing
+Push the current branch to the remote. It closes no issue: a PR lists them in its `sharpy-issues` block, and `/close-issues` closes them after the merge.
 
 ## Steps
 
@@ -89,20 +79,9 @@ git push -u origin <current-branch>
 
 If the push fails due to diverged history, **do not force push**: report the error and suggest `git pull --rebase` or ask the user how to proceed. The one exception is CLAUDE.md › Git & Release: `git push --force-with-lease --force-if-includes` on a `claude/*` branch this session created, after it rewrote its own unmerged commits. A `GH013: Repository rule violations` refusal on `dev` is the PR-only ruleset, not a transient: move the commits to a lane branch (`git branch claude/<lane>` then open the PR) rather than retrying.
 
-### 3. Close issues (if requested)
-
-If `--close-issues` was provided, close each issue:
-
-```bash
-gh issue close <number> --reason completed
-```
-
-Report which issues were closed.
-
-### 4. Report
+### 3. Report
 
 Show:
 - Branch name pushed
 - Number of commits pushed
 - Remote URL
-- Any issues closed

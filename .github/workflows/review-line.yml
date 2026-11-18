@@ -8,8 +8,9 @@
 # independent, that the fixes were read, the counts, an empty-diff history rewrite).
 #
 # ADVISORY as shipped: the check `review-line` is not in the `dev` ruleset's required set; making it
-# required is the owner's ruleset change. A draft PR is judged but never failed (a warning), so work
-# in progress stays green; marking it ready re-runs the check.
+# required is the owner's ruleset change. A draft PR's review line is judged but never failed (a
+# warning), so work in progress stays green; marking it ready re-runs the check. The sharpy-issues
+# step (build_tools/issue_block.py) fails a malformed block on drafts too.
 #
 # Evidence, not a control: a pull_request run uses the PR's OWN copy of this workflow and of the
 # script, so a PR can change the check it is judged by. Even if made required, it would only show
@@ -59,6 +60,10 @@ jobs:
       with:
         python-version-file: .python-version
 
+    # build_tools/issue_block.py (the sharpy-issues step below) reads the block with PyYAML.
+    - name: Install PyYAML
+      run: python -m pip install "pyyaml==6.0.3"
+
     - name: Check the independent-review line
       env:
         PR_BODY: ${{ github.event.pull_request.body }}
@@ -71,3 +76,12 @@ jobs:
         args=(--head "$HEAD_SHA" --base "origin/$BASE_REF" --base-ref "$BASE_REF" --author "$AUTHOR")
         if [ "$DRAFT" = "true" ]; then args+=(--draft); fi
         python3 build_tools/check_review_line.py "${args[@]}"
+
+    # The `sharpy-issues` block (build_tools/issue_block.py): the issues the PR closes and files, read
+    # by `/close-issues pr:<N>` after the merge; no workflow closes issues. It runs even when the line
+    # check above failed, so both are reported; the body reaches it through env only.
+    - name: Check the sharpy-issues block
+      if: ${{ !cancelled() }}
+      env:
+        PR_BODY: ${{ github.event.pull_request.body }}
+      run: python3 build_tools/issue_block.py --check
