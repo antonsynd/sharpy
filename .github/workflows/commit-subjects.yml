@@ -47,7 +47,8 @@ jobs:
         extra=()
         if [ "$EVENT" = "pull_request" ]; then
           range="$BASE_SHA..$HEAD_SHA"
-          extra=(--pr-author "$PR_AUTHOR" --pr-title "$PR_TITLE")
+          # `=`: a one-word title that starts with `-` is still the option's value.
+          extra=(--pr-author="$PR_AUTHOR" --pr-title="$PR_TITLE")
         elif [ "$BEFORE" = "0000000000000000000000000000000000000000" ]; then
           echo "new branch push: no range to check"; exit 0
         else

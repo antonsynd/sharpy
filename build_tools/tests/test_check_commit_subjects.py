@@ -565,6 +565,7 @@ def test_without_the_remote_refs_a_promotion_is_a_clean_red(repo):
         "closes https://github.com/antonsynd/sharpy/issues/12",
         "body line\n\nfixes #3 and more",
         "wrapped at 72: the fix\n#1 (not documented; judged as a reference)",
+        "Closes:\n  #1",
     ],
 )
 def test_closing_keywords_are_found(message):
@@ -584,6 +585,7 @@ def test_closing_keywords_are_found(message):
         "close the #1 gap",
         "fix(core): close a leak (Refs #1)",
         "closes #",
+        "the fix\n\n#13 starts a new paragraph",
     ],
 )
 def test_lookalikes_are_not_closing_keywords(message):
@@ -706,5 +708,28 @@ def test_a_pr_title_with_a_closing_keyword_is_red(repo):
 def test_the_workflow_passes_the_pr_title_through_env_only():
     step = _workflow_step()
     assert step["env"]["PR_TITLE"] == "${{ github.event.pull_request.title }}"
-    assert '--pr-title "$PR_TITLE"' in step["run"]
+    assert '--pr-title="$PR_TITLE"' in step["run"]
     assert "${{" not in step["run"]
+
+
+def test_a_wrapped_keyword_prints_on_one_error_line():
+    assert mod.closing_keywords("the fix\n  #1") == ["fix #1"]
+
+
+@pytest.mark.parametrize("title", ["-x", "--max", "--grandfather=none"])
+def test_a_dash_title_is_a_value_not_an_option(repo, title):
+    # Second review of #2740: `--pr-title "$PR_TITLE"` read a one-word `-x` title as an option.
+    base = _git(repo, "rev-parse", "HEAD").strip()
+    _commit(repo, "fix(core): short")
+    assert _run(repo, f"{base}..HEAD", f"--pr-title={title}").returncode == 0
+    assert _run(repo, f"{base}..HEAD", "--pr-title=--fix #3").returncode == 1
+
+
+def test_an_extra_message_record_exits_2(repo, monkeypatch):
+    # A NUL inside a message would split one record in two: more records than commits is refused.
+    base = _git(repo, "rev-parse", "HEAD").strip()
+    _commit(repo, "fix(core): short")
+    head = _git(repo, "rev-parse", "HEAD").strip()
+    monkeypatch.chdir(repo)
+    monkeypatch.setattr(mod, "messages", lambda *a, **k: {head: "x\n", "close #1": ""})
+    assert mod.main([f"{base}..HEAD"]) == 2

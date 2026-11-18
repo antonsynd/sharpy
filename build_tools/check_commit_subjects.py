@@ -29,12 +29,12 @@ the PR writes it into the merge commit's body, which no PR run sees. An issue is
 
 Usage:
     python3 build_tools/check_commit_subjects.py [<range>] [--max 72] [--grandfather <sha>|none]
-        [--pr-author <login>]
+        [--pr-author=<login>] [--pr-title=<title>]
 
 <range> is any `git rev-list` range (`origin/dev..HEAD`, `A...B`); it defaults to `@{upstream}..HEAD`.
 An empty range is clean. An unknown grandfather sha (a clone that lacks it) exempts nothing. Exit 0 if clean, 1 if any subject is over the limit
 or any message has a closing keyword (one `::error::` line per offence, so a CI log shows the sha and
-the subject or the keyword), 2 if git fails.
+the subject or the keyword), 2 if git fails or gives no message for a commit of the range.
 """
 
 from __future__ import annotations
@@ -72,9 +72,10 @@ JUDGED_REFS = ("refs/remotes/origin/dev", "refs/remotes/origin/mainline")
 # GitHub's closing keywords (docs: "Linking a pull request to an issue"), then an issue reference:
 # `#N`, `owner/repo#N` or the issue's URL. `\b` keeps `prefix #1` out; `issue #N` is not a keyword.
 # Whether GitHub reads a reference wrapped onto the next line is not documented; it is judged as one
-# (a false positive costs a reword, a false negative closes an issue).
+# (a false positive costs a reword, a false negative closes an issue). A blank line between is not.
 CLOSING_KEYWORD = re.compile(
-    r"\b(?:close[sd]?|fix(?:e[sd])?|resolve[sd]?)(?::\s*|\s+)"
+    r"\b(?:close[sd]?|fix(?:e[sd])?|resolve[sd]?)"
+    r"(?::[ \t]*(?:\n[ \t]*)?|[ \t]*\n[ \t]*|[ \t]+)"
     r"(?:#\d+|[\w.-]+/[\w.-]+#\d+|https://github\.com/[\w.-]+/[\w.-]+/issues/\d+)",
     re.IGNORECASE,
 )
@@ -126,8 +127,8 @@ def offences(
 
 
 def closing_keywords(message: str) -> list[str]:
-    """Each closing keyword and the reference it names in `message`, in order."""
-    return [m.group(0) for m in CLOSING_KEYWORD.finditer(message)]
+    """Each closing keyword and the reference it names in `message`, in order, on one line."""
+    return [" ".join(m.group(0).split()) for m in CLOSING_KEYWORD.finditer(message)]
 
 
 def parse_messages(text: str) -> dict[str, str]:
@@ -285,10 +286,10 @@ def main(argv: list[str] | None = None) -> int:
             f"::error::commit {c.sha[:9]} subject is {len(c.subject)} chars (max {args.max}): {c.subject}"
         )
     unread = [c.sha for c in commits if c.sha not in bodies]
-    if unread:
+    if unread or len(bodies) != len(commits):
         print(
-            f"check_commit_subjects: git log gave no message for {len(unread)} commit(s) of"
-            f" {args.range}, first {unread[0][:9]}",
+            f"check_commit_subjects: git log gave {len(bodies)} messages for {len(commits)} commits"
+            f" of {args.range}" + (f", none for {unread[0][:9]}" if unread else ""),
             file=sys.stderr,
         )
         return 2
