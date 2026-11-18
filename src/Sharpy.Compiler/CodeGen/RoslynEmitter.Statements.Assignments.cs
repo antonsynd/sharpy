@@ -1251,7 +1251,7 @@ internal partial class RoslynEmitter
         if (symbol == null || GetCodeGenInfo(symbol) is not { StaticStorage: StaticStorage.Guarded } || varDecl.InitialValue == null)
             return null;
         var (varName, typeSyntax) = ModuleFieldNameAndType(varDecl);
-        if (!ClaimModuleField(symbol, varName))
+        if (!ClaimModuleField(symbol != null && HasExecutionOrderIssues(symbol), varName))
             return null;
 
         var propertyAttributes = new SyntaxList<AttributeListSyntax>();
@@ -1301,17 +1301,17 @@ internal partial class RoslynEmitter
     }
 
     /// <summary>
-    /// Whether a module-level declaration of <paramref name="symbol"/> named <paramref name="varName"/>
-    /// is a member of the module class, claiming the name when it is (shared by the field and Guarded
-    /// arms). It is not when its execution order puts it in <c>Main()</c> (assigned before declared,
-    /// or declared more than once), unless a user-defined <c>main</c> forces module-level fields; nor
-    /// when the name is already a field: Sharpy allows a module-level redefinition with another
-    /// type, which is an executable statement in <c>Main()</c> to keep the execution order.
-    /// A null <paramref name="symbol"/> (no semantic analysis) has no execution order to check.
+    /// Whether a module-level declaration named <paramref name="varName"/> is a member of the module
+    /// class, claiming the name when it is (shared by the field and Guarded arms). It is not when its
+    /// execution order puts it in <c>Main()</c> (<paramref name="hasExecutionOrderIssues"/>: assigned
+    /// before declared, or declared more than once), unless a user-defined <c>main</c> forces
+    /// module-level fields; nor when the name is already a field: Sharpy allows a module-level
+    /// redefinition with another type, which is an executable statement in <c>Main()</c> to keep the
+    /// execution order. A declaration with no symbol (no semantic analysis) has no order to check.
     /// </summary>
-    private bool ClaimModuleField(Symbol? symbol, string varName)
+    private bool ClaimModuleField(bool hasExecutionOrderIssues, string varName)
     {
-        if (symbol != null && HasExecutionOrderIssues(symbol) && !_forceModuleLevelFields)
+        if (hasExecutionOrderIssues && !_forceModuleLevelFields)
             return false;
         return _moduleFieldNames.Add(varName);
     }
@@ -1320,7 +1320,7 @@ internal partial class RoslynEmitter
     {
         var symbol = _context.LookupSymbol(varDecl.Name);
         var (varName, typeSyntax) = ModuleFieldNameAndType(varDecl);
-        if (!ClaimModuleField(symbol, varName))
+        if (!ClaimModuleField(symbol != null && HasExecutionOrderIssues(symbol), varName))
             return null;
 
         VariableDeclaratorSyntax declarator;

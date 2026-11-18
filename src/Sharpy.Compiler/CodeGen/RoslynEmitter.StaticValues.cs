@@ -422,6 +422,17 @@ internal partial class RoslynEmitter
             GenericName(Identifier("StrongBox")).WithTypeArgumentList(TypeArgumentList(SingletonSeparatedList(type)))));
 
     /// <summary>
+    /// A Guarded value's initializer (D4), its one user expression, generated alone under its own
+    /// scope sink: the value <c>N__init</c> stores, and the statements it hoists, which run first.
+    /// </summary>
+    private (List<StatementSyntax> Hoisted, ExpressionSyntax Value) GenerateGuardedInitializer(Expression initializer)
+    {
+        ExpressionSyntax value = null!;
+        var hoisted = WithScopeSink(() => value = GenerateExpression(initializer));
+        return (hoisted, value);
+    }
+
+    /// <summary>
     /// A Guarded variable, <c>@static</c> field or computed const (D4): backing field, state, init,
     /// slow path, and a property of the value's own C# name that returns by reference (a const:
     /// <c>ref readonly</c>); a writable value also has its plain store (<c>N__set</c>) and its
@@ -435,8 +446,7 @@ internal partial class RoslynEmitter
         // The backing field and the helpers are the assembly's (D10): an `async def` body names the
         // field after N__ensure() (D6), and every store and `out` site is compiled here.
         var access = HelperAccess(v.Access);
-        ExpressionSyntax value = null!;
-        var hoisted = WithScopeSink(() => value = GenerateExpression(v.Initializer));
+        var (hoisted, value) = GenerateGuardedInitializer(v.Initializer);
         foreach (var member in GenerateGuardedStorage(name, v.SourceName, fieldName, v.Type, hoisted, value, v.IsOnGenericHost,
                      v.FieldAttributes, fieldModifiers: access))
             yield return member;

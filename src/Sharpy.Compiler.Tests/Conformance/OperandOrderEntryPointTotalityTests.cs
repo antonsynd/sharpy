@@ -56,7 +56,6 @@ public class OperandOrderEntryPointTotalityTests
         // --- Conditional by design: ordering these operands would be WRONG. The later operand
         // must not be evaluated at all unless its branch is taken; each pushes its own sink. ---
         ["GenerateNullCoalesceOp"] = "the rhs evaluates only on the absent path; it has its own evaluation sink",
-        ["GenerateGuardedStorage"] = "plan-775c50 D4: one Guarded value's initializer, generated alone into its init method under its own scope sink; no sibling operand",
         ["GenerateShortCircuitOp"] = "the rhs evaluates only when the lhs does not decide; own sink",
         ["GenerateConditionalExpression"] = "exactly one arm evaluates; each arm has its own sink",
         ["GenerateAssert"] = "the message evaluates only on failure; it has its own evaluation sink",
@@ -79,6 +78,7 @@ public class OperandOrderEntryPointTotalityTests
         // through GeneratePerInstanceDefaultAssignment, leaving the method with a single generation
         // entry point (GenerateParameterDefault), so it is no longer a multi-operand site at all.
         ["GenerateInitializerExpression"] = "one user operand — the field/module/property initializer's own value (#1685); flagged only because the call sits inside the WithScopeSink hoist-capture lambda, not because there is a second sibling operand",
+        ["GenerateGuardedInitializer"] = "one user operand — a Guarded value's initializer (plan-775c50 D4), generated alone for its init method; flagged only because the call sits inside the WithScopeSink hoist-capture lambda, exactly as GenerateInitializerExpression is",
         ["GeneratePerInstanceDefaultAssignment"] = "one user operand — the per-instance field default's own value (#1684 R-A, #1901); the other expression in the method is the sentinel PARAMETER name, not a generated user expression. Flagged only because the call sits inside the WithScopeSink hoist-capture lambda, exactly as GenerateInitializerExpression is",
         ["GenerateAssertThrowsStatements"] = "one user operand (the match pattern)",
         ["GenerateNestedLinqChain"] = "one operand per comprehension clause; CaptureHoisted owns each clause's sink",
