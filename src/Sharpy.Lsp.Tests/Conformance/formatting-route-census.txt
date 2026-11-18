@@ -18,60 +18,60 @@
 # total known-limit-S6ok identity ontype rows=13 n=45
 # total known-limit-S6ok identity range-line rows=13 n=45
 # total known-limit-S6ok identity range-whole rows=13 n=39
-# total refused-work identity range-block rows=7 n=9 withwork=2438
+# total refused-work identity range-block rows=7 n=9 withwork=2439
 # total refused-work identity range-line rows=4 n=10 withwork=138
 # total refused-work identity range-statement rows=1 n=1 withwork=1054
-# total refused-work identity range-whole rows=0 n=0 withwork=2262
-# total s7-parity-exempt identity full rows=489 n=489
+# total refused-work identity range-whole rows=0 n=0 withwork=2263
+# total s7-parity-exempt identity full rows=490 n=490
 # total s7-parity-exempt identity ontype rows=484 n=484
 # total s7-parity-exempt identity range-line rows=484 n=484
-# total s7-parity-exempt identity range-whole rows=489 n=489
+# total s7-parity-exempt identity range-whole rows=490 n=490
 # total known-limit-S6k comment ontype rows=2 n=2
 # total known-limit-S6k comment range-line rows=2 n=2
 # total known-limit-S6ok comment full rows=2 n=6
 # total known-limit-S6ok comment ontype rows=2 n=18
 # total known-limit-S6ok comment range-line rows=2 n=18
 # total known-limit-S6ok comment range-whole rows=2 n=6
-# total refused-work comment range-block rows=1 n=4 withwork=2511
+# total refused-work comment range-block rows=1 n=4 withwork=2512
 # total refused-work comment range-line rows=0 n=0 withwork=33
 # total refused-work comment range-statement rows=0 n=0 withwork=732
-# total refused-work comment range-whole rows=0 n=0 withwork=3410
-# total s7-parity-exempt comment full rows=1672 n=1672
+# total refused-work comment range-whole rows=0 n=0 withwork=3411
+# total s7-parity-exempt comment full rows=1673 n=1673
 # total s7-parity-exempt comment ontype rows=1667 n=1667
 # total s7-parity-exempt comment range-line rows=1667 n=1667
-# total s7-parity-exempt comment range-whole rows=1672 n=1672
+# total s7-parity-exempt comment range-whole rows=1673 n=1673
 # total known-limit-S6k wide ontype rows=2 n=2
 # total known-limit-S6k wide range-line rows=2 n=2
 # total known-limit-S6ok wide full rows=13 n=39
 # total known-limit-S6ok wide ontype rows=13 n=45
 # total known-limit-S6ok wide range-line rows=13 n=45
 # total known-limit-S6ok wide range-whole rows=13 n=39
-# total refused-work wide range-block rows=1179 n=4397 withwork=13984
+# total refused-work wide range-block rows=1180 n=4399 withwork=13989
 # total refused-work wide range-line rows=196 n=2802 withwork=5180
-# total refused-work wide range-statement rows=254 n=374 withwork=7240
-# total refused-work wide range-whole rows=0 n=0 withwork=3404
-# total s7-parity-exempt wide full rows=489 n=489
-# total s7-parity-exempt wide range-whole rows=489 n=489
+# total refused-work wide range-statement rows=254 n=374 withwork=7242
+# total refused-work wide range-whole rows=0 n=0 withwork=3405
+# total s7-parity-exempt wide full rows=490 n=490
+# total s7-parity-exempt wide range-whole rows=490 n=490
 # total known-limit-S6k crlf ontype rows=2 n=2
 # total known-limit-S6k crlf range-line rows=2 n=2
 # total known-limit-S6ok crlf full rows=13 n=39
 # total known-limit-S6ok crlf ontype rows=13 n=45
 # total known-limit-S6ok crlf range-line rows=13 n=45
 # total known-limit-S6ok crlf range-whole rows=13 n=39
-# total s7-parity-exempt crlf full rows=489 n=489
+# total s7-parity-exempt crlf full rows=490 n=490
 # total s7-parity-exempt crlf ontype rows=484 n=484
 # total s7-parity-exempt crlf range-line rows=484 n=484
-# total s7-parity-exempt crlf range-whole rows=489 n=489
+# total s7-parity-exempt crlf range-whole rows=490 n=490
 # total known-limit-S6k cr ontype rows=2 n=2
 # total known-limit-S6k cr range-line rows=2 n=2
 # total known-limit-S6ok cr full rows=13 n=39
 # total known-limit-S6ok cr ontype rows=13 n=45
 # total known-limit-S6ok cr range-line rows=13 n=45
 # total known-limit-S6ok cr range-whole rows=13 n=39
-# total s7-parity-exempt cr full rows=489 n=489
+# total s7-parity-exempt cr full rows=490 n=490
 # total s7-parity-exempt cr ontype rows=484 n=484
 # total s7-parity-exempt cr range-line rows=484 n=484
-# total s7-parity-exempt cr range-whole rows=489 n=489
+# total s7-parity-exempt cr range-whole rows=490 n=490
 known-limit-S6k identity ontype Formatting/byte_multiline_string 1 # #2274
 known-limit-S6k identity ontype Formatting/raw_multiline_string 1 # #2274
 known-limit-S6k identity range-line Formatting/byte_multiline_string 1 # #2274
@@ -364,6 +364,7 @@ s7-parity-exempt identity full experimental/property_observers_gated 1 # #2279
 s7-parity-exempt identity full experimental/property_observers_invalid_interface 1 # #2279
 s7-parity-exempt identity full experimental/property_observers_invalid_override 1 # #2279
 s7-parity-exempt identity full experimental/property_observers_invalid_readonly 1 # #2279
+s7-parity-exempt identity full experimental/property_observers_static_guarded_backing_read 1 # #2279
 s7-parity-exempt identity full experimental/property_observers_static_guarded_old 1 # #2279
 s7-parity-exempt identity full experimental/property_observers_ungated 1 # #2279
 s7-parity-exempt identity full expressions/cond_truth_distributed_1743 1 # #2279
@@ -1821,6 +1822,7 @@ s7-parity-exempt identity range-whole experimental/property_observers_gated 1 # 
 s7-parity-exempt identity range-whole experimental/property_observers_invalid_interface 1 # #2279
 s7-parity-exempt identity range-whole experimental/property_observers_invalid_override 1 # #2279
 s7-parity-exempt identity range-whole experimental/property_observers_invalid_readonly 1 # #2279
+s7-parity-exempt identity range-whole experimental/property_observers_static_guarded_backing_read 1 # #2279
 s7-parity-exempt identity range-whole experimental/property_observers_static_guarded_old 1 # #2279
 s7-parity-exempt identity range-whole experimental/property_observers_ungated 1 # #2279
 s7-parity-exempt identity range-whole expressions/cond_truth_distributed_1743 1 # #2279
@@ -2822,6 +2824,7 @@ s7-parity-exempt comment full experimental/property_observers_gated 1 # #2279
 s7-parity-exempt comment full experimental/property_observers_invalid_interface 1 # #2279
 s7-parity-exempt comment full experimental/property_observers_invalid_override 1 # #2279
 s7-parity-exempt comment full experimental/property_observers_invalid_readonly 1 # #2279
+s7-parity-exempt comment full experimental/property_observers_static_guarded_backing_read 1 # #2279
 s7-parity-exempt comment full experimental/property_observers_static_guarded_old 1 # #2279
 s7-parity-exempt comment full experimental/property_observers_ungated 1 # #2279
 s7-parity-exempt comment full expressions/argument_order_b5_17 1 # #2279
@@ -7828,6 +7831,7 @@ s7-parity-exempt comment range-whole experimental/property_observers_gated 1 # #
 s7-parity-exempt comment range-whole experimental/property_observers_invalid_interface 1 # #2279
 s7-parity-exempt comment range-whole experimental/property_observers_invalid_override 1 # #2279
 s7-parity-exempt comment range-whole experimental/property_observers_invalid_readonly 1 # #2279
+s7-parity-exempt comment range-whole experimental/property_observers_static_guarded_backing_read 1 # #2279
 s7-parity-exempt comment range-whole experimental/property_observers_static_guarded_old 1 # #2279
 s7-parity-exempt comment range-whole experimental/property_observers_ungated 1 # #2279
 s7-parity-exempt comment range-whole expressions/argument_order_b5_17 1 # #2279
@@ -9413,6 +9417,7 @@ refused-work wide range-block experimental/property_observer_in_def_gated 3 # #2
 refused-work wide range-block experimental/property_observer_in_def_ungated 3 # #2538
 refused-work wide range-block experimental/property_observers_backing_field_collision_1456 2 # #2538
 refused-work wide range-block experimental/property_observers_gated 3 # #2538
+refused-work wide range-block experimental/property_observers_static_guarded_backing_read 2 # #2538
 refused-work wide range-block experimental/property_observers_static_guarded_old 3 # #2538
 refused-work wide range-block experimental/property_observers_ungated 3 # #2538
 refused-work wide range-block explicit_tuple_type_argument_1470 3 # #2538
@@ -10686,6 +10691,7 @@ s7-parity-exempt wide full experimental/property_observers_gated 1 # #2279
 s7-parity-exempt wide full experimental/property_observers_invalid_interface 1 # #2279
 s7-parity-exempt wide full experimental/property_observers_invalid_override 1 # #2279
 s7-parity-exempt wide full experimental/property_observers_invalid_readonly 1 # #2279
+s7-parity-exempt wide full experimental/property_observers_static_guarded_backing_read 1 # #2279
 s7-parity-exempt wide full experimental/property_observers_static_guarded_old 1 # #2279
 s7-parity-exempt wide full experimental/property_observers_ungated 1 # #2279
 s7-parity-exempt wide full expressions/cond_truth_distributed_1743 1 # #2279
@@ -11175,6 +11181,7 @@ s7-parity-exempt wide range-whole experimental/property_observers_gated 1 # #227
 s7-parity-exempt wide range-whole experimental/property_observers_invalid_interface 1 # #2279
 s7-parity-exempt wide range-whole experimental/property_observers_invalid_override 1 # #2279
 s7-parity-exempt wide range-whole experimental/property_observers_invalid_readonly 1 # #2279
+s7-parity-exempt wide range-whole experimental/property_observers_static_guarded_backing_read 1 # #2279
 s7-parity-exempt wide range-whole experimental/property_observers_static_guarded_old 1 # #2279
 s7-parity-exempt wide range-whole experimental/property_observers_ungated 1 # #2279
 s7-parity-exempt wide range-whole expressions/cond_truth_distributed_1743 1 # #2279
@@ -11720,6 +11727,7 @@ s7-parity-exempt crlf full experimental/property_observers_gated 1 # #2279
 s7-parity-exempt crlf full experimental/property_observers_invalid_interface 1 # #2279
 s7-parity-exempt crlf full experimental/property_observers_invalid_override 1 # #2279
 s7-parity-exempt crlf full experimental/property_observers_invalid_readonly 1 # #2279
+s7-parity-exempt crlf full experimental/property_observers_static_guarded_backing_read 1 # #2279
 s7-parity-exempt crlf full experimental/property_observers_static_guarded_old 1 # #2279
 s7-parity-exempt crlf full experimental/property_observers_ungated 1 # #2279
 s7-parity-exempt crlf full expressions/cond_truth_distributed_1743 1 # #2279
@@ -13177,6 +13185,7 @@ s7-parity-exempt crlf range-whole experimental/property_observers_gated 1 # #227
 s7-parity-exempt crlf range-whole experimental/property_observers_invalid_interface 1 # #2279
 s7-parity-exempt crlf range-whole experimental/property_observers_invalid_override 1 # #2279
 s7-parity-exempt crlf range-whole experimental/property_observers_invalid_readonly 1 # #2279
+s7-parity-exempt crlf range-whole experimental/property_observers_static_guarded_backing_read 1 # #2279
 s7-parity-exempt crlf range-whole experimental/property_observers_static_guarded_old 1 # #2279
 s7-parity-exempt crlf range-whole experimental/property_observers_ungated 1 # #2279
 s7-parity-exempt crlf range-whole expressions/cond_truth_distributed_1743 1 # #2279
@@ -13722,6 +13731,7 @@ s7-parity-exempt cr full experimental/property_observers_gated 1 # #2279
 s7-parity-exempt cr full experimental/property_observers_invalid_interface 1 # #2279
 s7-parity-exempt cr full experimental/property_observers_invalid_override 1 # #2279
 s7-parity-exempt cr full experimental/property_observers_invalid_readonly 1 # #2279
+s7-parity-exempt cr full experimental/property_observers_static_guarded_backing_read 1 # #2279
 s7-parity-exempt cr full experimental/property_observers_static_guarded_old 1 # #2279
 s7-parity-exempt cr full experimental/property_observers_ungated 1 # #2279
 s7-parity-exempt cr full expressions/cond_truth_distributed_1743 1 # #2279
@@ -15179,6 +15189,7 @@ s7-parity-exempt cr range-whole experimental/property_observers_gated 1 # #2279
 s7-parity-exempt cr range-whole experimental/property_observers_invalid_interface 1 # #2279
 s7-parity-exempt cr range-whole experimental/property_observers_invalid_override 1 # #2279
 s7-parity-exempt cr range-whole experimental/property_observers_invalid_readonly 1 # #2279
+s7-parity-exempt cr range-whole experimental/property_observers_static_guarded_backing_read 1 # #2279
 s7-parity-exempt cr range-whole experimental/property_observers_static_guarded_old 1 # #2279
 s7-parity-exempt cr range-whole experimental/property_observers_ungated 1 # #2279
 s7-parity-exempt cr range-whole expressions/cond_truth_distributed_1743 1 # #2279
