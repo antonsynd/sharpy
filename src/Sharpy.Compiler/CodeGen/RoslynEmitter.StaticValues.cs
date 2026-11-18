@@ -932,23 +932,43 @@ internal partial class RoslynEmitter
     /// (<c>x is var __opt_N</c>) would be declared twice (CS0128). Such a temporary is read only in the
     /// expression that declares it; an inline <c>out</c> declaration, read after the statement, is
     /// declared before it instead (<see cref="IsEmittedPerArm"/>).
+    /// <para>Only the declaration and the simple-name reads of it are renamed (<see cref="IsVariableReference"/>):
+    /// a member name (<c>box.v</c>, <c>?.v</c>), a named argument (<c>v:</c>), a property-pattern
+    /// member and a type spelled the same are other things, and keep their names.</para>
     /// </summary>
     private ExpressionSyntax RenameDeclaredTemporaries(ExpressionSyntax copy)
+        => RenameDeclaredNames(copy, declared => $"{declared}__arm{_tempVarCounter++}");
+
+    /// <summary><see cref="RenameDeclaredTemporaries"/>, each declared name's fresh spelling from
+    /// <paramref name="fresh"/>.</summary>
+    internal static ExpressionSyntax RenameDeclaredNames(ExpressionSyntax copy, Func<string, string> fresh)
     {
         var renames = new Dictionary<string, string>(StringComparer.Ordinal);
         foreach (var designation in copy.DescendantNodes().OfType<SingleVariableDesignationSyntax>())
         {
             if (!renames.ContainsKey(designation.Identifier.ValueText))
-                renames[designation.Identifier.ValueText] = $"{designation.Identifier.ValueText}__arm{_tempVarCounter++}";
+                renames[designation.Identifier.ValueText] = fresh(designation.Identifier.ValueText);
         }
         return renames.Count == 0
             ? copy
             : copy.ReplaceTokens(
                 copy.DescendantTokens().Where(token => token.IsKind(SyntaxKind.IdentifierToken)
-                    && token.Parent is SingleVariableDesignationSyntax or IdentifierNameSyntax
+                    && (token.Parent is SingleVariableDesignationSyntax
+                        || token.Parent is IdentifierNameSyntax name && IsVariableReference(name))
                     && renames.ContainsKey(token.ValueText)),
-                (token, _) => Identifier(renames[token.ValueText]));
+                (token, _) => Identifier(token.LeadingTrivia, renames[token.ValueText], token.TrailingTrivia));
     }
+
+    /// <summary>Whether <paramref name="name"/> is a simple name read as a variable: not the member
+    /// of a member access or binding, a named argument or property-pattern member, nor a type.</summary>
+    private static bool IsVariableReference(IdentifierNameSyntax name)
+        => name.Parent switch
+        {
+            MemberAccessExpressionSyntax access => access.Expression == name,
+            MemberBindingExpressionSyntax or NameColonSyntax or ExpressionColonSyntax or NameEqualsSyntax
+                or QualifiedNameSyntax or AliasQualifiedNameSyntax => false,
+            _ => !SyntaxFacts.IsInNamespaceOrTypeContext(name),
+        };
 
     private static ExpressionSyntax SpillIsNull(string spill)
         => BinaryExpression(SyntaxKind.EqualsExpression, IdentifierName(spill), LiteralExpression(SyntaxKind.NullLiteralExpression));
