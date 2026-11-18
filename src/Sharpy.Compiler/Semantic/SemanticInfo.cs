@@ -3437,9 +3437,11 @@ public enum OperatorLoweringKind
     /// <summary>
     /// <c>is</c> / <c>is not</c> with an int-backed enum operand against anything that is not the same
     /// enum type — <c>object</c>, another enum type, a type parameter, any other value (#2669).
-    /// Emitted as <c>object.Equals(l, r)</c> / <c>!object.Equals(l, r)</c>: each operand is evaluated
-    /// once, a boxed enum equals only a boxed member of the same enum with the same value (an
-    /// <c>object</c> holding the member → True; a different enum type → False, the owner's ruling).
+    /// Emitted as <c>EnumHelpers.Identity(l, r)</c> / <c>!EnumHelpers.Identity(l, r)</c>: each operand
+    /// is evaluated once, left first, a boxed enum is identical only to a boxed member of the same enum
+    /// with the same value (an <c>object</c> holding the member → True; a different enum type → False,
+    /// the owner's ruling), and no operand's own <c>Equals</c> is called — <c>is</c> never runs user code
+    /// (#2680: <c>object.Equals(l, r)</c> ran a user <c>__eq__</c> on the left).
     /// </summary>
     EnumIdentityObjectEquals,
 
