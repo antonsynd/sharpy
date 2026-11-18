@@ -1,10 +1,10 @@
 ---
 name: close-issues
 description: Close GitHub issues that have been implemented, with verification
-argument-hint: "<plan.md or issue numbers: 123,456>"
+argument-hint: "<pr:2740[,2741] | plan.md | issue numbers: 123,456>"
 ---
 
-Close GitHub issues after verifying their implementation. `$ARGUMENTS`: comma-separated numbers (`208,210`), a plan file (extract its `#NNN` references), or empty (ask the user).
+Close GitHub issues after verifying their implementation. `$ARGUMENTS`: merged pull requests (`pr:2740` or `pr:2740,2741`), comma-separated numbers (`208,210`), a plan file (extract its `#NNN` references), or empty (ask the user). An implemented issue is closed here only, never by a closing keyword, `/push` or a workflow.
 
 ## Steps
 
@@ -12,12 +12,20 @@ Close GitHub issues after verifying their implementation. `$ARGUMENTS`: comma-se
 
 From a plan file, deduplicate its `#NNN` references and confirm the list with the user first.
 
+From a pull request, read the `sharpy-issues` block of its description:
+
+```bash
+python3 build_tools/issue_block.py --pr <N>   # {"pr", "url", "base", "merged", "merge_commit_sha", "closes", "files"}
+```
+
+Exit 1 (malformed block) or 2 (`gh` failed): report and stop for that PR. Unless `merged` is true and `base` is `dev`, report and stop for that PR. Otherwise its `closes` list is the issue list, and each close comment in step 4 cites the PR's `url`.
+
 ### 2. Fetch issue details
 
 Run `gh` with `dangerouslyDisableSandbox: true` (sandbox TLS):
 
 ```bash
-gh issue view <number> --json title,body,state,labels
+gh api -X GET repos/antonsynd/sharpy/issues/<number> --jq '{title, body, state, labels: [.labels[].name]}'
 ```
 
 Skip issues that are already closed; report them as "already closed".
@@ -46,16 +54,19 @@ Categorize: **VERIFIED** (found, tests pass), **PARTIAL** (gaps remain), **NOT F
 For each VERIFIED issue:
 
 ```bash
-gh issue close <number> --reason completed --comment "Closed — implemented in $(git log --oneline --all --grep='#<number>' | head -1 | cut -d' ' -f1). Verified in codebase."
+# comment.md: "Closed — implemented in <sha or PR url>. Verified in codebase: <evidence>."
+gh api -X POST repos/antonsynd/sharpy/issues/<number>/comments -F body=@comment.md
+gh api -X PATCH repos/antonsynd/sharpy/issues/<number> -f state=closed -f state_reason=completed
 ```
 
-If the commit hash isn't found via `--grep`, cite the merged pull request that carried the change into `dev` instead (`gh api "repos/{owner}/{repo}/commits/<sha>/pulls" --jq '.[0].html_url'`), never a lane branch name — lane branches are restarted after their pull request merges.
+From a `pr:` source, cite that PR's `url`. Otherwise cite `git log --oneline --all --grep='#<number>' | head -1`; if that finds nothing, cite the merged pull request that carried the change into `dev` instead (`gh api "repos/{owner}/{repo}/commits/<sha>/pulls" --jq '.[0].html_url'`), never a lane branch name — lane branches are restarted after their pull request merges.
 
 ### 5. Handle unverified issues
 
 PARTIAL: do **not** close; comment what landed and what remains:
   ```bash
-  gh issue comment <number> --body "Partial implementation found: <description>. Remaining work: <gaps>."
+  # comment.md: "Partial implementation found: <description>. Remaining work: <gaps>."
+  gh api -X POST repos/antonsynd/sharpy/issues/<number>/comments -F body=@comment.md
   ```
 
 NOT FOUND: do not close; report it.
