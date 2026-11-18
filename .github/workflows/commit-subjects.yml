@@ -13,6 +13,8 @@ on:
   push:
     branches: [ "dev", "mainline" ]
   pull_request:
+    # `edited`: the title becomes the merge commit's body, so a retitled PR is judged again.
+    types: [ opened, synchronize, reopened, edited ]
 
 permissions:
   contents: read
@@ -40,11 +42,12 @@ jobs:
         BEFORE: ${{ github.event.before }}
         AFTER: ${{ github.sha }}
         PR_AUTHOR: ${{ github.event.pull_request.user.login }}
+        PR_TITLE: ${{ github.event.pull_request.title }}
       run: |
         extra=()
         if [ "$EVENT" = "pull_request" ]; then
           range="$BASE_SHA..$HEAD_SHA"
-          extra=(--pr-author "$PR_AUTHOR")
+          extra=(--pr-author "$PR_AUTHOR" --pr-title "$PR_TITLE")
         elif [ "$BEFORE" = "0000000000000000000000000000000000000000" ]; then
           echo "new branch push: no range to check"; exit 0
         else

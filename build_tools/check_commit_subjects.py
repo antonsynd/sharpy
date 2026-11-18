@@ -24,7 +24,8 @@ Closing keywords (owner, 2026-11-18): GitHub closes an issue when a commit whose
 the default branch, `mainline`. The promotion #2736 closed the in-flight tracker #2422 that way
 from a commit body quoting a ruling ("Move cell, close #2422"). Every commit of the range is
 judged, merges, reverts and Dependabot's included (none of them is exempt from GitHub's reading),
-except those behind the grandfather line. An issue is cited as `Refs #N`.
+except those behind the grandfather line. On a PR run, `--pr-title` judges the title too: merging
+the PR writes it into the merge commit's body, which no PR run sees. An issue is cited as `Refs #N`.
 
 Usage:
     python3 build_tools/check_commit_subjects.py [<range>] [--max 72] [--grandfather <sha>|none]
@@ -70,8 +71,10 @@ DEPENDABOT_SUBJECT = re.compile(
 JUDGED_REFS = ("refs/remotes/origin/dev", "refs/remotes/origin/mainline")
 # GitHub's closing keywords (docs: "Linking a pull request to an issue"), then an issue reference:
 # `#N`, `owner/repo#N` or the issue's URL. `\b` keeps `prefix #1` out; `issue #N` is not a keyword.
+# Whether GitHub reads a reference wrapped onto the next line is not documented; it is judged as one
+# (a false positive costs a reword, a false negative closes an issue).
 CLOSING_KEYWORD = re.compile(
-    r"\b(?:close[sd]?|fix(?:e[sd])?|resolve[sd]?)(?::[ \t]*|[ \t]+)"
+    r"\b(?:close[sd]?|fix(?:e[sd])?|resolve[sd]?)(?::\s*|\s+)"
     r"(?:#\d+|[\w.-]+/[\w.-]+#\d+|https://github\.com/[\w.-]+/[\w.-]+/issues/\d+)",
     re.IGNORECASE,
 )
@@ -128,13 +131,14 @@ def closing_keywords(message: str) -> list[str]:
 
 
 def parse_messages(text: str) -> dict[str, str]:
-    """Parse `git log --format=%H%x00%B%x1e` output into {sha: full message}."""
+    """Parse `git log -z --format=%H%n%B` output (NUL between records; a message has no NUL) into
+    {sha: full message}."""
     out: dict[str, str] = {}
-    for record in text.split("\x1e"):
+    for record in text.split("\0"):
         record = record.lstrip("\n")
         if not record:
             continue
-        sha, _, message = record.partition("\0")
+        sha, _, message = record.partition("\n")
         out[sha] = message
     return out
 
@@ -143,7 +147,16 @@ def messages(
     rev_range: str, cwd: str | None = None, exclude_reachable_from: str | None = None
 ) -> dict[str, str]:
     """The full message of each commit of `rev_range` (minus the ancestors of `exclude_reachable_from`)."""
-    args = ["git", "log", "--format=%H%x00%B%x1e", rev_range]
+    # `log.showSignature` would print gpg lines into the records (rev_list's rev-list ignores it).
+    args = [
+        "git",
+        "log",
+        "-z",
+        "--no-show-signature",
+        "--no-color",
+        "--format=%H%n%B",
+        rev_range,
+    ]
     if exclude_reachable_from:
         args.append(f"^{exclude_reachable_from}")
     result = subprocess.run(args, capture_output=True, text=True, cwd=cwd, check=False)
@@ -235,6 +248,11 @@ def main(argv: list[str] | None = None) -> int:
         f" (default {GATE_COMMIT[:9]}, the commit that introduced the gate)",
     )
     parser.add_argument(
+        "--pr-title",
+        help="the pull request's title (a PR run): it becomes the merge commit's body, so it is judged"
+        " for closing keywords",
+    )
+    parser.add_argument(
         "--pr-author",
         help="the pull request author's login (a PR run); a Dependabot commit is exempt only when it"
         f" is {DEPENDABOT_LOGIN} or the commit is already on {' or '.join(JUDGED_REFS)}",
@@ -266,14 +284,28 @@ def main(argv: list[str] | None = None) -> int:
         print(
             f"::error::commit {c.sha[:9]} subject is {len(c.subject)} chars (max {args.max}): {c.subject}"
         )
-    keyed = [(c, closing_keywords(bodies.get(c.sha, ""))) for c in commits]
+    unread = [c.sha for c in commits if c.sha not in bodies]
+    if unread:
+        print(
+            f"check_commit_subjects: git log gave no message for {len(unread)} commit(s) of"
+            f" {args.range}, first {unread[0][:9]}",
+            file=sys.stderr,
+        )
+        return 2
+    keyed = [(c, closing_keywords(bodies[c.sha])) for c in commits]
     keyed = [(c, found) for c, found in keyed if found]
+    title_keys = closing_keywords(args.pr_title) if args.pr_title else []
+    if title_keys:
+        print(
+            f"::error::the PR title has a closing keyword ({'; '.join(title_keys)}): merging writes it"
+            f" into the merge commit's body, which closes that issue on mainline; use `Refs #N`"
+        )
     for c, found in keyed:
         print(
             f"::error::commit {c.sha[:9]} message has a closing keyword ({'; '.join(found)}): GitHub"
             f" closes that issue when the commit reaches mainline; reword it to `Refs #N`: {c.subject}"
         )
-    if bad or keyed:
+    if bad or keyed or title_keys:
         if bad:
             print(
                 f"check_commit_subjects: {len(bad)} of {checked} subjects over {args.max} chars in {args.range}"

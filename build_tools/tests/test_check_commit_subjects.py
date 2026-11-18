@@ -564,6 +564,7 @@ def test_without_the_remote_refs_a_promotion_is_a_clean_red(repo):
         "fix antonsynd/sharpy#12",
         "closes https://github.com/antonsynd/sharpy/issues/12",
         "body line\n\nfixes #3 and more",
+        "wrapped at 72: the fix\n#1 (not documented; judged as a reference)",
     ],
 )
 def test_closing_keywords_are_found(message):
@@ -583,7 +584,6 @@ def test_closing_keywords_are_found(message):
         "close the #1 gap",
         "fix(core): close a leak (Refs #1)",
         "closes #",
-        "fix\n#1",
     ],
 )
 def test_lookalikes_are_not_closing_keywords(message):
@@ -591,9 +591,9 @@ def test_lookalikes_are_not_closing_keywords(message):
 
 
 def test_parse_messages_keeps_multi_line_bodies():
-    text = "1111\0subj one\n\nbody, close #5\n\x1e\n2222\0subj two\n\x1e\n"
+    text = "1111\nsubj one\n\nbody, close #5\n\x1e\n\0\n2222\nsubj two\n\0"
     assert mod.parse_messages(text) == {
-        "1111": "subj one\n\nbody, close #5\n",
+        "1111": "subj one\n\nbody, close #5\n\x1e\n",
         "2222": "subj two\n",
     }
 
@@ -650,3 +650,61 @@ def test_a_closing_keyword_behind_the_grandfather_is_not_judged(repo):
     _commit(repo, "fix(core): new")
     assert _run(repo, f"{base}..HEAD", "--grandfather", gate).returncode == 0
     assert _run(repo, f"{base}..HEAD", "--grandfather", "none").returncode == 1
+
+
+def test_log_show_signature_does_not_hide_a_message(repo):
+    # Review of #2740 @ 5585f7ad2: with log.showSignature on, git log printed gpg lines into the
+    # records, the message was filed under the wrong key and the keyword check passed silently.
+    base = _git(repo, "rev-parse", "HEAD").strip()
+    (repo / "f").write_text("sig\n")
+    _git(repo, "commit", "-q", "-am", "docs: short", "-m", "close #7")
+    env = {
+        **os.environ,
+        "GIT_CONFIG_COUNT": "1",
+        "GIT_CONFIG_KEY_0": "log.showSignature",
+        "GIT_CONFIG_VALUE_0": "true",
+    }
+    result = subprocess.run(
+        [sys.executable, mod.__file__, f"{base}..HEAD"],
+        cwd=repo,
+        capture_output=True,
+        text=True,
+        check=False,
+        env=env,
+    )
+    assert result.returncode == 1, result.stdout + result.stderr
+    assert "close #7" in result.stdout
+
+
+def test_a_commit_with_no_message_read_exits_2(repo, monkeypatch):
+    # The positive control for the unread-message refusal: a judged commit missing from `bodies`.
+    base = _git(repo, "rev-parse", "HEAD").strip()
+    _commit(repo, "fix(core): short")
+    monkeypatch.chdir(repo)
+    monkeypatch.setattr(mod, "messages", lambda *a, **k: {})
+    assert mod.main([f"{base}..HEAD"]) == 2
+
+
+def test_revert_and_dependabot_commits_are_judged_for_keywords(repo):
+    base = _git(repo, "rev-parse", "HEAD").strip()
+    (repo / "f").write_text("r\n")
+    _git(repo, "commit", "-q", "-am", 'Revert "x"', "-m", "fixes #4")
+    _bot_commit(repo, "chore: Bump x from 1 to 2\n\nResolves #5")
+    result = _run(repo, f"{base}..HEAD")
+    assert result.returncode == 1, result.stdout + result.stderr
+    assert "fixes #4" in result.stdout and "Resolves #5" in result.stdout
+
+
+def test_a_pr_title_with_a_closing_keyword_is_red(repo):
+    base = _git(repo, "rev-parse", "HEAD").strip()
+    _commit(repo, "fix(core): short")
+    red = _run(repo, f"{base}..HEAD", "--pr-title", "fix(core): short (fixes #9)")
+    assert red.returncode == 1 and "PR title" in red.stdout and "fixes #9" in red.stdout
+    assert _run(repo, f"{base}..HEAD", "--pr-title", "fix(core): short").returncode == 0
+
+
+def test_the_workflow_passes_the_pr_title_through_env_only():
+    step = _workflow_step()
+    assert step["env"]["PR_TITLE"] == "${{ github.event.pull_request.title }}"
+    assert '--pr-title "$PR_TITLE"' in step["run"]
+    assert "${{" not in step["run"]
