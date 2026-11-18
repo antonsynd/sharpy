@@ -40,7 +40,7 @@ SEED_PLAN_FILES = (
     "name-resolution-differential-allowlist.txt",  # P77b (#2433), plan-3eba57
 )
 
-# The procedure a light group reads: CLAUDE.md plus seven skills.
+# The procedure a light group reads: CLAUDE.md plus eight skills. test_scorecard_metrics.py pins it.
 PROCEDURE_FILES = (
     "CLAUDE.md",
     ".claude/skills/create-plan/SKILL.md",
@@ -50,6 +50,7 @@ PROCEDURE_FILES = (
     ".claude/skills/commit/SKILL.md",
     ".claude/skills/push/SKILL.md",
     ".claude/skills/ci-gate/SKILL.md",
+    ".claude/skills/plan-flow/SKILL.md",
 )
 
 SEMANTIC_INFO = "src/Sharpy.Compiler/Semantic/SemanticInfo.cs"
@@ -63,7 +64,7 @@ CITE_RE = re.compile(r"#[0-9]+")
 # Rows that must not rise, in report order: key -> label. The SemanticInfo field count is reported,
 # not ratcheted here: the C# pin `MaximumSideTableFieldCount` already holds it.
 RATCHETED = {
-    "procedure_bytes": "Procedure bytes per light group (CLAUDE.md + seven skills)",
+    "procedure_bytes": "Procedure bytes per light group (CLAUDE.md + eight skills)",
     "claude_md_bytes": "CLAUDE.md bytes",
     "allowlist_rows_outside_seed": "Allowlist rows outside seed-plan harnesses",
     "allowlist_rows_seed": "Allowlist rows in seed-plan harnesses",
@@ -218,7 +219,7 @@ def render_row(name: str, m: Metrics) -> str:
         cells = (
             "Procedure bytes per light group; CLAUDE.md",
             f"{m.procedure_bytes}; {m.claude_md_bytes}",
-            "CLAUDE.md + create-plan, verify-plan, implement-plan, verify-implementation, commit, push, ci-gate skills",
+            "CLAUDE.md + create-plan, verify-plan, implement-plan, verify-implementation, commit, push, ci-gate, plan-flow skills",
         )
     else:
         raise ValueError(f"unknown row {name!r}")

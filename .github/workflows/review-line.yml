@@ -3,8 +3,8 @@
 # with no uncleared `do not merge`, reviewed shas on the PR (ancestors of the head, not on the base), a
 # fix range that starts at a reviewed sha, and no code commit (a merge by its remerge diff; any octopus)
 # after the point the line covers. build_tools/check_review_line.py decides; its docstring lists the
-# verdicts, which lines count (not code blocks, quotes or HTML comments), the one exemption besides
-# "no code path changed" (a base other than `dev`), and what it does not judge (that the review was
+# verdicts, which lines count (not code blocks, quotes or HTML comments), the exemptions besides
+# "no code path changed" (a base other than `dev`; a Dependabot PR that changes only package versions in manifests), and what it does not judge (that the review was
 # independent, that the fixes were read, the counts, an empty-diff history rewrite).
 #
 # ADVISORY as shipped: the check `review-line` is not in the `dev` ruleset's required set; making it
@@ -65,8 +65,9 @@ jobs:
         HEAD_SHA: ${{ github.event.pull_request.head.sha }}
         BASE_REF: ${{ github.event.pull_request.base.ref }}
         DRAFT: ${{ github.event.pull_request.draft }}
+        AUTHOR: ${{ github.event.pull_request.user.login }}
       run: |
         git fetch --no-tags origin "+refs/heads/$BASE_REF:refs/remotes/origin/$BASE_REF"
-        args=(--head "$HEAD_SHA" --base "origin/$BASE_REF" --base-ref "$BASE_REF")
+        args=(--head "$HEAD_SHA" --base "origin/$BASE_REF" --base-ref "$BASE_REF" --author "$AUTHOR")
         if [ "$DRAFT" = "true" ]; then args+=(--draft); fi
         python3 build_tools/check_review_line.py "${args[@]}"

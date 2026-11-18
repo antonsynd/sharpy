@@ -529,11 +529,66 @@ def test_no_code_path_and_other_bases_are_not_required() -> None:
         )
 
 
-def test_there_is_no_bot_or_head_exemption() -> None:
-    # README item 6 names none; the CLI no longer takes an author or a head ref.
+class VersionOnlyGit(mod.Git):
+    """Every manifest's diff is a one-line version bump (the content table below uses real git)."""
+
+    def manifest_diff(self, base: str, head: str, paths) -> str:
+        return "".join(
+            f"diff --git a/{p} b/{p}\nindex 1..2 100644\n--- a/{p}\n+++ b/{p}\n@@ -1 +1 @@\n"
+            + (
+                '-    "resolved": "1.0.0",\n+    "resolved": "1.1.0",\n'
+                if p.endswith(".json")
+                else '-<PackageReference Include="A" Version="1.0.0" />\n'
+                '+<PackageReference Include="A" Version="1.1.0" />\n'
+            )
+            for p in paths
+        )
+
+
+def test_dependabot_manifest_only_pr_is_not_required() -> None:
+    g, bot = VersionOnlyGit(), "dependabot[bot]"
+    paths = [
+        "src/Sharpy.Core/Sharpy.Core.csproj",
+        "Directory.Packages.props",
+        "src/x/packages.lock.json",
+    ]
+    for outside in (".github/x.csproj", "build_tools/x.csproj"):
+        assert (
+            mod.judge("", paths + [outside], "h", "b", g, author=bot).verdict
+            == mod.MISSING
+        )
+    result = mod.judge("", paths, "h", "b", g, author=bot)
+    assert result.verdict == mod.NOT_REQUIRED, result.detail
+    # Controls: the same paths from a human, a lookalike login, and a bot PR that also edits code.
+    assert mod.judge("", paths, "h", "b", g).verdict == mod.MISSING
+    assert mod.judge("", paths, "h", "b", g, author="dependabot").verdict == mod.MISSING
+    assert mod.judge("", paths, "h", "b", g, author="someone").verdict == mod.MISSING
+    for extra in ("src/a.cs", ".github/workflows/x.yml", "build_tools/x.py"):
+        assert (
+            mod.judge("", paths + [extra], "h", "b", g, author=bot).verdict
+            == mod.MISSING
+        )
+
+
+def test_main_passes_the_author_to_the_judge(monkeypatch, capsys) -> None:
+    class Fake(VersionOnlyGit):
+        def changed_paths(self, base: str, head: str) -> List[str]:
+            return ["src/Sharpy.Core/Sharpy.Core.csproj"]
+
+    monkeypatch.setenv("PR_BODY", "")
+    monkeypatch.delenv("GITHUB_STEP_SUMMARY", raising=False)
+    args = ["--base", "b", "--head", "h"]
+    code = mod.main(args + ["--author", "dependabot[bot]"], git_factory=Fake)
+    assert code == 0 and "not required" in capsys.readouterr().out
+    code = mod.main(args, git_factory=Fake)  # control: no author, same paths
+    assert code == 1 and "review-line: missing" in capsys.readouterr().out
+
+
+def test_there_is_no_head_exemption() -> None:
+    # No exemption by head ref; the author exemption is manifest-only (tested above).
     assert mod.judge("", ["src/a.cs"], "h", "b", mod.Git()).verdict == mod.MISSING
     with pytest.raises(SystemExit):
-        mod.main(["--head", "h", "--author", "dependabot[bot]"])
+        mod.main(["--head", "h", "--head-ref", "dependabot/nuget/x"])
 
 
 # --- main() -------------------------------------------------------------------------------------
@@ -905,3 +960,644 @@ def test_a_comment_closed_on_its_line_is_removed_mid_line() -> None:
     # And a comment opened at the start of a line and closed later hides only its contents.
     # (Each hidden line stays as an empty string, so line positions are kept.)
     assert mod.visible_lines("<!-- x\ny\nz --> w\nv") == ["", "", " w", "v"]
+
+
+# --- The Dependabot exemption's content check (owner ruling 2026-11-17) --------------------------
+# "make the review-line exemption require every changed line to be a version attribute": the table
+# is {author} x {diff kind}, built on a scratch repository and judged through real `git diff`.
+
+CSPROJ = """<Project Sdk="Microsoft.NET.Sdk">
+  <Sdk Name="Some.Sdk" Version="1.0.0" />
+  <PropertyGroup>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="Foo" Version="1.0.0" />
+    <PackageReference Include="Bar" Version="2.0.0">
+      <PrivateAssets>all</PrivateAssets>
+    </PackageReference>
+  </ItemGroup>
+  <ItemGroup>
+    <PackageReference Include="F1" Version="1.*" />
+    <PackageReference Include="F2" Version="[1.0,)" />
+    <PackageReference Include="F3" Version="(,2.0]" />
+    <PackageReference Include="F4" Version="*" />
+    <PackageReference Include="Cond" Version="1.0.0" Condition='x Version="1.0.0" y' />
+    <PackageReference Include="Dup" Version="1.0.0" Version="1.0.0" />
+    <PackageReference Include="Tail" Version="1.0.0" /> trailing text
+    <PackageReference Include=Unq Version="1.0.0" />
+  </ItemGroup>
+  <ItemGroup Condition="'$(TargetFramework)' == 'netstandard2.1'">
+    <Compile Remove="Tarfile/**" />
+  </ItemGroup>
+</Project>
+"""
+PROPS = """<Project>
+  <ItemGroup>
+    <PackageVersion Include="Baz" Version="3.0.0" />
+  </ItemGroup>
+</Project>
+"""
+LOCK = """{
+  "version": 1,
+  "dependencies": {
+    "net10.0": {
+      "Foo": {
+        "type": "Direct",
+        "requested": "[1.0.0, )",
+        "resolved": "1.0.0",
+        "contentHash": "AAAA+/==",
+        "dependencies": {
+          "Qux": "4.0.0"
+        }
+      }
+    }
+  }
+}
+"""
+CRLF_PJ = "src/C/C.csproj"
+CRLF_CSPROJ = '<Project>\r\n  <ItemGroup>\r\n    <PackageReference Include="Foo" Version="1.0.0" />\r\n  </ItemGroup>\r\n</Project>\r\n'
+PJ, PP, LK = (
+    "src/A/A.csproj",
+    "src/Directory.Packages.props",
+    "src/A/packages.lock.json",
+)
+FOO_BUMP = ('Include="Foo" Version="1.0.0"', 'Include="Foo" Version="1.1.0"')
+
+
+# kind -> list of (path, ((old, new), ...)) edits, or a callable(repo) for the odd ones.
+KINDS = {
+    "csproj version only": [
+        (
+            PJ,
+            (
+                FOO_BUMP,
+                ('Include="Bar" Version="2.0.0"', 'Include="Bar" Version="2.1.0"'),
+            ),
+        )
+    ],
+    "props version only": [(PP, (('Version="3.0.0"', 'Version="3.1.0"'),))],
+    "lock file only": [
+        (
+            LK,
+            (
+                ('"[1.0.0, )"', '"[1.1.0, )"'),
+                ('"resolved": "1.0.0"', '"resolved": "1.1.0"'),
+                ('"AAAA+/=="', '"BBBB+/=="'),
+                ('"Qux": "4.0.0"', '"Qux": "4.1.0"'),
+            ),
+        )
+    ],
+    "csproj with a Target added": [
+        (
+            PJ,
+            (
+                FOO_BUMP,
+                (
+                    "</Project>",
+                    '  <Target Name="x" BeforeTargets="Build"><Exec Command="echo hi" /></Target>\n</Project>',
+                ),
+            ),
+        )
+    ],
+    "version bump plus a property change": [
+        (
+            PJ,
+            (FOO_BUMP, ("<Nullable>enable</Nullable>", "<Nullable>disable</Nullable>")),
+        )
+    ],
+    "an Sdk element's Version changed": [
+        (PJ, (('Version="1.0.0" />\n  <Prop', 'Version="6.6.6" />\n  <Prop'),))
+    ],
+    "a Version that MSBuild evaluates": [
+        (
+            PJ,
+            (
+                (
+                    'Include="Foo" Version="1.0.0"',
+                    'Include="Foo" Version="$([System.IO.File]::ReadAllText(\'x\'))"',
+                ),
+            ),
+        )
+    ],
+    "a new package": [
+        (
+            PJ,
+            (
+                (
+                    '    <PackageReference Include="Foo"',
+                    '    <PackageReference Include="Evil" Version="1.0.0" />\n    <PackageReference Include="Foo"',
+                ),
+            ),
+        )
+    ],
+    "a package swapped": [
+        (PJ, (('Include="Foo" Version="1.0.0"', 'Include="Evil" Version="1.1.0"'),))
+    ],
+    "a lock-file type changed": [(LK, (('"type": "Direct"', '"type": "Transitive"'),))],
+    "a manifest added": "add",
+    "a binary manifest (no patch)": "binary",
+    "a .cs file too": [
+        (PJ, (FOO_BUMP,)),
+        ("src/A/a.cs", (("class A {}", "class A { int x; }"),)),
+    ],
+}
+# Review of PR #2726 @ 54991d373: a line that moves (here into the netstandard-only ItemGroup, the
+# shape of src/Sharpy.Stdlib/Sharpy.Stdlib.csproj) is no version change, bumped or not.
+FOO_LINE = '    <PackageReference Include="Foo" Version="1.0.0" />\n'
+TARFILE = '    <Compile Remove="Tarfile/**" />\n'
+for _bump in ("1.1.0", "1.0.0"):
+    KINDS[f"a line moved into a conditional ItemGroup, version {_bump}"] = [
+        (PJ, ((FOO_LINE, ""), (TARFILE, TARFILE + FOO_LINE.replace("1.0.0", _bump))))
+    ]
+# A float or range on either side is more than a version change: later restores pick versions.
+for _i, _float in enumerate(("1.*", "[1.0,)", "(,2.0]", "*"), 1):
+    KINDS[f"Foo pinned to {_float}"] = [
+        (PJ, ((FOO_BUMP[0], f'Include="Foo" Version="{_float}"'),))
+    ]
+    KINDS[f"F{_i} from {_float} to 1.1.0"] = [
+        (
+            PJ,
+            (
+                (
+                    f'Include="F{_i}" Version="{_float}"',
+                    f'Include="F{_i}" Version="1.1.0"',
+                ),
+            ),
+        )
+    ]
+# The reviewer's line: a version tag, U+2028, then text a str.splitlines() reader would drop.
+KINDS["U+2028 after a version tag"] = [
+    (
+        PJ,
+        (
+            (
+                'Include="Foo" Version="1.0.0" />',
+                'Include="Foo" Version="1.1.0" />\u2028\\ junk <Target Name="E"/>',
+            ),
+        ),
+    )
+]
+# Second review of PR #2726 @ df64f7aa6, all through real git and Git.manifest_diff:
+# a lone CR inside an added line (text-mode subprocess turned it into a line end, hiding the rest),
+KINDS["a lone CR inside an added line"] = [
+    (PJ, ((FOO_BUMP[0] + " />", FOO_BUMP[1] + ' />\r\\ <Target Name="E"/>'),))
+]
+# and the reviewer's second shape, a lone CR then text a line-splitting reader takes as a hunk header,
+KINDS["a lone CR then a hunk header inside an added line"] = [
+    (PJ, ((FOO_BUMP[0] + " />", FOO_BUMP[1] + ' />\r@@ <Target Name="E"/>'),))
+]
+# bytes that are not UTF-8 (a traceback before; now the exemption is not taken),
+KINDS["a byte that is not UTF-8"] = [
+    (PJ, (FOO_BUMP, ('Include="Bar" Version="2.0.0"', 'Include="B\udcffr" Version="2.0.0"')))
+]
+# a `Version="..."` inside another attribute's value (text, not the Version attribute),
+KINDS["a Version inside another attribute's value"] = [
+    (PJ, (("Condition='x Version=\"1.0.0\" y'", "Condition='x Version=\"9.0.0\" y'"),))
+]
+# Third review @ f575abeae: one row per structural guard of the tag parser, each red under exactly
+# the mutant that drops that guard: exactly one Version attribute (two, the first bumped), the end
+# anchor after `/>` (trailing text on the line), and quoted attribute values (an unquoted one).
+KINDS["a tag with two Version attributes, the first bumped"] = [
+    (PJ, (('Include="Dup" Version="1.0.0"', 'Include="Dup" Version="1.1.0"'),))
+]
+KINDS["a bumped tag followed by text on its line"] = [
+    (PJ, (('Include="Tail" Version="1.0.0"', 'Include="Tail" Version="1.1.0"'),))
+]
+KINDS["a bumped tag with an unquoted attribute value"] = [
+    (PJ, (('Include=Unq Version="1.0.0"', 'Include=Unq Version="1.1.0"'),))
+]
+# and their positive controls: a CRLF file's bump, and the real Version beside that attribute.
+KINDS["a CRLF csproj version only"] = [(CRLF_PJ, (FOO_BUMP,))]
+KINDS["a tag with a quoted Version text, real Version bumped"] = [
+    (PJ, (('Include="Cond" Version="1.0.0"', 'Include="Cond" Version="1.1.0"'),))
+]
+EXEMPT_KINDS = {
+    "csproj version only",
+    "props version only",
+    "lock file only",
+    "a CRLF csproj version only",
+    "a tag with a quoted Version text, real Version bumped",
+}
+AUTHORS = ["dependabot[bot]", "dependabot", "someone", None]
+
+
+@pytest.fixture(scope="module")
+def manifests(tmp_path_factory) -> Dict[str, str]:
+    r = tmp_path_factory.mktemp("manifests") / "repo"
+    r.mkdir()
+    git(r, "init", "-q", "-b", "dev")
+    git(r, "config", "user.email", "t@example.invalid")
+    git(r, "config", "user.name", "t")
+    git(r, "config", "commit.gpgsign", "false")
+    git(r, "config", "core.autocrlf", "false")
+    for path, text in (
+        (PJ, CSPROJ),
+        (PP, PROPS),
+        (LK, LOCK),
+        ("src/A/a.cs", "class A {}"),
+        (CRLF_PJ, CRLF_CSPROJ),
+    ):
+        (r / path).parent.mkdir(parents=True, exist_ok=True)
+        (r / path).write_bytes(text.encode("utf-8"))
+    git(r, "add", "-A")
+    git(r, "commit", "-q", "-m", "base")
+    s = {"repo": str(r), "base": git(r, "rev-parse", "HEAD")}
+    for i, (kind, edits) in enumerate(KINDS.items()):
+        git(r, "switch", "-q", "-c", f"k{i}", s["base"])
+        if edits == "add":
+            (r / "src/B").mkdir(exist_ok=True)
+            (r / "src/B/B.csproj").write_text(
+                '<Project>\n<PackageReference Include="Foo" Version="1.0.0" />\n</Project>\n'
+            )
+        elif edits == "binary":
+            (r / PJ).write_bytes(CSPROJ.replace("1.0.0", "1.1.0").encode() + b"\0")
+        else:
+            for path, pairs in edits:
+                # Bytes in and out: no newline translation; a lone surrogate writes a raw byte.
+                text = (r / path).read_bytes().decode("utf-8", "surrogateescape")
+                for old, new in pairs:
+                    assert old in text, (kind, old)
+                    text = text.replace(old, new, 1)
+                (r / path).write_bytes(text.encode("utf-8", "surrogateescape"))
+        git(r, "add", "-A")
+        git(r, "commit", "-q", "-m", kind)
+        s[kind] = git(r, "rev-parse", "HEAD")
+    return s
+
+
+@pytest.mark.parametrize("author", AUTHORS)
+@pytest.mark.parametrize("kind", list(KINDS))
+def test_dependabot_exemption_content_table(manifests, kind: str, author) -> None:
+    g = mod.Git(manifests["repo"])
+    base, head = manifests["base"], manifests[kind]
+    result = mod.judge("", g.changed_paths(base, head), head, base, g, author=author)
+    want = (
+        mod.NOT_REQUIRED
+        if author == "dependabot[bot]" and kind in EXEMPT_KINDS
+        else mod.MISSING
+    )
+    assert result.verdict == want, result.detail
+    # Every refused manifest-only kind is refused by the content check, not by something else.
+    content_refused = author == "dependabot[bot]" and kind not in EXEMPT_KINDS | {
+        "a .cs file too"
+    }
+    assert ("exemption not taken" in result.detail) is content_refused, result.detail
+
+
+@pytest.mark.parametrize(
+    "diff",
+    [
+        "",  # no patch at all
+        "diff --git a/src/A/A.csproj b/src/A/A.csproj\nindex 1..2 100644\n",  # header, no hunk
+        "diff --git a/src/A/A.csproj b/src/A/A.csproj\n--- a/src/A/A.csproj\n+++ b/src/A/A.csproj\n",
+    ],
+)
+def test_a_missing_or_truncated_patch_is_not_version_only(diff: str) -> None:
+    assert mod.version_only(diff, ["src/A/A.csproj"]) is not None
+
+
+CSPROJ_DIFF = (
+    "diff --git a/src/A/A.csproj b/src/A/A.csproj\nindex 1..2 100644\n"
+    "--- a/src/A/A.csproj\n+++ b/src/A/A.csproj\n@@ -7 +7 @@\n"
+)
+TAG = '    <PackageReference Include="Foo" Version="{}" />'
+
+
+@pytest.mark.parametrize(
+    "ch", ["\r", "\x0b", "\x0c", "\x1c", "\x1d", "\x1e", "\x85", "\u2028", "\u2029"]
+)
+def test_a_changed_line_holding_a_line_separator_is_not_a_version_change(
+    ch: str,
+) -> None:
+    # Git ends a diff line at \n only; text after any of these must not be hidden from the check.
+    for added in (
+        TAG.format("1.1.0") + ch + " ",
+        TAG.format("1.1.0") + ch + '\\ <Target Name="E"/>',
+    ):
+        diff = CSPROJ_DIFF + "-" + TAG.format("1.0.0") + "\n+" + added + "\n"
+        assert mod.version_only(diff, ["src/A/A.csproj"]) is not None, repr(added)
+    # The same separator on both sides of the pair: the pairing alone would accept it.
+    both = TAG + ch + " "
+    diff = (
+        CSPROJ_DIFF + "-" + both.format("1.0.0") + "\n+" + both.format("1.1.0") + "\n"
+    )
+    assert mod.version_only(diff, ["src/A/A.csproj"]) is not None
+
+
+def test_a_crlf_line_pair_is_a_version_change() -> None:
+    # Positive control for the separator rule: a `\r` that ends the line (a CRLF file) is allowed.
+    diff = (
+        CSPROJ_DIFF + "-" + TAG.format("1.0.0") + "\r\n+" + TAG.format("1.1.0") + "\r\n"
+    )
+    assert mod.version_only(diff, ["src/A/A.csproj"]) is None
+
+
+@pytest.mark.parametrize(
+    "value", ["10.0.15", "18.12.0", "5.12.0", "11.0.0", "1.2.3-rc.1", "1.0.0+b.5"]
+)
+def test_concrete_versions(value: str) -> None:
+    assert mod.CONCRETE_VERSION.fullmatch(value)
+
+
+@pytest.mark.parametrize(
+    "value", ["1.*", "[1.0,)", "(,2.0]", "*", "$(V)", "1.0 ", "[1.0.0, )"]
+)
+def test_floats_and_ranges_are_not_concrete(value: str) -> None:
+    assert not mod.CONCRETE_VERSION.fullmatch(value)
+
+
+def test_an_unchanged_version_is_no_version_change() -> None:
+    # A removed/added pair that keeps its version is not a version change.
+    diff = CSPROJ_DIFF + "-" + TAG.format("1.0.0") + "\n+" + TAG.format("1.0.0") + "\n"
+    assert mod.version_only(diff, ["src/A/A.csproj"]) is not None
+
+
+def test_version_only_positive_control() -> None:
+    diff = (
+        "diff --git a/src/A/A.csproj b/src/A/A.csproj\nindex 1..2 100644\n"
+        "--- a/src/A/A.csproj\n+++ b/src/A/A.csproj\n@@ -7 +7 @@\n"
+        '-    <PackageReference Include="Foo" Version="1.0.0" />\n'
+        '+    <PackageReference Include="Foo" Version="1.1.0" />\n'
+    )
+    assert mod.version_only(diff, ["src/A/A.csproj"]) is None
+    # One manifest of two without a patch is enough to lose the exemption.
+    assert mod.version_only(diff, ["src/A/A.csproj", "src/B/B.csproj"]) is not None
+
+
+def test_the_missing_verdict_names_why_the_exemption_was_not_taken(manifests) -> None:
+    g = mod.Git(manifests["repo"])
+    base, head = manifests["base"], manifests["csproj with a Target added"]
+    result = mod.judge(
+        "", g.changed_paths(base, head), head, base, g, author="dependabot[bot]"
+    )
+    assert "exemption not taken" in result.detail and "<Target" in result.detail, (
+        result.detail
+    )
+
+
+# The eight real Dependabot diffs (GitHub "list pull request files" patches, fetched 2026-11-17,
+# context lines dropped: the -U0 view the check reads), hunk by hunk: (path, removed, added).
+REAL_DEPENDABOT = {
+    2706: [
+        (
+            "src/Sharpy.Cli.Tests/Sharpy.Cli.Tests.csproj",
+            [
+                '    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="18.11.0" />'
+            ],
+            [
+                '    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="18.12.0" />'
+            ],
+        ),
+        (
+            "src/Sharpy.Compiler.Tests/Sharpy.Compiler.Tests.csproj",
+            [
+                '    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="18.11.0" />'
+            ],
+            [
+                '    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="18.12.0" />'
+            ],
+        ),
+        (
+            "src/Sharpy.Core.Tests/Sharpy.Core.Tests.csproj",
+            [
+                '    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="18.11.0" />'
+            ],
+            [
+                '    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="18.12.0" />'
+            ],
+        ),
+        (
+            "src/Sharpy.Lsp.Tests/Sharpy.Lsp.Tests.csproj",
+            [
+                '    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="18.11.0" />'
+            ],
+            [
+                '    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="18.12.0" />'
+            ],
+        ),
+        (
+            "src/Sharpy.Stdlib.Tests/Sharpy.Stdlib.Tests.csproj",
+            [
+                '    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="18.11.0" />'
+            ],
+            [
+                '    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="18.12.0" />'
+            ],
+        ),
+    ],
+    2707: [
+        (
+            "src/Sharpy.Compiler/Sharpy.Compiler.csproj",
+            [
+                '    <PackageReference Include="Microsoft.CodeAnalysis.CSharp" Version="5.9.0" />',
+                '    <PackageReference Include="Microsoft.CodeAnalysis.CSharp.Workspaces" Version="5.9.0" />',
+            ],
+            [
+                '    <PackageReference Include="Microsoft.CodeAnalysis.CSharp" Version="5.12.0" />',
+                '    <PackageReference Include="Microsoft.CodeAnalysis.CSharp.Workspaces" Version="5.12.0" />',
+            ],
+        ),
+    ],
+    2708: [
+        (
+            "src/Sharpy.Playground/Sharpy.Playground.csproj",
+            [
+                '    <PackageReference Include="Microsoft.AspNetCore.Components.WebAssembly" Version="10.0.14" />'
+            ],
+            [
+                '    <PackageReference Include="Microsoft.AspNetCore.Components.WebAssembly" Version="10.0.15" />'
+            ],
+        ),
+    ],
+    2711: [
+        (
+            "src/Sharpy.Stdlib/Sharpy.Stdlib.csproj",
+            [
+                '    <PackageReference Include="Microsoft.Data.Sqlite" Version="10.0.14" />'
+            ],
+            [
+                '    <PackageReference Include="Microsoft.Data.Sqlite" Version="10.0.15" />'
+            ],
+        ),
+        (
+            "src/Sharpy.Stdlib/modules/Sharpy.Stdlib.Sqlite3.csproj",
+            [
+                '    <PackageReference Include="Microsoft.Data.Sqlite" Version="10.0.14" />'
+            ],
+            [
+                '    <PackageReference Include="Microsoft.Data.Sqlite" Version="10.0.15" />'
+            ],
+        ),
+    ],
+    2714: [
+        (
+            "src/Sharpy.Cli/Sharpy.Cli.csproj",
+            ['    <PackageReference Include="System.CommandLine" Version="2.0.14" />'],
+            ['    <PackageReference Include="System.CommandLine" Version="3.0.0" />'],
+        ),
+    ],
+    2709: [
+        (
+            "src/Sharpy.Playground/Sharpy.Playground.csproj",
+            [
+                '    <PackageReference Include="Microsoft.AspNetCore.Components.WebAssembly.DevServer" Version="10.0.14" PrivateAssets="all" />'
+            ],
+            [
+                '    <PackageReference Include="Microsoft.AspNetCore.Components.WebAssembly.DevServer" Version="11.0.0" PrivateAssets="all" />'
+            ],
+        ),
+    ],
+    2710: [
+        (
+            "src/Sharpy.Core/Sharpy.Core.csproj",
+            [
+                '    <PackageReference Include="Microsoft.Bcl.AsyncInterfaces" Version="10.0.14" Condition="\'$(TargetFramework)\' == \'netstandard2.1\'" />'
+            ],
+            [
+                '    <PackageReference Include="Microsoft.Bcl.AsyncInterfaces" Version="11.0.0" Condition="\'$(TargetFramework)\' == \'netstandard2.1\'" />'
+            ],
+        ),
+    ],
+    2712: [
+        (
+            "src/Sharpy.Cli.Tests/Sharpy.Cli.Tests.csproj",
+            [
+                '    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="18.11.0" />'
+            ],
+            [
+                '    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="18.12.0" />'
+            ],
+        ),
+        (
+            "src/Sharpy.Cli/Sharpy.Cli.csproj",
+            ['    <PackageReference Include="System.CommandLine" Version="2.0.14" />'],
+            ['    <PackageReference Include="System.CommandLine" Version="3.0.0" />'],
+        ),
+        (
+            "src/Sharpy.Compiler.Tests/Sharpy.Compiler.Tests.csproj",
+            [
+                '    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="18.11.0" />'
+            ],
+            [
+                '    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="18.12.0" />'
+            ],
+        ),
+        (
+            "src/Sharpy.Compiler/Sharpy.Compiler.csproj",
+            [
+                '    <PackageReference Include="Microsoft.CodeAnalysis.CSharp" Version="5.9.0" />',
+                '    <PackageReference Include="Microsoft.CodeAnalysis.CSharp.Workspaces" Version="5.9.0" />',
+                '    <PackageReference Include="Microsoft.Extensions.FileSystemGlobbing" Version="10.0.14" />',
+            ],
+            [
+                '    <PackageReference Include="Microsoft.CodeAnalysis.CSharp" Version="5.12.0" />',
+                '    <PackageReference Include="Microsoft.CodeAnalysis.CSharp.Workspaces" Version="5.12.0" />',
+                '    <PackageReference Include="Microsoft.Extensions.FileSystemGlobbing" Version="11.0.0" />',
+            ],
+        ),
+        (
+            "src/Sharpy.Core.Tests/Sharpy.Core.Tests.csproj",
+            [
+                '    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="18.11.0" />'
+            ],
+            [
+                '    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="18.12.0" />'
+            ],
+        ),
+        (
+            "src/Sharpy.Lsp.Tests/Sharpy.Lsp.Tests.csproj",
+            [
+                '    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="18.11.0" />'
+            ],
+            [
+                '    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="18.12.0" />'
+            ],
+        ),
+        (
+            "src/Sharpy.Stdlib.Tests/Sharpy.Stdlib.Tests.csproj",
+            [
+                '    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="18.11.0" />'
+            ],
+            [
+                '    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="18.12.0" />'
+            ],
+        ),
+        (
+            "src/Sharpy.Stdlib/Sharpy.Stdlib.csproj",
+            [
+                '    <PackageReference Include="Microsoft.Data.Sqlite" Version="10.0.14" />'
+            ],
+            [
+                '    <PackageReference Include="Microsoft.Data.Sqlite" Version="10.0.15" />'
+            ],
+        ),
+        (
+            "src/Sharpy.Stdlib/modules/Sharpy.Stdlib.Sqlite3.csproj",
+            [
+                '    <PackageReference Include="Microsoft.Data.Sqlite" Version="10.0.14" />'
+            ],
+            [
+                '    <PackageReference Include="Microsoft.Data.Sqlite" Version="10.0.15" />'
+            ],
+        ),
+    ],
+}
+
+
+def _diff(hunks) -> str:
+    out, seen = [], set()
+    for path, removed, added in hunks:
+        if path not in seen:
+            seen.add(path)
+            out.append(
+                f"diff --git a/{path} b/{path}\nindex 1..2 100644\n--- a/{path}\n+++ b/{path}"
+            )
+        out.append(f"@@ -1,{len(removed)} +1,{len(added)} @@")
+        out += ["-" + r for r in removed] + ["+" + a for a in added]
+    return "\n".join(out) + "\n"
+
+
+@pytest.mark.parametrize("pr", sorted(REAL_DEPENDABOT))
+def test_the_real_dependabot_diffs_are_version_only(pr: int) -> None:
+    hunks = REAL_DEPENDABOT[pr]
+    assert mod.version_only(_diff(hunks), sorted({h[0] for h in hunks})) is None
+
+
+def test_a_real_pair_reordered_inside_its_hunk_is_not_version_only() -> None:
+    # #2707's two-line hunk with its added lines swapped: the same multiset, a different pairing.
+    path, removed, added = REAL_DEPENDABOT[2707][0]
+    assert mod.version_only(_diff([(path, removed, added[::-1])]), [path]) is not None
+
+
+def test_the_lone_cr_reaches_git_and_the_check_as_one_line(manifests) -> None:
+    # The CR case above is only meaningful if git keeps it inside one diff line and the check reads
+    # it; this is the positive control that the scratch commit holds a raw CR mid-line.
+    g = mod.Git(manifests["repo"])
+    head = manifests["a lone CR inside an added line"]
+    raw = g.manifest_diff(manifests["base"], head, [PJ])
+    assert b'/>\r\\ <Target Name="E"/>\n' in raw
+    assert "not a version change" in (mod.version_only(raw, [PJ]) or "")
+
+
+def test_a_diff_that_is_not_utf8_is_a_reason_not_a_crash() -> None:
+    diff = (CSPROJ_DIFF + "-" + TAG.format("1.0.0") + "\n+").encode() + b"\xff\n"
+    assert "not UTF-8" in (mod.version_only(diff, ["src/A/A.csproj"]) or "")
+
+
+def test_the_non_utf8_kind_is_refused_for_its_encoding(manifests) -> None:
+    g = mod.Git(manifests["repo"])
+    base, head = manifests["base"], manifests["a byte that is not UTF-8"]
+    result = mod.judge(
+        "", g.changed_paths(base, head), head, base, g, author="dependabot[bot]"
+    )
+    assert result.verdict == mod.MISSING and "not UTF-8" in result.detail, result.detail
+
+
+def test_only_the_no_newline_marker_is_skipped() -> None:
+    # A hunk line starting with a backslash is git's marker only when it is exactly that text.
+    pair = "-" + TAG.format("1.0.0") + "\n+" + TAG.format("1.1.0") + "\n"
+    marker = "\\ No newline at end of file\n"
+    assert mod.version_only(CSPROJ_DIFF + pair + marker, ["src/A/A.csproj"]) is None
+    other = '\\ <Target Name="E"/>\n'
+    assert mod.version_only(CSPROJ_DIFF + pair + other, ["src/A/A.csproj"]) is not None

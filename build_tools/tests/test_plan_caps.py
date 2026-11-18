@@ -152,11 +152,19 @@ def test_grandfathered_real_plan_copy_growing_is_red(monkeypatch):
         ("plan-460cbf.md", 6),  # `## Verification Summary — round 6`
         ("plan-ed89b6.md", 10),  # nine NEEDS REVISION records + the current stamp
         ("plan-16cca3.md", 2),  # `Verified by /verify-plan (round 2`
+        ("plan-4e2867.md", 6),  # 4 NEEDS REVISION + 1 revised (CONVERGED) + stamp
     ],
 )
 def test_pass_count_on_committed_plans(name, passes):
     """Positive control for the counter against every spelling the committed plans use."""
     assert cpr.verify_passes((PLANS / name).read_text(encoding="utf-8")) == passes
+
+
+def test_converged_log_entry_without_revised_is_not_a_pass():
+    # mutation record: the CONVERGED alternative without "revised" -> red (3 passes)
+    log = REVISED + "- @ abc1234 — the 2nd pass (CONVERGED): deferred findings resolved\n"
+    assert cpr.verify_passes(_plan(log=log)) == 2
+    assert cpr.cap_violations("plan-new001.md", _plan(log=log)) == []
 
 
 def test_repository_plans_within_caps():
