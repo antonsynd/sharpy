@@ -1047,6 +1047,12 @@ internal partial class TypeChecker
                         break; // Shouldn't happen due to tooMany check
                     }
 
+                    // #1675 on the pipe route (plan-775c50 D6): an inline `out x: auto` / `out let x`
+                    // argument takes this parameter's type, as on the direct-call route. A still-open
+                    // generic parameter is left to the C# inference it has today.
+                    if (i > 0 && SubstitutedParameterType(param.Type, null) is { } closedParamType)
+                        WriteBackAutoOutBindingType(call.Arguments[i - 1], closedParamType);
+
                     if (!IsAssignable(argType, param.Type))
                     {
                         var argDesc = i == 0 ? "piped value" : $"argument {i}";
@@ -1075,6 +1081,8 @@ internal partial class TypeChecker
                     {
                         // Check if this parameter was already provided positionally (including piped value)
                         var paramIndex = funcSymbol.Parameters.ToList().IndexOf(param);
+                        if (SubstitutedParameterType(param.Type, null) is { } closedKwargType)
+                            WriteBackAutoOutBindingType(kwarg.Value, closedKwargType);
                         if (paramIndex < allArgTypes.Count)
                         {
                             AddError($"Argument '{kwarg.Name}' was already provided positionally",

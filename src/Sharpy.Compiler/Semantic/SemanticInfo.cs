@@ -2121,6 +2121,15 @@ public class SemanticInfo : ISemanticQuery
         => _inlineOutSymbols.GetValueOrDefault(argument);
 
     /// <summary>
+    /// Whether an inline <c>out</c> argument's binding has a resolved type on its symbol: its
+    /// annotation, or for <c>auto</c> / <c>out let</c> the callee's resolved, substituted parameter
+    /// type the checker wrote back (#1675). plan-775c50 D6: the emitter declares such a binding by
+    /// that type before a call emitted once per arm, and has no declaration without one.
+    /// </summary>
+    public bool HasResolvedInlineOutType(ModifiedArgument argument)
+        => GetInlineOutSymbol(argument)?.Type is { } type && type is not UnknownType;
+
+    /// <summary>
     /// Records that <paramref name="rebinding"/> replaced <paramref name="predecessor"/> — the same
     /// variable, rebound. Called from the checker where both are in hand and the scope is alive.
     /// </summary>

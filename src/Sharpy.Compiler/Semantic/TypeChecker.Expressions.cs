@@ -494,6 +494,11 @@ internal partial class TypeChecker
             return; // Not an auto binding, or already typed (explicit annotation or rebinding).
         }
 
+        // Both channels (plan-775c50 D6): CheckModifiedArgument recorded the Unknown placeholder in
+        // the binding too (RecordExpressionBinding), and MaterializeVariableTypes copies the binding
+        // onto symbol.Type at the freeze point, so writing symbol.Type alone was undone there and
+        // every reader after analysis (the emitter's predeclared `out` local) saw Unknown.
+        SemanticBinding.SetVariableType(symbol, resolvedParamType);
         symbol.Type = resolvedParamType;
         _semanticInfo.SetExpressionType(modArg, resolvedParamType);
         _semanticInfo.SetExpressionType(modArg.Argument, resolvedParamType);

@@ -1273,16 +1273,20 @@ internal partial class RoslynEmitter
                         yield return Argument(EscapedIdentifierName(mangledName))
                             .WithRefKindKeyword(Token(SyntaxKind.OutKeyword));
                     }
-                    else if (_callsEmittedPerArm > 0
-                             && (typeSyntax is not IdentifierNameSyntax { Identifier.ValueText: "var" }
-                                 ? typeSyntax
-                                 : positionalParams != null && !sawSpread && argIndex < positionalParams.Count
-                                     ? _typeMapper.MapSemanticType(positionalParams[argIndex].Type)
-                                     : null) is { } declaredType)
+                    else if (_callsEmittedPerArm > 0)
                     {
                         // A call emitted once per arm (plan-775c50 D6) would declare the name in each
                         // copy: it is declared before the statement, typed as annotated or (`auto`,
-                        // `let`) as the callee's parameter, and each copy assigns it.
+                        // `let`) as the checker typed the binding from the callee's resolved,
+                        // substituted parameter, and each copy assigns it. No type, no declaration:
+                        // `out var` in one arm only would leave the name unassigned in the other.
+                        var declaredType = typeSyntax is not IdentifierNameSyntax { Identifier.ValueText: "var" }
+                            ? typeSyntax
+                            : outSymbol != null && outInfo!.HasResolvedInlineOutType(modArg)
+                                ? _typeMapper.MapSemanticType(outSymbol.Type)
+                                : throw new InternalCompilerErrorException("RoslynEmitter",
+                                    $"no resolved type for the inline `out` binding '{modArg.InlineName}' of a call "
+                                    + "emitted once per arm (plan-775c50 D6)", modArg);
                         HoistDeclaration(LocalDeclarationStatement(VariableDeclaration(declaredType)
                             .WithVariables(SingletonSeparatedList(VariableDeclarator(EscapedIdentifier(mangledName))))));
                         yield return Argument(EscapedIdentifierName(mangledName))
