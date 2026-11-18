@@ -8,7 +8,7 @@
 # GENERATED, HUMAN-REVIEWED: bash build_tools/regenerate_corpus_pins.sh rewrites the rows and the `# total` lines; review
 # the diff (a new stem's rows are its own; a moved row of an existing stem is a finding until explained). A new key's cite row in
 # code-action-shape-allowlist.txt is written by hand (the loader names it), and so is a drained key's deletion.
-# total stems identity keys=14 rows=2089
+# total stems identity keys=14 rows=2090
 # total stems crlf keys=8 rows=284
 # total stems cr keys=8 rows=293
 # total stems comment keys=7 rows=288
@@ -1469,6 +1469,7 @@ extract-variable identity diagnostics errors/numeric_promotion_uint64_signed_ref
 extract-variable identity diagnostics errors/tuple_unpack_none_element_1812 # #2294
 extract-variable identity diagnostics except_tuple_binding_common_base # #2294
 extract-variable identity diagnostics experimental/init_augmented_matmul_ungated_2439 # #2294
+extract-variable identity diagnostics experimental/property_observers_static_guarded_old # #2294
 extract-variable identity diagnostics expressions/conditional_best_common_type_1677 # #2294
 extract-variable identity diagnostics expressions/integer_power_uint64_1700 # #2294
 extract-variable identity diagnostics expressions/operator_section_0047 # #2294
