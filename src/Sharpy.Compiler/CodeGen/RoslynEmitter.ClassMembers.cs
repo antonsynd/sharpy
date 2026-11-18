@@ -28,6 +28,7 @@ internal partial class RoslynEmitter
         var fieldMapping = new Dictionary<string, string>();
         var fieldTypeMapping = new Dictionary<string, TypeAnnotation>();
         var fieldMembers = new Dictionary<VariableDeclaration, MemberDeclarationSyntax>(ReferenceEqualityComparer.Instance);
+        var guardedFields = new Dictionary<VariableDeclaration, CodeGenInfo>(ReferenceEqualityComparer.Instance);
 
         // A NESTED type's symbol is defined by NameResolver inside the enclosing class's scope, so the
         // global lookup below cannot see it and `_currentTypeSymbol` was null for every nested type
@@ -84,7 +85,7 @@ internal partial class RoslynEmitter
                 // A Guarded value (plan-775c50 D4) is emitted in the source-order pass below, so its
                 // sweep step lands in declaration order beside the properties' (D5).
                 fieldName = codeGenInfo!.CSharpName;
-                typeHost.IsGenericHost |= codeGenInfo.IsOnGenericHost;
+                guardedFields[varDecl] = codeGenInfo;
             }
             else if (isDataclass && IsSynthesizedConstructorField(varDecl))
             {
@@ -233,7 +234,7 @@ internal partial class RoslynEmitter
                     if (fieldMembers.TryGetValue(varDecl, out var fieldMember))
                         members.Add(fieldMember);
                     else
-                        members.AddRange(GenerateGuardedField(varDecl, fieldMapping[varDecl.Name]));
+                        members.AddRange(GenerateGuardedField(varDecl, guardedFields[varDecl]));
                     break;
 
                 case PassStatement:
@@ -563,20 +564,14 @@ internal partial class RoslynEmitter
                     break;
 
                 case VariableDeclaration fieldDecl
-                    when fieldDecl.IsConst || InterfaceFieldInfo(fieldDecl) is { } fieldInfo && IsGuardedField(fieldDecl, fieldInfo):
-                    {
-                        var fieldCodeGenInfo = InterfaceFieldInfo(fieldDecl);
-                        // A Guarded value: a computed const, or a `@static` field (plan-775c50 D4; the lead's
-                        // ruling on T4: the interface's recorded fact decides, as in every host).
-                        if (fieldCodeGenInfo != null && IsGuardedField(fieldDecl, fieldCodeGenInfo))
-                        {
-                            CurrentStaticHost.IsGenericHost |= fieldCodeGenInfo.IsOnGenericHost;
-                            members.AddRange(GenerateGuardedField(fieldDecl, fieldCodeGenInfo.CSharpName));
-                        }
-                        else
-                            members.Add(GenerateField(fieldDecl, fieldCodeGenInfo?.CSharpName));
-                        break;
-                    }
+                    when InterfaceFieldInfo(fieldDecl) is var fieldInfo && (fieldDecl.IsConst || IsGuardedField(fieldDecl, fieldInfo)):
+                    // A Guarded value: a computed const, or a `@static` field (plan-775c50 D4; the lead's
+                    // ruling on T4: the interface's recorded fact decides, as in every host).
+                    if (IsGuardedField(fieldDecl, fieldInfo))
+                        members.AddRange(GenerateGuardedField(fieldDecl, fieldInfo!));
+                    else
+                        members.Add(GenerateField(fieldDecl, fieldInfo?.CSharpName));
+                    break;
 
                 case VariableDeclaration varDecl:
                     // Interface properties (get/set accessors)

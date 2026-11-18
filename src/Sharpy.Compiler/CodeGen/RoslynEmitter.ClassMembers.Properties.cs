@@ -22,15 +22,17 @@ internal partial class RoslynEmitter
     /// initializer, in any host; plan-775c50 D4): the readiness shape of
     /// <see cref="GenerateGuardedValue"/> in place of an initialized static field. A const, and a
     /// <c>@final</c> field, return <c>ref readonly</c>; the user's attributes stay on the storage.
+    /// <paramref name="info"/> is the field's recorded CodeGenInfo: its C# name and host fact.
     /// </summary>
-    private IEnumerable<MemberDeclarationSyntax> GenerateGuardedField(VariableDeclaration varDecl, string fieldName)
+    private IEnumerable<MemberDeclarationSyntax> GenerateGuardedField(VariableDeclaration varDecl, CodeGenInfo info)
     {
         var isFinal = varDecl.Decorators.Any(d => !d.IsBracketAttribute && d.Name == DecoratorNames.Final);
         return GenerateGuardedValue(new GuardedValue(
-            fieldName, varDecl.Name, ClassFieldType(varDecl), varDecl.InitialValue!, MemberAccessKeyword(varDecl),
+            info.CSharpName, varDecl.Name, ClassFieldType(varDecl), varDecl.InitialValue!, MemberAccessKeyword(varDecl),
             IsReadOnly: varDecl.IsConst || isFinal,
             new SyntaxList<AttributeListSyntax>(),
-            GenerateAttributeListsFromDecorators(varDecl.Decorators))).ToList();
+            GenerateAttributeListsFromDecorators(varDecl.Decorators),
+            info.IsOnGenericHost)).ToList();
     }
 
     /// <summary>Whether a class body's field declaration is a Guarded value: its recorded fact.</summary>
@@ -61,22 +63,7 @@ internal partial class RoslynEmitter
         // Use PascalCase for public fields (C# property-like convention)
         var fieldName = mangledName ?? NameCasing.ResolveField(varDecl.Name, varDecl.IsNameBacktickEscaped);
 
-        // Get field type from annotation, or infer from initializer for consts
-        TypeSyntax fieldType;
-        if (varDecl.Type != null)
-        {
-            fieldType = _typeMapper.MapType(varDecl.Type);
-        }
-        else if (varDecl.IsConst && varDecl.InitialValue != null)
-        {
-            // Infer type from initializer for const declarations without type annotation
-            fieldType = ResolveInferredDeclarationType(varDecl.InitialValue);
-        }
-        else
-        {
-            fieldType = PredefinedType(Token(SyntaxKind.ObjectKeyword));
-        }
-
+        var fieldType = ClassFieldType(varDecl);
         var variable = VariableDeclarator(EscapedIdentifier(fieldName));
 
         // Add initializer if present. A comprehension/generator/lambda/walrus in the initializer

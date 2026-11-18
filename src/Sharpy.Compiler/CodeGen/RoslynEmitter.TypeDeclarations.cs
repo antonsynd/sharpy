@@ -1538,12 +1538,7 @@ internal partial class RoslynEmitter
         // [global::Sharpy.SharpyFieldName("red")] — the python-name channel, only when the emitted
         // identifier differs (#2007).
         if (pythonName != null)
-        {
-            enumMember = PrependAttributeList(enumMember, AttributeList(SingletonSeparatedList(
-                Attribute(MakeGlobalQualifiedName("Sharpy", "SharpyFieldName"))
-                    .WithArgumentList(AttributeArgumentList(SingletonSeparatedList(AttributeArgument(
-                        LiteralExpression(SyntaxKind.StringLiteralExpression, Literal(pythonName)))))))));
-        }
+            enumMember = PrependAttributeList(enumMember, SharpyFieldNameAttributeList(pythonName));
 
         // Add explicit value if present
         if (member.Value != null)

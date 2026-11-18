@@ -1250,12 +1250,9 @@ internal partial class RoslynEmitter
         var symbol = _context.LookupSymbol(varDecl.Name);
         if (symbol == null || GetCodeGenInfo(symbol) is not { StaticStorage: StaticStorage.Guarded } || varDecl.InitialValue == null)
             return null;
-        if (HasExecutionOrderIssues(symbol) && !_forceModuleLevelFields)
-            return null;
         var (varName, typeSyntax) = ModuleFieldNameAndType(varDecl);
-        if (_moduleFieldNames.Contains(varName))
+        if (!ClaimModuleField(symbol, varName))
             return null;
-        _moduleFieldNames.Add(varName);
 
         var propertyAttributes = new SyntaxList<AttributeListSyntax>();
         if (NameMangler.ToSharpyName(varName, ReverseNameContext.Field) != varDecl.Name)
@@ -1263,7 +1260,8 @@ internal partial class RoslynEmitter
 
         return GenerateGuardedValue(new GuardedValue(
             varName, varDecl.Name, typeSyntax, varDecl.InitialValue, SyntaxKind.PublicKeyword,
-            IsReadOnly: varDecl.IsConst, propertyAttributes, new SyntaxList<AttributeListSyntax>())).ToList();
+            IsReadOnly: varDecl.IsConst, propertyAttributes, new SyntaxList<AttributeListSyntax>(),
+            IsOnGenericHost: false)).ToList();
     }
 
     /// <summary><c>[global::Sharpy.SharpyFieldName("name")]</c> (#1607).</summary>
@@ -1302,77 +1300,28 @@ internal partial class RoslynEmitter
         return (varName, typeSyntax);
     }
 
+    /// <summary>
+    /// Whether a module-level declaration of <paramref name="symbol"/> named <paramref name="varName"/>
+    /// is a member of the module class, claiming the name when it is (shared by the field and Guarded
+    /// arms). It is not when its execution order puts it in <c>Main()</c> (assigned before declared,
+    /// or declared more than once), unless a user-defined <c>main</c> forces module-level fields; nor
+    /// when the name is already a field: Sharpy allows a module-level redefinition with another
+    /// type, which is an executable statement in <c>Main()</c> to keep the execution order.
+    /// A null <paramref name="symbol"/> (no semantic analysis) has no execution order to check.
+    /// </summary>
+    private bool ClaimModuleField(Symbol? symbol, string varName)
+    {
+        if (symbol != null && HasExecutionOrderIssues(symbol) && !_forceModuleLevelFields)
+            return false;
+        return _moduleFieldNames.Add(varName);
+    }
+
     private FieldDeclarationSyntax? GenerateModuleLevelField(VariableDeclaration varDecl)
     {
-        // Check if this variable has execution order issues (assigned before declared, or multiple declarations)
-        // If so, skip generating a field - it will be handled as a local variable in Main()
-        // UNLESS _forceModuleLevelFields is true (when there's a user-defined main function)
         var symbol = _context.LookupSymbol(varDecl.Name);
-        if (symbol != null && HasExecutionOrderIssues(symbol) && !_forceModuleLevelFields)
-        {
+        var (varName, typeSyntax) = ModuleFieldNameAndType(varDecl);
+        if (!ClaimModuleField(symbol, varName))
             return null;
-        }
-        // Note: If symbol is null, we can't check execution order issues
-        // This shouldn't happen in well-typed code that went through semantic analysis
-
-        // Track const variables by their original Sharpy name for consistent reference resolution
-        if (varDecl.IsConst)
-        {
-        }
-
-        // Module-level fields naming:
-        // - Explicitly const declarations use CONSTANT_CASE
-        // - Names that look like constants (ALL_CAPS) also use CONSTANT_CASE
-        //   This supports Python-style convention where MAX_SIZE implies a constant
-        // - Other names use PascalCase
-        string varName;
-        if (varDecl.IsConst || NameFormDetector.IsConstantCaseName(varDecl.Name))
-        {
-            varName = NameCasing.ResolveConstant(varDecl.Name, varDecl.IsNameBacktickEscaped);
-        }
-        else
-        {
-            varName = NameCasing.ResolveField(varDecl.Name, varDecl.IsNameBacktickEscaped);
-        }
-
-        // Check if we've already generated a field with this name (redefinition)
-        // Sharpy allows variable redefinition at module level with different types.
-        // When there are redefinitions, we return null to handle them as executable
-        // statements in Main() to preserve proper execution order semantics.
-        if (_moduleFieldNames.Contains(varName))
-        {
-            // This is a redefinition - handle as executable statement in Main
-            return null;
-        }
-
-        // Track this field name to detect future redefinitions
-        _moduleFieldNames.Add(varName);
-
-        // Handle 'auto' type annotation - for fields, we must resolve to concrete type
-        // For const without type annotation, infer type from initializer
-        TypeSyntax typeSyntax;
-        if (varDecl.Type != null && varDecl.Type.Name == "auto")
-        {
-            // Infer type from initializer
-            if (varDecl.InitialValue != null)
-            {
-                typeSyntax = ResolveInferredDeclarationType(varDecl.InitialValue);
-            }
-            else
-            {
-                // No initializer - default to object
-                typeSyntax = PredefinedType(Token(SyntaxKind.ObjectKeyword));
-            }
-        }
-        else if (varDecl.Type == null && varDecl.IsConst && varDecl.InitialValue != null)
-        {
-            // Infer type from initializer for const declarations without type annotation
-            typeSyntax = ResolveInferredDeclarationType(varDecl.InitialValue);
-        }
-        else
-        {
-            typeSyntax = _typeMapper.MapType(varDecl.Type);
-        }
 
         VariableDeclaratorSyntax declarator;
         if (varDecl.InitialValue != null)
@@ -1429,15 +1378,7 @@ internal partial class RoslynEmitter
         // Sharpy `I` → CLR `I` by constant-case identity). When inference would round-trip
         // wrong, record the authoritative Python name for discovery to read (#1607).
         if (NameMangler.ToSharpyName(varName, ReverseNameContext.Field) != varDecl.Name)
-        {
-            fieldDeclaration = PrependAttributeList(fieldDeclaration,
-                AttributeList(SingletonSeparatedList(
-                    Attribute(MakeGlobalQualifiedName("Sharpy", "SharpyFieldName"))
-                        .WithArgumentList(AttributeArgumentList(SingletonSeparatedList(
-                            AttributeArgument(LiteralExpression(
-                                SyntaxKind.StringLiteralExpression,
-                                Literal(varDecl.Name)))))))));
-        }
+            fieldDeclaration = PrependAttributeList(fieldDeclaration, SharpyFieldNameAttributeList(varDecl.Name));
 
         return fieldDeclaration;
     }

@@ -266,9 +266,9 @@ internal partial class RoslynEmitter
             Identifier name when string.Equals(name.Name, PythonNames.Self, StringComparison.OrdinalIgnoreCase) =>
                 GenerateSelfReceiver(),
             // In an `async def` body a use other than a plain read or store names the backing field (plan-775c50 D6).
-            Identifier name => GenerateWithAsyncEnsure(name, () => GenerateIdentifierExpression(name)),
+            Identifier name => GenerateWithAsyncEnsure(name, GenerateIdentifierExpression(name)),
             SuperExpression => BaseExpression(),  // super() -> base
-            MemberAccess memberAccess => GenerateWithAsyncEnsure(memberAccess, () => GenerateMemberAccess(memberAccess)),
+            MemberAccess memberAccess => GenerateWithAsyncEnsure(memberAccess, GenerateMemberAccess(memberAccess)),
             IndexAccess indexAccess => GenerateIndexAccess(indexAccess),
             SliceAccess sliceAccess => GenerateSliceAccess(sliceAccess),
             MultiAxisAccess multiAxis => GenerateMultiAxisAccess(multiAxis),

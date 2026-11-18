@@ -21,8 +21,8 @@ internal partial class RoslynEmitter
     /// namespace, and its types are declared beside <c>&lt;X&gt;</c> in it (#2039).
     /// </summary>
     private ClassDeclarationSyntax GenerateModuleMembers(
-        List<Statement> statements, List<FromImportStatement>? reExportImports = null,
-        IReadOnlyList<Statement>? body = null)
+        List<Statement> statements, List<FromImportStatement>? reExportImports,
+        IReadOnlyList<Statement> body)
     {
         // Clear tracking field for module field names (still needed to prevent duplicate field declarations)
         _moduleFieldNames.Clear();
@@ -97,7 +97,7 @@ internal partial class RoslynEmitter
         var moduleDeclarations = new List<MemberDeclarationSyntax>();
 
         // The module is a host (plan-775c50 D5): its Guarded values' sweep steps collect here.
-        var moduleHost = OpenStaticHost(out var enclosingHost, isModule: true);
+        var moduleHost = OpenStaticHost(out var enclosingHost, typeName: null);
         var executableStatements = new List<Statement>();
 
         // Whether the module declares the entry-point main() — ModuleShape's answer, computed once by
@@ -148,7 +148,7 @@ internal partial class RoslynEmitter
 
         // The whole body in source order: an import is no member, but the module's sweep requires the
         // module it imports at its position (plan-775c50 D5).
-        foreach (var stmt in body ?? statements)
+        foreach (var stmt in body)
         {
             if (stmt.UnwrapDecorated() is ImportStatement or FromImportStatement)
             {
