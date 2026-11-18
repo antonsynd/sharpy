@@ -154,6 +154,9 @@ public class DispatchSiteInventoryTests
         ["Semantic/AsyncGuardedUseAnalyzer.cs::AsyncGuardedUseAnalyzer.IsReceiverOf"] = "refusal-net:AsyncGuardedUseFactTests",
         ["Semantic/AsyncGuardedUseAnalyzer.cs::AsyncGuardedUseAnalyzer.IsStoreTarget"] = "refusal-net:AsyncGuardedUseFactTests",
         ["Semantic/AsyncGuardedUseAnalyzer.cs::AsyncGuardedUseAnalyzer.IsElementOf"] = "refusal-net:AsyncGuardedUseFactTests",
+        // plan-775c50 D4/D6: a Guarded value's own spelling, by its two value spellings (a name, a member
+        // access); any other node is an internal error. The run generator crosses every narrowing form.
+        ["CodeGen/RoslynEmitter.StaticValues.cs::RoslynEmitter.GuardedValueSpelling"] = "refusal-net:AsyncGuardedNarrowedUseTests",
         // plan-775c50 D8 (P77 T9): the cycle graph. Its slot walk over the Expression subclasses is total and
         // equal to the stage-0 generator's map (CycleGraph_SlotMapAndNodeKinds_AreTheGenerators); the node,
         // read, pattern and store switches are covered by the generator's Slot family and the order matrix.

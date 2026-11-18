@@ -266,9 +266,9 @@ internal partial class RoslynEmitter
             Identifier name when string.Equals(name.Name, PythonNames.Self, StringComparison.OrdinalIgnoreCase) =>
                 GenerateSelfReceiver(),
             // In an `async def` body a use other than a plain read or store names the backing field (plan-775c50 D6).
-            Identifier name => GenerateWithAsyncEnsure(name, GenerateIdentifierExpression(name)),
+            Identifier name => GenerateWithAsyncEnsure(name, () => GenerateIdentifierExpression(name)),
             SuperExpression => BaseExpression(),  // super() -> base
-            MemberAccess memberAccess => GenerateWithAsyncEnsure(memberAccess, GenerateMemberAccess(memberAccess)),
+            MemberAccess memberAccess => GenerateWithAsyncEnsure(memberAccess, () => GenerateMemberAccess(memberAccess)),
             IndexAccess indexAccess => GenerateIndexAccess(indexAccess),
             SliceAccess sliceAccess => GenerateSliceAccess(sliceAccess),
             MultiAxisAccess multiAxis => GenerateMultiAxisAccess(multiAxis),
@@ -348,9 +348,10 @@ internal partial class RoslynEmitter
     /// <summary>
     /// Generates an identifier expression, with Optional narrowing support.
     /// When a variable has been narrowed from Optional&lt;T&gt; to T (via an is-not-None check),
-    /// emits identifier.Unwrap() to extract the underlying value.
+    /// emits identifier.Unwrap() to extract the underlying value. <paramref name="applyNarrowing"/>
+    /// false gives the name's own spelling, with no narrowed read applied (plan-775c50 D6).
     /// </summary>
-    private ExpressionSyntax GenerateIdentifierExpression(Identifier name)
+    private ExpressionSyntax GenerateIdentifierExpression(Identifier name, bool applyNarrowing = true)
     {
         // An admitted class-body sibling read outside a method (P21h D8, R-JJ): the checker recorded
         // the member's C# name, and C# resolves it by that simple name in the initializer or default
@@ -508,7 +509,7 @@ internal partial class RoslynEmitter
 
         // Apply the narrowed-read accessor the TypeChecker recorded for this identifier node, if any
         // (Optional → .Unwrap(), value-nullable → .Value, reference-nullable → !, isinstance → cast).
-        return ApplyNarrowedReadLowering(name, expr);
+        return applyNarrowing ? ApplyNarrowedReadLowering(name, expr) : expr;
     }
 
     /// <summary>

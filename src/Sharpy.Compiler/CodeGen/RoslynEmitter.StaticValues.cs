@@ -939,14 +939,45 @@ internal partial class RoslynEmitter
     /// <summary>
     /// A use in an <c>async def</c> body that is neither a plain read nor a plain store (D6):
     /// <c>N__ensure();</c> before the statement, then the backing field at the node, so no accessor's
-    /// reference lives across an <c>await</c>. <paramref name="generated"/> is the node's own
-    /// spelling. Outside an <c>async def</c> method no node carries the fact, so none is looked up.
+    /// reference lives across an <c>await</c>. <paramref name="generate"/> spells the node as any other
+    /// use. Outside an <c>async def</c> method no node carries the fact, so none is looked up.
+    /// <para>The ensure and the field are named from <see cref="GuardedValueSpelling"/>; the narrowed
+    /// read the checker recorded on the node then applies to the field, which holds the same value.</para>
     /// </summary>
-    private ExpressionSyntax GenerateWithAsyncEnsure(Expression node, ExpressionSyntax generated)
+    private ExpressionSyntax GenerateWithAsyncEnsure(Expression node, Func<ExpressionSyntax> generate)
+        => IsAsyncEnsured(node) ? ApplyNarrowedReadLowering(node, EnsuredField(node)) : generate();
+
+    /// <summary>
+    /// A <c>ref</c> / <c>in</c> operand: in an <c>async def</c> body, one naming a Guarded value is the
+    /// backing field after <c>N__ensure()</c> (D6), passed as the variable it is: a narrowed read
+    /// (<c>((T)N!)</c>, <c>N.Value</c>) is no variable to pass by reference (CS1510).
+    /// </summary>
+    private ExpressionSyntax GenerateReferenceOperand(Expression operand)
+        => IsAsyncEnsured(operand) ? EnsuredField(operand) : GenerateExpression(operand);
+
+    private bool IsAsyncEnsured(Expression node)
+        => _isCurrentMethodAsync && node is Parser.Ast.Identifier or MemberAccess && AsyncGuardedUseOf(node) == AsyncGuardedUseKind.Ensure;
+
+    /// <summary><c>N__ensure();</c> hoisted before the statement, and the backing field.</summary>
+    private ExpressionSyntax EnsuredField(Expression node)
     {
-        if (!_isCurrentMethodAsync || AsyncGuardedUseOf(node) != AsyncGuardedUseKind.Ensure)
-            return generated;
-        HoistEvaluation(ExpressionStatement(InvocationExpression(GuardedMember(generated, GuardedEnsureSuffix, node))));
-        return GuardedMember(generated, GuardedFieldSuffix, node);
+        var value = GuardedValueSpelling(node);
+        HoistEvaluation(ExpressionStatement(InvocationExpression(GuardedMember(value, GuardedEnsureSuffix, node))));
+        return GuardedMember(value, GuardedFieldSuffix, node);
     }
+
+    /// <summary>
+    /// The value's own spelling at <paramref name="node"/>, the name or member access naming a Guarded
+    /// value: the name its <see cref="CodeGenInfo"/> resolves to on its host, with no narrowed read
+    /// applied, as a store target is spelled. Its helpers (<c>N__ensure</c>, <c>N__field</c>,
+    /// <c>N__out</c>, <c>N__pick</c>, <c>N__commit</c>) are named from it, never from a narrowed read
+    /// (<c>N!</c>, <c>N.Value</c>, <c>((T)N!)</c>), which is no member spelling (D4, D6).
+    /// </summary>
+    private ExpressionSyntax GuardedValueSpelling(Expression node) => node switch
+    {
+        Parser.Ast.Identifier name => GenerateIdentifierExpression(name, applyNarrowing: false),
+        MemberAccess memberAccess => GenerateMemberAccess(memberAccess, applyNarrowing: false),
+        _ => throw new InternalCompilerErrorException("RoslynEmitter",
+            $"a Guarded value is named by neither a name nor a member access (plan-775c50 D4): {node.GetType().Name}", node),
+    };
 }
