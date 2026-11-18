@@ -725,8 +725,11 @@ internal partial class RoslynEmitter
             if (!module.HasSweep)
                 continue;
             // The layout's members class: a module imported by reference names its discovered CLR
-            // class (a nested one joined by `+`), a source module's is under the project namespace.
-            var path = module.MembersClassFullName(_context.ProjectNamespace).Replace('+', '.').Split('.');
+            // class (a nested one joined by `+`, D10), a source module's is its recorded members class
+            // in its recorded namespace, under the project namespace (#2039).
+            IReadOnlyList<string> path = module.ClrMembersClass is { } clrMembersClass
+                ? clrMembersClass.Replace('+', '.').Split('.')
+                : module.NamespaceParts(_context.ProjectNamespace).Append(module.MembersClassName).ToList();
             CurrentStaticHost.Sweep.Add(new RequireStep(path, ModuleLoadName, IsGlobal: true));
         }
     }
