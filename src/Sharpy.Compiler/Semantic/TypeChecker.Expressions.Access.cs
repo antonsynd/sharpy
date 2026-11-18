@@ -2621,11 +2621,23 @@ internal partial class TypeChecker
             }
 
             var field = typeSym.Fields.FirstOrDefault(f => f.Name == memberAccess.Member);
+            var fieldOwner = typeSym;
+            // A static or const a subclass inherits (`class D(C)`, `D.s`) is the base's own value, bound
+            // to its declaring symbol as `C.s` is, so every reader (a read, a store, an `out` operand,
+            // the D6 facts) sees the one value (plan-775c50: one rule for every spelling). A generic
+            // base's member keeps today's route: its open owner names no closed type.
+            if (field == null
+                && FindFieldInHierarchy(typeSym, memberAccess.Member) is ({ } inherited, { IsGeneric: false } inheritedOwner)
+                && (inherited.IsConstant || inherited.IsStatic))
+            {
+                field = inherited;
+                fieldOwner = inheritedOwner;
+            }
             if (field != null && (field.IsConstant || field.IsStatic))
             {
                 var fieldType = GetVariableType(field);
                 _semanticInfo.SetExpressionType(memberAccess, fieldType);
-                _semanticInfo.SetMemberAccessResolution(memberAccess, typeSym, field);
+                _semanticInfo.SetMemberAccessResolution(memberAccess, fieldOwner, field);
                 return fieldType;
             }
 
