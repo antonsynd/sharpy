@@ -82,7 +82,9 @@ Stop the group, write the recap, and bring the decision to the owner when one ho
 - The scorecard moves the wrong way on two metrics in one group.
 - Procedure bytes, `CLAUDE.md` bytes or the side-table pin rise in a group, or allowlist rows
   outside the seed rise outside a generator's stage 0, even on the owner's word (a raise lands only
-  with it quoted in the pull request body).
+  with it quoted in the pull request body). The question names the measured delta, never an
+  estimate; for procedure or `CLAUDE.md` bytes it offers an equal cut in the same counted text as
+  the default, and a raise is for when the lead finds no cut (owner, 2026-11-19: "both your recs").
 - A plan's verification record would merge with a case its stage 0 listed as known-red still
   listed, beyond a residue the owner ruled (`git diff <stage-0 base>..<record sha> -- <the
   allowlist files its plan names>`).
