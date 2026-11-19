@@ -1200,21 +1200,38 @@ internal partial class TypeChecker
     {
         var baseRef = SemanticBinding.GetBaseTypeReference(typeSymbol) ?? typeSymbol.BaseTypeRef;
         if (baseRef?.SourceAnnotation is { } baseAnnotation)
-            RecordBaseListReference(baseAnnotation);
+            RecordBaseListReference(baseAnnotation, baseRef.Definition);
 
         foreach (var iface in SemanticBinding.GetInterfaces(typeSymbol) ?? (IReadOnlyList<InterfaceReference>)typeSymbol.Interfaces)
         {
             if (iface.SourceAnnotation is { } interfaceAnnotation)
-                RecordBaseListReference(interfaceAnnotation);
+                RecordBaseListReference(interfaceAnnotation, iface.Definition);
         }
     }
 
-    private void RecordBaseListReference(TypeAnnotation annotation)
+    /// <summary>
+    /// Records a base-list spelling as the type NAME RESOLUTION bound it, the one base the hierarchy
+    /// walks. A plain Sharpy-declared base is recorded from the bound definition itself, never
+    /// re-resolved: the checker's scope at the class is not the scope a base expression is evaluated
+    /// in (the enclosing body BEFORE the class binds, then the module — CPython's rule), so a
+    /// re-resolution named a nested class itself or a later sibling where name resolution named the
+    /// module's class, and the emitter wrote that other base (`class C : C`, CS0146; plan-775c50).
+    /// The emitter spells the recorded type (<c>TypeSyntaxMapper.MapType</c> reads it first).
+    /// </summary>
+    private void RecordBaseListReference(TypeAnnotation annotation, TypeSymbol? bound)
     {
         // Already through the seam — the PEP-696 fill above resolves the COMPLETED spelling first,
         // and that resolve recorded the reference. Resolving again would count one spelling twice.
         if (_semanticInfo.GetTypeAnnotation(annotation) != null)
             return;
+
+        if (bound is { ClrType: null, IsGeneric: false } && annotation.TypeArguments.Length == 0
+            && bound.TypeKind is TypeKind.Class or TypeKind.Interface)
+        {
+            _semanticInfo.SetTypeAnnotation(
+                annotation, new UserDefinedType { Name = bound.Name, Symbol = bound }, bound);
+            return;
+        }
 
         _typeResolver.ResolveTypeAnnotation(annotation, AnnotationPosition.Value);
     }

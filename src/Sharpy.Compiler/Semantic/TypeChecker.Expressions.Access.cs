@@ -189,6 +189,8 @@ internal partial class TypeChecker
         // resolver (plan-775c50): the arms below never bind a static value of their own.
         if (BindStaticValueThroughType(memberAccess, objectType) is { } staticValueType)
             return staticValueType;
+        if (TryRefuseAbsentMemberThroughNestedType(memberAccess, objectType))
+            return SemanticType.Unknown;
 
         // Resolve type-name member access (int.parse(), Color.RED, MyClass.FIELD, Shape.Circle)
         // regardless of what CheckIdentifier returned for the type name. This handles cases

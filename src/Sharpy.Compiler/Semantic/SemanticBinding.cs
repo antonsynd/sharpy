@@ -425,6 +425,20 @@ public class SemanticBinding
     }
 
     /// <summary>
+    /// Removes the base type edge of a type symbol whose chain closes a cycle (SPY0288), so no walk
+    /// of the hierarchy after the refusal can loop on it.
+    /// </summary>
+    public void RemoveBaseType(TypeSymbol symbol)
+    {
+        if (_inheritanceFrozen)
+        {
+            AssertNotFrozen("Inheritance", symbol.Name);
+        }
+        _baseTypes.TryRemove(symbol, out _);
+        _baseTypeRefs.TryRemove(symbol, out _);
+    }
+
+    /// <summary>
     /// Gets the base type for a type symbol, or null if not set.
     /// </summary>
     public TypeSymbol? GetBaseType(TypeSymbol symbol)

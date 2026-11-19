@@ -329,13 +329,14 @@ internal static class TypeHierarchyService
         if (a.ClrType != null && a.ClrType == b.ClrType)
             return true;
 
-        // Cross-module: both have DefiningModule set
+        // Cross-module: both have DefiningModule set. A name is compared WITH its declaring types: a
+        // module's `C` and its `Outer.C` are two types of one name (plan-775c50).
         if (a.DefiningModule != null && b.DefiningModule != null)
-            return a.DefiningModule == b.DefiningModule && a.Name == b.Name;
+            return a.DefiningModule == b.DefiningModule && SameNestedName(a, b);
 
         // Same-project cross-file: both have DefiningFilePath set
         if (a.DefiningFilePath != null && b.DefiningFilePath != null)
-            return a.DefiningFilePath == b.DefiningFilePath && a.Name == b.Name;
+            return a.DefiningFilePath == b.DefiningFilePath && SameNestedName(a, b);
 
         // Neither symbol has module/file context — this happens for CLR-discovered types
         // (e.g., Exception, List<T>) which are identified by name alone. User-defined types
@@ -346,6 +347,19 @@ internal static class TypeHierarchyService
 
         // Mixed context (one has module/file, the other doesn't) — conservative false
         return false;
+    }
+
+    /// <summary>Whether two symbols carry one name under one chain of declaring types.</summary>
+    private static bool SameNestedName(TypeSymbol a, TypeSymbol b)
+    {
+        TypeSymbol? x = a, y = b;
+        for (; x != null && y != null; x = x.DeclaringType, y = y.DeclaringType)
+        {
+            if (x.Name != y.Name)
+                return false;
+        }
+
+        return x == null && y == null;
     }
 
     /// <summary>

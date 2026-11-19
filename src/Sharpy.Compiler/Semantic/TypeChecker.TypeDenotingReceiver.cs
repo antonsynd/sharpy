@@ -147,6 +147,33 @@ internal partial class TypeChecker
         return fieldType;
     }
 
+    /// <summary>
+    /// A member no type on the chain declares, named through a NESTED type (<c>Outer.D.s</c>), is
+    /// refused here (SPY0203). The nested qualifier is left untyped (#1941), so the access otherwise
+    /// took the permissive channel and reached Roslyn as CS0117 behind SPY0908 — the one base the
+    /// checker walks having no such member, the emitted base had none either (plan-775c50). Only a
+    /// chain of Sharpy-declared types is proved absent: a CLR ancestor's surface is not in its
+    /// symbol, and a dunder name is the runtime's.
+    /// </summary>
+    private bool TryRefuseAbsentMemberThroughNestedType(MemberAccess memberAccess, SemanticType receiverType)
+    {
+        if (receiverType is not UnknownType || memberAccess.Object is not MemberAccess || memberAccess.Member.Length == 0
+            || memberAccess.Member.StartsWith("__", StringComparison.Ordinal)
+            || DenotedTypeSymbolOf(memberAccess.Object, receiverType) is not var (typeSymbol, typeName)
+            || typeSymbol.TypeKind is not (TypeKind.Class or TypeKind.Struct)
+            || TypeHierarchyService.FirstDeclaringType(typeSymbol, memberAccess.Member, SemanticBinding) != null
+            || EnumerateTypeAndHierarchy(typeSymbol).Any(t => t.ClrType != null
+                || TypeBodyMembership.DescribeMemberOf(t, memberAccess.Member, reachableThroughSelf: false, isInherited: false) != null))
+            return false;
+
+        AddError($"Type '{typeName}' has no member '{memberAccess.Member}'",
+            memberAccess.LineStart, memberAccess.ColumnStart,
+            code: DiagnosticCodes.Semantic.UndefinedMember, span: memberAccess.Span);
+        MarkExpressionAsErrorRecovery(memberAccess,
+            ErrorRecoveryReason.AlreadyReported("a member absent from a nested type's chain (SPY0203)"));
+        return true;
+    }
+
     private static bool IsNestedUnderGeneric(TypeSymbol type)
     {
         for (var owner = type.DeclaringType; owner != null; owner = owner.DeclaringType)
