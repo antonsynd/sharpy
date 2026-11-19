@@ -22,7 +22,7 @@ python -m build_tools build run --max-tasks 5      # Auto-builder
 |-----------|---------|
 | `sharpy_auto_builder/` | LangGraph-based task orchestration with SQLite persistence |
 | `sharpy_dogfood/` | Random code generation → compile → execute → bug reporting |
-| `shared/` | Backend abstraction (Claude/Copilot), rate limiting, model selection, logging |
+| `shared/` | Backend abstraction (Claude/Copilot), rate limiting, logging |
 | `tests/` | pytest tests (`asyncio_mode = auto`) |
 | `cpython_oracle/` | CPython test-suite classifier + porting ledger for the golden oracle (#1030) |
 | `differential_parse/` | Batched CPython `ast.parse` oracle used by `CPythonDifferentialParseTests` (#1037) |
@@ -38,9 +38,8 @@ python -m build_tools build run --max-tasks 5      # Auto-builder
 
 ## Key Patterns
 
-- **Backend abstraction** — `shared/backends/` provides a single interface for Claude Code + GitHub Copilot CLIs with automatic failover on rate limits
+- **Backend abstraction** — `shared/backends/` provides a single interface for Claude Code + GitHub Copilot CLIs
 - **Durable persistence** — Auto-builder uses SQLite checkpoints (`.claude/.sharpy_auto_builder/checkpoints/`); resume with `--thread-id`
-- **Cost-aware model routing** — `shared/model_selector.py` routes tasks to Haiku/Sonnet/Opus by complexity
 - **Two-stage dogfood validation** — Regex pre-check for forbidden features, then compiler validation (saves API calls)
 
 ## CI

@@ -25,7 +25,7 @@ Working directory: Script runs from repository root for path resolution.
 
 Migration Notes (2026-01-13):
 - Refactored to use shared modules from build_tools.shared
-- Backend management now uses shared.backends.BackendManager (async-based)
+- Backend management uses a local BackendManager over the shared backends
 - Rate limiting uses shared.rate_limiting module
 - Logging uses shared.logging.ExecutionLogger
 - Model selection integrated for documentation tasks
