@@ -180,9 +180,9 @@ public class SemanticInfo : ISemanticQuery
     // Used to communicate TypeChecker's resolution to codegen so it doesn't re-resolve.
     // Covers: ClassName.FIELD (static/const), ClassName.method (static), self.static_field.
     // ChainSpelled (plan-775c50): a static bound through a receiver naming a type nested under a
-    // generic (`G[int].N.s`, or `N.s` inside `G[T]`); its owner has no closed carrier of its own
-    // (#1941), so the emitter spells the receiver as its own chain generates it (`G<int>.N`), never
-    // the owner's open name (`G.N`, CS0305).
+    // generic (`G[int].N.s`); its owner has no closed carrier of its own (#1941), so the emitter
+    // spells the receiver as its own chain generates it (`G<int>.N`), never the owner's open name
+    // (`G.N`, CS0305). A bare `N.s` inside `G[T]` is spelled `G.N` and is still CS0305 (#1941).
     private readonly ConcurrentDictionary<MemberAccess, (TypeSymbol Owner, Symbol Member, bool ChainSpelled)> _memberAccessResolutions =
         new(ReferenceEqualityComparer.Instance);
 

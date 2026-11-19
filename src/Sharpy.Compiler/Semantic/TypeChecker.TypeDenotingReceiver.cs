@@ -133,8 +133,9 @@ internal partial class TypeChecker
         field = DeclaredField(owner, field);
 
         // A type nested under a generic has no closed carrier of its own (#1941): the receiver keeps
-        // the spelling its own chain generates (`G<int>.N`, or `N` inside `G[T]`), and the field's
-        // type is read at the arguments the chain constructs the enclosing generic with.
+        // the spelling its own chain generates (`G<int>.N`), and the field's type is read at the
+        // arguments the chain constructs the enclosing generic with. A bare `N` inside `G[T]`
+        // constructs nothing and still spells the open `G.N` (CS0305, #1941).
         if (IsNestedUnderGeneric(typeSymbol) || IsNestedUnderGeneric(owner))
         {
             _semanticInfo.SetMemberAccessResolution(memberAccess, owner, field, chainSpelledReceiver: true);
