@@ -310,7 +310,7 @@ Spawn when the plan's Design Decisions make claims about .NET, Roslyn, or Python
 
 ## Collect Audit Results
 
-Wait for all auditors to return. Do **not** begin remediation until every one has reported — a partial picture invites cell patches. An auditor that times out, errors or returns no verdict has not audited: re-spawn it once. Failing again, it is **not run** (it counts as reported): its categories read `not audited`, never zero findings, and the round is incomplete — no record (Cleanup step 3), no merge or issue close (step 5); list it under Unresolved Items. Agent 1 at light tier is **not spawned**, not `not run` (§1b). Compile a unified list, categorized:
+Wait for all auditors to return. Do **not** begin remediation until every one has reported — a partial picture invites cell patches. An auditor the tier spawns (Agents 1–4) that times out, errors or returns no verdict has not audited: remove the worktrees its brief names and re-spawn it once. Failing again it is **not run**: its categories read `not audited`, never zero findings, and the round stops here, running only Cleanup steps 1, 2 and 6: no remediation, record, merge or issue close. Agent 1 at light tier is **not spawned**, not `not run` (§1b). Compile a unified list, categorized:
 
 | Category | Source |
 |----------|--------|
@@ -397,7 +397,7 @@ If a step fails, loop back to remediation. Maximum 3 remediation loops — after
 
 **Plan:** [plan file path] (stamp: PASS / PASS WITH CORRECTIONS / NEEDS REVISION / CONVERGED / none; Adequacy: CLASS / CELL / N/A)
 **Tier:** [light — Agents 2, 3, 4; completeness by the lead / full — Agents 1–4] (contract §12)
-**Auditors:** [per agent: completed / not run / not spawned (tier)]
+**Auditors:** [per agent: completed / not run / not spawned (tier / optional)]
 **Branch:** [lane branch] · **Pull request:** [URL]
 **Scope:** `$BASE..$FINAL` (base = parent of first implementation commit; N implementation commits, M remediation commits)
 **Verified on:** YYYY-MM-DD
