@@ -752,25 +752,7 @@ public partial class Parser
 
         // Base classes (ParentClass, Interface1, Interface2)
         if (Current.Type == TokenType.LeftParen)
-        {
-            Advance();
-            if (Current.Type != TokenType.RightParen)
-            {
-                _lastLoopPosition = -1;
-                do
-                {
-                    if (!CheckLoopProgress())
-                        break;
-
-                    baseClasses.Add(ParseTypeAnnotation());
-                    if (Current.Type == TokenType.Comma)
-                        Advance();
-                    else
-                        break;
-                } while (true);
-            }
-            Expect(TokenType.RightParen);
-        }
+            baseClasses = ParseParenthesizedTypeList();
 
         ExpectHeaderColon();
         ExpectNewline();
@@ -819,25 +801,7 @@ public partial class Parser
 
         // Base interfaces (structs can only implement interfaces, no inheritance)
         if (Current.Type == TokenType.LeftParen)
-        {
-            Advance();
-            if (Current.Type != TokenType.RightParen)
-            {
-                _lastLoopPosition = -1;
-                do
-                {
-                    if (!CheckLoopProgress())
-                        break;
-
-                    baseInterfaces.Add(ParseTypeAnnotation());
-                    if (Current.Type == TokenType.Comma)
-                        Advance();
-                    else
-                        break;
-                } while (true);
-            }
-            Expect(TokenType.RightParen);
-        }
+            baseInterfaces = ParseParenthesizedTypeList();
 
         ExpectHeaderColon();
         ExpectNewline();
@@ -886,25 +850,7 @@ public partial class Parser
 
         // Base interfaces
         if (Current.Type == TokenType.LeftParen)
-        {
-            Advance();
-            if (Current.Type != TokenType.RightParen)
-            {
-                _lastLoopPosition = -1;
-                do
-                {
-                    if (!CheckLoopProgress())
-                        break;
-
-                    baseInterfaces.Add(ParseTypeAnnotation());
-                    if (Current.Type == TokenType.Comma)
-                        Advance();
-                    else
-                        break;
-                } while (true);
-            }
-            Expect(TokenType.RightParen);
-        }
+            baseInterfaces = ParseParenthesizedTypeList();
 
         ExpectHeaderColon();
 
@@ -942,6 +888,30 @@ public partial class Parser
             Span = CombineSpans(GetSpanFromToken(startToken), bodySuite.EndSpan)
                 ?? GetSpanFromToken(startToken)
         };
+    }
+
+    /// <summary>Parses <c>(T1, T2, ...)</c> with Current on '(' and consumes through the closing ')'.</summary>
+    private List<TypeAnnotation> ParseParenthesizedTypeList()
+    {
+        var types = new List<TypeAnnotation>();
+        Advance(); // consume '('
+        if (Current.Type != TokenType.RightParen)
+        {
+            _lastLoopPosition = -1;
+            do
+            {
+                if (!CheckLoopProgress())
+                    break;
+
+                types.Add(ParseTypeAnnotation());
+                if (Current.Type == TokenType.Comma)
+                    Advance();
+                else
+                    break;
+            } while (true);
+        }
+        Expect(TokenType.RightParen);
+        return types;
     }
 
     private List<TypeParameterDef> ParseTypeParameterList()
@@ -1455,28 +1425,7 @@ public partial class Parser
         if (Current.Type == TokenType.LeftParen)
         {
             // Parse function type: (int, str) -> bool
-            Advance(); // consume '('
-            var paramTypes = new List<TypeAnnotation>();
-
-            // Parse parameter types
-            if (Current.Type != TokenType.RightParen)
-            {
-                _lastLoopPosition = -1;
-                do
-                {
-                    if (!CheckLoopProgress())
-                        break;
-
-                    paramTypes.Add(ParseTypeAnnotation());
-
-                    if (Current.Type == TokenType.Comma)
-                        Advance();
-                    else
-                        break;
-                } while (true);
-            }
-
-            Expect(TokenType.RightParen);
+            var paramTypes = ParseParenthesizedTypeList();
             Expect(TokenType.Arrow);
             var returnType = ParseTypeAnnotation();
 
