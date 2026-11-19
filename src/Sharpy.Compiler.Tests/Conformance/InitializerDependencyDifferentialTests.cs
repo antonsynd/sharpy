@@ -63,7 +63,8 @@ namespace Sharpy.Compiler.Tests.Conformance;
 /// conditional cases evaluated, <see cref="EvaluatedSlotCells"/>), in the slot family; and the read after a caught
 /// throw, on every host the lazy retry of D3 reaches (<see cref="RetryCells"/>), in the location family.
 ///
-/// Known-red cells are rows of <c>initializer-dependency-differential-allowlist.txt</c>. A run writes its report, every
+/// Known-red cells are rows of <c>initializer-dependency-differential-allowlist.txt</c> (contract §11: no row is left,
+/// so the file is deleted and a missing file reads as empty; a new known-red row re-creates it). A run writes its report, every
 /// cell and the rows it would propose under <c>.claude/tmp/initializer-dependency-differential-*</c>.
 /// </summary>
 [Trait("Category", "GapDiscovery")]
