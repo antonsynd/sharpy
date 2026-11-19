@@ -64,7 +64,12 @@ public class AsyncGuardedUseFactTests
         new("MemberOutOperand", "r0 = fill2(out {v}.x, {w})", AsyncGuardedUseKind.Ensure),
         new("IndexAssign", "{v}[0] = {w}", AsyncGuardedUseKind.Ensure, NeedsList: true),
         // A member of the value as the target of each other target-bearing node, and as a tuple leaf:
-        // one cell per arm of AsyncGuardedUseAnalyzer.IsStoreTarget and of its IsElementOf climb.
+        // one cell per arm of AsyncGuardedUseAnalyzer.IsStoreTarget (assignment above; for, with,
+        // comprehension) and one for the TupleLiteral arm of its IsElementOf climb. That climb's list,
+        // parenthesized and star arms have no cell, because no accepted program reaches them: the
+        // parser gives a list target and a parenthesized tuple target a TupleLiteral (assignment, for
+        // and comprehension alike; `sharpyc emit ast`), a parenthesized leaf is consumed by
+        // SkipParentheses, and a starred member target is SPY0106 (#2435's class).
         new("TupleMemberLeaf", "{v}.x, n0 = 5, {w}", AsyncGuardedUseKind.Ensure),
         new("ForMemberTarget", "for {v}.x in [5 * {w}]:\n        pass", AsyncGuardedUseKind.Ensure),
         new("WithMemberTarget", "with CM0(5 * {w}) as {v}.x:\n        pass", AsyncGuardedUseKind.Ensure),

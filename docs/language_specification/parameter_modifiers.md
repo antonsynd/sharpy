@@ -309,7 +309,8 @@ def main() -> None:
 
 While the argument is a temporary, the callee does not see its own store through the value's name.
 A read of the name inside the callee is a read like any other: it runs the value's initializer, and
-the call's store then replaces the initializer's result when the call returns:
+the call's store then replaces the initializer's result when the call returns. The value is
+initialized from then on, so the module's run does not run its initializer again at the declaration:
 
 <!-- spec-sweep: output -->
 ```python
