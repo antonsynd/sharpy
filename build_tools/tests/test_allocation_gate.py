@@ -6,12 +6,16 @@ from pathlib import Path
 import pytest
 
 from build_tools.allocation_gate import (
+    CI_PLATFORM,
+    DEFAULT_NOISE,
     DEFAULT_THRESHOLD,
     build_baseline_document,
     describe_coverage,
+    find_noise_band,
     find_regressions,
     load_baseline,
     main,
+    median_allocations,
     parse_bdn_results,
 )
 
@@ -40,12 +44,16 @@ def _write_bdn_report(results_dir: Path, allocations: dict[str, int]) -> None:
 
 
 def _write_baseline(
-    path: Path, allocations: dict[str, int], threshold: float = DEFAULT_THRESHOLD
+    path: Path,
+    allocations: dict[str, int],
+    threshold: float = DEFAULT_THRESHOLD,
+    noise: float = DEFAULT_NOISE,
 ) -> None:
     path.write_text(
         json.dumps(
             {
                 "threshold": threshold,
+                "noise": noise,
                 "benchmarks": {
                     name: {"allocated_bytes": value}
                     for name, value in allocations.items()
@@ -134,7 +142,105 @@ class TestBaselineRoundTrip:
         assert load_baseline(str(path)) == {"A.b.C": 1234}
 
 
+class TestNoiseBand:
+    def test_noise_widens_the_failing_limit(self):
+        # +11% fails a bare 10% threshold but not 10% plus 2% noise.
+        assert len(find_regressions({"A": 1000}, {"A": 1110}, 0.10, 0.0)) == 1
+        assert find_regressions({"A": 1000}, {"A": 1110}, 0.10, 0.02) == []
+
+    def test_exactly_at_threshold_plus_noise_is_tolerated(self):
+        assert find_regressions({"A": 1000}, {"A": 1120}, 0.10, 0.02) == []
+        assert len(find_regressions({"A": 1000}, {"A": 1121}, 0.10, 0.02)) == 1
+
+    def test_band_holds_only_what_is_past_threshold_and_within_noise(self):
+        current = {"ok": 1050, "band": 1110, "fail": 1130}
+        baseline = {name: 1000 for name in current}
+        assert [r.name for r in find_noise_band(baseline, current, 0.10, 0.02)] == ["band"]
+
+
+class TestMedian:
+    def test_median_per_benchmark(self):
+        runs = [{"A": 1000, "B": 5}, {"A": 1300, "B": 7}, {"A": 1100}]
+        # A: median of three; B: lower middle of two.
+        assert median_allocations(runs) == {"A": 1100, "B": 5}
+
+
+class TestCiOnly:
+    def test_check_refuses_outside_ci(self, tmp_path, monkeypatch, capsys):
+        monkeypatch.delenv("GITHUB_ACTIONS", raising=False)
+        baseline = tmp_path / "baseline.json"
+        _write_baseline(baseline, {"A.b.C": 1000})
+        _write_bdn_report(tmp_path, {"A.b.C": 1000})
+        exit_code = main(
+            ["check", "--baseline", str(baseline), "--results", str(tmp_path)]
+        )
+        assert exit_code == 2
+        captured = capsys.readouterr()
+        assert "CI only" in captured.err
+        assert "OK" not in captured.out  # nothing was compared
+
+    def test_update_records_the_platform_and_both_limits(self, tmp_path):
+        doc = build_baseline_document({"A": 1}, 0.10)
+        assert doc["measured_on"] == CI_PLATFORM
+        assert (doc["threshold"], doc["noise"]) == (0.10, DEFAULT_NOISE)
+
+
 class TestMainCommand:
+    @pytest.fixture(autouse=True)
+    def _in_ci(self, monkeypatch):
+        monkeypatch.setenv("GITHUB_ACTIONS", "true")
+
+    def test_check_warns_inside_the_noise_band(self, tmp_path, capsys):
+        baseline = tmp_path / "baseline.json"
+        _write_baseline(baseline, {"A.b.C": 1000})
+        _write_bdn_report(tmp_path, {"A.b.C": 1110})  # +11%: past 10%, within 10% + 2%
+
+        exit_code = main(
+            ["check", "--baseline", str(baseline), "--results", str(tmp_path)]
+        )
+        assert exit_code == 0
+        out = capsys.readouterr().out
+        assert "::warning::A.b.C" in out
+        assert "1 in the noise band" in out
+
+    def test_check_fails_past_the_noise_band(self, tmp_path, capsys):
+        baseline = tmp_path / "baseline.json"
+        _write_baseline(baseline, {"A.b.C": 1000})
+        _write_bdn_report(tmp_path, {"A.b.C": 1130})  # +13%
+
+        exit_code = main(
+            ["check", "--baseline", str(baseline), "--results", str(tmp_path)]
+        )
+        assert exit_code == 1
+        assert "ALLOCATION REGRESSION" in capsys.readouterr().out
+
+    def test_check_reads_limits_from_the_baseline(self, tmp_path):
+        baseline = tmp_path / "baseline.json"
+        _write_baseline(baseline, {"A.b.C": 1000}, threshold=0.50, noise=0.0)
+        _write_bdn_report(tmp_path, {"A.b.C": 1400})  # +40%: inside the file's 50%
+        args = ["check", "--baseline", str(baseline), "--results", str(tmp_path)]
+        assert main(args) == 0
+        _write_bdn_report(tmp_path, {"A.b.C": 1600})  # +60%
+        assert main(args) == 1
+
+    def test_check_prints_every_benchmarks_bytes(self, tmp_path, capsys):
+        baseline = tmp_path / "baseline.json"
+        _write_baseline(baseline, {"A.b.C": 1000, "A.b.D": 2000})
+        _write_bdn_report(tmp_path, {"A.b.C": 1000, "A.b.D": 2100})
+        main(["check", "--baseline", str(baseline), "--results", str(tmp_path)])
+        out = capsys.readouterr().out
+        assert "2,100" in out and "+5.0%" in out
+
+    def test_update_takes_the_median_of_several_runs(self, tmp_path):
+        dirs = []
+        for i, value in enumerate((1000, 1300, 1100)):
+            d = tmp_path / f"run{i}"
+            _write_bdn_report(d, {"A.b.C": value})
+            dirs += ["--results", str(d)]
+        baseline = tmp_path / "baseline.json"
+        assert main(["update", "--baseline", str(baseline), *dirs]) == 0
+        assert load_baseline(str(baseline)) == {"A.b.C": 1100}
+
     def test_check_passes_when_within_threshold(self, tmp_path, capsys):
         baseline = tmp_path / "baseline.json"
         _write_baseline(baseline, {"A.b.C": 1000})

@@ -78,9 +78,10 @@ Reading the output:
   "no regression" — *unmeasured*.
 - A reported delta: both positions agreed and the magnitude cleared the floor.
 
-**Allocations are immune** to the position artifact (BenchmarkDotNet measures them
-precisely, not statistically), so when a change's mechanism predicts an allocation move,
-`build_tools/allocation_gate.py` is the load-bearing signal and wall clock is corroboration.
+**Allocations are much steadier** than wall clock, but not exact: identical code measures
+1–2% apart between runs, and machines differ by more (#2759). So when a change's mechanism
+predicts an allocation move, measure both refs on the same machine, more than once, and treat a
+move under 2% as unmeasured. The CI gate (`build_tools/allocation_gate.py`) runs only in CI (#2462).
 
 ## Notes
 

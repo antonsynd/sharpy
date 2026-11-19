@@ -501,24 +501,31 @@ To view results from a PR:
 ## Allocation-Regression Gate (Phase 14 — borrowing list)
 
 The benchmarks workflow fails the build if any `CompilerBenchmarks` benchmark's **Allocated**
-column (BenchmarkDotNet `[MemoryDiagnoser]` `BytesAllocatedPerOperation`) regresses more than
-**10%** versus the checked-in baseline `benchmarks/allocation-baseline.json`. Allocated bytes are
-measured precisely (not statistically), so this is a stable, machine-independent signal — and the
-prerequisite for the object-pooling work ([#1100](https://github.com/antonsynd/sharpy/issues/1100)),
-which needs regression detection before it starts.
+column (BenchmarkDotNet `[MemoryDiagnoser]` `BytesAllocatedPerOperation`) grows more than its
+**threshold plus noise** over the checked-in baseline `benchmarks/allocation-baseline.json`. Both
+widths live in the baseline: `threshold` (10%) is the growth budget, `noise` (2%) is the
+run-to-run spread of identical code. Past the threshold but within the noise band, the run passes
+with a warning annotation; past both, it fails. The gate was the prerequisite for the
+object-pooling work ([#1100](https://github.com/antonsynd/sharpy/issues/1100)).
+
+Allocated bytes are **not exact**: the same tree measured 1.2% apart on two CI runs and up to 1.6%
+apart on two local runs, and different machines differ by more
+([#2759](https://github.com/antonsynd/sharpy/issues/2759)). So the gate is **CI only**
+([#2462](https://github.com/antonsynd/sharpy/issues/2462)): the baseline is measured on the
+GitHub-hosted runners, and `allocation_gate check` refuses to run outside GitHub Actions. To compare
+two refs locally, measure both on the same machine (two `--exporters json` runs) and compare those.
 
 The baseline is a **deliberate artifact**, treated like a `.expected.cs` snapshot: it is only
 updated on purpose and the change is reviewed. "Regenerate to green" is exactly what the gate exists
-to prevent. If an allocation increase is intentional, refresh it and review the diff:
+to prevent. If an allocation increase is intentional, refresh it from several CI runs and review the
+diff:
+
+1. Run the Benchmarks workflow (Actions → Benchmarks → Run workflow) on the branch, three times.
+   Each run's log prints every benchmark's bytes, and each uploads a `benchmark-results-N` artifact.
+2. Download the three artifacts and rewrite the baseline from their median:
 
 ```bash
-# 1) Produce a fresh JSON export (a short job is fine — allocation is precise regardless of length):
-dotnet run -c Release --project src/Sharpy.Compiler.Benchmarks -- \
-  --filter "*CompilerBenchmarks*" --job short --exporters json --artifacts ./BenchmarkResults
-
-# 2) Rewrite the baseline from that export, then review the git diff before committing:
-python -m build_tools.allocation_gate update \
-  --baseline benchmarks/allocation-baseline.json --results ./BenchmarkResults
+python -m build_tools.allocation_gate update --baseline benchmarks/allocation-baseline.json --results run1/ --results run2/ --results run3/
 ```
 
 The comparison script and its pytest live in `build_tools/allocation_gate.py` and

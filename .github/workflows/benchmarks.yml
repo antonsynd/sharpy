@@ -78,8 +78,9 @@ jobs:
         retention-days: 30
 
     # Allocation-regression gate: fail the build if any benchmark's Allocated column
-    # (BenchmarkDotNet [MemoryDiagnoser]) regressed > 10% vs benchmarks/allocation-baseline.json.
-    # Refresh the baseline deliberately (reviewed like a snapshot) — see the file's _comment.
+    # (BenchmarkDotNet [MemoryDiagnoser]) grew past the threshold plus noise in
+    # benchmarks/allocation-baseline.json; inside the noise band it only warns (#2759). CI only
+    # (#2462). Refresh the baseline deliberately from CI runs — see the file's _comment.
     - name: Set up Python
       uses: actions/setup-python@v7
       with:
