@@ -21,7 +21,8 @@ namespace Sharpy.Compiler.Tests.Semantic;
 ///
 /// <para><b>Generator.</b> <see cref="Uses"/> (D4's taxonomy: read, plain store, <c>ref</c> / <c>in</c> /
 /// <c>out</c> operand, member store and augmented store, method call, member operand, index store and
-/// read, a parenthesized receiver) × <see cref="Spellings"/> (a module variable by its bare name, a
+/// read, a parenthesized receiver, a member as a tuple leaf and as a <c>for</c> / <c>with</c> /
+/// comprehension target) × <see cref="Spellings"/> (a module variable by its bare name, a
 /// <c>@static</c> field <c>H.s</c>, another module's variable as <c>lib.u</c>, <c>L.u</c> after
 /// <c>import lib as L</c>, <c>u</c> from-imported and <c>uu</c> from-imported under an alias, a
 /// computed const), each pair a cell unless <see cref="Excluded"/> says why not. Every cell is one
@@ -62,6 +63,12 @@ public class AsyncGuardedUseFactTests
         new("MemberInOperand", "r0 = peek2(in {v}.x, {w})", AsyncGuardedUseKind.Ensure),
         new("MemberOutOperand", "r0 = fill2(out {v}.x, {w})", AsyncGuardedUseKind.Ensure),
         new("IndexAssign", "{v}[0] = {w}", AsyncGuardedUseKind.Ensure, NeedsList: true),
+        // A member of the value as the target of each other target-bearing node, and as a tuple leaf:
+        // one cell per arm of AsyncGuardedUseAnalyzer.IsStoreTarget and of its IsElementOf climb.
+        new("TupleMemberLeaf", "{v}.x, n0 = 5, {w}", AsyncGuardedUseKind.Ensure),
+        new("ForMemberTarget", "for {v}.x in [5 * {w}]:\n        pass", AsyncGuardedUseKind.Ensure),
+        new("WithMemberTarget", "with CM0(5 * {w}) as {v}.x:\n        pass", AsyncGuardedUseKind.Ensure),
+        new("ComprehensionMemberTarget", "r0 = len([0 for {v}.x in [5 * {w}]])", AsyncGuardedUseKind.Ensure),
         new("IndexRead", "r0 = {v}[0] + {w}", null, NeedsList: true),
     };
 
@@ -104,7 +111,9 @@ public class AsyncGuardedUseFactTests
         + "def fillp(a: out P, by: int) -> int:\n    a = P(41 + by)\n    return 1\n"
         + "def grow(a: ref int, by: int) -> int:\n    a = a + by\n    return a\n"
         + "def peek2(a: in int, by: int) -> int:\n    return a + by\n"
-        + "def fill2(a: out int, by: int) -> int:\n    a = 41 + by\n    return 1\n";
+        + "def fill2(a: out int, by: int) -> int:\n    a = 41 + by\n    return 1\n"
+        + "class CM0:\n    v: int\n    def __init__(self, v: int) -> None:\n        self.v = v\n"
+        + "    def __enter__(self) -> int:\n        return self.v\n    def __exit__(self) -> None:\n        pass\n";
 
     private const string LibSource =
         "struct P:\n"
