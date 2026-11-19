@@ -104,14 +104,19 @@ public class StaticInitSweepProjectTests
         using var helper = NewHelper("SweepMainFirst");
         helper.AddSourceFile("main.spy",
             "def zero() -> float:\n    return 0.0\nx: float = 1.0 / zero()\n"
-            + "def main() -> None:\n    print(\"main\")\n", isEntryPoint: true);
+            + "def main() -> None:\n    raise ValueError(\"main ran\")\n", isEntryPoint: true);
 
         var result = helper.CompileAndExecute();
 
-        // The helper reports the program's unhandled exception as an execution failure.
+        // The helper invokes Main by reflection and reports the program's unhandled exception as an
+        // execution failure, DISCARDING the program's stdout with it: a print in main proves nothing
+        // here. The order is read from which exception escapes instead: main raises its own, so the
+        // sweep ran first exactly when the one that escapes is the initializer's. It is the ORIGINAL
+        // exception (D3; Q3), the direct cause of the reflection wrapper, in no TypeInitializationException.
         result.Success.Should().BeFalse();
-        result.StandardOutput.Should().NotContain("main");
-        (result.Exception?.GetType().Name + " " + result.Exception?.InnerException?.GetType().Name + " " + result.StandardError)
-            .Should().Contain("ZeroDivisionError");
+        result.Exception.Should().BeOfType<System.Reflection.TargetInvocationException>();
+        result.Exception!.InnerException.Should().NotBeNull();
+        result.Exception.InnerException!.GetType().Name.Should().Be("ZeroDivisionError",
+            "the module's sweep raises before the user's main body runs, and nothing wraps what it raises");
     }
 }
