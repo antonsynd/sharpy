@@ -1169,29 +1169,8 @@ public partial class Parser
                 if (Current.Type != TokenType.Identifier)
                     throw ReportError("Expected attribute name after '@['", Current.Line, Current.Column, DiagnosticCodes.Parser.ExpectedDecoratorName, span: CurrentSpan);
 
-                var qualifiedParts = new List<string> { Current.Value };
-                var backtickParts = new List<bool> { Current.IsBacktickEscaped };
-                Advance();
-
-                while (Current.Type == TokenType.Dot)
-                {
-                    Advance();  // Skip .
-                    if (Current.Type != TokenType.Identifier)
-                        throw ReportError("Expected identifier after '.' in attribute name", Current.Line, Current.Column, DiagnosticCodes.Parser.ExpectedDecoratorName, span: CurrentSpan);
-                    qualifiedParts.Add(Current.Value);
-                    backtickParts.Add(Current.IsBacktickEscaped);
-                    Advance();
-                }
-
-                var arguments = ImmutableArray<Expression>.Empty;
-                var keywordArguments = ImmutableArray<KeywordArgument>.Empty;
-                if (Current.Type == TokenType.LeftParen)
-                {
-                    Advance();  // Skip (
-                    var (args, kwargs) = ParseCallArguments();
-                    arguments = args.ToImmutableArray();
-                    keywordArguments = kwargs.ToImmutableArray();
-                }
+                var (qualifiedParts, backtickParts) = ParseDecoratorNameParts("attribute");
+                var (arguments, keywordArguments) = ParseOptionalDecoratorArgs();
 
                 if (Current.Type != TokenType.RightBracket)
                     throw ReportError("Expected ']' to close bracket attribute", Current.Line, Current.Column, DiagnosticCodes.Parser.ExpectedToken, span: CurrentSpan);
@@ -1226,20 +1205,8 @@ public partial class Parser
             if (Current.Type != TokenType.Identifier)
                 throw ReportError("Expected decorator name", Current.Line, Current.Column, DiagnosticCodes.Parser.ExpectedDecoratorName, span: CurrentSpan);
 
-            var regularParts = new List<string> { Current.Value };
-            var regularBacktickParts = new List<bool> { Current.IsBacktickEscaped };
-            Advance();
-
             // Parse dotted names: @system.serializable, @system.runtime.interop_services.dll_import
-            while (Current.Type == TokenType.Dot)
-            {
-                Advance();  // Skip .
-                if (Current.Type != TokenType.Identifier)
-                    throw ReportError("Expected identifier after '.' in decorator name", Current.Line, Current.Column, DiagnosticCodes.Parser.ExpectedDecoratorName, span: CurrentSpan);
-                regularParts.Add(Current.Value);
-                regularBacktickParts.Add(Current.IsBacktickEscaped);
-                Advance();
-            }
+            var (regularParts, regularBacktickParts) = ParseDecoratorNameParts("decorator");
 
             // A two-part decorator whose suffix is a Python accessor name (@x.setter and friends).
             // The suffix NEVER reaches the message verbatim: it selects a shape, and the shape
@@ -1253,15 +1220,7 @@ public partial class Parser
 
             {
                 // Parse optional argument list: @decorator(args)
-                var arguments = ImmutableArray<Expression>.Empty;
-                var keywordArguments = ImmutableArray<KeywordArgument>.Empty;
-                if (Current.Type == TokenType.LeftParen)
-                {
-                    Advance();  // Skip (
-                    var (args, kwargs) = ParseCallArguments();
-                    arguments = args.ToImmutableArray();
-                    keywordArguments = kwargs.ToImmutableArray();
-                }
+                var (arguments, keywordArguments) = ParseOptionalDecoratorArgs();
 
                 var decoratorEndToken = Previous;
                 var decoratorEndLine = decoratorEndToken.Line;
@@ -1375,6 +1334,37 @@ public partial class Parser
             Assignment => throw ReportError("Decorators cannot be applied to assignments — only functions, classes, structs, interfaces, enums, properties, events, or field declarations", stmt.LineStart, stmt.ColumnStart, DiagnosticCodes.Parser.InvalidDecoratorTarget, span: stmt.Span),
             _ => throw ReportError("Decorators can only be applied to functions, classes, structs, interfaces, enums, properties, events, or field declarations", stmt.LineStart, stmt.ColumnStart, DiagnosticCodes.Parser.InvalidDecoratorTarget, span: stmt.Span)
         };
+    }
+
+    /// <summary>Parses a dotted decorator/attribute name starting at the current Identifier; <paramref name="noun"/> names it in the dot-error message.</summary>
+    private (List<string> Parts, List<bool> BacktickParts) ParseDecoratorNameParts(string noun)
+    {
+        var parts = new List<string> { Current.Value };
+        var backtickParts = new List<bool> { Current.IsBacktickEscaped };
+        Advance();
+
+        while (Current.Type == TokenType.Dot)
+        {
+            Advance();  // Skip .
+            if (Current.Type != TokenType.Identifier)
+                throw ReportError($"Expected identifier after '.' in {noun} name", Current.Line, Current.Column, DiagnosticCodes.Parser.ExpectedDecoratorName, span: CurrentSpan);
+            parts.Add(Current.Value);
+            backtickParts.Add(Current.IsBacktickEscaped);
+            Advance();
+        }
+
+        return (parts, backtickParts);
+    }
+
+    /// <summary>Parses an optional decorator argument list <c>(args)</c>; both arrays are empty when no '(' follows.</summary>
+    private (ImmutableArray<Expression> Arguments, ImmutableArray<KeywordArgument> KeywordArguments) ParseOptionalDecoratorArgs()
+    {
+        if (Current.Type != TokenType.LeftParen)
+            return (ImmutableArray<Expression>.Empty, ImmutableArray<KeywordArgument>.Empty);
+
+        Advance();  // Skip (
+        var (args, kwargs) = ParseCallArguments();
+        return (args.ToImmutableArray(), kwargs.ToImmutableArray());
     }
 
     /// <summary>
