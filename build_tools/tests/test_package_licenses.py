@@ -17,14 +17,25 @@ REPO = Path(__file__).resolve().parent.parent.parent
 # Add an id only after checking that list; nuget.org refuses the rest.
 NUGET_ACCEPTED = {"Apache-2.0", "MIT", "Python-2.0"}
 
-_EXPR = re.compile(r"<PackageLicenseExpression>([^<]*)</PackageLicenseExpression>")
+_EXPR = re.compile(
+    r"<PackageLicenseExpression\b[^>]*>([^<]*)</PackageLicenseExpression>"
+)
 _OPERATORS = {"AND", "OR", "WITH"}
+_SKIP_DIRS = {"bin", "obj", "node_modules", ".git", ".venv"}
+
+
+def _project_files() -> list[Path]:
+    return sorted(
+        f
+        for pattern in ("*.csproj", "*.props", "*.targets")
+        for f in REPO.rglob(pattern)
+        if not _SKIP_DIRS & set(f.relative_to(REPO).parts)
+    )
 
 
 def _expressions() -> list[tuple[str, str]]:
-    files = [REPO / "Directory.Build.props", *sorted((REPO / "src").rglob("*.csproj"))]
     found = []
-    for f in files:
+    for f in _project_files():
         for m in _EXPR.finditer(f.read_text(encoding="utf-8")):
             found.append((str(f.relative_to(REPO)), m.group(1)))
     return found
@@ -36,7 +47,7 @@ def _ids(expression: str) -> set[str]:
 
 
 def test_the_scan_finds_the_packaged_projects():
-    # Positive control: the default and the three PSF-carrying overrides are all seen.
+    # Positive control: the default and the three CPython-carrying overrides are all seen.
     files = {f for f, _ in _expressions()}
     assert {
         "Directory.Build.props",
@@ -53,6 +64,19 @@ def test_every_licence_id_is_one_nuget_accepts():
         if _ids(expr) - NUGET_ACCEPTED
     ]
     assert not bad, "licence ids nuget.org refuses:\n" + "\n".join(bad)
+
+
+def test_no_project_licenses_by_file():
+    # A <PackageLicenseFile> bypasses the expression check; none ships today.
+    files = [
+        str(f.relative_to(REPO))
+        for f in _project_files()
+        if "<PackageLicenseFile" in f.read_text(encoding="utf-8")
+    ]
+    assert not files, (
+        "PackageLicenseFile set; review its licence by hand, then update this test: "
+        + ", ".join(files)
+    )
 
 
 def test_the_id_reader_splits_operators_and_parentheses():
