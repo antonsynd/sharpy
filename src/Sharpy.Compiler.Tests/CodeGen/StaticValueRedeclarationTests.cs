@@ -15,7 +15,8 @@ namespace Sharpy.Compiler.Tests.CodeGen;
 ///
 /// <para><b>Generator.</b> <see cref="Redeclaration"/> (what the redeclaring class declares under the
 /// name: nothing, a field, a property, a method or a nested type) × <see cref="Level"/> (the subclass
-/// itself, or an intermediate base the leaf inherits it from) × <see cref="Use"/> (a read, a store,
+/// itself, or an intermediate base the leaf inherits it from, plain or generic and closed by the leaf's
+/// base list) × <see cref="Use"/> (a read, a store,
 /// an augmented assignment and an <c>out</c> operand in an <c>async def</c> across an <c>await</c>,
 /// and a read through an instance), each tuple a cell unless <see cref="Excluded"/> says why not.
 /// Each cell prints the base's value and the leaf's after the use; the model is the rule's.</para>
@@ -42,6 +43,7 @@ public class StaticValueRedeclarationTests
     {
         Subclass,
         IntermediateBase,
+        GenericIntermediateBase,
     }
 
     public enum Use
@@ -66,6 +68,8 @@ public class StaticValueRedeclarationTests
             return "a static method called through an instance is emitted on the instance (CS0176), with no subclass at all (findings ledger)";
         if (redeclaration == Redeclaration.NestedType && use == Use.InstanceRead)
             return "a nested type is named through its declaring type, not an instance";
+        if (redeclaration == Redeclaration.Field && level == Level.GenericIntermediateBase && use == Use.InstanceRead)
+            return "a generic class's static read through an instance spells the open generic (CS0305), `G[int]().s` with no subclass at all (#2435, findings ledger)";
         return null;
     }
 
@@ -118,13 +122,18 @@ public class StaticValueRedeclarationTests
             yield return $"class {Base}:";
             yield return "    @static";
             yield return "    s: int = 1";
-            var redeclaring = Cell.Level == Level.Subclass ? Leaf : $"M{Key}";
+            var redeclaring = Cell.Level switch
+            {
+                Level.Subclass => Leaf,
+                Level.IntermediateBase => $"M{Key}",
+                _ => $"M{Key}[T]",
+            };
             yield return $"class {redeclaring}({Base}):";
             foreach (var line in RedeclaringBody())
                 yield return line;
-            if (Cell.Level == Level.IntermediateBase)
+            if (Cell.Level != Level.Subclass)
             {
-                yield return $"class {Leaf}(M{Key}):";
+                yield return $"class {Leaf}(M{Key}{(Cell.Level == Level.GenericIntermediateBase ? "[int]" : "")}):";
                 yield return "    pass";
             }
             yield return $"{(IsAsync ? "async def" : "def")} c{Key}() -> str:";

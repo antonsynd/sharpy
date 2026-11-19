@@ -11,8 +11,8 @@ namespace Sharpy.Lsp.Tests;
 /// plan-775c50: go-to-definition on a <c>@static</c> field reads the binding the checker's one
 /// static-value resolver recorded, so every spelling of the receiver lands on the field the access
 /// binds — its own class, a subclass, a nested type and a nested subclass, a subclass of a generic
-/// base, a constructed generic and its alias, and a struct — and a subclass that redeclares the name as
-/// a property lands nowhere on the base's field.
+/// base, a constructed generic and its alias, and a struct — and a subclass that redeclares the name
+/// lands on its own member, not the base's field.
 /// </summary>
 public class StaticValueSpellingNavigationTests : IDisposable
 {
@@ -44,7 +44,11 @@ public class StaticValueSpellingNavigationTests : IDisposable
         "    s: int = 4\n" +           // 20 → (20, 5)
         "class P(C):\n" +              // 21
         "    @static\n" +              // 22
-        "    property s: int = 5\n";   // 23
+        "    property s: int = 5\n" +  // 23
+        "class Q(C):\n" +              // 24
+        "    @static\n" +              // 25
+        "    def s() -> int:\n" +      // 26 → (26, 9)
+        "        return 6\n";          // 27
 
     public StaticValueSpellingNavigationTests()
     {
@@ -70,14 +74,18 @@ public class StaticValueSpellingNavigationTests : IDisposable
         location.Range.Start.Character.Should().Be(column - 1, spelling);
     }
 
-    /// <summary>The negative: a subclass's property of the name hides the base's field (MRO by name).</summary>
+    /// <summary>The negative: a subclass's static method of the name hides the base's field (MRO by
+    /// name), so the definition is Q's method, never C's field; <c>D.s</c>, which binds C's field, is
+    /// the positive control (the theory above). The property twin (<c>P.s</c>) is not asserted: the
+    /// definition of P's static property is null (findings ledger).</summary>
     [Fact]
-    public async Task Definition_ThroughARedeclaringSubclass_IsNotTheBasesField()
+    public async Task Definition_ThroughARedeclaringSubclass_IsTheSubclassesMember()
     {
-        var location = await DefinitionAsync("P.s");
+        var location = await DefinitionAsync("Q.s()");
 
-        // D.s, which binds C.s, is the positive control (the theory above).
-        location?.Range.Start.Line.Should().NotBe(2, "P.s is P's property, not C's field");
+        location.Should().NotBeNull("Q.s names Q's static method");
+        location!.Range.Start.Line.Should().Be(25, "Q.s is Q's method, not C's field");
+        location.Range.Start.Character.Should().Be(8);
     }
 
     private async Task<Location?> DefinitionAsync(string spelling)
