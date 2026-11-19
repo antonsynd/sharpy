@@ -1603,9 +1603,9 @@ public partial class Parser
                 Current.Line, Current.Column,
                 DiagnosticCodes.Parser.ExpectedCase, span: CurrentSpan);
 
-        var lastCase = cases.Count > 0 ? cases[^1] : (MatchCase?)null;
+        var lastCase = cases[^1];
         var (endLine, endColumn, endSpan) = CloseSuite(
-            lastCase?.LineEnd ?? -1, lastCase?.ColumnEnd ?? 0, lastCase?.Span);
+            lastCase.LineEnd, lastCase.ColumnEnd, lastCase.Span);
 
         return new MatchStatement
         {
@@ -1661,9 +1661,9 @@ public partial class Parser
                 Current.Line, Current.Column,
                 DiagnosticCodes.Parser.ExpectedCase, span: CurrentSpan);
 
-        var lastArm = arms.Count > 0 ? arms[^1] : (MatchArm?)null;
+        var lastArm = arms[^1];
         var (endLine, endColumn, endSpan) = CloseSuite(
-            lastArm?.LineEnd ?? -1, lastArm?.ColumnEnd ?? 0, lastArm?.Span);
+            lastArm.LineEnd, lastArm.ColumnEnd, lastArm.Span);
 
         return new MatchExpression
         {

@@ -16,7 +16,6 @@ public partial class Parser
     private TypeAnnotation ParseTypeAnnotation()
     {
         var baseType = ParseTypeAnnotationCore();
-        var startToken = baseType; // reuse position from core parse
 
         // C# nullable suffix T | None (lowest precedence)
         if (Current.Type == TokenType.Pipe)
@@ -648,7 +647,7 @@ public partial class Parser
 
     private string ExpectIdentifier()
     {
-        if (Current.Type != TokenType.Identifier && !IsSoftKeyword(Current.Type))
+        if (Current.Type != TokenType.Identifier && !IsKeywordUsableAsIdentifier(Current.Type))
         {
             // A reserved word where a name is introduced (parameter, function/class/enum-member
             // name, ...) names the word and its backtick escape (#2209); the "Expected identifier,
@@ -660,9 +659,6 @@ public partial class Parser
         Advance();
         return value;
     }
-
-    private static bool IsSoftKeyword(TokenType type) =>
-        type is TokenType.Match or TokenType.Case or TokenType.Type;
 
     /// <summary>
     /// Expects an identifier or keyword token and returns its value as a string.

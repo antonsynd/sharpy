@@ -1737,17 +1737,9 @@ public partial class Parser
     {
         Expect(TokenType.Indent);
         var body = ParseBlock();
-        if (body.Count > 0)
-        {
-            var last = body[^1];
-            var result = new SuiteResult(body, last.LineEnd, last.ColumnEnd, last.Span);
-            Expect(TokenType.Dedent);
-            return result;
-        }
-        var endLine = Previous.Line;
-        var endColumn = Previous.Column + Previous.Length;
-        var endSpan = GetSpanFromToken(Previous);
-        Expect(TokenType.Dedent);
+        var last = body.Count > 0 ? body[^1] : null;
+        var (endLine, endColumn, endSpan) = CloseSuite(
+            last?.LineEnd ?? -1, last?.ColumnEnd ?? 0, last?.Span);
         return new SuiteResult(body, endLine, endColumn, endSpan);
     }
 

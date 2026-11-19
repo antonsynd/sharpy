@@ -930,10 +930,7 @@ public partial class Parser
         var body = ParseExpression();
 
         // Combine lambda token span with body span
-        var lambdaSpan = GetSpanFromToken(lambdaToken);
-        var combinedSpan = lambdaSpan != null && body.Span != null
-            ? lambdaSpan.Value.Union(body.Span.Value)
-            : (Text.TextSpan?)null;
+        var combinedSpan = CombineSpans(GetSpanFromToken(lambdaToken), body.Span);
 
         return new LambdaExpression
         {
@@ -1276,9 +1273,7 @@ public partial class Parser
 
         var body = ParseExpression();
 
-        var combinedSpan = startToken != null && body.Span != null
-            ? GetSpanFromToken(startToken)?.Union(body.Span.Value)
-            : (Text.TextSpan?)null;
+        var combinedSpan = CombineSpans(GetSpanFromToken(startToken), body.Span);
 
         return new LambdaExpression
         {
