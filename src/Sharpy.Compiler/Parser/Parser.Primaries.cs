@@ -358,7 +358,7 @@ public partial class Parser
                     // Tuple literal starting with spread: (*a, ...)
                     if (Current.Type == TokenType.Star)
                     {
-                        var spreadFirst = ParseTupleElement();
+                        var spreadFirst = ParseStarredElement();
                         var spreadElements = new List<Expression> { spreadFirst };
                         bool spreadTrailingComma = false;
 
@@ -370,7 +370,7 @@ public partial class Parser
                                 spreadTrailingComma = true;
                                 break;
                             }
-                            spreadElements.Add(ParseTupleElement());
+                            spreadElements.Add(ParseStarredElement());
                         }
 
                         Expect(TokenType.RightParen);
@@ -419,7 +419,7 @@ public partial class Parser
                                 tupleTrailingComma = true;
                                 break;
                             }
-                            elements.Add(ParseTupleElement());
+                            elements.Add(ParseStarredElement());
                         }
 
                         Expect(TokenType.RightParen);
@@ -479,7 +479,7 @@ public partial class Parser
                         };
                     }
 
-                    var firstExpr = ParseListElement();
+                    var firstExpr = ParseStarredElement();
 
                     // Check for list comprehension: [expr for x in iterable]
                     // PEP 798: spread elements are allowed as comprehension elements: [*it for it in its]
@@ -508,7 +508,7 @@ public partial class Parser
                         // Allow trailing comma: [1, 2, 3,]
                         if (Current.Type == TokenType.RightBracket)
                             break;
-                        elements.Add(ParseListElement());
+                        elements.Add(ParseStarredElement());
                     }
 
                     Expect(TokenType.RightBracket);
@@ -606,7 +606,7 @@ public partial class Parser
 
                     // Set spread: {*a, ...} — first token is *
                     // Parse first element (may be spread)
-                    var firstExpr = ParseSetElement();
+                    var firstExpr = ParseStarredElement();
 
                     // Dict {key: value, ...} or dict comprehension {key: value for x in iterable}
                     if (firstExpr is not SpreadElement && Current.Type == TokenType.Colon)
@@ -683,7 +683,7 @@ public partial class Parser
                             Advance();
                             if (Current.Type == TokenType.RightBrace)
                                 break;
-                            elements.Add(ParseSetElement());
+                            elements.Add(ParseStarredElement());
                         }
 
                         Expect(TokenType.RightBrace);
@@ -1005,57 +1005,9 @@ public partial class Parser
     }
 
     /// <summary>
-    /// Parses a list element, handling *spread syntax.
+    /// Parses a list, tuple or set element, handling *spread syntax.
     /// </summary>
-    private Expression ParseListElement()
-    {
-        if (Current.Type == TokenType.Star)
-        {
-            var starToken = Current;
-            Advance();
-            var operand = ParseExpression();
-            return new SpreadElement
-            {
-                Value = operand,
-                LineStart = starToken.Line,
-                ColumnStart = starToken.Column,
-                LineEnd = operand.LineEnd,
-                ColumnEnd = operand.ColumnEnd,
-                Span = operand.Span
-            };
-        }
-
-        return ParseExpression();
-    }
-
-    /// <summary>
-    /// Parses a tuple element, handling *spread syntax.
-    /// </summary>
-    private Expression ParseTupleElement()
-    {
-        if (Current.Type == TokenType.Star)
-        {
-            var starToken = Current;
-            Advance();
-            var operand = ParseExpression();
-            return new SpreadElement
-            {
-                Value = operand,
-                LineStart = starToken.Line,
-                ColumnStart = starToken.Column,
-                LineEnd = operand.LineEnd,
-                ColumnEnd = operand.ColumnEnd,
-                Span = operand.Span
-            };
-        }
-
-        return ParseExpression();
-    }
-
-    /// <summary>
-    /// Parses a set element, handling *spread syntax.
-    /// </summary>
-    private Expression ParseSetElement()
+    private Expression ParseStarredElement()
     {
         if (Current.Type == TokenType.Star)
         {

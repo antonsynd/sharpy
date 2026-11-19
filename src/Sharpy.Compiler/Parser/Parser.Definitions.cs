@@ -31,20 +31,7 @@ public partial class Parser
         Expression expr;
         if (Current.Type == TokenType.Star)
         {
-            var starLine = Current.Line;
-            var starColumn = Current.Column;
-            var starToken = Current;
-            Advance();
-            var operand = ParsePrimary();
-            expr = new StarExpression
-            {
-                Operand = operand,
-                LineStart = starLine,
-                ColumnStart = starColumn,
-                LineEnd = operand.LineEnd,
-                ColumnEnd = operand.ColumnEnd,
-                Span = CombineSpans(GetSpanFromToken(starToken), operand.Span)
-            };
+            expr = ParseStarTarget();
         }
         else
         {
@@ -68,20 +55,7 @@ public partial class Parser
                 Advance();
                 if (Current.Type == TokenType.Star)
                 {
-                    var starLine = Current.Line;
-                    var starColumn = Current.Column;
-                    var starToken = Current;
-                    Advance();
-                    var operand = ParsePrimary();
-                    elements.Add(new StarExpression
-                    {
-                        Operand = operand,
-                        LineStart = starLine,
-                        ColumnStart = starColumn,
-                        LineEnd = operand.LineEnd,
-                        ColumnEnd = operand.ColumnEnd,
-                        Span = CombineSpans(GetSpanFromToken(starToken), operand.Span)
-                    });
+                    elements.Add(ParseStarTarget());
                 }
                 else
                 {
@@ -253,6 +227,25 @@ public partial class Parser
             LineEnd = expr.LineEnd,
             ColumnEnd = expr.ColumnEnd,
             Span = expr.Span
+        };
+    }
+
+    /// <summary>
+    /// Parses a <c>*target</c> in a statement's target position; <see cref="Current"/> is the star.
+    /// </summary>
+    private StarExpression ParseStarTarget()
+    {
+        var starToken = Current;
+        Advance();
+        var operand = ParsePrimary();
+        return new StarExpression
+        {
+            Operand = operand,
+            LineStart = starToken.Line,
+            ColumnStart = starToken.Column,
+            LineEnd = operand.LineEnd,
+            ColumnEnd = operand.ColumnEnd,
+            Span = CombineSpans(GetSpanFromToken(starToken), operand.Span)
         };
     }
 
