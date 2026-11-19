@@ -39,8 +39,8 @@ Two remedies, both built in here:
 What it does not do
 -------------------
 It does not decide whether a delta matters, and it does not touch allocations, which
-are measured precisely and are immune to the artifact (see ``allocation_gate.py`` --
-that remains the load-bearing regression signal for allocation changes).
+are far steadier than wall clock though not exact (1-2% between identical runs, #2759;
+see ``allocation_gate.py``, the CI-only regression signal for allocation changes).
 
 Usage
 -----

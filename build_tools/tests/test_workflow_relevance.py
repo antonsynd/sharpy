@@ -52,7 +52,7 @@ GATES = {
 
 # A path a `run:` or a script names under one of these roots is a file it reads; `./` is accepted.
 READ_PATH = re.compile(
-    r"(?<![\w./$}-])(?:\./)?((?:build_tools|\.claude/scripts|\.claude/hooks)/[\w./-]*[\w-])"
+    r"(?<![\w./$}-])(?:\./)?((?:build_tools|\.claude/scripts|\.claude/hooks|benchmarks)/[\w./-]*[\w-])"
 )
 # `python -m build_tools.cpython_oracle ...` runs build_tools/cpython_oracle/__main__.py.
 READ_MODULE = re.compile(r"\bpython3?\s+-m\s+(build_tools(?:\.\w+)*)")
