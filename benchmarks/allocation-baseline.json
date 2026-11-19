@@ -1,6 +1,6 @@
 {
   "_comment": "Allocation-regression baseline (BenchmarkDotNet [MemoryDiagnoser] BytesAllocatedPerOperation), measured in CI only (#2462). Deliberately updated only via `python -m build_tools.allocation_gate update` from CI runs' benchmark-results artifacts (the median of several); review the diff like a snapshot. Over `threshold` warns while within `threshold + noise`, then fails.",
-  "measured_on": "GitHub-hosted ubuntu-latest runner, .github/workflows/benchmarks.yml",
+  "measured_on": "GitHub-hosted ubuntu-latest runner, .github/workflows/benchmarks.yml: Linux Ubuntu 26.04.1 LTS (Resolute Raccoon); .NET 10.0.15 (10.0.15, 10.0.1526.53008)",
   "threshold": 0.1,
   "noise": 0.02,
   "benchmarks": {

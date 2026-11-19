@@ -2,6 +2,7 @@
 
 import json
 from pathlib import Path
+from typing import Optional
 
 import pytest
 
@@ -17,14 +18,18 @@ from build_tools.allocation_gate import (
     main,
     median_allocations,
     parse_bdn_results,
+    uneven_benchmarks,
 )
 
 
-def _write_bdn_report(results_dir: Path, allocations: dict[str, int]) -> None:
+def _write_bdn_report(
+    results_dir: Path, allocations: dict[str, int], host: Optional[dict] = None
+) -> None:
     """Write a minimal BenchmarkDotNet ``*-report-full.json`` under results_dir/results/."""
     results = results_dir / "results"
     results.mkdir(parents=True, exist_ok=True)
     document = {
+        "HostEnvironmentInfo": host or {},
         "Benchmarks": [
             {
                 "FullName": name,
@@ -165,6 +170,13 @@ class TestMedian:
         assert median_allocations(runs) == {"A": 1100, "B": 5}
 
 
+class TestUneven:
+    def test_names_a_benchmark_missing_from_some_runs(self):
+        runs = [{"A": 1, "B": 2}, {"A": 1}, {"A": 1, "B": 3}]
+        assert uneven_benchmarks(runs) == ["B"]
+        assert uneven_benchmarks([{"A": 1}, {"A": 2}]) == []
+
+
 class TestCiOnly:
     def test_check_refuses_outside_ci(self, tmp_path, monkeypatch, capsys):
         monkeypatch.delenv("GITHUB_ACTIONS", raising=False)
@@ -230,6 +242,31 @@ class TestMainCommand:
         main(["check", "--baseline", str(baseline), "--results", str(tmp_path)])
         out = capsys.readouterr().out
         assert "2,100" in out and "+5.0%" in out
+
+    def test_update_records_the_runners_os_and_runtime(self, tmp_path):
+        host = {"OsVersion": "Linux Ubuntu 26.04.1 LTS", "RuntimeVersion": ".NET 10.0.15"}
+        _write_bdn_report(tmp_path, {"A.b.C": 1}, host)
+        baseline = tmp_path / "baseline.json"
+        main(["update", "--baseline", str(baseline), "--results", str(tmp_path)])
+        measured_on = json.loads(baseline.read_text(encoding="utf-8"))["measured_on"]
+        assert measured_on.startswith(CI_PLATFORM)
+        assert "Linux Ubuntu 26.04.1 LTS; .NET 10.0.15" in measured_on
+
+    def test_update_keeps_the_existing_limits(self, tmp_path):
+        baseline = tmp_path / "baseline.json"
+        _write_baseline(baseline, {"A.b.C": 1}, threshold=0.25, noise=0.05)
+        _write_bdn_report(tmp_path, {"A.b.C": 2})
+        main(["update", "--baseline", str(baseline), "--results", str(tmp_path)])
+        doc = json.loads(baseline.read_text(encoding="utf-8"))
+        assert (doc["threshold"], doc["noise"]) == (0.25, 0.05)
+
+    def test_update_warns_on_a_benchmark_some_runs_missed(self, tmp_path, capsys):
+        a, b = tmp_path / "a", tmp_path / "b"
+        _write_bdn_report(a, {"A.b.C": 1, "A.b.D": 5})
+        _write_bdn_report(b, {"A.b.C": 1})
+        baseline = tmp_path / "baseline.json"
+        main(["update", "--baseline", str(baseline), "--results", str(a), "--results", str(b)])
+        assert "A.b.D was measured in 1 of 2 run(s)" in capsys.readouterr().err
 
     def test_update_takes_the_median_of_several_runs(self, tmp_path):
         dirs = []

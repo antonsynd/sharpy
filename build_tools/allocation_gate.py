@@ -201,6 +201,7 @@ def build_baseline_document(
     threshold: float,
     descriptions: Optional[dict[str, str]] = None,
     noise: float = DEFAULT_NOISE,
+    measured_on: str = CI_PLATFORM,
 ) -> dict:
     """Build the JSON document for a refreshed baseline."""
     descriptions = descriptions or {}
@@ -218,11 +219,35 @@ def build_baseline_document(
             "benchmark-results artifacts (the median of several); review the diff like a "
             "snapshot. Over `threshold` warns while within `threshold + noise`, then fails."
         ),
-        "measured_on": CI_PLATFORM,
+        "measured_on": measured_on,
         "threshold": threshold,
         "noise": noise,
         "benchmarks": benchmarks,
     }
+
+
+def parse_hosts(results_dir: str) -> set[str]:
+    """The ``OS; runtime`` of every BenchmarkDotNet report under ``results_dir`` (its host info)."""
+    hosts: set[str] = set()
+    for pattern in _report_patterns(results_dir):
+        for path in glob.glob(pattern):
+            with open(path, encoding="utf-8") as handle:
+                info = json.load(handle).get("HostEnvironmentInfo") or {}
+            os_version, runtime = info.get("OsVersion"), info.get("RuntimeVersion")
+            if os_version and runtime:
+                hosts.add(f"{os_version}; {runtime}")
+    return hosts
+
+
+def describe_platform(hosts: set[str]) -> str:
+    """The baseline's ``measured_on``: the CI platform, then each distinct OS and runtime seen."""
+    return CI_PLATFORM + (": " + " | ".join(sorted(hosts)) if hosts else "")
+
+
+def uneven_benchmarks(runs: list[dict[str, int]]) -> list[str]:
+    """Benchmarks that some runs measured and others did not, sorted."""
+    names = {name for run in runs for name in run}
+    return sorted(name for name in names if any(name not in run for run in runs))
 
 
 def median_allocations(runs: list[dict[str, int]]) -> dict[str, int]:
@@ -322,13 +347,30 @@ def _cmd_check(args: argparse.Namespace) -> int:
 
 def _cmd_update(args: argparse.Namespace) -> int:
     runs = [parse_bdn_results(results) for results in args.results]
+    for name in uneven_benchmarks(runs):
+        count = sum(1 for run in runs if name in run)
+        print(
+            f"warning: {name} was measured in {count} of {len(runs)} run(s); "
+            "its baseline is the median of those only",
+            file=sys.stderr,
+        )
     current = median_allocations(runs)
     descriptions: dict[str, str] = {}
+    hosts: set[str] = set()
     for results in args.results:
         descriptions.update(parse_descriptions(results))
-    threshold = DEFAULT_THRESHOLD if args.threshold is None else args.threshold
-    noise = DEFAULT_NOISE if args.noise is None else args.noise
-    document = build_baseline_document(current, threshold, descriptions, noise)
+        hosts |= parse_hosts(results)
+    # Keep the limits the existing baseline states unless a flag changes them.
+    threshold, noise = (
+        load_limits(args.baseline)
+        if os.path.exists(args.baseline)
+        else (DEFAULT_THRESHOLD, DEFAULT_NOISE)
+    )
+    threshold = threshold if args.threshold is None else args.threshold
+    noise = noise if args.noise is None else args.noise
+    document = build_baseline_document(
+        current, threshold, descriptions, noise, describe_platform(hosts)
+    )
     with open(args.baseline, "w", encoding="utf-8") as handle:
         json.dump(document, handle, indent=2)
         handle.write("\n")

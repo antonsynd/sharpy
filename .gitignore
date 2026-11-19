@@ -22,7 +22,7 @@ data/stream_store/
 site/
 
 # BenchmarkDotNet output (the committed artifact is benchmarks/allocation-baseline.json;
-# raw run results feed `python -m build_tools.allocation_gate` locally/in CI only)
+# raw run results feed `python -m build_tools.allocation_gate` check in CI and update when refreshing)
 BenchmarkDotNet.Artifacts/
 BenchmarkResults/
 

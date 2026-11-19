@@ -528,6 +528,25 @@ diff:
 python -m build_tools.allocation_gate update --baseline benchmarks/allocation-baseline.json --results run1/ --results run2/ --results run3/
 ```
 
+**Current baseline** (reset 2026-11-19, [#2759](https://github.com/antonsynd/sharpy/issues/2759)).
+Each value is the per-benchmark median of three `workflow_dispatch` runs of `benchmarks.yml` at
+`c26e27a91`, all on Linux Ubuntu 26.04.1 LTS with .NET 10.0.15. The bytes were read from each run's
+`check` table, because the artifacts were not reachable from the session that set them, and written
+with the gate's own `median_allocations` and `build_baseline_document`.
+
+| benchmark | [44611771836](https://github.com/antonsynd/sharpy/actions/runs/44611771836) (EPYC 9V74, v3) | [44611790419](https://github.com/antonsynd/sharpy/actions/runs/44611790419) (EPYC 9V74, v4) | [44611808902](https://github.com/antonsynd/sharpy/actions/runs/44611808902) (Xeon 6975P-C, v4) | baseline (median) |
+|---|---:|---:|---:|---:|
+| Compile_HelloWorld | 4,922,831 | 4,922,722 | 4,871,249 | 4,922,722 |
+| Compile_Fibonacci | 5,497,542 | 5,498,609 | 5,435,697 | 5,497,542 |
+| Compile_Classes | 6,100,886 | 6,100,499 | 6,027,427 | 6,100,499 |
+| Compile_Comprehensions | 5,882,592 | 5,881,483 | 5,811,822 | 5,881,483 |
+| Compile_LargeFunctions | 7,054,872 | 7,057,562 | 6,969,799 | 7,054,872 |
+
+The reset accepts growth that is not in the code. On one machine (Linux x64, .NET 10.0.15) the five
+benchmarks are flat from `180ffeb27`, the 2026-07-25 baseline commit, through 2026-11-19. The old
+baseline came from another machine and runtime, and CI's own numbers rose with its runtime
+(10.0.13 → 10.0.15) and image (ubuntu-24.04 → 26.04).
+
 The comparison script and its pytest live in `build_tools/allocation_gate.py` and
 `build_tools/tests/test_allocation_gate.py` (run via the standard `python -m pytest build_tools/tests/`).
 

@@ -18,6 +18,7 @@ on:
       - 'global.json'
       - '.editorconfig'
       - 'build_tools/allocation_gate.py'
+      - 'benchmarks/allocation-baseline.json'
       - '.python-version'
   pull_request:
     branches: [ "mainline" ]
@@ -31,6 +32,7 @@ on:
       - 'global.json'
       - '.editorconfig'
       - 'build_tools/allocation_gate.py'
+      - 'benchmarks/allocation-baseline.json'
       - '.python-version'
   workflow_dispatch:  # Allow manual trigger
 
