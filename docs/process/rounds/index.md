@@ -141,7 +141,7 @@
 
 ## Open items pending owner confirmation
 
-one — the charter's call-45 note owed call 46 a comment on each of the sweep's 46 PARTIAL and 7 CHANGED issues with its moved cells, and a correction on the four issues whose quoted python result CPython 3.15.2 does not give (#2064 #2096 #2113; #2412 is closed). Call 46 folded the verdicts into §6 by reference and posted none of the 56 comments: the owner was shown the fold-in, not the posting. **next** = `/create-plan #2423 #2398 #2432` (P78, full (c); generator EXISTS — its first task is the #2487 rule table, which gains R-QI's row) then `/verify-plan`; beside it, with no plan: the call-46 band (§3.0) and the two no-plan lanes of R-QN (#2723; #2644's `None`-container cell); P77c (light) is due beside the arc.
+none. The debt the call-45 note left is paid: the sweep's moved cells are posted on its 46 PARTIAL and 7 CHANGED issues, and the python-result corrections on #2064 and #2113 (2026-11-19; owner: "post them"). No correction was posted on #2096 — the sweep report names it without saying which python result differs, and its body's claim (`re.Error` is an `AttributeError`) was not re-run under 3.15 — and #2412 is closed. **next** = `/create-plan #2423 #2398 #2432` (P78, full (c); generator EXISTS — its first task is the #2487 rule table, which gains R-QI's row) then `/verify-plan`; beside it, with no plan: the call-46 band (§3.0) and the two no-plan lanes of R-QN (#2723; #2644's `None`-container cell); P77c (light) is due beside the arc.
 
 ## Unparsed
 
