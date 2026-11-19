@@ -171,12 +171,13 @@ After all implementation tasks are complete, the lead runs the gate and spawns `
    - tests filtered `FullyQualifiedName~Sharpy.Compiler.Tests.Infrastructure|FullyQualifiedName~Sharpy.Compiler.Tests.Conformance`;
    - `/push`'s whitespace gate (`--verify-no-changes`; fix with `/format`);
    - `bash build_tools/check_commit_subjects.sh "$(git rev-parse --abbrev-ref --symbolic-full-name @{upstream} 2>/dev/null || echo origin/dev)..HEAD"`: a long subject cannot be fixed after a push without rewriting history.
-2. **Whole-solution gate** in the background: push the branch and run `/ci-gate` (the local fallback on exit 3) — compare against the baseline `@ <sha> (measured)`; every new red gets a **control run** at the plan's base sha (`/ci-gate` › Control runs) before it is attributed. No do-not-merge PR
-3. **Blast-radius sweeps** the plan named: `FrontEndParityTests` (LSP parity), and the GapDiscovery sweeps CI runs as separate steps — `--filter "Category=GapDiscovery&FullyQualifiedName~InteropConformance"`, `~MetamorphicCorpus`, `~DifferentialExecution` — for any change under `Semantic/`, `Lowering/`, or `CodeGen/`
-4. **Staleness gates**: run `/push`'s generated-artifact gates (spy-stdlib C#, spy-test C#, stdlib docs, oracle ledger) — a diff here is a finding, not noise
-5. **Spec examples**: execute every example the plan promised in `docs/language_specification/` or `DiagnosticExplanations` (`/spy-run`); outputs must discriminate
-6. **Allowlists**: every entry the plan's fixes drain is gone; no entry was added without an issue reference
-7. `git diff --stat` and `git status --short` re-check after the last agent wave — every delta is claimed by a commit or an agent report
+2. **`/simplify`** over the branch's product diff (`git diff origin/dev...HEAD -- src/`), before the gate, so the gate and the independent review (Cleanup step 4) measure its fixes; run after the review, a fix makes the review line stale. Apply what keeps behaviour, re-run item 1, commit by pathspec, and list the skipped findings with reasons in the PR body
+3. **Whole-solution gate** in the background: push the branch and run `/ci-gate` (the local fallback on exit 3) — compare against the baseline `@ <sha> (measured)`; every new red gets a **control run** at the plan's base sha (`/ci-gate` › Control runs) before it is attributed. No do-not-merge PR
+4. **Blast-radius sweeps** the plan named: `FrontEndParityTests` (LSP parity), and the GapDiscovery sweeps CI runs as separate steps — `--filter "Category=GapDiscovery&FullyQualifiedName~InteropConformance"`, `~MetamorphicCorpus`, `~DifferentialExecution` — for any change under `Semantic/`, `Lowering/`, or `CodeGen/`
+5. **Staleness gates**: run `/push`'s generated-artifact gates (spy-stdlib C#, spy-test C#, stdlib docs, oracle ledger) — a diff here is a finding, not noise
+6. **Spec examples**: execute every example the plan promised in `docs/language_specification/` or `DiagnosticExplanations` (`/spy-run`); outputs must discriminate
+7. **Allowlists**: every entry the plan's fixes drain is gone; no entry was added without an issue reference
+8. `git diff --stat` and `git status --short` re-check after the last agent wave — every delta is claimed by a commit or an agent report
 
 ## Cleanup and Report
 
