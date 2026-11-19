@@ -216,10 +216,12 @@ def main() -> None:
 ```
 
 A module variable or `@static` field passed by `ref` or `in` is initialized first, like any other read
-([N3](variable_scoping.md#values-are-ready-before-use-n3)):
+([N3](variable_scoping.md#values-are-ready-before-use-n3)), so the callee never sees a storage
+default, even when the call runs before the module has reached the value's declaration:
 
 <!-- spec-sweep: output -->
 ```python
+first: int = early()
 const LIMIT: int = three()
 count: int = 1
 
@@ -236,10 +238,13 @@ def bump(a: ref int) -> None:
 def peek(a: in int) -> int:
     return a
 
-def main() -> None:
-    bump(ref count)
+def early() -> int:
+    bump(ref count)          # `count` is initialized to 1 here, then bumped
     bump(ref Box.size)
-    print(count, Box.size, peek(in LIMIT))    # 2 3 3
+    return peek(in LIMIT)    # `LIMIT` is initialized here
+
+def main() -> None:
+    print(first, count, Box.size)    # 3 2 3
 ```
 
 `in` on a `const` with a compile-time-constant initializer (`const LIMIT: int = 3`) is not decided
@@ -300,6 +305,26 @@ def later() -> int:
 
 def main() -> None:
     print(first, second, total)    # 1 42 7
+```
+
+While the argument is a temporary, the callee does not see its own store through the value's name.
+A read of the name inside the callee is a read like any other: it runs the value's initializer, and
+the call's store then replaces the initializer's result when the call returns:
+
+<!-- spec-sweep: output -->
+```python
+first: int = early()
+total: int = 7
+
+def fill_and_read(a: out int) -> int:
+    a = 42
+    return total    # 7: this read initializes `total`; the store is still in the temporary
+
+def early() -> int:
+    return fill_and_read(out total)
+
+def main() -> None:
+    print(first, total)    # 7 42
 ```
 
 Inside the value's own initializer the value has none to read, so a callee that reads it by name
