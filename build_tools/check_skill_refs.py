@@ -9,8 +9,8 @@ of the scanned files:
 * ``path`` -- a repo-relative file path, extracted with ``check_plan_refs.PATH_RE`` (the plans'
   extractor) over the whole text, fences included (commands name real files), plus what its grammar
   cannot spell (no listed extension, a directory, ``editors/``), read from code spans and fences
-  only. A gitignored path (``git check-ignore``: ``.claude/plans/``, ``.claude/tmp/``, build output)
-  is a session's file, not a missing one; so is a family example (``audit-YYYY-MM-DD.md``,
+  only. A path any ``.gitignore`` rule matches (``git check-ignore``: ``.claude/tmp/``, build
+  output, ``lib/``) is never tracked, so not missing; so is a family example (``audit-YYYY-MM-DD.md``,
   ``plan-a1b2c3.md``: see ``_example``). A placeholder or glob (``<plan-id>``, ``*``) is never
   extracted.
 * ``skill`` -- ``/name`` at a word start, after ``**`` or opening a code span (any backtick run),
@@ -47,10 +47,15 @@ of the citing file (prose: ``Repeat step 2``); ``charter §N`` (a round charter,
 absolute URLs; a slash-less file name in a code span (``sharpy.sln``). Anything the grammar starts
 to parse but cannot finish (a ``›`` with nothing resolvable on its left) is a failure, never a skip.
 
-Known limits (missed forms, never false reds): an own-file citation whose heading was renamed, or
-that shortens it (``Cleanup step 4``), counts as bare; a heading cut to a prefix of its citation
-stays green; a family example also passes a deleted member (a sound rule needs git history); no
-reference-style links (``[r]: path``; none exist yet); no code span split by a hard wrap.
+Missed forms (never red): an own-file citation whose heading was renamed, or that shortens it
+(``Cleanup step 4``), counts as bare; a heading cut to a prefix of its citation stays green; a family
+example also passes a deleted or renamed member (another digit); reference-style links
+(``[r]: path``); ``, N`` / ``and N`` without ``§`` after a contract citation; ``N.M`` where the
+target has no ``N.x`` heading is checked as ``N``; a ``/name`` not at the start of its code span.
+
+Can go red on text that is fine (reword the text): a code span split by a hard wrap (the orphan
+backtick turns the following prose into code, where paths are read); a ``›`` chain whose target is
+outside the repository (``~/.claude/CLAUDE.md › Testing``); a link to ``/`` alone or with ``%20``.
 
 Usage::
 
@@ -104,9 +109,10 @@ _SEP = r"(?:\s*,\s*(?:and\s+|or\s+)?|\s+(?:and|or)\s+|\s*[–-]\s*)"
 NUM = r"\d+(?:\.\d+)*(?:-[a-z]+)?"  # 1.25, 4-design (Dimension 4's design half)
 NUMS = NUM + r"(?:" + _SEP + NUM + r"(?![\w-]))*"
 SECT_NUMS = r"§\d+(?:\.\d+)?(?:" + _SEP + r"§\d+(?:\.\d+)?)*"
-CONTRACT_NUMS = r"§\d+(?:\.\d+)?(?:" + _SEP + r"§?\d+(?:\.\d+)?(?![\w-]|\.\d))*"
+# `§1–99` is a range; a bare `, 40` or `and 15` after it is prose.
+CONTRACT_NUMS = SECT_NUMS + r"(?:[–-]\d+(?![\w-]|\.\d))?"
 STEP = r"(?:steps?|items?)"
-# After a target or a chain, `Step 2` is a citation too.
+# After a chain, `Step 2` is a citation too.
 STEP_ANY = r"(?:[Ss]teps?|[Ii]tems?)"
 
 # Shorthand -> (target file, section name), from the census.
@@ -146,7 +152,8 @@ SECTION_NAME = r"(?:[A-Z][\w-]*)(?: (?:[A-Z&][\w-]*|and))*(?<! and)"
 TICK_TARGET = r"`(/[a-z][\w-]*|[\w./-]+\.md)`"
 # A bare CLAUDE.md, never the tail of build_tools/CLAUDE.md (that one is its own file).
 CLAUDE_TARGET = r"(?<![\w/.-])((?:[\w.-]+/)*CLAUDE\.md)"
-LINK_TARGET = r"\[(?:[^\]\n]|\n(?!\n))*\]\(([^)\s]+)\)"
+# Text may wrap one line; the target may carry a "title".
+LINK_TARGET = r"\[(?:[^\]\n]|\n(?!\n))*\]\(\s*([^)\s]+)(?:\s+\"[^\"]*\")?\s*\)"
 AHEAD_TARGETS = CLAUDE_TARGET + r"|" + LINK_TARGET
 TARGET_RE = re.compile(
     r"(?:" + TICK_TARGET + r"|" + LINK_TARGET + r"|" + CLAUDE_TARGET + r")\s*$"
@@ -159,7 +166,7 @@ TARGET_AHEAD_RE = re.compile(
     + r"))? (?:("
     + SECT_NUMS
     + r")|"
-    + STEP_ANY
+    + STEP
     + r" ("
     + NUMS
     + r")|§("
@@ -189,9 +196,7 @@ CONTRACT_RE = re.compile(
 CHARTER_RE = re.compile(r"(?i)\bcharter §\d")
 BARE_NUM_RE = re.compile(r"§\d+|\b[Ss]teps? \d+|\b[Ii]tems? \d+")
 SKILL_RE = re.compile(r"/([a-z][\w-]*)(:[\w-]+)?")
-LINK_RE = re.compile(  # text may wrap one line; the target may carry a "title"
-    r"\[(?:[^\]\n]|\n(?!\n))*\]\(\s*([^)\s]+)(?:\s+\"[^\"]*\")?\s*\)"
-)
+LINK_RE = re.compile(LINK_TARGET)
 FILENAME_RE = re.compile(r"[\w.-]*\w\." + PATH_EXTS + r"|\.[a-z]+(?:-[a-z]+)+")
 CODE_PATH_RE = re.compile(
     r"(?<![\w/.$}-])((?:src|docs|build_tools|benchmarks|editors|\.claude|\.github)/[\w./-]*)"
@@ -351,6 +356,11 @@ class Doc:
             b = LEADIN_RE.match(line.strip())
             if b:
                 leadins.append((i, b.group(1)))
+        # The plan template is a markdown fence: its body is the document.
+        if with_fences:
+            self.fenced = self.code_lines = {
+                i for i, f in kinds.items() if f == "delim"
+            }
         self.sections: List[Section] = []
         n = len(self.lines)
         for k, (i, level, text) in enumerate(heads):
@@ -517,6 +527,10 @@ class Checker:
             if not frontier:
                 where = f" inside '{names[k - 1]}'" if k else ""
                 return f"no section '{n}' in {target}{where}"
+        # `step 4.2` is item 2 of step 4, checked as 4, unless the target numbers headings 4.x.
+        heads = [n for s in d.sections for n in s.names if NUMBER_RE.fullmatch(n)]
+        tops = {h.split(".")[0] for h in heads if "." in h}
+        nums = [n if n.split(".")[0] in tops else n.split(".")[0] for n in nums]
         missing = [
             num for num in nums if not any(d.has_number(sec, num) for sec in frontier)
         ]

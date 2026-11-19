@@ -62,7 +62,9 @@ def test_scanned_files_are_the_procedure_text():
 
 # -- a synthetic repository: one citing file, the targets, each reference kind red and green -------
 
-CONTRACT_TEXT = "# Contract\n\n## 1. Class\n\ntext\n\n## 2. Guards\n\ntext\n"
+CONTRACT_TEXT = (
+    "# Contract\n\n## 1. Class\n\ntext\n\n## 2. Guards\n\ntext\n\n## 11. One group\n"
+)
 PROCESS_TEXT = (
     "# Process\n\n## The stage trail\n\n1. **File of record.** a\n2. b\n\n"
     "### Every other change, and the release\n\ntext\n"
@@ -76,7 +78,7 @@ SKILL_TEXT = (
     "## Anchored Heading\n\n## Anchored Heading\n\n"
     "## Prompt\n\n```\n# Role\n1. a\n2. b\n### 7. a fenced heading\n```\n"
 ).replace("```", "```")
-PLAN_TEMPLATE_TEXT = "# create-plan\n\n```markdown\n## Defect Class\n\n- **Violated contract:** <x>\n```\n"
+PLAN_TEMPLATE_TEXT = "# create-plan\n\n```markdown\n## Defect Class\n\n- **Violated contract:** <x>\n1. one\n```\n"
 CLAUDE_TEXT = (
     "# CLAUDE.md\n\n## Testing\n\n**Commit gate** = the solution.\n\n## Critical Rules\n\n1. a\n2. b\n\n"
     "**Charter says** x.\n\n**Do not** y.\n\n**See also** z.\n"
@@ -157,7 +159,9 @@ def _errors(tmp_path: Path, citing: str, kind: str, where: str = "CLAUDE.md"):
         ("section", "See `/push` › Cleanup and Report step 5."),  # a nested list item
         ("section", "See `/push` step 9."),
         # second round: B -- an own-file Name that IS a section, number missing, stays red
-        ("section", "As Critical Rules step 9 says, and Charter says §3."),
+        ("section", "As Critical Rules step 9 says."),
+        # third round: 1 -- N.M falls back to N only where the target has no N.x heading
+        ("section", "See `/push` step 9.2."),
         # D -- `# Role` in a fence is no subheading; a fenced `### 7.` is no step 7
         ("section", "See `/push` › Prompt step 7."),
         # E -- a bare nested CLAUDE.md is its own file
@@ -167,7 +171,6 @@ def _errors(tmp_path: Path, citing: str, kind: str, where: str = "CLAUDE.md"):
         ("section", "See `/push` step 1.3."),
         ("section", "See `/push` › Cleanup and Report, Step 9."),
         ("contract", "Per contract §1–99."),
-        ("contract", "Per contract §1 and 99."),
         # G -- link text that wraps, a target with a title
         ("link", "[a\nb](docs/missing.md)"),
         ("link", '[x](docs/missing.md "a title")'),
@@ -218,7 +221,12 @@ def test_a_broken_reference_is_red(tmp_path, kind, citing):
         ("section", "See `/push` step 8."),
         ("section", "See `/push` › Prompt step 2."),
         ("section", "Run Dimensions 4-design, 5."),
-        ("section", "See `/push` step 1.25; `/push` Step 8."),
+        ("section", "See `/push` step 1.25."),
+        # third round: 1 -- `step 8.2` is item 2 of step 8 (no 8.x heading); Dimension/Rule too
+        ("section", "See `/push` step 8.2; Dimension 3.5; Rule 1.5."),
+        # 4 -- a link target with a title, before a chain; 7 -- a number in the plan template
+        ("section", '[p](docs/process/README.md "t") › The stage trail.'),
+        ("section", "Read Defect Class › Violated contract, item 1."),
         ("contract", "Per contract §1 and 2."),
         ("link", '[a\nb](docs/process/README.md "t")'),
     ],
@@ -346,6 +354,7 @@ def test_every_target_the_check_reads_starts_the_python_workflow(tree):
     [
         ("As CLAUDE.md §Testing says.", "section"),
         ("[c](../../../CLAUDE.md) §Testing", "section"),
+        ('[c](../../../CLAUDE.md "t") §Testing', "section"),
     ],
 )
 def test_a_target_ahead_is_the_named_file_green(tmp_path, citing, kind):
@@ -360,9 +369,22 @@ def test_a_target_ahead_is_the_named_file_red(tmp_path):
 
 
 def test_not_skills_stay_filesystem_roots(tree):
-    # C: each entry is a directory at `/` and no skill or built-in; the list is never a skip list
+    # C: each entry is a POSIX root name and no skill or built-in; the list is never a skip list
     _, checker = tree
-    assert csr.NOT_SKILLS and all(Path("/", n).is_dir() for n in csr.NOT_SKILLS)
+    posix_roots = (
+        "bin",
+        "dev",
+        "etc",
+        "home",
+        "lib",
+        "opt",
+        "proc",
+        "root",
+        "tmp",
+        "usr",
+        "var",
+    )
+    assert csr.NOT_SKILLS and csr.NOT_SKILLS <= set(posix_roots)
     assert not csr.NOT_SKILLS & (checker.skills | csr.BUILTIN_SKILLS)
 
 
@@ -420,3 +442,21 @@ def test_a_root_relative_link_is_a_link_not_a_skill(tmp_path):
     refs, _ = csr.check(_repo(tmp_path, "Read [d](/docs)."))
     mine = [r for r in refs if r.file == "CLAUDE.md" and r.cite == "/docs"]
     assert [(r.kind, r.error) for r in mine] == [("link", None)]
+
+
+@pytest.mark.parametrize(
+    "citing",
+    [
+        # third round: 2 -- a bare number after a contract citation is prose, not §40 or §15
+        "Per contract §2, 40 agents run.",
+        "Per contract §11 and 15 rows.",
+        # 3 -- `Step 7` on the line after a target is prose (lines are joined with a space)
+        "Use `/push`\nStep 7 of the build is next.",
+    ],
+)
+def test_fine_text_is_not_red(tmp_path, citing):
+    refs, _ = csr.check(_repo(tmp_path, citing))
+    last = len(CLAUDE_TEXT.splitlines()) + 1
+    assert [
+        r for r in refs if r.file == "CLAUDE.md" and r.line > last and r.error
+    ] == []
