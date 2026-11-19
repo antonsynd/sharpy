@@ -137,8 +137,7 @@ internal partial class TypeChecker
         // type is read at the arguments the chain constructs the enclosing generic with.
         if (IsNestedUnderGeneric(typeSymbol) || IsNestedUnderGeneric(owner))
         {
-            _semanticInfo.SetMemberAccessResolution(memberAccess, owner, field);
-            _semanticInfo.MarkChainSpelledStaticReceiver(memberAccess);
+            _semanticInfo.SetMemberAccessResolution(memberAccess, owner, field, chainSpelledReceiver: true);
             var nestedFieldType = ClosedByReceiverChain(memberAccess.Object, GetVariableType(field));
             _semanticInfo.SetExpressionType(memberAccess, nestedFieldType);
             return nestedFieldType;
