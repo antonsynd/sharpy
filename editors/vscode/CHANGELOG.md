@@ -7,6 +7,13 @@ with `SharpyVersion`), so several releases below contain no extension-facing cha
 
 ## [Unreleased]
 
+## [0.25.1] - 2026-11-19
+
+No extension-facing changes; version bumped with the toolchain.
+
+Toolchain-side:
+- The SharpyLang.Core, SharpyLang.Stdlib and sharpyc NuGet packages name the CPython licence by its OSI-approved SPDX id, `Python-2.0`, so nuget.org accepts them. 0.25.0 reached nuget.org as SharpyLang.Compiler only; 0.25.1 publishes all four.
+
 ## [0.25.0] - 2026-11-19
 
 No extension-facing changes beyond dependency bumps (`vscode-languageclient` 11.0.0, `esbuild` 0.28.2); version bumped with the toolchain.
