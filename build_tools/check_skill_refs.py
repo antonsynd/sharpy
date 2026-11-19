@@ -7,29 +7,45 @@ reference pointing at nothing, silently; this check makes it red. The reference 
 of the scanned files:
 
 * ``path`` -- a repo-relative file path, extracted with ``check_plan_refs.PATH_RE`` (the plans'
-  extractor), plus what its grammar cannot spell (no listed extension, a directory, ``editors/``),
-  read from code spans and fences only. A gitignored path (``git check-ignore``: ``.claude/plans/``,
-  ``.claude/tmp/``, build output) is a session's file, not a missing one; so is a family example
-  (``audit-YYYY-MM-DD.md``, ``plan-a1b2c3.md``: see ``_example``). A placeholder or glob
-  (``<plan-id>``, ``*``) is never extracted.
-* ``skill`` -- ``/name`` at a word start or opening a code span: a directory under ``.claude/skills/``
-  or one of ``BUILTIN_SKILLS``. ``/name*`` is a glob, not a citation.
-* ``section`` -- ``TARGET › Name › Name[, step|item N]``; ``TARGET Name §N``; ``TARGET item N``;
-  ``§Name`` and ``Name step|item|§ N`` (the citing file's own sections); the shorthands in
-  ``ALIASES`` (``stage trail item N``, ``README item N``, ``Rule N``, ``Dimension N``). A TARGET is a
-  backticked path or ``/skill``, a bare ``CLAUDE.md``, or a markdown link; a ``›`` chain with no
-  target names the plan template's sections (``Defect Class › Violated contract``), which live in
+  extractor) over the whole text, fences included (commands name real files), plus what its grammar
+  cannot spell (no listed extension, a directory, ``editors/``), read from code spans and fences
+  only. A gitignored path (``git check-ignore``: ``.claude/plans/``, ``.claude/tmp/``, build output)
+  is a session's file, not a missing one; so is a family example (``audit-YYYY-MM-DD.md``,
+  ``plan-a1b2c3.md``: see ``_example``). A placeholder or glob (``<plan-id>``, ``*``) is never
+  extracted.
+* ``skill`` -- ``/name`` at a word start, after ``**`` or opening a code span (any backtick run),
+  ending at a word end (a sentence's ``.`` included): a directory under ``.claude/skills/`` or one of
+  ``BUILTIN_SKILLS``. ``/name*`` is a glob and ``/name.ext`` a path, not citations; ``/name:x`` is
+  red.
+* ``section`` -- ``TARGET › Name › Name[, step|item N | §N]``; ``TARGET [Name] §N``,
+  ``TARGET [Name] step|item N``, ``TARGET §Name``; ``§Name`` and ``Name step|item|§ N`` for the
+  citing file's own sections; the shorthands in ``ALIASES`` (``stage trail item N``, ``README item
+  N``, ``Rule N``, ``Dimension N``). A TARGET is a backticked path or ``/skill`` (a bare ``/skill``
+  too, before a Name or ``§``), a bare ``CLAUDE.md``, or a markdown link; a ``›`` chain with no target
+  names the plan template's sections (``Defect Class › Violated contract``), which live in
   ``/create-plan``'s fenced template. A Name is a heading (any level, outside fences), a bold lead-in
-  (``**Commit gate**``, ``- **Layer ladder:**``) or a numbered heading (``### 1.25.``); a number is a
-  top-level ``N.`` list item or an ``N.`` subheading inside the named section.
-* ``contract`` -- ``contract §N``, ``§N–§M``, ``verification-contract.md §N``: a ``## N.`` heading of
-  ``docs/design/verification-contract.md``.
-* ``link`` -- ``[text](relative/target#anchor)``: the file exists and the anchor is a heading slug.
+  (``**Commit gate**``, ``- **Layer ladder:**``) or a numbered heading (``### 1.25.``, ``### Step
+  2:``). A number N of a section is an ``N.`` subheading inside it, or an ``N.`` list item at its
+  list's own indent, outside fences and before its first subheading (a subsection's items are the
+  subsection's). With no Name (``TARGET step N``), N must be such an item of some section of the
+  target, or a numbered heading in it: the weakest of the forms, since a target file has many lists.
+  Every number of a list or range (``Dimensions 2, 3 and 9``, ``§1–§5``, ``steps 8 and 9``) is
+  checked.
+* ``contract`` -- ``contract §N``, ``Contract §N``, lists and ranges (``§1, §10``, ``§10–§12``),
+  ``verification-contract.md §N``: a ``## N.`` heading of ``docs/design/verification-contract.md``.
+* ``link`` -- ``[text](target#anchor)`` in prose: the target resolves as GitHub resolves it, against
+  the citing file's directory (a leading ``/`` is the repo root), to a file or directory, and the
+  anchor is a heading slug of the target (duplicate headings get GitHub's ``-1``, ``-2``).
+
+Fenced code is not prose: skill, link, section and shorthand citations are read outside fences only;
+links are not read inside inline code either.
 
 Out of scope, counted (``OUT_OF_SCOPE``): a bare ``§N`` / ``step N`` / ``item N`` with no named target
-(its target is the enclosing text), ``charter §N`` (a round charter, not a fixed file), and absolute
-URLs. Anything the grammar starts to parse but cannot finish (a ``›`` with nothing resolvable on its
-left) is a failure, never a skip.
+(its target is the enclosing text); ``Name step|item|§ N`` where Name is no section of the citing
+file (prose: ``Repeat step 2``) -- a known limit: an own-file citation whose heading was renamed
+falls into this bucket instead of going red; ``charter §N`` (a round charter, not a fixed file); and
+absolute URLs. Anything the grammar starts to parse but cannot finish (a ``›`` with nothing
+resolvable on its left) is a failure, never a skip.
 
 Usage::
 
@@ -65,7 +81,8 @@ PLAN_TEMPLATE = ".claude/skills/create-plan/SKILL.md"
 PROCESS = "docs/process/README.md"
 KINDS = ("path", "skill", "section", "contract", "link")
 OUT_OF_SCOPE = {
-    "bare-number": "a bare §N / step N / item N names no target; it means the enclosing text",
+    "bare-number": "a §N / step N / item N with no named target, or one whose Name is no section of "
+    "the citing file: it means the enclosing text",
     "charter": "charter §N cites a round charter, a per-round file, not a fixed target",
     "url": "an absolute URL is outside the repository",
 }
@@ -73,25 +90,32 @@ OUT_OF_SCOPE = {
 BUILTIN_SKILLS = {
     "simplify",  # /implement-plan Final Verification step 2
 }
+
+# A list or range of numbers: `2, 3, 5, 8 and 9`, `1–5`, `8 and 9`; with `§` on each for sections.
+_SEP = r"(?:\s*,\s*(?:and\s+|or\s+)?|\s+(?:and|or)\s+|\s*[–-]\s*)"
+NUMS = r"\d+(?:" + _SEP + r"\d+(?![\w-]))*"
+SECT_NUMS = r"§\d+(?:\.\d+)?(?:" + _SEP + r"§\d+(?:\.\d+)?)*"
+STEP = r"(?:steps?|items?)"
+
 # Shorthand -> (target file, section name), from the census.
 ALIASES = (
     (
-        re.compile(r"\bstage trail,? (items?) (\d+)(?: and (\d+))?"),
+        re.compile(r"\bstage trail,? " + STEP + r" (" + NUMS + ")"),
         PROCESS,
         "The stage trail",
     ),
     (
-        re.compile(r"\b(?:README|Process) (items?) (\d+)(?: and (\d+))?"),
+        re.compile(r"\b(?:README|Process) " + STEP + r" (" + NUMS + ")"),
         PROCESS,
         "The stage trail",
     ),
     (
-        re.compile(r"\b(?:CLAUDE\.md )?(?:Critical )?(Rules?) (\d+)(?: and (\d+))?"),
+        re.compile(r"\b(?:CLAUDE\.md )?(?:Critical )?Rules? (" + NUMS + ")"),
         "CLAUDE.md",
         "Critical Rules",
     ),
     (
-        re.compile(r"\b(Dimensions?) (\d+)(?: and (\d+))?"),
+        re.compile(r"\bDimensions? (" + NUMS + ")"),
         ".claude/skills/verify-plan/SKILL.md",
         "Verification Dimensions",
     ),
@@ -99,31 +123,56 @@ ALIASES = (
 
 ATX_RE = re.compile(r"^ {0,3}(#{1,6})[ \t]+(.*?)(?:[ \t]+#+)?[ \t]*$")
 LEADIN_RE = re.compile(r"^(?:[-*]|\d+\.)?[ \t]*\*\*([^*]+)\*\*")
-ITEM_RE = re.compile(r"^(\d+)\.[ \t]")
-NUMBERED_RE = re.compile(r"^(\d+(?:\.\d+)*)\.?(?:\s|$)")
+ITEM_RE = re.compile(r"^( *)(\d+)\.[ \t]")
+NUMBERED_RE = re.compile(r"^(?:Step\s+)?(\d+(?:\.\d+)*)[.:]?(?:\s|$)")
+NUMBER_RE = re.compile(r"\d+(?:\.\d+)*")
 WS_RE = re.compile(r"\s+")
+NAME = r"(?:[A-Z][\w-]*)(?: [A-Z][\w-]*)*"
+# A section name in a citation: `Cleanup and Report`, `Core & Stdlib Conventions`.
+SECTION_NAME = r"(?:[A-Z][\w-]*)(?: (?:[A-Z&][\w-]*|and))*(?<! and)"
 
 TICK_TARGET = r"`(/[a-z][\w-]*|[\w./-]+\.md)`"
 TARGET_RE = re.compile(
     r"(?:" + TICK_TARGET + r"|\[[^\]\n]*\]\(([^)\s]+)\)|\b(CLAUDE\.md)\b)\s*$"
 )
+# `/x` Name §N, `/x` §N, `/x` Name step 4, `path` item 6, `/x` §Name; `/x` may be unticked.
 TARGET_AHEAD_RE = re.compile(
-    TICK_TARGET
-    + r"(?: ((?:[A-Z][\w-]*)(?: [A-Z][\w-]*)*))? (?:§(\d+)|(items?|step) (\d+))"
+    r"(?:" + TICK_TARGET + r"|(?<![\w/`.-])(/[a-z][\w-]*))"
+    r"(?: ("
+    + SECTION_NAME
+    + r"))? (?:("
+    + SECT_NUMS
+    + r")|"
+    + STEP
+    + r" ("
+    + NUMS
+    + r")|§("
+    + NAME
+    + r"))"
 )
 CHAIN_HEAD_RE = re.compile(r"((?:[A-Z][\w-]*)(?: (?:[A-Z&][\w-]*|and))*)\s*$")
-SEG_END_RE = re.compile(r"[)(,;:]|\.(?:\s|$)|\s(?:step|item|items) \d|\s§\d|\s›|$")
-TAIL_RE = re.compile(r",?\s*(step|items?) (\d+)(?: and (\d+))?")
+SEG_END_RE = re.compile(r"[)(,;:]|\.(?:\s|$)|\s" + STEP + r" \d|\s§\d|\s›|$")
+TAIL_RE = re.compile(r",?\s*(?:" + STEP + r" (" + NUMS + r")|(" + SECT_NUMS + r"))")
 NAMED_NUM_RE = re.compile(
-    r"(?<![\w`/.-])((?:[A-Z][\w-]*)(?: [A-Z][\w-]*)*) (?:§(\d+)|(step|items?) (\d+))"
+    r"(?<![\w`/.-])("
+    + SECTION_NAME
+    + r") (?:("
+    + SECT_NUMS
+    + r")|"
+    + STEP
+    + r" ("
+    + NUMS
+    + r"))"
 )
-SELF_SECTION_RE = re.compile(r"(?<![\w§])§([A-Z][\w-]+(?: [A-Z][\w-]*)*)")
+SELF_SECTION_RE = re.compile(
+    r"(?<![\w§])§(" + NAME.replace("[\\w-]*", "[\\w-]+", 1) + r")"
+)
 CONTRACT_RE = re.compile(
-    r"(?:\bcontract|verification-contract\.md`?) §(\d+)(?:\.\d+)?(?:[–-]§(\d+))?"
+    r"(?:\b[Cc]ontract|verification-contract\.md`?) (" + SECT_NUMS + r")"
 )
-CHARTER_RE = re.compile(r"\bcharter §\d")
-BARE_NUM_RE = re.compile(r"§\d+|\b[Ss]tep \d+|\bitems? \d+")
-SKILL_RE = re.compile(r"(?<![^\s(\[`\"'])/([a-z][\w-]*)(?![/\w.*-])(:[\w-]+)?")
+CHARTER_RE = re.compile(r"\b[Cc]harter §\d")
+BARE_NUM_RE = re.compile(r"§\d+|\b[Ss]teps? \d+|\b[Ii]tems? \d+")
+SKILL_RE = re.compile(r"/([a-z][\w-]*)(:[\w-]+)?")
 LINK_RE = re.compile(r"\[[^\]\n]*\]\(([^)\s]+)\)")
 CODE_PATH_RE = re.compile(
     r"(?<![\w/.$}-])((?:src|docs|build_tools|benchmarks|editors|\.claude|\.github)/[\w./-]*)"
@@ -132,28 +181,82 @@ GLOB_CHARS = ("*", "<", "{", "$", "[")
 CODE_SPAN_RE = re.compile(r"(`+)([^`].*?)\1", re.S)
 
 
-def code_regions(text: str) -> Iterator[Tuple[int, int]]:
-    """(start, end) offsets of fenced block bodies and of inline code spans outside them."""
-    pos, fence, prose = 0, None, []
-    for line in text.splitlines(keepends=True):
-        m = FENCE_LINE_RE.match(line.rstrip("\r\n"))
-        if fence is None and m and not (m.group(1)[0] == "`" and "`" in m.group(2)):
-            fence = (m.group(1)[0], len(m.group(1)), pos + len(line))
+def numbers(text: str) -> List[str]:
+    """`2, 3 and 9` -> 2 3 9; `§10–§12` -> 10 11 12; a sub-number (`§2.1`) checks its section."""
+    text = re.sub(r"(\d+)\.\d+", r"\1", text.replace("§", ""))
+    out: List[str] = []
+    for part in re.split(r"\s*,\s*(?:and\s+|or\s+)?|\s+(?:and|or)\s+", text.strip()):
+        m = re.fullmatch(r"(\d+)\s*[–-]\s*(\d+)", part.strip())
+        if m and 0 <= int(m.group(2)) - int(m.group(1)) < 50:
+            out.extend(str(k) for k in range(int(m.group(1)), int(m.group(2)) + 1))
+        elif m:
+            out.extend([m.group(1), m.group(2)])
+        else:
+            out.append(part.strip())
+    return out
+
+
+def fence_lines(text: str) -> Iterator[Tuple[int, str]]:
+    """(line index, kind) for each line: "" prose, "delim" a fence line, "code" the body of a fence
+    with an info string (```bash), "text" the body of a bare fence (a prompt or template)."""
+    fence = None
+    for i, line in enumerate(text.splitlines()):
+        m = FENCE_LINE_RE.match(line)
+        if fence is None:
+            if m and not (m.group(1)[0] == "`" and "`" in m.group(2)):
+                fence = (m.group(1)[0], len(m.group(1)), bool(m.group(2).strip()))
+                yield i, "delim"
+            else:
+                yield i, ""
         elif (
-            fence is not None
-            and m
+            m
             and m.group(1)[0] == fence[0]
             and len(m.group(1)) >= fence[1]
             and not m.group(2).strip()
         ):
-            yield fence[2], pos
             fence = None
-        elif fence is None:
-            prose.append((pos, pos + len(line)))
+            yield i, "delim"
+        else:
+            yield i, "code" if fence[2] else "text"
+
+
+def _blank(s: str) -> str:
+    return re.sub(r"[^\n]", " ", s)
+
+
+def prose_of(text: str, *, spans: bool = False) -> str:
+    """`text` with code fences (and, with `spans`, inline code) blanked, offsets kept. A fence with
+    an info string is code; a bare fence's body stays: here it is an agent prompt or a template the
+    reader follows (`/ci-gate` › Control runs inside /verify-implementation's auditor brief)."""
+    lines = text.split("\n")
+    fenced = {i for i, f in fence_lines(text) if f in ("delim", "code")}
+    out = [_blank(l) if i in fenced else l for i, l in enumerate(lines)]
+    if (
+        spans
+    ):  # inline code, one line at a time (a stray backtick cannot pair across lines)
+        out = [CODE_SPAN_RE.sub(lambda m: _blank(m.group(0)), l) for l in out]
+    return "\n".join(out)
+
+
+def code_regions(text: str) -> Iterator[Tuple[int, int]]:
+    """(start, end) offsets of fenced block bodies and of inline code spans outside them."""
+    pos, fenced = 0, dict(fence_lines(text))
+    for i, line in enumerate(text.splitlines(keepends=True)):
+        if fenced.get(i):
+            yield pos, pos + len(line)
+        else:
+            for m in CODE_SPAN_RE.finditer(line):
+                yield pos + m.start(2), pos + m.end(2)
         pos += len(line)
-    for a, b in prose:
-        for m in CODE_SPAN_RE.finditer(text[a:b]):
-            yield a + m.start(2), a + m.end(2)
+
+
+def span_starts(prose: str) -> Set[int]:
+    """Offsets where an inline code span's content begins (a backtick run opens it)."""
+    out, pos = set(), 0
+    for line in prose.split("\n"):
+        out.update(pos + m.start(2) for m in CODE_SPAN_RE.finditer(line))
+        pos += len(line) + 1
+    return out
 
 
 @dataclass
@@ -170,7 +273,7 @@ class Section:
     names: Tuple[str, ...]
     start: int  # line index, inclusive
     end: int  # line index, exclusive
-    level: int
+    level: int  # 1-6 heading, 7 bold lead-in, 0 the whole file
 
 
 def norm(s: str) -> str:
@@ -187,30 +290,39 @@ def _names(text: str) -> Tuple[str, ...]:
     return tuple(n for n in out if n)
 
 
+def _prefix(long: str, short: str) -> bool:
+    """`long` starts with `short` and the next character ends a word. A number (`1`, `1.25`) is
+    matched only whole, so `### 1.` never answers a citation of `1.25`."""
+    if NUMBER_RE.fullmatch(long) or NUMBER_RE.fullmatch(short):
+        return False
+    return (
+        long.startswith(short) and not long[len(short)].isalnum()
+        if len(long) > len(short)
+        else False
+    )
+
+
+def slug(heading: str) -> str:
+    """GitHub's heading anchor: lowercase, punctuation dropped, spaces to hyphens."""
+    s = re.sub(r"[^\w\- ]", "", heading.replace("`", "").strip().lower())
+    return s.replace(" ", "-")
+
+
 class Doc:
     """A target file's sections: headings, bold lead-ins and the numbers inside each."""
 
     def __init__(self, text: str, *, with_fences: bool = False):
         self.lines = text.splitlines()
+        kinds = dict(fence_lines(text))
+        self.fenced = {i for i, f in kinds.items() if f}
+        # A number in a bare fence counts (an agent prompt's numbered steps are cited); one in a
+        # fence with an info string (```bash) is code, never a step.
+        self.code_lines = {i for i, f in kinds.items() if f in ("delim", "code")}
         heads: List[Tuple[int, int, str]] = []  # (line, level, text)
         leadins: List[Tuple[int, str]] = []
-        fence = None
         for i, line in enumerate(self.lines):
-            m = FENCE_LINE_RE.match(line)
-            if fence is None and m and not (m.group(1)[0] == "`" and "`" in m.group(2)):
-                fence = (m.group(1)[0], len(m.group(1)))
+            if i in self.fenced and (not with_fences or FENCE_LINE_RE.match(line)):
                 continue
-            if fence is not None:
-                if (
-                    m
-                    and m.group(1)[0] == fence[0]
-                    and len(m.group(1)) >= fence[1]
-                    and not m.group(2).strip()
-                ):
-                    fence = None
-                    continue
-                if not with_fences:
-                    continue
             h = ATX_RE.match(line)
             if h:
                 heads.append((i, len(h.group(1)), h.group(2).strip()))
@@ -227,6 +339,12 @@ class Doc:
             end = next((j for j, _, _ in heads if j > i), n)
             self.sections.append(Section(_names(text), i, end, 7))
         self.whole = Section((), 0, n, 0)
+        self.slugs: Set[str] = set()
+        seen: Dict[str, int] = {}
+        for i, _, text in heads:
+            s = slug(text)
+            self.slugs.add(f"{s}-{seen[s]}" if s in seen else s)
+            seen[s] = seen.get(s, 0) + 1
 
     def find(self, cited: str, within: Optional[Section] = None) -> List[Section]:
         """Every section (inside `within`) whose name is the cited one, or starts it, or starts with it
@@ -240,34 +358,28 @@ class Doc:
         ]
 
     def has_number(self, sec: Section, num: str) -> bool:
+        """`num` is a numbered subheading of `sec`, or an item of `sec`'s own list: at the list's
+        indent, outside fences, before `sec`'s first subheading."""
+        items: List[Tuple[int, str]] = []
+        in_child = False
         for i in range(sec.start + (1 if sec.level else 0), sec.end):
+            if i in self.code_lines:
+                continue
             line = self.lines[i]
-            m = ITEM_RE.match(line)
-            if m and m.group(1) == num:
-                return True
             h = ATX_RE.match(line)
-            if (
-                h
-                and NUMBERED_RE.match(h.group(2))
-                and NUMBERED_RE.match(h.group(2)).group(1) == num
-            ):
-                return True
-        return False
-
-
-def _prefix(long: str, short: str) -> bool:
-    """`long` starts with `short` and the next character ends a word. A number (`1`, `1.25`) is
-    matched only whole, so `### 1.` never answers a citation of `1.25`."""
-    if NUMBER_RE.fullmatch(long) or NUMBER_RE.fullmatch(short):
-        return False
-    return (
-        long.startswith(short) and not long[len(short)].isalnum()
-        if len(long) > len(short)
-        else False
-    )
-
-
-NUMBER_RE = re.compile(r"\d+(?:\.\d+)*")
+            if h:
+                m = NUMBERED_RE.match(h.group(2))
+                if m and m.group(1) == num:
+                    return True
+                in_child = True
+                continue
+            m = ITEM_RE.match(line)
+            if m and not in_child:
+                items.append((len(m.group(1)), m.group(2)))
+        if not items:
+            return False
+        base = min(ind for ind, _ in items)
+        return any(n == num for ind, n in items if ind == base)
 
 
 def scanned_files(repo: Path) -> List[str]:
@@ -304,20 +416,18 @@ def _family(name: str) -> str:
     return GENERIC_TOKEN_RE.sub("#", name)
 
 
-def _example(repo: Path, rel: str) -> bool:
+def _example(repo: Path, rel: str) -> Optional[str]:
     """`docs/audits/audit-YYYY-MM-DD.md`, `docs/process/plans/plan-a1b2c3.md`: a missing name with a
-    generic token whose directory holds a real file of the same family (the tokens generalised)."""
+    generic token whose directory holds a real file of the same family (the tokens generalised).
+    Returns that file."""
     p = repo / rel
     fam = _family(p.name)
     if fam == p.name or not p.parent.is_dir():
-        return False
-    return any(_family(q.name) == fam for q in p.parent.iterdir() if q.is_file())
-
-
-def slug(heading: str) -> str:
-    """GitHub's heading anchor: lowercase, punctuation dropped, spaces to hyphens."""
-    s = re.sub(r"[^\w\- ]", "", heading.replace("`", "").strip().lower())
-    return s.replace(" ", "-")
+        return None
+    for q in sorted(p.parent.iterdir()):
+        if q.is_file() and _family(q.name) == fam:
+            return q.relative_to(repo).as_posix()
+    return None
 
 
 class Checker:
@@ -331,6 +441,8 @@ class Checker:
         }
         self.cited_builtins: Set[str] = set()
         self.out_of_scope: Dict[str, int] = {k: 0 for k in OUT_OF_SCOPE}
+        # Every repo file or directory a verdict depended on (the workflow-relevance test reads it).
+        self.reads: Set[str] = set()
 
     def doc(self, rel: str, with_fences: bool = False) -> Optional[Doc]:
         key = (rel, with_fences)
@@ -341,23 +453,27 @@ class Checker:
                 if p.is_file()
                 else None
             )
+        if self.docs[key] is not None:
+            self.reads.add(rel)
         return self.docs[key]
 
-    def target_file(self, token: str, citing: str) -> Optional[str]:
-        """The repo path a TARGET token names (a /skill, a path, CLAUDE.md, or a relative link)."""
+    def target_file(self, token: str) -> Optional[str]:
+        """The file a backticked TARGET names: a /skill's SKILL.md, or a repo-root-relative path."""
         if token.startswith("/"):
             name = token[1:]
             return f".claude/skills/{name}/SKILL.md" if name in self.skills else None
-        if token.endswith(".md") and (self.repo / token).is_file():
-            return token
-        rel = (Path(citing).parent / token.split("#")[0]).as_posix()
-        p = (self.repo / rel).resolve()
+        return token if (self.repo / token).is_file() else None
+
+    def link_dest(self, path: str, citing: str) -> Optional[str]:
+        """A link target as GitHub resolves it: against the citing file's directory, or the repo root
+        for a leading `/`; a file or a directory inside the repository."""
+        base = Path(path[1:]) if path.startswith("/") else Path(citing).parent / path
+        p = (self.repo / base).resolve()
         try:
-            return (
-                p.relative_to(self.repo.resolve()).as_posix() if p.is_file() else None
-            )
+            rel = p.relative_to(self.repo.resolve()).as_posix()
         except ValueError:
             return None
+        return rel if p.exists() and rel != "." else None
 
     def resolve(
         self, target: Optional[str], names: List[str], nums: List[str], *, fences=False
@@ -370,24 +486,42 @@ class Checker:
             return f"{target} does not exist"
         # Several sections can share a name (the plan template has a light and a full copy): the
         # reference resolves when any path of nested sections carries every name and number.
-        frontier: List[Optional[Section]] = [None]
+        frontier: List[Section] = [d.whole] + (
+            [] if names else [s for s in d.sections if s.level <= 6]
+        )
         for k, n in enumerate(names):
-            frontier = [s for sec in frontier for s in d.find(n, sec)]
+            frontier = [
+                s for sec in frontier for s in d.find(n, sec if sec.level else None)
+            ]
             if not frontier:
                 where = f" inside '{names[k - 1]}'" if k else ""
                 return f"no section '{n}' in {target}{where}"
-        for num in nums:
-            if not any(d.has_number(sec or d.whole, num) for sec in frontier):
-                return f"no item/section {num} in {target}" + (
-                    f" › {names[-1]}" if names else ""
-                )
+        missing = [
+            num for num in nums if not any(d.has_number(sec, num) for sec in frontier)
+        ]
+        if missing:
+            return f"no item/section {', '.join(missing)} in {target}" + (
+                f" › {names[-1]}" if names else ""
+            )
+        return None
+
+    def own_section(self, rel: str, run: str) -> Optional[str]:
+        """The longest tail of a capitalised run that names a section of `rel` ("Then Cleanup" ->
+        "Cleanup"), or None: then the run is prose, not a citation."""
+        d = self.doc(rel)
+        words = run.split(" ")
+        for k in range(len(words)):
+            if d is not None and d.find(" ".join(words[k:])):
+                return " ".join(words[k:])
         return None
 
     # -- extraction -------------------------------------------------------------------------------
 
     def check_file(self, rel: str) -> List[Ref]:
         text = (self.repo / rel).read_text(encoding="utf-8")
-        flat = text.replace("\n", " ")  # same offsets; references wrap across lines
+        self.reads.add(rel)
+        prose = prose_of(text)
+        flat = prose.replace("\n", " ")  # same offsets; references wrap across lines
         refs: List[Ref] = []
 
         def line_of(pos: int) -> int:
@@ -403,8 +537,9 @@ class Checker:
         def free(a: int, b: int) -> bool:
             return all(b <= s or a >= e for s, e in claimed)
 
-        # paths: PATH_RE's grammar, then what it cannot spell (no listed extension, a directory, the
-        # `editors/` root), read only from code, where a path is not prose like "docs/spec work"
+        # paths: PATH_RE's grammar over the whole text (commands in fences name real files), then
+        # what it cannot spell (no listed extension, a directory, the `editors/` root), read only
+        # from code, where a path is not prose like "docs/spec work"
         found = [(m.start(1), m.group(1)) for m in PATH_RE.finditer(text)]
         for a, b in code_regions(text):
             for m in CODE_PATH_RE.finditer(text, a, b):
@@ -413,63 +548,79 @@ class Checker:
                     continue  # a glob or placeholder (`round-*`, `plans/<id>`), or found above
                 found.append((m.start(1), tok))
         for pos, ref in sorted(found):
-            ok = (
-                (self.repo / ref).exists()
-                or _ignored(self.repo, ref)
-                or _example(self.repo, ref)
-            )
-            add(
-                "path",
-                pos,
-                ref,
-                None if ok else "no such file (not gitignored, not a family example)",
-            )
-
-        # skills
-        for line_no, line in enumerate(text.splitlines(), 1):
-            for m in SKILL_RE.finditer(line):
-                if (
-                    line[m.start() - 1 : m.start()] == "`"
-                    and line[: m.start()].count("`") % 2 == 0
-                ):
-                    continue  # the backtick before it closes a code span: `a`/b is not a citation
-                name, suffix = m.group(1), m.group(2)
-                cite = "/" + name + (suffix or "")
-                if suffix:
-                    err = f"'{cite}': not a skill citation (write /{suffix[1:]})"
-                elif name in self.skills:
-                    err = None
-                elif name in BUILTIN_SKILLS:
-                    self.cited_builtins.add(name)
-                    err = None
+            err = None
+            if (self.repo / ref).exists():
+                self.reads.add(ref.rstrip("/"))
+            elif _ignored(self.repo, ref):
+                self.reads.add(".gitignore")
+            else:
+                example = _example(self.repo, ref)
+                if example:
+                    self.reads.add(example)
                 else:
-                    err = f"no skill '{name}' under .claude/skills/ and not a listed built-in"
-                refs.append(Ref("skill", rel, line_no, cite, err))
+                    err = "no such file (not gitignored, not a family example)"
+            add("path", pos, ref, err)
 
-        # links
-        for m in LINK_RE.finditer(text):
+        # skills: prose and inline code, never fenced code
+        starts = span_starts(prose)
+        for m in SKILL_RE.finditer(prose):
+            a, b = m.start(), m.end()
+            before, after = prose[a - 1 : a] if a else "", prose[b : b + 1]
+            if before == "`":
+                if a not in starts:
+                    continue  # the backtick closes a span: `a`/b is not a citation
+            elif before not in ("", " ", "\n", "\t", "(", "[", '"', "'", "*"):
+                continue  # inside a word or a path: a/b, src/x, https://x.org/push
+            if after in ("/", "-") or after.isalnum() or after == "_":
+                continue
+            if after == "." and prose[b + 1 : b + 2].isalnum():
+                continue  # /name.ext is a path
+            if after == "*" and not (
+                prose[a - 2 : a] == "**" and prose[b : b + 2] == "**"
+            ):
+                continue  # /spy-* is a glob; **/name** is bold
+            name, suffix = m.group(1), m.group(2)
+            cite = "/" + name + (suffix or "")
+            if suffix:
+                err = f"'{cite}': not a skill citation (write /{suffix[1:]})"
+            elif name in self.skills:
+                err = None
+                self.reads.add(f".claude/skills/{name}/SKILL.md")
+            elif name in BUILTIN_SKILLS:
+                self.cited_builtins.add(name)
+                err = None
+            else:
+                err = (
+                    f"no skill '{name}' under .claude/skills/ and not a listed built-in"
+                )
+            add("skill", a, cite, err)
+
+        # links: prose only, inline code blanked (`a[i](x)` is code)
+        for m in LINK_RE.finditer(prose_of(text, spans=True)):
             tgt = m.group(1)
             if re.match(r"[a-z]+:", tgt):
                 self.out_of_scope["url"] += 1
                 continue
             path, _, anchor = tgt.partition("#")
-            dest = self.target_file(path, rel) if path else rel
+            dest = self.link_dest(path, rel) if path else rel
             if dest is None:
-                add("link", m.start(1), tgt, "link target does not exist")
+                add(
+                    "link",
+                    m.start(1),
+                    tgt,
+                    "link target does not exist (GitHub resolves it "
+                    "against the citing file's directory)",
+                )
                 continue
+            self.reads.add(dest)
             err = None
             if anchor and dest.endswith(".md"):
                 d = self.doc(dest)
-                slugs = {
-                    slug(d.lines[s.start].lstrip("#").strip())
-                    for s in d.sections
-                    if s.level <= 6
-                }
-                if anchor not in slugs:
+                if d is None or anchor not in d.slugs:
                     err = f"no heading with anchor #{anchor} in {dest}"
             add("link", m.start(1), tgt, err)
 
-        # section chains: TARGET › Name › Name[, step N]
+        # section chains: TARGET › Name › Name[, step N | §N]
         for m in re.finditer("›", flat):
             if not free(m.start(), m.end()):
                 continue
@@ -477,9 +628,12 @@ class Checker:
             left = flat[base : m.start()]
             t = TARGET_RE.search(left)
             fences = False
+            names: List[str] = []
             if t:
-                token = t.group(1) or t.group(2) or t.group(3)
-                target = self.target_file(token, rel)
+                if t.group(2):
+                    target = self.link_dest(t.group(2).split("#")[0], rel)
+                else:
+                    target = self.target_file(t.group(1) or t.group(3))
                 start = base + t.start()
             else:
                 h = CHAIN_HEAD_RE.search(left)
@@ -507,11 +661,9 @@ class Checker:
                 target, fences = PLAN_TEMPLATE, True
                 start = base + h.start() + len(" ".join(words[:k])) + (1 if k else 0)
                 names = [" ".join(words[k:])]
-            names = [] if t else names
             pos = m.start()
             while True:
-                seg_start = pos + 1
-                rest = flat[seg_start:].lstrip()
+                rest = flat[pos + 1 :].lstrip()
                 off = len(flat) - len(rest)
                 if rest.startswith('"'):
                     close = rest.find('"', 1)
@@ -528,7 +680,7 @@ class Checker:
             nums: List[str] = []
             tail = TAIL_RE.match(flat[pos:])
             if tail:
-                nums = [n for n in tail.groups()[1:] if n]
+                nums = numbers(tail.group(1) or tail.group(2))
                 pos += tail.end()
             claimed.append((start, pos))
             add(
@@ -538,14 +690,15 @@ class Checker:
                 self.resolve(target, names, nums, fences=fences),
             )
 
-        # contract §N[–§M]
-        for m in CONTRACT_RE.finditer(flat):
+        # contract §N, lists and ranges (whole text: `contract §N` is unambiguous even in a fence)
+        text_flat = text.replace("\n", " ")
+        for m in CONTRACT_RE.finditer(text_flat):
             claimed.append((m.start(), m.end()))
-            lo, hi = int(m.group(1)), int(m.group(2) or m.group(1))
             d = self.doc(CONTRACT)
-            have = {s.names for s in d.sections if s.level == 2} if d else set()
-            nums = {n for names in have for n in names if n.isdigit()}
-            missing = [str(k) for k in (lo, hi) if str(k) not in nums]
+            have = {
+                n for s in (d.sections if d else []) if s.level == 2 for n in s.names
+            }
+            missing = [k for k in numbers(m.group(1)) if k not in have]
             add(
                 "contract",
                 m.start(),
@@ -553,15 +706,15 @@ class Checker:
                 f"no '## {', '.join(missing)}.' in {CONTRACT}" if missing else None,
             )
 
-        # TARGET Name §N / TARGET item N
+        # TARGET [Name] §N / TARGET [Name] step|item N / TARGET §Name
         for m in TARGET_AHEAD_RE.finditer(flat):
             if not free(m.start(), m.end()):
                 continue
-            target = self.target_file(m.group(1), rel)
-            names = [m.group(2)] if m.group(2) else []
-            num = m.group(3) or m.group(5)
+            target = self.target_file(m.group(1) or m.group(2))
+            names = [n for n in (m.group(3), m.group(6)) if n]
+            nums = numbers(m.group(4) or m.group(5) or "") if not m.group(6) else []
             claimed.append((m.start(), m.end()))
-            add("section", m.start(), m.group(0), self.resolve(target, names, [num]))
+            add("section", m.start(), m.group(0), self.resolve(target, names, nums))
 
         # shorthands
         for rx, target, section in ALIASES:
@@ -569,15 +722,14 @@ class Checker:
                 if not free(m.start(), m.end()):
                     continue
                 claimed.append((m.start(), m.end()))
-                nums = [n for n in m.groups()[1:] if n]
                 add(
                     "section",
                     m.start(),
                     m.group(0),
-                    self.resolve(target, [section], nums),
+                    self.resolve(target, [section], numbers(m.group(1))),
                 )
 
-        # the citing file's own sections: §Name, Name step|item|§ N
+        # the citing file's own sections: §Name, and Name step|item|§ N where Name is a section
         for m in SELF_SECTION_RE.finditer(flat):
             if free(m.start(), m.end()):
                 claimed.append((m.start(), m.end()))
@@ -590,14 +742,20 @@ class Checker:
         for m in NAMED_NUM_RE.finditer(flat):
             if not free(m.start(), m.end()):
                 continue
-            num = m.group(2) or m.group(4)
+            name = self.own_section(rel, m.group(1))
+            if name is None:
+                continue  # prose ("Repeat step 2"): counted below as a bare number
+            nums = numbers(m.group(2) or m.group(3))
             claimed.append((m.start(), m.end()))
             add(
-                "section", m.start(), m.group(0), self.resolve(rel, [m.group(1)], [num])
+                "section",
+                m.end(1) - len(name),
+                flat[m.end(1) - len(name) : m.end()],
+                self.resolve(rel, [name], nums),
             )
 
         # out of scope, counted
-        for m in CHARTER_RE.finditer(flat):
+        for m in CHARTER_RE.finditer(text_flat):
             claimed.append((m.start(), m.end()))
             self.out_of_scope["charter"] += 1
         for m in BARE_NUM_RE.finditer(flat):

@@ -69,23 +69,29 @@ PROCESS_TEXT = (
 )
 SKILL_TEXT = (
     "# Skill\n\n## Output\n\n### 1. Stamp\n\n### 5. After\n\n## Cleanup and Report\n\n"
-    "1. one\n2. two\n\n### 1.25. Version bump check\n\n## Anchored Heading\n"
-)
+    "1. one\n2. two\n   1. nested one\n   5. nested five\n8. eight\n\n"
+    "```bash\n3. not a step\n```\n\n### 1.25. Version bump check\n\n4. four, under 1.25\n\n"
+    "## Agent Instructions\n\n```\n1. a\n6. six, in a bare fence: a prompt's steps\n```\n\n"
+    "## Indented\n\n- list:\n  1. a\n  2. b\n\n## Steps\n\n### Step 2: Do it\n\n"
+    "## Anchored Heading\n\n## Anchored Heading\n"
+).replace("```", "```")
 PLAN_TEMPLATE_TEXT = "# create-plan\n\n```markdown\n## Defect Class\n\n- **Violated contract:** <x>\n```\n"
 CLAUDE_TEXT = "# CLAUDE.md\n\n## Testing\n\n**Commit gate** = the solution.\n\n## Critical Rules\n\n1. a\n2. b\n"
 
 
-def _repo(tmp_path: Path, citing: str) -> Path:
+def _repo(tmp_path: Path, citing: str, where: str = "CLAUDE.md") -> Path:
     files = {
-        "CLAUDE.md": CLAUDE_TEXT + "\n" + citing + "\n",
+        "CLAUDE.md": CLAUDE_TEXT,
         csr.CONTRACT: CONTRACT_TEXT,
         csr.PROCESS: PROCESS_TEXT,
         ".claude/skills/push/SKILL.md": SKILL_TEXT,
         csr.PLAN_TEMPLATE: PLAN_TEMPLATE_TEXT,
-        ".claude/skills/verify-plan/SKILL.md": "# v\n\n## Verification Dimensions\n\n### 1. One\n",
+        ".claude/skills/verify-plan/SKILL.md": "# v\n\n## Verification Dimensions\n\n"
+        + "".join(f"### {k}. D{k}\n\n" for k in range(1, 6)),
         "docs/process/plans/plan-0a1b2c.md": "x\n",
         ".gitignore": ".claude/tmp/\n",
     }
+    files[where] += "\n" + citing + "\n"
     for rel, text in files.items():
         p = tmp_path / rel
         p.parent.mkdir(parents=True, exist_ok=True)
@@ -94,9 +100,9 @@ def _repo(tmp_path: Path, citing: str) -> Path:
     return tmp_path
 
 
-def _errors(tmp_path: Path, citing: str, kind: str):
-    refs, _ = csr.check(_repo(tmp_path, citing))
-    mine = [r for r in refs if r.kind == kind and r.file == "CLAUDE.md"]
+def _errors(tmp_path: Path, citing: str, kind: str, where: str = "CLAUDE.md"):
+    refs, _ = csr.check(_repo(tmp_path, citing, where))
+    mine = [r for r in refs if r.kind == kind and r.file == where]
     assert mine, f"no {kind} reference extracted from {citing!r}"
     return [r.error for r in mine if r.error]
 
@@ -125,6 +131,28 @@ def _errors(tmp_path: Path, citing: str, kind: str):
         ("contract", "Per contract §1–§9."),
         ("link", "[x](docs/missing.md)"),
         ("link", "[x](.claude/skills/push/SKILL.md#no-such-anchor)"),
+        # number lists and ranges are checked whole (fix round, item 2)
+        ("section", "Skip Dimensions 1, 3 and 99."),
+        ("section", "Skip Dimensions 4–6."),
+        ("section", "See `/push` › Cleanup and Report, steps 8 and 9."),
+        ("section", "See `/push` › Output §99."),
+        ("contract", "Per contract §1, §99."),
+        # an own-file Name that is a section, with its number missing, stays red (item 3)
+        ("section", "As Critical Rules step 9 says."),
+        # skills at a sentence end, in bold, in a double-backtick span (item 4)
+        ("skill", "Then run /no-such-skill."),
+        ("skill", "Use **/nope** now."),
+        ("skill", "See ``/nope`` now."),
+        # another file's section is judged against that file, not the citing one (item 5)
+        ("section", "See `/push` §Testing."),
+        ("section", "Run /push Critical Rules step 1."),  # CLAUDE.md has it; /push not
+        # step/item numbers: fenced code, a subsection's items, nested items (item 6)
+        ("section", "See `/push` › Cleanup and Report step 3."),
+        ("section", "See `/push` › Cleanup and Report step 4."),
+        ("section", "See `/push` › Cleanup and Report step 5."),  # a nested list item
+        ("section", "See `/push` step 9."),
+        # a citation in a bare fence (a prompt) is read like prose
+        ("skill", "```\nrun /no-such-skill\n```"),
     ],
 )
 def test_a_broken_reference_is_red(tmp_path, kind, citing):
@@ -150,6 +178,21 @@ def test_a_broken_reference_is_red(tmp_path, kind, citing):
         ("section", "See §Critical Rules."),
         ("contract", "Per contract §1–§2."),
         ("link", "[x](.claude/skills/push/SKILL.md#anchored-heading)"),
+        ("link", "[x](.claude/skills/push/SKILL.md#anchored-heading-1)"),  # GitHub's duplicate
+        ("section", "Run Dimensions 2, 3, 5 and 1–4."),
+        ("section", "See `/push` › Cleanup and Report, steps 1, 2 and 8."),
+        ("section", "See `/push` › Output §1 and §5."),
+        ("contract", "Per contract §1, §2."),
+        ("contract", "Contract §2 holds."),
+        ("section", "As Critical Rules step 2 says."),
+        ("skill", "Then run /push."),
+        ("skill", "Use **/push** now; see ``/push``."),
+        ("section", "See `/push` §Output."),
+        ("section", "Run /push Cleanup and Report step 8."),
+        ("section", "See `/push` › Agent Instructions step 6."),
+        ("section", "See `/push` › Indented, item 2."),
+        ("section", "See `/push` › Steps, step 2."),
+        ("section", "See `/push` step 8."),
     ],
 )
 def test_a_resolving_reference_is_green(tmp_path, kind, citing):
@@ -162,6 +205,12 @@ def test_a_resolving_reference_is_green(tmp_path, kind, citing):
         "Paths like `src/Foo/*.cs` and `docs/process/plans/<plan-id>.md`.",  # glob, placeholder
         "A `foo`/bar pair and a/b and https://x.org/push and `/spy-*` skills.",  # not skill cites
         "bare §3 and step 4 and item 2 and charter §3.",  # out of scope, counted
+        # ordinary prose is not a citation (item 3)
+        "Repeat step 2. See §3 for it. Then item 4 applies. Charter §3 says so.",
+        # fenced code and inline code are not prose (item 7)
+        "```bash\ncd /tmp && msbuild /p:X=1 /nologo\nDimension 9, Rule 99, /no-such\n```",
+        "```markdown\n[plan](docs/process/plans/<plan-id>.md)\n```",
+        "Index it as `a[i](x)`.",
     ],
 )
 def test_text_that_is_not_a_checked_reference_extracts_nothing(tmp_path, citing):
@@ -171,10 +220,17 @@ def test_text_that_is_not_a_checked_reference_extracts_nothing(tmp_path, citing)
     assert mine == []
 
 
+def _out_of_scope(tmp_path: Path, citing: str) -> dict:
+    """What `citing` adds to the counts (the fixture's targets carry some of their own)."""
+    _, base = csr.check(_repo(tmp_path / "base", ""))
+    _, checker = csr.check(_repo(tmp_path / "cited", citing))
+    return {k: v - base.out_of_scope[k] for k, v in checker.out_of_scope.items()}
+
+
 def test_out_of_scope_forms_are_counted(tmp_path):
-    _, checker = csr.check(_repo(tmp_path, "bare §3, step 4, item 2 and charter §3."))
-    assert checker.out_of_scope["bare-number"] == 3
-    assert checker.out_of_scope["charter"] == 1
+    counts = _out_of_scope(tmp_path, "bare §3, step 4, item 2 and charter §3.")
+    assert counts["bare-number"] == 3
+    assert counts["charter"] == 1
 
 
 def test_main_reports_and_exits_red(tmp_path, capsys):
@@ -182,3 +238,81 @@ def test_main_reports_and_exits_red(tmp_path, capsys):
     assert csr.main(["--repo", str(repo)]) == 1
     out = capsys.readouterr().out
     assert "BROKEN skill: CLAUDE.md:" in out and "RESULT: FAIL" in out
+
+
+def test_a_builtin_cited_at_a_sentence_end_counts_as_cited(tmp_path):
+    _, checker = csr.check(_repo(tmp_path, "Then run /simplify."))
+    assert checker.cited_builtins == {"simplify"}
+
+
+def test_prose_numbers_fall_to_the_counted_bare_bucket(tmp_path):
+    # Known limit (docstring): a Name that is no section of the citing file is prose, so an own-file
+    # citation whose heading was renamed is counted here instead of going red.
+    counts = _out_of_scope(tmp_path, "Repeat step 2. Charter §3. Critical Ruling step 9.")
+    assert counts["bare-number"] == 2
+    assert counts["charter"] == 1
+
+
+@pytest.mark.parametrize(
+    "citing,where",
+    [
+        # GitHub resolves a link against the citing file's directory, never the repo root first
+        ("[p](docs/process/README.md#the-stage-trail)", csr.CONTRACT),
+        ("[b](/push)", "CLAUDE.md"),  # a link is a path, not a skill
+        ("[d](../no-such-dir/)", csr.CONTRACT),
+    ],
+)
+def test_a_link_resolves_as_github_does_red(tmp_path, citing, where):
+    assert _errors(tmp_path, citing, "link", where)
+
+
+@pytest.mark.parametrize(
+    "citing,where",
+    [
+        ("[p](../process/README.md#the-stage-trail)", csr.CONTRACT),
+        ("[r](/docs/process/README.md#the-stage-trail)", csr.CONTRACT),
+        ("[d](../process/)", csr.CONTRACT),  # a directory is fine
+    ],
+)
+def test_a_link_resolves_as_github_does_green(tmp_path, citing, where):
+    assert _errors(tmp_path, citing, "link", where) == []
+
+
+# -- the workflow that runs this test starts when a target changes -------------------------------
+
+
+def _tracked() -> list:
+    out = subprocess.run(
+        ["git", "-C", str(REPO), "ls-files"], capture_output=True, text=True, check=True
+    ).stdout
+    return [l for l in out.splitlines() if l]
+
+
+def test_every_target_the_check_reads_starts_the_python_workflow(tree):
+    """A PR that renames a cited file must run this test, or it merges green and the next PR goes
+    red. Every file the checker read (the scanned files, each target, .gitignore) is matched by
+    the Python Build Tools workflow's RELEVANT_PATHS and push `paths` (one list, kept equal by
+    test_workflow_relevance). A cited directory goes missing only when every file in it moves, so
+    it is covered when one of its tracked files is."""
+    from build_tools.tests import test_workflow_relevance as twr
+
+    workflow = twr.load(twr.WORKFLOWS / "python-build-tools.yml")
+    lists = {
+        "RELEVANT_PATHS": twr.relevant_paths(workflow),
+        "on.push.paths": list(twr.triggers(workflow)["push"]["paths"]),
+    }
+    _, checker = tree
+    reads = set(checker.reads)
+    assert {".gitignore", "CLAUDE.md", csr.CONTRACT} <= reads  # positive control
+    tracked = _tracked()
+    missed = []
+    for read in sorted(reads):
+        for label, patterns in lists.items():
+            if (REPO / read).is_dir():
+                inside = [f for f in tracked if f.startswith(read.rstrip("/") + "/")]
+                ok = any(twr.matches(f, patterns) for f in inside)
+            else:
+                ok = twr.matches(read, patterns)
+            if not ok:
+                missed.append(f"{read} ({label})")
+    assert not missed, "targets outside the workflow's paths:\n" + "\n".join(missed)

@@ -30,6 +30,24 @@ on:
       - 'docs/stdlib/**'
       - 'docs/deviations.yaml'
       - 'mkdocs.yml'
+      - '.gitignore'
+      - 'docs/architecture.md'
+      - 'docs/design/**'
+      - 'docs/audits/**'
+      - 'benchmarks/cross-language/run_benchmarks.py'
+      - 'editors/vscode/CHANGELOG.md'
+      - 'editors/vscode/package.json'
+      - 'editors/vscode/syntaxes/sharpy.tmLanguage.json'
+      - 'src/Sharpy.Compiler.Tests/Sharpy.Compiler.Tests.csproj'
+      - 'src/Sharpy.Compiler.Tests/CodeGen/EmitterCarrierOnlyConformanceTests.cs'
+      - 'src/Sharpy.Compiler.Tests/Project/ProjectConfigWithInMemorySourcesTests.cs'
+      - 'src/Sharpy.Compiler.Tests/Integration/TestFixtures/async/async_basic.spy'
+      - 'src/Sharpy.Compiler.Tests/Properties/PropertyIterations.cs'
+      - 'src/Sharpy.Compiler.Benchmarks/Corpus/hello_world.spy'
+      - 'src/Sharpy.Lsp.Tests/Conformance/FrontEndParityTests.cs'
+      - 'src/Sharpy.Playground/Sharpy.Playground.csproj'
+      - 'src/Sharpy.TestInfrastructure/Sharpy.TestInfrastructure.csproj'
+      - 'src/Sharpy.Stdlib.Tests/Spy/generated/approx_helper_tests.cs'
   # Every PR, whatever its base; see the note on the same trigger in dotnet10.yml. No path filter, so
   # the workflow always starts and `gate` always reports: `changes` makes the path decision.
   pull_request:
@@ -88,6 +106,27 @@ jobs:
         docs/stdlib/**
         docs/deviations.yaml
         mkdocs.yml
+        # check_skill_refs.py (test_check_skill_refs.py) resolves the procedure text's citations
+        # against these: the files it cites, .gitignore, and for a cited directory one file in it
+        # (a directory goes missing only when all its files move, which changes that file).
+        .gitignore
+        docs/architecture.md
+        docs/design/**
+        docs/audits/**
+        benchmarks/cross-language/run_benchmarks.py
+        editors/vscode/CHANGELOG.md
+        editors/vscode/package.json
+        editors/vscode/syntaxes/sharpy.tmLanguage.json
+        src/Sharpy.Compiler.Tests/Sharpy.Compiler.Tests.csproj
+        src/Sharpy.Compiler.Tests/CodeGen/EmitterCarrierOnlyConformanceTests.cs
+        src/Sharpy.Compiler.Tests/Project/ProjectConfigWithInMemorySourcesTests.cs
+        src/Sharpy.Compiler.Tests/Integration/TestFixtures/async/async_basic.spy
+        src/Sharpy.Compiler.Tests/Properties/PropertyIterations.cs
+        src/Sharpy.Compiler.Benchmarks/Corpus/hello_world.spy
+        src/Sharpy.Lsp.Tests/Conformance/FrontEndParityTests.cs
+        src/Sharpy.Playground/Sharpy.Playground.csproj
+        src/Sharpy.TestInfrastructure/Sharpy.TestInfrastructure.csproj
+        src/Sharpy.Stdlib.Tests/Spy/generated/approx_helper_tests.cs
     outputs:
       relevant: ${{ steps.relevant.outputs.relevant }}
 
