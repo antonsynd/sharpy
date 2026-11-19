@@ -165,6 +165,11 @@ class TestExtractRateLimitWaitTime(unittest.TestCase):
         # Should match the first pattern (5 minutes)
         assert extract_rate_limit_wait_time(message) == 300
 
+    def test_retry_after_wins_over_quota_resets_in(self):
+        """Test that "retry after" is checked before "quota resets in"."""
+        message = "Retry after 60. Quota resets in 30 minutes."
+        assert extract_rate_limit_wait_time(message) == 60
+
     def test_real_world_claude_error(self):
         """Test with a real-world Claude API rate limit error."""
         message = """
