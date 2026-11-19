@@ -25,6 +25,8 @@ If `$ARGUMENTS` is empty, list the three newest plans (stage trail item 1) and a
 
 Read the plan file completely before proceeding. Record `git rev-parse --short HEAD` — every check below is made against that sha, and the stamp names it (line numbers drift; a sha does not).
 
+**Paraphrase first**, before any probe or grade, from the plan's body alone (never a prior Verification Summary): a few sentences each on what the plan changes and how the code works today by its account, into the Verification Summary's `### Paraphrase` for the author and owner to check against the intent. A section you cannot paraphrase is a Dimension 4 error: NEEDS REVISION, never corrected inline. A wrong paraphrase is evidence against the text, not the reader. A nine-dimension pass by the plan's own session writes `not written: author's session`.
+
 ## Probing rules
 
 - Never run `dotnet` directly — `.claude/scripts/dotnet-serialized` (drop-in wrapper; needs `dangerouslyDisableSandbox: true`), or the `/spy-run` / `/spy-emit` / `/quick-check` skills for inline Sharpy source.
@@ -167,7 +169,7 @@ After verification, edit the plan file directly.
 <!-- Scope: [ONE-GROUP / MULTI-GROUP (override) / N/A] · Generator: [existing / built-first / not-required / MISSING] -->
 ```
 
-In `--adequacy` mode all four stamp lines are written: the first reads `<!-- Verified by /verify-plan --adequacy (Adequacy-only: Dimensions 4-design, 6, 7; check_plan_refs clean) on YYYY-MM-DD @ <sha> -->`; the result is `PASS`, `NEEDS REVISION` or `CONVERGED`; `Adequacy:` is Dimension 6's verdict; `Scope:` is copied from the plan's `## Scope` block and `Generator:` row without grading Dimension 9 (a light plan that reads `MULTI-GROUP` or needs a generator is `NEEDS REVISION: promote to full`, §12). The Verification Summary carries only `### Adequacy`, `### Falsifiability`, `### Design decisions checked` and `### Unchecked Claims`, plus `### Deferred findings` on `CONVERGED`; downstream skills read the stamp as a full one.
+In `--adequacy` mode all four stamp lines are written: the first reads `<!-- Verified by /verify-plan --adequacy (Adequacy-only: Dimensions 4-design, 6, 7; check_plan_refs clean) on YYYY-MM-DD @ <sha> -->`; the result is `PASS`, `NEEDS REVISION` or `CONVERGED`; `Adequacy:` is Dimension 6's verdict; `Scope:` is copied from the plan's `## Scope` block and `Generator:` row without grading Dimension 9 (a light plan that reads `MULTI-GROUP` or needs a generator is `NEEDS REVISION: promote to full`, §12). The Verification Summary carries only `### Paraphrase`, `### Adequacy`, `### Falsifiability`, `### Design decisions checked` and `### Unchecked Claims`, plus `### Deferred findings` on `CONVERGED`; downstream skills read the stamp as a full one.
 
 Result:
 - **PASS** — no errors; at most minor suggestions
@@ -176,6 +178,8 @@ Result:
 - **CONVERGED** — contract §12 Convergence holds: the `## Revision log` shows the previous pass `NEEDS REVISION, Dimension N` on the SAME dimension, and every finding of this pass is **deferrable** as §12 defines it (one that is not keeps NEEDS REVISION). List them under `### Deferred findings` (each `<roster or claim> ← <enumeration> — fix: <code change> — proved by <assertion / mutation / build / generator>`) and route to `/implement-plan`. A first NEEDS REVISION always earns a revision; `CELL` on a bug-fix plan still needs the owner's word at `/implement-plan`.
 
 Adequacy: `CLASS` / `CELL` / `N/A` per Dimension 6. `/implement-plan` refuses a `CELL` plan for bug-fix inputs unless the user explicitly overrides or the result is `CONVERGED`; `N/A` is for plans with no bug/ICE/regression input.
+
+**Second pass** (the `## Revision log` shows a prior pass): grade fresh, then label each finding in the Verification Summary against that pass's commit (§4). **settled**: an owner ruling decides it; not raised. **declined**: the log declined it; quote its reason. **re-opened**: the log says it was answered; it is still drawn. **churn**: its cure would undo the revision's answer to a prior finding; also list it under `### Unchecked Claims`, with both texts, as needing the owner's word. **new**: the rest. Labels change no stamp.
 
 ### 2. Add a Verification Summary section at the end of the plan
 
@@ -186,6 +190,9 @@ Adequacy: `CLASS` / `CELL` / `N/A` per Dimension 6. `/implement-plan` refuses a 
 **Adequacy:** [CLASS / CELL / N/A]
 **Verified on:** YYYY-MM-DD @ <sha>
 **Plan file:** `docs/process/plans/<plan-id>.md` (committed in §4 at every result, NEEDS REVISION included)
+
+### Paraphrase
+- **Changes:** <the body as read, before corrections> · **Today:** <per the plan> · **Could not paraphrase:** <sections / none>
 
 ### Corrections Made
 - (each correction and added section, before/after)
@@ -223,7 +230,7 @@ Adequacy: `CLASS` / `CELL` / `N/A` per Dimension 6. `/implement-plan` refuses a 
 
 Rewrite the plan text so it reads as if first written correctly: no `[CORRECTED…]` or `[ADDED…]` markers, no pass history, no "(first pass)" tags. Each change's before/after lives only in the Verification Summary.
 
-Present a brief summary to the user: result, adequacy verdict, the corrections that changed a decision (not every path fix), the warnings the author must act on before `/implement-plan`, and the commit that holds the stamped plan (§4).
+Present a brief summary to the user: the paraphrase, result, adequacy verdict, the corrections that changed a decision (not every path fix), the warnings the author must act on before `/implement-plan`, and the commit that holds the stamped plan (§4).
 
 ### 4. Commit the stamped plan
 
