@@ -28,7 +28,6 @@ Migration Notes (2026-01-13):
 - Backend management uses a local BackendManager over the shared backends
 - Rate limiting uses shared.rate_limiting module
 - Logging uses shared.logging.ExecutionLogger
-- Model selection integrated for documentation tasks
 """
 
 import argparse
