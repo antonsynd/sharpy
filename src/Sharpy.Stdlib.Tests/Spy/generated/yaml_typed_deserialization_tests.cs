@@ -18,6 +18,11 @@ namespace Sharpy.Stdlib.Tests.Spy.Yaml.YamlTypedDeserializationTests
     [global::Sharpy.SharpyModule("yaml.yaml_typed_deserialization_tests")]
     public static partial class YamlTypedDeserializationTestsModule
     {
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        [global::Sharpy.SharpyLoadEntry(false)]
+        public static void __Load()
+        {
+        }
     }
 
     [global::Sharpy.SharpyModuleType("yaml.yaml_typed_deserialization_tests", "ServerConfig")]

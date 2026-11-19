@@ -1,4 +1,3 @@
-using System.Collections.Concurrent;
 using System.Collections.Immutable;
 using System.Diagnostics;
 using System.Text;
@@ -59,6 +58,39 @@ public class CPythonDifferentialParseTests
             });
         });
 
+    /// <summary>In-subset samples a run collects at scale 1; the nightly multiplies it by <see cref="DepthScale"/>.</summary>
+    private const int BaseTargetCount = 150;
+
+    /// <summary>Candidate budget per in-subset sample wanted: the collection stops at
+    /// <c>BaseTargetCount × CandidatesPerTarget × scale</c> draws if the target is not reached first.</summary>
+    private const int CandidatesPerTarget = 10;
+
+    /// <summary>The fixed floor on collected samples (strictly more than this).</summary>
+    private const int MinSamples = 50;
+
+    /// <summary>
+    /// Floor on <c>in-subset samples / candidates drawn</c>: what "the subset filter may be over-broad"
+    /// means, and independent of runner throughput. Measured 2026-11-19 (4 cores, scale 1, target 150)
+    /// over 30 seeds (7919 × 1..30): min 0.495, median 0.553, max 0.649, mean 0.556, s.d. 0.032; every
+    /// run reached 150 samples within 231–303 candidates and dual-parsed ≥ 149. 0.35 sits 0.145 (about
+    /// 4.5 s.d.) below the measured min. A filter that rejects 90% of draws yields about 0.055.
+    /// </summary>
+    private const double MinSubsetRatio = 0.35;
+
+    /// <summary>The largest <see cref="DepthScale"/> the nightly may ask for.</summary>
+    private const int MaxDepthScale = 6;
+
+    /// <summary>Replays a run: the seed a run prints, as a decimal <c>ulong</c>.</summary>
+    public const string SeedVariable = "SHARPY_DIFFPARSE_SEED";
+
+    /// <summary>
+    /// Depth multiplier: <see cref="PropertyIterations.Injection"/> over its in-suite 100, so
+    /// <c>SHARPY_PROPERTY_ITER=600</c> (the nightly soak) collects six times the samples. Floored at 1
+    /// and capped at <see cref="MaxDepthScale"/>. <c>CsCheck_Time</c> plays no part: the collection is
+    /// count-bounded, not time-bounded.
+    /// </summary>
+    private static int DepthScale() => Math.Clamp(PropertyIterations.Injection / 100, 1, MaxDepthScale);
+
     [SkippableFact]
     public void SharedSubset_SharpyAndCPythonAgree()
     {
@@ -66,9 +98,26 @@ public class CPythonDifferentialParseTests
         var python = PythonOracle.TryLocate()
             ?? throw new FileNotFoundException("python3 >= 3.12 is present but build_tools/differential_parse/compare_ast.py was not found.");
 
-        List<Sample> samples = CollectSubsetSamples(targetCount: 150, maxCandidates: 1500);
-        Assert.True(samples.Count > 50,
-            $"Too few in-subset samples generated ({samples.Count}); the subset filter may be over-broad.");
+        int scale = DepthScale();
+        ulong seed = RunSeed();
+        var stopwatch = Stopwatch.StartNew();
+        Collection collection = CollectSubsetSamples(
+            targetCount: BaseTargetCount * scale, maxCandidates: BaseTargetCount * CandidatesPerTarget * scale, seed);
+        List<Sample> samples = collection.Samples;
+        double ratio = collection.Candidates == 0 ? 0 : (double)samples.Count / collection.Candidates;
+
+        // Printed before the floors so a red log records the yield and the seed to replay it.
+        _output.WriteLine(
+            $"Collected {samples.Count} in-subset samples from {collection.Candidates} candidates "
+            + $"(ratio {ratio:F3}, scale {scale}) in {stopwatch.Elapsed.TotalSeconds:F1} s; "
+            + $"seed {collection.Seed} (replay: {SeedVariable}={collection.Seed}).");
+
+        Assert.True(ratio >= MinSubsetRatio,
+            $"In-subset ratio {ratio:F3} ({samples.Count}/{collection.Candidates}) is below {MinSubsetRatio}; "
+            + $"the subset filter may be over-broad. Seed {collection.Seed}.");
+        Assert.True(samples.Count > MinSamples,
+            $"Too few in-subset samples generated ({samples.Count} of {collection.Candidates} candidates); "
+            + $"the subset filter may be over-broad. Seed {collection.Seed}.");
 
         IReadOnlyDictionary<int, PythonVerdict> verdicts = python.ParseBatch(samples);
 
@@ -134,6 +183,9 @@ public class CPythonDifferentialParseTests
         Assert.True(skeletonMismatches.Count == 0,
             $"Sharpy and CPython produced different parse skeletons for {skeletonMismatches.Count} in-subset sample(s). "
             + "See test output.");
+        Assert.True(bothParsed > MinSamples,
+            $"Only {bothParsed} of {samples.Count} in-subset samples parsed on both sides; the skeleton contract "
+            + $"was barely exercised. Seed {collection.Seed}.");
     }
 
     /// <summary>
@@ -227,52 +279,89 @@ public class CPythonDifferentialParseTests
     // Sample collection
     // ----------------------------------------------------------------------- //
 
-    private static List<Sample> CollectSubsetSamples(int targetCount, int maxCandidates)
+    private static Collection CollectSubsetSamples(int targetCount, int maxCandidates, ulong seed)
     {
-        var collected = new ConcurrentQueue<Sample>();
-        int nextId = -1;
+        var samples = new List<Sample>(targetCount);
+        int candidates = 0;
+        int batchSize = Math.Max(16, Environment.ProcessorCount * 8);
+        var batch = new Sample?[batchSize];
 
-        HotspotModule.Sample(module =>
+        while (samples.Count < targetCount && candidates < maxCandidates)
         {
-            if (collected.Count >= targetCount)
-                return;
-            if (!SubsetFilter.IsInSharedSubset(module))
-                return;
+            int first = candidates;
+            int count = Math.Min(batchSize, maxCandidates - first);
+            Parallel.For(0, count, i => batch[i] = TryDrawSubsetSample(seed, first + i));
 
-            string source;
-            try
+            // Walk the batch in candidate order so the result does not depend on the thread count.
+            for (int i = 0; i < count && samples.Count < targetCount; i++)
             {
-                source = Sharpy.Compiler.Pretty.Unparser.Unparse(module);
+                candidates++;
+                if (batch[i] is { } s)
+                    samples.Add(s);
             }
-            catch
-            {
-                return;
-            }
+        }
 
-            bool sharpyParses;
-            Module? reparsed = null;
-            try
-            {
-                var tokens = new Sharpy.Compiler.Lexer.Lexer(source).TokenizeAll();
-                var parser = new Sharpy.Compiler.Parser.Parser(tokens);
-                reparsed = parser.ParseModule();
-                sharpyParses = !parser.Diagnostics.HasErrors;
-            }
-            catch
-            {
-                sharpyParses = false;
-            }
-
-            var landmarks = sharpyParses && reparsed is not null
-                ? LandmarkCounter.Count(reparsed)
-                : null;
-
-            int id = Interlocked.Increment(ref nextId);
-            collected.Enqueue(new Sample(id, source, sharpyParses, landmarks));
-        }, iter: maxCandidates);
-
-        return collected.OrderBy(s => s.Id).ToList();
+        return new Collection(samples, candidates, seed);
     }
+
+    /// <summary>
+    /// Candidate <paramref name="index"/> of the run seeded with <paramref name="seed"/>: drawn from
+    /// its own <see cref="PCG"/> (seed and index mixed), so a candidate is the same whatever thread
+    /// draws it. Null when the draw is outside the shared subset or does not unparse.
+    /// </summary>
+    private static Sample? TryDrawSubsetSample(ulong seed, int index)
+    {
+        var module = HotspotModule.Generate(new PCG(1u, CandidateSeed(seed, index)), null, out _);
+        if (!SubsetFilter.IsInSharedSubset(module))
+            return null;
+
+        string source;
+        try
+        {
+            source = Sharpy.Compiler.Pretty.Unparser.Unparse(module);
+        }
+        catch
+        {
+            return null;
+        }
+
+        bool sharpyParses;
+        Module? reparsed = null;
+        try
+        {
+            var tokens = new Sharpy.Compiler.Lexer.Lexer(source).TokenizeAll();
+            var parser = new Sharpy.Compiler.Parser.Parser(tokens);
+            reparsed = parser.ParseModule();
+            sharpyParses = !parser.Diagnostics.HasErrors;
+        }
+        catch
+        {
+            sharpyParses = false;
+        }
+
+        var landmarks = sharpyParses && reparsed is not null
+            ? LandmarkCounter.Count(reparsed)
+            : null;
+
+        return new Sample(index, source, sharpyParses, landmarks);
+    }
+
+    /// <summary>SplitMix64 of the run seed and the candidate index.</summary>
+    private static ulong CandidateSeed(ulong seed, int index)
+    {
+        ulong z = seed + (0x9E3779B97F4A7C15UL * (ulong)(index + 1));
+        z = (z ^ (z >> 30)) * 0xBF58476D1CE4E5B9UL;
+        z = (z ^ (z >> 27)) * 0x94D049BB133111EBUL;
+        return z ^ (z >> 31);
+    }
+
+    /// <summary>The run seed: <see cref="SeedVariable"/> when it parses, else a fresh random one.</summary>
+    private static ulong RunSeed() =>
+        ulong.TryParse(Environment.GetEnvironmentVariable(SeedVariable), out var seed)
+            ? seed
+            : (ulong)Random.Shared.NextInt64() ^ ((ulong)Random.Shared.Next() << 32);
+
+    private sealed record Collection(List<Sample> Samples, int Candidates, ulong Seed);
 
     // ----------------------------------------------------------------------- //
     // Landmark comparison helpers

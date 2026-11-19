@@ -12,6 +12,7 @@ namespace AccessNamingConventionMethods
     {
         public static void Main()
         {
+            __Load();
 #line (32, 5) - (32, 22) 12 "access_naming_convention_methods.spy"
             global::AccessNamingConventionMethods.Base b = new global::AccessNamingConventionMethods.Base();
 #line (34, 5) - (34, 18) 12 "access_naming_convention_methods.spy"
@@ -25,6 +26,12 @@ namespace AccessNamingConventionMethods
 #line (42, 5) - (42, 30) 12 "access_naming_convention_methods.spy"
             global::Sharpy.Builtins.Print(c.CallProtected());
 #line hidden
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        [global::Sharpy.SharpyLoadEntry(false)]
+        public static void __Load()
+        {
         }
     }
 

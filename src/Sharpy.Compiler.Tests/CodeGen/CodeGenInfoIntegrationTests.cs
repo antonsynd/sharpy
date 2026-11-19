@@ -208,9 +208,11 @@ x: int = 10
     }
 
     [Fact]
-    public void VariableReferencingAssignmentVariable_HasExecutionOrderIssues()
+    public void VariableReferencingAssignmentVariable_IsModuleLevel()
     {
-        // Referencing an assignment variable (no type annotation) is an execution order issue
+        // What an initializer reads is not an execution order issue (plan-775c50 D1, #2420): the
+        // reader stays a module-level value. The positive control of the issue kinds that remain is
+        // VariableWithAssignmentBeforeDeclaration_HasExecutionOrderIssues above.
         var source = @"
 x = 5
 y: int = x
@@ -221,10 +223,10 @@ y: int = x
         symbol.Should().NotBeNull();
         var cgi = binding.GetCodeGenInfo(symbol!);
         cgi.Should().NotBeNull();
-        cgi!.HasExecutionOrderIssues.Should().BeTrue(
-            "Referencing an assignment variable is an execution order issue");
-        cgi.IsModuleLevel.Should().BeFalse(
-            "Variable should be emitted as local in Main()");
+        cgi!.HasExecutionOrderIssues.Should().BeFalse(
+            "reading an assignment variable is not an execution order issue of the reader (D1)");
+        cgi.IsModuleLevel.Should().BeTrue(
+            "the reader is a module-level value whatever its initializer reads (D1)");
     }
 
     [Fact]

@@ -13,6 +13,7 @@ namespace BracketAttrCustomReflection
     {
         public static void Main()
         {
+            __Load();
 #line (18, 5) - (18, 20) 12 "bracket_attr_custom_reflection.spy"
             var lib = new global::BracketAttrCustomReflection.Library();
 #line (19, 5) - (19, 23) 12 "bracket_attr_custom_reflection.spy"
@@ -39,6 +40,12 @@ namespace BracketAttrCustomReflection
 #line hidden
                 }
             }
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        [global::Sharpy.SharpyLoadEntry(false)]
+        public static void __Load()
+        {
         }
     }
 

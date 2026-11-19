@@ -3491,6 +3491,32 @@ internal partial class TypeChecker
     }
 
     /// <summary>
+    /// The signature a call binds against a FunctionType: its parameter and return types with the
+    /// method-level generic type parameters inferred from <paramref name="argTypes"/> substituted. For
+    /// methods like <c>Map&lt;U&gt;(Func&lt;T, U&gt; f) -> Result&lt;U, E&gt;</c> the method-level
+    /// <c>TypeParameterType("U")</c> appears in both. The one substitution for a direct call
+    /// (<see cref="CheckLambdaCall"/>) and a pipe's call (<c>CheckPipeForwardWithFunctionCall</c>).
+    /// </summary>
+    private (IReadOnlyList<SemanticType> ParameterTypes, SemanticType ReturnType) InferFunctionTypeSignature(
+        FunctionType ft, IReadOnlyList<SemanticType> argTypes)
+    {
+        IReadOnlyList<SemanticType> paramTypes = ft.ParameterTypes;
+        var returnType = ft.ReturnType;
+        if (ContainsTypeParameterType(returnType) || paramTypes.Any(ContainsTypeParameterType))
+        {
+            var typeParamMap = _genericInference.UnifyTypes(paramTypes, argTypes);
+            if (typeParamMap != null && typeParamMap.Count > 0)
+            {
+                returnType = GenericTypeInferenceService.SubstituteTypeParameters(returnType, typeParamMap);
+                paramTypes = paramTypes
+                    .Select(p => GenericTypeInferenceService.SubstituteTypeParameters(p, typeParamMap))
+                    .ToList();
+            }
+        }
+        return (paramTypes, returnType);
+    }
+
+    /// <summary>
     /// Validates a function call against a FunctionType (lambda/delegate calls without a FunctionSymbol).
     /// </summary>
     private SemanticType CheckLambdaCall(
@@ -3520,24 +3546,7 @@ internal partial class TypeChecker
             }
         }
 
-        var paramTypes = ft.ParameterTypes;
-        var returnType = ft.ReturnType;
-
-        // Infer method-level generic type parameters from arguments BEFORE validation.
-        // For methods like Map<U>(Func<T, U> f) -> Result<U, E>, the method-level
-        // TypeParameterType("U") appears in both parameter types and return type.
-        // We infer U from the actual argument types and substitute everywhere.
-        if (ContainsTypeParameterType(returnType) || paramTypes.Any(ContainsTypeParameterType))
-        {
-            var typeParamMap = _genericInference.UnifyTypes(paramTypes, argTypes);
-            if (typeParamMap != null && typeParamMap.Count > 0)
-            {
-                returnType = GenericTypeInferenceService.SubstituteTypeParameters(returnType, typeParamMap);
-                paramTypes = paramTypes
-                    .Select(p => GenericTypeInferenceService.SubstituteTypeParameters(p, typeParamMap))
-                    .ToList();
-            }
-        }
+        var (paramTypes, returnType) = InferFunctionTypeSignature(ft, argTypes);
 
         // Skip validation for .NET types with multiple constructor overloads
         // (C# compiler will handle overload resolution)

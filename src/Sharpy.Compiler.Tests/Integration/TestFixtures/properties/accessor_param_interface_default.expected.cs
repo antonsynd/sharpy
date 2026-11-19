@@ -12,11 +12,18 @@ namespace AccessorParamInterfaceDefault
     {
         public static void Main()
         {
+            __Load();
 #line (15, 5) - (15, 28) 12 "accessor_param_interface_default.spy"
             global::AccessorParamInterfaceDefault.IVolume s = new global::AccessorParamInterfaceDefault.Speaker();
 #line (16, 5) - (16, 17) 12 "accessor_param_interface_default.spy"
             s.Volume = 4;
 #line hidden
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        [global::Sharpy.SharpyLoadEntry(false)]
+        public static void __Load()
+        {
         }
     }
 

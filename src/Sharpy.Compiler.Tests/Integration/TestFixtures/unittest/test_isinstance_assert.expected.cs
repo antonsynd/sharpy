@@ -15,9 +15,16 @@ namespace TestIsinstanceAssert
     {
         public static void Main()
         {
+            __Load();
 #line (24, 5) - (24, 16) 12 "test_isinstance_assert.spy"
             global::Sharpy.Builtins.Print("ok");
 #line hidden
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        [global::Sharpy.SharpyLoadEntry(false)]
+        public static void __Load()
+        {
         }
     }
 

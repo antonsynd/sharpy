@@ -42,9 +42,12 @@
 # over the 20 mainline push runs before it (42372810738 back to 40623113848; for `compiler`, 2x
 # the ~11 min projected for the class-split shard 6 at first, and since #2690 the 40 given at the
 # end of this paragraph), never under 5, in place of the 6-hour
-# default; every test run has `--blame-hang-timeout 10m`, so a test silent for 10 min aborts the
+# default; every test run but one (below) has `--blame-hang-timeout 10m`, so a test silent for 10 min aborts the
 # run red ("The active test run was aborted") long before the job limit. The longest single test,
-# NameResolutionDifferential_Sweep, took 372 s in 42372810738. No dump is taken
+# NameResolutionDifferential_Sweep, took 372 s in 42372810738; with P77 (#2742) it took 10 m 06 s
+# and 10 m 29 s (runs 44347230877, 44370550669; dev 6 m 25 s to 8 m 13 s, its last three runs),
+# so its step alone has `--blame-hang-timeout 22m` and `sweeps-quick` 40, 2x, by the owner's
+# ruling of 2026-11-18 ("raise then shard after to claw back"; sharding it is #2458's). No dump is taken
 # (`--blame-hang-dump-type none`): a full one is ~700 MB and nothing uploads it.
 # Coverage-on runs (COVERAGE_ON below) carry their own limit, 2x their coverage-on duration: the
 # covered jobs' `timeout-minutes` read the same predicate (`test-fast` 20/15, `lsp` 30/20), set
@@ -699,11 +702,12 @@ jobs:
     # name-resolution differential (P77a; its full pool is bounded at 13 min on a dev machine, and
     # on CI this job took 12 m 16 s, of which that step 7 m 00 s, @ 8c0602b35, run 42332177803,
     # measured), one step each in one job. Each still writes its own sweep-<name>.trx, and each
-    # reports even if an earlier one failed.
+    # reports even if an earlier one failed. With P77 (#2742) the job took 19 m 40 s and 17 m 17 s
+    # (runs 44347230877, 44370550669), so its limit is 40, 2x (#2458; owner, 2026-11-18).
     name: Sweeps (interop, differential-execution, format-spec, formatter-emit, name-resolution)
     needs: build
     runs-on: ubuntu-latest
-    timeout-minutes: 25
+    timeout-minutes: 40
     env:
       # The python oracles below FAIL instead of skipping when no Python 3.12+ interpreter is found:
       # a skipped sweep guards nothing and the job's other facts would keep it green. Job level, so
@@ -796,7 +800,7 @@ jobs:
       # suitable python3, like the sweeps above: its roster facts would still pass and keep
       # ci-summary's zero-test check green.
       if: ${{ !cancelled() && steps.unpack.outcome == 'success' }}
-      run: dotnet test src/Sharpy.Compiler.Tests --no-build --verbosity normal --filter "Category=GapDiscovery&FullyQualifiedName~NameResolutionDifferential" --logger "trx;LogFileName=sweep-name-resolution-differential.trx" --results-directory TestResults --blame-hang-timeout 10m --blame-hang-dump-type none
+      run: dotnet test src/Sharpy.Compiler.Tests --no-build --verbosity normal --filter "Category=GapDiscovery&FullyQualifiedName~NameResolutionDifferential" --logger "trx;LogFileName=sweep-name-resolution-differential.trx" --results-directory TestResults --blame-hang-timeout 22m --blame-hang-dump-type none
     - name: Sweep formatter-emit-invariance
       # Formatter emit-invariance sweep (#2062, #2068). Every executing single-file fixture
       # P: the Roslyn-normalised C# of Format(P) equals P's with every #line directive line

@@ -13,6 +13,7 @@ namespace InheritanceWithOverride
     {
         public static void Main()
         {
+            __Load();
 #line (44, 5) - (44, 33) 12 "inheritance_with_override.spy"
             var dog = new global::InheritanceWithOverride.Dog("Rex", "Shepherd");
 #line (45, 5) - (45, 32) 12 "inheritance_with_override.spy"
@@ -30,6 +31,12 @@ namespace InheritanceWithOverride
 #line (52, 5) - (52, 26) 12 "inheritance_with_override.spy"
             global::Sharpy.Builtins.Print(cat.GetLegs());
 #line hidden
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        [global::Sharpy.SharpyLoadEntry(false)]
+        public static void __Load()
+        {
         }
     }
 

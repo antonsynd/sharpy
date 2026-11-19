@@ -46,8 +46,7 @@ their gates (R-PM). The arc closes when P21c's verification record merges. P77 i
 Read at the start and the end of each group. Sources, after a build:
 
 - `.claude/scripts/scorecard --since <date> --base <sha>`: open issues, closed ÷ filed, SPY0908
-  titles, side tables, commit mix. Its footer still names the 11-06 handoff's §5.1; this table
-  replaces it.
+  titles, side tables, commit mix; it still prints the rows this table drops.
 - `python3 build_tools/scorecard_metrics.py --check` (`--json` for the numbers): procedure key,
   `CLAUDE.md`, rows outside the seed.
 - `python3 build_tools/check_plan_refs.py docs/process/plans/<plan>.md`: its `caps (R-LW)` line
@@ -83,7 +82,9 @@ Stop the group, write the recap, and bring the decision to the owner when one ho
 - The scorecard moves the wrong way on two metrics in one group.
 - Procedure bytes, `CLAUDE.md` bytes or the side-table pin rise in a group, or allowlist rows
   outside the seed rise outside a generator's stage 0, even on the owner's word (a raise lands only
-  with it quoted in the pull request body).
+  with it quoted in the pull request body). The question names the measured delta, never an
+  estimate; for procedure or `CLAUDE.md` bytes it offers an equal cut in the same counted text as
+  the default, and a raise is for when the lead finds no cut (owner, 2026-11-19: "both your recs").
 - A plan's verification record would merge with a case its stage 0 listed as known-red still
   listed, beyond a residue the owner ruled (`git diff <stage-0 base>..<record sha> -- <the
   allowlist files its plan names>`).
@@ -105,9 +106,10 @@ Stop the group, write the recap, and bring the decision to the owner when one ho
 Changed from the 11-06 handoff §5.3. The three revisions the watch recommended and the owner
 accepted ("all your recs", decision 7): the 15 KB plan cap is R-LW's 20 KB; "CONVERGED on a NEEDS
 REVISION" is the second-pass rule above (decision 4); the rule on rows outside the seed allows a
-generator's stage 0 and judges a plan at its record. Proposed here, for the owner's acceptance:
-`CLAUDE.md` bytes join the rise rule; the `mainline` rule; the direction rule (contract §3); the
-regenerated-row clause, which widens decision 5 from P77 to every group.
+generator's stage 0 and judges a plan at its record. Proposed in the draft and accepted by the
+owner on 2026-11-18 ("accept all 4"): `CLAUDE.md` bytes join the rise rule; the `mainline` rule;
+the direction rule (contract §3); the regenerated-row clause, which widens decision 5 from P77 to
+every group.
 
 ## 5. What a review must run
 

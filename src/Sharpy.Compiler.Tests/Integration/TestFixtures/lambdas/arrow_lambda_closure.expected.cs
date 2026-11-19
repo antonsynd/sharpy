@@ -19,6 +19,7 @@ namespace ArrowLambdaClosure
 
         public static void Main()
         {
+            __Load();
 #line (5, 5) - (5, 25) 12 "arrow_lambda_closure.spy"
             global::System.Func<int, int> add5 = global::ArrowLambdaClosure.ArrowLambdaClosureModule.MakeAdder(5);
 #line (6, 5) - (6, 27) 12 "arrow_lambda_closure.spy"
@@ -28,6 +29,12 @@ namespace ArrowLambdaClosure
 #line (8, 5) - (8, 20) 12 "arrow_lambda_closure.spy"
             global::Sharpy.Builtins.Print(add10(3));
 #line hidden
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        [global::Sharpy.SharpyLoadEntry(false)]
+        public static void __Load()
+        {
         }
     }
 }

@@ -13,6 +13,7 @@ namespace OperatorLoweringWrappedElement2443
     {
         public static void Main()
         {
+            __Load();
 #line (8, 5) - (8, 11) 12 "operator_lowering_wrapped_element_2443.spy"
             var a = -7;
 #line (9, 5) - (9, 10) 12 "operator_lowering_wrapped_element_2443.spy"
@@ -41,6 +42,12 @@ namespace OperatorLoweringWrappedElement2443
                 global::Sharpy.Builtins.Print(p.Unwrap(), q);
 #line hidden
             }
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        [global::Sharpy.SharpyLoadEntry(false)]
+        public static void __Load()
+        {
         }
     }
 }

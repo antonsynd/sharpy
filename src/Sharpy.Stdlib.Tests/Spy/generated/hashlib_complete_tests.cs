@@ -18,6 +18,11 @@ namespace Sharpy.Stdlib.Tests.Spy.Hashlib.HashlibCompleteTests
     [global::Sharpy.SharpyModule("hashlib.hashlib_complete_tests")]
     public static partial class HashlibCompleteTestsModule
     {
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        [global::Sharpy.SharpyLoadEntry(false)]
+        public static void __Load()
+        {
+        }
     }
 
     public partial class HashlibCompleteTestsModuleTests

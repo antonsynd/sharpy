@@ -22,6 +22,7 @@ namespace UnreachableAfterRaise
 
         public static void Main()
         {
+            __Load();
 #line (6, 5) - (9, 24) 12 "unreachable_after_raise.spy"
             try
 #line hidden
@@ -36,6 +37,12 @@ namespace UnreachableAfterRaise
                 global::Sharpy.Builtins.Print("caught");
 #line hidden
             }
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        [global::Sharpy.SharpyLoadEntry(false)]
+        public static void __Load()
+        {
         }
     }
 }

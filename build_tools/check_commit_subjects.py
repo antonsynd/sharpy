@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
-"""Gate: every commit subject in a range is at most 72 characters (W3.4, owner ruling D5 of 2026-11-07).
+"""Gate: every commit subject in a range is at most 72 characters (W3.4, owner ruling D5 of 2026-11-07),
+and no commit message in it has a GitHub closing keyword.
 
 The figure is the `/commit` skill's ("Keep the first line under 72 characters"); this script is what
 makes it a gate instead of advice. Some subjects are exempt because another tool writes them
@@ -18,13 +19,24 @@ advice, so a range that reaches back past it — the dev → mainline promotion 
 commits, six of them long — is judged only on what came after.
 Override the grandfather line with `--grandfather <sha>` (or `--grandfather none`).
 
+Closing keywords (owner, 2026-11-18): GitHub closes an issue when a commit whose message says
+`close`/`fix`/`resolve` (any tense or case, an optional colon) before a reference to it reaches
+the default branch, `mainline`. The promotion #2736 closed the in-flight tracker #2422 that way
+from a commit body quoting a ruling ("Move cell, close #2422"). Every commit of the range is
+judged, merges, reverts and Dependabot's included (none of them is exempt from GitHub's reading),
+except those behind the grandfather line. On a PR run, `--pr-title` judges the title too: merging
+the PR writes it into the merge commit's body, which no PR run sees. `--pr-body` judges a PR's
+description, which GitHub reads only when the PR targets the default branch: the workflow passes
+it for a PR into `mainline` (the promotion; owner, 2026-11-18). An issue is cited as `Refs #N`.
+
 Usage:
     python3 build_tools/check_commit_subjects.py [<range>] [--max 72] [--grandfather <sha>|none]
-        [--pr-author <login>]
+        [--pr-author=<login>] [--pr-title=<title>] [--pr-body=<description>]
 
 <range> is any `git rev-list` range (`origin/dev..HEAD`, `A...B`); it defaults to `@{upstream}..HEAD`.
-An empty range is clean. An unknown grandfather sha (a clone that lacks it) exempts nothing. Exit 0 if clean, 1 if any subject is over the limit (one `::error::` line
-per offence, so a CI log shows the sha, the length and the subject), 2 if git fails.
+An empty range is clean. An unknown grandfather sha (a clone that lacks it) exempts nothing. Exit 0 if clean, 1 if any subject is over the limit
+or any message has a closing keyword (one `::error::` line per offence, so a CI log shows the sha and
+the subject or the keyword), 2 if git fails or gives no message for a commit of the range.
 """
 
 from __future__ import annotations
@@ -59,6 +71,16 @@ DEPENDABOT_SUBJECT = re.compile(
 # Branches that take only pull requests: a commit on one was judged by the PR run that landed it.
 # Full names: git resolves a short `origin/dev` to a tag `refs/tags/origin/dev` first.
 JUDGED_REFS = ("refs/remotes/origin/dev", "refs/remotes/origin/mainline")
+# GitHub's closing keywords (docs: "Linking a pull request to an issue"), then an issue reference:
+# `#N`, `owner/repo#N` or the issue's URL. `\b` keeps `prefix #1` out; `issue #N` is not a keyword.
+# Whether GitHub reads a reference wrapped onto the next line is not documented; it is judged as one
+# (a false positive costs a reword, a false negative closes an issue). A blank line between is not.
+CLOSING_KEYWORD = re.compile(
+    r"\b(?:close[sd]?|fix(?:e[sd])?|resolve[sd]?)"
+    r"(?::[ \t]*(?:\n[ \t]*)?|[ \t]*\n[ \t]*|[ \t]+)"
+    r"(?:#\d+|[\w.-]+/[\w.-]+#\d+|https://github\.com/[\w.-]+/[\w.-]+/issues/\d+)",
+    re.IGNORECASE,
+)
 
 
 @dataclass(frozen=True)
@@ -104,6 +126,48 @@ def offences(
         for c in commits
         if not is_exempt(c, pr_author, judged) and len(c.subject) > max_len
     ]
+
+
+def closing_keywords(message: str) -> list[str]:
+    """Each closing keyword and the reference it names in `message`, in order, on one line. CR and
+    CRLF count as a line break: a description edited on GitHub arrives through argv with them."""
+    text = message.replace("\r\n", "\n").replace("\r", "\n")
+    return [" ".join(m.group(0).split()) for m in CLOSING_KEYWORD.finditer(text)]
+
+
+def parse_messages(text: str) -> dict[str, str]:
+    """Parse `git log -z --format=%H%n%B` output (NUL between records; a message has no NUL) into
+    {sha: full message}."""
+    out: dict[str, str] = {}
+    for record in text.split("\0"):
+        record = record.lstrip("\n")
+        if not record:
+            continue
+        sha, _, message = record.partition("\n")
+        out[sha] = message
+    return out
+
+
+def messages(
+    rev_range: str, cwd: str | None = None, exclude_reachable_from: str | None = None
+) -> dict[str, str]:
+    """The full message of each commit of `rev_range` (minus the ancestors of `exclude_reachable_from`)."""
+    # `log.showSignature` would print gpg lines into the records (rev_list's rev-list ignores it).
+    args = [
+        "git",
+        "log",
+        "-z",
+        "--no-show-signature",
+        "--no-color",
+        "--format=%H%n%B",
+        rev_range,
+    ]
+    if exclude_reachable_from:
+        args.append(f"^{exclude_reachable_from}")
+    result = subprocess.run(args, capture_output=True, text=True, cwd=cwd, check=False)
+    if result.returncode != 0:
+        raise RuntimeError(result.stderr.strip() or f"git log {rev_range} failed")
+    return parse_messages(result.stdout)
 
 
 def parse_rev_list(text: str) -> list[Commit]:
@@ -189,6 +253,16 @@ def main(argv: list[str] | None = None) -> int:
         f" (default {GATE_COMMIT[:9]}, the commit that introduced the gate)",
     )
     parser.add_argument(
+        "--pr-title",
+        help="the pull request's title (a PR run): it becomes the merge commit's body, so it is judged"
+        " for closing keywords",
+    )
+    parser.add_argument(
+        "--pr-body",
+        help="the description of a pull request into the default branch: merging it closes the"
+        " issues its closing keywords name, so it is judged",
+    )
+    parser.add_argument(
         "--pr-author",
         help="the pull request author's login (a PR run); a Dependabot commit is exempt only when it"
         f" is {DEPENDABOT_LOGIN} or the commit is already on {' or '.join(JUDGED_REFS)}",
@@ -202,6 +276,7 @@ def main(argv: list[str] | None = None) -> int:
     try:
         all_commits = rev_list(args.range)
         commits = rev_list(args.range, exclude_reachable_from=grandfather) if grandfather else all_commits
+        bodies = messages(args.range, exclude_reachable_from=grandfather)
     except RuntimeError as exc:
         print(f"check_commit_subjects: {exc}", file=sys.stderr)
         return 2
@@ -219,10 +294,43 @@ def main(argv: list[str] | None = None) -> int:
         print(
             f"::error::commit {c.sha[:9]} subject is {len(c.subject)} chars (max {args.max}): {c.subject}"
         )
-    if bad:
+    unread = [c.sha for c in commits if c.sha not in bodies]
+    if unread or len(bodies) != len(commits):
         print(
-            f"check_commit_subjects: {len(bad)} of {checked} subjects over {args.max} chars in {args.range}"
+            f"check_commit_subjects: git log gave {len(bodies)} messages for {len(commits)} commits"
+            f" of {args.range}" + (f", none for {unread[0][:9]}" if unread else ""),
+            file=sys.stderr,
         )
+        return 2
+    keyed = [(c, closing_keywords(bodies[c.sha])) for c in commits]
+    keyed = [(c, found) for c, found in keyed if found]
+    title_keys = closing_keywords(args.pr_title) if args.pr_title else []
+    if title_keys:
+        print(
+            f"::error::the PR title has a closing keyword ({'; '.join(title_keys)}): merging writes it"
+            f" into the merge commit's body, which closes that issue on mainline; use `Refs #N`"
+        )
+    body_keys = closing_keywords(args.pr_body) if args.pr_body else []
+    if body_keys:
+        print(
+            f"::error::the PR description has a closing keyword ({'; '.join(body_keys)}): merging"
+            f" this PR into the default branch closes that issue; use `Refs #N`"
+        )
+    for c, found in keyed:
+        print(
+            f"::error::commit {c.sha[:9]} message has a closing keyword ({'; '.join(found)}): GitHub"
+            f" closes that issue when the commit reaches mainline; reword it to `Refs #N`: {c.subject}"
+        )
+    if bad or keyed or title_keys or body_keys:
+        if bad:
+            print(
+                f"check_commit_subjects: {len(bad)} of {checked} subjects over {args.max} chars in {args.range}"
+            )
+        if keyed:
+            print(
+                f"check_commit_subjects: {len(keyed)} of {len(commits)} messages have a closing keyword"
+                f" in {args.range}"
+            )
         return 1
     print(
         f"check_commit_subjects: {checked} subjects checked in {args.range}, none over {args.max} chars"
@@ -231,6 +339,7 @@ def main(argv: list[str] | None = None) -> int:
             if len(commits) != checked
             else ""
         )
+        + f"; {len(commits)} messages, no closing keyword"
         + (f" ({pre_gate} pre-gate, before {grandfather[:9]}, not judged)" if pre_gate else "")
     )
     return 0

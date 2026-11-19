@@ -28,6 +28,7 @@ internal partial class RoslynEmitter
         var fieldMapping = new Dictionary<string, string>();
         var fieldTypeMapping = new Dictionary<string, TypeAnnotation>();
         var fieldMembers = new Dictionary<VariableDeclaration, MemberDeclarationSyntax>(ReferenceEqualityComparer.Instance);
+        var guardedFields = new Dictionary<VariableDeclaration, CodeGenInfo>(ReferenceEqualityComparer.Instance);
 
         // A NESTED type's symbol is defined by NameResolver inside the enclosing class's scope, so the
         // global lookup below cannot see it and `_currentTypeSymbol` was null for every nested type
@@ -45,6 +46,9 @@ internal partial class RoslynEmitter
             ?? _context.LookupSymbol(originalTypeName) as TypeSymbol;
         var previousTypeSymbol = _currentTypeSymbol;
         _currentTypeSymbol = typeSymbol;
+
+        // The type is a host when it declares a Guarded value (plan-775c50 D5).
+        var typeHost = OpenStaticHost(out var enclosingHost, className);
 
         bool isDataclass = typeSymbol is { IsDataclass: true };
         bool isFrozen = typeSymbol is { DataclassInfo.Frozen: true };
@@ -76,7 +80,14 @@ internal partial class RoslynEmitter
             // CS0120 behind SPY0908 — the same roster defect one host over, and an AST read in
             // CodeGen (#1794, Critical Rule 2). `IsSynthesizedConstructorField` is the one
             // predicate, reading `VariableSymbol.IsStatic` and `CodeGenInfo.IsConstant`.
-            if (isDataclass && IsSynthesizedConstructorField(varDecl))
+            if (IsGuardedField(varDecl, codeGenInfo))
+            {
+                // A Guarded value (plan-775c50 D4) is emitted in the source-order pass below, so its
+                // sweep step lands in declaration order beside the properties' (D5).
+                fieldName = codeGenInfo!.CSharpName;
+                guardedFields[varDecl] = codeGenInfo;
+            }
+            else if (isDataclass && IsSynthesizedConstructorField(varDecl))
             {
                 var propDecl = GenerateDataclassProperty(
                     varDecl, fieldName, isFrozen, constructorOwnsDefault);
@@ -199,10 +210,15 @@ internal partial class RoslynEmitter
                 case PropertyDef propDef:
                     // A property's halves (getter + setter, or an auto half + a function-style accessor)
                     // combine into ONE C# property, emitted at the first half — the anchor the checker's
-                    // order rule and StaticInitializerOrderValidator read (TypeBodyMembership).
+                    // order rule reads (TypeBodyMembership).
                     var propGroup = propertyGroups[propDef.MemberKey()];
                     if (ReferenceEquals(propGroup[0], propDef))
-                        members.AddRange(GenerateGroupedProperty(propGroup));
+                    {
+                        var groupMembers = GenerateGroupedProperty(propGroup).ToList();
+                        members.AddRange(IsGuardedPropertyGroup(propDef)
+                            ? GuardPropertyGroup(groupMembers, propDef)
+                            : groupMembers);
+                    }
                     break;
 
                 case EventDef eventDef:
@@ -213,8 +229,12 @@ internal partial class RoslynEmitter
                     break;
 
                 case VariableDeclaration varDecl:
-                    // Generated in the first pass (the constructors read its mappings), placed here.
-                    members.Add(fieldMembers[varDecl]);
+                    // Generated in the first pass (the constructors read its mappings), placed here;
+                    // a Guarded value is generated here, in source order (plan-775c50 D4, D5).
+                    if (fieldMembers.TryGetValue(varDecl, out var fieldMember))
+                        members.Add(fieldMember);
+                    else
+                        members.AddRange(GenerateGuardedField(varDecl, guardedFields[varDecl]));
                     break;
 
                 case PassStatement:
@@ -392,6 +412,8 @@ internal partial class RoslynEmitter
             }
         }
 
+        members.AddRange(CloseStaticHost(typeHost, enclosingHost));
+
         _currentTypeSymbol = previousTypeSymbol;
         return members;
     }
@@ -487,7 +509,26 @@ internal partial class RoslynEmitter
         return eventGroups;
     }
 
-    private List<MemberDeclarationSyntax> GenerateInterfaceMembers(IReadOnlyList<Statement> body)
+    private List<MemberDeclarationSyntax> GenerateInterfaceMembers(IReadOnlyList<Statement> body, string interfaceName)
+    {
+        var members = new List<MemberDeclarationSyntax>();
+
+        // An interface is a host too when it declares a Guarded value (plan-775c50 D5: the rule names
+        // no host kind; lead's ruling on T4).
+        var interfaceHost = OpenStaticHost(out var enclosingHost, interfaceName);
+        members.AddRange(GenerateInterfaceMembersCore(body));
+        members.AddRange(CloseStaticHost(interfaceHost, enclosingHost));
+        return members;
+    }
+
+    /// <summary>The recorded CodeGenInfo of an interface's field declaration, or null.</summary>
+    private CodeGenInfo? InterfaceFieldInfo(VariableDeclaration fieldDecl)
+    {
+        var fieldSymbol = _currentTypeSymbol?.Fields.FirstOrDefault(f => f.Name == fieldDecl.Name);
+        return fieldSymbol != null ? GetCodeGenInfo(fieldSymbol) : null;
+    }
+
+    private List<MemberDeclarationSyntax> GenerateInterfaceMembersCore(IReadOnlyList<Statement> body)
     {
         var members = new List<MemberDeclarationSyntax>();
         var propertyGroups = GroupPropertiesByName(body);
@@ -522,13 +563,15 @@ internal partial class RoslynEmitter
                     }
                     break;
 
-                case VariableDeclaration { IsConst: true } constDecl:
-                    {
-                        var constSymbol = _currentTypeSymbol?.Fields.FirstOrDefault(f => f.Name == constDecl.Name);
-                        var constCodeGenInfo = constSymbol != null ? GetCodeGenInfo(constSymbol) : null;
-                        members.Add(GenerateField(constDecl, constCodeGenInfo?.CSharpName));
-                        break;
-                    }
+                case VariableDeclaration fieldDecl
+                    when InterfaceFieldInfo(fieldDecl) is var fieldInfo && (fieldDecl.IsConst || IsGuardedField(fieldDecl, fieldInfo)):
+                    // A Guarded value: a computed const, or a `@static` field (plan-775c50 D4; the lead's
+                    // ruling on T4: the interface's recorded fact decides, as in every host).
+                    if (IsGuardedField(fieldDecl, fieldInfo))
+                        members.AddRange(GenerateGuardedField(fieldDecl, fieldInfo!));
+                    else
+                        members.Add(GenerateField(fieldDecl, fieldInfo?.CSharpName));
+                    break;
 
                 case VariableDeclaration varDecl:
                     // Interface properties (get/set accessors)

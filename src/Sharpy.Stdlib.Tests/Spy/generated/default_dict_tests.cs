@@ -18,6 +18,11 @@ namespace Sharpy.Stdlib.Tests.Spy.Collections.DefaultDictTests
     [global::Sharpy.SharpyModule("collections.default_dict_tests")]
     public static partial class DefaultDictTestsModule
     {
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        [global::Sharpy.SharpyLoadEntry(false)]
+        public static void __Load()
+        {
+        }
     }
 
     public partial class DefaultDictTestsModuleTests

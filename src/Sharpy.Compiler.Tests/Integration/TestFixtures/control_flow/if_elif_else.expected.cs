@@ -37,6 +37,7 @@ namespace IfElifElse
 
         public static void Main()
         {
+            __Load();
 #line (10, 5) - (10, 18) 12 "if_elif_else.spy"
             global::IfElifElse.IfElifElseModule.Categorize(5);
 #line (11, 5) - (11, 19) 12 "if_elif_else.spy"
@@ -44,6 +45,12 @@ namespace IfElifElse
 #line (12, 5) - (12, 18) 12 "if_elif_else.spy"
             global::IfElifElse.IfElifElseModule.Categorize(0);
 #line hidden
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        [global::Sharpy.SharpyLoadEntry(false)]
+        public static void __Load()
+        {
         }
     }
 }

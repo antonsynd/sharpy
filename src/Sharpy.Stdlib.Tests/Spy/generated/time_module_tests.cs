@@ -18,6 +18,11 @@ namespace Sharpy.Stdlib.Tests.Spy.Time.TimeModuleTests
     [global::Sharpy.SharpyModule("time.time_module_tests")]
     public static partial class TimeModuleTestsModule
     {
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        [global::Sharpy.SharpyLoadEntry(false)]
+        public static void __Load()
+        {
+        }
     }
 
     public partial class TimeModuleTestsModuleTests

@@ -12,6 +12,7 @@ namespace NoneElementMixed
     {
         public static void Main()
         {
+            __Load();
 #line (2, 5) - (2, 25) 12 "none_element_mixed.spy"
             string? x = "a";
 #line hidden
@@ -22,6 +23,12 @@ namespace NoneElementMixed
 #line (4, 5) - (4, 24) 12 "none_element_mixed.spy"
             global::Sharpy.Builtins.Print(x == null, m);
 #line hidden
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        [global::Sharpy.SharpyLoadEntry(false)]
+        public static void __Load()
+        {
         }
     }
 }

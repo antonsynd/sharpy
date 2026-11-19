@@ -14,11 +14,11 @@ Adopted 2026-11-01. The rationale, the measured comparison with Python, C#, Rust
 |---|---|---|
 | **N1** | Module-level and class-level names are visible throughout their scope, above and below the declaration; the innermost scope wins. Class-body names are not visible by bare name inside methods (Python). | **Pending #2423.** Today a module variable is visible only below its declaration (SPY0200 above it). |
 | **N2** | If top-to-bottom reading (Python) and scope (N1) would give a name different meanings — a class-body initializer reading a member at or before its declaration while an outer binding of the name exists — the program is refused. A module-level initializer that reads a builtin or imported name at or before its own same-named declaration is refused. | **Pending #2423.** Today a later member yields to the outer binding, and a later literal `const` outranks it. |
-| **N3** | Every module-level and class-level value is initialized before its first read, by any spelling or path; module initializers run top to bottom before `main`; a cycle is a compile-time or run-time error, never a default value. | **Pending #2422.** Today forward reads are refused (SPY0200, SPY0618) or, through a later computed `const` or module property, read `0`; module initializers run after `main` starts. |
+| **N3** | Every module-level and class-level value is initialized before its first read, by any spelling or path; module initializers run top to bottom before `main`; a cycle is a compile-time or run-time error, never a default value. | **Implemented** (plan-775c50, #2422): see [Values Are Ready Before Use](#values-are-ready-before-use-n3), with its residue. A bare forward read of a module variable or a `@static` member is still SPY0200, which N1 removes (#2423). |
 | **N4** | A `const` follows N1–N3 like every other binding. | **Pending #2423.** Today a literal `const` is order-free and a computed one is ordered. |
 | **N5** | A local is visible from its declaration to the end of its block. `for`, `except`, `with` and comprehension targets are fresh bindings, fresh per iteration; reusing a name that is read after the construct is refused. A local `def` is ordered. | Block scoping is implemented. **The refusal is pending #2425.** |
 | **N6** | Writing a binding outside the current function takes `global x` (module) or `nonlocal x` (enclosing function). A bare store that would cross a function boundary is refused. | **Pending #2424.** Today `global`/`nonlocal` are refused (SPY0134) and a bare store writes through. |
-| **N7** | Bare, qualified, aliased, lambda, generator or call: the same read gets the same answer and the same diagnostic. | Follows from N3 (#2422). |
+| **N7** | Bare, qualified, aliased, lambda, generator or call: the same read gets the same answer and the same diagnostic. | Holds for every spelling that compiles: readiness is kept at the value (N3). **Pending #2423** for the bare forward read, which is SPY0200 where the qualified one runs. |
 
 Sections below describe **today's** behavior; each marks where a pending rule will change it.
 
@@ -76,6 +76,7 @@ finally:
 
 The walrus operator (`:=`) assigns to the *containing scope*. In most cases this is the enclosing function or module. However, inside block-scoped constructs like comprehensions, the walrus variable is scoped to that block:
 
+<!-- spec-sweep: output -->
 ```python
 import re
 
@@ -88,6 +89,12 @@ def main() -> None:
     print(m)      # OK - walrus assigned in containing scope
 ```
 
+```output
+<re.Match object; span=(6, 8), match='66'>
+<re.Match object; span=(6, 8), match='66'>
+```
+
+<!-- spec-sweep: error SPY0200 -->
 ```python
 def transform(v: int) -> int:
     return v - 1
@@ -103,6 +110,7 @@ def main() -> None:
 
 ### Example
 
+<!-- spec-sweep: output -->
 ```python
 x = "outer"
 
@@ -111,6 +119,15 @@ for x in range(5):      # New 'x' shadows outer, block-scoped
 
 print(x)                # Prints "outer", 'x' was shadowed only
                         # in the for-loop, and not modified.
+```
+
+```output
+0
+1
+2
+3
+4
+outer
 ```
 
 > **Pending #2425 (N5):** because `x` is read after the loop, and Python would print `4` there, this
@@ -143,6 +160,7 @@ Within one function this stays the rule. Across a function boundary it is pendin
 
 This applies to nested functions too (C# closure semantics — captured by reference):
 
+<!-- spec-sweep: output -->
 ```python
 def main():
     n: int = 1
@@ -157,8 +175,14 @@ def main():
     print(adder())       # 11 — lambda sees the updated value
 ```
 
+```output
+2
+11
+```
+
 To create a **new** local that shadows an outer name, use `let`:
 
+<!-- spec-sweep: output -->
 ```python
 def main():
     let x = 1
@@ -167,6 +191,11 @@ def main():
         print(x)          # 2
     shadow_it()
     print(x)              # 1 — outer 'x' unchanged
+```
+
+```output
+2
+1
 ```
 
 A bare `x = 2` in `shadow_it` would instead write through and print `2` twice. In Stage 1 an
@@ -354,15 +383,40 @@ def main() -> None:
     print(Grid().total)
 ```
 
-A class body runs top to bottom, so a position reads only a sibling **declared earlier** in the
-body. A sibling declared later, or the member being initialized itself, is refused (SPY0200, "declared
-later"): C# would run that initializer before the sibling's and read its default value, and Python
-raises `NameError`. A compile-time-constant `const` sibling (`const SIZE: int = 8`) is the exception,
-since a type body resolves its constants in dependency order; a `const` whose initializer is not a
-compile-time constant (`const K: int = seven()`) is `static readonly` storage and is ordered like a
-`@static` field (a forward read of it is SPY0618, below). When an outer binding of the name exists, a
-later sibling and the member itself yield to it instead (below) — except such a `const`, whose forward
-read stays SPY0618 under an outer binding too (an open decision, #2415).
+By bare name, a position reads a `@static` sibling only if it is **declared earlier** in the body. A
+`@static` field, property or method declared later, or the member being initialized itself, is refused
+(SPY0200, "declared later"); Python raises `NameError` there. **Pending #2423 (N1):** the bare forward
+read runs, as the same read through the type name already does (below). A `const` sibling is read by
+bare name in any order: a compile-time-constant `const` (`const SIZE: int = 8`) because a type body
+resolves its constants in dependency order, and a `const` whose initializer is not a compile-time
+constant (`const K: int = seven()`) because the read runs its initializer first
+([N3](#values-are-ready-before-use-n3)). When an outer binding of the name exists, a later `@static`
+sibling and the member itself yield to it instead (below). A later `const` does not, because the
+outer binding (Python's reading) and the class's `const` (scope's reading) would give the name two
+meanings (rule N2):
+
+- a later `const` whose initializer is not a compile-time constant is refused as ambiguous
+  (SPY0618), and so is a bare read of it in a comprehension's body, where Python reads the outer
+  binding or, with none, raises `NameError`. `Box.LIMIT` reads the member;
+- a later compile-time-constant `const` is read as the class's value (`7` below, where python3
+  3.15.2 prints the outer `9`). **Pending #2423 (N2):** this read is refused as well, under N2's own
+  code, which also replaces SPY0618.
+
+<!-- spec-sweep: error SPY0618 -->
+```python
+LIMIT: int = 9
+
+class Box:
+    @static
+    v: int = LIMIT              # SPY0618 — "'LIMIT' is ambiguous in a '@static' initializer: 'Box.LIMIT' is a 'const' declared later than 'v', and a 'LIMIT' outside the class is in scope"
+    const LIMIT: int = seven()
+
+def seven() -> int:
+    return 7
+
+def main() -> None:
+    print(Box.v)
+```
 
 <!-- spec-sweep: error SPY0200 -->
 ```python
@@ -438,29 +492,38 @@ def main() -> None:
 ```
 
 A static sibling declared later — a `@static` field, a `@static` property, a non-compile-time `const`
-— or the member itself is refused through the type name (SPY0618, "declared later"), and so is
-calling a `@static` method declared later. The bare spelling of the same read is refused too, but
-under a different code (SPY0200, "declared later"). A compile-time `const` is order-free in every
-spelling.
+— read through the type name (`Host.b`, or an alias of `Host`) is initialized first: the read runs
+that sibling's initializer and sees its value ([N3](#values-are-ready-before-use-n3)). Calling a
+`@static` method declared later through the type name runs too. The bare spelling of a later `@static`
+member is still SPY0200 (above, pending #2423). A compile-time `const` is order-free in every spelling.
 
-> **Pending #2422 / #2423 (N3, N7):** a forward static read runs in every spelling — the target is
-> initialized first — and a cycle is an error. The two codes for one read go away.
-
-<!-- spec-sweep: error SPY0618 -->
+<!-- spec-sweep: output -->
 ```python
 class Host:
     @static
-    a: int = Host.b     # SPY0618 — "'Host.b' is read in a '@static' initializer before it is initialized: 'b' is declared later than 'a' in 'Host'"
+    a: int = Host.b     # 'b' is initialized first
     @static
     b: int = 2
+
+def main() -> None:
+    print(Host.a)    # 2
+```
+
+A member read through the type name in its own initializer has no value to read: that is a cycle, and
+a cycle is an error (SPY0278, [below](#a-cycle-is-an-error-never-a-default)).
+
+<!-- spec-sweep: error SPY0278 -->
+```python
+class Host:
+    @static
+    a: int = Host.a + 1     # SPY0278 — "Circular value reference: 'Host.a' reads a value whose initializer reads it back on every run"
 
 def main() -> None:
     print(Host.a)
 ```
 
-Calling an EARLIER `@static` method is allowed, but the method's body runs at the call: it reads the
-statics initialized so far, and a static declared below the reader still holds its default value
-(C#'s rule).
+Calling an EARLIER `@static` method is allowed, and the method's body runs at the call. A static it
+reads that is declared below the reader is initialized first, so the call sees its value.
 
 <!-- spec-sweep: output -->
 ```python
@@ -469,19 +532,19 @@ class Host:
     def read() -> int:
         return Host.sp
     @static
-    a: int = Host.read()    # 'read' runs before 'sp' is initialized
+    a: int = Host.read()    # 'read' reads 'sp', whose initializer runs first
     @static
     property sp: int = 4
 
 def main() -> None:
-    print(Host.a)    # 0
+    print(Host.a)    # 4
 ```
 
 A generator expression that is the whole initializer is stored, not run: its element, conditions and
-every iterable after the first run when the iterator is consumed, so they may read a later static, like
-an earlier method's body. Its first iterable is evaluated where the initializer stands, and a generator
-consumed inside the initializer (`sum(x + Host.b for x in xs)`) runs there, so a later static read in
-either is SPY0618.
+every iterable after the first run when the iterator is consumed, like an earlier method's body. Its
+first iterable is evaluated where the initializer stands, and a generator consumed inside the
+initializer (`sum(x + Host.b for x in xs)`) runs there. A later static read in any of these positions
+is initialized first, wherever it runs.
 
 <!-- spec-sweep: output -->
 ```python
@@ -493,6 +556,22 @@ class Host:
 
 def main() -> None:
     print(list(Host.g))    # [3, 4]
+```
+
+<!-- spec-sweep: output -->
+```python
+class Host:
+    @static
+    firsts: list[int] = list(x for x in Host.later)    # the first iterable runs here
+    @static
+    total: int = sum(x + Host.b for x in [1, 2])        # consumed here
+    @static
+    later: list[int] = [2]
+    @static
+    b: int = 2
+
+def main() -> None:
+    print(Host.firsts, Host.total)    # [2] 7
 ```
 
 Decorator arguments and type annotations are resolved in the class body as well. Names in the
@@ -523,6 +602,241 @@ a bare use inside a method binds the **module** variable, exactly as Python does
 variable is visible only if it is declared above the method's class (SPY0200 otherwise; python3
 reads it). **Pending #2423 (N1):** module variables are visible throughout the module.
 
+## Values Are Ready Before Use (N3)
+
+Every module-level value and every class-level static value is initialized before it is read, by
+any spelling and on any path: bare or qualified, through an alias, a call, a lambda or a generator,
+from another class or from another module. Such a value is a module variable, a `@static` field, a
+`@static` property's default, or a module or class `const` whose initializer is not a compile-time
+constant. A read never sees a storage default (`0`, `None`, `False`). A compile-time-constant `const`
+(`const SIZE: int = 8`) is a C# `const`, so it has nothing to initialize.
+
+### Initializers run top to bottom, before `main`
+
+Each module runs its initializers once, in declaration order, before `main`. A class's statics run
+at the class's line in its module, and a nested class's statics run at its line inside its outer
+class. An imported module's initializers run at the import, and so do a referenced Sharpy library's.
+A generic class is the exception: each closed type (`Box[int]`) runs its statics on its first use.
+This is Python's order, and python3 3.15.2 prints the same for the same program with `main()` called
+at the end:
+
+<!-- spec-sweep: output -->
+```python
+def note(name: str, v: int) -> int:
+    print(name)
+    return v
+
+const A: int = note("A", 1)
+
+class Outer:
+    @static
+    a: int = note("Outer.a", 2)
+
+    class Inner:
+        @static
+        v: int = note("Outer.Inner.v", 3)
+
+    @static
+    b: int = note("Outer.b", 4)
+
+const B: int = note("B", 5)
+
+def main() -> None:
+    print("main", A + B)
+```
+
+```output
+A
+Outer.a
+Outer.Inner.v
+Outer.b
+B
+main 6
+```
+
+### A forward read initializes its target first
+
+A read of a value declared below the reader runs that value's initializer at the read. When its
+module's run reaches the declaration later, the value already has one, and the initializer does not
+run again:
+
+<!-- spec-sweep: output -->
+```python
+const TOTAL: int = BASE * 2      # BASE's initializer runs first
+const BASE: int = compute()
+
+def compute() -> int:
+    print("compute")
+    return 7
+
+def main() -> None:
+    print(TOTAL)
+```
+
+```output
+compute
+14
+```
+
+python3 3.15.2 raises `NameError: name 'BASE' is not defined` for this program. That error exists only
+because of declaration order, and N3 turns it into a working program. C# runs static field
+initializers in declaration order, so the same fields in C# give `TOTAL` the storage default of
+`BASE` and print `0`. The same holds inside a class, by bare name or through the type:
+
+<!-- spec-sweep: output -->
+```python
+class Grid:
+    const AREA: int = SIDE * SIDE
+    const SIDE: int = measure()
+    const DOUBLE: int = Grid.SIDE * 2
+
+def measure() -> int:
+    return 3
+
+def main() -> None:
+    print(Grid.AREA, Grid.DOUBLE)    # 9 6
+```
+
+A plain store to a value whose initializer has not run yet is kept, and a read gets the stored value
+back, until the module's run reaches the value. There the initializer runs and its result replaces
+the store:
+
+<!-- spec-sweep: output -->
+```python
+class Config:
+    @static
+    seen: int = Config.poke()
+    @static
+    level: int = 7
+
+    @static
+    def poke() -> int:
+        Config.level = 5
+        return Config.level
+
+def main() -> None:
+    print(Config.seen, Config.level)    # 5 7
+```
+
+### A cycle is an error, never a default
+
+A value that its own initializer needs, directly or around a ring of other values, can never be given
+a value. The compiler refuses the cycles it can see (SPY0278):
+
+- a ring of values in which each initializer reads the next one every time it runs. A read inside a
+  function body, a lambda or a pattern does not count, and neither does a read in a part of an
+  expression that runs only on some evaluations (a conditional arm, the right operand of `and`);
+- a ring of `const`s, through any read.
+
+A plain store anywhere in the module to a value on the first kind of ring lifts the refusal, since
+the store can give that value one before the ring closes. If no store has run when the ring is
+reached, it raises `NameError` at run time instead.
+
+<!-- spec-sweep: error SPY0278 -->
+```python
+class Ring:
+    @static
+    a: int = Ring.b + 1     # SPY0278 — "Circular value reference: 'Ring.a' reads a value whose initializer reads it back on every run"
+    @static
+    b: int = Ring.a + 1
+
+def main() -> None:
+    print(Ring.a)
+```
+
+A cycle the compiler does not see raises `NameError` at run time, when a read reaches a value whose
+initializer is still running:
+
+<!-- spec-sweep: output -->
+```python
+class Ring:
+    @static
+    a: int = Ring.b + 1
+    @static
+    b: int = peek()          # the read of Ring.a is inside a function: not seen
+
+def peek() -> int:
+    try:
+        return Ring.a
+    except NameError:
+        print("Ring.a is not ready")
+        return 0
+
+def main() -> None:
+    print(Ring.a, Ring.b)
+```
+
+```output
+Ring.a is not ready
+1 0
+```
+
+### An initializer that throws
+
+A throw stops its module's run at that initializer. The value stays without one, and the exception
+reaches whatever required the module: for the program's own module that is the start of the program,
+so the program stops before `main` with the initializer's exception. After a failure, each value
+whose initializer did not finish is initialized by its own first read. This program prints `A` and
+then stops with `ZeroDivisionError: division by zero`, as python3 3.15.2 does:
+
+```python
+def note(name: str, v: int) -> int:
+    print(name)
+    return v
+
+def zero() -> int:
+    return 0
+
+const A: int = note("A", 1)
+const B: int = 1 // zero()
+const C: int = note("C", 3)
+
+def main() -> None:
+    print("main")
+```
+
+### What N3 does not cover
+
+- **Code compiled before the run finished.** Each read checks a flag that the JIT folds away once the
+  value's host has run its initializers. Code compiled before that, and never compiled again, keeps the
+  check (ReadyToRun code before tier-up; NativeAOT is not measured). The value is right; only the cost
+  differs.
+- **A failed or lock-losing run.** After an initializer throws, or after a type initializer finds the
+  initialization lock held by another thread (it never waits for it), the host's flag stays off for
+  the rest of the process, and every read takes the checked path. The values are still right. After a
+  failed run, a value that a store gave a value before its initializer ran keeps that store, because a
+  throw resets the value's state, not its storage.
+- **A host runs all of its initializers when it is first required**, so a read that comes back to the
+  first host raises by which host is touched first. Below, `A` runs first: `A.x` needs `B`, `B` runs
+  all of its initializers, and `B.q` reads `A.x`, whose initializer is still running, so the program
+  stops with `NameError: name 'x' is not defined`. With `B` declared first it prints `1 2`. python3
+  3.15.2 raises `NameError` in both orders, since a class body cannot read a class defined below it.
+
+```python
+class A:
+    @static
+    x: int = B.p
+
+class B:
+    @static
+    p: int = 1
+    @static
+    q: int = A.x + 1
+
+def main() -> None:
+    print(A.x, B.q)
+```
+
+- **Inside an `async def` body**, a use of a value that is not a plain read or a plain store (an
+  `out` or `ref` operand, a member store, a mutating call) initializes the value at the start of its
+  statement, before the statement's other operands run, not at the operand's own place.
+- **An initializer that waits for another thread** never finishes if that thread reads a value whose
+  host is still running its initializers: the run holds one process-wide lock, and the reading thread
+  waits for it. C# code that is not compiled by Sharpy and reads an unswept Sharpy host from a type
+  initializer waits for the same lock.
+- **A store from another module** does not lift SPY0278. Only a store in the cycle's own module does,
+  so a cycle that another module could break by storing first is still refused.
+
 ## Assignment Statement
 
 ```python
@@ -542,6 +856,7 @@ count *= 2
 
 Each block scope is independent — the same name can be reused across sibling blocks without collision:
 
+<!-- spec-sweep: output -->
 ```python
 def main():
     try:
@@ -557,6 +872,12 @@ def main():
     # After the try, 'x' from any block is not visible:
     x = 99                 # New outer declaration
     print(x)               # 99
+```
+
+```output
+1
+3
+99
 ```
 
 ## Variable Shadowing

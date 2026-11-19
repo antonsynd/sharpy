@@ -84,8 +84,6 @@ public class EllipsisStubAuthorityConformanceTests
         // a wrapper (#1251); the dispatch switch itself is unchanged and so is this reason.
         ["RoslynEmitter.Expressions.cs :: GenerateExpressionCore"] =
             "Expression-kind dispatch: routes the literal to GenerateEllipsisLiteral. Grouping is handled by the sibling Parenthesized arm, not here.",
-        ["RoslynEmitter.Operators.cs :: CollectReferencedIdentifiers"] =
-            "Identifier-collection walk: the arm is the leaf 'this literal names nothing' case, not a body classification.",
         ["AstVisitor.cs :: Visit"] =
             "Visitor dispatch (both the void and generic Visit overloads share this key): routes any EllipsisLiteral node to VisitEllipsisLiteral regardless of position.",
         ["StructuralEqualityComparer.cs :: Equals"] =
@@ -96,6 +94,8 @@ public class EllipsisStubAuthorityConformanceTests
             "Evaluation-order classification (P93 D2): a literal operand, `...` included, has no evaluation to order, so its needle is not bound. The Parenthesized arm recurses. Not a declaration-body classification.",
         ["ExtractVariableProvider.cs :: IsTrivialExpression"] =
             "LSP refactoring: excludes trivial expressions from extract-variable. Not a declaration-body classification.",
+        ["InitializerCycleValidator.cs :: SlotsOf"] =
+            "Initializer-graph slot map (plan-775c50 D8): `...` is a leaf with no child slots, like every other literal; the Parenthesized arm recurses. Not a declaration-body classification.",
     };
 
     [Fact]

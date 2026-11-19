@@ -20,6 +20,7 @@ namespace EventInterface0001
 
         public static void Main()
         {
+            __Load();
 #line (17, 5) - (17, 32) 12 "event_interface_0001.spy"
             global::EventInterface0001.Publisher p = new global::EventInterface0001.Publisher();
 #line (18, 5) - (18, 27) 12 "event_interface_0001.spy"
@@ -27,6 +28,12 @@ namespace EventInterface0001
 #line (19, 5) - (19, 15) 12 "event_interface_0001.spy"
             p.Notify();
 #line hidden
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        [global::Sharpy.SharpyLoadEntry(false)]
+        public static void __Load()
+        {
         }
     }
 

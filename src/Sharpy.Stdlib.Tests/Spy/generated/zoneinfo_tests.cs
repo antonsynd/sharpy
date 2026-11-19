@@ -32,6 +32,12 @@ namespace Sharpy.Stdlib.Tests.Spy.Zoneinfo.ZoneinfoTests
             return new global::Sharpy.DateTime(2026, 7, 15, 12, 0);
 #line hidden
         }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        [global::Sharpy.SharpyLoadEntry(false)]
+        public static void __Load()
+        {
+        }
     }
 
     public partial class ZoneinfoTestsModuleTests

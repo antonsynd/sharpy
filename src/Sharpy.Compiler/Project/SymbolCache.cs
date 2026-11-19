@@ -353,6 +353,12 @@ internal record CachedProperty
     public string GetterAccess { get; init; } = "Public";
     public string SetterAccess { get; init; } = "Public";
     public string? ExplicitInterface { get; init; }
+
+    /// <summary>For a <c>@static</c> property: its <see cref="Semantic.StaticStorage"/> (plan-775c50 D2), or null.</summary>
+    public string? StaticStorage { get; init; }
+
+    /// <summary>For a <c>@static</c> property: whether its host or an enclosing type is generic (plan-775c50 D2).</summary>
+    public bool IsOnGenericHost { get; init; }
 }
 
 /// <summary>
@@ -587,6 +593,15 @@ internal record CachedCodeGenInfo
 
     /// <summary>For a type symbol: whether it is emitted beside its module's members class (#2039).</summary>
     public bool IsNamespaceSibling { get; init; }
+
+    /// <summary>For a module or static value: its <see cref="Semantic.StaticStorage"/> (plan-775c50 D2), or null.</summary>
+    public string? StaticStorage { get; init; }
+
+    /// <summary>For a static value: whether its host or an enclosing type is generic (plan-775c50 D2).</summary>
+    public bool IsOnGenericHost { get; init; }
+
+    /// <summary>For an imported module symbol: whether the module has a sweep (plan-775c50 D2).</summary>
+    public bool HasSweep { get; init; }
 }
 
 /// <summary>
@@ -644,6 +659,14 @@ internal record FileCacheEntry
 
     /// <summary>The file's recorded members class <c>&lt;X&gt;</c> (#2039); see <see cref="LayoutNamespaceSegments"/>.</summary>
     public string? LayoutMembersClassName { get; init; }
+
+    /// <summary>
+    /// The module's own <c>HasSweep</c> fact (plan-775c50 D2), recorded declarer-side by its cold build:
+    /// a warm build serves the file without re-running its CodeGenInfoComputer, and a recompiled
+    /// importer reads the restored fact through <c>ImportedStaticFacts.ImportedSweep</c>. Null when none was
+    /// recorded.
+    /// </summary>
+    public bool? HasSweep { get; init; }
 
     /// <summary>
     /// The full names of the .NET types the file's C# spells (#2039, SPY0615): a module added or

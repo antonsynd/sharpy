@@ -15,28 +15,1590 @@ namespace Sharpy.SocketModule
     /// </summary>
     public static partial class SocketModuleModule
     {
-        public static int AF_INET = (int)global::System.Net.Sockets.AddressFamily.InterNetwork;
-        public static int AF_INET6 = (int)global::System.Net.Sockets.AddressFamily.InterNetworkV6;
-        public static int AF_UNIX = (int)global::System.Net.Sockets.AddressFamily.Unix;
-        public static int SOCK_STREAM = (int)global::System.Net.Sockets.SocketType.Stream;
-        public static int SOCK_DGRAM = (int)global::System.Net.Sockets.SocketType.Dgram;
-        public static int SOCK_RAW = (int)global::System.Net.Sockets.SocketType.Raw;
-        public static int IPPROTO_IP = (int)global::System.Net.Sockets.ProtocolType.IP;
-        public static int IPPROTO_TCP = (int)global::System.Net.Sockets.ProtocolType.Tcp;
-        public static int IPPROTO_UDP = (int)global::System.Net.Sockets.ProtocolType.Udp;
-        public static int SOL_SOCKET = (int)global::System.Net.Sockets.SocketOptionLevel.Socket;
-        public static int SO_REUSEADDR = (int)global::System.Net.Sockets.SocketOptionName.ReuseAddress;
-        public static int SO_KEEPALIVE = (int)global::System.Net.Sockets.SocketOptionName.KeepAlive;
-        public static int SO_BROADCAST = (int)global::System.Net.Sockets.SocketOptionName.Broadcast;
-        public static int SO_RCVBUF = (int)global::System.Net.Sockets.SocketOptionName.ReceiveBuffer;
-        public static int SO_SNDBUF = (int)global::System.Net.Sockets.SocketOptionName.SendBuffer;
-        public static int TCP_NODELAY = (int)global::System.Net.Sockets.SocketOptionName.NoDelay;
-        public static int SHUT_RD = (int)global::System.Net.Sockets.SocketShutdown.Receive;
-        public static int SHUT_WR = (int)global::System.Net.Sockets.SocketShutdown.Send;
-        public static int SHUT_RDWR = (int)global::System.Net.Sockets.SocketShutdown.Both;
-        public static int SOMAXCONN = 128;
-        public static double? _DefaultTimeout = null;
-        public static global::Sharpy.Lock _Lock = new global::Sharpy.Lock();
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        internal static int AF_INET__field = default!;
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        private static byte AF_INET__state;
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        private static void AF_INET__init()
+        {
+            AF_INET__field = (int)global::System.Net.Sockets.AddressFamily.InterNetwork;
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        private static void AF_INET__slow() => global::Sharpy.StaticInit.Read(ref __host, __Sweep, ref AF_INET__state, "AF_INET", AF_INET__init);
+        [global::Sharpy.SharpyStaticStorage(global::Sharpy.StaticStorageKind.Guarded)]
+        public static ref int AF_INET
+        {
+            get
+            {
+                if (!__Swept.Done)
+                    AF_INET__slow();
+                return ref AF_INET__field;
+            }
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        internal static void AF_INET__ensure()
+        {
+            if (!__Swept.Done)
+                AF_INET__slow();
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        private static void AF_INET__storeSlow(int value) => global::Sharpy.StaticInit.Store(ref __host, __Sweep, ref AF_INET__state, ref AF_INET__field, value);
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        internal static int AF_INET__set(int value)
+        {
+            if (__Swept.Done)
+                AF_INET__field = value;
+            else
+                AF_INET__storeSlow(value);
+            return value;
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        internal static global::System.Runtime.CompilerServices.StrongBox<int>? AF_INET__pick()
+        {
+            if (!__Swept.Done)
+            {
+                global::Sharpy.StaticInit.Load(ref __host, __Sweep);
+                if (!global::Sharpy.StaticInit.IsReady(ref AF_INET__state))
+                    return new global::System.Runtime.CompilerServices.StrongBox<int>();
+            }
+
+            return null;
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        internal static ref int AF_INET__out(out global::System.Runtime.CompilerServices.StrongBox<int>? spill)
+        {
+            spill = AF_INET__pick();
+            if (spill != null)
+                return ref spill.Value!;
+            return ref AF_INET__field;
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        internal static R AF_INET__commit<R>(R result, global::System.Runtime.CompilerServices.StrongBox<int>? spill)
+        {
+            if (spill != null)
+                AF_INET__set(spill.Value!);
+            return result;
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        internal static int AF_INET6__field = default!;
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        private static byte AF_INET6__state;
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        private static void AF_INET6__init()
+        {
+            AF_INET6__field = (int)global::System.Net.Sockets.AddressFamily.InterNetworkV6;
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        private static void AF_INET6__slow() => global::Sharpy.StaticInit.Read(ref __host, __Sweep, ref AF_INET6__state, "AF_INET6", AF_INET6__init);
+        [global::Sharpy.SharpyStaticStorage(global::Sharpy.StaticStorageKind.Guarded)]
+        public static ref int AF_INET6
+        {
+            get
+            {
+                if (!__Swept.Done)
+                    AF_INET6__slow();
+                return ref AF_INET6__field;
+            }
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        internal static void AF_INET6__ensure()
+        {
+            if (!__Swept.Done)
+                AF_INET6__slow();
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        private static void AF_INET6__storeSlow(int value) => global::Sharpy.StaticInit.Store(ref __host, __Sweep, ref AF_INET6__state, ref AF_INET6__field, value);
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        internal static int AF_INET6__set(int value)
+        {
+            if (__Swept.Done)
+                AF_INET6__field = value;
+            else
+                AF_INET6__storeSlow(value);
+            return value;
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        internal static global::System.Runtime.CompilerServices.StrongBox<int>? AF_INET6__pick()
+        {
+            if (!__Swept.Done)
+            {
+                global::Sharpy.StaticInit.Load(ref __host, __Sweep);
+                if (!global::Sharpy.StaticInit.IsReady(ref AF_INET6__state))
+                    return new global::System.Runtime.CompilerServices.StrongBox<int>();
+            }
+
+            return null;
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        internal static ref int AF_INET6__out(out global::System.Runtime.CompilerServices.StrongBox<int>? spill)
+        {
+            spill = AF_INET6__pick();
+            if (spill != null)
+                return ref spill.Value!;
+            return ref AF_INET6__field;
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        internal static R AF_INET6__commit<R>(R result, global::System.Runtime.CompilerServices.StrongBox<int>? spill)
+        {
+            if (spill != null)
+                AF_INET6__set(spill.Value!);
+            return result;
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        internal static int AF_UNIX__field = default!;
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        private static byte AF_UNIX__state;
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        private static void AF_UNIX__init()
+        {
+            AF_UNIX__field = (int)global::System.Net.Sockets.AddressFamily.Unix;
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        private static void AF_UNIX__slow() => global::Sharpy.StaticInit.Read(ref __host, __Sweep, ref AF_UNIX__state, "AF_UNIX", AF_UNIX__init);
+        [global::Sharpy.SharpyStaticStorage(global::Sharpy.StaticStorageKind.Guarded)]
+        public static ref int AF_UNIX
+        {
+            get
+            {
+                if (!__Swept.Done)
+                    AF_UNIX__slow();
+                return ref AF_UNIX__field;
+            }
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        internal static void AF_UNIX__ensure()
+        {
+            if (!__Swept.Done)
+                AF_UNIX__slow();
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        private static void AF_UNIX__storeSlow(int value) => global::Sharpy.StaticInit.Store(ref __host, __Sweep, ref AF_UNIX__state, ref AF_UNIX__field, value);
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        internal static int AF_UNIX__set(int value)
+        {
+            if (__Swept.Done)
+                AF_UNIX__field = value;
+            else
+                AF_UNIX__storeSlow(value);
+            return value;
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        internal static global::System.Runtime.CompilerServices.StrongBox<int>? AF_UNIX__pick()
+        {
+            if (!__Swept.Done)
+            {
+                global::Sharpy.StaticInit.Load(ref __host, __Sweep);
+                if (!global::Sharpy.StaticInit.IsReady(ref AF_UNIX__state))
+                    return new global::System.Runtime.CompilerServices.StrongBox<int>();
+            }
+
+            return null;
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        internal static ref int AF_UNIX__out(out global::System.Runtime.CompilerServices.StrongBox<int>? spill)
+        {
+            spill = AF_UNIX__pick();
+            if (spill != null)
+                return ref spill.Value!;
+            return ref AF_UNIX__field;
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        internal static R AF_UNIX__commit<R>(R result, global::System.Runtime.CompilerServices.StrongBox<int>? spill)
+        {
+            if (spill != null)
+                AF_UNIX__set(spill.Value!);
+            return result;
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        internal static int SOCK_STREAM__field = default!;
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        private static byte SOCK_STREAM__state;
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        private static void SOCK_STREAM__init()
+        {
+            SOCK_STREAM__field = (int)global::System.Net.Sockets.SocketType.Stream;
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        private static void SOCK_STREAM__slow() => global::Sharpy.StaticInit.Read(ref __host, __Sweep, ref SOCK_STREAM__state, "SOCK_STREAM", SOCK_STREAM__init);
+        [global::Sharpy.SharpyStaticStorage(global::Sharpy.StaticStorageKind.Guarded)]
+        public static ref int SOCK_STREAM
+        {
+            get
+            {
+                if (!__Swept.Done)
+                    SOCK_STREAM__slow();
+                return ref SOCK_STREAM__field;
+            }
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        internal static void SOCK_STREAM__ensure()
+        {
+            if (!__Swept.Done)
+                SOCK_STREAM__slow();
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        private static void SOCK_STREAM__storeSlow(int value) => global::Sharpy.StaticInit.Store(ref __host, __Sweep, ref SOCK_STREAM__state, ref SOCK_STREAM__field, value);
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        internal static int SOCK_STREAM__set(int value)
+        {
+            if (__Swept.Done)
+                SOCK_STREAM__field = value;
+            else
+                SOCK_STREAM__storeSlow(value);
+            return value;
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        internal static global::System.Runtime.CompilerServices.StrongBox<int>? SOCK_STREAM__pick()
+        {
+            if (!__Swept.Done)
+            {
+                global::Sharpy.StaticInit.Load(ref __host, __Sweep);
+                if (!global::Sharpy.StaticInit.IsReady(ref SOCK_STREAM__state))
+                    return new global::System.Runtime.CompilerServices.StrongBox<int>();
+            }
+
+            return null;
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        internal static ref int SOCK_STREAM__out(out global::System.Runtime.CompilerServices.StrongBox<int>? spill)
+        {
+            spill = SOCK_STREAM__pick();
+            if (spill != null)
+                return ref spill.Value!;
+            return ref SOCK_STREAM__field;
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        internal static R SOCK_STREAM__commit<R>(R result, global::System.Runtime.CompilerServices.StrongBox<int>? spill)
+        {
+            if (spill != null)
+                SOCK_STREAM__set(spill.Value!);
+            return result;
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        internal static int SOCK_DGRAM__field = default!;
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        private static byte SOCK_DGRAM__state;
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        private static void SOCK_DGRAM__init()
+        {
+            SOCK_DGRAM__field = (int)global::System.Net.Sockets.SocketType.Dgram;
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        private static void SOCK_DGRAM__slow() => global::Sharpy.StaticInit.Read(ref __host, __Sweep, ref SOCK_DGRAM__state, "SOCK_DGRAM", SOCK_DGRAM__init);
+        [global::Sharpy.SharpyStaticStorage(global::Sharpy.StaticStorageKind.Guarded)]
+        public static ref int SOCK_DGRAM
+        {
+            get
+            {
+                if (!__Swept.Done)
+                    SOCK_DGRAM__slow();
+                return ref SOCK_DGRAM__field;
+            }
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        internal static void SOCK_DGRAM__ensure()
+        {
+            if (!__Swept.Done)
+                SOCK_DGRAM__slow();
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        private static void SOCK_DGRAM__storeSlow(int value) => global::Sharpy.StaticInit.Store(ref __host, __Sweep, ref SOCK_DGRAM__state, ref SOCK_DGRAM__field, value);
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        internal static int SOCK_DGRAM__set(int value)
+        {
+            if (__Swept.Done)
+                SOCK_DGRAM__field = value;
+            else
+                SOCK_DGRAM__storeSlow(value);
+            return value;
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        internal static global::System.Runtime.CompilerServices.StrongBox<int>? SOCK_DGRAM__pick()
+        {
+            if (!__Swept.Done)
+            {
+                global::Sharpy.StaticInit.Load(ref __host, __Sweep);
+                if (!global::Sharpy.StaticInit.IsReady(ref SOCK_DGRAM__state))
+                    return new global::System.Runtime.CompilerServices.StrongBox<int>();
+            }
+
+            return null;
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        internal static ref int SOCK_DGRAM__out(out global::System.Runtime.CompilerServices.StrongBox<int>? spill)
+        {
+            spill = SOCK_DGRAM__pick();
+            if (spill != null)
+                return ref spill.Value!;
+            return ref SOCK_DGRAM__field;
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        internal static R SOCK_DGRAM__commit<R>(R result, global::System.Runtime.CompilerServices.StrongBox<int>? spill)
+        {
+            if (spill != null)
+                SOCK_DGRAM__set(spill.Value!);
+            return result;
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        internal static int SOCK_RAW__field = default!;
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        private static byte SOCK_RAW__state;
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        private static void SOCK_RAW__init()
+        {
+            SOCK_RAW__field = (int)global::System.Net.Sockets.SocketType.Raw;
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        private static void SOCK_RAW__slow() => global::Sharpy.StaticInit.Read(ref __host, __Sweep, ref SOCK_RAW__state, "SOCK_RAW", SOCK_RAW__init);
+        [global::Sharpy.SharpyStaticStorage(global::Sharpy.StaticStorageKind.Guarded)]
+        public static ref int SOCK_RAW
+        {
+            get
+            {
+                if (!__Swept.Done)
+                    SOCK_RAW__slow();
+                return ref SOCK_RAW__field;
+            }
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        internal static void SOCK_RAW__ensure()
+        {
+            if (!__Swept.Done)
+                SOCK_RAW__slow();
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        private static void SOCK_RAW__storeSlow(int value) => global::Sharpy.StaticInit.Store(ref __host, __Sweep, ref SOCK_RAW__state, ref SOCK_RAW__field, value);
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        internal static int SOCK_RAW__set(int value)
+        {
+            if (__Swept.Done)
+                SOCK_RAW__field = value;
+            else
+                SOCK_RAW__storeSlow(value);
+            return value;
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        internal static global::System.Runtime.CompilerServices.StrongBox<int>? SOCK_RAW__pick()
+        {
+            if (!__Swept.Done)
+            {
+                global::Sharpy.StaticInit.Load(ref __host, __Sweep);
+                if (!global::Sharpy.StaticInit.IsReady(ref SOCK_RAW__state))
+                    return new global::System.Runtime.CompilerServices.StrongBox<int>();
+            }
+
+            return null;
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        internal static ref int SOCK_RAW__out(out global::System.Runtime.CompilerServices.StrongBox<int>? spill)
+        {
+            spill = SOCK_RAW__pick();
+            if (spill != null)
+                return ref spill.Value!;
+            return ref SOCK_RAW__field;
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        internal static R SOCK_RAW__commit<R>(R result, global::System.Runtime.CompilerServices.StrongBox<int>? spill)
+        {
+            if (spill != null)
+                SOCK_RAW__set(spill.Value!);
+            return result;
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        internal static int IPPROTO_IP__field = default!;
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        private static byte IPPROTO_IP__state;
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        private static void IPPROTO_IP__init()
+        {
+            IPPROTO_IP__field = (int)global::System.Net.Sockets.ProtocolType.IP;
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        private static void IPPROTO_IP__slow() => global::Sharpy.StaticInit.Read(ref __host, __Sweep, ref IPPROTO_IP__state, "IPPROTO_IP", IPPROTO_IP__init);
+        [global::Sharpy.SharpyStaticStorage(global::Sharpy.StaticStorageKind.Guarded)]
+        public static ref int IPPROTO_IP
+        {
+            get
+            {
+                if (!__Swept.Done)
+                    IPPROTO_IP__slow();
+                return ref IPPROTO_IP__field;
+            }
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        internal static void IPPROTO_IP__ensure()
+        {
+            if (!__Swept.Done)
+                IPPROTO_IP__slow();
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        private static void IPPROTO_IP__storeSlow(int value) => global::Sharpy.StaticInit.Store(ref __host, __Sweep, ref IPPROTO_IP__state, ref IPPROTO_IP__field, value);
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        internal static int IPPROTO_IP__set(int value)
+        {
+            if (__Swept.Done)
+                IPPROTO_IP__field = value;
+            else
+                IPPROTO_IP__storeSlow(value);
+            return value;
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        internal static global::System.Runtime.CompilerServices.StrongBox<int>? IPPROTO_IP__pick()
+        {
+            if (!__Swept.Done)
+            {
+                global::Sharpy.StaticInit.Load(ref __host, __Sweep);
+                if (!global::Sharpy.StaticInit.IsReady(ref IPPROTO_IP__state))
+                    return new global::System.Runtime.CompilerServices.StrongBox<int>();
+            }
+
+            return null;
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        internal static ref int IPPROTO_IP__out(out global::System.Runtime.CompilerServices.StrongBox<int>? spill)
+        {
+            spill = IPPROTO_IP__pick();
+            if (spill != null)
+                return ref spill.Value!;
+            return ref IPPROTO_IP__field;
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        internal static R IPPROTO_IP__commit<R>(R result, global::System.Runtime.CompilerServices.StrongBox<int>? spill)
+        {
+            if (spill != null)
+                IPPROTO_IP__set(spill.Value!);
+            return result;
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        internal static int IPPROTO_TCP__field = default!;
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        private static byte IPPROTO_TCP__state;
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        private static void IPPROTO_TCP__init()
+        {
+            IPPROTO_TCP__field = (int)global::System.Net.Sockets.ProtocolType.Tcp;
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        private static void IPPROTO_TCP__slow() => global::Sharpy.StaticInit.Read(ref __host, __Sweep, ref IPPROTO_TCP__state, "IPPROTO_TCP", IPPROTO_TCP__init);
+        [global::Sharpy.SharpyStaticStorage(global::Sharpy.StaticStorageKind.Guarded)]
+        public static ref int IPPROTO_TCP
+        {
+            get
+            {
+                if (!__Swept.Done)
+                    IPPROTO_TCP__slow();
+                return ref IPPROTO_TCP__field;
+            }
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        internal static void IPPROTO_TCP__ensure()
+        {
+            if (!__Swept.Done)
+                IPPROTO_TCP__slow();
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        private static void IPPROTO_TCP__storeSlow(int value) => global::Sharpy.StaticInit.Store(ref __host, __Sweep, ref IPPROTO_TCP__state, ref IPPROTO_TCP__field, value);
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        internal static int IPPROTO_TCP__set(int value)
+        {
+            if (__Swept.Done)
+                IPPROTO_TCP__field = value;
+            else
+                IPPROTO_TCP__storeSlow(value);
+            return value;
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        internal static global::System.Runtime.CompilerServices.StrongBox<int>? IPPROTO_TCP__pick()
+        {
+            if (!__Swept.Done)
+            {
+                global::Sharpy.StaticInit.Load(ref __host, __Sweep);
+                if (!global::Sharpy.StaticInit.IsReady(ref IPPROTO_TCP__state))
+                    return new global::System.Runtime.CompilerServices.StrongBox<int>();
+            }
+
+            return null;
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        internal static ref int IPPROTO_TCP__out(out global::System.Runtime.CompilerServices.StrongBox<int>? spill)
+        {
+            spill = IPPROTO_TCP__pick();
+            if (spill != null)
+                return ref spill.Value!;
+            return ref IPPROTO_TCP__field;
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        internal static R IPPROTO_TCP__commit<R>(R result, global::System.Runtime.CompilerServices.StrongBox<int>? spill)
+        {
+            if (spill != null)
+                IPPROTO_TCP__set(spill.Value!);
+            return result;
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        internal static int IPPROTO_UDP__field = default!;
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        private static byte IPPROTO_UDP__state;
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        private static void IPPROTO_UDP__init()
+        {
+            IPPROTO_UDP__field = (int)global::System.Net.Sockets.ProtocolType.Udp;
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        private static void IPPROTO_UDP__slow() => global::Sharpy.StaticInit.Read(ref __host, __Sweep, ref IPPROTO_UDP__state, "IPPROTO_UDP", IPPROTO_UDP__init);
+        [global::Sharpy.SharpyStaticStorage(global::Sharpy.StaticStorageKind.Guarded)]
+        public static ref int IPPROTO_UDP
+        {
+            get
+            {
+                if (!__Swept.Done)
+                    IPPROTO_UDP__slow();
+                return ref IPPROTO_UDP__field;
+            }
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        internal static void IPPROTO_UDP__ensure()
+        {
+            if (!__Swept.Done)
+                IPPROTO_UDP__slow();
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        private static void IPPROTO_UDP__storeSlow(int value) => global::Sharpy.StaticInit.Store(ref __host, __Sweep, ref IPPROTO_UDP__state, ref IPPROTO_UDP__field, value);
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        internal static int IPPROTO_UDP__set(int value)
+        {
+            if (__Swept.Done)
+                IPPROTO_UDP__field = value;
+            else
+                IPPROTO_UDP__storeSlow(value);
+            return value;
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        internal static global::System.Runtime.CompilerServices.StrongBox<int>? IPPROTO_UDP__pick()
+        {
+            if (!__Swept.Done)
+            {
+                global::Sharpy.StaticInit.Load(ref __host, __Sweep);
+                if (!global::Sharpy.StaticInit.IsReady(ref IPPROTO_UDP__state))
+                    return new global::System.Runtime.CompilerServices.StrongBox<int>();
+            }
+
+            return null;
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        internal static ref int IPPROTO_UDP__out(out global::System.Runtime.CompilerServices.StrongBox<int>? spill)
+        {
+            spill = IPPROTO_UDP__pick();
+            if (spill != null)
+                return ref spill.Value!;
+            return ref IPPROTO_UDP__field;
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        internal static R IPPROTO_UDP__commit<R>(R result, global::System.Runtime.CompilerServices.StrongBox<int>? spill)
+        {
+            if (spill != null)
+                IPPROTO_UDP__set(spill.Value!);
+            return result;
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        internal static int SOL_SOCKET__field = default!;
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        private static byte SOL_SOCKET__state;
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        private static void SOL_SOCKET__init()
+        {
+            SOL_SOCKET__field = (int)global::System.Net.Sockets.SocketOptionLevel.Socket;
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        private static void SOL_SOCKET__slow() => global::Sharpy.StaticInit.Read(ref __host, __Sweep, ref SOL_SOCKET__state, "SOL_SOCKET", SOL_SOCKET__init);
+        [global::Sharpy.SharpyStaticStorage(global::Sharpy.StaticStorageKind.Guarded)]
+        public static ref int SOL_SOCKET
+        {
+            get
+            {
+                if (!__Swept.Done)
+                    SOL_SOCKET__slow();
+                return ref SOL_SOCKET__field;
+            }
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        internal static void SOL_SOCKET__ensure()
+        {
+            if (!__Swept.Done)
+                SOL_SOCKET__slow();
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        private static void SOL_SOCKET__storeSlow(int value) => global::Sharpy.StaticInit.Store(ref __host, __Sweep, ref SOL_SOCKET__state, ref SOL_SOCKET__field, value);
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        internal static int SOL_SOCKET__set(int value)
+        {
+            if (__Swept.Done)
+                SOL_SOCKET__field = value;
+            else
+                SOL_SOCKET__storeSlow(value);
+            return value;
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        internal static global::System.Runtime.CompilerServices.StrongBox<int>? SOL_SOCKET__pick()
+        {
+            if (!__Swept.Done)
+            {
+                global::Sharpy.StaticInit.Load(ref __host, __Sweep);
+                if (!global::Sharpy.StaticInit.IsReady(ref SOL_SOCKET__state))
+                    return new global::System.Runtime.CompilerServices.StrongBox<int>();
+            }
+
+            return null;
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        internal static ref int SOL_SOCKET__out(out global::System.Runtime.CompilerServices.StrongBox<int>? spill)
+        {
+            spill = SOL_SOCKET__pick();
+            if (spill != null)
+                return ref spill.Value!;
+            return ref SOL_SOCKET__field;
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        internal static R SOL_SOCKET__commit<R>(R result, global::System.Runtime.CompilerServices.StrongBox<int>? spill)
+        {
+            if (spill != null)
+                SOL_SOCKET__set(spill.Value!);
+            return result;
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        internal static int SO_REUSEADDR__field = default!;
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        private static byte SO_REUSEADDR__state;
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        private static void SO_REUSEADDR__init()
+        {
+            SO_REUSEADDR__field = (int)global::System.Net.Sockets.SocketOptionName.ReuseAddress;
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        private static void SO_REUSEADDR__slow() => global::Sharpy.StaticInit.Read(ref __host, __Sweep, ref SO_REUSEADDR__state, "SO_REUSEADDR", SO_REUSEADDR__init);
+        [global::Sharpy.SharpyStaticStorage(global::Sharpy.StaticStorageKind.Guarded)]
+        public static ref int SO_REUSEADDR
+        {
+            get
+            {
+                if (!__Swept.Done)
+                    SO_REUSEADDR__slow();
+                return ref SO_REUSEADDR__field;
+            }
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        internal static void SO_REUSEADDR__ensure()
+        {
+            if (!__Swept.Done)
+                SO_REUSEADDR__slow();
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        private static void SO_REUSEADDR__storeSlow(int value) => global::Sharpy.StaticInit.Store(ref __host, __Sweep, ref SO_REUSEADDR__state, ref SO_REUSEADDR__field, value);
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        internal static int SO_REUSEADDR__set(int value)
+        {
+            if (__Swept.Done)
+                SO_REUSEADDR__field = value;
+            else
+                SO_REUSEADDR__storeSlow(value);
+            return value;
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        internal static global::System.Runtime.CompilerServices.StrongBox<int>? SO_REUSEADDR__pick()
+        {
+            if (!__Swept.Done)
+            {
+                global::Sharpy.StaticInit.Load(ref __host, __Sweep);
+                if (!global::Sharpy.StaticInit.IsReady(ref SO_REUSEADDR__state))
+                    return new global::System.Runtime.CompilerServices.StrongBox<int>();
+            }
+
+            return null;
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        internal static ref int SO_REUSEADDR__out(out global::System.Runtime.CompilerServices.StrongBox<int>? spill)
+        {
+            spill = SO_REUSEADDR__pick();
+            if (spill != null)
+                return ref spill.Value!;
+            return ref SO_REUSEADDR__field;
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        internal static R SO_REUSEADDR__commit<R>(R result, global::System.Runtime.CompilerServices.StrongBox<int>? spill)
+        {
+            if (spill != null)
+                SO_REUSEADDR__set(spill.Value!);
+            return result;
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        internal static int SO_KEEPALIVE__field = default!;
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        private static byte SO_KEEPALIVE__state;
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        private static void SO_KEEPALIVE__init()
+        {
+            SO_KEEPALIVE__field = (int)global::System.Net.Sockets.SocketOptionName.KeepAlive;
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        private static void SO_KEEPALIVE__slow() => global::Sharpy.StaticInit.Read(ref __host, __Sweep, ref SO_KEEPALIVE__state, "SO_KEEPALIVE", SO_KEEPALIVE__init);
+        [global::Sharpy.SharpyStaticStorage(global::Sharpy.StaticStorageKind.Guarded)]
+        public static ref int SO_KEEPALIVE
+        {
+            get
+            {
+                if (!__Swept.Done)
+                    SO_KEEPALIVE__slow();
+                return ref SO_KEEPALIVE__field;
+            }
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        internal static void SO_KEEPALIVE__ensure()
+        {
+            if (!__Swept.Done)
+                SO_KEEPALIVE__slow();
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        private static void SO_KEEPALIVE__storeSlow(int value) => global::Sharpy.StaticInit.Store(ref __host, __Sweep, ref SO_KEEPALIVE__state, ref SO_KEEPALIVE__field, value);
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        internal static int SO_KEEPALIVE__set(int value)
+        {
+            if (__Swept.Done)
+                SO_KEEPALIVE__field = value;
+            else
+                SO_KEEPALIVE__storeSlow(value);
+            return value;
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        internal static global::System.Runtime.CompilerServices.StrongBox<int>? SO_KEEPALIVE__pick()
+        {
+            if (!__Swept.Done)
+            {
+                global::Sharpy.StaticInit.Load(ref __host, __Sweep);
+                if (!global::Sharpy.StaticInit.IsReady(ref SO_KEEPALIVE__state))
+                    return new global::System.Runtime.CompilerServices.StrongBox<int>();
+            }
+
+            return null;
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        internal static ref int SO_KEEPALIVE__out(out global::System.Runtime.CompilerServices.StrongBox<int>? spill)
+        {
+            spill = SO_KEEPALIVE__pick();
+            if (spill != null)
+                return ref spill.Value!;
+            return ref SO_KEEPALIVE__field;
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        internal static R SO_KEEPALIVE__commit<R>(R result, global::System.Runtime.CompilerServices.StrongBox<int>? spill)
+        {
+            if (spill != null)
+                SO_KEEPALIVE__set(spill.Value!);
+            return result;
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        internal static int SO_BROADCAST__field = default!;
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        private static byte SO_BROADCAST__state;
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        private static void SO_BROADCAST__init()
+        {
+            SO_BROADCAST__field = (int)global::System.Net.Sockets.SocketOptionName.Broadcast;
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        private static void SO_BROADCAST__slow() => global::Sharpy.StaticInit.Read(ref __host, __Sweep, ref SO_BROADCAST__state, "SO_BROADCAST", SO_BROADCAST__init);
+        [global::Sharpy.SharpyStaticStorage(global::Sharpy.StaticStorageKind.Guarded)]
+        public static ref int SO_BROADCAST
+        {
+            get
+            {
+                if (!__Swept.Done)
+                    SO_BROADCAST__slow();
+                return ref SO_BROADCAST__field;
+            }
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        internal static void SO_BROADCAST__ensure()
+        {
+            if (!__Swept.Done)
+                SO_BROADCAST__slow();
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        private static void SO_BROADCAST__storeSlow(int value) => global::Sharpy.StaticInit.Store(ref __host, __Sweep, ref SO_BROADCAST__state, ref SO_BROADCAST__field, value);
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        internal static int SO_BROADCAST__set(int value)
+        {
+            if (__Swept.Done)
+                SO_BROADCAST__field = value;
+            else
+                SO_BROADCAST__storeSlow(value);
+            return value;
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        internal static global::System.Runtime.CompilerServices.StrongBox<int>? SO_BROADCAST__pick()
+        {
+            if (!__Swept.Done)
+            {
+                global::Sharpy.StaticInit.Load(ref __host, __Sweep);
+                if (!global::Sharpy.StaticInit.IsReady(ref SO_BROADCAST__state))
+                    return new global::System.Runtime.CompilerServices.StrongBox<int>();
+            }
+
+            return null;
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        internal static ref int SO_BROADCAST__out(out global::System.Runtime.CompilerServices.StrongBox<int>? spill)
+        {
+            spill = SO_BROADCAST__pick();
+            if (spill != null)
+                return ref spill.Value!;
+            return ref SO_BROADCAST__field;
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        internal static R SO_BROADCAST__commit<R>(R result, global::System.Runtime.CompilerServices.StrongBox<int>? spill)
+        {
+            if (spill != null)
+                SO_BROADCAST__set(spill.Value!);
+            return result;
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        internal static int SO_RCVBUF__field = default!;
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        private static byte SO_RCVBUF__state;
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        private static void SO_RCVBUF__init()
+        {
+            SO_RCVBUF__field = (int)global::System.Net.Sockets.SocketOptionName.ReceiveBuffer;
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        private static void SO_RCVBUF__slow() => global::Sharpy.StaticInit.Read(ref __host, __Sweep, ref SO_RCVBUF__state, "SO_RCVBUF", SO_RCVBUF__init);
+        [global::Sharpy.SharpyStaticStorage(global::Sharpy.StaticStorageKind.Guarded)]
+        public static ref int SO_RCVBUF
+        {
+            get
+            {
+                if (!__Swept.Done)
+                    SO_RCVBUF__slow();
+                return ref SO_RCVBUF__field;
+            }
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        internal static void SO_RCVBUF__ensure()
+        {
+            if (!__Swept.Done)
+                SO_RCVBUF__slow();
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        private static void SO_RCVBUF__storeSlow(int value) => global::Sharpy.StaticInit.Store(ref __host, __Sweep, ref SO_RCVBUF__state, ref SO_RCVBUF__field, value);
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        internal static int SO_RCVBUF__set(int value)
+        {
+            if (__Swept.Done)
+                SO_RCVBUF__field = value;
+            else
+                SO_RCVBUF__storeSlow(value);
+            return value;
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        internal static global::System.Runtime.CompilerServices.StrongBox<int>? SO_RCVBUF__pick()
+        {
+            if (!__Swept.Done)
+            {
+                global::Sharpy.StaticInit.Load(ref __host, __Sweep);
+                if (!global::Sharpy.StaticInit.IsReady(ref SO_RCVBUF__state))
+                    return new global::System.Runtime.CompilerServices.StrongBox<int>();
+            }
+
+            return null;
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        internal static ref int SO_RCVBUF__out(out global::System.Runtime.CompilerServices.StrongBox<int>? spill)
+        {
+            spill = SO_RCVBUF__pick();
+            if (spill != null)
+                return ref spill.Value!;
+            return ref SO_RCVBUF__field;
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        internal static R SO_RCVBUF__commit<R>(R result, global::System.Runtime.CompilerServices.StrongBox<int>? spill)
+        {
+            if (spill != null)
+                SO_RCVBUF__set(spill.Value!);
+            return result;
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        internal static int SO_SNDBUF__field = default!;
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        private static byte SO_SNDBUF__state;
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        private static void SO_SNDBUF__init()
+        {
+            SO_SNDBUF__field = (int)global::System.Net.Sockets.SocketOptionName.SendBuffer;
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        private static void SO_SNDBUF__slow() => global::Sharpy.StaticInit.Read(ref __host, __Sweep, ref SO_SNDBUF__state, "SO_SNDBUF", SO_SNDBUF__init);
+        [global::Sharpy.SharpyStaticStorage(global::Sharpy.StaticStorageKind.Guarded)]
+        public static ref int SO_SNDBUF
+        {
+            get
+            {
+                if (!__Swept.Done)
+                    SO_SNDBUF__slow();
+                return ref SO_SNDBUF__field;
+            }
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        internal static void SO_SNDBUF__ensure()
+        {
+            if (!__Swept.Done)
+                SO_SNDBUF__slow();
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        private static void SO_SNDBUF__storeSlow(int value) => global::Sharpy.StaticInit.Store(ref __host, __Sweep, ref SO_SNDBUF__state, ref SO_SNDBUF__field, value);
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        internal static int SO_SNDBUF__set(int value)
+        {
+            if (__Swept.Done)
+                SO_SNDBUF__field = value;
+            else
+                SO_SNDBUF__storeSlow(value);
+            return value;
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        internal static global::System.Runtime.CompilerServices.StrongBox<int>? SO_SNDBUF__pick()
+        {
+            if (!__Swept.Done)
+            {
+                global::Sharpy.StaticInit.Load(ref __host, __Sweep);
+                if (!global::Sharpy.StaticInit.IsReady(ref SO_SNDBUF__state))
+                    return new global::System.Runtime.CompilerServices.StrongBox<int>();
+            }
+
+            return null;
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        internal static ref int SO_SNDBUF__out(out global::System.Runtime.CompilerServices.StrongBox<int>? spill)
+        {
+            spill = SO_SNDBUF__pick();
+            if (spill != null)
+                return ref spill.Value!;
+            return ref SO_SNDBUF__field;
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        internal static R SO_SNDBUF__commit<R>(R result, global::System.Runtime.CompilerServices.StrongBox<int>? spill)
+        {
+            if (spill != null)
+                SO_SNDBUF__set(spill.Value!);
+            return result;
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        internal static int TCP_NODELAY__field = default!;
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        private static byte TCP_NODELAY__state;
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        private static void TCP_NODELAY__init()
+        {
+            TCP_NODELAY__field = (int)global::System.Net.Sockets.SocketOptionName.NoDelay;
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        private static void TCP_NODELAY__slow() => global::Sharpy.StaticInit.Read(ref __host, __Sweep, ref TCP_NODELAY__state, "TCP_NODELAY", TCP_NODELAY__init);
+        [global::Sharpy.SharpyStaticStorage(global::Sharpy.StaticStorageKind.Guarded)]
+        public static ref int TCP_NODELAY
+        {
+            get
+            {
+                if (!__Swept.Done)
+                    TCP_NODELAY__slow();
+                return ref TCP_NODELAY__field;
+            }
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        internal static void TCP_NODELAY__ensure()
+        {
+            if (!__Swept.Done)
+                TCP_NODELAY__slow();
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        private static void TCP_NODELAY__storeSlow(int value) => global::Sharpy.StaticInit.Store(ref __host, __Sweep, ref TCP_NODELAY__state, ref TCP_NODELAY__field, value);
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        internal static int TCP_NODELAY__set(int value)
+        {
+            if (__Swept.Done)
+                TCP_NODELAY__field = value;
+            else
+                TCP_NODELAY__storeSlow(value);
+            return value;
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        internal static global::System.Runtime.CompilerServices.StrongBox<int>? TCP_NODELAY__pick()
+        {
+            if (!__Swept.Done)
+            {
+                global::Sharpy.StaticInit.Load(ref __host, __Sweep);
+                if (!global::Sharpy.StaticInit.IsReady(ref TCP_NODELAY__state))
+                    return new global::System.Runtime.CompilerServices.StrongBox<int>();
+            }
+
+            return null;
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        internal static ref int TCP_NODELAY__out(out global::System.Runtime.CompilerServices.StrongBox<int>? spill)
+        {
+            spill = TCP_NODELAY__pick();
+            if (spill != null)
+                return ref spill.Value!;
+            return ref TCP_NODELAY__field;
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        internal static R TCP_NODELAY__commit<R>(R result, global::System.Runtime.CompilerServices.StrongBox<int>? spill)
+        {
+            if (spill != null)
+                TCP_NODELAY__set(spill.Value!);
+            return result;
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        internal static int SHUT_RD__field = default!;
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        private static byte SHUT_RD__state;
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        private static void SHUT_RD__init()
+        {
+            SHUT_RD__field = (int)global::System.Net.Sockets.SocketShutdown.Receive;
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        private static void SHUT_RD__slow() => global::Sharpy.StaticInit.Read(ref __host, __Sweep, ref SHUT_RD__state, "SHUT_RD", SHUT_RD__init);
+        [global::Sharpy.SharpyStaticStorage(global::Sharpy.StaticStorageKind.Guarded)]
+        public static ref int SHUT_RD
+        {
+            get
+            {
+                if (!__Swept.Done)
+                    SHUT_RD__slow();
+                return ref SHUT_RD__field;
+            }
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        internal static void SHUT_RD__ensure()
+        {
+            if (!__Swept.Done)
+                SHUT_RD__slow();
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        private static void SHUT_RD__storeSlow(int value) => global::Sharpy.StaticInit.Store(ref __host, __Sweep, ref SHUT_RD__state, ref SHUT_RD__field, value);
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        internal static int SHUT_RD__set(int value)
+        {
+            if (__Swept.Done)
+                SHUT_RD__field = value;
+            else
+                SHUT_RD__storeSlow(value);
+            return value;
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        internal static global::System.Runtime.CompilerServices.StrongBox<int>? SHUT_RD__pick()
+        {
+            if (!__Swept.Done)
+            {
+                global::Sharpy.StaticInit.Load(ref __host, __Sweep);
+                if (!global::Sharpy.StaticInit.IsReady(ref SHUT_RD__state))
+                    return new global::System.Runtime.CompilerServices.StrongBox<int>();
+            }
+
+            return null;
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        internal static ref int SHUT_RD__out(out global::System.Runtime.CompilerServices.StrongBox<int>? spill)
+        {
+            spill = SHUT_RD__pick();
+            if (spill != null)
+                return ref spill.Value!;
+            return ref SHUT_RD__field;
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        internal static R SHUT_RD__commit<R>(R result, global::System.Runtime.CompilerServices.StrongBox<int>? spill)
+        {
+            if (spill != null)
+                SHUT_RD__set(spill.Value!);
+            return result;
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        internal static int SHUT_WR__field = default!;
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        private static byte SHUT_WR__state;
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        private static void SHUT_WR__init()
+        {
+            SHUT_WR__field = (int)global::System.Net.Sockets.SocketShutdown.Send;
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        private static void SHUT_WR__slow() => global::Sharpy.StaticInit.Read(ref __host, __Sweep, ref SHUT_WR__state, "SHUT_WR", SHUT_WR__init);
+        [global::Sharpy.SharpyStaticStorage(global::Sharpy.StaticStorageKind.Guarded)]
+        public static ref int SHUT_WR
+        {
+            get
+            {
+                if (!__Swept.Done)
+                    SHUT_WR__slow();
+                return ref SHUT_WR__field;
+            }
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        internal static void SHUT_WR__ensure()
+        {
+            if (!__Swept.Done)
+                SHUT_WR__slow();
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        private static void SHUT_WR__storeSlow(int value) => global::Sharpy.StaticInit.Store(ref __host, __Sweep, ref SHUT_WR__state, ref SHUT_WR__field, value);
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        internal static int SHUT_WR__set(int value)
+        {
+            if (__Swept.Done)
+                SHUT_WR__field = value;
+            else
+                SHUT_WR__storeSlow(value);
+            return value;
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        internal static global::System.Runtime.CompilerServices.StrongBox<int>? SHUT_WR__pick()
+        {
+            if (!__Swept.Done)
+            {
+                global::Sharpy.StaticInit.Load(ref __host, __Sweep);
+                if (!global::Sharpy.StaticInit.IsReady(ref SHUT_WR__state))
+                    return new global::System.Runtime.CompilerServices.StrongBox<int>();
+            }
+
+            return null;
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        internal static ref int SHUT_WR__out(out global::System.Runtime.CompilerServices.StrongBox<int>? spill)
+        {
+            spill = SHUT_WR__pick();
+            if (spill != null)
+                return ref spill.Value!;
+            return ref SHUT_WR__field;
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        internal static R SHUT_WR__commit<R>(R result, global::System.Runtime.CompilerServices.StrongBox<int>? spill)
+        {
+            if (spill != null)
+                SHUT_WR__set(spill.Value!);
+            return result;
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        internal static int SHUT_RDWR__field = default!;
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        private static byte SHUT_RDWR__state;
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        private static void SHUT_RDWR__init()
+        {
+            SHUT_RDWR__field = (int)global::System.Net.Sockets.SocketShutdown.Both;
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        private static void SHUT_RDWR__slow() => global::Sharpy.StaticInit.Read(ref __host, __Sweep, ref SHUT_RDWR__state, "SHUT_RDWR", SHUT_RDWR__init);
+        [global::Sharpy.SharpyStaticStorage(global::Sharpy.StaticStorageKind.Guarded)]
+        public static ref int SHUT_RDWR
+        {
+            get
+            {
+                if (!__Swept.Done)
+                    SHUT_RDWR__slow();
+                return ref SHUT_RDWR__field;
+            }
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        internal static void SHUT_RDWR__ensure()
+        {
+            if (!__Swept.Done)
+                SHUT_RDWR__slow();
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        private static void SHUT_RDWR__storeSlow(int value) => global::Sharpy.StaticInit.Store(ref __host, __Sweep, ref SHUT_RDWR__state, ref SHUT_RDWR__field, value);
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        internal static int SHUT_RDWR__set(int value)
+        {
+            if (__Swept.Done)
+                SHUT_RDWR__field = value;
+            else
+                SHUT_RDWR__storeSlow(value);
+            return value;
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        internal static global::System.Runtime.CompilerServices.StrongBox<int>? SHUT_RDWR__pick()
+        {
+            if (!__Swept.Done)
+            {
+                global::Sharpy.StaticInit.Load(ref __host, __Sweep);
+                if (!global::Sharpy.StaticInit.IsReady(ref SHUT_RDWR__state))
+                    return new global::System.Runtime.CompilerServices.StrongBox<int>();
+            }
+
+            return null;
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        internal static ref int SHUT_RDWR__out(out global::System.Runtime.CompilerServices.StrongBox<int>? spill)
+        {
+            spill = SHUT_RDWR__pick();
+            if (spill != null)
+                return ref spill.Value!;
+            return ref SHUT_RDWR__field;
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        internal static R SHUT_RDWR__commit<R>(R result, global::System.Runtime.CompilerServices.StrongBox<int>? spill)
+        {
+            if (spill != null)
+                SHUT_RDWR__set(spill.Value!);
+            return result;
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        internal static int SOMAXCONN__field = default!;
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        private static byte SOMAXCONN__state;
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        private static void SOMAXCONN__init()
+        {
+            SOMAXCONN__field = 128;
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        private static void SOMAXCONN__slow() => global::Sharpy.StaticInit.Read(ref __host, __Sweep, ref SOMAXCONN__state, "SOMAXCONN", SOMAXCONN__init);
+        [global::Sharpy.SharpyStaticStorage(global::Sharpy.StaticStorageKind.Guarded)]
+        public static ref int SOMAXCONN
+        {
+            get
+            {
+                if (!__Swept.Done)
+                    SOMAXCONN__slow();
+                return ref SOMAXCONN__field;
+            }
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        internal static void SOMAXCONN__ensure()
+        {
+            if (!__Swept.Done)
+                SOMAXCONN__slow();
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        private static void SOMAXCONN__storeSlow(int value) => global::Sharpy.StaticInit.Store(ref __host, __Sweep, ref SOMAXCONN__state, ref SOMAXCONN__field, value);
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        internal static int SOMAXCONN__set(int value)
+        {
+            if (__Swept.Done)
+                SOMAXCONN__field = value;
+            else
+                SOMAXCONN__storeSlow(value);
+            return value;
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        internal static global::System.Runtime.CompilerServices.StrongBox<int>? SOMAXCONN__pick()
+        {
+            if (!__Swept.Done)
+            {
+                global::Sharpy.StaticInit.Load(ref __host, __Sweep);
+                if (!global::Sharpy.StaticInit.IsReady(ref SOMAXCONN__state))
+                    return new global::System.Runtime.CompilerServices.StrongBox<int>();
+            }
+
+            return null;
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        internal static ref int SOMAXCONN__out(out global::System.Runtime.CompilerServices.StrongBox<int>? spill)
+        {
+            spill = SOMAXCONN__pick();
+            if (spill != null)
+                return ref spill.Value!;
+            return ref SOMAXCONN__field;
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        internal static R SOMAXCONN__commit<R>(R result, global::System.Runtime.CompilerServices.StrongBox<int>? spill)
+        {
+            if (spill != null)
+                SOMAXCONN__set(spill.Value!);
+            return result;
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        internal static double? _DefaultTimeout__field = default!;
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        private static byte _DefaultTimeout__state;
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        private static void _DefaultTimeout__init()
+        {
+            _DefaultTimeout__field = null;
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        private static void _DefaultTimeout__slow() => global::Sharpy.StaticInit.Read(ref __host, __Sweep, ref _DefaultTimeout__state, "_default_timeout", _DefaultTimeout__init);
+        [global::Sharpy.SharpyStaticStorage(global::Sharpy.StaticStorageKind.Guarded)]
+        public static ref double? _DefaultTimeout
+        {
+            get
+            {
+                if (!__Swept.Done)
+                    _DefaultTimeout__slow();
+                return ref _DefaultTimeout__field;
+            }
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        internal static void _DefaultTimeout__ensure()
+        {
+            if (!__Swept.Done)
+                _DefaultTimeout__slow();
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        private static void _DefaultTimeout__storeSlow(double? value) => global::Sharpy.StaticInit.Store(ref __host, __Sweep, ref _DefaultTimeout__state, ref _DefaultTimeout__field, value);
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        internal static double? _DefaultTimeout__set(double? value)
+        {
+            if (__Swept.Done)
+                _DefaultTimeout__field = value;
+            else
+                _DefaultTimeout__storeSlow(value);
+            return value;
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        internal static global::System.Runtime.CompilerServices.StrongBox<double?>? _DefaultTimeout__pick()
+        {
+            if (!__Swept.Done)
+            {
+                global::Sharpy.StaticInit.Load(ref __host, __Sweep);
+                if (!global::Sharpy.StaticInit.IsReady(ref _DefaultTimeout__state))
+                    return new global::System.Runtime.CompilerServices.StrongBox<double?>();
+            }
+
+            return null;
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        internal static ref double? _DefaultTimeout__out(out global::System.Runtime.CompilerServices.StrongBox<double?>? spill)
+        {
+            spill = _DefaultTimeout__pick();
+            if (spill != null)
+                return ref spill.Value!;
+            return ref _DefaultTimeout__field;
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        internal static R _DefaultTimeout__commit<R>(R result, global::System.Runtime.CompilerServices.StrongBox<double?>? spill)
+        {
+            if (spill != null)
+                _DefaultTimeout__set(spill.Value!);
+            return result;
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        internal static global::Sharpy.Lock _Lock__field = default!;
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        private static byte _Lock__state;
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        private static void _Lock__init()
+        {
+            _Lock__field = new global::Sharpy.Lock();
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        private static void _Lock__slow() => global::Sharpy.StaticInit.Read(ref __host, __Sweep, ref _Lock__state, "_lock", _Lock__init);
+        [global::Sharpy.SharpyStaticStorage(global::Sharpy.StaticStorageKind.Guarded)]
+        public static ref global::Sharpy.Lock _Lock
+        {
+            get
+            {
+                if (!__Swept.Done)
+                    _Lock__slow();
+                return ref _Lock__field;
+            }
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        internal static void _Lock__ensure()
+        {
+            if (!__Swept.Done)
+                _Lock__slow();
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        private static void _Lock__storeSlow(global::Sharpy.Lock value) => global::Sharpy.StaticInit.Store(ref __host, __Sweep, ref _Lock__state, ref _Lock__field, value);
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        internal static global::Sharpy.Lock _Lock__set(global::Sharpy.Lock value)
+        {
+            if (__Swept.Done)
+                _Lock__field = value;
+            else
+                _Lock__storeSlow(value);
+            return value;
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        internal static global::System.Runtime.CompilerServices.StrongBox<global::Sharpy.Lock>? _Lock__pick()
+        {
+            if (!__Swept.Done)
+            {
+                global::Sharpy.StaticInit.Load(ref __host, __Sweep);
+                if (!global::Sharpy.StaticInit.IsReady(ref _Lock__state))
+                    return new global::System.Runtime.CompilerServices.StrongBox<global::Sharpy.Lock>();
+            }
+
+            return null;
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        internal static ref global::Sharpy.Lock _Lock__out(out global::System.Runtime.CompilerServices.StrongBox<global::Sharpy.Lock>? spill)
+        {
+            spill = _Lock__pick();
+            if (spill != null)
+                return ref spill.Value!;
+            return ref _Lock__field;
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        internal static R _Lock__commit<R>(R result, global::System.Runtime.CompilerServices.StrongBox<global::Sharpy.Lock>? spill)
+        {
+            if (spill != null)
+                _Lock__set(spill.Value!);
+            return result;
+        }
+
         /// <summary>
         /// Refuse a timeout value python3 refuses, at the call that receives it (#2228).
         /// The one rule shared by every timeout-accepting entry point (settimeout,
@@ -195,7 +1757,7 @@ namespace Sharpy.SocketModule
                 __ctx_3.Enter();
                 try
                 {
-                    _DefaultTimeout = timeout;
+                    _DefaultTimeout__set(timeout);
                 }
                 finally
                 {
@@ -321,6 +1883,53 @@ namespace Sharpy.SocketModule
             {
                 throw new global::Sharpy.SocketModule.Gaierror(ex.Message, ex, ((int)ex.SocketErrorCode));
             }
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        private static global::Sharpy.StaticInitHost __host;
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        private static void __Sweep()
+        {
+            global::Sharpy.StaticInit.Run(ref AF_INET__state, "AF_INET", AF_INET__init);
+            global::Sharpy.StaticInit.Run(ref AF_INET6__state, "AF_INET6", AF_INET6__init);
+            global::Sharpy.StaticInit.Run(ref AF_UNIX__state, "AF_UNIX", AF_UNIX__init);
+            global::Sharpy.StaticInit.Run(ref SOCK_STREAM__state, "SOCK_STREAM", SOCK_STREAM__init);
+            global::Sharpy.StaticInit.Run(ref SOCK_DGRAM__state, "SOCK_DGRAM", SOCK_DGRAM__init);
+            global::Sharpy.StaticInit.Run(ref SOCK_RAW__state, "SOCK_RAW", SOCK_RAW__init);
+            global::Sharpy.StaticInit.Run(ref IPPROTO_IP__state, "IPPROTO_IP", IPPROTO_IP__init);
+            global::Sharpy.StaticInit.Run(ref IPPROTO_TCP__state, "IPPROTO_TCP", IPPROTO_TCP__init);
+            global::Sharpy.StaticInit.Run(ref IPPROTO_UDP__state, "IPPROTO_UDP", IPPROTO_UDP__init);
+            global::Sharpy.StaticInit.Run(ref SOL_SOCKET__state, "SOL_SOCKET", SOL_SOCKET__init);
+            global::Sharpy.StaticInit.Run(ref SO_REUSEADDR__state, "SO_REUSEADDR", SO_REUSEADDR__init);
+            global::Sharpy.StaticInit.Run(ref SO_KEEPALIVE__state, "SO_KEEPALIVE", SO_KEEPALIVE__init);
+            global::Sharpy.StaticInit.Run(ref SO_BROADCAST__state, "SO_BROADCAST", SO_BROADCAST__init);
+            global::Sharpy.StaticInit.Run(ref SO_RCVBUF__state, "SO_RCVBUF", SO_RCVBUF__init);
+            global::Sharpy.StaticInit.Run(ref SO_SNDBUF__state, "SO_SNDBUF", SO_SNDBUF__init);
+            global::Sharpy.StaticInit.Run(ref TCP_NODELAY__state, "TCP_NODELAY", TCP_NODELAY__init);
+            global::Sharpy.StaticInit.Run(ref SHUT_RD__state, "SHUT_RD", SHUT_RD__init);
+            global::Sharpy.StaticInit.Run(ref SHUT_WR__state, "SHUT_WR", SHUT_WR__init);
+            global::Sharpy.StaticInit.Run(ref SHUT_RDWR__state, "SHUT_RDWR", SHUT_RDWR__init);
+            global::Sharpy.StaticInit.Run(ref SOMAXCONN__state, "SOMAXCONN", SOMAXCONN__init);
+            global::Sharpy.StaticInit.Run(ref _DefaultTimeout__state, "_default_timeout", _DefaultTimeout__init);
+            global::Sharpy.StaticInit.Run(ref _Lock__state, "_lock", _Lock__init);
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        private static class __Swept
+        {
+            internal static readonly bool Done;
+            static __Swept()
+            {
+                Done = global::Sharpy.StaticInit.TryLoad(ref __host, __Sweep);
+            }
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        [global::Sharpy.SharpyLoadEntry(true)]
+        public static void __Load()
+        {
+            if (!__Swept.Done)
+                global::Sharpy.StaticInit.Load(ref __host, __Sweep);
         }
     }
 

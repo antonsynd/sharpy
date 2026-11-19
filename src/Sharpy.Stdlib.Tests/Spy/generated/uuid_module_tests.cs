@@ -18,6 +18,11 @@ namespace Sharpy.Stdlib.Tests.Spy.Uuid.UuidModuleTests
     [global::Sharpy.SharpyModule("uuid.uuid_module_tests")]
     public static partial class UuidModuleTestsModule
     {
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        [global::Sharpy.SharpyLoadEntry(false)]
+        public static void __Load()
+        {
+        }
     }
 
     public partial class UuidModuleTestsModuleTests

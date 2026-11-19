@@ -12,6 +12,7 @@ namespace DataclassMultiwordKeywordArgument1504
     {
         public static void Main()
         {
+            __Load();
 #line (16, 5) - (16, 58) 12 "dataclass_multiword_keyword_argument_1504.spy"
             global::DataclassMultiwordKeywordArgument1504.TwoWord t = new global::DataclassMultiwordKeywordArgument1504.TwoWord(name: "web", maxConnections: 10);
 #line (17, 5) - (17, 18) 12 "dataclass_multiword_keyword_argument_1504.spy"
@@ -23,6 +24,12 @@ namespace DataclassMultiwordKeywordArgument1504
 #line (20, 5) - (20, 29) 12 "dataclass_multiword_keyword_argument_1504.spy"
             global::Sharpy.Builtins.Print(u.MaxConnections);
 #line hidden
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        [global::Sharpy.SharpyLoadEntry(false)]
+        public static void __Load()
+        {
         }
     }
 

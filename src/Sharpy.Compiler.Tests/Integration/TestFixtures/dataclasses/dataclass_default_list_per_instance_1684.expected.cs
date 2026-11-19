@@ -12,6 +12,7 @@ namespace DataclassDefaultListPerInstance1684
     {
         public static void Main()
         {
+            __Load();
 #line (10, 5) - (10, 14) 12 "dataclass_default_list_per_instance_1684.spy"
             var a = new global::DataclassDefaultListPerInstance1684.Bag();
 #line (11, 5) - (11, 14) 12 "dataclass_default_list_per_instance_1684.spy"
@@ -27,6 +28,12 @@ namespace DataclassDefaultListPerInstance1684
 #line (16, 5) - (16, 16) 12 "dataclass_default_list_per_instance_1684.spy"
             global::Sharpy.Builtins.Print(c.Xs);
 #line hidden
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        [global::Sharpy.SharpyLoadEntry(false)]
+        public static void __Load()
+        {
         }
     }
 

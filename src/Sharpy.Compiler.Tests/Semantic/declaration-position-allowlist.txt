@@ -306,11 +306,12 @@ project × import-identity × two-stars × star × reexport-first × use  # #211
 # properties), as does the generic host and the split sibling; the bare earlier @static property read and every
 # bare earlier @static method call is P21h's temporary SPY0200 arm; every qualified/alias forward or self read of
 # ordered storage, and the bare forward non-literal const, runs (0, or the value by layout accident: 2, 6, 7) where
-# SPY0618 is due. The three const × itself × alias rows are #2412 (the const-cycle check does not see an alias
+# SPY0618 was due. The three const × itself × alias rows were #2412 (the const-cycle check did not see an alias
 # receiver). CREATED by P75 Phase 0; the 96 forward/self rows DRAINED in Phase 1
 # (StaticInitializerOrderValidator, SPY0618); the 14 earlier rows the layout read as 0 DRAINED in Phase 2
 # (source-order emission); the 15 bare earlier rows DRAINED with the temporary arm (Phase 2). The three #2412
-# rows remain.
-static-init-order × class × const × itself × alias × self  # #2412; the const cycle through an alias is not SPY0278 (runs 0)
-static-init-order × dataclass × const × itself × alias × self  # #2412; the const cycle through an alias is not SPY0278 (runs 0)
-static-init-order × struct × const × itself × alias × self  # #2412; the const cycle through an alias is not SPY0278 (runs 0)
+# rows DRAINED in P77 T9 (plan-775c50 D8: the cycle graph resolves the alias receiver through the checker's bound
+# type, so the const reading itself through `H.B` is SPY0278). P77 T9 also retired SPY0618's forward-read rule (D9): the forward cells
+# run and the qualified/alias self reads are SPY0278. The shadowed later const, N2's order-vs-scope ambiguity (R-KJ;
+# #2423's C08), keeps its refusal under SPY0618 narrowed to N2's shape until P78 (the owner's ruling at T9); its row
+# DRAINED in the same follow-up.

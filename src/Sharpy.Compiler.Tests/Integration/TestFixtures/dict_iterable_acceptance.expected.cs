@@ -13,6 +13,7 @@ namespace DictIterableAcceptance
     {
         public static void Main()
         {
+            __Load();
 #line (5, 5) - (5, 50) 12 "dict_iterable_acceptance.spy"
             Sharpy.Dict<int, string> n = new Sharpy.Dict<int, string>()
 #line hidden
@@ -107,6 +108,12 @@ namespace DictIterableAcceptance
 #line (30, 5) - (30, 32) 12 "dict_iterable_acceptance.spy"
             global::Sharpy.Builtins.Print(global::Sharpy.StringExtensions.Join(", ", global::Sharpy.Builtins.Sorted<string>(d.Keys())));
 #line hidden
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        [global::Sharpy.SharpyLoadEntry(false)]
+        public static void __Load()
+        {
         }
     }
 }

@@ -31,6 +31,22 @@ internal class ModuleOverloads
     /// the correct C# alias target instead of guessing a PascalCase name.
     /// </summary>
     public string? CSharpClassName { get; set; }
+
+    /// <summary>
+    /// The module's load entry (plan-775c50 D10): the method carrying <c>Sharpy.SharpyLoadEntryAttribute</c>
+    /// on the module class, with its sweep fact; null for a module with none (a hand-written C# module).
+    /// </summary>
+    public DiscoveredLoadEntry? LoadEntry { get; set; }
+}
+
+/// <summary>A Sharpy module's load entry as discovery read it from metadata (plan-775c50 D10).</summary>
+internal class DiscoveredLoadEntry
+{
+    /// <summary>The module class's CLR full name, nested types joined by '.'.</summary>
+    public string MembersClassFullName { get; set; } = string.Empty;
+
+    /// <summary>The attribute's <c>hasSweep</c>.</summary>
+    public bool HasSweep { get; set; }
 }
 
 /// <summary>
@@ -50,6 +66,13 @@ internal class FieldSignature
     /// it is the authoritative source of <see cref="Name"/>.
     /// </summary>
     public string? RecordedPythonName { get; set; }
+
+    /// <summary>
+    /// Whether the member's <c>Sharpy.SharpyStaticStorageAttribute</c> records a Guarded value (plan-775c50
+    /// D10). Read from the attribute only: a C# <c>ref</c> property with none is Plain. Held by discovery
+    /// alone (lead ruling): an importer by reference reads the value plainly, after the module's entry.
+    /// </summary>
+    public bool IsGuarded { get; set; }
 }
 
 /// <summary>

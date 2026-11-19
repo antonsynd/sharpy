@@ -10,6 +10,10 @@ namespace Sharpy.Compiler.Tests.Semantic;
 /// <summary>
 /// Tests for ExecutionOrderAnalyzer which detects module-level variables
 /// that have execution order issues and cannot be static fields.
+///
+/// What a declaration's initializer reads is not an issue (plan-775c50 D1, #2420): each test
+/// that pinned the retired dependency arm now asserts by direction that the reader is NOT
+/// marked, beside a positive control that the read name keeps its own issue kind.
 /// </summary>
 public class ExecutionOrderAnalyzerTests
 {
@@ -27,7 +31,7 @@ public class ExecutionOrderAnalyzerTests
         nameResolver.ResolveDeclarations(module);
         nameResolver.ResolveInheritance();
 
-        var analyzer = new ExecutionOrderAnalyzer(symbolTable);
+        var analyzer = new ExecutionOrderAnalyzer();
         var issues = analyzer.Analyze(module.Body);
 
         return (module, symbolTable, issues);
@@ -151,11 +155,11 @@ x: int = 2
     }
 
     // ==============================================
-    // Reference to Assignment Variable
+    // Reference to Assignment Variable (D1: the reader is not marked)
     // ==============================================
 
     [Fact]
-    public void ReferenceToAssignmentVariable_HasIssues()
+    public void ReferenceToAssignmentVariable_DoesNotMarkTheReader()
     {
         var source = @"
 x = 5
@@ -163,11 +167,12 @@ y: int = x
 ";
         var (_, _, issues) = Analyze(source);
 
-        issues.Should().Contain("y");
+        issues.Should().Contain("x", "an assignment-only variable keeps its own issue");
+        issues.Should().NotContain("y", "what an initializer reads is not an issue (D1)");
     }
 
     [Fact]
-    public void ReferenceToAssignmentVariable_InExpression_HasIssues()
+    public void ReferenceToAssignmentVariable_InExpression_DoesNotMarkTheReader()
     {
         var source = @"
 x = 5
@@ -175,11 +180,12 @@ y: int = x + 10
 ";
         var (_, _, issues) = Analyze(source);
 
-        issues.Should().Contain("y");
+        issues.Should().Contain("x");
+        issues.Should().NotContain("y");
     }
 
     [Fact]
-    public void ReferenceToAssignmentVariable_InFunctionCall_HasIssues()
+    public void ReferenceToAssignmentVariable_InFunctionCall_DoesNotMarkTheReader()
     {
         var source = @"
 x = 5
@@ -187,15 +193,16 @@ y: int = abs(x)
 ";
         var (_, _, issues) = Analyze(source);
 
-        issues.Should().Contain("y");
+        issues.Should().Contain("x");
+        issues.Should().NotContain("y");
     }
 
     // ==============================================
-    // Transitive Dependencies
+    // Transitive Dependencies (D1: no closure over initializer reads)
     // ==============================================
 
     [Fact]
-    public void TransitiveDependency_OnAssignmentVariable_HasIssues()
+    public void TransitiveDependency_OnAssignmentVariable_DoesNotMarkTheReaders()
     {
         var source = @"
 x = 5
@@ -204,12 +211,13 @@ z: int = y
 ";
         var (_, _, issues) = Analyze(source);
 
-        issues.Should().Contain("y", "y references assignment variable x");
-        issues.Should().Contain("z", "z references y which has issues");
+        issues.Should().Contain("x");
+        issues.Should().NotContain("y", "y reads assignment variable x, which is not an issue (D1)");
+        issues.Should().NotContain("z", "z reads y, which is not an issue (D1)");
     }
 
     [Fact]
-    public void TransitiveDependency_ThroughMultipleLevels_HasIssues()
+    public void TransitiveDependency_ThroughMultipleLevels_DoesNotMarkTheReaders()
     {
         var source = @"
 a = 1
@@ -219,13 +227,14 @@ d: int = c
 ";
         var (_, _, issues) = Analyze(source);
 
-        issues.Should().Contain("b");
-        issues.Should().Contain("c");
-        issues.Should().Contain("d");
+        issues.Should().Contain("a");
+        issues.Should().NotContain("b");
+        issues.Should().NotContain("c");
+        issues.Should().NotContain("d");
     }
 
     [Fact]
-    public void TransitiveDependency_OnVariableWithIssues_HasIssues()
+    public void TransitiveDependency_OnVariableWithIssues_DoesNotMarkTheReader()
     {
         var source = @"
 x = 1
@@ -235,7 +244,7 @@ y: int = x
         var (_, _, issues) = Analyze(source);
 
         issues.Should().Contain("x", "x has assignment before declaration");
-        issues.Should().Contain("y", "y references x which has issues");
+        issues.Should().NotContain("y", "y reads x, which is not an issue of y (D1)");
     }
 
     // ==============================================
@@ -283,12 +292,12 @@ z: int = A
 
         issues.Should().NotContain("A", "const has no issues");
         issues.Should().Contain("x", "assignment variable has issues");
-        issues.Should().Contain("y", "references assignment variable");
+        issues.Should().NotContain("y", "reads an assignment variable, which is not an issue (D1)");
         issues.Should().NotContain("z", "references const, no issues");
     }
 
     [Fact]
-    public void FunctionCallWithAssignmentArg_HasIssues()
+    public void FunctionCallWithAssignmentArg_DoesNotMarkTheReader()
     {
         var source = @"
 def process(val: int) -> int:
@@ -300,7 +309,7 @@ y: int = process(x)
         var (_, _, issues) = Analyze(source);
 
         issues.Should().Contain("x");
-        issues.Should().Contain("y", "function argument references assignment variable");
+        issues.Should().NotContain("y", "a function argument reading an assignment variable is not an issue (D1)");
     }
 
     // ==============================================
@@ -308,7 +317,7 @@ y: int = process(x)
     // ==============================================
 
     [Fact]
-    public void ListLiteral_WithAssignmentReference_HasIssues()
+    public void ListLiteral_WithAssignmentReference_DoesNotMarkTheReader()
     {
         var source = @"
 x = 5
@@ -316,11 +325,12 @@ y: list[int] = [x, 10, 20]
 ";
         var (_, _, issues) = Analyze(source);
 
-        issues.Should().Contain("y");
+        issues.Should().Contain("x");
+        issues.Should().NotContain("y");
     }
 
     [Fact]
-    public void DictLiteral_WithAssignmentReference_HasIssues()
+    public void DictLiteral_WithAssignmentReference_DoesNotMarkTheReader()
     {
         var source = @"
 k = ""key""
@@ -328,11 +338,12 @@ d: dict[str, int] = {k: 42}
 ";
         var (_, _, issues) = Analyze(source);
 
-        issues.Should().Contain("d");
+        issues.Should().Contain("k");
+        issues.Should().NotContain("d");
     }
 
     [Fact]
-    public void TupleLiteral_WithAssignmentReference_HasIssues()
+    public void TupleLiteral_WithAssignmentReference_DoesNotMarkTheReader()
     {
         var source = @"
 x = 5
@@ -340,11 +351,12 @@ t: tuple[int, int] = (x, 10)
 ";
         var (_, _, issues) = Analyze(source);
 
-        issues.Should().Contain("t");
+        issues.Should().Contain("x");
+        issues.Should().NotContain("t");
     }
 
     [Fact]
-    public void FString_WithAssignmentReference_HasIssues()
+    public void FString_WithAssignmentReference_DoesNotMarkTheReader()
     {
         var source = @"
 name = ""World""
@@ -352,7 +364,8 @@ greeting: str = f""Hello, {name}!""
 ";
         var (_, _, issues) = Analyze(source);
 
-        issues.Should().Contain("greeting");
+        issues.Should().Contain("name");
+        issues.Should().NotContain("greeting");
     }
 
     // ==============================================
@@ -399,16 +412,16 @@ class Bar(Foo):
     }
 
     [Fact]
-    public void Variable_ReferencingOtherDeclaredVariable_HasIssues()
+    public void Variable_ReferencingOtherDeclaredVariable_NoIssues()
     {
-        // Non-const module variables referencing each other
+        // Non-const module variables referencing each other: not an issue (D1, #2420)
         var source = @"
 x: int = 10
 y: int = x
 ";
         var (_, _, issues) = Analyze(source);
 
-        issues.Should().Contain("y", "y references non-const module variable x");
+        issues.Should().BeEmpty("y reading non-const module variable x is not an issue (D1)");
     }
 
     [Fact]
@@ -423,7 +436,7 @@ x = x + 1
     }
 
     [Fact]
-    public void ChainedDeclarations_AllHaveIssues()
+    public void ChainedDeclarations_NoIssues()
     {
         // Each variable references the previous one
         var source = @"
@@ -434,11 +447,11 @@ d: int = c
 ";
         var (_, _, issues) = Analyze(source);
 
-        // a has no issues (literal initializer)
+        // a has no issues (literal initializer); b, c, d read non-const module
+        // variables, which is not an issue (D1, #2420)
         issues.Should().NotContain("a");
-        // b, c, d all reference non-const module variables
-        issues.Should().Contain("b");
-        issues.Should().Contain("c");
-        issues.Should().Contain("d");
+        issues.Should().NotContain("b");
+        issues.Should().NotContain("c");
+        issues.Should().NotContain("d");
     }
 }

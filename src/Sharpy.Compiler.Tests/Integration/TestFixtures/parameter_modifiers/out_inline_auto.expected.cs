@@ -21,11 +21,18 @@ namespace OutInlineAuto
 
         public static void Main()
         {
+            __Load();
 #line (6, 5) - (6, 47) 12 "out_inline_auto.spy"
             var success = global::OutInlineAuto.OutInlineAutoModule.TryParse("42", out var value);
 #line (7, 5) - (7, 26) 12 "out_inline_auto.spy"
             global::Sharpy.Builtins.Print(success, value);
 #line hidden
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        [global::Sharpy.SharpyLoadEntry(false)]
+        public static void __Load()
+        {
         }
     }
 }

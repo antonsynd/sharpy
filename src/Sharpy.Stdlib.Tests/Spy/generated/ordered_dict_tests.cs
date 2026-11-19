@@ -18,6 +18,11 @@ namespace Sharpy.Stdlib.Tests.Spy.Collections.OrderedDictTests
     [global::Sharpy.SharpyModule("collections.ordered_dict_tests")]
     public static partial class OrderedDictTestsModule
     {
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        [global::Sharpy.SharpyLoadEntry(false)]
+        public static void __Load()
+        {
+        }
     }
 
     public partial class OrderedDictTestsModuleTests

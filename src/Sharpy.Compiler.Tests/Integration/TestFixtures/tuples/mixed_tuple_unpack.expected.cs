@@ -12,6 +12,7 @@ namespace MixedTupleUnpack
     {
         public static void Main()
         {
+            __Load();
 #line (2, 5) - (2, 16) 12 "mixed_tuple_unpack.spy"
             int a = 1;
 #line hidden
@@ -24,6 +25,12 @@ namespace MixedTupleUnpack
 #line (5, 5) - (5, 13) 12 "mixed_tuple_unpack.spy"
             global::Sharpy.Builtins.Print(b);
 #line hidden
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        [global::Sharpy.SharpyLoadEntry(false)]
+        public static void __Load()
+        {
         }
     }
 }

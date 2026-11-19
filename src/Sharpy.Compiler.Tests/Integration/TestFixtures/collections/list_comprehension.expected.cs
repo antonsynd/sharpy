@@ -13,6 +13,7 @@ namespace ListComprehension
     {
         public static void Main()
         {
+            __Load();
             var __src_1 = global::Sharpy.Builtins.Range(5);
             var __comp_0 = new Sharpy.List<int>(((global::Sharpy.ISized)__src_1).Count);
             foreach (var __loopVar_2 in __src_1)
@@ -36,6 +37,12 @@ namespace ListComprehension
 #line (6, 5) - (6, 23) 12 "list_comprehension.spy"
             global::Sharpy.Builtins.Print(global::Sharpy.Builtins.Len(result));
 #line hidden
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        [global::Sharpy.SharpyLoadEntry(false)]
+        public static void __Load()
+        {
         }
     }
 }

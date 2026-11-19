@@ -12,6 +12,7 @@ namespace NullConditionalChaining
     {
         public static void Main()
         {
+            __Load();
 #line (24, 5) - (24, 32) 12 "null_conditional_chaining.spy"
             global::NullConditionalChaining.City city = new global::NullConditionalChaining.City("Tokyo");
 #line (25, 5) - (25, 41) 12 "null_conditional_chaining.spy"
@@ -37,6 +38,12 @@ namespace NullConditionalChaining
 #line (39, 5) - (39, 14) 12 "null_conditional_chaining.spy"
             global::Sharpy.Builtins.Print(r3);
 #line hidden
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        [global::Sharpy.SharpyLoadEntry(false)]
+        public static void __Load()
+        {
         }
     }
 

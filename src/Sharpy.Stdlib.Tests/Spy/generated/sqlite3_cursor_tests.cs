@@ -51,6 +51,12 @@ namespace Sharpy.Stdlib.Tests.Spy.Sqlite3.Sqlite3CursorTests
             return conn;
 #line hidden
         }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        [global::Sharpy.SharpyLoadEntry(false)]
+        public static void __Load()
+        {
+        }
     }
 
     public partial class Sqlite3CursorTestsModuleTests

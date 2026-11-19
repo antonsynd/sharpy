@@ -13,6 +13,7 @@ namespace OptionalWrappedElementChildren
     {
         public static void Main()
         {
+            __Load();
 #line (8, 5) - (8, 19) 12 "optional_wrapped_element_children.spy"
             var xs = new Sharpy.List<int>()
 #line hidden
@@ -81,6 +82,12 @@ namespace OptionalWrappedElementChildren
 #line hidden
                 }
             }
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        [global::Sharpy.SharpyLoadEntry(false)]
+        public static void __Load()
+        {
         }
     }
 }

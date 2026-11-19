@@ -143,11 +143,8 @@ internal partial class RoslynEmitter
                     // A store to a runtime-checked local sets its assigned-flag inline (#1839).
                     value = MaybeWrapRuntimeAssignedStore(name, value);
 
-                    return ExpressionStatement(
-                        AssignmentExpression(
-                            SyntaxKind.SimpleAssignmentExpression,
-                            StoreTargetName(name, currentName),
-                            value));
+                    // A Guarded value's plain store is N__set(value) (plan-775c50 D4).
+                    return ExpressionStatement(PlainStore(name, StoreTargetName(name, currentName), value));
                 }
                 else
                 {
@@ -221,11 +218,8 @@ internal partial class RoslynEmitter
                     && IrNodeFor<IrOptionalStoreWrap>(assign)?.WrapAs is { } augWrapOpt)
                     augmentedValue = WrapInOptionalSome(augmentedValue, augWrapOpt);
 
-                return ExpressionStatement(
-                    AssignmentExpression(
-                        SyntaxKind.SimpleAssignmentExpression,
-                        target,
-                        augmentedValue));
+                // `x op= e` on a Guarded value is N__set(x op e) (plan-775c50 D4).
+                return ExpressionStatement(PlainStore(name, target, augmentedValue));
             }
         }
 
@@ -397,11 +391,8 @@ internal partial class RoslynEmitter
                     assign.Value, value, GetExpressionSemanticType(assign.Target))
                 : GenerateAugmentedValue(assign.Operator, target, value, assign.Target, assign.Value, assign);
 
-            return ExpressionStatement(
-                AssignmentExpression(
-                    SyntaxKind.SimpleAssignmentExpression,
-                    target,
-                    assignmentValue));
+            // A Guarded `@static` field's (or `m.x`'s) plain store is N__set(value) (plan-775c50 D4).
+            return ExpressionStatement(PlainStore(memberAccess, target, assignmentValue));
         }
 
         // Handle tuple unpacking: x, y = 1, 2
@@ -440,7 +431,10 @@ internal partial class RoslynEmitter
                 // Check which variables already exist (mirrors simple assignment path)
                 var existenceFlags = identifiers.Select(StoreAssignsExistingSlot).ToList();
 
-                bool allExist = existenceFlags.All(e => e);
+                // A Guarded value's store is N__set (plan-775c50 D4), which C# deconstruction cannot
+                // target: such a group takes the element-by-element route below.
+                bool anyGuarded = identifiers.Any(IsGuardedVariableTarget);
+                bool allExist = existenceFlags.All(e => e) && !anyGuarded;
                 bool noneExist = existenceFlags.All(e => !e);
 
                 if (noneExist)
@@ -529,10 +523,7 @@ internal partial class RoslynEmitter
                             {
                                 var currentName = GetMangledVariableName(id, isNewDeclaration: false);
                                 stmts.Add(ExpressionStatement(
-                                    AssignmentExpression(
-                                        SyntaxKind.SimpleAssignmentExpression,
-                                        StoreTargetName(id, currentName),
-                                        itemAccess)));
+                                    PlainStore(id, StoreTargetName(id, currentName), itemAccess)));
                             }
                             else
                             {
@@ -570,10 +561,7 @@ internal partial class RoslynEmitter
                             {
                                 var currentName = GetMangledVariableName(id, isNewDeclaration: false);
                                 stmts.Add(ExpressionStatement(
-                                    AssignmentExpression(
-                                        SyntaxKind.SimpleAssignmentExpression,
-                                        EscapedIdentifierName(currentName),
-                                        tempRef)));
+                                    PlainStore(id, StoreTargetName(id, currentName), tempRef)));
                             }
                             else
                             {
@@ -1008,10 +996,12 @@ internal partial class RoslynEmitter
                         SyntaxKind.SimpleMemberAccessExpression,
                         target,
                         IdentifierName("IsSome"))),
-                GuardedCoalesceAssignBody(valueEvals, target, value));
+                GuardedCoalesceAssignBody(valueEvals, PlainStore(assign.Target, target, value)));
         }
 
-        if (valueEvals.Count != 0)
+        // A Guarded value's store is N__set (plan-775c50 D4), which C#'s `??=` cannot target: it
+        // takes the explicit null test, the same short-circuit.
+        if (valueEvals.Count != 0 || IsGuardedVariableTarget(assign.Target))
         {
             // Manufactured sink for the nullable lowering: C#'s `??=` is an EXPRESSION, so it has
             // nowhere to host the statements the right-hand side hoisted. The explicit null test
@@ -1021,7 +1011,7 @@ internal partial class RoslynEmitter
             return IfStatement(
                 IsPattern(target,
                     ConstantPattern(LiteralExpression(SyntaxKind.NullLiteralExpression))),
-                GuardedCoalesceAssignBody(valueEvals, target, value));
+                GuardedCoalesceAssignBody(valueEvals, PlainStore(assign.Target, target, value)));
         }
 
         // Nullable: native C# ??=, which skips the setter when not null.
@@ -1038,10 +1028,9 @@ internal partial class RoslynEmitter
     /// byte-identical to what it was before the sink (#1835).
     /// </summary>
     private static StatementSyntax GuardedCoalesceAssignBody(
-        List<StatementSyntax> valueEvals, ExpressionSyntax target, ExpressionSyntax value)
+        List<StatementSyntax> valueEvals, ExpressionSyntax storeExpression)
     {
-        var store = ExpressionStatement(
-            AssignmentExpression(SyntaxKind.SimpleAssignmentExpression, target, value));
+        var store = ExpressionStatement(storeExpression);
 
         if (valueEvals.Count == 0)
             return store;
@@ -1250,77 +1239,89 @@ internal partial class RoslynEmitter
         return PredefinedType(Token(SyntaxKind.ObjectKeyword));
     }
 
-    private FieldDeclarationSyntax? GenerateModuleLevelField(VariableDeclaration varDecl)
+    /// <summary>
+    /// A module-level Guarded value (plan-775c50 D4): the readiness shape of
+    /// <see cref="GenerateGuardedValue"/> in place of an initialized field. Null when the declaration
+    /// is no Guarded value (its recorded <see cref="CodeGenInfo.StaticStorage"/>), or is a
+    /// redefinition, which <see cref="GenerateModuleLevelField"/> handles as today.
+    /// </summary>
+    private IEnumerable<MemberDeclarationSyntax>? GenerateGuardedModuleValue(VariableDeclaration varDecl)
     {
-        // Check if this variable has execution order issues (assigned before declared, or multiple declarations)
-        // If so, skip generating a field - it will be handled as a local variable in Main()
-        // UNLESS _forceModuleLevelFields is true (when there's a user-defined main function)
         var symbol = _context.LookupSymbol(varDecl.Name);
-        if (symbol != null && HasExecutionOrderIssues(symbol) && !_forceModuleLevelFields)
-        {
+        if (symbol == null || GetCodeGenInfo(symbol) is not { StaticStorage: StaticStorage.Guarded } || varDecl.InitialValue == null)
             return null;
-        }
-        // Note: If symbol is null, we can't check execution order issues
-        // This shouldn't happen in well-typed code that went through semantic analysis
+        var (varName, typeSyntax) = ModuleFieldNameAndType(varDecl);
+        if (!ClaimModuleField(HasExecutionOrderIssues(symbol), varName))
+            return null;
 
-        // Track const variables by their original Sharpy name for consistent reference resolution
-        if (varDecl.IsConst)
-        {
-        }
+        var propertyAttributes = new SyntaxList<AttributeListSyntax>();
+        if (NameMangler.ToSharpyName(varName, ReverseNameContext.Field) != varDecl.Name)
+            propertyAttributes = propertyAttributes.Add(SharpyFieldNameAttributeList(varDecl.Name));
 
-        // Module-level fields naming:
-        // - Explicitly const declarations use CONSTANT_CASE
-        // - Names that look like constants (ALL_CAPS) also use CONSTANT_CASE
-        //   This supports Python-style convention where MAX_SIZE implies a constant
-        // - Other names use PascalCase
+        return GenerateGuardedValue(new GuardedValue(
+            varName, varDecl.Name, typeSyntax, varDecl.InitialValue, SyntaxKind.PublicKeyword,
+            IsReadOnly: varDecl.IsConst, propertyAttributes, new SyntaxList<AttributeListSyntax>(),
+            IsOnGenericHost: false)).ToList();
+    }
+
+    /// <summary><c>[global::Sharpy.SharpyFieldName("name")]</c> (#1607).</summary>
+    private static AttributeListSyntax SharpyFieldNameAttributeList(string sourceName)
+        => AttributeList(SingletonSeparatedList(
+            Attribute(MakeGlobalQualifiedName("Sharpy", "SharpyFieldName"))
+                .WithArgumentList(AttributeArgumentList(SingletonSeparatedList(
+                    AttributeArgument(LiteralExpression(
+                        SyntaxKind.StringLiteralExpression,
+                        Literal(sourceName))))))));
+
+    /// <summary>A module-level field's C# name and declared type (shared by the field and Guarded arms).</summary>
+    private (string Name, TypeSyntax Type) ModuleFieldNameAndType(VariableDeclaration varDecl)
+    {
         string varName;
         if (varDecl.IsConst || NameFormDetector.IsConstantCaseName(varDecl.Name))
-        {
             varName = NameCasing.ResolveConstant(varDecl.Name, varDecl.IsNameBacktickEscaped);
-        }
         else
-        {
             varName = NameCasing.ResolveField(varDecl.Name, varDecl.IsNameBacktickEscaped);
-        }
 
-        // Check if we've already generated a field with this name (redefinition)
-        // Sharpy allows variable redefinition at module level with different types.
-        // When there are redefinitions, we return null to handle them as executable
-        // statements in Main() to preserve proper execution order semantics.
-        if (_moduleFieldNames.Contains(varName))
-        {
-            // This is a redefinition - handle as executable statement in Main
-            return null;
-        }
-
-        // Track this field name to detect future redefinitions
-        _moduleFieldNames.Add(varName);
-
-        // Handle 'auto' type annotation - for fields, we must resolve to concrete type
-        // For const without type annotation, infer type from initializer
         TypeSyntax typeSyntax;
         if (varDecl.Type != null && varDecl.Type.Name == "auto")
         {
-            // Infer type from initializer
-            if (varDecl.InitialValue != null)
-            {
-                typeSyntax = ResolveInferredDeclarationType(varDecl.InitialValue);
-            }
-            else
-            {
-                // No initializer - default to object
-                typeSyntax = PredefinedType(Token(SyntaxKind.ObjectKeyword));
-            }
+            typeSyntax = varDecl.InitialValue != null
+                ? ResolveInferredDeclarationType(varDecl.InitialValue)
+                : PredefinedType(Token(SyntaxKind.ObjectKeyword));
         }
         else if (varDecl.Type == null && varDecl.IsConst && varDecl.InitialValue != null)
         {
-            // Infer type from initializer for const declarations without type annotation
             typeSyntax = ResolveInferredDeclarationType(varDecl.InitialValue);
         }
         else
         {
             typeSyntax = _typeMapper.MapType(varDecl.Type);
         }
+        return (varName, typeSyntax);
+    }
+
+    /// <summary>
+    /// Whether a module-level declaration named <paramref name="varName"/> is a member of the module
+    /// class, claiming the name when it is (shared by the field and Guarded arms). It is not when its
+    /// execution order puts it in <c>Main()</c> (<paramref name="hasExecutionOrderIssues"/>: assigned
+    /// before declared, or declared more than once), unless a user-defined <c>main</c> forces
+    /// module-level fields; nor when the name is already a field: Sharpy allows a module-level
+    /// redefinition with another type, which is an executable statement in <c>Main()</c> to keep the
+    /// execution order. A declaration with no symbol (no semantic analysis) has no order to check.
+    /// </summary>
+    private bool ClaimModuleField(bool hasExecutionOrderIssues, string varName)
+    {
+        if (hasExecutionOrderIssues && !_forceModuleLevelFields)
+            return false;
+        return _moduleFieldNames.Add(varName);
+    }
+
+    private FieldDeclarationSyntax? GenerateModuleLevelField(VariableDeclaration varDecl)
+    {
+        var symbol = _context.LookupSymbol(varDecl.Name);
+        var (varName, typeSyntax) = ModuleFieldNameAndType(varDecl);
+        if (!ClaimModuleField(symbol != null && HasExecutionOrderIssues(symbol), varName))
+            return null;
 
         VariableDeclaratorSyntax declarator;
         if (varDecl.InitialValue != null)
@@ -1377,15 +1378,7 @@ internal partial class RoslynEmitter
         // Sharpy `I` → CLR `I` by constant-case identity). When inference would round-trip
         // wrong, record the authoritative Python name for discovery to read (#1607).
         if (NameMangler.ToSharpyName(varName, ReverseNameContext.Field) != varDecl.Name)
-        {
-            fieldDeclaration = PrependAttributeList(fieldDeclaration,
-                AttributeList(SingletonSeparatedList(
-                    Attribute(MakeGlobalQualifiedName("Sharpy", "SharpyFieldName"))
-                        .WithArgumentList(AttributeArgumentList(SingletonSeparatedList(
-                            AttributeArgument(LiteralExpression(
-                                SyntaxKind.StringLiteralExpression,
-                                Literal(varDecl.Name)))))))));
-        }
+            fieldDeclaration = PrependAttributeList(fieldDeclaration, SharpyFieldNameAttributeList(varDecl.Name));
 
         return fieldDeclaration;
     }
@@ -1427,11 +1420,7 @@ internal partial class RoslynEmitter
                         // starred leaf writes through here since #1974, and an unqualified name
                         // wrote the FIELD.
                         var currentName = GetMangledVariableName(id, isNewDeclaration: false);
-                        return ExpressionStatement(
-                            AssignmentExpression(
-                                SyntaxKind.SimpleAssignmentExpression,
-                                StoreTargetName(id, currentName),
-                                value));
+                        return ExpressionStatement(PlainStore(id, StoreTargetName(id, currentName), value));
                     }
 
                     var varName = GetMangledVariableName(id, isNewDeclaration: true);
@@ -1479,11 +1468,7 @@ internal partial class RoslynEmitter
             case MemberAccess memberAccess:
                 {
                     var memberTarget = GenerateMemberAccess(memberAccess, applyNarrowing: false);
-                    return ExpressionStatement(
-                        AssignmentExpression(
-                            SyntaxKind.SimpleAssignmentExpression,
-                            memberTarget,
-                            value));
+                    return ExpressionStatement(PlainStore(memberAccess, memberTarget, value));
                 }
 
             case TupleLiteral tuple:

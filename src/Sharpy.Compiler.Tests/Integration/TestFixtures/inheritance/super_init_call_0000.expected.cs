@@ -13,6 +13,7 @@ namespace SuperInitCall0000
     {
         public static void Main()
         {
+            __Load();
 #line (40, 5) - (40, 46) 12 "super_init_call_0000.spy"
             var tesla = new global::SuperInitCall0000.ElectricCar("Tesla", 2024, 4, 85);
 #line (41, 5) - (41, 21) 12 "super_init_call_0000.spy"
@@ -20,6 +21,12 @@ namespace SuperInitCall0000
 #line (42, 5) - (42, 25) 12 "super_init_call_0000.spy"
             tesla.DisplayInfo();
 #line hidden
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        [global::Sharpy.SharpyLoadEntry(false)]
+        public static void __Load()
+        {
         }
     }
 

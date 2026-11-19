@@ -31,6 +31,7 @@ namespace ExceptTupleBindingCommonBase
 
         public static void Main()
         {
+            __Load();
 #line (46, 5) - (50, 54) 12 "except_tuple_binding_common_base.spy"
             foreach (var __loopVar_0 in global::Sharpy.Builtins.Range(2))
 #line hidden
@@ -139,6 +140,12 @@ namespace ExceptTupleBindingCommonBase
                 global::Sharpy.Builtins.Print("sibling fell through", global::Sharpy.PyFormat.PyDunderName(global::Sharpy.Builtins.Type(e_7)), e_7.Code);
 #line hidden
             }
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        [global::Sharpy.SharpyLoadEntry(false)]
+        public static void __Load()
+        {
         }
     }
 

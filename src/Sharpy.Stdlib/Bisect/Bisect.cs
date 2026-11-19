@@ -106,5 +106,11 @@ namespace Sharpy.BisectModule
         {
             global::Sharpy.BisectModule.BisectModuleModule.InsortRight<T>(a, x, lo, hi);
         }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        [global::Sharpy.SharpyLoadEntry(false)]
+        public static void __Load()
+        {
+        }
     }
 }

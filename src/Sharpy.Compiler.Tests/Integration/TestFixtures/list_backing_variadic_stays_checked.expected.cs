@@ -19,9 +19,16 @@ namespace ListBackingVariadicStaysChecked
 
         public static void Main()
         {
+            __Load();
 #line (8, 5) - (8, 25) 12 "list_backing_variadic_stays_checked.spy"
             global::ListBackingVariadicStaysChecked.ListBackingVariadicStaysCheckedModule.Show(new Sharpy.List<int>() { 1, 2 }, new Sharpy.List<int>() { 3, 4 });
 #line hidden
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        [global::Sharpy.SharpyLoadEntry(false)]
+        public static void __Load()
+        {
         }
     }
 }

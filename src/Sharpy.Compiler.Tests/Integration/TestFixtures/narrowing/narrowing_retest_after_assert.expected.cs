@@ -58,11 +58,18 @@ namespace NarrowingRetestAfterAssert
 
         public static void Main()
         {
+            __Load();
 #line (18, 5) - (18, 29) 12 "narrowing_retest_after_assert.spy"
             global::Sharpy.Builtins.Print(global::NarrowingRetestAfterAssert.NarrowingRetestAfterAssertModule.CheckNullable(5));
 #line (19, 5) - (19, 35) 12 "narrowing_retest_after_assert.spy"
             global::Sharpy.Builtins.Print(global::NarrowingRetestAfterAssert.NarrowingRetestAfterAssertModule.CheckOptional(Optional<int>.Some(7)));
 #line hidden
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        [global::Sharpy.SharpyLoadEntry(false)]
+        public static void __Load()
+        {
         }
     }
 }

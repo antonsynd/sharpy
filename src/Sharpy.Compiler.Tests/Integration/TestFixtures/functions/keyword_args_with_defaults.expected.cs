@@ -44,6 +44,7 @@ namespace KeywordArgsWithDefaults
 
         public static void Main()
         {
+            __Load();
 #line (59, 5) - (59, 46) 12 "keyword_args_with_defaults.spy"
             global::KeywordArgsWithDefaults.ConfigBuilder config1 = new global::KeywordArgsWithDefaults.ConfigBuilder();
 #line (60, 5) - (60, 29) 12 "keyword_args_with_defaults.spy"
@@ -77,6 +78,12 @@ namespace KeywordArgsWithDefaults
 #line (80, 5) - (80, 15) 12 "keyword_args_with_defaults.spy"
             global::Sharpy.Builtins.Print(val);
 #line hidden
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        [global::Sharpy.SharpyLoadEntry(false)]
+        public static void __Load()
+        {
         }
     }
 

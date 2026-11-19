@@ -67,6 +67,7 @@ internal partial class RoslynEmitter
         // Reaching a later index means the checker let a reordering through: fail loudly rather than
         // emit statements that run after the initializer they were written before.
         ConstructorInitializerSyntax? constructorInitializer = null;
+        List<OutCommit>? initializerCommits = null;
         int initializerCallIndex = Shared.AstHelper.FindConstructorInitializerIndex(func.Body);
         if (initializerCallIndex > 0)
         {
@@ -85,8 +86,30 @@ internal partial class RoslynEmitter
             // silently dropped (#906). Resolve the target constructor symbol when available for
             // correct reordering; otherwise the pipeline falls back to positional + C# named
             // arguments so nothing is lost.
-            var initArgs = GenerateReorderedCallArguments(
-                initCall, _context.SemanticInfo?.GetCallTarget(initCall));
+            // The chaining call is a call like any other: an `out` operand on a Guarded value is
+            // committed by the one commit seam (plan-775c50 D4). It is its own statement, so its
+            // commits open the body, after the chained constructor returns; an initializer's
+            // expression variable (`out var __spillK`) is in scope there.
+            ArgumentSyntax[] initArgs = System.Array.Empty<ArgumentSyntax>();
+            var savedStatementCall = _statementCall;
+            _statementCall = initCall;
+            try
+            {
+                GenerateCallWithOutCommits(initCall, () =>
+                {
+                    initArgs = GenerateReorderedCallArguments(
+                        initCall, _context.SemanticInfo?.GetCallTarget(initCall));
+                    return InvocationExpression(BaseExpression()).WithArgumentList(ArgumentList(SeparatedList(initArgs)));
+                });
+            }
+            finally
+            {
+                _statementCall = savedStatementCall;
+            }
+            initializerCommits = TakeVoidCallCommits();
+            if (initializerCommits?.Any(c => c.IsAsync) ?? false)
+                throw new InternalCompilerErrorException("RoslynEmitter",
+                    "a constructor initializer's `out` operand carries an `async def` body's fact (plan-775c50 D6)", initCall);
             constructorInitializer = ConstructorInitializer(
                 chainsToBase ? SyntaxKind.BaseConstructorInitializer : SyntaxKind.ThisConstructorInitializer,
                 ArgumentList(SeparatedList(initArgs)));
@@ -180,6 +203,8 @@ internal partial class RoslynEmitter
             constructorBody.Add(func.Body[i]);
 
         var bodyStatements = GenerateSuite(constructorBody, GenerateConstructorBodyStatement);
+        if (initializerCommits != null)
+            bodyStatements.InsertRange(0, initializerCommits.Select(VoidCommit));
 
         var body = AttachLineDirectiveToBlock(Block(bodyStatements), func.LineStart);
 

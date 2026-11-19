@@ -145,7 +145,7 @@ def main():
         var csharp = CompileToCSharp(source);
 
         // Module class should have: Counter, VERSION (constants preserve SCREAMING_SNAKE_CASE), Helper, Main
-        Assert.Contains("public static int Counter", csharp);
+        Assert.Contains("public static ref int Counter", csharp); // a Guarded value's property (plan-775c50 D4)
         Assert.Contains("VERSION", csharp);
         Assert.Contains("public static int Helper()", csharp);
         Assert.Contains("public static void Main()", csharp);

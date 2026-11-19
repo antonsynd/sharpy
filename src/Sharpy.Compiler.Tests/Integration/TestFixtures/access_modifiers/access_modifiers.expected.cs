@@ -13,6 +13,7 @@ namespace AccessModifiers
     {
         public static void Main()
         {
+            __Load();
 #line (78, 5) - (78, 67) 12 "access_modifiers.spy"
             global::AccessModifiers.SavingsAccount savings = new global::AccessModifiers.SavingsAccount(101, 5000.0d, 1000.0d);
 #line (79, 5) - (79, 30) 12 "access_modifiers.spy"
@@ -52,6 +53,12 @@ namespace AccessModifiers
                 global::Sharpy.Builtins.Print(150);
 #line hidden
             }
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        [global::Sharpy.SharpyLoadEntry(false)]
+        public static void __Load()
+        {
         }
     }
 

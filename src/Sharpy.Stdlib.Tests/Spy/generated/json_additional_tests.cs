@@ -19,6 +19,11 @@ namespace Sharpy.Stdlib.Tests.Spy.JSON.JsonAdditionalTests
     [global::Sharpy.SharpyModule("json.json_additional_tests")]
     public static partial class JsonAdditionalTestsModule
     {
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        [global::Sharpy.SharpyLoadEntry(false)]
+        public static void __Load()
+        {
+        }
     }
 
     public partial class JsonAdditionalTestsModuleTests

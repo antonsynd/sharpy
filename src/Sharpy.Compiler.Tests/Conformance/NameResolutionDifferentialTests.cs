@@ -344,16 +344,18 @@ public partial class NameResolutionDifferentialTests
     /// by the neighbouring checks named here, because the rule's own diagnostic lands with #2423, #2422 and #2424.</summary>
     private static readonly IReadOnlyDictionary<string, string[]> AdmittedRefusals = new Dictionary<string, string[]>(StringComparer.Ordinal)
     {
-        // SPY0618 is P75's forward refusal, which the principle retires: 1 comprehension cell reaches it before the name check.
+        // SPY0618 is N2's narrowed refusal until P78 (plan-775c50, owner ruling at T9): it refuses a later computed const read
+        // from a comprehension's body in a static initializer, the class-scope rule's cell, before the name check exists.
         ["N1-methods"] = new[] { "SPY0200", "SPY0618" },
         // The outer binding is read and the read is ill-typed. SPY0401 is the default position's own refusal beside it.
         // SPY0320 is `len(7)` over the imported outer's same-named member (D2.9).
         ["N1-type-error"] = new[] { "SPY0200", "SPY0203", "SPY0230", "SPY0320", "SPY0401" },
         // SPY0320: a later literal const outranks the import today, so its read is `len(7)`.
         // SPY0203: over a later const, the enum outer's read is `.RED` on an int.
+        // SPY0618 is N2's refusal, narrowed to a later computed const under an outer binding, until P78 (#2423) adds N2's code.
         ["N2"] = new[] { "SPY0203", "SPY0230", "SPY0278", "SPY0320", "SPY0401", "SPY0618" },
         // SPY0340 is the module `let` declaration refused beside the cycle.
-        ["N3-cycle"] = new[] { "SPY0200", "SPY0278", "SPY0340", "SPY0618" },
+        ["N3-cycle"] = new[] { "SPY0200", "SPY0278", "SPY0340" },
         ["N5"] = new[] { "SPY0200", "SPY0230", "SPY0600" },
         // R-LJ: SPY0204 is a same-named module declaration refused over the import until #2423 lands the rule's own refusal.
         // SPY0320 sits beside it when the later declaration is a literal const or a def: the read is then `len` of that.
@@ -540,8 +542,9 @@ public partial class NameResolutionDifferentialTests
                     return "#2398";
                 return run.CsCode switch
                 {
-                    // The store side of #2147's receiver matrix: one member through every receiver, one verdict.
-                    "CS0176" or "CS0131" or "CS0198" or "CS1656" when IsAttributeStore(cell) => "#2435",
+                    // The store side of #2147's receiver matrix: one member through every receiver, one verdict. A
+                    // computed const's accessor returns `ref readonly` under plan-775c50 D4, so its store is CS8331 where it was CS0198.
+                    "CS0176" or "CS0131" or "CS0198" or "CS8331" or "CS1656" when IsAttributeStore(cell) => "#2435",
                     "CS0176" => "#2147",
                     // A @static interface method read through its interface: the emitter renders it an instance member.
                     "CS0120" when cell.Family == Family.TypeMember && cell.Target == BindingKind.ModuleInterface => "#2111",

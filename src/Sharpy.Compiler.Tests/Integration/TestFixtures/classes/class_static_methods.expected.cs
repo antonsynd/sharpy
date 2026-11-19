@@ -13,6 +13,7 @@ namespace ClassStaticMethods
     {
         public static void Main()
         {
+            __Load();
 #line (10, 5) - (10, 35) 12 "class_static_methods.spy"
             var result1 = global::ClassStaticMethods.MathHelper.Add(3, 7);
 #line (11, 5) - (11, 19) 12 "class_static_methods.spy"
@@ -26,6 +27,12 @@ namespace ClassStaticMethods
 #line (17, 5) - (17, 19) 12 "class_static_methods.spy"
             global::Sharpy.Builtins.Print(result3);
 #line hidden
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        [global::Sharpy.SharpyLoadEntry(false)]
+        public static void __Load()
+        {
         }
     }
 

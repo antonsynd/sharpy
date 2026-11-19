@@ -12,6 +12,7 @@ namespace FStringFormatSpec
     {
         public static void Main()
         {
+            __Load();
 #line (4, 5) - (4, 27) 12 "f_string_format_spec.spy"
             double price = 1000.0d;
 #line (5, 5) - (5, 33) 12 "f_string_format_spec.spy"
@@ -33,6 +34,12 @@ namespace FStringFormatSpec
 #line (17, 5) - (17, 42) 12 "f_string_format_spec.spy"
             global::Sharpy.Builtins.Print(FormattableString.Invariant($"With commas: {(global::Sharpy.PyFormat.Apply(bigNumber, ","))}"));
 #line hidden
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        [global::Sharpy.SharpyLoadEntry(false)]
+        public static void __Load()
+        {
         }
     }
 }

@@ -15,9 +15,16 @@ namespace TestFixtureClass
     {
         public static void Main()
         {
+            __Load();
 #line (26, 5) - (26, 16) 12 "test_fixture_class.spy"
             global::Sharpy.Builtins.Print("ok");
 #line hidden
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        [global::Sharpy.SharpyLoadEntry(false)]
+        public static void __Load()
+        {
         }
     }
 

@@ -644,22 +644,27 @@ internal partial class RoslynEmitter
         // x |> f(y, z) → f(x, y, z)
         if (rightExpr is FunctionCall funcCall)
         {
-            // Generate the function name with proper name mangling (same as GenerateCall)
-            var func = GeneratePipeCallTarget(funcCall.Function);
+            // The call `f(x, y, z)` is a call like any other: an `out` operand on a Guarded value
+            // among its arguments is committed by the one commit seam (plan-775c50 D4/D6).
+            return GenerateCallWithOutCommits(funcCall, () =>
+            {
+                // Generate the function name with proper name mangling (same as GenerateCall)
+                var func = GeneratePipeCallTarget(funcCall.Function);
 
-            // Resolve the callee's FunctionSymbol for parameter reordering
-            var pipeFuncSymbol = _context.SemanticInfo?.GetCallTarget(funcCall);
-            if (pipeFuncSymbol == null
-                && Shared.AstHelper.UnwrapParenthesized(funcCall.Function) is Identifier pipeFuncId)
-                pipeFuncSymbol = _context.LookupSymbol(pipeFuncId.Name) as FunctionSymbol;
+                // Resolve the callee's FunctionSymbol for parameter reordering
+                var pipeFuncSymbol = _context.SemanticInfo?.GetCallTarget(funcCall);
+                if (pipeFuncSymbol == null
+                    && Shared.AstHelper.UnwrapParenthesized(funcCall.Function) is Identifier pipeFuncId)
+                    pipeFuncSymbol = _context.LookupSymbol(pipeFuncId.Name) as FunctionSymbol;
 
-            // Delegate to shared call-site reordering with the piped value prepended. Passing the
-            // un-generated expression lets it participate in left-to-right operand ordering with the
-            // call's own arguments (#1853).
-            var allArgs = GenerateReorderedCallArguments(funcCall, pipeFuncSymbol, leftExpr);
+                // Delegate to shared call-site reordering with the piped value prepended. Passing the
+                // un-generated expression lets it participate in left-to-right operand ordering with
+                // the call's own arguments (#1853).
+                var allArgs = GenerateReorderedCallArguments(funcCall, pipeFuncSymbol, leftExpr);
 
-            return InvocationExpression(func)
-                .WithArgumentList(ArgumentList(SeparatedList(allArgs)));
+                return InvocationExpression(func)
+                    .WithArgumentList(ArgumentList(SeparatedList(allArgs)));
+            });
         }
 
         // Case 2: Right side is a lambda from partial application lowering

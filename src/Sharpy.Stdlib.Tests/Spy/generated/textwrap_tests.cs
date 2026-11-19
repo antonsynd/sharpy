@@ -18,6 +18,11 @@ namespace Sharpy.Stdlib.Tests.Spy.Textwrap.TextwrapTests
     [global::Sharpy.SharpyModule("textwrap.textwrap_tests")]
     public static partial class TextwrapTestsModule
     {
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        [global::Sharpy.SharpyLoadEntry(false)]
+        public static void __Load()
+        {
+        }
     }
 
     public partial class TextwrapTestsModuleTests

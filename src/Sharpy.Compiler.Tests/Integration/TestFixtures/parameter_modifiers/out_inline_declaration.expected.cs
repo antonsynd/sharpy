@@ -21,11 +21,18 @@ namespace OutInlineDeclaration
 
         public static void Main()
         {
+            __Load();
 #line (6, 5) - (6, 46) 12 "out_inline_declaration.spy"
             var success = global::OutInlineDeclaration.OutInlineDeclarationModule.TryParse("42", out int value);
 #line (7, 5) - (7, 26) 12 "out_inline_declaration.spy"
             global::Sharpy.Builtins.Print(success, value);
 #line hidden
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        [global::Sharpy.SharpyLoadEntry(false)]
+        public static void __Load()
+        {
         }
     }
 }

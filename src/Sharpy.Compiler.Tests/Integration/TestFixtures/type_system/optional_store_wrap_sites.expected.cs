@@ -13,6 +13,7 @@ namespace OptionalStoreWrapSites
     {
         public static void Main()
         {
+            __Load();
 #line (17, 5) - (17, 23) 12 "optional_store_wrap_sites.spy"
             Optional<int> d = Optional<int>.Some(1);
 #line (18, 5) - (20, 21) 12 "optional_store_wrap_sites.spy"
@@ -137,6 +138,12 @@ namespace OptionalStoreWrapSites
 #line (60, 5) - (60, 22) 12 "optional_store_wrap_sites.spy"
             global::Sharpy.Builtins.Print(v.Unwrap());
 #line hidden
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        [global::Sharpy.SharpyLoadEntry(false)]
+        public static void __Load()
+        {
         }
     }
 

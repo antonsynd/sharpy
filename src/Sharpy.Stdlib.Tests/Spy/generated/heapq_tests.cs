@@ -18,6 +18,11 @@ namespace Sharpy.Stdlib.Tests.Spy.Heapq.HeapqTests
     [global::Sharpy.SharpyModule("heapq.heapq_tests")]
     public static partial class HeapqTestsModule
     {
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        [global::Sharpy.SharpyLoadEntry(false)]
+        public static void __Load()
+        {
+        }
     }
 
     public partial class HeapqTestsModuleTests

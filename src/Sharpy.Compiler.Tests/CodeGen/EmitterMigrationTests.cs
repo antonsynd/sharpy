@@ -32,8 +32,10 @@ my_variable: int = 42
 ";
         var result = CompileToString(code);
 
-        // Should use PascalCase for module-level variable
-        result.Should().Contain("public static int MyVariable = 42;");
+        // Should use PascalCase for module-level variable. A module variable with an initializer is
+        // Guarded (plan-775c50 D4): a ref property of its own name over a backing field its init assigns.
+        result.Should().Contain("public static ref int MyVariable");
+        result.Should().Contain("MyVariable__field = 42;");
     }
 
     [Fact]

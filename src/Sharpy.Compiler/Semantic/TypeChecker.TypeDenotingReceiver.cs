@@ -97,6 +97,148 @@ internal partial class TypeChecker
     }
 
     /// <summary>
+    /// The ONE resolver for which static value a member access through a type-denoting receiver binds
+    /// (plan-775c50 D4/D6): every spelling of the receiver — a bare or imported name (<c>C.s</c>,
+    /// <c>CC.s</c>), a subclass (<c>D.s</c>), a nested chain (<c>Outer.C.s</c>), a constructed generic
+    /// (<c>G[int].s</c>) or its alias, a module-qualified type (<c>lib.C.s</c>) — is reduced to its
+    /// type by <see cref="DenotedTypeSymbolOf"/>, and the member is bound by the MRO-by-name rule
+    /// (<see cref="TypeHierarchyService.FindStaticValueField"/>): the first type on the chain that
+    /// declares the name decides, and the access binds a field only if that declaration is a static or
+    /// const field. The binding is recorded once (<see cref="SemanticInfo.SetMemberAccessResolution"/>),
+    /// so every reader — <see cref="SemanticInfo.GetBoundValueSymbol"/>, the emitter, the editor's
+    /// navigation and the initializer-cycle validator — sees one value for every spelling.
+    /// <para>A generic owner reached through a receiver that spells no constructed type (<c>GD.s</c> of
+    /// <c>class GD(G[int])</c>) is spelled at the closed instantiation the base chain pins, recorded as
+    /// the receiver's denoted type (<c>G&lt;int&gt;.S</c>). A type nested under a generic (#1941) is
+    /// spelled by the receiver's own chain (<c>G&lt;int&gt;.N.S</c>), its type closed by that chain's
+    /// arguments. Declined, for the arms after it: a bare open generic (<c>G.s</c>, SPY0339).</para>
+    /// Returns the member's type, or null when the access binds no static value.
+    /// </summary>
+    private SemanticType? BindStaticValueThroughType(MemberAccess memberAccess, SemanticType receiverType)
+    {
+        if (memberAccess.Member.Length == 0 || memberAccess.IsNullConditional
+            || DenotedTypeSymbolOf(memberAccess.Object, receiverType) is not var (typeSymbol, _)
+            || typeSymbol.TypeKind is not (TypeKind.Class or TypeKind.Struct or TypeKind.Interface))
+            return null;
+
+        var denoted = _semanticInfo.GetDenotedType(memberAccess.Object);
+        IReadOnlyList<SemanticType> receiverArguments =
+            (denoted ?? receiverType) is GenericType constructed ? constructed.TypeArguments : Array.Empty<SemanticType>();
+        if (typeSymbol.IsGeneric && receiverArguments.Count == 0)
+            return null;
+
+        var (field, owner) = TypeHierarchyService.FindStaticValueField(typeSymbol, memberAccess.Member, SemanticBinding);
+        if (field == null || owner == null)
+            return null;
+        field = DeclaredField(owner, field);
+
+        // A type nested under a generic has no closed carrier of its own (#1941): the receiver keeps
+        // the spelling its own chain generates (`G<int>.N`), and the field's type is read at the
+        // arguments the chain constructs the enclosing generic with. A bare `N` inside `G[T]`
+        // constructs nothing and still spells the open `G.N` (CS0305, #1941).
+        if (IsNestedUnderGeneric(typeSymbol) || IsNestedUnderGeneric(owner))
+        {
+            _semanticInfo.SetMemberAccessResolution(memberAccess, owner, field, chainSpelledReceiver: true);
+            var nestedFieldType = ClosedByReceiverChain(memberAccess.Object, GetVariableType(field));
+            _semanticInfo.SetExpressionType(memberAccess, nestedFieldType);
+            return nestedFieldType;
+        }
+
+        if (owner.IsGeneric && denoted == null)
+        {
+            var closedOwner = GenericInstantiationWalker
+                .EnumerateBaseChain(typeSymbol, receiverArguments, SemanticBinding, _typeResolver)
+                .FirstOrDefault(ancestor => ReferenceEquals(ancestor.Definition, owner));
+            if (closedOwner == null)
+                return null;
+            _semanticInfo.SetDenotedType(memberAccess.Object, InstantiatedTypeOf(closedOwner));
+        }
+
+        _semanticInfo.SetMemberAccessResolution(memberAccess, owner, field);
+        var fieldType = SubstituteMemberForReceiver(typeSymbol, receiverArguments, owner, GetVariableType(field));
+        _semanticInfo.SetExpressionType(memberAccess, fieldType);
+        return fieldType;
+    }
+
+    /// <summary>
+    /// The field <paramref name="owner"/>'s DECLARATION has for <paramref name="field"/>: an import
+    /// alias (<c>from lib import LC as CC</c>) is a clone whose fields are the loader's extraction's,
+    /// while the storage fact (D2) is on the declared field; the clone stays the owner, for its
+    /// spelling.
+    /// </summary>
+    private static VariableSymbol DeclaredField(TypeSymbol owner, VariableSymbol field)
+        => owner.DeclarationRoot() is TypeSymbol root && !ReferenceEquals(root, owner)
+            && root.Fields.FirstOrDefault(f => f.Name == field.Name) is { } declared
+            ? declared
+            : field;
+
+    /// <summary>
+    /// A member no type on the chain declares, named through a NESTED type (<c>Outer.D.s</c>), is
+    /// refused here (SPY0203). The nested qualifier is left untyped (#1941), so the access otherwise
+    /// took the permissive channel and reached Roslyn as CS0117 behind SPY0908 — the one base the
+    /// checker walks having no such member, the emitted base had none either (plan-775c50). Only a
+    /// chain of Sharpy-declared types is proved absent: a CLR ancestor's surface is not in its
+    /// symbol, and a dunder name is the runtime's.
+    /// </summary>
+    private bool TryRefuseAbsentMemberThroughNestedType(MemberAccess memberAccess, SemanticType receiverType)
+    {
+        if (receiverType is not UnknownType || memberAccess.Object is not MemberAccess || memberAccess.Member.Length == 0
+            || memberAccess.Member.StartsWith("__", StringComparison.Ordinal)
+            || DenotedTypeSymbolOf(memberAccess.Object, receiverType) is not var (typeSymbol, typeName)
+            || typeSymbol.TypeKind is not (TypeKind.Class or TypeKind.Struct)
+            || TypeHierarchyService.FirstDeclaringType(typeSymbol, memberAccess.Member, SemanticBinding) != null
+            || EnumerateTypeAndHierarchy(typeSymbol).Any(t => t.ClrType != null
+                || TypeBodyMembership.DescribeMemberOf(t, memberAccess.Member, reachableThroughSelf: false, isInherited: false) != null))
+            return false;
+
+        AddError($"Type '{typeName}' has no member '{memberAccess.Member}'",
+            memberAccess.LineStart, memberAccess.ColumnStart,
+            code: DiagnosticCodes.Semantic.UndefinedMember, span: memberAccess.Span);
+        MarkExpressionAsErrorRecovery(memberAccess,
+            ErrorRecoveryReason.AlreadyReported("a member absent from a nested type's chain (SPY0203)"));
+        return true;
+    }
+
+    /// <summary>
+    /// <paramref name="memberType"/> under the arguments the receiver chain constructs its generic
+    /// enclosing types with (<c>G[int].N</c>: <c>G</c>'s <c>T</c> is <c>int</c>); unchanged where the
+    /// chain constructs none (inside <c>G[T]</c>, where <c>T</c> is in scope).
+    /// </summary>
+    private SemanticType ClosedByReceiverChain(Expression receiver, SemanticType memberType)
+    {
+        for (var segment = receiver; segment != null;)
+        {
+            if (_semanticInfo.GetDenotedType(segment) is GenericType { GenericDefinition: { } definition } constructed
+                && definition.TypeParameters.Count == constructed.TypeArguments.Count)
+            {
+                memberType = SubstituteTypeParameters(
+                    memberType, definition.TypeParameters, constructed.TypeArguments.ToList(),
+                    substituteNamedUserTypes: true);
+            }
+
+            segment = segment switch
+            {
+                MemberAccess access => access.Object,
+                IndexAccess index => index.Object,
+                _ => null,
+            };
+        }
+
+        return memberType;
+    }
+
+    private static bool IsNestedUnderGeneric(TypeSymbol type)
+    {
+        for (var owner = type.DeclaringType; owner != null; owner = owner.DeclaringType)
+        {
+            if (owner.IsGeneric)
+                return true;
+        }
+
+        return false;
+    }
+
+    /// <summary>
     /// Whether <paramref name="receiver"/> DENOTES a type rather than holding a value. The ONE
     /// predicate: a bare name bound to a <see cref="TypeSymbol"/> (<c>H</c>, <c>G</c>, an imported or
     /// module-qualified type), or any node
@@ -132,7 +274,7 @@ internal partial class TypeChecker
             && DenotedTypeSymbolOf(
                    nestedAccess.Object, _semanticInfo.GetExpressionType(nestedAccess.Object) ?? SemanticType.Unknown)
                is var (outerSymbol, _)
-            && outerSymbol.NestedTypes.FirstOrDefault(n => n.Name == nestedAccess.Member) is { } nestedSymbol)
+            && TypeHierarchyService.FindNestedType(outerSymbol, nestedAccess.Member, SemanticBinding) is { } nestedSymbol)
             return (nestedSymbol, nestedSymbol.Name);
 
         if (!ReceiverDenotesType(receiver))
@@ -196,16 +338,27 @@ internal partial class TypeChecker
 
         var member = memberAccess.Member;
 
-        // A name with ANY static declaration in the hierarchy binds statically — an instance overload
-        // sitting beside it is not what the reference names.
-        if (EnumerateTypeAndHierarchy(typeSymbol).Any(t =>
+        // A name with a static declaration binds statically — an instance overload sitting beside it is
+        // not what the reference names. Only the FIRST type on the chain that declares the name is asked
+        // (MRO by name, plan-775c50): a subclass's instance method hides a base's static field. A name
+        // no class on the chain declares is asked of the interfaces, as before.
+        var firstDeclaring = TypeHierarchyService.FirstDeclaringType(typeSymbol, member, SemanticBinding);
+        var declaringTypes = firstDeclaring != null ? new[] { firstDeclaring } : EnumerateTypeAndHierarchy(typeSymbol);
+        if (declaringTypes.Any(t =>
                 t.Fields.Any(f => f.Name == member && (f.IsStatic || f.IsConstant))
                 || t.FindOwnProperty(member) is { IsStatic: true }
                 || t.Methods.Any(m => m.Name == member && m.IsStatic)
                 || t.NestedTypes.Any(n => n.Name == member)))
             return false;
 
-        var kind = FindFieldInHierarchy(typeSymbol, member).Field != null ? "field"
+        var kind = firstDeclaring != null
+            ? TypeBodyMembership.DescribeMemberOf(firstDeclaring, member, reachableThroughSelf: false, isInherited: false)?.Kind switch
+            {
+                TypeBodyMemberKind.Field => "field",
+                TypeBodyMemberKind.Property => "property",
+                TypeBodyMemberKind.Method => "method",
+                _ => null,
+            }
             : FindPropertyInHierarchy(typeSymbol, member).Property != null ? "property"
             : FindMethodInHierarchy(typeSymbol, member).Method != null ? "method"
             : null;

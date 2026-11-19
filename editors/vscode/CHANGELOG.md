@@ -7,6 +7,20 @@ with `SharpyVersion`), so several releases below contain no extension-facing cha
 
 ## [Unreleased]
 
+## [0.25.0] - 2026-11-19
+
+No extension-facing changes beyond dependency bumps (`vscode-languageclient` 11.0.0, `esbuild` 0.28.2); version bumped with the toolchain.
+
+Toolchain-side:
+- **Breaking (stdlib/core):** `socket.error.errno` carries the platform errno as `int | None` (`None` on a timeout), and an accepted socket is blocking or takes the default timeout; aware `datetime` values compare, subtract and hash by instant, and `fromisoformat` is a strict ISO parser; codec names, error handlers and the codec error walk follow Python 3.15.
+- Module and `@static` values are ready before use (N3): statics bind by MRO through one resolver, including through subclasses, generics and import aliases, and a Guarded store's slow path moves out of line.
+- Membership totality: `in` is decided by the nearest `__iter__`, optional needles (`T | None in y`) are admitted, and a CLR membership needle honours call conversions (#2647).
+- Enum identity: `is` on enums compares by member and never runs a user `__eq__`; `==` across enum types is `False`, and two string-backed enums compare as `StrEnum` strings.
+- Exceptions: `/` and `**` by zero raise `ZeroDivisionError` (#2517), an except handler that an earlier handler covers is omitted, a `SystemExit` handler after `except Exception` is refused, and `OSError` subclasses follow the path state.
+- Statements ahead of a constructor chaining call are refused under one SPY0292 rule; a chain's None-test subject reads un-narrowed (#2648).
+- Operator and type-test lowerings are read from the IR.
+- Builds identify up-to-date inputs by content, with a verified per-user cache for replaced reference images.
+
 ## [0.24.0] - 2026-11-09
 
 No extension-facing changes beyond a dependency bump (`@azure/msal-node`); version bumped with the toolchain.

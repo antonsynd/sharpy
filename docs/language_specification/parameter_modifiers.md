@@ -190,6 +190,163 @@ def bar(*args: ref int): ...            # ERROR: ref with *args
 func = lambda x: ref int: x * 2         # ERROR: ref in lambda
 ```
 
+## Module and `@static` Values as Operands
+
+A modified argument must name storage that the callee can use, and the rule follows from what the
+operand names, whatever its spelling (bare, qualified or through an alias):
+
+| Operand names | `ref` | `out` | `in` |
+|---|---|---|---|
+| a local, a module variable or a `@static` field | ✅ | ✅ | ✅ |
+| a `const` whose initializer is not a compile-time constant | SPY0389 | SPY0389 | ✅ |
+| a `const` with a compile-time-constant initializer | SPY0389 | SPY0389 | open question (below) |
+| a property (instance or `@static`, with a default or without) | SPY0389 | SPY0389 | SPY0389 |
+
+<!-- spec-sweep: error SPY0389 -->
+```python
+class Box:
+    @static
+    property size: int = 2
+
+def bump(a: ref int) -> None:
+    a += 1
+
+def main() -> None:
+    bump(ref Box.size)    # SPY0389 — "'ref' argument must be a variable; 'Box.size' is a property"
+```
+
+A module variable or `@static` field passed by `ref` or `in` is initialized first, like any other read
+([N3](variable_scoping.md#values-are-ready-before-use-n3)), so the callee never sees a storage
+default, even when the call runs before the module has reached the value's declaration:
+
+<!-- spec-sweep: output -->
+```python
+first: int = early()
+const LIMIT: int = three()
+count: int = 1
+
+class Box:
+    @static
+    size: int = 2
+
+def three() -> int:
+    return 3
+
+def bump(a: ref int) -> None:
+    a += 1
+
+def peek(a: in int) -> int:
+    return a
+
+def early() -> int:
+    bump(ref count)          # `count` is initialized to 1 here, then bumped
+    bump(ref Box.size)
+    return peek(in LIMIT)    # `LIMIT` is initialized here
+
+def main() -> None:
+    print(first, count, Box.size)    # 3 2 3
+```
+
+`in` on a `const` with a compile-time-constant initializer (`const LIMIT: int = 3`) is not decided
+yet: the keyword may be dropped, or the argument refused.
+
+### `out` on a module or `@static` value
+
+An `out` argument naming a module variable or a `@static` field writes the value's own storage once
+the value has been initialized. The callee then reads its own store through the value's name, and a
+store the callee makes before it raises is kept:
+
+<!-- spec-sweep: output -->
+```python
+total: int = 7
+
+def fill(a: out int) -> None:
+    a = 42
+    print(total)    # 42
+    raise ValueError("late")
+
+def main() -> None:
+    try:
+        fill(out total)
+    except ValueError:
+        pass
+    print(total)    # 42
+```
+
+Before the value's initializer has run, the argument is a temporary, and the value is stored from it
+when the call returns. The stored value is read back until the module's run reaches the value's
+declaration, where the initializer's result replaces it. A callee that raises after its store leaves
+no store behind:
+
+<!-- spec-sweep: output -->
+```python
+first: int = early()
+second: int = later()
+total: int = 7
+
+def fill(a: out int) -> None:
+    a = 42
+
+def fill_then_raise(a: out int) -> None:
+    a = 43
+    raise ValueError("late")
+
+def early() -> int:
+    fill(out total)
+    print(total)    # 42
+    return 1
+
+def later() -> int:
+    try:
+        fill_then_raise(out total)
+    except ValueError:
+        pass
+    return total
+
+def main() -> None:
+    print(first, second, total)    # 1 42 7
+```
+
+While the argument is a temporary, the callee does not see its own store through the value's name.
+A read of the name inside the callee is a read like any other: it runs the value's initializer, and
+the call's store then replaces the initializer's result when the call returns. The value is
+initialized from then on, so the module's run does not run its initializer again at the declaration:
+
+<!-- spec-sweep: output -->
+```python
+first: int = early()
+total: int = 7
+
+def fill_and_read(a: out int) -> int:
+    a = 42
+    return total    # 7: this read initializes `total`; the store is still in the temporary
+
+def early() -> int:
+    return fill_and_read(out total)
+
+def main() -> None:
+    print(first, total)    # 7 42
+```
+
+Inside the value's own initializer the value has none to read, so a callee that reads it by name
+raises `NameError` (a call through `out` is not a cycle the compiler refuses):
+
+```python
+class H:
+    @static
+    t: int = use()
+
+def see(a: out int, by: int) -> int:
+    a = 41 + by
+    return H.t          # raises NameError: name 't' is not defined
+
+def use() -> int:
+    return see(out H.t, 1)
+
+def main() -> None:
+    print(H.t)
+```
+
 ## C# Interop
 
 Sharpy parameter modifiers map directly to C# parameter modifiers:
@@ -280,6 +437,7 @@ Calculate(in largeData);  // or just Calculate(largeData)
 - *`in T` → `in T` parameter — parsed, type-checked, emitted*
 - *Call site `ref`/`out`/`in` keywords map directly to C#*
 - *Inline `out` declaration (`out let value`, `out let value: int`, `out value: int`; deprecated `out value: auto`) — parsed, type-checked, emitted*
+- *A module or `@static` value as an operand: SPY0389 by the operand's resolved symbol (`TypeChecker.CheckModifiedArgument`); an `out` operand on a value not yet initialized passes a temporary, stored into the value on return (plan-775c50 D4, D7)*
 
 ## See Also
 

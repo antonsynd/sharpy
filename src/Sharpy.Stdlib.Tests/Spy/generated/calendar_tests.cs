@@ -18,6 +18,11 @@ namespace Sharpy.Stdlib.Tests.Spy.Calendar.CalendarTests
     [global::Sharpy.SharpyModule("calendar.calendar_tests")]
     public static partial class CalendarTestsModule
     {
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        [global::Sharpy.SharpyLoadEntry(false)]
+        public static void __Load()
+        {
+        }
     }
 
     public partial class CalendarTestsModuleTests

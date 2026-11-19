@@ -10,7 +10,8 @@ namespace Sharpy.Compiler.Tests.Conformance;
 /// The location family (plan-775c50, second to fourth stage-0 commits): a use of a module or <c>@static</c> value does
 /// what it does on a C# field today, whenever it runs, except from inside the value's own initializer. Axes: the use
 /// (<see cref="LocationUse"/>), the holder (<see cref="BindingKind"/>), whether the holder's type is generic
-/// (<see cref="HostForm"/>), what the value is (<see cref="ValueKind"/>) and when the use runs (<see cref="When"/>).
+/// (<see cref="HostForm"/>), what the value is (<see cref="ValueKind"/>), when the use runs (<see cref="When"/>) and where
+/// the use's function is declared, below the host or above it (<see cref="FunctionPosition"/>, which moves no model).
 ///
 /// A use is fed by one of four sources, and a use no source feeds is a totality failure:
 /// <list type="bullet">
@@ -121,6 +122,34 @@ public sealed partial class InitializerDependencyDifferentialTests
         Plain,
         Generic,
     }
+
+    /// <summary>Where the use's function is declared: below the host, the generator's first layout, or above it. A
+    /// closed literal set. The checker reads a function's body in declaration order, so a function above its host is
+    /// checked before the host's own declarations are: the use binds there what it binds below (the contract's "position
+    /// of the use"), and the cell's model is the same at both places.</summary>
+    internal enum FunctionPosition
+    {
+        AfterHost,
+        BeforeHost,
+    }
+
+    /// <summary>The id of a cell at <paramref name="position"/>: the first layout's id, or that id marked.</summary>
+    private static string PositionedId(string id, FunctionPosition position) =>
+        position == FunctionPosition.AfterHost ? id : $"{id}/{FunctionFirstMarker}";
+
+    private const string FunctionFirstMarker = "FunctionFirst";
+
+    internal const string NoFunctionToPlace = "the use sits in the value's own initializer text: there is no function to place";
+
+    private const string ModuleVariableBelowAFunction =
+        "a function declared above a module variable does not see it until rule N1 lands (#2423), which is not this plan's: its read is refused and its store binds a local";
+
+    /// <summary>Why a cell has no copy at <paramref name="position"/>, or null. The first layout always has one.</summary>
+    internal static string? PositionExclusion(FunctionPosition position, BindingKind holder, When when = When.Ready) =>
+        position == FunctionPosition.AfterHost ? null
+        : when == When.InInitializerText ? NoFunctionToPlace
+        : holder == BindingKind.ModuleVar ? ModuleVariableBelowAFunction
+        : null;
 
     // ------------------------------------------------------------------------------------------- //
     // The sources of a use
@@ -380,7 +409,6 @@ public sealed partial class InitializerDependencyDifferentialTests
             [(LocationUse.StarLeaf, BindingKind.StaticField, HostForm.Plain)] = ("the parser takes a bare name as a starred target, and reads a qualified one as a tuple statement", "SPY0106"),
             [(LocationUse.StarLeaf, BindingKind.StaticField, HostForm.Generic)] = ("the parser takes a bare name as a starred target, and reads a qualified one as a tuple statement", "SPY0106"),
             [(LocationUse.Augmented, BindingKind.StaticField, HostForm.Generic)] = ("a compound store through a closed generic type is an internal error wherever it is written (#2435's class): no cell isolates the value", "SPY0908 CS0119"),
-            [(LocationUse.ForTarget, BindingKind.StaticField, HostForm.Generic)] = ("a `for` target through a closed generic type is an internal error wherever it is written (#2435's class): no cell isolates the value", "SPY0908 CS0305"),
         };
 
     private static bool IsOwnInitializer(When when) => when is When.DuringInitializer or When.DuringInitializerThenRead or When.InInitializerText;
@@ -502,7 +530,8 @@ public sealed partial class InitializerDependencyDifferentialTests
     private static string LocationId(BindingKind holder, HostForm form, ValueKind kind, LocationUse use, When when) =>
         $"Location/{holder}{(form == HostForm.Plain ? "" : "+" + form)}/{kind}/{use}/{when}";
 
-    private static string LocationProgram(BindingKind holder, HostForm form, ValueKind kind, LocationUse use, When when, bool twin, OutObservation? observed = null)
+    private static string LocationProgram(BindingKind holder, HostForm form, ValueKind kind, LocationUse use, When when, bool twin, OutObservation? observed = null,
+        FunctionPosition position = FunctionPosition.AfterHost)
     {
         var module = IsModuleHolder(holder);
         var generic = form == HostForm.Generic;
@@ -551,9 +580,10 @@ public sealed partial class InitializerDependencyDifferentialTests
                 .ToList();
 
         // Sharpy sees a module variable from a function declared after it (rule N1's order, #2423's until P78), and calls a
-        // later function from an initializer. Python runs top to bottom: the function is defined before the call.
+        // later function from an initializer. Python runs top to bottom: the function is defined before the call. At
+        // FunctionPosition.BeforeHost the Sharpy program is laid out as the twin is.
         var body = new List<string>();
-        body.AddRange(twin ? function.Concat(holderLines) : holderLines.Concat(function));
+        body.AddRange(twin || position == FunctionPosition.BeforeHost ? function.Concat(holderLines) : holderLines.Concat(function));
         var other = generic ? ", " + ReadBack(kind, "H[str].t") : "";
         if (when == When.BeforeInitializer)
         {
@@ -624,29 +654,30 @@ public sealed partial class InitializerDependencyDifferentialTests
     internal static IEnumerable<Cell> LocationCells()
     {
         foreach (var (holder, form, kind, use, when) in LocationProduct())
-        {
-            var python = LocationPython(holder, form, use, when);
-            var (_, after, returned) = UseText(use, kind, "t", "1");
-            var own = IsOwnInitializer(when);
-            var raises = own && OwnInitializerRaises(use);
-            yield return new Cell(
-                LocationId(holder, form, kind, use, when),
-                Family.Location,
-                LocationProgram(holder, form, kind, use, when, twin: false),
-                python == PythonExpectation.NoTwin ? null : LocationProgram(holder, form, kind, use, when, twin: true),
-                raises ? CycleError : own ? OwnInitializerModel(when, after) : LocationModel(use, when, form, after, returned?.Value))
+            foreach (var position in Enum.GetValues<FunctionPosition>().Where(p => PositionExclusion(p, holder, when) == null))
             {
-                Raises = raises ? CycleError : null,
-                // What runs today and must not move: a use of a ready value, and a plain store before the value's initializer
-                // (kept, then replaced) or from a function that initializer calls (replaced by its result).
-                IsControl = when is When.Ready or When.ReadyAcrossAwait
-                    || (IsPlainStore(use) && (when is When.BeforeInitializer or When.DuringInitializer or When.DuringInitializerThenRead)),
-                Python = python,
-                // The twin's value is a module name: python reaches it before its line has run.
-                NameErrorOn = python == PythonExpectation.NameError ? "t" : null,
-                Route = LocationRoute(use, when),
-            };
-        }
+                var python = LocationPython(holder, form, use, when);
+                var (_, after, returned) = UseText(use, kind, "t", "1");
+                var own = IsOwnInitializer(when);
+                var raises = own && OwnInitializerRaises(use);
+                yield return new Cell(
+                    PositionedId(LocationId(holder, form, kind, use, when), position),
+                    Family.Location,
+                    LocationProgram(holder, form, kind, use, when, twin: false, position: position),
+                    python == PythonExpectation.NoTwin ? null : LocationProgram(holder, form, kind, use, when, twin: true),
+                    raises ? CycleError : own ? OwnInitializerModel(when, after) : LocationModel(use, when, form, after, returned?.Value))
+                {
+                    Raises = raises ? CycleError : null,
+                    // What runs today and must not move: a use of a ready value, and a plain store before the value's initializer
+                    // (kept, then replaced) or from a function that initializer calls (replaced by its result).
+                    IsControl = when is When.Ready or When.ReadyAcrossAwait
+                        || (IsPlainStore(use) && (when is When.BeforeInitializer or When.DuringInitializer or When.DuringInitializerThenRead)),
+                    Python = python,
+                    // The twin's value is a module name: python reaches it before its line has run.
+                    NameErrorOn = python == PythonExpectation.NameError ? "t" : null,
+                    Route = LocationRoute(use, when),
+                };
+            }
     }
 
     // ------------------------------------------------------------------------------------------- //
@@ -683,7 +714,7 @@ public sealed partial class InitializerDependencyDifferentialTests
             [BindingKind.ModuleComputedConst] = (ConstTakesNoStore + "; the store is refused", "SPY0225"),
             [BindingKind.ClassComputedConst] = (
                 ConstTakesNoStore + "; the store through its qualified name is an internal error today, where the checker is to refuse it (#2435's class)",
-                "SPY0908 CS0198"),
+                "SPY0908 CS8331"),
         };
 
     /// <summary>The hosts: every holder of the location family that is not excluded, in every host form it has.</summary>
@@ -767,7 +798,8 @@ public sealed partial class InitializerDependencyDifferentialTests
 
     /// <summary>The user host's value <c>x</c> is initialized by a function that uses the target host's value <c>p</c>;
     /// with a read back, the target host's second value <c>q</c> reads <c>x</c>. No value is on a cycle.</summary>
-    private static string CrossProgram(CrossHost user, CrossHost target, CrossOrder order, LocationUse use, bool readBack, bool twin, OutObservation? observed = null)
+    private static string CrossProgram(CrossHost user, CrossHost target, CrossOrder order, LocationUse use, bool readBack, bool twin, OutObservation? observed = null,
+        FunctionPosition position = FunctionPosition.AfterHost)
     {
         var (x, p, q) = (CrossName("A", user, "x"), CrossName("B", target, "p"), CrossName("B", target, "q"));
         var (statement, _, returned) = observed is { } how ? ObservedText(how, p, "1") : UseText(use, ValueKind.Int, p, "1");
@@ -786,7 +818,7 @@ public sealed partial class InitializerDependencyDifferentialTests
         function.Add($"    return {returned?.Text ?? p}");
 
         var hosts = order == CrossOrder.UserFirst ? userLines.Concat(targetLines) : targetLines.Concat(userLines);
-        var body = new List<string>(twin ? function.Concat(hosts) : hosts.Concat(function));
+        var body = new List<string>(twin || position == FunctionPosition.BeforeHost ? function.Concat(hosts) : hosts.Concat(function));
         return WithHelpers(Harness.Join(body) + Harness.MainBlock($"print({x}, {p}{(readBack ? ", " + q : "")})"));
     }
 
@@ -815,26 +847,27 @@ public sealed partial class InitializerDependencyDifferentialTests
     internal static IEnumerable<Cell> CrossCells()
     {
         foreach (var (user, target, order, use, readBack) in CrossProduct())
-        {
-            var python = CrossPython(user, target, order, use, readBack);
-            var model = CrossModel(user, target, order, use, readBack);
-            yield return new Cell(
-                CrossId(user, target, order, use, readBack),
-                Family.Location,
-                CrossProgram(user, target, order, use, readBack, twin: false),
-                python == PythonExpectation.NoTwin ? null : CrossProgram(user, target, order, use, readBack, twin: true),
-                model ?? CycleError)
+            foreach (var position in Enum.GetValues<FunctionPosition>().Where(p => PositionExclusion(p, target.Holder) == null))
             {
-                Raises = model == null ? CycleError : null,
-                // What runs today and must not move: a use that reads nothing back, of a value that is ready when it runs or
-                // is made ready by it. A store into a later class lands on the class's initialized value, as C# has it.
-                IsControl = !readBack && !UseRunsInsideTheTargetSweep(user, target, order),
-                Python = python,
-                // With the user first its function runs before the target host exists; with the target first, the read back names a user that does not.
-                NameErrorOn = python != PythonExpectation.NameError ? null : RootName(order == CrossOrder.UserFirst ? CrossName("B", target, "p") : CrossName("A", user, "x")),
-                Route = static (verdict, _, _) => ValueRoute(verdict),
-            };
-        }
+                var python = CrossPython(user, target, order, use, readBack);
+                var model = CrossModel(user, target, order, use, readBack);
+                yield return new Cell(
+                    PositionedId(CrossId(user, target, order, use, readBack), position),
+                    Family.Location,
+                    CrossProgram(user, target, order, use, readBack, twin: false, position: position),
+                    python == PythonExpectation.NoTwin ? null : CrossProgram(user, target, order, use, readBack, twin: true),
+                    model ?? CycleError)
+                {
+                    Raises = model == null ? CycleError : null,
+                    // What runs today and must not move: a use that reads nothing back, of a value that is ready when it runs or
+                    // is made ready by it. A store into a later class lands on the class's initialized value, as C# has it.
+                    IsControl = !readBack && !UseRunsInsideTheTargetSweep(user, target, order),
+                    Python = python,
+                    // With the user first its function runs before the target host exists; with the target first, the read back names a user that does not.
+                    NameErrorOn = python != PythonExpectation.NameError ? null : RootName(order == CrossOrder.UserFirst ? CrossName("B", target, "p") : CrossName("A", user, "x")),
+                    Route = static (verdict, _, _) => ValueRoute(verdict),
+                };
+            }
     }
 
     /// <summary>The read back of a later module variable, on both class forms, and a plain store to each holder that is
@@ -921,14 +954,15 @@ public sealed partial class InitializerDependencyDifferentialTests
                 foreach (var order in Enum.GetValues<CrossOrder>())
                     foreach (var use in Enum.GetValues<LocationUse>())
                         foreach (var readBack in new[] { false, true }.Where(r => CrossExclusion(user, target, order, use, r) == null))
-                        {
-                            var id = CrossId(user, target, order, use, readBack);
-                            owed[id] = !readBack && !UseRunsInsideTheTargetSweep(user, target, order);
-                            if (!ObservedUses().Contains(use) || ObservedCrossExclusion(user, target, order, readBack) != null)
-                                continue;
-                            foreach (var observed in Enum.GetValues<OutObservation>())
-                                owed[ObservedId(id, observed)] = true;
-                        }
+                            foreach (var position in Enum.GetValues<FunctionPosition>().Where(p => PositionExclusion(p, target.Holder) == null))
+                            {
+                                var id = CrossId(user, target, order, use, readBack);
+                                owed[PositionedId(id, position)] = !readBack && !UseRunsInsideTheTargetSweep(user, target, order);
+                                if (!ObservedUses().Contains(use) || ObservedCrossExclusion(user, target, order, readBack) != null)
+                                    continue;
+                                foreach (var observed in Enum.GetValues<OutObservation>())
+                                    owed[PositionedId(ObservedId(id, observed), position)] = !UseRunsInsideTheTargetSweep(user, target, order);
+                            }
         failures.AddRange(PoolAgainstOwed("the cross axes", owed, pool.Where(c => c.Id.StartsWith(CrossPrefix, StringComparison.Ordinal))));
         return failures;
     }
@@ -952,17 +986,40 @@ public sealed partial class InitializerDependencyDifferentialTests
     /// <see cref="ParameterModifier"/> through <see cref="OperandUses"/> and <see cref="IsPlainStore"/>.</summary>
     internal static IEnumerable<LocationUse> ObservedUses() => OperandUses.Values.Select(o => o.Whole).Where(IsPlainStore);
 
-    private const string NotReadyYet =
-        "the value has none yet, so the operand is the temporary stored when the call returns (the owner's Q12), which the cell without an observation holds by its own model: what the callee reads there is a read before the initializer, the `Read` use's cell";
+    private const string OperandInItsOwnText =
+        "the operand sits in the initializer's own text, as `fill2`'s argument: no callee of the observer's is there, and the cell without an observation is the one in that text";
 
-    /// <summary>Why an operand's store is not observed at a time, or null: the value is ready when the use runs.</summary>
-    internal static string? ObservedWhenExclusion(When when) => when is When.Ready or When.ReadyAcrossAwait ? null : NotReadyYet;
+    /// <summary>Why an operand's store is not observed at a time, or null. Every time a function runs has its observed
+    /// cells (F14 of plan-775c50's fifth verification: where the value is not ready yet the operand is the temporary,
+    /// and the callee's read and a throw are cells with their own models, <see cref="NotReadyObservedModel"/>); the
+    /// initializer's own text holds no callee to observe with.</summary>
+    internal static string? ObservedWhenExclusion(When when) => when == When.InInitializerText ? OperandInItsOwnText : null;
 
-    /// <summary>Why a pair's operand is not observed, or null: the target value is ready when the use runs, in a host
-    /// that has swept, that the use sweeps, or that is still sweeping below the value.</summary>
+    /// <summary>Whether the value is ready when a use at <paramref name="when"/> runs, written from the time alone: after
+    /// the host's sweep, an <c>await</c> inside the use or not.</summary>
+    private static bool ReadyAt(When when) => when is When.Ready or When.ReadyAcrossAwait;
+
+    /// <summary>What an observed operand prints where the value is not ready yet (F14 of plan-775c50's fifth verification;
+    /// Q-F (a), not overruled): the operand is the temporary (Q12), so the callee's read of the value by its own name is a
+    /// read before the value has one, and a callee's throw loses the store. Before the initializer that read initializes
+    /// the value (<c>7</c>), and the temporary is stored on return (<c>42</c>) or lost (<c>7</c>). Inside the value's own
+    /// initializer the read is the cycle: null, the cell raises; a throw read back nothing, and the initializer's result
+    /// is the value.</summary>
+    internal static string? NotReadyObservedModel(OutObservation observed, When when, HostForm form) => (observed, when) switch
+    {
+        (OutObservation.InCallee, When.BeforeInitializer) => $"{InitialValue} {CalleeStore}{(form == HostForm.Generic ? $" {InitialValue}" : "")}",
+        (OutObservation.AfterThrow, When.BeforeInitializer) => $"{InitialValue} {InitialValue}{(form == HostForm.Generic ? $" {InitialValue}" : "")}",
+        (OutObservation.InCallee, When.DuringInitializer or When.DuringInitializerThenRead) => null,
+        (OutObservation.AfterThrow, When.DuringInitializer) => "1",
+        (OutObservation.AfterThrow, When.DuringInitializerThenRead) => null,
+        _ => throw new ArgumentOutOfRangeException(nameof(when), $"When.{when} is a time the value is ready, or is excluded"),
+    };
+
+    /// <summary>Why a pair's operand is not observed, or null. Every pair without a read back is observed: where the use
+    /// runs inside the target host's own sweep above the value, the value is not ready yet and the operand is the
+    /// temporary (F14, the cross half: <see cref="NotReadyObservedModel"/> at <see cref="When.BeforeInitializer"/>).</summary>
     internal static string? ObservedCrossExclusion(CrossHost user, CrossHost target, CrossOrder order, bool readBack) =>
         readBack ? "the read back observes the user's value, not the operand: the cell without it is the one observed"
-        : UseRunsInsideTheTargetSweep(user, target, order) ? NotReadyYet
         : null;
 
     /// <summary>The use runs inside the target host's OWN sweep, below the target value's place: the value is ready
@@ -1018,35 +1075,112 @@ public sealed partial class InitializerDependencyDifferentialTests
     internal static IEnumerable<Cell> OutObservationCells()
     {
         foreach (var (holder, form, kind, use, when, observed) in ObservedLocationProduct())
-        {
-            var (_, after, returned) = ObservedText(observed, "t", "1");
-            yield return new Cell(
-                ObservedId(LocationId(holder, form, kind, use, when), observed),
-                Family.Location,
-                LocationProgram(holder, form, kind, use, when, twin: false, observed),
-                null,
-                LocationModel(use, when, form, after, returned?.Value))
+            foreach (var position in Enum.GetValues<FunctionPosition>().Where(p => PositionExclusion(p, holder, when) == null))
             {
-                IsControl = true,
-                Python = PythonExpectation.NoTwin,
-                Rejected = RejectedModel(observed, form),
-            };
-        }
+                if (!ReadyAt(when))
+                {
+                    // The value has none yet: the operand is the temporary (F14). These cells move from today's storage
+                    // (`42 7`, `42`), so they are no controls, and they carry no rejected model: the temporary is the emission.
+                    var model = NotReadyObservedModel(observed, when, form);
+                    yield return new Cell(
+                        PositionedId(ObservedId(LocationId(holder, form, kind, use, when), observed), position),
+                        Family.Location,
+                        LocationProgram(holder, form, kind, use, when, twin: false, observed, position),
+                        null,
+                        model ?? CycleError)
+                    {
+                        Raises = model == null ? CycleError : null,
+                        IsControl = false,
+                        Python = PythonExpectation.NoTwin,
+                        Route = LocationRoute(LocationUse.Read, when),
+                    };
+                    continue;
+                }
+                var (_, after, returned) = ObservedText(observed, "t", "1");
+                yield return new Cell(
+                    PositionedId(ObservedId(LocationId(holder, form, kind, use, when), observed), position),
+                    Family.Location,
+                    LocationProgram(holder, form, kind, use, when, twin: false, observed, position),
+                    null,
+                    LocationModel(use, when, form, after, returned?.Value))
+                {
+                    IsControl = true,
+                    Python = PythonExpectation.NoTwin,
+                    Rejected = RejectedModel(observed, form),
+                };
+            }
         foreach (var (user, target, order, use, observed) in ObservedCrossProduct())
-        {
-            var (_, after, returned) = ObservedText(observed, "p", "1");
-            yield return new Cell(
-                ObservedId(CrossId(user, target, order, use, readBack: false), observed),
-                Family.Location,
-                CrossProgram(user, target, order, use, readBack: false, twin: false, observed),
-                null,
-                $"{returned?.Value ?? after} {after}")
+            foreach (var position in Enum.GetValues<FunctionPosition>().Where(p => PositionExclusion(p, target.Holder) == null))
             {
-                IsControl = true,
-                Python = PythonExpectation.NoTwin,
-                Rejected = RejectedModel(observed, null),
-            };
-        }
+                if (UseRunsInsideTheTargetSweep(user, target, order))
+                {
+                    // The use runs in the target's own sweep above the value: not ready, the operand is the temporary (F14),
+                    // and the callee's read initializes the value, as the one-host cell before the initializer has it.
+                    var notReady = NotReadyObservedModel(observed, When.BeforeInitializer, HostForm.Plain);
+                    yield return new Cell(
+                        PositionedId(ObservedId(CrossId(user, target, order, use, readBack: false), observed), position),
+                        Family.Location,
+                        CrossProgram(user, target, order, use, readBack: false, twin: false, observed, position),
+                        null,
+                        notReady ?? CycleError)
+                    {
+                        Raises = notReady == null ? CycleError : null,
+                        IsControl = false,
+                        Python = PythonExpectation.NoTwin,
+                        Route = static (verdict, _, _) => ValueRoute(verdict),
+                    };
+                    continue;
+                }
+                var (_, after, returned) = ObservedText(observed, "p", "1");
+                yield return new Cell(
+                    PositionedId(ObservedId(CrossId(user, target, order, use, readBack: false), observed), position),
+                    Family.Location,
+                    CrossProgram(user, target, order, use, readBack: false, twin: false, observed, position),
+                    null,
+                    $"{returned?.Value ?? after} {after}")
+                {
+                    IsControl = true,
+                    Python = PythonExpectation.NoTwin,
+                    Rejected = RejectedModel(observed, null),
+                };
+            }
+    }
+
+    private const string SameExpressionPrefix = "Location/SameExpression/";
+
+    /// <summary>
+    /// W10 of plan-775c50's fifth verification: an <c>out</c> call and a read of the same value in one expression,
+    /// <c>fill2(out H.t, 1) + H.t</c>. The read to the right sees the operand's store (<c>1 + 42</c>), so the temporary
+    /// of a value not yet ready is stored when the call returns, before the operand to its right; stored at the end of
+    /// the statement the read would initialize the value first (<c>8</c>). From an initializer above the value
+    /// (<c>43 7</c>: then replaced by its own) and on a ready one (<c>43 42</c>). Controls: today prints both.
+    /// </summary>
+    internal static IEnumerable<Cell> SameExpressionCells()
+    {
+        foreach (var form in Enum.GetValues<HostForm>())
+            foreach (var before in new[] { true, false })
+                foreach (var position in Enum.GetValues<FunctionPosition>().Where(p => PositionExclusion(p, BindingKind.StaticField) == null))
+                {
+                    var h = form == HostForm.Generic ? "H[int]" : "H";
+                    var host = new List<string> { form == HostForm.Generic ? "class H[E]:" : "class H:" };
+                    if (before)
+                        host.AddRange(new[] { "    @static", "    a: int = use()" });
+                    host.AddRange(new[] { "    @static", $"    t: int = {InitialValue}" });
+                    var function = new List<string> { "def use() -> int:", $"    return fill2(out {h}.t, 1) + {h}.t" };
+                    var lines = position == FunctionPosition.BeforeHost ? function.Concat(host).ToList() : host.Concat(function).ToList();
+                    lines.Add("def main() -> None:");
+                    lines.Add(before ? $"    print({h}.a, {h}.t)" : $"    r = use()\n    print(r, {h}.t)");
+                    yield return new Cell(
+                        PositionedId($"{SameExpressionPrefix}{form}/{(before ? When.BeforeInitializer : When.Ready)}", position),
+                        Family.Location,
+                        WithHelpers(Harness.Join(lines)),
+                        null,
+                        $"{1 + CalleeStore} {(before ? InitialValue : CalleeStore)}")
+                    {
+                        IsControl = true,
+                        Python = PythonExpectation.NoTwin,
+                    };
+                }
     }
 
     internal static List<string> OutObservationTotalityFailures(IReadOnlyList<Cell> pool)
@@ -1058,21 +1192,66 @@ public sealed partial class InitializerDependencyDifferentialTests
             failures.Add("no operand use stores without reading: nothing is observed");
             return failures;
         }
-        if (ObservedWhenExclusion(When.Ready) != null)
-            failures.Add("an operand naming a ready value is not observed");
         // An id listed twice is the pool's own totality line: here the first cell stands for it.
         var byId = pool.GroupBy(c => c.Id, StringComparer.Ordinal).ToDictionary(g => g.Key, g => g.First(), StringComparer.Ordinal);
 
+        // At every time, an operand is observed there if and only if the value is ready there: the `Read` cell of the same
+        // holder, host form and kind at that time is a control. The times come from the `Read` cells, a second source,
+        // never from the exclusion that picks them: a time the exclusion drops while the `Read` cell there is a control,
+        // or keeps while it is none, is a line. A time with no `Read` cell is one where the read is excluded as the cycle
+        // (`WhenExclusion`): the value is not ready there, and a missing `Read` cell that no exclusion names is a line.
+        foreach (var cell in LocationProduct().Where(c => uses.Contains(c.Use)))
+        {
+            var readId = LocationId(cell.Holder, cell.Form, cell.Kind, LocationUse.Read, cell.When);
+            bool ready;
+            if (byId.TryGetValue(readId, out var read))
+                ready = read.IsControl;
+            else if (WhenExclusion(LocationUse.Read, cell.Holder, cell.When) != null)
+                ready = false;
+            else
+            {
+                failures.Add($"{readId} is not generated: nothing says whether the value is ready at When.{cell.When}");
+                continue;
+            }
+            // An observed cell carries the rejected model (the temporary, on a ready value) if and only if the value is
+            // ready there; where it is not, the cell is the temporary's own (F14) and carries none.
+            foreach (var observed in Enum.GetValues<OutObservation>())
+            {
+                var id = ObservedId(LocationId(cell.Holder, cell.Form, cell.Kind, cell.Use, cell.When), observed);
+                if (!byId.TryGetValue(id, out var observedCell))
+                {
+                    if (ready)
+                        failures.Add($"{id} is not generated, and {readId} is a control: an operand naming a ready value is not observed");
+                    continue;
+                }
+                if ((observedCell.Rejected != null) != ready)
+                    failures.Add(ready
+                        ? $"{id} carries no rejected model, and {readId} is a control: an operand naming a ready value tells the emissions apart"
+                        : $"{id} carries a rejected model, and {readId} is no control: an operand is observed as ready where the value is not");
+            }
+        }
+        // The iff holds of a host whose value is never ready, with nothing observed: every stored holder and host form has
+        // a time at which it is observed in every way.
+        foreach (var (holder, form) in LocationProduct().Where(c => uses.Contains(c.Use)).Select(c => (c.Holder, c.Form)).Distinct())
+            foreach (var observed in Enum.GetValues<OutObservation>().Where(o => !LocationProduct().Any(c => c.Holder == holder && c.Form == form && uses.Contains(c.Use)
+                && byId.ContainsKey(ObservedId(LocationId(c.Holder, c.Form, c.Kind, c.Use, c.When), o)))))
+                failures.Add($"holder BindingKind.{holder} in HostForm.{form} has no operand observed {observed} at any time");
+
         // Every cell of the two products whose use is an operand that stores is observed in every way, or says why not.
+        // At each place of the use's function (FunctionPosition): the place's own exclusion joins the observation's.
         var owed = new List<(string Id, string? Excluded)>();
         foreach (var cell in LocationProduct().Where(c => uses.Contains(c.Use)))
             foreach (var observed in Enum.GetValues<OutObservation>())
-                owed.Add((ObservedId(LocationId(cell.Holder, cell.Form, cell.Kind, cell.Use, cell.When), observed), ObservedWhenExclusion(cell.When)));
+                foreach (var position in Enum.GetValues<FunctionPosition>())
+                    owed.Add((
+                        PositionedId(ObservedId(LocationId(cell.Holder, cell.Form, cell.Kind, cell.Use, cell.When), observed), position),
+                        ObservedWhenExclusion(cell.When) ?? PositionExclusion(position, cell.Holder, cell.When)));
         foreach (var cell in CrossProduct().Where(c => uses.Contains(c.Use)))
             foreach (var observed in Enum.GetValues<OutObservation>())
-                owed.Add((
-                    ObservedId(CrossId(cell.User, cell.Target, cell.Order, cell.Use, cell.ReadBack), observed),
-                    ObservedCrossExclusion(cell.User, cell.Target, cell.Order, cell.ReadBack)));
+                foreach (var position in Enum.GetValues<FunctionPosition>())
+                    owed.Add((
+                        PositionedId(ObservedId(CrossId(cell.User, cell.Target, cell.Order, cell.Use, cell.ReadBack), observed), position),
+                        ObservedCrossExclusion(cell.User, cell.Target, cell.Order, cell.ReadBack) ?? PositionExclusion(position, cell.Target.Holder)));
         foreach (var (id, excluded) in owed)
         {
             if (byId.ContainsKey(id) == (excluded != null))
@@ -1083,10 +1262,6 @@ public sealed partial class InitializerDependencyDifferentialTests
         var cross = ObservedCrossProduct().ToList();
         foreach (var observed in Enum.GetValues<OutObservation>())
         {
-            // On every stored holder and host form, and at every time the value is ready.
-            foreach (var (holder, form) in LocationProduct().Where(c => uses.Contains(c.Use)).Select(c => (c.Holder, c.Form)).Distinct())
-                foreach (var when in Enum.GetValues<When>().Where(w => ObservedWhenExclusion(w) == null && !location.Contains((holder, form, ValueKind.Int, uses[0], w, observed))))
-                    failures.Add($"holder BindingKind.{holder} in HostForm.{form} has no operand observed {observed} at When.{when}");
             // The value ready in a host that has not swept: the one place the value's state and its host's differ.
             if (!cross.Any(c => c.Observed == observed && UseRunsBelowTheValueInTheTargetSweep(c.User, c.Target, c.Order)))
                 failures.Add($"no operand is observed {observed} on a ready value whose host is still sweeping");
@@ -1094,9 +1269,12 @@ public sealed partial class InitializerDependencyDifferentialTests
                 failures.Add($"no operand is observed {observed} on a host the use is the first to require");
         }
 
-        // An observed cell tells the two emissions apart, and is a control: green today.
-        var generated = location.Select(c => ObservedId(LocationId(c.Holder, c.Form, c.Kind, c.Use, c.When), c.Observed))
-            .Concat(cross.Select(c => ObservedId(CrossId(c.User, c.Target, c.Order, c.Use, readBack: false), c.Observed)));
+        // An observed cell on a ready value tells the two emissions apart, and is a control: green today.
+        var generated = Enum.GetValues<FunctionPosition>().SelectMany(position =>
+            location.Where(c => ReadyAt(c.When) && PositionExclusion(position, c.Holder, c.When) == null)
+                .Select(c => PositionedId(ObservedId(LocationId(c.Holder, c.Form, c.Kind, c.Use, c.When), c.Observed), position))
+            .Concat(cross.Where(c => !UseRunsInsideTheTargetSweep(c.User, c.Target, c.Order) && PositionExclusion(position, c.Target.Holder) == null)
+                .Select(c => PositionedId(ObservedId(CrossId(c.User, c.Target, c.Order, c.Use, readBack: false), c.Observed), position))));
         foreach (var id in generated)
         {
             if (!byId.TryGetValue(id, out var cell))
@@ -1111,6 +1289,29 @@ public sealed partial class InitializerDependencyDifferentialTests
         return failures;
     }
 
+    /// <summary>The programs the position axis's exclusions rest on: a read of a module variable from a function above
+    /// it, in one host and from a class's initializer, is refused; a store there binds a local. The initializer's own
+    /// text holds no function, which <see cref="ReasonsNoProgramShows"/> carries.</summary>
+    private static IEnumerable<(string What, Exclusion Exclusion)> PositionExclusions()
+    {
+        foreach (var holder in LocationHolders.Where(h => PositionExclusion(FunctionPosition.BeforeHost, h) != null))
+        {
+            var reason = PositionExclusion(FunctionPosition.BeforeHost, holder)!;
+            yield return ($"position BeforeHost of BindingKind.{holder}, a read",
+                new Exclusion(reason, LocationProgram(holder, HostForm.Plain, ValueKind.Int, LocationUse.Read, When.Ready, twin: false, position: FunctionPosition.BeforeHost), "SPY0200"));
+            yield return ($"position BeforeHost of BindingKind.{holder}, a store",
+                new Exclusion(reason, LocationProgram(holder, HostForm.Plain, ValueKind.Int, LocationUse.Assign, When.Ready, twin: false, position: FunctionPosition.BeforeHost))
+                { Prints = $"5 {InitialValue}" });
+            foreach (var user in CrossHosts().Where(u => !u.IsModule))
+            {
+                var target = new CrossHost(holder, HostForm.Plain);
+                yield return ($"position BeforeHost of cross {user.Key}>{target.Key}, a read",
+                    new Exclusion(reason, CrossProgram(user, target, CrossOrder.UserFirst, LocationUse.Read, readBack: false, twin: false, position: FunctionPosition.BeforeHost), "SPY0200"));
+            }
+        }
+        yield return ("position BeforeHost in an initializer's own text", new Exclusion(NoFunctionToPlace));
+    }
+
     private static IEnumerable<(string What, Exclusion Exclusion)> LocationExclusions() =>
         ExcludedHolders.Select(e => ($"holder BindingKind.{e.Key}", e.Value))
             .Concat(ExcludedStoreForms.Select(e => ($"StoreForm.{e.Key}", e.Value)))
@@ -1122,6 +1323,7 @@ public sealed partial class InitializerDependencyDifferentialTests
                 "a walrus in a module initializer's text",
                 new Exclusion(WalrusBindsALocal, "a: int = (t := 5) + 1\nt: int = 7\ndef main() -> None:\n    print(a, t)\n") { Prints = "6 7" }))
             .Concat(CrossExclusions())
+            .Concat(PositionExclusions())
             .Concat(ExcludedLocationCells.Select(e => (
                 $"location {e.Key.Use} on {e.Key.Holder}+{e.Key.Form}",
                 new Exclusion(e.Value.Reason, LocationProgram(e.Key.Holder, e.Key.Form, KindsOf(e.Key.Use)[0], e.Key.Use, When.Ready, twin: false), e.Value.Code))));
@@ -1255,15 +1457,43 @@ public sealed partial class InitializerDependencyDifferentialTests
                 foreach (var kind in Enum.GetValues<ValueKind>())
                     foreach (var use in Enum.GetValues<LocationUse>().Where(u => UseExclusion(u, kind, holder) == null && !ExcludedLocationCells.ContainsKey((u, holder, form))))
                         foreach (var when in Enum.GetValues<When>().Where(w => WhenExclusion(use, holder, w) == null))
-                        {
-                            var id = LocationId(holder, form, kind, use, when);
-                            owed[id] = (!IsOwnInitializer(when) && when != When.BeforeInitializer) || (IsPlainStore(use) && when != When.InInitializerText);
-                            if (!ObservedUses().Contains(use) || ObservedWhenExclusion(when) != null)
-                                continue;
-                            foreach (var observed in Enum.GetValues<OutObservation>())
-                                owed[ObservedId(id, observed)] = true;
-                        }
-        failures.AddRange(PoolAgainstOwed("the location axes", owed, pool.Where(c => c.Family == Family.Location && !c.Id.StartsWith(CrossPrefix, StringComparison.Ordinal))));
+                            foreach (var position in Enum.GetValues<FunctionPosition>().Where(p => PositionExclusion(p, holder, when) == null))
+                            {
+                                // The function's place moves nothing: a control at one place is a control at the other.
+                                var id = LocationId(holder, form, kind, use, when);
+                                owed[PositionedId(id, position)] = (!IsOwnInitializer(when) && when != When.BeforeInitializer) || (IsPlainStore(use) && when != When.InInitializerText);
+                                if (!ObservedUses().Contains(use) || ObservedWhenExclusion(when) != null)
+                                    continue;
+                                foreach (var observed in Enum.GetValues<OutObservation>())
+                                    owed[PositionedId(ObservedId(id, observed), position)] = !IsOwnInitializer(when) && when != When.BeforeInitializer;
+                            }
+        foreach (var cell in SameExpressionCells())
+            owed[cell.Id] = true;
+
+        // The function's place moves nothing (the contract's "position of the use"): a cell with its function above the
+        // host has its first layout's cell, with the same expectation; and every type's value, in every host form, has a
+        // plain store, an `out` operand and a read above the host, run before the value's initializer. The holders are
+        // read from the host (a type's value), never from PositionExclusion: an exclusion widened to a type's value is a
+        // line here, and its program is Exclusions_ThatRestOnADiagnostic_StillDrawIt's.
+        var byId = pool.GroupBy(c => c.Id, StringComparer.Ordinal).ToDictionary(g => g.Key, g => g.First(), StringComparer.Ordinal);
+        var marked = pool.Where(c => c.Id.EndsWith("/" + FunctionFirstMarker, StringComparison.Ordinal)).ToList();
+        foreach (var cell in marked)
+        {
+            var first = cell.Id[..^(FunctionFirstMarker.Length + 1)];
+            if (!byId.TryGetValue(first, out var below))
+                failures.Add($"{cell.Id} places its function above the host and {first} is not generated");
+            else if (below.Model != cell.Model || below.Raises != cell.Raises || below.IsControl != cell.IsControl || below.Rejected != cell.Rejected
+                     || below.Python != cell.Python || below.TwinSource != cell.TwinSource)
+                failures.Add($"{cell.Id} expects other than {first}: the function's place is no axis of the model");
+        }
+        foreach (var (holder, form) in cells.Select(c => (c.Holder, c.Form)).Distinct().Where(h => !IsModuleHolder(h.Holder)))
+            foreach (var use in new[] { LocationUse.Assign, LocationUse.OutOperand, LocationUse.Read }.Where(u => UseExclusion(u, ValueKind.Int, holder) == null))
+            {
+                var id = PositionedId(LocationId(holder, form, ValueKind.Int, use, When.BeforeInitializer), FunctionPosition.BeforeHost);
+                if (!byId.ContainsKey(id))
+                    failures.Add($"{id} is not generated: the position axis has no {use} above the host before the initializer");
+            }
+        failures.AddRange(PoolAgainstOwed("the location axes", owed, pool.Where(c => c.Family == Family.Location && !c.Id.StartsWith(CrossPrefix, StringComparison.Ordinal) && !c.Id.StartsWith(RetryPrefix, StringComparison.Ordinal))));
         return failures;
     }
 }

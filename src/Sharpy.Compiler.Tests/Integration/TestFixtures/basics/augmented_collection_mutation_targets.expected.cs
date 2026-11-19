@@ -13,6 +13,7 @@ namespace AugmentedCollectionMutationTargets
     {
         public static void Main()
         {
+            __Load();
 #line (24, 5) - (24, 13) 12 "augmented_collection_mutation_targets.spy"
             var xs = new Sharpy.List<int>()
 #line hidden
@@ -136,6 +137,12 @@ namespace AugmentedCollectionMutationTargets
 #line (71, 5) - (71, 13) 12 "augmented_collection_mutation_targets.spy"
             global::Sharpy.Builtins.Print(n);
 #line hidden
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        [global::Sharpy.SharpyLoadEntry(false)]
+        public static void __Load()
+        {
         }
     }
 

@@ -12,6 +12,7 @@ namespace NestedUnionInClass1729
     {
         public static void Main()
         {
+            __Load();
 #line (18, 5) - (18, 24) 12 "nested_union_in_class_1729.spy"
             global::NestedUnionInClass1729.Outer o = new global::NestedUnionInClass1729.Outer();
 #line (19, 5) - (19, 41) 12 "nested_union_in_class_1729.spy"
@@ -19,6 +20,12 @@ namespace NestedUnionInClass1729
 #line (20, 5) - (20, 41) 12 "nested_union_in_class_1729.spy"
             global::Sharpy.Builtins.Print(o.Area(new global::NestedUnionInClass1729.Outer.Shape.Square(4)));
 #line hidden
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        [global::Sharpy.SharpyLoadEntry(false)]
+        public static void __Load()
+        {
         }
     }
 

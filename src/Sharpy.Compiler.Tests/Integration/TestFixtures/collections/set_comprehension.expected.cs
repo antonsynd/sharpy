@@ -13,6 +13,7 @@ namespace SetComprehension
     {
         public static void Main()
         {
+            __Load();
 #line (3, 5) - (3, 43) 12 "set_comprehension.spy"
             Sharpy.List<int> items = new Sharpy.List<int>()
 #line hidden
@@ -37,6 +38,12 @@ namespace SetComprehension
 #line (5, 5) - (5, 23) 12 "set_comprehension.spy"
             global::Sharpy.Builtins.Print(global::Sharpy.Builtins.Len(result));
 #line hidden
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        [global::Sharpy.SharpyLoadEntry(false)]
+        public static void __Load()
+        {
         }
     }
 }

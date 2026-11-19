@@ -439,6 +439,17 @@ internal partial class ProjectCompiler
                                         {
                                             symbolToRegister = aliasVar with { OriginSymbol = ownDeclaration };
                                         }
+                                        // The type twin (plan-775c50 F4): an aliased type is a clone of the
+                                        // loader's extraction too, whose fields are not the declared ones
+                                        // that carry a static value's storage; its origin ends at THIS
+                                        // compilation's declaration, as the variable twin's does, so
+                                        // `CC.s` binds the declared field (`from lib import LC as CC`).
+                                        else if (importAlias.AsName != null && registryBinding == null
+                                            && symbolToRegister is TypeSymbol { OriginSymbol: { } extractedType } aliasType
+                                            && ResolveOwnExportedSymbol(moduleInfo, lookupName, extractedType) is { } ownType)
+                                        {
+                                            symbolToRegister = aliasType with { OriginSymbol = ownType };
+                                        }
 
                                         // The registry's own binding under its own name shadows nothing (#1322).
                                         // The identity is the exported symbol's DEFINING module.symbol, never the

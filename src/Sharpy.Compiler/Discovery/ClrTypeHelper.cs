@@ -20,6 +20,41 @@ namespace Sharpy.Compiler.Discovery;
 /// </summary>
 internal static class ClrTypeHelper
 {
+    /// <summary>
+    /// The type a member's VALUE has (plan-775c50 D10): its CLR type, or a by-reference member's
+    /// element — a <c>ref T</c> property, a <c>ref readonly T</c> one or a ref-returning method reads
+    /// as a <c>T</c> (C# reads through the reference at every use). The one place a member's
+    /// by-reference shape is dropped; it never says how the value is stored (a hand-written
+    /// <c>public static ref int X</c> is Plain: <see cref="IsGuardedStorage"/> reads the attribute).
+    /// A parameter keeps its by-reference type: <c>ref</c> / <c>out</c> is its passing mode.
+    /// </summary>
+    internal static Type ValueTypeOf(Type memberType)
+        => memberType.IsByRef ? memberType.GetElementType()! : memberType;
+
+    /// <summary>Whether a member is one the compiler added beside the user's (D10): it carries
+    /// <c>[CompilerGenerated]</c>. Discovery exports no such member of a module.</summary>
+    internal static bool IsCompilerGenerated(MemberInfo member)
+        => member.CustomAttributes.Any(a => a.AttributeType.FullName == "System.Runtime.CompilerServices.CompilerGeneratedAttribute");
+
+    /// <summary>Whether a value's recorded storage is Guarded (D10): its
+    /// <c>Sharpy.SharpyStaticStorageAttribute</c> says so. No attribute is Plain, whatever the CLR shape.</summary>
+    internal static bool IsGuardedStorage(MemberInfo member)
+        => member.CustomAttributes.Any(a => a.AttributeType.FullName == "Sharpy.SharpyStaticStorageAttribute"
+            && a.ConstructorArguments.Count == 1
+            && Convert.ToInt32(a.ConstructorArguments[0].Value, System.Globalization.CultureInfo.InvariantCulture) == GuardedStorageKindValue);
+
+    /// <summary><c>Sharpy.StaticStorageKind.Guarded</c>'s value, read by metadata (the attribute may come
+    /// from a reference context's own Sharpy.Core).</summary>
+    private const int GuardedStorageKindValue = 1;
+
+    /// <summary>The <c>hasSweep</c> of a method's <c>Sharpy.SharpyLoadEntryAttribute</c>, or null when the
+    /// method is no load entry (D10): the entry is found by the attribute, never by its name.</summary>
+    internal static bool? LoadEntrySweep(MethodInfo method)
+        => method.CustomAttributes.FirstOrDefault(a => a.AttributeType.FullName == "Sharpy.SharpyLoadEntryAttribute"
+            && a.ConstructorArguments.Count == 1) is { } entry
+            ? (bool)entry.ConstructorArguments[0].Value!
+            : null;
+
     private static readonly ConcurrentDictionary<Type, bool> _paramsIndexerCache = new();
 
     // Caches (CLR type, Sharpy member name) -> original CLR method name.

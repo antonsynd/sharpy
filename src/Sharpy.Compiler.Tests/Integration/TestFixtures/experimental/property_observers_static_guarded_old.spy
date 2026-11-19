@@ -1,0 +1,22 @@
+# A Guarded @static property default (plan-775c50 D4) with an after_set observer: the
+# observer's old value is a read, so a store before the initializer initializes it first
+# (old 7), never a CLR default (old 0); once Ready its initializer does not run again.
+class H:
+    @static
+    u: int = H.poke()
+    @static
+    property hp: int = seven()
+        after_set(old_value):
+            print("old", old_value)
+    @static
+    def poke() -> int:
+        H.hp = 42
+        return 1
+
+def seven() -> int:
+    return 7
+
+def main() -> None:
+    print(H.u, H.hp)
+    H.hp = 5
+    print(H.hp)

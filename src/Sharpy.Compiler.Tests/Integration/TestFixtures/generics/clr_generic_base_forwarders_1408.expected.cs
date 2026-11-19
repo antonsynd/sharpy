@@ -13,6 +13,7 @@ namespace ClrGenericBaseForwarders1408
     {
         public static void Main()
         {
+            __Load();
 #line (26, 5) - (26, 28) 12 "clr_generic_base_forwarders_1408.spy"
             global::ClrGenericBaseForwarders1408.IntList m = new global::ClrGenericBaseForwarders1408.IntList();
 #line (27, 5) - (27, 13) 12 "clr_generic_base_forwarders_1408.spy"
@@ -30,6 +31,12 @@ namespace ClrGenericBaseForwarders1408
 #line (35, 5) - (35, 24) 12 "clr_generic_base_forwarders_1408.spy"
             global::Sharpy.Builtins.Print(copied.Count);
 #line hidden
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        [global::Sharpy.SharpyLoadEntry(false)]
+        public static void __Load()
+        {
         }
     }
 

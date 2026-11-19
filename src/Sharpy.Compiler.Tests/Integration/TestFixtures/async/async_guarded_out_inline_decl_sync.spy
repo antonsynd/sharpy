@@ -1,0 +1,83 @@
+# plan-775c50 D6: a call with an `out` operand on a Guarded value is emitted once per arm in
+# an `async def` body. An inline `out` declaration beside it is declared once, before the
+# statement; a temporary the call declares is its arm's own; each operand runs once.
+# The control: async_guarded_out_inline_decl.spy in a plain `def`.
+class Box:
+    x: int
+
+    def __init__(self, x: int):
+        self.x = x
+
+def mk() -> Box?:
+    print("mk")
+    return Some(Box(3))
+
+def take(a: out int, n: int?) -> bool:
+    a = 40
+    return n.is_some
+
+def try_parse(s: str, a: out int, b: out int) -> bool:
+    a = int(s)
+    b = 7
+    return True
+
+def take2(a: out int, b: out int) -> int:
+    a = 1
+    b = 2
+    return a + b
+
+def take3(a: out int, n: int, b: out int) -> int:
+    a = n
+    b = n + 1
+    return n * 10
+
+def setv(a: out int, b: out int) -> None:
+    a = 9
+    b = 8
+
+def setstr(a: out str | None) -> None:
+    a = "set"
+
+def ping(tag: str) -> int:
+    print("ping", tag)
+    return 4
+
+g: int = 1
+h: int = 2
+k: str | None = "k"
+
+class C:
+    @static
+    s: int = 3
+
+async def two() -> int:
+    return 2
+
+def main():
+    ok = try_parse("5", out g, out v: int)
+    print(ok, g, v)
+    setv(out h, out w: int)
+    print(h, w)
+    ok = take(out g, mk()?.x)
+    print(ok, g)
+    r = take2(out g, out va: auto)
+    print(r, g, va)
+    r = take2(out C.s, out let u)
+    print(r, C.s, u)
+    print(take2(out h, out q: int) + take2(out g, out z: int), q, z, g, h)
+    setv(out C.s, out let y)
+    print(C.s, y)
+    n = 0
+    while take2(out g, out mm: int) < 4 and n < 2:
+        n = n + 1
+        print(n, mm, g)
+    print(take2(out g, out p: int) + 2, p)
+    r = take3(out g, 2, out c: int)
+    print(r, g, c)
+    r = take3(out g, (y2 := 5), out c2: int)
+    print(r, g, c2, y2)
+    r = take3(out g, ping("once"), out d: int) + take3(out h, ping("twice"), out d2: int)
+    print(r, g, h, d, d2)
+    if k is not None:
+        setstr(out k)
+        print(k)

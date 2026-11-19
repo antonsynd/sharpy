@@ -37,6 +37,7 @@ namespace MatchEnumMember0001
 
         public static void Main()
         {
+            __Load();
 #line (18, 5) - (18, 23) 12 "match_enum_member_0001.spy"
             global::Sharpy.Builtins.Print(global::MatchEnumMember0001.MatchEnumMember0001Module.Describe(0));
 #line (19, 5) - (19, 23) 12 "match_enum_member_0001.spy"
@@ -46,6 +47,12 @@ namespace MatchEnumMember0001
 #line (21, 5) - (21, 24) 12 "match_enum_member_0001.spy"
             global::Sharpy.Builtins.Print(global::MatchEnumMember0001.MatchEnumMember0001Module.Describe(99));
 #line hidden
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        [global::Sharpy.SharpyLoadEntry(false)]
+        public static void __Load()
+        {
         }
     }
 

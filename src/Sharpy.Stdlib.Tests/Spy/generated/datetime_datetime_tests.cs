@@ -18,6 +18,11 @@ namespace Sharpy.Stdlib.Tests.Spy.Datetime.DatetimeDatetimeTests
     [global::Sharpy.SharpyModule("datetime.datetime_datetime_tests")]
     public static partial class DatetimeDatetimeTestsModule
     {
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        [global::Sharpy.SharpyLoadEntry(false)]
+        public static void __Load()
+        {
+        }
     }
 
     public partial class DatetimeDatetimeTestsModuleTests

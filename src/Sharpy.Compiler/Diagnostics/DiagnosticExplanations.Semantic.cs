@@ -939,7 +939,12 @@ public static partial class DiagnosticExplanations
             "Two or more const declarations reference each other, forming a cycle that cannot " +
             "be evaluated. Unlike Python (which raises NameError at runtime), Sharpy requires " +
             "const values to be statically resolvable. Break the cycle by computing one of the " +
-            "values independently.",
+            "values independently. The same holds of any module or '@static' value (rule N3, " +
+            "plan-775c50 D8): a value whose initializer reads it back on every run — itself, or " +
+            "through other values, in a place evaluated whenever the initializer is — can never be " +
+            "given a value, and is refused here. A read in a branch that may not run (an 'if' arm, " +
+            "the right of 'and' / 'or', a lambda's body) or a cycle through a value some plain store " +
+            "in the module names is no compile error; if it closes at run time it raises NameError.",
             "const A: int = B\nconst B: int = A  # error: circular reference",
             "Break the cycle:\n    const A: int = 42\n    const B: int = A");
 
@@ -1252,10 +1257,10 @@ public static partial class DiagnosticExplanations
             "def foo(*args: ref int): ...",
             "Remove the modifier or use individual parameters: def foo(a: ref int, b: ref int): ...");
 
-        Add(dict, DiagnosticCodes.Semantic.ModifierRequiresVariable, "ref/out argument must be a variable", "Semantic",
-            "ref and out arguments must refer to a storage location (variable, field, or indexer) that can be written to. Literals and expression results have no storage location.",
-            "swap(ref 5, ref 10)",
-            "Pass a variable instead: x = 5; swap(ref x, ref y)");
+        Add(dict, DiagnosticCodes.Semantic.ModifierRequiresVariable, "ref/out/in argument must be a variable", "Semantic",
+            "A ref, out or in argument passes a storage location, so the checker decides by what the operand resolves to, never by how it is spelled: a bare, qualified or aliased name of one value gets one verdict. A variable or field (module, @static or instance) is admitted under every modifier. A property is refused under ref, out and in, at module level, @static or on an instance, with a default or not: it is a pair of accessors, not a storage location. A const is refused under ref and out, because the callee may write through them; a computed const may be passed with in. Under ref and out a literal or any other expression result is refused too: it has no storage location.",
+            "property limit: int = 3\n\ndef bump(a: ref int) -> None:\n    a = a + 1\n\ndef main() -> None:\n    bump(ref limit)  # Error: 'limit' is a property",
+            "Pass a variable instead, and store it back if the property must change: current = limit; bump(ref current); limit = current");
 
         Add(dict, DiagnosticCodes.Semantic.InParameterReassignment, "cannot reassign 'in' parameter", "Semantic",
             "Parameters declared with the 'in' modifier are passed by readonly reference. They cannot be reassigned to prevent unintended mutation of the caller's value.",
@@ -1430,24 +1435,24 @@ public static partial class DiagnosticExplanations
             "      property set level(self, v: int): ...");
 
         Add(dict, DiagnosticCodes.SemanticOverflow.StaticInitializerForwardRead,
-            "Static initializer reads a static sibling declared later",
+            "Class-body initializer reads a later 'const' whose name is ambiguous there",
             "Semantic",
-            "A type's static initializers — a '@static' field's initializer, a '@static' property's default, " +
-            "and a 'const' whose initializer is not a compile-time constant (it is stored like a '@static' " +
-            "field) — run once, top to bottom, in the order the type body declares them. A static initializer " +
-            "that reads a '@static' field, a '@static' property or such a 'const' declared LATER in the same " +
-            "type, or reads itself, would see that member's default value (0, None, ...), because its " +
-            "initializer has not run yet; one that calls a '@static' method declared later could read statics " +
-            "that are not initialized yet. The read is refused in every spelling — bare ('b'), through the " +
-            "type name ('Host.b'), through an alias of the type. A compile-time 'const' ('const B: int = 3') " +
-            "is a constant, not storage, and can be read from anywhere. A bare forward read of a '@static' " +
-            "member is SPY0200 (the class body's own order rule); this code covers the spellings that rule " +
-            "does not see. A read of an EARLIER member is always allowed, and so is a call of an earlier " +
-            "'@static' method — but that method's body runs at the call and reads only the statics " +
-            "initialized so far.",
-            "class Host:\n    @static\n    a: int = Host.b  # SPY0618: 'b' is declared later than 'a'\n" +
-            "    @static\n    b: int = 2",
-            "Move the member above its reader, read it in a method, or make a 'const' a compile-time constant:\n" +
-            "  class Host:\n      @static\n      b: int = 2\n      @static\n      a: int = Host.b  # 2");
+            "Narrowed by plan-775c50 to N2's order-vs-scope shape until P78 (#2423) replaces it with N2's own code. " +
+            "A '@static' field's initializer, a '@static' property's default or a 'const' initializer reads, by " +
+            "bare name, a 'const' of its own type that is not a compile-time constant and is declared LATER, while " +
+            "a binding outside the class (a module value, a function, a builtin, an enclosing scope) holds the " +
+            "same name. Python reads the outer binding there, because the class body has not bound the name yet; " +
+            "reading by scope finds the later member. The two give the name different meanings, so the read is " +
+            "refused rather than given either one silently. The same read inside a comprehension's body (its " +
+            "element, a condition, a later iterable) is refused with or without an outer binding: a " +
+            "comprehension's body does not see the class body's names. Every other forward read runs — each " +
+            "value is initialized before its first read (rule N3) — and a value that reads itself on every run " +
+            "is SPY0278.",
+            "def seven() -> int:\n    return 7\n\nk: int = 9\n\nclass Host:\n    @static\n" +
+            "    a: int = k + 1  # SPY0618: the module 'k' or the later 'Host.k'?\n" +
+            "    const k: int = seven()",
+            "Say which one you mean, or rename one of them:\n" +
+            "  class Host:\n      @static\n      a: int = Host.k + 1  # the member: 8\n" +
+            "      const k: int = seven()");
     }
 }

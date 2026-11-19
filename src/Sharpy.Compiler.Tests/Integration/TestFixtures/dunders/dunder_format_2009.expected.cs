@@ -13,6 +13,7 @@ namespace DunderFormat2009
     {
         public static void Main()
         {
+            __Load();
 #line (33, 5) - (33, 20) 12 "dunder_format_2009.spy"
             var m = new global::DunderFormat2009.Money(1250);
 #line (34, 5) - (34, 18) 12 "dunder_format_2009.spy"
@@ -30,6 +31,12 @@ namespace DunderFormat2009
 #line (40, 5) - (40, 30) 12 "dunder_format_2009.spy"
             global::Sharpy.Builtins.Print(FormattableString.Invariant($"{(global::Sharpy.PyFormat.Apply(new global::DunderFormat2009.Tag("x"), "spec"))}"));
 #line hidden
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        [global::Sharpy.SharpyLoadEntry(false)]
+        public static void __Load()
+        {
         }
     }
 

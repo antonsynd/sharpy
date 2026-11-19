@@ -836,7 +836,12 @@ internal partial class TypeChecker
         // We need to re-validate with x prepended to arguments
         if (target is FunctionCall funcCall)
         {
-            return CheckPipeForwardWithFunctionCall(leftType, funcCall, binOp);
+            var pipedCallType = CheckPipeForwardWithFunctionCall(leftType, funcCall, binOp);
+            // #1675, as CheckFunctionCall does once every route has had its chance: an inline
+            // `out x: auto` / `out let x` of the pipe's call still Unknown never met a resolved
+            // parameter, and is refused by name (SPY0203), never left to the emitter (plan-775c50 D6).
+            RefuseUnresolvedAutoOutBindings(funcCall);
+            return pipedCallType;
         }
 
         // Case 2: x |> f - right side is an identifier or expression that should be callable
@@ -1047,6 +1052,12 @@ internal partial class TypeChecker
                         break; // Shouldn't happen due to tooMany check
                     }
 
+                    // #1675 on the pipe route (plan-775c50 D6): an inline `out x: auto` / `out let x`
+                    // argument takes this parameter's type, as on the direct-call route. A still-open
+                    // generic parameter is left to the C# inference it has today.
+                    if (i > 0 && SubstitutedParameterType(param.Type, null) is { } closedParamType)
+                        WriteBackAutoOutBindingType(call.Arguments[i - 1], closedParamType);
+
                     if (!IsAssignable(argType, param.Type))
                     {
                         var argDesc = i == 0 ? "piped value" : $"argument {i}";
@@ -1075,6 +1086,8 @@ internal partial class TypeChecker
                     {
                         // Check if this parameter was already provided positionally (including piped value)
                         var paramIndex = funcSymbol.Parameters.ToList().IndexOf(param);
+                        if (SubstitutedParameterType(param.Type, null) is { } closedKwargType)
+                            WriteBackAutoOutBindingType(kwarg.Value, closedKwargType);
                         if (paramIndex < allArgTypes.Count)
                         {
                             AddError($"Argument '{kwarg.Name}' was already provided positionally",
@@ -1124,16 +1137,28 @@ internal partial class TypeChecker
                 return SemanticType.Unknown;
             }
 
+            // The signature the call binds, as a direct call binds it (InferFunctionTypeSignature): a
+            // method's receiver-substituted formals, its method-level type parameters inferred, and the
+            // return type at the same inferred arguments (`"s" |> Box().gm()` is `str`, not `U`).
+            var (pipeParamTypes, pipeReturnType) = InferFunctionTypeSignature(ft, allArgTypes);
+
             // Validate positional argument types
             for (int i = 0; i < allArgTypes.Count; i++)
             {
-                if (!IsAssignable(allArgTypes[i], ft.ParameterTypes[i]))
+                // #1675 on the pipe route (plan-775c50 D6): an inline `out x: auto` / `out let x`
+                // argument takes this parameter's type, as CheckLambdaCall writes it back on the
+                // direct-call route for a method, a static method, a generic class's method and a
+                // module-qualified function.
+                if (i > 0)
+                    WriteBackAutoOutBindingType(call.Arguments[i - 1], pipeParamTypes[i]);
+
+                if (!IsAssignable(allArgTypes[i], pipeParamTypes[i]))
                 {
                     var argDesc = i == 0 ? "piped value" : $"argument {i}";
                     var argNode = i == 0 ? binOp.Left : call.Arguments[i - 1];
                     ReportValueTypeMismatch(
-                        $"Cannot pass {argDesc} of type '{allArgTypes[i].GetDisplayName()}' where '{ft.ParameterTypes[i].GetDisplayName()}' is expected",
-                        argNode, ft.ParameterTypes[i],
+                        $"Cannot pass {argDesc} of type '{allArgTypes[i].GetDisplayName()}' where '{pipeParamTypes[i].GetDisplayName()}' is expected",
+                        argNode, pipeParamTypes[i],
                         argNode.LineStart,
                         argNode.ColumnStart,
                         code: DiagnosticCodes.Semantic.TypeMismatch,
@@ -1141,7 +1166,7 @@ internal partial class TypeChecker
                 }
             }
 
-            return ft.ReturnType;
+            return pipeReturnType;
         }
 
         AddError($"Pipe target must be callable, got '{calleeType.GetDisplayName()}'",

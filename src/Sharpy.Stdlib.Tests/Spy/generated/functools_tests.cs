@@ -18,6 +18,11 @@ namespace Sharpy.Stdlib.Tests.Spy.Functools.FunctoolsTests
     [global::Sharpy.SharpyModule("functools.functools_tests")]
     public static partial class FunctoolsTestsModule
     {
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        [global::Sharpy.SharpyLoadEntry(false)]
+        public static void __Load()
+        {
+        }
     }
 
     public partial class FunctoolsTestsModuleTests

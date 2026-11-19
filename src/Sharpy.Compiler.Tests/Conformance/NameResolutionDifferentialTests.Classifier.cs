@@ -107,11 +107,13 @@ public partial class NameResolutionDifferentialTests
     }
 
     /// <summary>The positive control of "never SPY0908": a C#-compile failure reaches the classifier through the mapped
-    /// diagnostics as Ice, and the same program is never read as a refusal.</summary>
+    /// diagnostics as Ice, and the same program is never read as a refusal. The specimen is seed C36, #2151's store arm
+    /// (CS0103), out of P77's contract; it was #2420's stored lambda until plan-775c50 T1 made that program run.</summary>
     [Fact]
     public void Classifier_AGeneratedCSharpFailure_IsIce()
     {
-        var run = RunSharpy("k: int = 3\ng: () -> int = lambda: k * 2\ndef main() -> None:\n    print(g())\n");
+        // #2151's store arm (P79): when P79 makes this program run, swap the specimen again for one still SPY0908.
+        var run = RunSharpy("x: int = 1\nclass H:\n    def m(self) -> None:\n        x = 5\ndef main() -> None:\n    H().m()\n    print(x)\n");
 
         Assert.Contains("SPY0908", run.AllCodes);
         Assert.Equal(SharpyKind.Ice, ClassifySharpy(run));

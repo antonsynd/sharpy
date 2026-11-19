@@ -27,6 +27,7 @@ namespace ConstructorReferencePinned
 
         public static void Main()
         {
+            __Load();
 #line (15, 5) - (15, 27) 12 "constructor_reference_pinned.spy"
             global::System.Func<string, int> g = global::Sharpy.Builtins.Int;
 #line (16, 5) - (16, 19) 12 "constructor_reference_pinned.spy"
@@ -90,6 +91,12 @@ namespace ConstructorReferencePinned
 #line (55, 5) - (55, 27) 12 "constructor_reference_pinned.spy"
             global::Sharpy.Builtins.Print(copyMaker(src));
 #line hidden
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        [global::Sharpy.SharpyLoadEntry(false)]
+        public static void __Load()
+        {
         }
     }
 }

@@ -6,6 +6,16 @@ Mathematical functions.
 import math
 ```
 
+## Properties
+
+| Name | Type | Description |
+|------|------|-------------|
+| `pi` | `float` |  |
+| `e` | `float` |  |
+| `tau` | `float` |  |
+| `inf` | `float` |  |
+| `nan` | `float` |  |
+
 ## Functions
 
 ### `math.ceil(x: float) -> float`

@@ -18,6 +18,11 @@ namespace Sharpy.Stdlib.Tests.Spy.Shlex.ShlexModuleTests
     [global::Sharpy.SharpyModule("shlex.shlex_module_tests")]
     public static partial class ShlexModuleTestsModule
     {
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        [global::Sharpy.SharpyLoadEntry(false)]
+        public static void __Load()
+        {
+        }
     }
 
     public partial class ShlexModuleTestsModuleTests

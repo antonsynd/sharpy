@@ -188,7 +188,10 @@ internal class IncrementalCompilationCache
     //      with no definition (members Unknown warm), lists an imported class once per importing
     //      scope (its interfaces doubled on restore → SPY0909), and writes a nested ok Result the
     //      depth-aware decoder cannot split.
-    internal const int CurrentSchemaVersion = 41;
+    // v42: CachedCodeGenInfo carries StaticStorage, IsOnGenericHost and HasSweep, CachedProperty the
+    //      first two, and FileCacheEntry the module's own HasSweep (plan-775c50 D2). A v41 entry restores
+    //      every module and static value with no storage fact and every module with no sweep fact.
+    internal const int CurrentSchemaVersion = 42;
 
     private readonly string _cacheFilePath;
     private readonly string _symbolCachePath;
@@ -723,6 +726,7 @@ internal class IncrementalCompilationCache
             Diagnostics = diagnostics,
             LayoutNamespaceSegments = layout?.NamespaceSegments.ToList(),
             LayoutMembersClassName = layout?.MembersClassName,
+            HasSweep = binding?.GetModuleHasSweep(filePath),
             ReferencedClrTypeNames = referencedClrTypeNames?.ToList()
         };
 

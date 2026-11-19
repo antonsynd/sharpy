@@ -41,7 +41,7 @@ Sync first (`git fetch origin`), then read the plan's first line to find where i
 
 A revision returns the plan to DRAFT, so the loop is draft → verify → (revise → verify)\* and it stops on a decision, not on a count (contract §12 Convergence).
 
-**The pass cap.** Two verify passes per plan (R-LW). When the second stamps NEEDS REVISION, bring its open finding to the owner as a decision (options, your recommendation) and offer no further pass. A further pass runs only when the owner asks for one in their own words, recorded as below and written into the plan's `## Scope` as `Extra verify pass <n>: owner, <date> "<words>"` by the revising agent, or by the verifier when no revision came between.
+**The pass cap.** Two verify passes per plan (R-LW). When the second stamps NEEDS REVISION, bring each open finding to the owner as a decision (options, your recommendation, its `/verify-plan` second-pass label; churn with both texts) and offer no further pass. A further pass runs only when the owner asks for one in their own words, recorded as below and written into the plan's `## Scope` as `Extra verify pass <n>: owner, <date> "<words>"` by the revising agent, or by the verifier when no revision came between.
 
 **Owner-only questions, once per stage, in one batch.** After each stage, collect what only the owner can answer: a NEEDS REVISION finding that is a decision (a hand-listed axis to close or rule out, a change that turns working code into a refusal, a tier or scope change, an unruled door, a scorecard baseline raise) and every Unchecked Claim that needs the owner's word. Ask them together, each with its options and your recommendation, before the revision starts. Do not start a revision around a question you have not asked.
 
@@ -69,7 +69,7 @@ Check before you relay. An agent's mistakes arrive in the same confident registe
 2. The plan's first line matches the result the agent reported.
 3. `git diff --name-only origin/dev...HEAD` lists only the plan file and, for a `full` generator group, its stage-0 test files (contract §11). A product path there is a stage that went wrong: stop and report it.
 4. File the out-of-contract cells it reported (contract §10), and point any exclusion or allowlist citation that borrowed an issue number at the right tracker in the next agent's brief.
-5. Tell the user the result in a few lines: the verdict, what was measured and what was only inferred, what is owed, and what you are starting next. Say whose claim each figure is.
+5. Tell the user the result in a few lines: the verdict and a verifier's paraphrase, what was measured and what was only inferred, what is owed, and what you are starting next. Say whose claim each figure is.
 
 ## The pull request
 

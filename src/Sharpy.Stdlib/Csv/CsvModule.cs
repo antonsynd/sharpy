@@ -15,10 +15,294 @@ namespace Sharpy.CsvModule
     /// </summary>
     public static partial class CsvModuleModule
     {
-        public static int QUOTE_ALL = 1;
-        public static int QUOTE_MINIMAL = 0;
-        public static int QUOTE_NONE = 3;
-        public static int QUOTE_NONNUMERIC = 2;
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        internal static int QUOTE_ALL__field = default!;
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        private static byte QUOTE_ALL__state;
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        private static void QUOTE_ALL__init()
+        {
+            QUOTE_ALL__field = 1;
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        private static void QUOTE_ALL__slow() => global::Sharpy.StaticInit.Read(ref __host, __Sweep, ref QUOTE_ALL__state, "QUOTE_ALL", QUOTE_ALL__init);
+        [global::Sharpy.SharpyStaticStorage(global::Sharpy.StaticStorageKind.Guarded)]
+        public static ref int QUOTE_ALL
+        {
+            get
+            {
+                if (!__Swept.Done)
+                    QUOTE_ALL__slow();
+                return ref QUOTE_ALL__field;
+            }
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        internal static void QUOTE_ALL__ensure()
+        {
+            if (!__Swept.Done)
+                QUOTE_ALL__slow();
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        private static void QUOTE_ALL__storeSlow(int value) => global::Sharpy.StaticInit.Store(ref __host, __Sweep, ref QUOTE_ALL__state, ref QUOTE_ALL__field, value);
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        internal static int QUOTE_ALL__set(int value)
+        {
+            if (__Swept.Done)
+                QUOTE_ALL__field = value;
+            else
+                QUOTE_ALL__storeSlow(value);
+            return value;
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        internal static global::System.Runtime.CompilerServices.StrongBox<int>? QUOTE_ALL__pick()
+        {
+            if (!__Swept.Done)
+            {
+                global::Sharpy.StaticInit.Load(ref __host, __Sweep);
+                if (!global::Sharpy.StaticInit.IsReady(ref QUOTE_ALL__state))
+                    return new global::System.Runtime.CompilerServices.StrongBox<int>();
+            }
+
+            return null;
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        internal static ref int QUOTE_ALL__out(out global::System.Runtime.CompilerServices.StrongBox<int>? spill)
+        {
+            spill = QUOTE_ALL__pick();
+            if (spill != null)
+                return ref spill.Value!;
+            return ref QUOTE_ALL__field;
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        internal static R QUOTE_ALL__commit<R>(R result, global::System.Runtime.CompilerServices.StrongBox<int>? spill)
+        {
+            if (spill != null)
+                QUOTE_ALL__set(spill.Value!);
+            return result;
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        internal static int QUOTE_MINIMAL__field = default!;
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        private static byte QUOTE_MINIMAL__state;
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        private static void QUOTE_MINIMAL__init()
+        {
+            QUOTE_MINIMAL__field = 0;
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        private static void QUOTE_MINIMAL__slow() => global::Sharpy.StaticInit.Read(ref __host, __Sweep, ref QUOTE_MINIMAL__state, "QUOTE_MINIMAL", QUOTE_MINIMAL__init);
+        [global::Sharpy.SharpyStaticStorage(global::Sharpy.StaticStorageKind.Guarded)]
+        public static ref int QUOTE_MINIMAL
+        {
+            get
+            {
+                if (!__Swept.Done)
+                    QUOTE_MINIMAL__slow();
+                return ref QUOTE_MINIMAL__field;
+            }
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        internal static void QUOTE_MINIMAL__ensure()
+        {
+            if (!__Swept.Done)
+                QUOTE_MINIMAL__slow();
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        private static void QUOTE_MINIMAL__storeSlow(int value) => global::Sharpy.StaticInit.Store(ref __host, __Sweep, ref QUOTE_MINIMAL__state, ref QUOTE_MINIMAL__field, value);
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        internal static int QUOTE_MINIMAL__set(int value)
+        {
+            if (__Swept.Done)
+                QUOTE_MINIMAL__field = value;
+            else
+                QUOTE_MINIMAL__storeSlow(value);
+            return value;
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        internal static global::System.Runtime.CompilerServices.StrongBox<int>? QUOTE_MINIMAL__pick()
+        {
+            if (!__Swept.Done)
+            {
+                global::Sharpy.StaticInit.Load(ref __host, __Sweep);
+                if (!global::Sharpy.StaticInit.IsReady(ref QUOTE_MINIMAL__state))
+                    return new global::System.Runtime.CompilerServices.StrongBox<int>();
+            }
+
+            return null;
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        internal static ref int QUOTE_MINIMAL__out(out global::System.Runtime.CompilerServices.StrongBox<int>? spill)
+        {
+            spill = QUOTE_MINIMAL__pick();
+            if (spill != null)
+                return ref spill.Value!;
+            return ref QUOTE_MINIMAL__field;
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        internal static R QUOTE_MINIMAL__commit<R>(R result, global::System.Runtime.CompilerServices.StrongBox<int>? spill)
+        {
+            if (spill != null)
+                QUOTE_MINIMAL__set(spill.Value!);
+            return result;
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        internal static int QUOTE_NONE__field = default!;
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        private static byte QUOTE_NONE__state;
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        private static void QUOTE_NONE__init()
+        {
+            QUOTE_NONE__field = 3;
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        private static void QUOTE_NONE__slow() => global::Sharpy.StaticInit.Read(ref __host, __Sweep, ref QUOTE_NONE__state, "QUOTE_NONE", QUOTE_NONE__init);
+        [global::Sharpy.SharpyStaticStorage(global::Sharpy.StaticStorageKind.Guarded)]
+        public static ref int QUOTE_NONE
+        {
+            get
+            {
+                if (!__Swept.Done)
+                    QUOTE_NONE__slow();
+                return ref QUOTE_NONE__field;
+            }
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        internal static void QUOTE_NONE__ensure()
+        {
+            if (!__Swept.Done)
+                QUOTE_NONE__slow();
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        private static void QUOTE_NONE__storeSlow(int value) => global::Sharpy.StaticInit.Store(ref __host, __Sweep, ref QUOTE_NONE__state, ref QUOTE_NONE__field, value);
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        internal static int QUOTE_NONE__set(int value)
+        {
+            if (__Swept.Done)
+                QUOTE_NONE__field = value;
+            else
+                QUOTE_NONE__storeSlow(value);
+            return value;
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        internal static global::System.Runtime.CompilerServices.StrongBox<int>? QUOTE_NONE__pick()
+        {
+            if (!__Swept.Done)
+            {
+                global::Sharpy.StaticInit.Load(ref __host, __Sweep);
+                if (!global::Sharpy.StaticInit.IsReady(ref QUOTE_NONE__state))
+                    return new global::System.Runtime.CompilerServices.StrongBox<int>();
+            }
+
+            return null;
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        internal static ref int QUOTE_NONE__out(out global::System.Runtime.CompilerServices.StrongBox<int>? spill)
+        {
+            spill = QUOTE_NONE__pick();
+            if (spill != null)
+                return ref spill.Value!;
+            return ref QUOTE_NONE__field;
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        internal static R QUOTE_NONE__commit<R>(R result, global::System.Runtime.CompilerServices.StrongBox<int>? spill)
+        {
+            if (spill != null)
+                QUOTE_NONE__set(spill.Value!);
+            return result;
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        internal static int QUOTE_NONNUMERIC__field = default!;
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        private static byte QUOTE_NONNUMERIC__state;
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        private static void QUOTE_NONNUMERIC__init()
+        {
+            QUOTE_NONNUMERIC__field = 2;
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        private static void QUOTE_NONNUMERIC__slow() => global::Sharpy.StaticInit.Read(ref __host, __Sweep, ref QUOTE_NONNUMERIC__state, "QUOTE_NONNUMERIC", QUOTE_NONNUMERIC__init);
+        [global::Sharpy.SharpyStaticStorage(global::Sharpy.StaticStorageKind.Guarded)]
+        public static ref int QUOTE_NONNUMERIC
+        {
+            get
+            {
+                if (!__Swept.Done)
+                    QUOTE_NONNUMERIC__slow();
+                return ref QUOTE_NONNUMERIC__field;
+            }
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        internal static void QUOTE_NONNUMERIC__ensure()
+        {
+            if (!__Swept.Done)
+                QUOTE_NONNUMERIC__slow();
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        private static void QUOTE_NONNUMERIC__storeSlow(int value) => global::Sharpy.StaticInit.Store(ref __host, __Sweep, ref QUOTE_NONNUMERIC__state, ref QUOTE_NONNUMERIC__field, value);
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        internal static int QUOTE_NONNUMERIC__set(int value)
+        {
+            if (__Swept.Done)
+                QUOTE_NONNUMERIC__field = value;
+            else
+                QUOTE_NONNUMERIC__storeSlow(value);
+            return value;
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        internal static global::System.Runtime.CompilerServices.StrongBox<int>? QUOTE_NONNUMERIC__pick()
+        {
+            if (!__Swept.Done)
+            {
+                global::Sharpy.StaticInit.Load(ref __host, __Sweep);
+                if (!global::Sharpy.StaticInit.IsReady(ref QUOTE_NONNUMERIC__state))
+                    return new global::System.Runtime.CompilerServices.StrongBox<int>();
+            }
+
+            return null;
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        internal static ref int QUOTE_NONNUMERIC__out(out global::System.Runtime.CompilerServices.StrongBox<int>? spill)
+        {
+            spill = QUOTE_NONNUMERIC__pick();
+            if (spill != null)
+                return ref spill.Value!;
+            return ref QUOTE_NONNUMERIC__field;
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        internal static R QUOTE_NONNUMERIC__commit<R>(R result, global::System.Runtime.CompilerServices.StrongBox<int>? spill)
+        {
+            if (spill != null)
+                QUOTE_NONNUMERIC__set(spill.Value!);
+            return result;
+        }
+
         /// <summary>
         /// Parse a single CSV line into a list of fields.
         /// </summary>
@@ -149,6 +433,35 @@ namespace Sharpy.CsvModule
         public static global::Sharpy.CsvModule.CsvDictWriter DictWriter(global::System.IO.TextWriter output, Sharpy.List<string> fieldnames)
         {
             return new global::Sharpy.CsvModule.CsvDictWriter(output, fieldnames);
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        private static global::Sharpy.StaticInitHost __host;
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        private static void __Sweep()
+        {
+            global::Sharpy.StaticInit.Run(ref QUOTE_ALL__state, "QUOTE_ALL", QUOTE_ALL__init);
+            global::Sharpy.StaticInit.Run(ref QUOTE_MINIMAL__state, "QUOTE_MINIMAL", QUOTE_MINIMAL__init);
+            global::Sharpy.StaticInit.Run(ref QUOTE_NONE__state, "QUOTE_NONE", QUOTE_NONE__init);
+            global::Sharpy.StaticInit.Run(ref QUOTE_NONNUMERIC__state, "QUOTE_NONNUMERIC", QUOTE_NONNUMERIC__init);
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        private static class __Swept
+        {
+            internal static readonly bool Done;
+            static __Swept()
+            {
+                Done = global::Sharpy.StaticInit.TryLoad(ref __host, __Sweep);
+            }
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        [global::Sharpy.SharpyLoadEntry(true)]
+        public static void __Load()
+        {
+            if (!__Swept.Done)
+                global::Sharpy.StaticInit.Load(ref __host, __Sweep);
         }
     }
 

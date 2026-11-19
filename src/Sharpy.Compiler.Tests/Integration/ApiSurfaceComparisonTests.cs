@@ -225,6 +225,11 @@ public class ApiSurfaceComparisonTests
             if (method.Name.StartsWith("<") || method.IsSpecialName)
                 continue;
 
+            // A member the compiler generated beside the module's own (plan-775c50 D10's
+            // [CompilerGenerated]: the module's load entry) is no surface of it, as discovery skips it.
+            if (method.IsDefined(typeof(System.Runtime.CompilerServices.CompilerGeneratedAttribute), inherit: false))
+                continue;
+
             var sig = FormatMethodSignature(method);
             result[sig] = method;
         }

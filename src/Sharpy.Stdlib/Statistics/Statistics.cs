@@ -401,5 +401,11 @@ namespace Sharpy.Statistics
         {
             return global::Sharpy.Statistics.StatisticsModule.Pvariance(global::Sharpy.Statistics.StatisticsModule._LongsToFloats(data));
         }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        [global::Sharpy.SharpyLoadEntry(false)]
+        public static void __Load()
+        {
+        }
     }
 }

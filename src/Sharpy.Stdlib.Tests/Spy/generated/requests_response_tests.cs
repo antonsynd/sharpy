@@ -15,5 +15,10 @@ namespace Sharpy.Stdlib.Tests.Spy.Requests.RequestsResponseTests
     [global::Sharpy.SharpyModule("requests.requests_response_tests")]
     public static partial class RequestsResponseTestsModule
     {
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        [global::Sharpy.SharpyLoadEntry(false)]
+        public static void __Load()
+        {
+        }
     }
 }

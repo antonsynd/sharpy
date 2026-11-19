@@ -22,11 +22,15 @@ Sharpy.Compiler.Tests/CodeGen/EventStubEmissionTests.cs | sources.Where(s => s.S
 Sharpy.Compiler.Tests/CodeGen/GenerateExpressionReentryTests.cs | fixtures.Should().HaveCountGreaterThan(1_000, | ×1 | floor | lower bound
 Sharpy.Compiler.Tests/CodeGen/LayoutFactConsumerScanTests.cs | ScannedSources().Should().HaveCountGreaterThan(20, "the scan reads the CodeGen directory and the CLI commands"); | ×1 | floor | lower bound
 Sharpy.Compiler.Tests/CodeGen/LayoutFactConsumerScanTests.cs | derivations.Should().Be(2); | ×1 | code-site-roster | counts compiler/LSP/Stdlib source or code-site rows
-Sharpy.Compiler.Tests/CodeGen/LayoutFactConsumerScanTests.cs | private const int ReaderCount = 15; | ×1 | code-site-roster | counts compiler/LSP/Stdlib source or code-site rows
+Sharpy.Compiler.Tests/CodeGen/LayoutFactConsumerScanTests.cs | private const int ReaderCount = 17; | ×1 | code-site-roster | counts compiler/LSP/Stdlib source or code-site rows
 Sharpy.Compiler.Tests/CodeGen/ReparseEquivalenceConformanceTests.cs | const int cap = 25; | ×3 | tuning-constant | cap
 Sharpy.Compiler.Tests/CodeGen/SharpyNameStampTests.cs | Assert.True(sharpyModule > 0, "no [SharpyModule] in any snapshot — the attribute scan reads nothing"); | ×1 | floor | lower bound
 Sharpy.Compiler.Tests/CodeGen/SharpyNameStampTests.cs | Assert.True(snapshots.Length >= 100, $"only {snapshots.Length} snapshots under {FixturesRoot} — the scan is vacuous"); | ×1 | floor | lower bound
 Sharpy.Compiler.Tests/CodeGen/SharpyNameStampTests.cs | Assert.True(stamps.Count <= 1, $"{identifier}: {stamps.Count} [SharpyName] stamps"); | ×1 | fixed-input | per-identifier invariant (at most one stamp per identifier), not a corpus count
+Sharpy.Compiler.Tests/CodeGen/StaticInitializerCensusTests.cs | "class A { public static int T = 7; private static readonly object O = new object(); public const int K = 3; static A() { } }" | ×1 | fixed-input | in-test input of PositiveControl_AnInitializedStaticAndAStaticConstructor_AreFlagged
+Sharpy.Compiler.Tests/CodeGen/StaticInitializerCensusTests.cs | Assert.True(fixtures.Count > 1000, $"only {fixtures.Count} fixtures discovered: the census reads nothing"); | ×1 | floor | lower bound
+Sharpy.Compiler.Tests/CodeGen/StaticInitializerCensusTests.cs | Assert.True(pool.Count > 1000, $"the stage-0 pool holds {pool.Count} cells: the census reads nothing"); | ×1 | floor | lower bound
+Sharpy.Compiler.Tests/CodeGen/StaticInitializerCensusTests.cs | Assert.True(scannedPrograms > 2000, $"only {scannedPrograms} programs reached code generation: the census reads nothing"); | ×1 | floor | lower bound
 Sharpy.Compiler.Tests/CodeGen/emitter-inspection-allowlist.txt | (integer column) | ×1 | code-site-roster | per-file occurrence column over src/Sharpy.Compiler sources
 Sharpy.Compiler.Tests/Conformance/ContextualKeywordEscapeSweepTests.cs | Assert.True(verdicts.Count > 0, "the sweep enumerates no cell"); | ×1 | floor | lower bound
 Sharpy.Compiler.Tests/Conformance/FormatterBlankLineSweepTests.cs | allowlist.Count(e => !e.IsPin).Should().Be(0, "the blank-line sweep has no per-stem rows"); | ×1 | drained-empty | allowlist asserted empty (P50)

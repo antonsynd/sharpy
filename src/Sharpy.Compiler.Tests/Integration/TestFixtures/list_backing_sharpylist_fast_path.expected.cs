@@ -12,6 +12,7 @@ namespace ListBackingSharpylistFastPath
     {
         public static void Main()
         {
+            __Load();
 #line (8, 5) - (8, 34) 12 "list_backing_sharpylist_fast_path.spy"
             Sharpy.List<int> xs = new Sharpy.List<int>()
 #line hidden
@@ -38,6 +39,12 @@ namespace ListBackingSharpylistFastPath
 #line (18, 5) - (18, 33) 12 "list_backing_sharpylist_fast_path.spy"
             global::Sharpy.Builtins.Print(global::Sharpy.StringExtensions.Split("a,b,c", ",").GetItemUnchecked(0));
 #line hidden
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        [global::Sharpy.SharpyLoadEntry(false)]
+        public static void __Load()
+        {
         }
     }
 }

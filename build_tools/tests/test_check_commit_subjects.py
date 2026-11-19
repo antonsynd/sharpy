@@ -542,3 +542,263 @@ def test_without_the_remote_refs_a_promotion_is_a_clean_red(repo):
     result = _run_workflow_step(repo, _pr_env(base, head, "owner"))
     assert result.returncode == 1 and "::error::" in result.stdout
     assert "Traceback" not in result.stderr, result.stderr
+
+
+# ── Closing keywords (owner 2026-11-18: #2736 closed #2422 from a commit body) ─
+
+
+@pytest.mark.parametrize(
+    "message",
+    [
+        'The owner\'s answer, "Move cell, close #2422", replaces it.',  # c6497393c's body
+        "ci(nightly): stop the census (fixes #2392)",  # 64f1c214b's subject
+        "Closes #1",
+        "closed #1",
+        "Fix #1",
+        "FIXED #1",
+        "resolves #1",
+        "Resolved #1",
+        "resolve #1",
+        "Closes: #1",
+        "fixes:#1",
+        "fix antonsynd/sharpy#12",
+        "closes https://github.com/antonsynd/sharpy/issues/12",
+        "body line\n\nfixes #3 and more",
+        "wrapped at 72: the fix\n#1 (not documented; judged as a reference)",
+        "Closes:\n  #1",
+    ],
+)
+def test_closing_keywords_are_found(message):
+    assert mod.closing_keywords(message) != []
+
+
+@pytest.mark.parametrize(
+    "message",
+    [
+        "Refs #2422",
+        "refs #2680, #2110",
+        "prefix #1",
+        "fixture #1",
+        "closer #1",
+        "the fix for #1",
+        "fixes issue #1",
+        "close the #1 gap",
+        "fix(core): close a leak (Refs #1)",
+        "closes #",
+        "the fix\n\n#13 starts a new paragraph",
+    ],
+)
+def test_lookalikes_are_not_closing_keywords(message):
+    assert mod.closing_keywords(message) == []
+
+
+def test_parse_messages_keeps_multi_line_bodies():
+    text = "1111\nsubj one\n\nbody, close #5\n\x1e\n\0\n2222\nsubj two\n\0"
+    assert mod.parse_messages(text) == {
+        "1111": "subj one\n\nbody, close #5\n\x1e\n",
+        "2222": "subj two\n",
+    }
+
+
+def test_a_closing_keyword_in_a_body_exits_1_and_names_it(repo):
+    base = _git(repo, "rev-parse", "HEAD").strip()
+    (repo / "f").write_text("kw\n")
+    _git(repo, "commit", "-q", "-am", "docs(plan): short", "-m", 'Quoting "close #7".')
+    result = _run(repo, f"{base}..HEAD")
+    assert result.returncode == 1, result.stdout + result.stderr
+    assert "::error::" in result.stdout and "close #7" in result.stdout
+    assert "1 of 1 messages have a closing keyword" in result.stdout
+
+
+def test_a_merge_commit_with_a_closing_keyword_is_judged(repo):
+    # Merges are exempt from the length rule, not from GitHub's reading of their message.
+    base = _git(repo, "rev-parse", "HEAD").strip()
+    _git(repo, "checkout", "-q", "-b", "side", base)
+    (repo / "g").write_text("side\n")
+    _git(repo, "add", "g")
+    _git(repo, "commit", "-q", "-m", "test(side): short")
+    _git(repo, "checkout", "-q", "main")
+    _commit(repo, "fix(core): short")
+    _git(
+        repo,
+        "merge",
+        "-q",
+        "--no-ff",
+        "-m",
+        "Merge pull request #1 from x/y",
+        "-m",
+        "fixes #9",
+        "side",
+    )
+    result = _run(repo, f"{base}..HEAD")
+    assert result.returncode == 1, result.stdout + result.stderr
+    assert "fixes #9" in result.stdout
+
+
+def test_refs_is_clean_and_the_summary_counts_messages(repo):
+    base = _git(repo, "rev-parse", "HEAD").strip()
+    (repo / "f").write_text("refs\n")
+    _git(repo, "commit", "-q", "-am", "fix(core): short", "-m", "Refs #7")
+    result = _run(repo, f"{base}..HEAD")
+    assert result.returncode == 0, result.stdout + result.stderr
+    assert "1 messages, no closing keyword" in result.stdout
+
+
+def test_a_closing_keyword_behind_the_grandfather_is_not_judged(repo):
+    base = _git(repo, "rev-parse", "HEAD").strip()
+    (repo / "f").write_text("old\n")
+    _git(repo, "commit", "-q", "-am", "fix(core): old", "-m", "fixes #3")
+    gate = _git(repo, "rev-parse", "HEAD").strip()
+    _commit(repo, "fix(core): new")
+    assert _run(repo, f"{base}..HEAD", "--grandfather", gate).returncode == 0
+    assert _run(repo, f"{base}..HEAD", "--grandfather", "none").returncode == 1
+
+
+def test_log_show_signature_does_not_hide_a_message(repo):
+    # Review of #2740 @ 5585f7ad2: with log.showSignature on, git log printed gpg lines into the
+    # records, the message was filed under the wrong key and the keyword check passed silently.
+    base = _git(repo, "rev-parse", "HEAD").strip()
+    (repo / "f").write_text("sig\n")
+    _git(repo, "commit", "-q", "-am", "docs: short", "-m", "close #7")
+    env = {
+        **os.environ,
+        "GIT_CONFIG_COUNT": "1",
+        "GIT_CONFIG_KEY_0": "log.showSignature",
+        "GIT_CONFIG_VALUE_0": "true",
+    }
+    result = subprocess.run(
+        [sys.executable, mod.__file__, f"{base}..HEAD"],
+        cwd=repo,
+        capture_output=True,
+        text=True,
+        check=False,
+        env=env,
+    )
+    assert result.returncode == 1, result.stdout + result.stderr
+    assert "close #7" in result.stdout
+
+
+def test_a_commit_with_no_message_read_exits_2(repo, monkeypatch):
+    # The positive control for the unread-message refusal: a judged commit missing from `bodies`.
+    base = _git(repo, "rev-parse", "HEAD").strip()
+    _commit(repo, "fix(core): short")
+    monkeypatch.chdir(repo)
+    monkeypatch.setattr(mod, "messages", lambda *a, **k: {})
+    assert mod.main([f"{base}..HEAD"]) == 2
+
+
+def test_revert_and_dependabot_commits_are_judged_for_keywords(repo):
+    base = _git(repo, "rev-parse", "HEAD").strip()
+    (repo / "f").write_text("r\n")
+    _git(repo, "commit", "-q", "-am", 'Revert "x"', "-m", "fixes #4")
+    _bot_commit(repo, "chore: Bump x from 1 to 2\n\nResolves #5")
+    result = _run(repo, f"{base}..HEAD")
+    assert result.returncode == 1, result.stdout + result.stderr
+    assert "fixes #4" in result.stdout and "Resolves #5" in result.stdout
+
+
+def test_a_pr_title_with_a_closing_keyword_is_red(repo):
+    base = _git(repo, "rev-parse", "HEAD").strip()
+    _commit(repo, "fix(core): short")
+    red = _run(repo, f"{base}..HEAD", "--pr-title", "fix(core): short (fixes #9)")
+    assert red.returncode == 1 and "PR title" in red.stdout and "fixes #9" in red.stdout
+    assert _run(repo, f"{base}..HEAD", "--pr-title", "fix(core): short").returncode == 0
+
+
+def test_the_workflow_passes_the_pr_title_through_env_only():
+    step = _workflow_step()
+    assert step["env"]["PR_TITLE"] == "${{ github.event.pull_request.title }}"
+    assert '--pr-title="$PR_TITLE"' in step["run"]
+    assert "${{" not in step["run"]
+
+
+def test_a_wrapped_keyword_prints_on_one_error_line():
+    assert mod.closing_keywords("the fix\n  #1") == ["fix #1"]
+
+
+@pytest.mark.parametrize("title", ["-x", "--max", "--grandfather=none"])
+def test_a_dash_title_is_a_value_not_an_option(repo, title):
+    # Second review of #2740: `--pr-title "$PR_TITLE"` read a one-word `-x` title as an option.
+    base = _git(repo, "rev-parse", "HEAD").strip()
+    _commit(repo, "fix(core): short")
+    assert _run(repo, f"{base}..HEAD", f"--pr-title={title}").returncode == 0
+    assert _run(repo, f"{base}..HEAD", "--pr-title=--fix #3").returncode == 1
+
+
+def test_an_extra_message_record_exits_2(repo, monkeypatch):
+    # A NUL inside a message would split one record in two: more records than commits is refused.
+    base = _git(repo, "rev-parse", "HEAD").strip()
+    _commit(repo, "fix(core): short")
+    head = _git(repo, "rev-parse", "HEAD").strip()
+    monkeypatch.chdir(repo)
+    monkeypatch.setattr(mod, "messages", lambda *a, **k: {head: "x\n", "close #1": ""})
+    assert mod.main([f"{base}..HEAD"]) == 2
+
+
+def test_a_pr_body_with_a_closing_keyword_is_red(repo):
+    # Owner 2026-11-18: a promotion PR's description closes the issues it names on merge.
+    base = _git(repo, "rev-parse", "HEAD").strip()
+    _commit(repo, "fix(core): short")
+    red = _run(repo, f"{base}..HEAD", "--pr-body=Promotes dev.\n\nCloses #12")
+    assert (
+        red.returncode == 1
+        and "PR description" in red.stdout
+        and "Closes #12" in red.stdout
+    )
+    assert (
+        _run(repo, f"{base}..HEAD", "--pr-body=Promotes dev. Refs #12").returncode == 0
+    )
+    assert _run(repo, f"{base}..HEAD", "--pr-body=").returncode == 0
+
+
+def test_the_workflow_passes_the_pr_body_only_into_the_default_branch():
+    step = _workflow_step()
+    assert step["env"]["PR_BODY"] == "${{ github.event.pull_request.body }}"
+    assert step["env"]["BASE_REF"] == "${{ github.event.pull_request.base.ref }}"
+    assert (
+        step["env"]["DEFAULT_BRANCH"] == "${{ github.event.repository.default_branch }}"
+    )
+    assert (
+        'if [ "$BASE_REF" = "$DEFAULT_BRANCH" ]; then extra+=(--pr-body="$PR_BODY"); fi'
+        in step["run"]
+    )
+    assert "${{" not in step["run"]
+
+
+def _workflow_bash(env):
+    """Run the step's script with `bash` swapped for an echo of its arguments."""
+    step = _workflow_step()
+    call = "bash build_tools/check_commit_subjects.sh"
+    assert call in step["run"]
+    script = step["run"].replace(call, "printf '%s\\n'")
+    return subprocess.run(
+        ["bash", "-euo", "pipefail", "-c", script],
+        capture_output=True,
+        text=True,
+        check=True,
+        env={**os.environ, **env},
+    ).stdout.splitlines()
+
+
+@pytest.mark.parametrize("base_ref, judged", [("mainline", True), ("dev", False)])
+def test_the_workflow_judges_the_body_by_base(base_ref, judged):
+    env = {
+        **_pr_env("a" * 40, "b" * 40, "someone"),
+        "PR_TITLE": "Merge dev to mainline",
+        "PR_BODY": "fixes #1",
+        "BASE_REF": base_ref,
+        "DEFAULT_BRANCH": "mainline",
+    }
+    args = _workflow_bash(env)
+    assert ("--pr-body=fixes #1" in args) is judged
+
+
+@pytest.mark.parametrize(
+    "body", ["Closes\r\n#12", "Closes:\r\n#12", "Closes \r\n#12", "Closes\r#12"]
+)
+def test_a_crlf_wrapped_description_is_red(repo, body):
+    # Fourth review of #2740: a GitHub-edited description reaches argv with CRLF intact.
+    base = _git(repo, "rev-parse", "HEAD").strip()
+    _commit(repo, "fix(core): short")
+    result = _run(repo, f"{base}..HEAD", f"--pr-body=Promotes dev.\r\n\r\n{body}\r\n")
+    assert result.returncode == 1, result.stdout + result.stderr

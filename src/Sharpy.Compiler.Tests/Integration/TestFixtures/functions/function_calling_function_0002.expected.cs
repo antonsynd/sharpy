@@ -38,11 +38,18 @@ namespace FunctionCallingFunction0002
 
         public static void Main()
         {
+            __Load();
 #line (14, 5) - (14, 38) 12 "function_calling_function_0002.spy"
             var result = global::FunctionCallingFunction0002.FunctionCallingFunction0002Module.CombinedOperation(3, 7);
 #line (15, 5) - (15, 18) 12 "function_calling_function_0002.spy"
             global::Sharpy.Builtins.Print(result);
 #line hidden
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        [global::Sharpy.SharpyLoadEntry(false)]
+        public static void __Load()
+        {
         }
     }
 }

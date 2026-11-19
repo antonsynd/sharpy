@@ -722,11 +722,8 @@ internal partial class RoslynEmitter
             if (varExistsInOuterScope)
             {
                 // Variable exists in outer scope - just assign to it
-                loopVarInit = ExpressionStatement(
-                    AssignmentExpression(
-                        SyntaxKind.SimpleAssignmentExpression,
-                        IdentifierName(loopVar),
-                        loopVarValue));
+                // A Guarded value's store is N__set (plan-775c50 D4).
+                loopVarInit = ExpressionStatement(PlainStore(varName, IdentifierName(loopVar), loopVarValue));
             }
             else
             {

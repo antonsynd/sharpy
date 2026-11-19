@@ -13,6 +13,7 @@ namespace StructPointValueSemantics
     {
         public static void Main()
         {
+            __Load();
 #line (16, 5) - (16, 23) 12 "struct_point_value_semantics.spy"
             var p1 = new global::StructPointValueSemantics.Point(10, 20);
 #line (17, 5) - (17, 12) 12 "struct_point_value_semantics.spy"
@@ -28,6 +29,12 @@ namespace StructPointValueSemantics
 #line (23, 5) - (23, 16) 12 "struct_point_value_semantics.spy"
             global::Sharpy.Builtins.Print(p2.Y);
 #line hidden
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        [global::Sharpy.SharpyLoadEntry(false)]
+        public static void __Load()
+        {
         }
     }
 

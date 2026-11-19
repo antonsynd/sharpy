@@ -228,7 +228,7 @@ internal class ClrTypeBridge
 
     public SemanticType MapPropertyType(PropertyInfo property)
         => ClrDeclaredNullability.Apply(
-            MapClrTypeToSemanticType(property.PropertyType),
+            MapClrTypeToSemanticType(ClrTypeHelper.ValueTypeOf(property.PropertyType)),
             ClrDeclaredNullability.Describe(property));
 
     public SemanticType MapFieldType(FieldInfo field)
@@ -238,7 +238,7 @@ internal class ClrTypeBridge
 
     public SemanticType MapReturnType(MethodInfo method)
         => ClrDeclaredNullability.Apply(
-            MapClrTypeToSemanticType(method.ReturnType),
+            MapClrTypeToSemanticType(ClrTypeHelper.ValueTypeOf(method.ReturnType)),
             ClrDeclaredNullability.DescribeReturn(method));
 
     public SemanticType MapParameterType(ParameterInfo parameter)

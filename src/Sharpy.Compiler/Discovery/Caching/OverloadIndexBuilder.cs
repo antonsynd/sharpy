@@ -545,8 +545,23 @@ internal class OverloadIndexBuilder
         // Get all public static methods
         var methods = exportType.GetMethods(BindingFlags.Public | BindingFlags.Static);
 
-        // Filter out methods we don't want to expose
+        // The module's load entry (plan-775c50 D10), found by its attribute, never by its name.
+        foreach (var method in methods)
+        {
+            if (ClrTypeHelper.LoadEntrySweep(method) is { } hasSweep)
+            {
+                moduleOverloads.LoadEntry = new DiscoveredLoadEntry
+                {
+                    MembersClassFullName = (exportType.FullName ?? exportType.Name).Replace('+', '.'),
+                    HasSweep = hasSweep,
+                };
+            }
+        }
+
+        // Filter out methods we don't want to expose; a member the compiler generated beside the
+        // module's own (D10's [CompilerGenerated]: the load entry and D4's helpers) is no export.
         var eligibleMethods = methods
+            .Where(m => !ClrTypeHelper.IsCompilerGenerated(m))
             .Where(m => !m.Name.StartsWith("_"))
             .Where(m => !m.Name.StartsWith("get_"))
             .Where(m => !m.Name.StartsWith("set_"))
@@ -596,6 +611,7 @@ internal class OverloadIndexBuilder
         // Discover public static fields (e.g., string module constants)
         var fields = exportType.GetFields(BindingFlags.Public | BindingFlags.Static)
             .Where(f => !f.Name.StartsWith("<", StringComparison.Ordinal))
+            .Where(f => !ClrTypeHelper.IsCompilerGenerated(f))
             .ToList();
 
         foreach (var field in fields)
@@ -619,7 +635,8 @@ internal class OverloadIndexBuilder
                     FieldType = CreateTypeSignature(field),
                     IsConst = field.IsLiteral,
                     ClrName = field.Name,
-                    RecordedPythonName = recordedName
+                    RecordedPythonName = recordedName,
+                    IsGuarded = ClrTypeHelper.IsGuardedStorage(field),
                 };
 
                 moduleOverloads.Fields[sharpyName] = fieldSignature;
@@ -633,8 +650,11 @@ internal class OverloadIndexBuilder
         // Discover public static properties with a getter (e.g., sys.Stdout => Console.Out).
         // Treated the same as static fields for consumers: they are accessed with
         // identical C# syntax, so they feed into moduleOverloads.Fields.
+        // A `ref` property (D4's Guarded value) reads as its element type and is settable through the
+        // reference; a `ref readonly` one has a getter only, like any get-only property.
         var staticProperties = exportType.GetProperties(BindingFlags.Public | BindingFlags.Static)
             .Where(p => p.GetIndexParameters().Length == 0)
+            .Where(p => !ClrTypeHelper.IsCompilerGenerated(p))
             .Where(p => p.GetGetMethod() != null)
             .ToList();
 
@@ -654,7 +674,8 @@ internal class OverloadIndexBuilder
                     FieldType = CreateTypeSignature(property),
                     IsConst = false,
                     ClrName = property.Name,
-                    RecordedPythonName = recordedPropertyName
+                    RecordedPythonName = recordedPropertyName,
+                    IsGuarded = ClrTypeHelper.IsGuardedStorage(property),
                 };
 
                 moduleOverloads.Fields[sharpyPropertyName] = propertyFieldSignature;
@@ -764,13 +785,13 @@ internal class OverloadIndexBuilder
     /// and that stamp must match the one <see cref="ClrTypeBridge"/> applies (#1294).
     /// </remarks>
     internal TypeSignature CreateTypeSignature(PropertyInfo property)
-        => ClrDeclaredNullability.Apply(CreateTypeSignature(property.PropertyType), ClrDeclaredNullability.Describe(property));
+        => ClrDeclaredNullability.Apply(CreateTypeSignature(ClrTypeHelper.ValueTypeOf(property.PropertyType)), ClrDeclaredNullability.Describe(property));
 
     internal TypeSignature CreateTypeSignature(FieldInfo field)
         => ClrDeclaredNullability.Apply(CreateTypeSignature(field.FieldType), ClrDeclaredNullability.Describe(field));
 
     internal TypeSignature CreateReturnTypeSignature(MethodInfo method)
-        => ClrDeclaredNullability.Apply(CreateTypeSignature(method.ReturnType), ClrDeclaredNullability.DescribeReturn(method));
+        => ClrDeclaredNullability.Apply(CreateTypeSignature(ClrTypeHelper.ValueTypeOf(method.ReturnType)), ClrDeclaredNullability.DescribeReturn(method));
 
     internal TypeSignature CreateParameterTypeSignature(ParameterInfo parameter)
         => ClrDeclaredNullability.Apply(CreateTypeSignature(parameter.ParameterType), ClrDeclaredNullability.DescribeArgument(parameter));

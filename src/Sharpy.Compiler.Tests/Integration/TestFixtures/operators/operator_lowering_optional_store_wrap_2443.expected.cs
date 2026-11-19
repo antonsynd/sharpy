@@ -13,6 +13,7 @@ namespace OperatorLoweringOptionalStoreWrap2443
     {
         public static void Main()
         {
+            __Load();
 #line (8, 5) - (8, 24) 12 "operator_lowering_optional_store_wrap_2443.spy"
             Optional<int> x = Optional<int>.Some(-7);
 #line (9, 5) - (9, 27) 12 "operator_lowering_optional_store_wrap_2443.spy"
@@ -37,6 +38,12 @@ namespace OperatorLoweringOptionalStoreWrap2443
                 global::Sharpy.Builtins.Print(y.Unwrap());
 #line hidden
             }
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        [global::Sharpy.SharpyLoadEntry(false)]
+        public static void __Load()
+        {
         }
     }
 }

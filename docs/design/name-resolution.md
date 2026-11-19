@@ -1,8 +1,9 @@
 # Name resolution, shadowing and initialization order
 
 > **Status:** Principle — ruled by the owner 2026-11-01 (model **B**; sub-rulings **S1 a**, **S2 a**,
-> **S3**). **Not yet implemented**: each rule below names the issue that implements it and today's
-> behavior until then. Tracker: #2427.
+> **S3**). **N3 is implemented** (plan-775c50, #2422; N7 follows from it for every spelling that
+> compiles). The other rules are **not yet implemented**: each names the issue that implements it and
+> today's behavior until then. Tracker: #2427.
 > **Supersedes as the governing rule:** R-JJ ("resolve what C# resolves in that position"), F1,
 > F1-const / L16, F2, L20, R-JT's forward refusal, R-JV(b), #1974 ruling D and its B9 write-through
 > amendment, and the CLAUDE.md axiom row "`global`/`nonlocal`: Axiom 1 wins". See
@@ -92,7 +93,10 @@ The second: **a module-level initializer that reads a builtin or imported name a
 same-named declaration is refused.**
 
 *Today:* a later `@static`, property or method yields to the outer binding (prints `64`, Python's
-value), and a later literal `const` outranks it (prints Sharpy's value, not Python's). Census @
+value). A later `const` whose initializer is not a compile-time constant is refused as ambiguous
+(SPY0618, narrowed to this shape by plan-775c50 until N2's own code replaces it), and so is a bare
+read of one in a comprehension's body. A later literal `const` still outranks the outer binding
+(prints Sharpy's value, not Python's), and the instance positions are not refused yet. Census @
 d2d5cbcab: 2 sites in the corpus, both in the fixture written for the old rule. Implemented by #2423.
 
 ### N3. Values are ready before use
@@ -120,11 +124,14 @@ def main() -> None:
     print(total)          # compute / 14   (python3: NameError — an order-only error)
 ```
 
-*Today:* the example above is refused (SPY0200: a module variable's initializer may not read a later
-module variable), but the same forward read of a later computed `const` or module property silently
-reads `0`; a forward `@static` read is refused (SPY0618, P75); and module initializers run after
-`main` starts. Implemented by #2422 (see
-[How N3 is emitted](#how-n3-is-emitted)).
+*Implemented* by plan-775c50 (#2422; see [How N3 is emitted](#how-n3-is-emitted)). The example above
+is still refused, because a module variable's initializer may not read a later module variable by bare
+name (SPY0200; N1, #2423). The same forward read of a later computed `const` runs and prints
+`compute` then `14`, and so does a forward `@static` read through the type name. Module initializers
+run before `main`, in source order. A cycle is SPY0278 where every read on it is evaluated whenever
+its initializer is, or where it lies among `const`s alone, and `NameError` at run time otherwise. The
+spec's statement, with its residue, is
+[variable_scoping.md](../language_specification/variable_scoping.md#values-are-ready-before-use-n3).
 
 ### N4. Constants are not special
 
@@ -224,40 +231,50 @@ per-spelling rule is ever needed.
 
 C# gives Sharpy name lookup it can emit around (qualified and renamed names), but its static
 initialization runtime is per type, lazy, and silent on order and cycles. N3 therefore does not use
-C# type initializers to order Sharpy values. Each non-constant module or `@static` value is emitted
-with its own initialization state, and readiness is checked through a flag the JIT folds away once
-the sweep has run:
+C# type initializers to order Sharpy values. Each module or `@static` value with an initializer that
+is not a C# `const` is emitted with its own initialization state, and readiness is checked through a
+flag the JIT folds away once the value's host has swept (plan-775c50 D3–D5; the runtime is
+`Sharpy.StaticInit` in Sharpy.Core):
 
 ```csharp
-static class Swept { public static readonly bool Done = RunSweep(); }   // one per module host
-
-static int s_x; static byte s_x_state;          // 0 Uninitialized, 1 Initializing, 2 Ready
-public static int x
+static int x__field; static byte x__state;    // Uninitialized, Initializing, Assigned, StoredInitializing, Ready
+static void x__init() { x__field = /* initializer */; }
+public static ref int x                         // a computed const: ref readonly; a property default: get / set
 {
-    get
-    {
-        if (!Swept.Done && Volatile.Read(ref s_x_state) != 2) Init_x();
-        return s_x;
-    }
+    get { if (!__Swept.Done) StaticInit.Read(ref __host, __Sweep, ref x__state, "x", x__init); return ref x__field; }
 }
-// Init_x: Initializing on entry (re-entry => circular-initialization error), Ready on success,
-//         back to Uninitialized on throw (the next read retries); a lock in this slow path only.
+static void __Sweep() { StaticInit.Run(ref a__state, "a", a__init); StaticInit.Run(ref x__state, "x", x__init); }
+static class __Swept { internal static readonly bool Done; static __Swept() { Done = StaticInit.TryLoad(ref __host, __Sweep); } }
 ```
 
 - **Literal constants** stay C# `const` with no check.
-- **Load order:** the entry point runs each imported module's sweep in import order, then its own,
-  before `main`; a class's statics are swept at the class's position in its module. A library
-  consumed from C# without a Sharpy entry point initializes lazily on first read.
-- **Measured cost** (M4 Max, .NET 10.0.14, BenchmarkDotNet 0.15.8; full numbers on #2422): the
-  folded flag runs at **0.99–1.01×** an unchecked static read under the default JIT, without PGO, and
-  without tiered compilation. A plain per-read state check costs up to 1.77× (default JIT) and 2.5×
+- **States:** a read in the Initializing state raises `NameError` (a cycle the compiler did not
+  refuse); a plain store marks the value stored, so a read returns the store until the initializer's
+  result replaces it; a throwing initializer restores the state it found and rethrows the original
+  exception, so the next read retries. One process-wide re-entrant lock covers every sweep and every
+  state change below Ready; a type initializer only tries it (`TryLoad`) and never waits.
+- **Load order:** `Main` requires its module, which sweeps once, in declaration order; an importer's
+  sweep requires the imported module at the import's position; a non-generic class sweeps at its line
+  in the sweep around it (a nested class inside its outer class's). Each closed generic type is its
+  own host and sweeps on its first use, as does a library consumed from C# without a Sharpy entry
+  point. A host sweeps whole, so a read that comes back to a host still sweeping raises `NameError` by
+  first-touch order.
+- **Measured cost** (M4 Max, .NET 10.0.14, BenchmarkDotNet 0.15.8; full numbers on #2422, measured
+  on the prototype before plan-775c50): the folded flag runs at **0.99–1.01×** an unchecked static
+  read under the default JIT, without PGO, and without tiered compilation. A plain per-read state check costs up to 1.77× (default JIT) and 2.5×
   (no PGO), because the JIT never hoists it out of a loop. `static readonly` + cctor and holder-class
   shapes were rejected: they cannot detect a cycle or retry after a throw. `Lazy<T>` costs up to
   3.5×.
-- **Residue:**
+- **Residue** (each stated in
+  [variable_scoping.md](../language_specification/variable_scoping.md#what-n3-does-not-cover)):
   - Code compiled before the sweep and never recompiled keeps the check (ReadyToRun before tier-up;
     probably NativeAOT, not measured).
-  - A failed sweep leaves the slow path on for the rest of the process.
+  - A failed or lock-losing sweep leaves the slow path on for the rest of the process.
+  - A host sweeps whole on first use, so a read-back raises by first-touch order.
+  - In an `async def` body, a use other than a plain read or store initializes the value at the
+    start of its statement, before the statement's other operands.
+  - An initializer that waits on a thread reading a value of a host still sweeping never finishes.
+  - A store from another module does not lift SPY0278 from a cycle it could break.
   - Generic-class statics initialize per closed type on first use; the sweep cannot enumerate
     instantiations.
 
@@ -305,7 +322,7 @@ are lazily ready", and Python's run order and write declarations.
 
 | Ruling or behavior | Was | Now |
 |---|---|---|
-| R-JT forward refusal (P75, SPY0618) | Forward static read refused | Works (N3). P75's source-order emission stays as the sweep order. |
+| R-JT forward refusal (P75, SPY0618) | Forward static read refused | Works (N3). P75's source-order emission stays as the sweep order. SPY0618 is kept only for N2's computed-const shape until #2423. |
 | F1: initializers read only earlier siblings (SPY0200 "declared later") | Refused | Works (N1 + N3) |
 | F1-const / L16: a literal const is unordered and outranks the outer binding | Sharpy's value, not Python's | Refused as ambiguous (N2 + N4) |
 | F2: a later member yields to the outer binding | Python's value by a special rule | Refused as ambiguous (N2) |
@@ -333,7 +350,7 @@ behavior already fits "same or refuse", and the sentence is replaced by this pri
 | Issue | Scope | Order |
 |---|---|---|
 | #2421 | Generative differential harness: Sharpy vs python3, "same output or compile-time refusal", over binding kind × read position × order × spelling × outer binding | **First** |
-| #2422 | N3: per-value state, folded readiness flag, load-order sweep, cycle and retry semantics | After #2421 |
+| #2422 | N3: per-value state, folded readiness flag, load-order sweep, cycle and retry semantics | After #2421 (implemented: plan-775c50) |
 | #2423 | N1, N2, N4, N7 | After #2422 (forward reads need N3 to be safe) |
 | #2424 | N6: `global` / `nonlocal` | Independent |
 | #2425 | S2: refuse a construct target whose outer name is read after | Independent |
