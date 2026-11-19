@@ -1555,26 +1555,10 @@ public partial class Parser
 
         // Check for nested placeholders — outer call has _ AND an argument
         // was already lowered from a placeholder call (now a lambda with
-        // __placeholder_ parameters).
-        foreach (var arg in call.Arguments)
+        // __placeholder_ parameters). Positional arguments are scanned before keyword values.
+        foreach (var argValue in call.Arguments.Concat(call.KeywordArguments.Select(kwarg => kwarg.Value)))
         {
-            if (arg is LambdaExpression lambda
-                && lambda.Parameters.Length > 0
-                && lambda.Parameters[0].Name.StartsWith("__placeholder_", StringComparison.Ordinal))
-            {
-                ReportError(
-                    "Nested placeholder expressions are not supported: '_' cannot appear in both an inner and outer call. "
-                    + "Extract the inner partial application into a separate variable",
-                    lambda.LineStart, lambda.ColumnStart,
-                    DiagnosticCodes.Parser.NestedPlaceholder,
-                    span: lambda.Span);
-                return call;
-            }
-        }
-
-        foreach (var kwarg in call.KeywordArguments)
-        {
-            if (kwarg.Value is LambdaExpression lambda
+            if (argValue is LambdaExpression lambda
                 && lambda.Parameters.Length > 0
                 && lambda.Parameters[0].Name.StartsWith("__placeholder_", StringComparison.Ordinal))
             {
@@ -1599,31 +1583,7 @@ public partial class Parser
         {
             if (arg is Identifier placeholder && IsPlaceholder(placeholder))
             {
-                var paramName = $"__placeholder_{placeholderIndex}";
-                parameters.Add(new Parameter
-                {
-                    Name = paramName,
-                    Type = null,
-                    DefaultValue = null,
-                    Kind = ParameterKind.Normal,
-                    // Name*: deliberately left at 0. This parameter is SYNTHESIZED — its name
-                    // (`__placeholder_N`) appears nowhere in source, so it has no name token and
-                    // no name extent. Columns are 1-based, so 0 reads as "unrecorded" (#1454).
-                    LineStart = placeholder.LineStart,
-                    ColumnStart = placeholder.ColumnStart,
-                    LineEnd = placeholder.LineEnd,
-                    ColumnEnd = placeholder.ColumnEnd,
-                    Span = placeholder.Span
-                });
-                modifiedArgs.Add(new Identifier
-                {
-                    Name = paramName,
-                    LineStart = placeholder.LineStart,
-                    ColumnStart = placeholder.ColumnStart,
-                    LineEnd = placeholder.LineEnd,
-                    ColumnEnd = placeholder.ColumnEnd,
-                    Span = placeholder.Span
-                });
+                modifiedArgs.Add(AddPlaceholderParameter($"__placeholder_{placeholderIndex}", placeholder, parameters));
                 placeholderIndex++;
             }
             else
@@ -1638,33 +1598,11 @@ public partial class Parser
         {
             if (kwarg.Value is Identifier kwPlaceholder && IsPlaceholder(kwPlaceholder))
             {
-                var paramName = kwarg.Name;
-                parameters.Add(new Parameter
-                {
-                    Name = paramName,
-                    Type = null,
-                    DefaultValue = null,
-                    Kind = ParameterKind.Normal,
-                    // Name*: deliberately left at 0 — see the positional-placeholder arm above.
-                    // The parameter borrows the KEYWORD's spelling but the positions here are the
-                    // `_` value's; there is no name token for `paramName` to point at (#1454).
-                    LineStart = kwPlaceholder.LineStart,
-                    ColumnStart = kwPlaceholder.ColumnStart,
-                    LineEnd = kwPlaceholder.LineEnd,
-                    ColumnEnd = kwPlaceholder.ColumnEnd,
-                    Span = kwPlaceholder.Span
-                });
+                // The parameter borrows the KEYWORD's spelling but the positions are the `_`
+                // value's; there is no name token for the keyword name to point at (#1454).
                 modifiedKwargs.Add(kwarg with
                 {
-                    Value = new Identifier
-                    {
-                        Name = paramName,
-                        LineStart = kwPlaceholder.LineStart,
-                        ColumnStart = kwPlaceholder.ColumnStart,
-                        LineEnd = kwPlaceholder.LineEnd,
-                        ColumnEnd = kwPlaceholder.ColumnEnd,
-                        Span = kwPlaceholder.Span
-                    }
+                    Value = AddPlaceholderParameter(kwarg.Name, kwPlaceholder, parameters)
                 });
             }
             else
@@ -1688,6 +1626,35 @@ public partial class Parser
             LineEnd = call.LineEnd,
             ColumnEnd = call.ColumnEnd,
             Span = call.Span
+        };
+    }
+
+    /// <summary>Adds a synthesized parameter named <paramref name="name"/> at the `_` placeholder's position and returns the identifier that refers to it.</summary>
+    private static Identifier AddPlaceholderParameter(string name, Identifier placeholder, List<Parameter> parameters)
+    {
+        parameters.Add(new Parameter
+        {
+            Name = name,
+            Type = null,
+            DefaultValue = null,
+            Kind = ParameterKind.Normal,
+            // Name*: deliberately left at 0. This parameter is SYNTHESIZED — its name appears
+            // nowhere in source as a parameter, so it has no name token and no name extent.
+            // Columns are 1-based, so 0 reads as "unrecorded" (#1454).
+            LineStart = placeholder.LineStart,
+            ColumnStart = placeholder.ColumnStart,
+            LineEnd = placeholder.LineEnd,
+            ColumnEnd = placeholder.ColumnEnd,
+            Span = placeholder.Span
+        });
+        return new Identifier
+        {
+            Name = name,
+            LineStart = placeholder.LineStart,
+            ColumnStart = placeholder.ColumnStart,
+            LineEnd = placeholder.LineEnd,
+            ColumnEnd = placeholder.ColumnEnd,
+            Span = placeholder.Span
         };
     }
 

@@ -1091,32 +1091,9 @@ public partial class Parser
         switch (expr)
         {
             case Identifier placeholder when IsPlaceholder(placeholder):
-                var paramName = $"__placeholder_{index}";
-                parameters.Add(new Parameter
-                {
-                    Name = paramName,
-                    Type = null,
-                    DefaultValue = null,
-                    Kind = ParameterKind.Normal,
-                    // Name*: deliberately left at 0. Operator-section placeholders are
-                    // SYNTHESIZED parameters — `__placeholder_N` has no name token in source,
-                    // so there is no name extent to record. Columns are 1-based (#1454).
-                    LineStart = placeholder.LineStart,
-                    ColumnStart = placeholder.ColumnStart,
-                    LineEnd = placeholder.LineEnd,
-                    ColumnEnd = placeholder.ColumnEnd,
-                    Span = placeholder.Span
-                });
+                var replacement = AddPlaceholderParameter($"__placeholder_{index}", placeholder, parameters);
                 index++;
-                return new Identifier
-                {
-                    Name = paramName,
-                    LineStart = placeholder.LineStart,
-                    ColumnStart = placeholder.ColumnStart,
-                    LineEnd = placeholder.LineEnd,
-                    ColumnEnd = placeholder.ColumnEnd,
-                    Span = placeholder.Span
-                };
+                return replacement;
 
             case BinaryOp bin:
                 return bin with
