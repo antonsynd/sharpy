@@ -18,6 +18,11 @@ namespace Sharpy.Stdlib.Tests.Spy.Cpython.CpythonTextwrapTests
     [global::Sharpy.SharpyModule("cpython.cpython_textwrap_tests")]
     public static partial class CpythonTextwrapTestsModule
     {
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        [global::Sharpy.SharpyLoadEntry(false)]
+        public static void __Load()
+        {
+        }
     }
 
     public partial class CpythonTextwrapTestsModuleTests

@@ -13,6 +13,7 @@ namespace BclExtensionStaged1206
     {
         public static void Main()
         {
+            __Load();
 #line (10, 5) - (10, 34) 12 "bcl_extension_staged_1206.spy"
             global::System.Collections.Generic.List<int> lst = new global::System.Collections.Generic.List<int>();
 #line (11, 5) - (11, 15) 12 "bcl_extension_staged_1206.spy"
@@ -30,6 +31,12 @@ namespace BclExtensionStaged1206
 #line (30, 5) - (30, 76) 12 "bcl_extension_staged_1206.spy"
             global::Sharpy.Builtins.Print(new Sharpy.List<string>(lst.SelectMany(x => new Sharpy.List<int>() { x, x }, (a, b) => global::Sharpy.Builtins.Str(a + b))));
 #line hidden
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        [global::Sharpy.SharpyLoadEntry(false)]
+        public static void __Load()
+        {
         }
     }
 }

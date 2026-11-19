@@ -23,11 +23,18 @@ namespace OutInlineMultiple
 
         public static void Main()
         {
+            __Load();
 #line (7, 5) - (7, 63) 12 "out_inline_multiple.spy"
             var success = global::OutInlineMultiple.OutInlineMultipleModule.ParsePair("x", out int first, out int second);
 #line (8, 5) - (8, 34) 12 "out_inline_multiple.spy"
             global::Sharpy.Builtins.Print(success, first, second);
 #line hidden
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        [global::Sharpy.SharpyLoadEntry(false)]
+        public static void __Load()
+        {
         }
     }
 }

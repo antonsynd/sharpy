@@ -15,5 +15,10 @@ namespace Sharpy.Stdlib.Tests.Spy.Requests.RequestsAdvancedTests
     [global::Sharpy.SharpyModule("requests.requests_advanced_tests")]
     public static partial class RequestsAdvancedTestsModule
     {
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        [global::Sharpy.SharpyLoadEntry(false)]
+        public static void __Load()
+        {
+        }
     }
 }

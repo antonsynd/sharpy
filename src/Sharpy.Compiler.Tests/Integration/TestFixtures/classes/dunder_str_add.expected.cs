@@ -13,6 +13,7 @@ namespace DunderStrAdd
     {
         public static void Main()
         {
+            __Load();
 #line (19, 5) - (19, 31) 12 "dunder_str_add.spy"
             global::DunderStrAdd.Vector v1 = new global::DunderStrAdd.Vector(1, 2);
 #line (20, 5) - (20, 31) 12 "dunder_str_add.spy"
@@ -26,6 +27,12 @@ namespace DunderStrAdd
 #line (24, 5) - (24, 14) 12 "dunder_str_add.spy"
             global::Sharpy.Builtins.Print(v3);
 #line hidden
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        [global::Sharpy.SharpyLoadEntry(false)]
+        public static void __Load()
+        {
         }
     }
 

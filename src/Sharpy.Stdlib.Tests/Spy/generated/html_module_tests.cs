@@ -50,6 +50,12 @@ namespace Sharpy.Stdlib.Tests.Spy.HTML.HtmlModuleTests
             return result;
 #line hidden
         }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        [global::Sharpy.SharpyLoadEntry(false)]
+        public static void __Load()
+        {
+        }
     }
 
     [global::Sharpy.SharpyModuleType("html.html_module_tests", "TestParser")]

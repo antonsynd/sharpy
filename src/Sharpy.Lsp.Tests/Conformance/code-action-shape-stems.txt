@@ -8,8 +8,8 @@
 # GENERATED, HUMAN-REVIEWED: bash build_tools/regenerate_corpus_pins.sh rewrites the rows and the `# total` lines; review
 # the diff (a new stem's rows are its own; a moved row of an existing stem is a finding until explained). A new key's cite row in
 # code-action-shape-allowlist.txt is written by hand (the loader names it), and so is a drained key's deletion.
-# total stems identity keys=14 rows=2088
-# total stems crlf keys=8 rows=285
+# total stems identity keys=14 rows=2098
+# total stems crlf keys=8 rows=284
 # total stems cr keys=8 rows=293
 # total stems comment keys=7 rows=288
 extract-method identity diagnostics Formatting/module_docstring_then_statement # #2294
@@ -26,6 +26,8 @@ extract-method identity diagnostics assignment/assignment_parenthesized_target_r
 extract-method identity diagnostics async/async_comprehension_await_element # #2294
 extract-method identity diagnostics async/async_generator_basic # #2294
 extract-method identity diagnostics async/async_generator_yield_from # #2294
+extract-method identity diagnostics async/async_guarded_out_inline_decl # #2294
+extract-method identity diagnostics async/async_guarded_out_inline_decl_sync # #2294
 extract-method identity diagnostics async/async_return_none_1514 # #2294
 extract-method identity diagnostics async/async_with_0036 # #2294
 extract-method identity diagnostics async/async_with_basic # #2294
@@ -176,6 +178,7 @@ extract-method identity diagnostics classes/overload_modifier_dispatch_1721 # #2
 extract-method identity diagnostics classes/shape_calculator # #2294
 extract-method identity diagnostics classes/simple_class_0039 # #2294
 extract-method identity diagnostics classes/simple_class_0043 # #2294
+extract-method identity diagnostics classes/static_prop_default_calls_static_method_2396 # #2294
 extract-method identity diagnostics classes/super_init_not_first_0001 # #2294
 extract-method identity diagnostics clr_reference_none_equality # #2294
 extract-method identity diagnostics codegen/class_and_module_docstring # #2294
@@ -905,6 +908,9 @@ extract-method identity parse async/async_forward_ref_plain_reverse # #2294
 extract-method identity parse async/async_gather_basic # #2294
 extract-method identity parse async/async_generator_expression_refused # #2294
 extract-method identity parse async/async_generator_yield_from # #2294
+extract-method identity parse async/async_guarded_narrowed_uses # #2294
+extract-method identity parse async/async_guarded_out_inline_decl # #2294
+extract-method identity parse async/async_guarded_out_inline_decl_sync # #2294
 extract-method identity parse async/async_return_none_1514 # #2294
 extract-method identity parse async/async_sleep_basic # #2294
 extract-method identity parse async/async_unreachable_after_return # #2294
@@ -1468,6 +1474,7 @@ extract-variable identity diagnostics errors/numeric_promotion_uint64_signed_ref
 extract-variable identity diagnostics errors/tuple_unpack_none_element_1812 # #2294
 extract-variable identity diagnostics except_tuple_binding_common_base # #2294
 extract-variable identity diagnostics experimental/init_augmented_matmul_ungated_2439 # #2294
+extract-variable identity diagnostics experimental/property_observers_static_guarded_old # #2294
 extract-variable identity diagnostics expressions/conditional_best_common_type_1677 # #2294
 extract-variable identity diagnostics expressions/integer_power_uint64_1700 # #2294
 extract-variable identity diagnostics expressions/operator_section_0047 # #2294
@@ -1605,6 +1612,7 @@ prefix-underscore identity diagnostics exception_handling/except_when_bool_expr 
 remove-annotation identity diagnostics algorithms/binary_search_tree # #2296
 remove-annotation identity diagnostics algorithms/merge_sort # #2296
 remove-annotation identity diagnostics algorithms/word_frequency # #2296
+remove-annotation identity diagnostics async/async_guarded_narrowed_uses # #2296
 remove-annotation identity diagnostics basics/arithmetic_operators # #2296
 remove-annotation identity diagnostics basics/comparison_operators_0013 # #2296
 remove-annotation identity diagnostics basics/emitter_type_name_compare_controls # #2296
@@ -1730,6 +1738,8 @@ wrap-try identity diagnostics async/async_comprehension_await_and_async_for # #2
 wrap-try identity diagnostics async/async_for_0028 # #2296
 wrap-try identity diagnostics async/async_for_basic # #2296
 wrap-try identity diagnostics async/async_forward_ref_plain_reverse # #2296
+wrap-try identity diagnostics async/async_guarded_out_inline_decl # #2296
+wrap-try identity diagnostics async/async_guarded_out_inline_decl_sync # #2296
 wrap-try identity diagnostics async/async_unreachable_after_return # #2296
 wrap-try identity diagnostics async/async_with_generators_0074 # #2296
 wrap-try identity diagnostics basics/augmented_collection_mutation_targets # #2296
@@ -2303,7 +2313,6 @@ extract-variable crlf parse events/event_with_lambda_subscribe_0059 # #2294
 extract-variable crlf parse functions/operator_sections # #2294
 extract-variable crlf parse indirect_callee/bound_callable_ref # #2294
 inline-function crlf diagnostics async/async_comprehension_iterator_nested # #2296
-inline-function crlf diagnostics classes/static_prop_default_calls_static_method_2396 # #2296
 inline-variable crlf diagnostics basics/arithmetic_operators_0015 # #2296
 inline-variable crlf diagnostics basics/decimal_literal_exponent_forms # #2296
 inline-variable crlf diagnostics basics/escaped_wildcard_binds_2166 # #2296

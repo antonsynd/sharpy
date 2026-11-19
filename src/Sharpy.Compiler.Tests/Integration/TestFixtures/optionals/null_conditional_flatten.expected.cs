@@ -12,6 +12,7 @@ namespace NullConditionalFlatten
     {
         public static void Main()
         {
+            __Load();
 #line (25, 5) - (25, 61) 12 "null_conditional_flatten.spy"
             Optional<global::NullConditionalFlatten.Outer> o1 = Optional<global::NullConditionalFlatten.Outer>.Some(new global::NullConditionalFlatten.Outer(Optional<global::NullConditionalFlatten.Inner>.Some(new global::NullConditionalFlatten.Inner(1, Optional<string>.Some("hello")))));
 #line (26, 5) - (26, 45) 12 "null_conditional_flatten.spy"
@@ -55,6 +56,12 @@ namespace NullConditionalFlatten
 #line (61, 5) - (61, 14) 12 "null_conditional_flatten.spy"
             global::Sharpy.Builtins.Print(r7);
 #line hidden
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        [global::Sharpy.SharpyLoadEntry(false)]
+        public static void __Load()
+        {
         }
     }
 

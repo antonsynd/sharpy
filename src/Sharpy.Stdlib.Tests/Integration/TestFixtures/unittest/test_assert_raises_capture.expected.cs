@@ -15,9 +15,16 @@ namespace TestAssertRaisesCapture
     {
         public static void Main()
         {
+            __Load();
 #line (10, 5) - (10, 16) 12 "test_assert_raises_capture.spy"
             global::Sharpy.Builtins.Print("ok");
 #line hidden
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        [global::Sharpy.SharpyLoadEntry(false)]
+        public static void __Load()
+        {
         }
     }
 

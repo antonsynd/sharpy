@@ -15,11 +15,366 @@ namespace Sharpy.MathModule
     /// </summary>
     public static partial class MathModuleModule
     {
-        public static double Pi = 3.141592653589793d;
-        public static double E = 2.718281828459045d;
-        public static double Tau = 6.283185307179586d;
-        public static double Inf = global::System.Double.PositiveInfinity;
-        public static double Nan = global::System.Double.NaN;
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        internal static double Pi__field = default!;
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        private static byte Pi__state;
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        private static void Pi__init()
+        {
+            Pi__field = 3.141592653589793d;
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        private static void Pi__slow() => global::Sharpy.StaticInit.Read(ref __host, __Sweep, ref Pi__state, "pi", Pi__init);
+        [global::Sharpy.SharpyStaticStorage(global::Sharpy.StaticStorageKind.Guarded)]
+        public static ref double Pi
+        {
+            get
+            {
+                if (!__Swept.Done)
+                    Pi__slow();
+                return ref Pi__field;
+            }
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        internal static void Pi__ensure()
+        {
+            if (!__Swept.Done)
+                Pi__slow();
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        private static void Pi__storeSlow(double value) => global::Sharpy.StaticInit.Store(ref __host, __Sweep, ref Pi__state, ref Pi__field, value);
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        internal static double Pi__set(double value)
+        {
+            if (__Swept.Done)
+                Pi__field = value;
+            else
+                Pi__storeSlow(value);
+            return value;
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        internal static global::System.Runtime.CompilerServices.StrongBox<double>? Pi__pick()
+        {
+            if (!__Swept.Done)
+            {
+                global::Sharpy.StaticInit.Load(ref __host, __Sweep);
+                if (!global::Sharpy.StaticInit.IsReady(ref Pi__state))
+                    return new global::System.Runtime.CompilerServices.StrongBox<double>();
+            }
+
+            return null;
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        internal static ref double Pi__out(out global::System.Runtime.CompilerServices.StrongBox<double>? spill)
+        {
+            spill = Pi__pick();
+            if (spill != null)
+                return ref spill.Value!;
+            return ref Pi__field;
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        internal static R Pi__commit<R>(R result, global::System.Runtime.CompilerServices.StrongBox<double>? spill)
+        {
+            if (spill != null)
+                Pi__set(spill.Value!);
+            return result;
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        internal static double E__field = default!;
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        private static byte E__state;
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        private static void E__init()
+        {
+            E__field = 2.718281828459045d;
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        private static void E__slow() => global::Sharpy.StaticInit.Read(ref __host, __Sweep, ref E__state, "e", E__init);
+        [global::Sharpy.SharpyStaticStorage(global::Sharpy.StaticStorageKind.Guarded)]
+        public static ref double E
+        {
+            get
+            {
+                if (!__Swept.Done)
+                    E__slow();
+                return ref E__field;
+            }
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        internal static void E__ensure()
+        {
+            if (!__Swept.Done)
+                E__slow();
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        private static void E__storeSlow(double value) => global::Sharpy.StaticInit.Store(ref __host, __Sweep, ref E__state, ref E__field, value);
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        internal static double E__set(double value)
+        {
+            if (__Swept.Done)
+                E__field = value;
+            else
+                E__storeSlow(value);
+            return value;
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        internal static global::System.Runtime.CompilerServices.StrongBox<double>? E__pick()
+        {
+            if (!__Swept.Done)
+            {
+                global::Sharpy.StaticInit.Load(ref __host, __Sweep);
+                if (!global::Sharpy.StaticInit.IsReady(ref E__state))
+                    return new global::System.Runtime.CompilerServices.StrongBox<double>();
+            }
+
+            return null;
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        internal static ref double E__out(out global::System.Runtime.CompilerServices.StrongBox<double>? spill)
+        {
+            spill = E__pick();
+            if (spill != null)
+                return ref spill.Value!;
+            return ref E__field;
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        internal static R E__commit<R>(R result, global::System.Runtime.CompilerServices.StrongBox<double>? spill)
+        {
+            if (spill != null)
+                E__set(spill.Value!);
+            return result;
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        internal static double Tau__field = default!;
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        private static byte Tau__state;
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        private static void Tau__init()
+        {
+            Tau__field = 6.283185307179586d;
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        private static void Tau__slow() => global::Sharpy.StaticInit.Read(ref __host, __Sweep, ref Tau__state, "tau", Tau__init);
+        [global::Sharpy.SharpyStaticStorage(global::Sharpy.StaticStorageKind.Guarded)]
+        public static ref double Tau
+        {
+            get
+            {
+                if (!__Swept.Done)
+                    Tau__slow();
+                return ref Tau__field;
+            }
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        internal static void Tau__ensure()
+        {
+            if (!__Swept.Done)
+                Tau__slow();
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        private static void Tau__storeSlow(double value) => global::Sharpy.StaticInit.Store(ref __host, __Sweep, ref Tau__state, ref Tau__field, value);
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        internal static double Tau__set(double value)
+        {
+            if (__Swept.Done)
+                Tau__field = value;
+            else
+                Tau__storeSlow(value);
+            return value;
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        internal static global::System.Runtime.CompilerServices.StrongBox<double>? Tau__pick()
+        {
+            if (!__Swept.Done)
+            {
+                global::Sharpy.StaticInit.Load(ref __host, __Sweep);
+                if (!global::Sharpy.StaticInit.IsReady(ref Tau__state))
+                    return new global::System.Runtime.CompilerServices.StrongBox<double>();
+            }
+
+            return null;
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        internal static ref double Tau__out(out global::System.Runtime.CompilerServices.StrongBox<double>? spill)
+        {
+            spill = Tau__pick();
+            if (spill != null)
+                return ref spill.Value!;
+            return ref Tau__field;
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        internal static R Tau__commit<R>(R result, global::System.Runtime.CompilerServices.StrongBox<double>? spill)
+        {
+            if (spill != null)
+                Tau__set(spill.Value!);
+            return result;
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        internal static double Inf__field = default!;
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        private static byte Inf__state;
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        private static void Inf__init()
+        {
+            Inf__field = global::System.Double.PositiveInfinity;
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        private static void Inf__slow() => global::Sharpy.StaticInit.Read(ref __host, __Sweep, ref Inf__state, "inf", Inf__init);
+        [global::Sharpy.SharpyStaticStorage(global::Sharpy.StaticStorageKind.Guarded)]
+        public static ref double Inf
+        {
+            get
+            {
+                if (!__Swept.Done)
+                    Inf__slow();
+                return ref Inf__field;
+            }
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        internal static void Inf__ensure()
+        {
+            if (!__Swept.Done)
+                Inf__slow();
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        private static void Inf__storeSlow(double value) => global::Sharpy.StaticInit.Store(ref __host, __Sweep, ref Inf__state, ref Inf__field, value);
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        internal static double Inf__set(double value)
+        {
+            if (__Swept.Done)
+                Inf__field = value;
+            else
+                Inf__storeSlow(value);
+            return value;
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        internal static global::System.Runtime.CompilerServices.StrongBox<double>? Inf__pick()
+        {
+            if (!__Swept.Done)
+            {
+                global::Sharpy.StaticInit.Load(ref __host, __Sweep);
+                if (!global::Sharpy.StaticInit.IsReady(ref Inf__state))
+                    return new global::System.Runtime.CompilerServices.StrongBox<double>();
+            }
+
+            return null;
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        internal static ref double Inf__out(out global::System.Runtime.CompilerServices.StrongBox<double>? spill)
+        {
+            spill = Inf__pick();
+            if (spill != null)
+                return ref spill.Value!;
+            return ref Inf__field;
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        internal static R Inf__commit<R>(R result, global::System.Runtime.CompilerServices.StrongBox<double>? spill)
+        {
+            if (spill != null)
+                Inf__set(spill.Value!);
+            return result;
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        internal static double Nan__field = default!;
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        private static byte Nan__state;
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        private static void Nan__init()
+        {
+            Nan__field = global::System.Double.NaN;
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        private static void Nan__slow() => global::Sharpy.StaticInit.Read(ref __host, __Sweep, ref Nan__state, "nan", Nan__init);
+        [global::Sharpy.SharpyStaticStorage(global::Sharpy.StaticStorageKind.Guarded)]
+        public static ref double Nan
+        {
+            get
+            {
+                if (!__Swept.Done)
+                    Nan__slow();
+                return ref Nan__field;
+            }
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        internal static void Nan__ensure()
+        {
+            if (!__Swept.Done)
+                Nan__slow();
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        private static void Nan__storeSlow(double value) => global::Sharpy.StaticInit.Store(ref __host, __Sweep, ref Nan__state, ref Nan__field, value);
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        internal static double Nan__set(double value)
+        {
+            if (__Swept.Done)
+                Nan__field = value;
+            else
+                Nan__storeSlow(value);
+            return value;
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        internal static global::System.Runtime.CompilerServices.StrongBox<double>? Nan__pick()
+        {
+            if (!__Swept.Done)
+            {
+                global::Sharpy.StaticInit.Load(ref __host, __Sweep);
+                if (!global::Sharpy.StaticInit.IsReady(ref Nan__state))
+                    return new global::System.Runtime.CompilerServices.StrongBox<double>();
+            }
+
+            return null;
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        internal static ref double Nan__out(out global::System.Runtime.CompilerServices.StrongBox<double>? spill)
+        {
+            spill = Nan__pick();
+            if (spill != null)
+                return ref spill.Value!;
+            return ref Nan__field;
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        internal static R Nan__commit<R>(R result, global::System.Runtime.CompilerServices.StrongBox<double>? spill)
+        {
+            if (spill != null)
+                Nan__set(spill.Value!);
+            return result;
+        }
+
         /// <summary>
         /// Return the ceiling of x as a float.
         /// </summary>
@@ -504,6 +859,36 @@ namespace Sharpy.MathModule
         public static double Hypot(double x, double y)
         {
             return global::System.Math.Sqrt(x * x + y * y);
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        private static global::Sharpy.StaticInitHost __host;
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        private static void __Sweep()
+        {
+            global::Sharpy.StaticInit.Run(ref Pi__state, "pi", Pi__init);
+            global::Sharpy.StaticInit.Run(ref E__state, "e", E__init);
+            global::Sharpy.StaticInit.Run(ref Tau__state, "tau", Tau__init);
+            global::Sharpy.StaticInit.Run(ref Inf__state, "inf", Inf__init);
+            global::Sharpy.StaticInit.Run(ref Nan__state, "nan", Nan__init);
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        private static class __Swept
+        {
+            internal static readonly bool Done;
+            static __Swept()
+            {
+                Done = global::Sharpy.StaticInit.TryLoad(ref __host, __Sweep);
+            }
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        [global::Sharpy.SharpyLoadEntry(true)]
+        public static void __Load()
+        {
+            if (!__Swept.Done)
+                global::Sharpy.StaticInit.Load(ref __host, __Sweep);
         }
     }
 }

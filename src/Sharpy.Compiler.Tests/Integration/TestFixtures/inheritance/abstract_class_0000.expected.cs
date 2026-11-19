@@ -13,6 +13,7 @@ namespace AbstractClass0000
     {
         public static void Main()
         {
+            __Load();
 #line (46, 5) - (46, 31) 12 "abstract_class_0000.spy"
             var rect = new global::AbstractClass0000.Rectangle(4.0d, 5.0d);
 #line (47, 5) - (47, 23) 12 "abstract_class_0000.spy"
@@ -26,6 +27,12 @@ namespace AbstractClass0000
 #line (52, 5) - (52, 23) 12 "abstract_class_0000.spy"
             global::Sharpy.Builtins.Print(circ.Area());
 #line hidden
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        [global::Sharpy.SharpyLoadEntry(false)]
+        public static void __Load()
+        {
         }
     }
 

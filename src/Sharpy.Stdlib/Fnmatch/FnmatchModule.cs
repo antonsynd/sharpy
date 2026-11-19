@@ -169,5 +169,11 @@ namespace Sharpy.FnmatchModule
             sb.Append(")\\Z");
             return sb.ToString();
         }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        [global::Sharpy.SharpyLoadEntry(false)]
+        public static void __Load()
+        {
+        }
     }
 }

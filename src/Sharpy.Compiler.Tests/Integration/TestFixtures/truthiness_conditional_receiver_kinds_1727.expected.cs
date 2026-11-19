@@ -12,6 +12,7 @@ namespace TruthinessConditionalReceiverKinds1727
     {
         public static void Main()
         {
+            __Load();
 #line (8, 5) - (8, 23) 12 "truthiness_conditional_receiver_kinds_1727.spy"
             bool flag = true;
 #line (11, 5) - (11, 16) 12 "truthiness_conditional_receiver_kinds_1727.spy"
@@ -391,6 +392,12 @@ namespace TruthinessConditionalReceiverKinds1727
                 global::Sharpy.Builtins.Print("bool-conv-select-falsy:falsy");
 #line hidden
             }
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        [global::Sharpy.SharpyLoadEntry(false)]
+        public static void __Load()
+        {
         }
     }
 

@@ -79,6 +79,7 @@ This mapping applies to method names, property names, and static members. The co
 
 A member you declare is emitted through the same mapping, so `def on_gui(self)` becomes `OnGui`. A `snake_case` name cannot spell an acronym, and a framework that finds a member **by name through reflection** — a Unity message such as `OnGUI`, or anything that calls `Type.GetMethod("…")` — finds only the exact spelling. Declare such a member with the backtick spelling, which is emitted verbatim: ``def `OnGUI`(self)``. The compiler does not warn about the near miss: a name a framework looks up is not an inherited member, so there is nothing for it to compare against.
 
+<!-- spec-sweep: output -->
 ```python
 class Mangled:
     def on_gui(self) -> None:      # emitted as OnGui
@@ -96,6 +97,11 @@ def main() -> None:
     print(e.get_type().get_method("OnGUI") is None)   # False
 ```
 
+```output
+True
+False
+```
+
 ### Sharpy builtin receivers expose their Sharpy names only
 
 A Sharpy builtin — `list`, `dict`, `set`, `frozenset`, `frozendict`, `array`, `str`, `bytes` — wraps a .NET type, but its surface is the Sharpy one. A `PascalCase` .NET spelling of a wrapper member is **refused** with a steer to the Sharpy spelling, rather than binding the wrapper's C# member and silently producing a `System.Func` or an internal view type:
@@ -111,6 +117,7 @@ Use the Sharpy spelling the diagnostic steers to: `len(xs)` for a length or coun
 
 The backtick escape deliberately reaches the wrapper's .NET member, and the reverse-mangled `snake_case` spelling of a .NET member stays typed:
 
+<!-- spec-sweep: output -->
 ```python
 def main() -> None:
     xs: list[int] = [1, 2, 3]
@@ -120,6 +127,12 @@ def main() -> None:
 
     s: str = "abc"
     print(s.to_upper())      # System.String.ToUpper reached by reverse-mangling -> ABC
+```
+
+```output
+3
+1
+ABC
 ```
 
 The escape names a .NET member **verbatim**. An escape that names no member of the wrapper's .NET surface — instance or extension — is an absent member (SPY0203), steered to the Sharpy spelling, in every position: as a value and as a callee alike. `count` is the Sharpy name; the .NET member is `Count`, so the escape spells nothing:
@@ -177,6 +190,7 @@ Leaving out `@override` is an error (SPY0248: "Method 'compare' overrides an abs
 
 A nested .NET type — a type declared inside another, such as `System.Environment.SpecialFolder` — is reached through its declaring type. The chain denotes a type, so it works in every position a type does: as a value (an enum member), as a type annotation, and as an `isinstance` operand.
 
+<!-- spec-sweep: output -->
 ```python
 from system import Environment
 
@@ -184,15 +198,21 @@ from system import Environment
 def main() -> None:
     # Value position: the enum member reached through the nested type.
     folder = Environment.SpecialFolder.Desktop
-    print(folder)                                          # Desktop
+    print(folder)                                          # SpecialFolder.Desktop
 
     # Annotation position: the nested type names a variable's type.
     chosen: Environment.SpecialFolder = Environment.SpecialFolder.Desktop
-    print(chosen)                                          # Desktop
+    print(chosen)                                          # SpecialFolder.Desktop
 
     # isinstance position: the nested type is the type being tested against.
     value = 5
     print(isinstance(value, Environment.SpecialFolder))    # False
+```
+
+```output
+SpecialFolder.Desktop
+SpecialFolder.Desktop
+False
 ```
 
 Because the chain resolves to the enum's own type, assigning it into an unrelated slot is a type error, not a silently-accepted value: `flag: bool = Environment.SpecialFolder.Desktop` is refused (SPY0220), the same as any other type mismatch.
@@ -263,6 +283,7 @@ A name that exists as an instance member on the receiver resolves to that member
 extension method — C#'s own rule. Several names are on both surfaces, and they mean different
 things:
 
+<!-- spec-sweep: output -->
 ```python
 def main():
     xs: list[int] = [1, 2, 3]
@@ -270,6 +291,12 @@ def main():
     print(xs)             # [3, 2, 1]
     print(xs.count(2))    # list.count(value) — occurrences, not length
     print("-".join(["a", "b"]))   # str.join, not Enumerable.Join
+```
+
+```output
+[3, 2, 1]
+1
+a-b
 ```
 
 `reverse`, `count`, `index`, `contains`, `append`, `to_list`, `to_dictionary`, `to_hash_set`,
@@ -336,6 +363,7 @@ remembers the CLR type it was mapped from, so a CLR sequence satisfies it whenev
 it does — which is the same set of calls C# would bind. Nothing is converted, because the real
 parameter is still the CLR type:
 
+<!-- spec-sweep: output -->
 ```python
 from system.collections.generic import List
 
@@ -346,6 +374,10 @@ def main() -> None:
     inner = List[int]()
     inner.add(2)
     print(list(outer.concat(inner)))      # [1, 2] — a CLR List[int] against IEnumerable<int>
+```
+
+```output
+[1, 2]
 ```
 
 **A Sharpy slot means a Sharpy collection, so a .NET sequence entering one is materialized.** When
@@ -392,6 +424,7 @@ above holds for CLR types a `Sharpy.List<T>` can replace — it *is* an `IEnumer
 own type and an inferred slot chains exactly as an unbroken chain does
 ([#1390](https://github.com/antonsynd/sharpy/issues/1390)):
 
+<!-- spec-sweep: output -->
 ```python
 from system.collections.generic import List
 
@@ -403,6 +436,11 @@ def main() -> None:
     xs = lst.order_by(lambda v: v)     # an ordered sequence, not a list
     for y in xs.then_by(lambda v: -v):
         print(y)                        # 1 then 3
+```
+
+```output
+1
+3
 ```
 
 The trade is real and the annotation is how you choose: an inferred slot holds an ordered sequence,
@@ -536,6 +574,7 @@ One rule covers every reference type, .NET and Sharpy alike: **`is` never runs u
 
 `is None` / `is not None` are a reference null check. They lower to the C# null pattern `v is null` / `v is not null`, which never calls an overloaded `==`:
 
+<!-- spec-sweep: output -->
 ```python
 from system import Version
 
@@ -545,8 +584,14 @@ def main() -> None:
     print(v is not None)   # True
 ```
 
+```output
+False
+True
+```
+
 A type whose `==` makes a live object compare equal to null — a destroyed Unity `Object` — is therefore **not** `None` to `is None`: the variable still holds a reference. To ask the type's own `==`, write `== None` / `!= None`, which lowers to C# `v == (T?)null` and runs the type's same-type overload — the typed null keeps a second `==` overload (say, against another type) from making the comparison ambiguous, and a type with no same-type `==` compares references. That holds for every operand: a declared `T`, a `T | None`, a `T | None` that an assignment or an `is not None` test has narrowed to `T`, and a `T?` narrowed by `is not None`:
 
+<!-- spec-sweep: output -->
 ```python
 from system import Version
 
@@ -561,7 +606,40 @@ def main() -> None:
     print(None != v)                   # True
 ```
 
+```output
+True
+False
+False
+True
+```
+
 Inside a `@test` function, `assert v == None` asserts that same lowering (`Assert.True(v == (Version?)null)`), so a test and `sharpyc run` agree on what the comparison means.
+
+## Sharpy Module Values Seen from .NET
+
+A Sharpy module value or class `@static` value with an initializer is initialized before its first
+read ([N3](variable_scoping.md#values-are-ready-before-use-n3)), and a .NET consumer of a compiled
+Sharpy library gets the same guarantee. Each value is a static property of its module's members class
+or of its class, under the value's own name:
+
+| Sharpy declaration | C# member |
+|---|---|
+| `const FIXED: int = 3` (a compile-time constant) | `public const int FIXED = 3;` |
+| `const LIMIT: int = three()` | `public static ref readonly int LIMIT { get; }` |
+| `count: int = 1` (a module variable), a `@static` field | `public static ref int Count { get; }` |
+| `@static property size: int = 2` | `public static int Size { get; set; }` |
+
+The getter runs the host's initializers the first time any of them is needed, in declaration order,
+so a read from C# never sees a storage default. A host is a module, a class with such values, or one
+closed generic type. Every other member the compiler adds for this (the backing field, the state, the
+initializer and store helpers, the module's `__Load` entry) is marked `[CompilerGenerated]`.
+
+When Sharpy imports a compiled Sharpy library, the members marked `[CompilerGenerated]` are not
+imported as names. Two Sharpy.Core attributes carry what the importer needs:
+`[SharpyStaticStorage]` on each value says how it is stored, and `[SharpyLoadEntry]` marks the
+module's load entry. The importer runs that entry at the import's line, as it does for a module
+compiled from source. A `ref`-returning static property of an assembly that is not Sharpy's has no
+such attribute, and it imports as an ordinary property.
 
 ## IDisposable Pattern
 

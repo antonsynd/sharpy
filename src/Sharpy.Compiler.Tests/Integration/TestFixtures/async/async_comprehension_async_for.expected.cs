@@ -24,6 +24,7 @@ namespace AsyncComprehensionAsyncFor
 
         public static async System.Threading.Tasks.Task Main()
         {
+            __Load();
             var __comp_0 = new Sharpy.List<int>();
             await foreach (var __loopVar_1 in global::AsyncComprehensionAsyncFor.AsyncComprehensionAsyncForModule.Gen())
             {
@@ -39,6 +40,12 @@ namespace AsyncComprehensionAsyncFor
 #line (8, 5) - (8, 18) 12 "async_comprehension_async_for.spy"
             global::Sharpy.Builtins.Print(result);
 #line hidden
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        [global::Sharpy.SharpyLoadEntry(false)]
+        public static void __Load()
+        {
         }
     }
 }

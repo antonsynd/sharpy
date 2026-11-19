@@ -13,6 +13,7 @@ namespace TypeAliasGameInventory
     {
         public static void Main()
         {
+            __Load();
 #line (61, 5) - (61, 40) 12 "type_alias_game_inventory.spy"
             global::TypeAliasGameInventory.Inventory inventory = new global::TypeAliasGameInventory.Inventory();
 #line (63, 5) - (63, 56) 12 "type_alias_game_inventory.spy"
@@ -36,6 +37,12 @@ namespace TypeAliasGameInventory
 #line (75, 5) - (75, 25) 12 "type_alias_game_inventory.spy"
             sword.DisplayInfo();
 #line hidden
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        [global::Sharpy.SharpyLoadEntry(false)]
+        public static void __Load()
+        {
         }
     }
 

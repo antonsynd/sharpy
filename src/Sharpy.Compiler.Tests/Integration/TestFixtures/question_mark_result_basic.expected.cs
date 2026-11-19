@@ -40,6 +40,7 @@ namespace QuestionMarkResultBasic
 
         public static void Main()
         {
+            __Load();
 #line (11, 5) - (11, 27) 12 "question_mark_result_basic.spy"
             var result = global::QuestionMarkResultBasic.QuestionMarkResultBasicModule.Process("42");
 #line (12, 5) - (16, 21) 12 "question_mark_result_basic.spy"
@@ -59,6 +60,12 @@ namespace QuestionMarkResultBasic
                 default:
                     throw new System.InvalidOperationException("Unreachable: exhaustive match");
             }
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        [global::Sharpy.SharpyLoadEntry(false)]
+        public static void __Load()
+        {
         }
     }
 }

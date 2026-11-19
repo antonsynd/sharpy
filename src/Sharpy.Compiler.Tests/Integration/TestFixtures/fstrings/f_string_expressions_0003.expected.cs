@@ -13,6 +13,7 @@ namespace FStringExpressions0003
     {
         public static void Main()
         {
+            __Load();
 #line (60, 5) - (60, 57) 12 "f_string_expressions_0003.spy"
             var competitive = new global::FStringExpressions0003.CompetitivePlayer("Alice", 80, 25, 12);
 #line (61, 5) - (61, 40) 12 "f_string_expressions_0003.spy"
@@ -34,6 +35,12 @@ namespace FStringExpressions0003
 #line (71, 5) - (71, 89) 12 "f_string_expressions_0003.spy"
             global::Sharpy.Builtins.Print(FormattableString.Invariant($"Rank: {(global::Sharpy.Builtins.Str(casual.GetRank()))}, Next level at: {(global::Sharpy.Builtins.Str(11 - casual.GamesPlayed))} games"));
 #line hidden
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        [global::Sharpy.SharpyLoadEntry(false)]
+        public static void __Load()
+        {
         }
     }
 

@@ -20,11 +20,18 @@ namespace UnusedTupleUnpack
 
         public static void Main()
         {
+            __Load();
 #line (5, 5) - (5, 22) 12 "unused_tuple_unpack.spy"
             var (a, b) = global::UnusedTupleUnpack.UnusedTupleUnpackModule.GetPair();
 #line (6, 5) - (6, 13) 12 "unused_tuple_unpack.spy"
             global::Sharpy.Builtins.Print(a);
 #line hidden
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        [global::Sharpy.SharpyLoadEntry(false)]
+        public static void __Load()
+        {
         }
     }
 }

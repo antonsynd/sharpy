@@ -65,10 +65,16 @@ public class SemanticInfoMergeConformanceTests
     /// 85: <c>_membershipNeedleBindings</c> (P93, PR #2699), raised by the implementing session
     /// without the owner's word; owner, 2026-11-17: not a precedent, the table moves onto an IR node
     /// in the next P82 tranche.
+    /// 86: <c>_asyncGuardedUses</c> (P77 D6, plan-775c50 T6): which uses of a Guarded value in an
+    /// <c>async def</c> body take the ensure arm, node-keyed on the use.
+    /// 87: <c>_importRequirements</c> (P77 D5, plan-775c50 T5): the modules each import statement
+    /// makes Python run, node-keyed on the statement.
+    /// Owner, 2026-11-18, for 86 and 87: "Raise, not a precedent": both tables move onto IR nodes in
+    /// the next P82 tranche, as P93's does.
     /// This pin is raised only on the owner's word, quoted in the pull request body, as a scorecard
     /// baseline is.
     /// </summary>
-    private const int MaximumSideTableFieldCount = 85;
+    private const int MaximumSideTableFieldCount = 87;
 
     /// <summary>
     /// #1887: the real property — an entry recorded on one SemanticInfo survives <c>MergeFrom</c>

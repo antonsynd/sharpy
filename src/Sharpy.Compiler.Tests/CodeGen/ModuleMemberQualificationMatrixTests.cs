@@ -149,7 +149,7 @@ public class ModuleMemberQualificationMatrixTests : StdlibAwareIntegrationTestBa
         // The write-through store position (#1786): a module-level variable assigned from the
         // module's own entry point. The READ is global::-qualified (global::Prog.Count, asserted in
         // the value theory); the store TARGET binds in scope inside the module class and is emitted
-        // bare (`Count = 4`) — correct, because Main is a static method of the same Prog class. The
+        // bare (`Count__set(4)`, plan-775c50 D4) — correct, because Main is a static method of the same Prog class. The
         // store is verified by the round-trip: print(count) is 0 before and 4 after.
         var result = CompileAndExecute(SingleFileModule, "prog.spy");
         result.Success.Should().BeTrue(
@@ -159,10 +159,10 @@ public class ModuleMemberQualificationMatrixTests : StdlibAwareIntegrationTestBa
             "the module variable reads 0, is stored 4, then reads back 4 — the store took effect");
 
         var cs = result.GeneratedCSharp!;
-        cs.Should().Contain("Count = 4;",
+        cs.Should().Contain("Count__set(4);",
             "the store target of a module variable, written from the module's own class, binds in "
             + "scope and is emitted bare (#1786 is a CROSS-class-member concern, not this same-class "
-            + "store)");
+            + "store); `count` is Guarded, so its plain store is its `__set` (plan-775c50 D4)");
         cs.Should().NotContain(UsingStatic, "#1683 close criterion");
     }
 

@@ -65,10 +65,6 @@ public class DispatchSiteInventoryTests
         ["Analysis/ControlFlow/ControlFlowGraphBuilder.cs::ControlFlowGraphBuilder.BuildStatement"] = "guarded-by:CfgStatementTotalityTests",
         ["Analysis/ControlFlow/ControlFlowGraphBuilder.cs::ControlFlowGraphBuilder.CollectPatternBindingKeysInto"] = "guarded-by:CfgPatternBindingTotalityTests",
 
-        // ExecutionOrderAnalyzer — identifier/declaration collection
-        ["Semantic/ExecutionOrderAnalyzer.cs::ExecutionOrderAnalyzer.CollectReferencedIdentifiers"] = "guarded-by:ExecutionOrderAnalyzerTotalityTests",
-        ["Semantic/ExecutionOrderAnalyzer.cs::ExecutionOrderAnalyzer.CollectDeclarationNames"] = "guarded-by:ExecutionOrderAnalyzerTotalityTests",
-
         // CodeGenInfoComputer — code generation info over module/type members
         // ConstEligibility — the ONE walk over every const host (#1791). Collect dispatches on
         // statement kind; IsOperandTypeIndependentNativeOperator on the cross-module operator roster.
@@ -148,13 +144,48 @@ public class DispatchSiteInventoryTests
         // The F1 order rule's "which bare member name does this type-body statement declare": a
         // statement kind that declares no member (a nested type, an alias, a pass) names none, so
         // it is never a sibling's declaration (P21h, owner ruling F1 2026-10-29).
-        // (Moved into TypeBodyMembership by P75 — one anchor rule for F1 and StaticInitializerOrderValidator.)
+        // (Moved into TypeBodyMembership by P75 — one anchor rule for F1 and the retired StaticInitializerOrderValidator.)
         ["Semantic/TypeBodyMembership.cs::TypeBodyMembership.DeclaredMemberName"] = "documented-by-design:Semantic/TypeBodyMembership.cs:DeclaredMemberName",
-        // The static-initializer order validator (P75, #2396): which statements declare a static initializer,
-        // which nodes of one it reads, and which sibling kinds are ordered storage — each deliberately partial.
-        ["Semantic/Validation/StaticInitializerOrderValidator.cs::StaticInitializerOrderValidator.ValidateTypeBody"] = "documented-by-design:Semantic/Validation/StaticInitializerOrderValidator.cs:ValidateTypeBody",
-        ["Semantic/Validation/StaticInitializerOrderValidator.cs::StaticInitializerOrderValidator.Walk"] = "documented-by-design:Semantic/Validation/StaticInitializerOrderValidator.cs:Walk",
-        ["Semantic/Validation/StaticInitializerOrderValidator.cs::StaticInitializerOrderValidator.OrderedKind"] = "documented-by-design:Semantic/Validation/StaticInitializerOrderValidator.cs:OrderedKind",
+        // plan-775c50 D6 (P77 T6): which uses of a Guarded value in an `async def` body take the ensure
+        // arm. Each switch is deliberately partial — a scope kind, the two value spellings, the receiver
+        // and element-path kinds, the store sites with a target — and the generated use × spelling cells
+        // (positive, plain-store, read and non-async controls) are the net over every arm.
+        ["Semantic/AsyncGuardedUseAnalyzer.cs::AsyncGuardedUseAnalyzer.Walk"] = "refusal-net:AsyncGuardedUseFactTests",
+        ["Semantic/AsyncGuardedUseAnalyzer.cs::AsyncGuardedUseAnalyzer.IsReceiverOf"] = "refusal-net:AsyncGuardedUseFactTests",
+        ["Semantic/AsyncGuardedUseAnalyzer.cs::AsyncGuardedUseAnalyzer.IsStoreTarget"] = "refusal-net:AsyncGuardedUseFactTests",
+        ["Semantic/AsyncGuardedUseAnalyzer.cs::AsyncGuardedUseAnalyzer.IsElementOf"] = "refusal-net:AsyncGuardedUseFactTests",
+        // The D6 totality guard's structural reading of a receiver (a type name, a module's exported
+        // type, a nested type, a constructed generic, a recorded type reference): deliberately partial —
+        // a receiver it cannot read is no type-denoting spelling — and the spelling generator's cells
+        // (each Guarded spelling an `out` operand across an `await`) are the net over every arm.
+        ["Semantic/AsyncGuardedUseAnalyzer.cs::AsyncGuardedUseAnalyzer.StructuralType"] = "refusal-net:AsyncGuardedOutCallPathTests",
+        // plan-775c50 (review 6): the receiver chain of a static nested under a generic (`G[int].N.s`),
+        // walked through its member-access and index segments to close the field's type by each
+        // constructed enclosing generic; any other node ends the chain. The spelling generator's
+        // nested-under-generic cells (an `out` operand, an augmented assignment, a mutating call and
+        // a store, across an `await` and in a plain def) are the net.
+        ["Semantic/TypeChecker.TypeDenotingReceiver.cs::TypeChecker.ClosedByReceiverChain"] = "refusal-net:AsyncGuardedStaticSpellingTests",
+        // plan-775c50 D4/D6: a Guarded value's own spelling, by its two value spellings (a name, a member
+        // access); any other node is an internal error. The run generator crosses every narrowing form.
+        ["CodeGen/RoslynEmitter.StaticValues.cs::RoslynEmitter.GuardedValueSpelling"] = "refusal-net:AsyncGuardedNarrowedUseTests",
+        // plan-775c50 D8 (P77 T9): the cycle graph. Its slot walk over the Expression subclasses is total and
+        // equal to the stage-0 generator's map (CycleGraph_SlotMapAndNodeKinds_AreTheGenerators); the node,
+        // read, pattern and store switches are covered by the generator's Slot family and the order matrix.
+        ["Semantic/Validation/InitializerCycleValidator.cs::InitializerCycleValidator.SlotsOf"] = "refusal-net:InitializerDependencyDifferentialTests",
+        ["Semantic/Validation/InitializerCycleValidator.cs::InitializerCycleValidator.Clauses"] = "refusal-net:InitializerDependencyDifferentialTests",
+        ["Semantic/Validation/InitializerCycleValidator.cs::InitializerCycleValidator.CollectModule"] = "refusal-net:InitializerDependencyDifferentialTests",
+        ["Semantic/Validation/InitializerCycleValidator.cs::InitializerCycleValidator.CollectType"] = "refusal-net:StaticInitializerOrderMatrixTests",
+        ["Semantic/Validation/InitializerCycleValidator.cs::InitializerCycleValidator.CollectStores"] = "refusal-net:InitializerDependencyDifferentialTests",
+        ["Semantic/Validation/InitializerCycleValidator.cs::InitializerCycleValidator.StoreLeaves"] = "refusal-net:InitializerDependencyDifferentialTests",
+        ["Semantic/Validation/InitializerCycleValidator.cs::InitializerCycleValidator.ValueRead"] = "refusal-net:InitializerDependencyDifferentialTests",
+        ["Semantic/Validation/InitializerCycleValidator.cs::InitializerCycleValidator.WalkInitializer"] = "refusal-net:InitializerDependencyDifferentialTests",
+        ["Semantic/Validation/InitializerCycleValidator.cs::InitializerCycleValidator.WalkPattern"] = "refusal-net:InitializerDependencyDifferentialTests",
+        ["Semantic/Validation/InitializerCycleValidator.cs::InitializerCycleValidator.WalkStoreTarget"] = "refusal-net:InitializerDependencyDifferentialTests",
+        // N2's narrowed refusal (SPY0618 until P78): the initializer a held read sits in, and whether it lies in a
+        // comprehension's body. The ComprehensionElement and ComprehensionIterable cells of the name-resolution sweep
+        // refuse and run by them (a missing comprehension kind runs a refused cell).
+        ["Semantic/TypeChecker.ClassScopeRule.cs::TypeChecker.InitializerOf"] = "refusal-net:NameResolutionDifferentialTests",
+        ["Semantic/TypeChecker.ClassScopeRule.cs::TypeChecker.IsInComprehensionBody"] = "refusal-net:NameResolutionDifferentialTests",
         // IsMutableDefault (both copies) folded onto ConstantDefaultClassifier's
         // Collection/Comprehension kinds (#1684, R-A) — the shape-switching dispatch these two rows
         // named is gone, drained here rather than left phantom.
@@ -198,7 +229,11 @@ public class DispatchSiteInventoryTests
         // text is asserted by the hand cells (#2363).
         ["Semantic/Validation/ExceptHandlerOrderValidator.cs::ExceptHandlerOrderValidator.DescribeHandler"] = "refusal-net:ExceptHandlerReachabilityTests",
         ["CodeGen/RoslynEmitter.ClassMembers.cs::RoslynEmitter.GenerateClassMembers"] = "refusal-net:FileBasedIntegrationTests",
-        ["CodeGen/RoslynEmitter.ClassMembers.cs::RoslynEmitter.GenerateInterfaceMembers"] = "refusal-net:FileBasedIntegrationTests",
+        ["CodeGen/RoslynEmitter.ClassMembers.cs::RoslynEmitter.GenerateInterfaceMembersCore"] = "refusal-net:FileBasedIntegrationTests",
+        // plan-775c50 D4: a store or `out` target names a Guarded variable through the symbol the checker
+        // bound on a bare name or a qualified one; every other target is no Guarded value. The generated
+        // Location cells write each store site on both spellings.
+        ["Semantic/SemanticInfo.cs::SemanticInfo.GetBoundValueSymbol"] = "refusal-net:InitializerDependencyDifferentialTests",
         ["CodeGen/RoslynEmitter.Expressions.Access.Calls.cs::RoslynEmitter.IsMethodGroup"] = "refusal-net:FileBasedIntegrationTests",
         ["CodeGen/RoslynEmitter.Expressions.Access.Calls.cs::RoslynEmitter.IsMethodGroupOrLambda"] = "refusal-net:FileBasedIntegrationTests",
         ["CodeGen/RoslynEmitter.Expressions.cs::RoslynEmitter.GenerateExpressionCore"] = "refusal-net:FileBasedIntegrationTests",
@@ -210,7 +245,6 @@ public class DispatchSiteInventoryTests
         ["CodeGen/RoslynEmitter.ModuleClass.cs::RoslynEmitter.GenerateModuleMembers"] = "refusal-net:FileBasedIntegrationTests",
         ["CodeGen/RoslynEmitter.ModuleClass.cs::RoslynEmitter.GenerateParametrizeMemberDataProperties"] = "refusal-net:FileBasedIntegrationTests",
         ["CodeGen/RoslynEmitter.ModuleClass.cs::RoslynEmitter.GenerateStatement"] = "refusal-net:FileBasedIntegrationTests",
-        ["CodeGen/RoslynEmitter.Operators.cs::RoslynEmitter.CollectReferencedIdentifiers"] = "refusal-net:FileBasedIntegrationTests",
         // The operand pair of a reported node (#1699, 94e87ff99; moved out of OperandSpellings in
         // 414009c45 so the #1819 augmented-store arm reads the same switch): a switch over the
         // reported node's shape (binary operation / augmented assignment) that names the two
@@ -219,6 +253,12 @@ public class DispatchSiteInventoryTests
         // text for both shapes (mutation B-M9, steer returns null, reddens them) and the
         // LogicalResultSteerMatrixTests augmented cells assert the value-node route.
         ["Semantic/TypeChecker.Expressions.Operators.cs::TypeChecker.OperandNodes"] = "refusal-net:NarrowWidthArithmeticMatrixTests",
+        // plan-775c50 D7 (SPY0389): a ref/out/in operand is refused by the symbol it resolves to, on a
+        // bare name or a qualified one; every other operand (a local, a parameter, an element) is no
+        // refused kind, and the message names it as "the operand". The generated Operand cells refuse
+        // each kind on every spelling and run each accepted one.
+        ["Semantic/TypeChecker.Expressions.cs::TypeChecker.ResolveModifiedOperandKind"] = "refusal-net:InitializerDependencyDifferentialTests",
+        ["Semantic/TypeChecker.Expressions.cs::TypeChecker.DescribeOperand"] = "refusal-net:InitializerDependencyDifferentialTests",
         // ContainsSuperExpressionInExpression/InStatement deleted (#1740): the kind-enumerating
         // super() walker is gone, replaced by the materialized OperatorLowering/RequiresInstanceImpl
         // facts RoslynEmitter.Expressions.Access.cs and RoslynEmitter.Operators.cs's
@@ -360,9 +400,6 @@ public class DispatchSiteInventoryTests
         ["Analysis/ControlFlow/NarrowingFlowAnalysis.cs::NarrowingConditionInterpreter.DescribeTypeExpression"] = "documented-by-design:Analysis/ControlFlow/NarrowingFlowAnalysis.cs:DescribeTypeExpression",
         // GetLruCacheMaxSize deleted: emitter reads FunctionSymbol.CacheMaxSize (#1716)
         ["Semantic/TypeChecker.cs::TypeChecker.CheckStatementCore"] = "guarded-by:CheckStatementCoreTotalityTests",
-        // DetectConstantCycles: the type-body const graph's member-name switch and qualified-path reader
-        // (P21h, #2384) — partial by design; a kind it does not list leaves a bare name to the module lookup.
-        ["Semantic/TypeChecker.cs::TypeChecker.DetectConstantCycles"] = "documented-by-design:Semantic/TypeChecker.cs:DetectConstantCycles",
         ["Semantic/TypeChecker.Definitions.cs::TypeChecker.DetectGeneratorAttributes"] = "guarded-by:DeclarationKindDispatchTotalityTests",
         // TypeChecker.ExtractCacheConfig: dispatch moved to AstHelper.TryGetLiteralValue (#1716)
         ["Semantic/TypeChecker.Expressions.Access.Calls.cs::TypeChecker.MarkTypeFactoryArguments"] = "refusal-net:FileBasedIntegrationTests",

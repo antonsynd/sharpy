@@ -6,6 +6,15 @@ CSV file reading and writing.
 import csv
 ```
 
+## Properties
+
+| Name | Type | Description |
+|------|------|-------------|
+| `QUOTE_ALL` | `int` |  |
+| `QUOTE_MINIMAL` | `int` |  |
+| `QUOTE_NONE` | `int` |  |
+| `QUOTE_NONNUMERIC` | `int` |  |
+
 ## Functions
 
 ### `csv.reader(lines: list[str]) -> CsvReader`

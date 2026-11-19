@@ -63,5 +63,11 @@ namespace Sharpy.Functools
         {
             return global::System.Collections.Generic.Comparer<T>.Create((a, b) => cmp(a, b));
         }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        [global::Sharpy.SharpyLoadEntry(false)]
+        public static void __Load()
+        {
+        }
     }
 }

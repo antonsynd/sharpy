@@ -26,6 +26,7 @@ namespace GenericCallExplicitCollectionTypearg
 
         public static void Main()
         {
+            __Load();
 #line (22, 5) - (22, 49) 12 "generic_call_explicit_collection_typearg.spy"
             Sharpy.List<int> xs = Identity<Sharpy.List<int>>(new Sharpy.List<int>() { 1, 2 });
 #line (23, 5) - (23, 17) 12 "generic_call_explicit_collection_typearg.spy"
@@ -55,6 +56,12 @@ namespace GenericCallExplicitCollectionTypearg
 #line (37, 5) - (37, 24) 12 "generic_call_explicit_collection_typearg.spy"
             global::Sharpy.Builtins.Print(nested.GetItemUnchecked(1)[1]);
 #line hidden
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        [global::Sharpy.SharpyLoadEntry(false)]
+        public static void __Load()
+        {
         }
     }
 

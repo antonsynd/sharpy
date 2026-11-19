@@ -21,9 +21,16 @@ namespace DecoratorArgsBasic0001
 
         public static void Main()
         {
+            __Load();
 #line (6, 5) - (6, 19) 12 "decorator_args_basic_0001.spy"
             global::Sharpy.Builtins.Print(global::DecoratorArgsBasic0001.DecoratorArgsBasic0001Module.Greet());
 #line hidden
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        [global::Sharpy.SharpyLoadEntry(false)]
+        public static void __Load()
+        {
         }
     }
 }

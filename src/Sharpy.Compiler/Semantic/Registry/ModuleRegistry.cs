@@ -282,6 +282,16 @@ internal class ModuleRegistry
     }
 
     /// <summary>
+    /// The load entry of a Sharpy module imported by reference (plan-775c50 D10): the
+    /// <c>[SharpyModule]</c> class's member carrying <c>Sharpy.SharpyLoadEntryAttribute</c>, its CLR
+    /// full name and the attribute's <c>HasSweep</c>. Null for a module discovery did not load and for
+    /// one with no such member (a hand-written C# module, a plain .NET namespace). Keyed by the Sharpy
+    /// import name, as <see cref="IsModuleLoaded"/> is.
+    /// </summary>
+    public ModuleLoadEntry? GetModuleLoadEntry(string moduleName)
+        => _discovery.GetModuleLoadEntry(moduleName);
+
+    /// <summary>
     /// Whether a loaded assembly declares <paramref name="moduleName"/> as a Sharpy module by
     /// attribute (<c>[SharpyModule]</c> / <c>[SharpyModuleType]</c>).
     /// </summary>

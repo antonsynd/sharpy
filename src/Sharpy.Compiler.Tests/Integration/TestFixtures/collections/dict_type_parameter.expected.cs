@@ -13,6 +13,7 @@ namespace DictTypeParameter
     {
         public static void Main()
         {
+            __Load();
 #line (4, 5) - (4, 56) 12 "dict_type_parameter.spy"
             Sharpy.Dict<string, int> scores = new Sharpy.Dict<string, int>()
 #line hidden
@@ -31,6 +32,12 @@ namespace DictTypeParameter
 #line (6, 5) - (6, 25) 12 "dict_type_parameter.spy"
             global::Sharpy.Builtins.Print(scores["bob"]);
 #line hidden
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        [global::Sharpy.SharpyLoadEntry(false)]
+        public static void __Load()
+        {
         }
     }
 }

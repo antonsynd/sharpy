@@ -13,6 +13,7 @@ namespace SafeCastNumeric
     {
         public static void Main()
         {
+            __Load();
 #line (6, 5) - (6, 20) 12 "safe_cast_numeric.spy"
             double a = 3.9d;
 #line (7, 5) - (7, 29) 12 "safe_cast_numeric.spy"
@@ -56,6 +57,12 @@ namespace SafeCastNumeric
 #line (40, 5) - (40, 23) 12 "safe_cast_numeric.spy"
             global::Sharpy.Builtins.Print((oob).UnwrapOr(-999));
 #line hidden
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        [global::Sharpy.SharpyLoadEntry(false)]
+        public static void __Load()
+        {
         }
     }
 }

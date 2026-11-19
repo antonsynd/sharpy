@@ -1273,6 +1273,25 @@ internal partial class RoslynEmitter
                         yield return Argument(EscapedIdentifierName(mangledName))
                             .WithRefKindKeyword(Token(SyntaxKind.OutKeyword));
                     }
+                    else if (_callsEmittedPerArm > 0)
+                    {
+                        // A call emitted once per arm (plan-775c50 D6) would declare the name in each
+                        // copy: it is declared before the statement, typed as annotated or (`auto`,
+                        // `let`) as the checker typed the binding from the callee's resolved,
+                        // substituted parameter, and each copy assigns it. No type, no declaration:
+                        // `out var` in one arm only would leave the name unassigned in the other.
+                        var declaredType = typeSyntax is not IdentifierNameSyntax { Identifier.ValueText: "var" }
+                            ? typeSyntax
+                            : outSymbol != null && outInfo!.HasResolvedInlineOutType(modArg)
+                                ? _typeMapper.MapSemanticType(outSymbol.Type)
+                                : throw new InternalCompilerErrorException("RoslynEmitter",
+                                    $"no resolved type for the inline `out` binding '{modArg.InlineName}' of a call "
+                                    + "emitted once per arm (plan-775c50 D6)", modArg);
+                        HoistDeclaration(LocalDeclarationStatement(VariableDeclaration(declaredType)
+                            .WithVariables(SingletonSeparatedList(VariableDeclarator(EscapedIdentifier(mangledName))))));
+                        yield return Argument(EscapedIdentifierName(mangledName))
+                            .WithRefKindKeyword(Token(SyntaxKind.OutKeyword));
+                    }
                     else
                     {
                         yield return Argument(
@@ -1291,7 +1310,11 @@ internal partial class RoslynEmitter
                         Parser.Ast.ParameterModifier.In => SyntaxKind.InKeyword,
                         _ => SyntaxKind.None
                     };
-                    var csArg = Argument(GenerateExpression(modArg.Argument));
+                    // An `out` operand naming a Guarded value picks its arm by the value's state at the
+                    // operand's place (plan-775c50 D4): N__out(out var __spillK), committed on return.
+                    var csArg = Argument(modArg.Modifier == Parser.Ast.ParameterModifier.Out && IsGuardedVariableTarget(modArg.Argument)
+                        ? GuardedOutOperand(modArg.Argument, GuardedValueSpelling(modArg.Argument))
+                        : GenerateReferenceOperand(modArg.Argument));
                     if (refKind != SyntaxKind.None)
                         csArg = csArg.WithRefKindKeyword(Token(refKind));
                     yield return csArg;

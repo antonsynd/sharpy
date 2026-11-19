@@ -29,6 +29,7 @@ namespace YieldBasic
 
         public static void Main()
         {
+            __Load();
 #line (8, 5) - (9, 17) 12 "yield_basic.spy"
             foreach (var __loopVar_0 in global::YieldBasic.YieldBasicModule.CountUp(5))
 #line hidden
@@ -38,6 +39,12 @@ namespace YieldBasic
                 global::Sharpy.Builtins.Print(x);
 #line hidden
             }
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        [global::Sharpy.SharpyLoadEntry(false)]
+        public static void __Load()
+        {
         }
     }
 }

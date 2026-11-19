@@ -38,6 +38,7 @@ namespace NarrowingAndRhsIsinstance
 
         public static void Main()
         {
+            __Load();
 #line (24, 5) - (24, 23) 12 "narrowing_and_rhs_isinstance.spy"
             global::NarrowingAndRhsIsinstance.Animal d = new global::NarrowingAndRhsIsinstance.Dog();
 #line (25, 5) - (25, 26) 12 "narrowing_and_rhs_isinstance.spy"
@@ -51,6 +52,12 @@ namespace NarrowingAndRhsIsinstance
 #line (29, 5) - (29, 23) 12 "narrowing_and_rhs_isinstance.spy"
             global::Sharpy.Builtins.Print(global::NarrowingAndRhsIsinstance.NarrowingAndRhsIsinstanceModule.Describe(a));
 #line hidden
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        [global::Sharpy.SharpyLoadEntry(false)]
+        public static void __Load()
+        {
         }
     }
 

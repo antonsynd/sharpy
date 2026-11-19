@@ -70,5 +70,4 @@ type_narrowing.md::20c955b9d7  # SPY0200 first #1952
 unittest.md::548d55f1ec  # SPY0224 first #2122
 unittest.md::9f701ad433  # SPY0200 first #1952
 unittest.md::b2994e6e1a  # SPY0200 first #1952
-variable_scoping.md::d7d337bec9  # SPY0200 first #2144
 walrus_operator.md::32d55cec42  # SPY0600 first #2144

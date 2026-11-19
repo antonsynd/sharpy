@@ -129,6 +129,7 @@ namespace MatchSubjectCastNarrowingNoDeadArm
 
         public static void Main()
         {
+            __Load();
 #line (69, 5) - (69, 25) 12 "match_subject_cast_narrowing_no_dead_arm.spy"
             global::MatchSubjectCastNarrowingNoDeadArm.MatchSubjectCastNarrowingNoDeadArmModule.FromIdentifier(3.5d);
 #line (71, 5) - (71, 31) 12 "match_subject_cast_narrowing_no_dead_arm.spy"
@@ -147,6 +148,12 @@ namespace MatchSubjectCastNarrowingNoDeadArm
 #line (77, 5) - (77, 54) 12 "match_subject_cast_narrowing_no_dead_arm.spy"
             global::Sharpy.Builtins.Print(global::MatchSubjectCastNarrowingNoDeadArm.MatchSubjectCastNarrowingNoDeadArmModule.FromOptionalMatchExpression(Optional<string>.Some("hi")));
 #line hidden
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        [global::Sharpy.SharpyLoadEntry(false)]
+        public static void __Load()
+        {
         }
     }
 

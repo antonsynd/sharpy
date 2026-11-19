@@ -355,18 +355,115 @@ internal partial class TypeChecker
             return bindingType;
         }
 
+        var keyword = modArg.Modifier.ToString().ToLowerInvariant();
         if (modArg.Modifier is Parser.Ast.ParameterModifier.Ref or Parser.Ast.ParameterModifier.Out)
         {
             if (modArg.Argument is not (Identifier or MemberAccess or IndexAccess))
             {
-                AddError($"'{modArg.Modifier.ToString().ToLowerInvariant()}' argument must be a variable",
+                AddError($"'{keyword}' argument must be a variable",
                     modArg.Argument.LineStart, modArg.Argument.ColumnStart,
                     code: DiagnosticCodes.Semantic.ModifierRequiresVariable,
                     span: modArg.Argument.Span);
+                return CheckExpression(modArg.Argument);
             }
         }
-        return CheckExpression(modArg.Argument);
+
+        var operandType = CheckExpression(modArg.Argument);
+
+        // plan-775c50 D7: a name-shaped operand is refused by what it RESOLVES to, never by its
+        // spelling — a bare, qualified or aliased spelling of one value gets one verdict. A property
+        // has no storage to pass by reference, under any modifier, in every host, with a default or
+        // not (Q8). A const is no variable the callee may write, under `ref` / `out`. `in` on a const
+        // is not refused here: a computed const runs, and a literal const is the owner's open cell
+        // (SPY0908 CS8156 today, left exactly as it is).
+        var refusedKind = (ResolveModifiedOperandKind(modArg.Argument), modArg.Modifier) switch
+        {
+            (ModifiedOperandKind.Property, _) => "a property",
+            (ModifiedOperandKind.Const, Parser.Ast.ParameterModifier.Ref or Parser.Ast.ParameterModifier.Out) => "a const",
+            _ => null,
+        };
+        if (refusedKind != null)
+        {
+            AddError(
+                $"'{keyword}' argument must be a variable; '{DescribeOperand(modArg.Argument)}' is {refusedKind}",
+                modArg.Argument.LineStart, modArg.Argument.ColumnStart,
+                code: DiagnosticCodes.Semantic.ModifierRequiresVariable,
+                span: modArg.Argument.Span);
+        }
+        return operandType;
     }
+
+    /// <summary>What a <c>ref</c> / <c>out</c> / <c>in</c> operand resolves to (plan-775c50 D7).</summary>
+    private enum ModifiedOperandKind
+    {
+        /// <summary>Anything the rule admits: a variable, a field, an element, or an unresolved name.</summary>
+        Other,
+        Property,
+        Const,
+    }
+
+    /// <summary>
+    /// Classifies a modified operand by the symbol the checker bound it to: the identifier's bound
+    /// symbol, a module-qualified member's resolved export, a type-qualified member's resolved field,
+    /// or the member the receiver's resolved type declares (a type-denoting receiver of any spelling
+    /// through <see cref="DenotedTypeSymbolOf"/>, an instance receiver through its type). Called after
+    /// the operand is checked, so every record it reads is in place.
+    /// </summary>
+    private ModifiedOperandKind ResolveModifiedOperandKind(Expression operand)
+    {
+        static ModifiedOperandKind OfSymbol(Symbol? symbol) => symbol switch
+        {
+            VariableSymbol { IsModuleProperty: true } => ModifiedOperandKind.Property,
+            VariableSymbol { IsConstant: true } => ModifiedOperandKind.Const,
+            _ => ModifiedOperandKind.Other,
+        };
+
+        switch (operand)
+        {
+            case Identifier id:
+                return OfSymbol(_semanticInfo.GetIdentifierSymbol(id));
+            case MemberAccess { Member.Length: > 0 } access:
+                if (_semanticInfo.GetModuleMemberResolution(access) is { } moduleMember)
+                    return OfSymbol(moduleMember.Member);
+                if (_semanticInfo.GetMemberAccessResolution(access) is { } typeMember)
+                    return OfSymbol(typeMember.Member);
+
+                var receiverType = _semanticInfo.GetExpressionType(access.Object) ?? SemanticType.Unknown;
+                var owner = DenotedTypeSymbolOf(access.Object, receiverType) is var (denoted, _)
+                    ? denoted
+                    : (access.IsNullConditional ? UnwrapNullable(receiverType) : receiverType) switch
+                    {
+                        UserDefinedType udt => udt.Symbol ?? _symbolTable.LookupType(udt.Name),
+                        GenericType generic => GenericDefinitionOf(generic),
+                        _ => null,
+                    };
+                if (owner == null)
+                    return ModifiedOperandKind.Other;
+                if (FindFieldInHierarchy(owner, access.Member).Field is { } field)
+                    return OfSymbol(field);
+                return FindPropertyInHierarchy(owner, access.Member).Property != null
+                    ? ModifiedOperandKind.Property
+                    : ModifiedOperandKind.Other;
+            default:
+                return ModifiedOperandKind.Other;
+        }
+
+        static SemanticType UnwrapNullable(SemanticType type) => type switch
+        {
+            NullableType nullable => nullable.UnderlyingType,
+            OptionalType optional => optional.UnderlyingType,
+            _ => type,
+        };
+    }
+
+    /// <summary>The operand's source spelling for a diagnostic: a name or a dotted member chain.</summary>
+    private static string DescribeOperand(Expression operand) => operand switch
+    {
+        Identifier id => id.Name,
+        MemberAccess { Object: Identifier or MemberAccess } access => $"{DescribeOperand(access.Object)}.{access.Member}",
+        MemberAccess access => access.Member,
+        _ => "the operand",
+    };
 
     /// <summary>
     /// #1675: once a call's callee has resolved to a concrete signature, writes that signature's
@@ -397,6 +494,11 @@ internal partial class TypeChecker
             return; // Not an auto binding, or already typed (explicit annotation or rebinding).
         }
 
+        // Both channels (plan-775c50 D6): CheckModifiedArgument recorded the Unknown placeholder in
+        // the binding too (RecordExpressionBinding), and MaterializeVariableTypes copies the binding
+        // onto symbol.Type at the freeze point, so writing symbol.Type alone was undone there and
+        // every reader after analysis (the emitter's predeclared `out` local) saw Unknown.
+        SemanticBinding.SetVariableType(symbol, resolvedParamType);
         symbol.Type = resolvedParamType;
         _semanticInfo.SetExpressionType(modArg, resolvedParamType);
         _semanticInfo.SetExpressionType(modArg.Argument, resolvedParamType);

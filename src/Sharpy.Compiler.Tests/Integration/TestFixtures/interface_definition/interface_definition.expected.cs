@@ -13,6 +13,7 @@ namespace InterfaceDefinition
     {
         public static void Main()
         {
+            __Load();
 #line (34, 5) - (34, 35) 12 "interface_definition.spy"
             global::InterfaceDefinition.IDrawable circle = new global::InterfaceDefinition.Circle(5);
 #line (35, 5) - (35, 25) 12 "interface_definition.spy"
@@ -26,6 +27,12 @@ namespace InterfaceDefinition
 #line (40, 5) - (40, 23) 12 "interface_definition.spy"
             global::Sharpy.Builtins.Print(rect.Area());
 #line hidden
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        [global::Sharpy.SharpyLoadEntry(false)]
+        public static void __Load()
+        {
         }
     }
 

@@ -124,6 +124,12 @@ namespace Sharpy.HashlibModule
         {
             throw new global::Sharpy.ValueError("unsupported hash type 'blake2s'");
         }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        [global::Sharpy.SharpyLoadEntry(false)]
+        public static void __Load()
+        {
+        }
     }
 
     /// <summary>

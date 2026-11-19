@@ -12,6 +12,7 @@ namespace DelegateBasic0001
     {
         public static void Main()
         {
+            __Load();
 #line (5, 5) - (5, 52) 12 "delegate_basic_0001.spy"
             global::DelegateBasic0001.Greeter greet = name => "Hello, " + name;
 #line (6, 5) - (6, 28) 12 "delegate_basic_0001.spy"
@@ -19,6 +20,12 @@ namespace DelegateBasic0001
 #line (7, 5) - (7, 18) 12 "delegate_basic_0001.spy"
             global::Sharpy.Builtins.Print(result);
 #line hidden
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        [global::Sharpy.SharpyLoadEntry(false)]
+        public static void __Load()
+        {
         }
     }
 

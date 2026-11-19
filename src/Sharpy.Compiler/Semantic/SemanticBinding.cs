@@ -112,6 +112,13 @@ public class SemanticBinding
     // Maps FromImportStatement nodes to the source FILE their module resolved to (#1948)
     private readonly ConcurrentDictionary<FromImportStatement, string> _resolvedModuleFilePaths = new();
 
+    // Each import statement's chain (plan-775c50 D5): the Sharpy sources it makes Python run, in order,
+    // recorded by ImportResolver at resolution and read by the importer's CodeGenInfoComputer, which
+    // records the layouts on SemanticInfo (GetImportRequirements). Keyed on the ImportStatement or
+    // FromImportStatement node by identity.
+    private readonly ConcurrentDictionary<Statement, IReadOnlyList<ImportRequirement>> _importChains =
+        new(ReferenceEqualityComparer.Instance);
+
     // Maps FromImportStatement nodes to their re-exported symbols
     private readonly ConcurrentDictionary<FromImportStatement, Dictionary<string, Symbol>> _reExportedSymbols = new();
 
@@ -122,6 +129,18 @@ public class SemanticBinding
     // Maps a .NET stdlib module name to the simple class name of its [SharpyModule]
     // class (e.g. "email" -> "EmailModule"), null if not available from discovery.
     private readonly ConcurrentDictionary<string, string?> _netModuleClassNames = new();
+
+    // Each Sharpy module's own HasSweep fact (plan-775c50 D2), keyed by its normalized file path:
+    // recorded declarer-side by CodeGenInfoComputer, read by an importer through ImportedStaticFacts,
+    // persisted on the incremental cache's FileCacheEntry and restored on a warm build.
+    private readonly ConcurrentDictionary<string, bool> _moduleHasSweep = new(StringComparer.Ordinal);
+
+    // Each module value's StaticStorage (plan-775c50 D2), keyed by (normalized file path, name):
+    // recorded declarer-side by CodeGenInfoComputer, read only by ImportedStaticFacts.ImportedStorage.
+    // The bridge for the cold module-variable identity split (findings ledger, P77 T2; candidate
+    // class P78 / #2423): delete it once a module variable's export is its declared symbol. Not on
+    // the cache: a warm export IS the restored declared symbol, which carries the fact itself.
+    private readonly ConcurrentDictionary<(string Path, string Name), StaticStorage> _moduleValueStorage = new();
 
     // Phase-gating freeze flags - prevent mutations after a phase completes.
     // Volatile for thread safety when per-file bindings are frozen concurrently.
@@ -406,6 +425,20 @@ public class SemanticBinding
     }
 
     /// <summary>
+    /// Removes the base type edge of a type symbol whose chain closes a cycle (SPY0288), so no walk
+    /// of the hierarchy after the refusal can loop on it.
+    /// </summary>
+    public void RemoveBaseType(TypeSymbol symbol)
+    {
+        if (_inheritanceFrozen)
+        {
+            AssertNotFrozen("Inheritance", symbol.Name);
+        }
+        _baseTypes.TryRemove(symbol, out _);
+        _baseTypeRefs.TryRemove(symbol, out _);
+    }
+
+    /// <summary>
     /// Gets the base type for a type symbol, or null if not set.
     /// </summary>
     public TypeSymbol? GetBaseType(TypeSymbol symbol)
@@ -619,6 +652,12 @@ public class SemanticBinding
             // `from system import Action as A` would alias an open generic group (#2320).
             if (!merged.IsOpenGenericDefinition && info.IsOpenGenericDefinition)
                 merged = merged with { IsOpenGenericDefinition = true };
+            // The storage and sweep facts are recorded by CodeGenInfoComputer only (plan-775c50 D2):
+            // an earlier import-resolution entry gains them here, as it gains the layout.
+            if (merged.StaticStorage == null && info.StaticStorage != null)
+                merged = merged with { StaticStorage = info.StaticStorage, IsOnGenericHost = info.IsOnGenericHost };
+            if (!merged.HasSweep && info.HasSweep)
+                merged = merged with { HasSweep = true };
             if (!ReferenceEquals(merged, existing))
                 _codeGenInfo[symbol] = merged;
         }
@@ -665,6 +704,15 @@ public class SemanticBinding
 
         foreach (var (stmt, symbols) in other._reExportedSymbols)
             _reExportedSymbols.TryAdd(stmt, symbols);
+
+        foreach (var (stmt, chain) in other._importChains)
+            _importChains.TryAdd(stmt, chain);
+
+        foreach (var (path, hasSweep) in other._moduleHasSweep)
+            _moduleHasSweep.TryAdd(path, hasSweep);
+
+        foreach (var (key, storage) in other._moduleValueStorage)
+            _moduleValueStorage.TryAdd(key, storage);
     }
 
     #region Module Resolution
@@ -695,6 +743,50 @@ public class SemanticBinding
     /// </summary>
     public string? GetResolvedModuleFilePath(FromImportStatement stmt)
         => _resolvedModuleFilePaths.TryGetValue(stmt, out var path) ? path : null;
+
+    /// <summary>
+    /// Records the Sharpy sources <paramref name="statement"/> (an <c>import</c> or <c>from … import</c>)
+    /// makes Python run, in Python's order (plan-775c50 D5): written by <c>ImportResolver</c>.
+    /// </summary>
+    public void SetImportChain(Statement statement, IReadOnlyList<ImportRequirement> chain)
+        => _importChains[statement] = chain;
+
+    /// <summary>The chain <see cref="SetImportChain"/> recorded for <paramref name="statement"/>, or null.</summary>
+    public IReadOnlyList<ImportRequirement>? GetImportChain(Statement statement)
+        => _importChains.TryGetValue(statement, out var chain) ? chain : null;
+
+    /// <summary>
+    /// Records a module's own <c>HasSweep</c> fact (plan-775c50 D2) under its file path: written once
+    /// by the declaring module's <c>CodeGenInfoComputer</c>, or restored from the incremental cache.
+    /// </summary>
+    public void SetModuleHasSweep(string filePath, bool hasSweep)
+        => _moduleHasSweep[Utilities.PathNormalizer.Normalize(filePath)] = hasSweep;
+
+    /// <summary>
+    /// The <c>HasSweep</c> fact the module at <paramref name="filePath"/> recorded, or null when it has
+    /// none (not compiled from Sharpy source here, or a deferred-cycle peer not yet checked). Read
+    /// through <see cref="ImportedStaticFacts.ImportedSweep"/>, the one predicate.
+    /// </summary>
+    public bool? GetModuleHasSweep(string filePath)
+        => _moduleHasSweep.TryGetValue(Utilities.PathNormalizer.Normalize(filePath), out var hasSweep) ? hasSweep : null;
+
+    /// <summary>
+    /// Records a module value's <see cref="StaticStorage"/> (plan-775c50 D2) under its declaring file
+    /// and name: written by the declaring module's <c>CodeGenInfoComputer</c>. The cold
+    /// module-variable identity bridge (findings ledger, P77 T2; P78 / #2423).
+    /// </summary>
+    public void SetModuleValueStorage(string filePath, string name, StaticStorage storage)
+        => _moduleValueStorage[(Utilities.PathNormalizer.Normalize(filePath), name)] = storage;
+
+    /// <summary>
+    /// The <see cref="StaticStorage"/> the module at <paramref name="filePath"/> recorded for its value
+    /// <paramref name="name"/>, or null. Read through <see cref="ImportedStaticFacts.ImportedStorage"/>,
+    /// the one importer-side predicate.
+    /// </summary>
+    public StaticStorage? GetModuleValueStorage(string filePath, string name)
+        => _moduleValueStorage.TryGetValue((Utilities.PathNormalizer.Normalize(filePath), name), out var storage)
+            ? storage
+            : null;
 
     /// <summary>
     /// Sets the re-exported symbols for a FromImportStatement.

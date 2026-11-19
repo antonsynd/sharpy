@@ -863,7 +863,8 @@ public sealed partial class InitializerDependencyDifferentialTests
         failures.AddRange(PoolAgainstOwed(
             "the slot maps",
             owed,
-            pool.Where(c => c.Family == Family.Slot && !c.Id.StartsWith(RingPrefix, StringComparison.Ordinal) && !c.Id.StartsWith(StoredPrefix, StringComparison.Ordinal))));
+            pool.Where(c => c.Family == Family.Slot && !c.Id.StartsWith(RingPrefix, StringComparison.Ordinal) && !c.Id.StartsWith(StoredPrefix, StringComparison.Ordinal)
+                && !c.Id.StartsWith(RoutePrefix, StringComparison.Ordinal))));
         return failures;
     }
 }

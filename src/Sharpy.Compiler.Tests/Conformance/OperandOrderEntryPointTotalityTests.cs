@@ -78,6 +78,7 @@ public class OperandOrderEntryPointTotalityTests
         // through GeneratePerInstanceDefaultAssignment, leaving the method with a single generation
         // entry point (GenerateParameterDefault), so it is no longer a multi-operand site at all.
         ["GenerateInitializerExpression"] = "one user operand — the field/module/property initializer's own value (#1685); flagged only because the call sits inside the WithScopeSink hoist-capture lambda, not because there is a second sibling operand",
+        ["GenerateGuardedInitializer"] = "one user operand — a Guarded value's initializer (plan-775c50 D4), generated alone for its init method; flagged only because the call sits inside the WithScopeSink hoist-capture lambda, exactly as GenerateInitializerExpression is",
         ["GeneratePerInstanceDefaultAssignment"] = "one user operand — the per-instance field default's own value (#1684 R-A, #1901); the other expression in the method is the sentinel PARAMETER name, not a generated user expression. Flagged only because the call sits inside the WithScopeSink hoist-capture lambda, exactly as GenerateInitializerExpression is",
         ["GenerateAssertThrowsStatements"] = "one user operand (the match pattern)",
         ["GenerateNestedLinqChain"] = "one operand per comprehension clause; CaptureHoisted owns each clause's sink",

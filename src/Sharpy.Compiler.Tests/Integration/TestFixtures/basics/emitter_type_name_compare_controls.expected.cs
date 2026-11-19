@@ -27,6 +27,7 @@ namespace EmitterTypeNameCompareControls
 
         public static void Main()
         {
+            __Load();
 #line (16, 5) - (16, 19) 12 "emitter_type_name_compare_controls.spy"
             var xs = new Sharpy.List<int>()
 #line hidden
@@ -120,6 +121,12 @@ namespace EmitterTypeNameCompareControls
 #line (35, 5) - (35, 13) 12 "emitter_type_name_compare_controls.spy"
             global::Sharpy.Builtins.Print(v);
 #line hidden
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        [global::Sharpy.SharpyLoadEntry(false)]
+        public static void __Load()
+        {
         }
     }
 }

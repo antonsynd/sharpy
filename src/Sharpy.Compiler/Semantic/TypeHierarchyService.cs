@@ -201,6 +201,51 @@ internal static class TypeHierarchyService
     }
 
     /// <summary>
+    /// The first type on <paramref name="type"/>'s base-class chain, the type itself first, that
+    /// DECLARES <paramref name="name"/> as any member kind — a field, an own-namespace property, an
+    /// event, a method or a nested type — or null when none does. Python's attribute lookup walks the
+    /// MRO by name and stops at the first class whose namespace holds it, whatever it holds; a member
+    /// of one kind on a subclass hides a member of another kind on a base (plan-775c50).
+    /// </summary>
+    internal static TypeSymbol? FirstDeclaringType(TypeSymbol type, string name, SemanticBinding? binding = null)
+    {
+        var visited = new HashSet<TypeSymbol>(ReferenceEqualityComparer.Instance);
+        for (var current = type; current != null && visited.Add(current); current = ResolveBaseType(current, binding))
+        {
+            if (TypeBodyMembership.DescribeMemberOf(current, name, reachableThroughSelf: false, isInherited: false) != null
+                || current.NestedTypes.Any(n => n.Name == name))
+                return current;
+        }
+
+        return null;
+    }
+
+    /// <summary>
+    /// The nested type <paramref name="name"/> names through <paramref name="type"/>, by the MRO-by-name
+    /// rule of <see cref="FirstDeclaringType"/>: a nested type a base declares is reached through a
+    /// subclass (<c>L.s.z</c> of <c>class M: class s</c>, <c>class L(M)</c>), unless a class nearer
+    /// the subclass declares the name as another member.
+    /// </summary>
+    internal static TypeSymbol? FindNestedType(TypeSymbol type, string name, SemanticBinding? binding = null)
+        => FirstDeclaringType(type, name, binding)?.NestedTypes.FirstOrDefault(n => n.Name == name);
+
+    /// <summary>
+    /// The static or const field <paramref name="name"/> binds through <paramref name="type"/>, by the
+    /// MRO-by-name rule of <see cref="FirstDeclaringType"/>: the name binds a field only when the FIRST
+    /// declaration on the chain is a static or const field. A subclass's property, method or nested
+    /// type of that name hides the base's field, so <c>D.s</c> is then not the base's value.
+    /// </summary>
+    internal static (VariableSymbol? field, TypeSymbol? owner) FindStaticValueField(
+        TypeSymbol type, string name, SemanticBinding? binding = null)
+    {
+        if (FirstDeclaringType(type, name, binding) is not { } owner
+            || FindByName(owner.Fields, name) is not { } field
+            || !(field.IsStatic || field.IsConstant))
+            return (null, null);
+        return (field, owner);
+    }
+
+    /// <summary>
     /// Returns the ancestor chain for a <see cref="SemanticType"/>, from most specific to
     /// least specific. For <see cref="UserDefinedType"/> walks the symbol's base type chain.
     /// Always terminates with <see cref="SemanticType.Object"/> if not already present.
@@ -284,13 +329,14 @@ internal static class TypeHierarchyService
         if (a.ClrType != null && a.ClrType == b.ClrType)
             return true;
 
-        // Cross-module: both have DefiningModule set
+        // Cross-module: both have DefiningModule set. A name is compared WITH its declaring types: a
+        // module's `C` and its `Outer.C` are two types of one name (plan-775c50).
         if (a.DefiningModule != null && b.DefiningModule != null)
-            return a.DefiningModule == b.DefiningModule && a.Name == b.Name;
+            return a.DefiningModule == b.DefiningModule && SameNestedName(a, b);
 
         // Same-project cross-file: both have DefiningFilePath set
         if (a.DefiningFilePath != null && b.DefiningFilePath != null)
-            return a.DefiningFilePath == b.DefiningFilePath && a.Name == b.Name;
+            return a.DefiningFilePath == b.DefiningFilePath && SameNestedName(a, b);
 
         // Neither symbol has module/file context — this happens for CLR-discovered types
         // (e.g., Exception, List<T>) which are identified by name alone. User-defined types
@@ -301,6 +347,19 @@ internal static class TypeHierarchyService
 
         // Mixed context (one has module/file, the other doesn't) — conservative false
         return false;
+    }
+
+    /// <summary>Whether two symbols carry one name under one chain of declaring types.</summary>
+    private static bool SameNestedName(TypeSymbol a, TypeSymbol b)
+    {
+        TypeSymbol? x = a, y = b;
+        for (; x != null && y != null; x = x.DeclaringType, y = y.DeclaringType)
+        {
+            if (x.Name != y.Name)
+                return false;
+        }
+
+        return x == null && y == null;
     }
 
     /// <summary>

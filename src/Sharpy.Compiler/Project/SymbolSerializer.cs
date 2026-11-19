@@ -219,7 +219,9 @@ internal static class SymbolSerializer
             IsFinal = ps.IsFinal,
             GetterAccess = ps.GetterAccess.ToString(),
             SetterAccess = ps.SetterAccess.ToString(),
-            ExplicitInterface = ps.ExplicitInterface
+            ExplicitInterface = ps.ExplicitInterface,
+            StaticStorage = ps.StaticStorage?.ToString(),
+            IsOnGenericHost = ps.IsOnGenericHost
         };
     }
 
@@ -575,7 +577,11 @@ internal static class SymbolSerializer
             ImplementsInterfaceMethod = cgi.ImplementsInterfaceMethod,
             NamespaceSegments = cgi.NamespaceSegments?.ToList(),
             MembersClassName = cgi.MembersClassName,
-            IsNamespaceSibling = cgi.IsNamespaceSibling
+            IsNamespaceSibling = cgi.IsNamespaceSibling,
+            // plan-775c50 D2: read cross-file (an importer's store and sweep arms), so on the wire.
+            StaticStorage = cgi.StaticStorage?.ToString(),
+            IsOnGenericHost = cgi.IsOnGenericHost,
+            HasSweep = cgi.HasSweep
         };
     }
 
@@ -831,7 +837,9 @@ internal static class SymbolSerializer
             IsFinal = cached.IsFinal,
             GetterAccess = Enum.Parse<AccessLevel>(cached.GetterAccess),
             SetterAccess = Enum.Parse<AccessLevel>(cached.SetterAccess),
-            ExplicitInterface = cached.ExplicitInterface
+            ExplicitInterface = cached.ExplicitInterface,
+            StaticStorage = ParseStaticStorage(cached.StaticStorage),
+            IsOnGenericHost = cached.IsOnGenericHost
         };
     }
 
@@ -1063,9 +1071,15 @@ internal static class SymbolSerializer
             ImplementsInterfaceMethod = cached.ImplementsInterfaceMethod,
             NamespaceSegments = cached.NamespaceSegments,
             MembersClassName = cached.MembersClassName,
-            IsNamespaceSibling = cached.IsNamespaceSibling
+            IsNamespaceSibling = cached.IsNamespaceSibling,
+            StaticStorage = ParseStaticStorage(cached.StaticStorage),
+            IsOnGenericHost = cached.IsOnGenericHost,
+            HasSweep = cached.HasSweep
         };
     }
+
+    private static StaticStorage? ParseStaticStorage(string? value)
+        => string.IsNullOrEmpty(value) ? null : Enum.Parse<StaticStorage>(value);
 
     /// <summary>
     /// Resolves a type ID back to a SemanticType.

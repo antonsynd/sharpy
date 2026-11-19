@@ -12,6 +12,7 @@ namespace MatchLiteral0001
     {
         public static void Main()
         {
+            __Load();
 #line (2, 5) - (2, 21) 12 "match_literal_0001.spy"
             int value = 42;
 #line (3, 5) - (9, 27) 12 "match_literal_0001.spy"
@@ -34,6 +35,12 @@ namespace MatchLiteral0001
 #line hidden
                     break;
             }
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        [global::Sharpy.SharpyLoadEntry(false)]
+        public static void __Load()
+        {
         }
     }
 }

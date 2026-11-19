@@ -28,6 +28,7 @@ namespace AsyncGeneratorBasic
 
         public static async System.Threading.Tasks.Task Main()
         {
+            __Load();
 #line (8, 5) - (9, 17) 12 "async_generator_basic.spy"
             await foreach (var __loopVar_0 in global::AsyncGeneratorBasic.AsyncGeneratorBasicModule.CountAsync(3))
 #line hidden
@@ -37,6 +38,12 @@ namespace AsyncGeneratorBasic
                 global::Sharpy.Builtins.Print(x);
 #line hidden
             }
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        [global::Sharpy.SharpyLoadEntry(false)]
+        public static void __Load()
+        {
         }
     }
 }

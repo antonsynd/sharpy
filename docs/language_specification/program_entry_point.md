@@ -48,6 +48,38 @@ helper()                # ERROR: not allowed at module level
 x = 5                   # ERROR: requires type annotation
 ```
 
+## Module Initialization
+
+Before `main` runs, every module of the program runs its module-level initializers, once and top to
+bottom: a module runs at its first import, at the line of that import, and the entry module runs
+its own initializers before `main`. A class's `@static` values run at the class's line. A read of a
+value declared further down runs that value's initializer first, so no read sees a storage default
+([N3](variable_scoping.md#values-are-ready-before-use-n3)). This is the order Python runs the same
+module in, and python3 3.15.2 prints the same for this program with `main()` called at the end:
+
+<!-- spec-sweep: output -->
+```python
+def note(name: str, v: int) -> int:
+    print(name)
+    return v
+
+const FIRST: int = note("first", 1)
+const SECOND: int = note("second", 2)
+
+def main() -> None:
+    print("main")
+    print(FIRST + SECOND)
+```
+
+```output
+first
+second
+main
+3
+```
+
+If an initializer raises, the program stops before `main` with that exception.
+
 ## Complete Example
 
 ```python
@@ -103,6 +135,7 @@ print(result)
 ```
 
 **After:**
+<!-- spec-sweep: output -->
 ```python
 def compute(x: int) -> int:
     return x * 2
@@ -114,6 +147,11 @@ def main():
     print(result)
 ```
 
+```output
+42
+84
+```
+
 *Implementation: ✅ Native*
 - *`main()` compiles directly to C# `Main()` in the entry module's members class (`main.spy` →
   `namespace [<Root>.]Main { static partial class MainModule { Main() } }`), which the compiler names as
@@ -121,3 +159,6 @@ def main():
   (see [module_system.md](module_system.md#package-structure))*
 - *Module-level functions, variables and constants become static members of the members class; types
   are declared beside it in the module's namespace*
+- *A module-level variable, a `const` whose initializer is not a compile-time constant and a class's
+  `@static` value each become a static property over a backing field with its own initialization
+  state; `Main()` first runs the module's initializers through its load entry (plan-775c50 D4, D5)*

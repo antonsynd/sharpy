@@ -28,9 +28,80 @@ namespace Sharpy.Stdlib.Tests.Spy.Functools.LruCacheTests
         public static int DoubleVal(int k) => __DoubleValCache.GetOrAdd(k, __key => __DoubleVal(__key));
         public static global::Sharpy.CacheInfo DoubleValCacheInfo() => __DoubleValCache.CacheInfo();
         public static void DoubleValCacheClear() => __DoubleValCache.CacheClear();
-        public static Sharpy.List<int> UnboundedCalls = new Sharpy.List<int>()
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        internal static Sharpy.List<int> UnboundedCalls__field = default!;
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        private static byte UnboundedCalls__state;
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        private static void UnboundedCalls__init()
         {
-        };
+            UnboundedCalls__field = new Sharpy.List<int>()
+            {
+            };
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        private static void UnboundedCalls__slow() => global::Sharpy.StaticInit.Read(ref __host, __Sweep, ref UnboundedCalls__state, "unbounded_calls", UnboundedCalls__init);
+        [global::Sharpy.SharpyStaticStorage(global::Sharpy.StaticStorageKind.Guarded)]
+        public static ref Sharpy.List<int> UnboundedCalls
+        {
+            get
+            {
+                if (!__Swept.Done)
+                    UnboundedCalls__slow();
+                return ref UnboundedCalls__field;
+            }
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        internal static void UnboundedCalls__ensure()
+        {
+            if (!__Swept.Done)
+                UnboundedCalls__slow();
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        private static void UnboundedCalls__storeSlow(Sharpy.List<int> value) => global::Sharpy.StaticInit.Store(ref __host, __Sweep, ref UnboundedCalls__state, ref UnboundedCalls__field, value);
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        internal static Sharpy.List<int> UnboundedCalls__set(Sharpy.List<int> value)
+        {
+            if (__Swept.Done)
+                UnboundedCalls__field = value;
+            else
+                UnboundedCalls__storeSlow(value);
+            return value;
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        internal static global::System.Runtime.CompilerServices.StrongBox<Sharpy.List<int>>? UnboundedCalls__pick()
+        {
+            if (!__Swept.Done)
+            {
+                global::Sharpy.StaticInit.Load(ref __host, __Sweep);
+                if (!global::Sharpy.StaticInit.IsReady(ref UnboundedCalls__state))
+                    return new global::System.Runtime.CompilerServices.StrongBox<Sharpy.List<int>>();
+            }
+
+            return null;
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        internal static ref Sharpy.List<int> UnboundedCalls__out(out global::System.Runtime.CompilerServices.StrongBox<Sharpy.List<int>>? spill)
+        {
+            spill = UnboundedCalls__pick();
+            if (spill != null)
+                return ref spill.Value!;
+            return ref UnboundedCalls__field;
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        internal static R UnboundedCalls__commit<R>(R result, global::System.Runtime.CompilerServices.StrongBox<Sharpy.List<int>>? spill)
+        {
+            if (spill != null)
+                UnboundedCalls__set(spill.Value!);
+            return result;
+        }
+
         private static readonly global::Sharpy.LruCache<int, int> __TrackedDoubleCache = new global::Sharpy.LruCache<int, int>(null);
         private static int __TrackedDouble(int k)
         {
@@ -55,9 +126,80 @@ namespace Sharpy.Stdlib.Tests.Spy.Functools.LruCacheTests
         public static int IdentityFn(int k) => __IdentityFnCache.GetOrAdd(k, __key => __IdentityFn(__key));
         public static global::Sharpy.CacheInfo IdentityFnCacheInfo() => __IdentityFnCache.CacheInfo();
         public static void IdentityFnCacheClear() => __IdentityFnCache.CacheClear();
-        public static Sharpy.List<int> CountedCalls = new Sharpy.List<int>()
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        internal static Sharpy.List<int> CountedCalls__field = default!;
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        private static byte CountedCalls__state;
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        private static void CountedCalls__init()
         {
-        };
+            CountedCalls__field = new Sharpy.List<int>()
+            {
+            };
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        private static void CountedCalls__slow() => global::Sharpy.StaticInit.Read(ref __host, __Sweep, ref CountedCalls__state, "counted_calls", CountedCalls__init);
+        [global::Sharpy.SharpyStaticStorage(global::Sharpy.StaticStorageKind.Guarded)]
+        public static ref Sharpy.List<int> CountedCalls
+        {
+            get
+            {
+                if (!__Swept.Done)
+                    CountedCalls__slow();
+                return ref CountedCalls__field;
+            }
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        internal static void CountedCalls__ensure()
+        {
+            if (!__Swept.Done)
+                CountedCalls__slow();
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        private static void CountedCalls__storeSlow(Sharpy.List<int> value) => global::Sharpy.StaticInit.Store(ref __host, __Sweep, ref CountedCalls__state, ref CountedCalls__field, value);
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        internal static Sharpy.List<int> CountedCalls__set(Sharpy.List<int> value)
+        {
+            if (__Swept.Done)
+                CountedCalls__field = value;
+            else
+                CountedCalls__storeSlow(value);
+            return value;
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        internal static global::System.Runtime.CompilerServices.StrongBox<Sharpy.List<int>>? CountedCalls__pick()
+        {
+            if (!__Swept.Done)
+            {
+                global::Sharpy.StaticInit.Load(ref __host, __Sweep);
+                if (!global::Sharpy.StaticInit.IsReady(ref CountedCalls__state))
+                    return new global::System.Runtime.CompilerServices.StrongBox<Sharpy.List<int>>();
+            }
+
+            return null;
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        internal static ref Sharpy.List<int> CountedCalls__out(out global::System.Runtime.CompilerServices.StrongBox<Sharpy.List<int>>? spill)
+        {
+            spill = CountedCalls__pick();
+            if (spill != null)
+                return ref spill.Value!;
+            return ref CountedCalls__field;
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        internal static R CountedCalls__commit<R>(R result, global::System.Runtime.CompilerServices.StrongBox<Sharpy.List<int>>? spill)
+        {
+            if (spill != null)
+                CountedCalls__set(spill.Value!);
+            return result;
+        }
+
         private static readonly global::Sharpy.LruCache<int, int> __CountedIdentityCache = new global::Sharpy.LruCache<int, int>(null);
         private static int __CountedIdentity(int k)
         {
@@ -82,9 +224,80 @@ namespace Sharpy.Stdlib.Tests.Spy.Functools.LruCacheTests
         public static int BoundedSquare(int k) => __BoundedSquareCache.GetOrAdd(k, __key => __BoundedSquare(__key));
         public static global::Sharpy.CacheInfo BoundedSquareCacheInfo() => __BoundedSquareCache.CacheInfo();
         public static void BoundedSquareCacheClear() => __BoundedSquareCache.CacheClear();
-        public static Sharpy.List<int> TouchCalls = new Sharpy.List<int>()
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        internal static Sharpy.List<int> TouchCalls__field = default!;
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        private static byte TouchCalls__state;
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        private static void TouchCalls__init()
         {
-        };
+            TouchCalls__field = new Sharpy.List<int>()
+            {
+            };
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        private static void TouchCalls__slow() => global::Sharpy.StaticInit.Read(ref __host, __Sweep, ref TouchCalls__state, "touch_calls", TouchCalls__init);
+        [global::Sharpy.SharpyStaticStorage(global::Sharpy.StaticStorageKind.Guarded)]
+        public static ref Sharpy.List<int> TouchCalls
+        {
+            get
+            {
+                if (!__Swept.Done)
+                    TouchCalls__slow();
+                return ref TouchCalls__field;
+            }
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        internal static void TouchCalls__ensure()
+        {
+            if (!__Swept.Done)
+                TouchCalls__slow();
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        private static void TouchCalls__storeSlow(Sharpy.List<int> value) => global::Sharpy.StaticInit.Store(ref __host, __Sweep, ref TouchCalls__state, ref TouchCalls__field, value);
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        internal static Sharpy.List<int> TouchCalls__set(Sharpy.List<int> value)
+        {
+            if (__Swept.Done)
+                TouchCalls__field = value;
+            else
+                TouchCalls__storeSlow(value);
+            return value;
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        internal static global::System.Runtime.CompilerServices.StrongBox<Sharpy.List<int>>? TouchCalls__pick()
+        {
+            if (!__Swept.Done)
+            {
+                global::Sharpy.StaticInit.Load(ref __host, __Sweep);
+                if (!global::Sharpy.StaticInit.IsReady(ref TouchCalls__state))
+                    return new global::System.Runtime.CompilerServices.StrongBox<Sharpy.List<int>>();
+            }
+
+            return null;
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        internal static ref Sharpy.List<int> TouchCalls__out(out global::System.Runtime.CompilerServices.StrongBox<Sharpy.List<int>>? spill)
+        {
+            spill = TouchCalls__pick();
+            if (spill != null)
+                return ref spill.Value!;
+            return ref TouchCalls__field;
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        internal static R TouchCalls__commit<R>(R result, global::System.Runtime.CompilerServices.StrongBox<Sharpy.List<int>>? spill)
+        {
+            if (spill != null)
+                TouchCalls__set(spill.Value!);
+            return result;
+        }
+
         private static readonly global::Sharpy.LruCache<int, int> __BoundedTouchCache = new global::Sharpy.LruCache<int, int>(2);
         private static int __BoundedTouch(int k)
         {
@@ -164,6 +377,33 @@ namespace Sharpy.Stdlib.Tests.Spy.Functools.LruCacheTests
         public static int SnapshotFn(int k) => __SnapshotFnCache.GetOrAdd(k, __key => __SnapshotFn(__key));
         public static global::Sharpy.CacheInfo SnapshotFnCacheInfo() => __SnapshotFnCache.CacheInfo();
         public static void SnapshotFnCacheClear() => __SnapshotFnCache.CacheClear();
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        private static global::Sharpy.StaticInitHost __host;
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        private static void __Sweep()
+        {
+            global::Sharpy.StaticInit.Run(ref UnboundedCalls__state, "unbounded_calls", UnboundedCalls__init);
+            global::Sharpy.StaticInit.Run(ref CountedCalls__state, "counted_calls", CountedCalls__init);
+            global::Sharpy.StaticInit.Run(ref TouchCalls__state, "touch_calls", TouchCalls__init);
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        private static class __Swept
+        {
+            internal static readonly bool Done;
+            static __Swept()
+            {
+                Done = global::Sharpy.StaticInit.TryLoad(ref __host, __Sweep);
+            }
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        [global::Sharpy.SharpyLoadEntry(true)]
+        public static void __Load()
+        {
+            if (!__Swept.Done)
+                global::Sharpy.StaticInit.Load(ref __host, __Sweep);
+        }
     }
 
     public partial class LruCacheTestsModuleTests

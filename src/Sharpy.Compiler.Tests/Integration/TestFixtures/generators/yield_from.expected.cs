@@ -39,6 +39,7 @@ namespace YieldFrom
 
         public static void Main()
         {
+            __Load();
 #line (11, 5) - (12, 17) 12 "yield_from.spy"
             foreach (var __loopVar_1 in global::YieldFrom.YieldFromModule.Outer())
 #line hidden
@@ -48,6 +49,12 @@ namespace YieldFrom
                 global::Sharpy.Builtins.Print(x);
 #line hidden
             }
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        [global::Sharpy.SharpyLoadEntry(false)]
+        public static void __Load()
+        {
         }
     }
 }

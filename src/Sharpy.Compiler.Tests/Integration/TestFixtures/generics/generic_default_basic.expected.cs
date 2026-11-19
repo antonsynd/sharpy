@@ -12,6 +12,7 @@ namespace GenericDefaultBasic
     {
         public static void Main()
         {
+            __Load();
 #line (11, 5) - (11, 21) 12 "generic_default_basic.spy"
             var b = new global::GenericDefaultBasic.Box<int>(42);
 #line (12, 5) - (12, 19) 12 "generic_default_basic.spy"
@@ -21,6 +22,12 @@ namespace GenericDefaultBasic
 #line (14, 5) - (14, 19) 12 "generic_default_basic.spy"
             global::Sharpy.Builtins.Print(s.Get());
 #line hidden
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        [global::Sharpy.SharpyLoadEntry(false)]
+        public static void __Load()
+        {
         }
     }
 

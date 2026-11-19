@@ -18,6 +18,11 @@ namespace Sharpy.Stdlib.Tests.Spy.Numpy.NumpyCreationTests
     [global::Sharpy.SharpyModule("numpy.numpy_creation_tests")]
     public static partial class NumpyCreationTestsModule
     {
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        [global::Sharpy.SharpyLoadEntry(false)]
+        public static void __Load()
+        {
+        }
     }
 
     public partial class NumpyCreationTestsModuleTests

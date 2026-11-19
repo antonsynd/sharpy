@@ -18,6 +18,11 @@ namespace Sharpy.Stdlib.Tests.Spy.Itertools.ItertoolsCombinatoricsTests
     [global::Sharpy.SharpyModule("itertools.itertools_combinatorics_tests")]
     public static partial class ItertoolsCombinatoricsTestsModule
     {
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        [global::Sharpy.SharpyLoadEntry(false)]
+        public static void __Load()
+        {
+        }
     }
 
     public partial class ItertoolsCombinatoricsTestsModuleTests

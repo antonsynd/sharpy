@@ -128,6 +128,12 @@ namespace Sharpy.Stdlib.Tests.Spy.Cpython.CpythonListTests
 #line hidden
             }
         }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        [global::Sharpy.SharpyLoadEntry(false)]
+        public static void __Load()
+        {
+        }
     }
 
     public partial class CpythonListTestsModuleTests

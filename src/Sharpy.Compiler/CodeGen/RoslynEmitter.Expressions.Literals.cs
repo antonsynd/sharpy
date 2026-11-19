@@ -756,11 +756,9 @@ internal partial class RoslynEmitter
             {
                 if (walrusWrap != null)
                     value = WrapInOptionalSome(value, walrusWrap);
+                // A Guarded value's store is N__set(value), an expression of the value (plan-775c50 D4).
                 var assignExpr = ParenthesizedExpression(
-                    AssignmentExpression(
-                        SyntaxKind.SimpleAssignmentExpression,
-                        StoreTargetName(walrus, varName),
-                        value));
+                    PlainStore(GetCodeGenInfo(symbol), walrus, StoreTargetName(walrus, varName), value));
                 return ApplyNarrowedReadLowering(walrus, assignExpr);
             }
         }

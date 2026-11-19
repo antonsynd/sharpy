@@ -12,6 +12,7 @@ namespace ChainedComparison
     {
         public static void Main()
         {
+            __Load();
 #line (2, 5) - (2, 16) 12 "chained_comparison.spy"
             int x = 5;
 #line (3, 5) - (3, 22) 12 "chained_comparison.spy"
@@ -21,6 +22,12 @@ namespace ChainedComparison
 #line (5, 5) - (5, 21) 12 "chained_comparison.spy"
             global::Sharpy.Builtins.Print(0 < x && x < 3);
 #line hidden
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        [global::Sharpy.SharpyLoadEntry(false)]
+        public static void __Load()
+        {
         }
     }
 }

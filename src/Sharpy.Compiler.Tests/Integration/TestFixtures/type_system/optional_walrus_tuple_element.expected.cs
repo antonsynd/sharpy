@@ -13,6 +13,7 @@ namespace OptionalWalrusTupleElement
     {
         public static void Main()
         {
+            __Load();
 #line (8, 5) - (8, 23) 12 "optional_walrus_tuple_element.spy"
             Optional<int> c = Optional<int>.Some(1);
 #line (9, 5) - (9, 23) 12 "optional_walrus_tuple_element.spy"
@@ -56,6 +57,12 @@ namespace OptionalWalrusTupleElement
                 global::Sharpy.Builtins.Print(p.Unwrap(), q.Unwrap());
 #line hidden
             }
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        [global::Sharpy.SharpyLoadEntry(false)]
+        public static void __Load()
+        {
         }
     }
 }

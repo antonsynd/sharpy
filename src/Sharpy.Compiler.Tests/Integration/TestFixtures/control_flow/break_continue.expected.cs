@@ -13,6 +13,7 @@ namespace BreakContinue
     {
         public static void Main()
         {
+            __Load();
 #line (4, 5) - (4, 10) 12 "break_continue.spy"
             var i = 0;
 #line (5, 5) - (11, 17) 12 "break_continue.spy"
@@ -47,6 +48,12 @@ namespace BreakContinue
 #line (13, 5) - (13, 15) 12 "break_continue.spy"
             global::Sharpy.Builtins.Print(100);
 #line hidden
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        [global::Sharpy.SharpyLoadEntry(false)]
+        public static void __Load()
+        {
         }
     }
 }

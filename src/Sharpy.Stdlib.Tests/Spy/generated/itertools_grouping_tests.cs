@@ -18,6 +18,11 @@ namespace Sharpy.Stdlib.Tests.Spy.Itertools.ItertoolsGroupingTests
     [global::Sharpy.SharpyModule("itertools.itertools_grouping_tests")]
     public static partial class ItertoolsGroupingTestsModule
     {
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        [global::Sharpy.SharpyLoadEntry(false)]
+        public static void __Load()
+        {
+        }
     }
 
     public partial class ItertoolsGroupingTestsModuleTests

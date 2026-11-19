@@ -71,7 +71,7 @@ internal sealed class ClrMemberTypeResolver
 
             if (Matches(prop.Name, memberName, ReverseNameContext.Property))
             {
-                if (!TryMapFaithfully(prop.PropertyType, ClrDeclaredNullability.Describe(prop), out var propType))
+                if (!TryMapFaithfully(ClrTypeHelper.ValueTypeOf(prop.PropertyType), ClrDeclaredNullability.Describe(prop), out var propType))
                     return ClrMemberResolution.Inconclusive;
 
                 var clrPropertyName = prop.Name;
@@ -184,7 +184,7 @@ internal sealed class ClrMemberTypeResolver
         if (methods.Count == 1)
         {
             var method = methods[0];
-            if (!TryMapFaithfully(method.ReturnType, ClrDeclaredNullability.DescribeReturn(method), out var returnType))
+            if (!TryMapFaithfully(ClrTypeHelper.ValueTypeOf(method.ReturnType), ClrDeclaredNullability.DescribeReturn(method), out var returnType))
                 return ClrMemberResolution.Inconclusive;
 
             // A char-returning method is declined so the call seam handles

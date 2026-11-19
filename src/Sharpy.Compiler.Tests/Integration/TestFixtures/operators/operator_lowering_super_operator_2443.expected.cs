@@ -13,11 +13,18 @@ namespace OperatorLoweringSuperOperator2443
     {
         public static void Main()
         {
+            __Load();
 #line (24, 5) - (24, 27) 12 "operator_lowering_super_operator_2443.spy"
             global::Sharpy.Builtins.Print((new global::OperatorLoweringSuperOperator2443.W(1) + new global::OperatorLoweringSuperOperator2443.V(2)).X);
 #line (25, 5) - (25, 27) 12 "operator_lowering_super_operator_2443.spy"
             global::Sharpy.Builtins.Print((new global::OperatorLoweringSuperOperator2443.V(1) + new global::OperatorLoweringSuperOperator2443.V(2)).X);
 #line hidden
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        [global::Sharpy.SharpyLoadEntry(false)]
+        public static void __Load()
+        {
         }
     }
 

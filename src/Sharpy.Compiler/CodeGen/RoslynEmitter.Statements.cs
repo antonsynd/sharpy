@@ -464,8 +464,34 @@ internal partial class RoslynEmitter
                     .WithArgumentList(ArgumentList()));
         }
 
-        var generated = GenerateExpression(expr);
+        if (_pendingVoidCallCommits != null)
+            throw new InternalCompilerErrorException("RoslynEmitter",
+                "an `out` operand's commit was left unplaced by an earlier void call (plan-775c50 D4)", exprStmt);
+        ExpressionSyntax generated;
+        _statementCall = expr;
+        try
+        {
+            generated = GenerateExpression(expr);
+        }
+        finally
+        {
+            _statementCall = null;
+        }
+        var commits = TakeVoidCallCommits();
+        var statement = GenerateLoweredExpressionStatement(exprStmt, generated);
+        if (commits == null)
+            return statement;
 
+        // A void call with an `out` operand on a Guarded value: its commits follow it (plan-775c50
+        // D4), or, in an `async def` body, branch it on the operand's arm (D6).
+        var placed = PlaceVoidCallCommits(statement, commits);
+        for (int i = 0; i < placed.Count - 1; i++)
+            HoistEvaluation(placed[i]);
+        return placed[^1];
+    }
+
+    private StatementSyntax GenerateLoweredExpressionStatement(ExpressionStatement exprStmt, ExpressionSyntax generated)
+    {
         // Switch on the recorded StatementLowering (#1622). The TypeChecker classifies every
         // ExpressionStatement it accepts; an absent fact means the statement never went through
         // semantic analysis (or was refused there), so the emitter fails loud rather than

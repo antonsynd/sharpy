@@ -13,6 +13,7 @@ namespace ClassBankAccount
     {
         public static void Main()
         {
+            __Load();
 #line (30, 5) - (30, 41) 12 "class_bank_account.spy"
             var account = new global::ClassBankAccount.BankAccount("Alice", 1000);
 #line (31, 5) - (31, 33) 12 "class_bank_account.spy"
@@ -34,6 +35,12 @@ namespace ClassBankAccount
 #line (42, 5) - (42, 33) 12 "class_bank_account.spy"
             global::Sharpy.Builtins.Print(account.GetBalance());
 #line hidden
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        [global::Sharpy.SharpyLoadEntry(false)]
+        public static void __Load()
+        {
         }
     }
 

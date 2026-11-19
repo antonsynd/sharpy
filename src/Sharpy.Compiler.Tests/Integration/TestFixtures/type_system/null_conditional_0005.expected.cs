@@ -13,6 +13,7 @@ namespace NullConditional0005
     {
         public static void Main()
         {
+            __Load();
 #line (33, 5) - (33, 62) 12 "null_conditional_0005.spy"
             var addr1 = new global::NullConditional0005.Address(Optional<string>.Some("Main Street"), Optional<string>.Some("Springfield"));
 #line (34, 5) - (34, 43) 12 "null_conditional_0005.spy"
@@ -48,6 +49,12 @@ namespace NullConditional0005
 #line (59, 5) - (59, 19) 12 "null_conditional_0005.spy"
             global::Sharpy.Builtins.Print(street3);
 #line hidden
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        [global::Sharpy.SharpyLoadEntry(false)]
+        public static void __Load()
+        {
         }
     }
 

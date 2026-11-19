@@ -12,6 +12,7 @@ namespace AccessorTypeGenericControl
     {
         public static void Main()
         {
+            __Load();
 #line (18, 5) - (18, 32) 12 "accessor_type_generic_control.spy"
             global::AccessorTypeGenericControl.Holder<int> h = new global::AccessorTypeGenericControl.Holder<int>(3);
 #line (19, 5) - (19, 15) 12 "accessor_type_generic_control.spy"
@@ -19,6 +20,12 @@ namespace AccessorTypeGenericControl
 #line (20, 5) - (20, 18) 12 "accessor_type_generic_control.spy"
             global::Sharpy.Builtins.Print(h.Item);
 #line hidden
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        [global::Sharpy.SharpyLoadEntry(false)]
+        public static void __Load()
+        {
         }
     }
 

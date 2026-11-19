@@ -15,24 +15,876 @@ namespace Sharpy.ReModule
     /// </summary>
     public static partial class ReModuleModule
     {
-        public static int IGNORECASE = 2;
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        internal static int IGNORECASE__field = default!;
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        private static byte IGNORECASE__state;
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        private static void IGNORECASE__init()
+        {
+            IGNORECASE__field = 2;
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        private static void IGNORECASE__slow() => global::Sharpy.StaticInit.Read(ref __host, __Sweep, ref IGNORECASE__state, "IGNORECASE", IGNORECASE__init);
+        [global::Sharpy.SharpyStaticStorage(global::Sharpy.StaticStorageKind.Guarded)]
+        public static ref int IGNORECASE
+        {
+            get
+            {
+                if (!__Swept.Done)
+                    IGNORECASE__slow();
+                return ref IGNORECASE__field;
+            }
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        internal static void IGNORECASE__ensure()
+        {
+            if (!__Swept.Done)
+                IGNORECASE__slow();
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        private static void IGNORECASE__storeSlow(int value) => global::Sharpy.StaticInit.Store(ref __host, __Sweep, ref IGNORECASE__state, ref IGNORECASE__field, value);
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        internal static int IGNORECASE__set(int value)
+        {
+            if (__Swept.Done)
+                IGNORECASE__field = value;
+            else
+                IGNORECASE__storeSlow(value);
+            return value;
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        internal static global::System.Runtime.CompilerServices.StrongBox<int>? IGNORECASE__pick()
+        {
+            if (!__Swept.Done)
+            {
+                global::Sharpy.StaticInit.Load(ref __host, __Sweep);
+                if (!global::Sharpy.StaticInit.IsReady(ref IGNORECASE__state))
+                    return new global::System.Runtime.CompilerServices.StrongBox<int>();
+            }
+
+            return null;
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        internal static ref int IGNORECASE__out(out global::System.Runtime.CompilerServices.StrongBox<int>? spill)
+        {
+            spill = IGNORECASE__pick();
+            if (spill != null)
+                return ref spill.Value!;
+            return ref IGNORECASE__field;
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        internal static R IGNORECASE__commit<R>(R result, global::System.Runtime.CompilerServices.StrongBox<int>? spill)
+        {
+            if (spill != null)
+                IGNORECASE__set(spill.Value!);
+            return result;
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        internal static int I__field = default!;
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        private static byte I__state;
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        private static void I__init()
+        {
+            I__field = 2;
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        private static void I__slow() => global::Sharpy.StaticInit.Read(ref __host, __Sweep, ref I__state, "I", I__init);
         [global::Sharpy.SharpyFieldName("I")]
-        public static int I = 2;
-        public static int MULTILINE = 8;
+        [global::Sharpy.SharpyStaticStorage(global::Sharpy.StaticStorageKind.Guarded)]
+        public static ref int I
+        {
+            get
+            {
+                if (!__Swept.Done)
+                    I__slow();
+                return ref I__field;
+            }
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        internal static void I__ensure()
+        {
+            if (!__Swept.Done)
+                I__slow();
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        private static void I__storeSlow(int value) => global::Sharpy.StaticInit.Store(ref __host, __Sweep, ref I__state, ref I__field, value);
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        internal static int I__set(int value)
+        {
+            if (__Swept.Done)
+                I__field = value;
+            else
+                I__storeSlow(value);
+            return value;
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        internal static global::System.Runtime.CompilerServices.StrongBox<int>? I__pick()
+        {
+            if (!__Swept.Done)
+            {
+                global::Sharpy.StaticInit.Load(ref __host, __Sweep);
+                if (!global::Sharpy.StaticInit.IsReady(ref I__state))
+                    return new global::System.Runtime.CompilerServices.StrongBox<int>();
+            }
+
+            return null;
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        internal static ref int I__out(out global::System.Runtime.CompilerServices.StrongBox<int>? spill)
+        {
+            spill = I__pick();
+            if (spill != null)
+                return ref spill.Value!;
+            return ref I__field;
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        internal static R I__commit<R>(R result, global::System.Runtime.CompilerServices.StrongBox<int>? spill)
+        {
+            if (spill != null)
+                I__set(spill.Value!);
+            return result;
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        internal static int MULTILINE__field = default!;
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        private static byte MULTILINE__state;
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        private static void MULTILINE__init()
+        {
+            MULTILINE__field = 8;
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        private static void MULTILINE__slow() => global::Sharpy.StaticInit.Read(ref __host, __Sweep, ref MULTILINE__state, "MULTILINE", MULTILINE__init);
+        [global::Sharpy.SharpyStaticStorage(global::Sharpy.StaticStorageKind.Guarded)]
+        public static ref int MULTILINE
+        {
+            get
+            {
+                if (!__Swept.Done)
+                    MULTILINE__slow();
+                return ref MULTILINE__field;
+            }
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        internal static void MULTILINE__ensure()
+        {
+            if (!__Swept.Done)
+                MULTILINE__slow();
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        private static void MULTILINE__storeSlow(int value) => global::Sharpy.StaticInit.Store(ref __host, __Sweep, ref MULTILINE__state, ref MULTILINE__field, value);
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        internal static int MULTILINE__set(int value)
+        {
+            if (__Swept.Done)
+                MULTILINE__field = value;
+            else
+                MULTILINE__storeSlow(value);
+            return value;
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        internal static global::System.Runtime.CompilerServices.StrongBox<int>? MULTILINE__pick()
+        {
+            if (!__Swept.Done)
+            {
+                global::Sharpy.StaticInit.Load(ref __host, __Sweep);
+                if (!global::Sharpy.StaticInit.IsReady(ref MULTILINE__state))
+                    return new global::System.Runtime.CompilerServices.StrongBox<int>();
+            }
+
+            return null;
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        internal static ref int MULTILINE__out(out global::System.Runtime.CompilerServices.StrongBox<int>? spill)
+        {
+            spill = MULTILINE__pick();
+            if (spill != null)
+                return ref spill.Value!;
+            return ref MULTILINE__field;
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        internal static R MULTILINE__commit<R>(R result, global::System.Runtime.CompilerServices.StrongBox<int>? spill)
+        {
+            if (spill != null)
+                MULTILINE__set(spill.Value!);
+            return result;
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        internal static int M__field = default!;
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        private static byte M__state;
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        private static void M__init()
+        {
+            M__field = 8;
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        private static void M__slow() => global::Sharpy.StaticInit.Read(ref __host, __Sweep, ref M__state, "M", M__init);
         [global::Sharpy.SharpyFieldName("M")]
-        public static int M = 8;
-        public static int DOTALL = 16;
+        [global::Sharpy.SharpyStaticStorage(global::Sharpy.StaticStorageKind.Guarded)]
+        public static ref int M
+        {
+            get
+            {
+                if (!__Swept.Done)
+                    M__slow();
+                return ref M__field;
+            }
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        internal static void M__ensure()
+        {
+            if (!__Swept.Done)
+                M__slow();
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        private static void M__storeSlow(int value) => global::Sharpy.StaticInit.Store(ref __host, __Sweep, ref M__state, ref M__field, value);
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        internal static int M__set(int value)
+        {
+            if (__Swept.Done)
+                M__field = value;
+            else
+                M__storeSlow(value);
+            return value;
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        internal static global::System.Runtime.CompilerServices.StrongBox<int>? M__pick()
+        {
+            if (!__Swept.Done)
+            {
+                global::Sharpy.StaticInit.Load(ref __host, __Sweep);
+                if (!global::Sharpy.StaticInit.IsReady(ref M__state))
+                    return new global::System.Runtime.CompilerServices.StrongBox<int>();
+            }
+
+            return null;
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        internal static ref int M__out(out global::System.Runtime.CompilerServices.StrongBox<int>? spill)
+        {
+            spill = M__pick();
+            if (spill != null)
+                return ref spill.Value!;
+            return ref M__field;
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        internal static R M__commit<R>(R result, global::System.Runtime.CompilerServices.StrongBox<int>? spill)
+        {
+            if (spill != null)
+                M__set(spill.Value!);
+            return result;
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        internal static int DOTALL__field = default!;
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        private static byte DOTALL__state;
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        private static void DOTALL__init()
+        {
+            DOTALL__field = 16;
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        private static void DOTALL__slow() => global::Sharpy.StaticInit.Read(ref __host, __Sweep, ref DOTALL__state, "DOTALL", DOTALL__init);
+        [global::Sharpy.SharpyStaticStorage(global::Sharpy.StaticStorageKind.Guarded)]
+        public static ref int DOTALL
+        {
+            get
+            {
+                if (!__Swept.Done)
+                    DOTALL__slow();
+                return ref DOTALL__field;
+            }
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        internal static void DOTALL__ensure()
+        {
+            if (!__Swept.Done)
+                DOTALL__slow();
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        private static void DOTALL__storeSlow(int value) => global::Sharpy.StaticInit.Store(ref __host, __Sweep, ref DOTALL__state, ref DOTALL__field, value);
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        internal static int DOTALL__set(int value)
+        {
+            if (__Swept.Done)
+                DOTALL__field = value;
+            else
+                DOTALL__storeSlow(value);
+            return value;
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        internal static global::System.Runtime.CompilerServices.StrongBox<int>? DOTALL__pick()
+        {
+            if (!__Swept.Done)
+            {
+                global::Sharpy.StaticInit.Load(ref __host, __Sweep);
+                if (!global::Sharpy.StaticInit.IsReady(ref DOTALL__state))
+                    return new global::System.Runtime.CompilerServices.StrongBox<int>();
+            }
+
+            return null;
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        internal static ref int DOTALL__out(out global::System.Runtime.CompilerServices.StrongBox<int>? spill)
+        {
+            spill = DOTALL__pick();
+            if (spill != null)
+                return ref spill.Value!;
+            return ref DOTALL__field;
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        internal static R DOTALL__commit<R>(R result, global::System.Runtime.CompilerServices.StrongBox<int>? spill)
+        {
+            if (spill != null)
+                DOTALL__set(spill.Value!);
+            return result;
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        internal static int S__field = default!;
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        private static byte S__state;
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        private static void S__init()
+        {
+            S__field = 16;
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        private static void S__slow() => global::Sharpy.StaticInit.Read(ref __host, __Sweep, ref S__state, "S", S__init);
         [global::Sharpy.SharpyFieldName("S")]
-        public static int S = 16;
-        public static int VERBOSE = 64;
+        [global::Sharpy.SharpyStaticStorage(global::Sharpy.StaticStorageKind.Guarded)]
+        public static ref int S
+        {
+            get
+            {
+                if (!__Swept.Done)
+                    S__slow();
+                return ref S__field;
+            }
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        internal static void S__ensure()
+        {
+            if (!__Swept.Done)
+                S__slow();
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        private static void S__storeSlow(int value) => global::Sharpy.StaticInit.Store(ref __host, __Sweep, ref S__state, ref S__field, value);
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        internal static int S__set(int value)
+        {
+            if (__Swept.Done)
+                S__field = value;
+            else
+                S__storeSlow(value);
+            return value;
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        internal static global::System.Runtime.CompilerServices.StrongBox<int>? S__pick()
+        {
+            if (!__Swept.Done)
+            {
+                global::Sharpy.StaticInit.Load(ref __host, __Sweep);
+                if (!global::Sharpy.StaticInit.IsReady(ref S__state))
+                    return new global::System.Runtime.CompilerServices.StrongBox<int>();
+            }
+
+            return null;
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        internal static ref int S__out(out global::System.Runtime.CompilerServices.StrongBox<int>? spill)
+        {
+            spill = S__pick();
+            if (spill != null)
+                return ref spill.Value!;
+            return ref S__field;
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        internal static R S__commit<R>(R result, global::System.Runtime.CompilerServices.StrongBox<int>? spill)
+        {
+            if (spill != null)
+                S__set(spill.Value!);
+            return result;
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        internal static int VERBOSE__field = default!;
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        private static byte VERBOSE__state;
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        private static void VERBOSE__init()
+        {
+            VERBOSE__field = 64;
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        private static void VERBOSE__slow() => global::Sharpy.StaticInit.Read(ref __host, __Sweep, ref VERBOSE__state, "VERBOSE", VERBOSE__init);
+        [global::Sharpy.SharpyStaticStorage(global::Sharpy.StaticStorageKind.Guarded)]
+        public static ref int VERBOSE
+        {
+            get
+            {
+                if (!__Swept.Done)
+                    VERBOSE__slow();
+                return ref VERBOSE__field;
+            }
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        internal static void VERBOSE__ensure()
+        {
+            if (!__Swept.Done)
+                VERBOSE__slow();
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        private static void VERBOSE__storeSlow(int value) => global::Sharpy.StaticInit.Store(ref __host, __Sweep, ref VERBOSE__state, ref VERBOSE__field, value);
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        internal static int VERBOSE__set(int value)
+        {
+            if (__Swept.Done)
+                VERBOSE__field = value;
+            else
+                VERBOSE__storeSlow(value);
+            return value;
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        internal static global::System.Runtime.CompilerServices.StrongBox<int>? VERBOSE__pick()
+        {
+            if (!__Swept.Done)
+            {
+                global::Sharpy.StaticInit.Load(ref __host, __Sweep);
+                if (!global::Sharpy.StaticInit.IsReady(ref VERBOSE__state))
+                    return new global::System.Runtime.CompilerServices.StrongBox<int>();
+            }
+
+            return null;
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        internal static ref int VERBOSE__out(out global::System.Runtime.CompilerServices.StrongBox<int>? spill)
+        {
+            spill = VERBOSE__pick();
+            if (spill != null)
+                return ref spill.Value!;
+            return ref VERBOSE__field;
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        internal static R VERBOSE__commit<R>(R result, global::System.Runtime.CompilerServices.StrongBox<int>? spill)
+        {
+            if (spill != null)
+                VERBOSE__set(spill.Value!);
+            return result;
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        internal static int X__field = default!;
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        private static byte X__state;
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        private static void X__init()
+        {
+            X__field = 64;
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        private static void X__slow() => global::Sharpy.StaticInit.Read(ref __host, __Sweep, ref X__state, "X", X__init);
         [global::Sharpy.SharpyFieldName("X")]
-        public static int X = 64;
-        public static int UNICODE = 32;
+        [global::Sharpy.SharpyStaticStorage(global::Sharpy.StaticStorageKind.Guarded)]
+        public static ref int X
+        {
+            get
+            {
+                if (!__Swept.Done)
+                    X__slow();
+                return ref X__field;
+            }
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        internal static void X__ensure()
+        {
+            if (!__Swept.Done)
+                X__slow();
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        private static void X__storeSlow(int value) => global::Sharpy.StaticInit.Store(ref __host, __Sweep, ref X__state, ref X__field, value);
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        internal static int X__set(int value)
+        {
+            if (__Swept.Done)
+                X__field = value;
+            else
+                X__storeSlow(value);
+            return value;
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        internal static global::System.Runtime.CompilerServices.StrongBox<int>? X__pick()
+        {
+            if (!__Swept.Done)
+            {
+                global::Sharpy.StaticInit.Load(ref __host, __Sweep);
+                if (!global::Sharpy.StaticInit.IsReady(ref X__state))
+                    return new global::System.Runtime.CompilerServices.StrongBox<int>();
+            }
+
+            return null;
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        internal static ref int X__out(out global::System.Runtime.CompilerServices.StrongBox<int>? spill)
+        {
+            spill = X__pick();
+            if (spill != null)
+                return ref spill.Value!;
+            return ref X__field;
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        internal static R X__commit<R>(R result, global::System.Runtime.CompilerServices.StrongBox<int>? spill)
+        {
+            if (spill != null)
+                X__set(spill.Value!);
+            return result;
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        internal static int UNICODE__field = default!;
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        private static byte UNICODE__state;
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        private static void UNICODE__init()
+        {
+            UNICODE__field = 32;
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        private static void UNICODE__slow() => global::Sharpy.StaticInit.Read(ref __host, __Sweep, ref UNICODE__state, "UNICODE", UNICODE__init);
+        [global::Sharpy.SharpyStaticStorage(global::Sharpy.StaticStorageKind.Guarded)]
+        public static ref int UNICODE
+        {
+            get
+            {
+                if (!__Swept.Done)
+                    UNICODE__slow();
+                return ref UNICODE__field;
+            }
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        internal static void UNICODE__ensure()
+        {
+            if (!__Swept.Done)
+                UNICODE__slow();
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        private static void UNICODE__storeSlow(int value) => global::Sharpy.StaticInit.Store(ref __host, __Sweep, ref UNICODE__state, ref UNICODE__field, value);
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        internal static int UNICODE__set(int value)
+        {
+            if (__Swept.Done)
+                UNICODE__field = value;
+            else
+                UNICODE__storeSlow(value);
+            return value;
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        internal static global::System.Runtime.CompilerServices.StrongBox<int>? UNICODE__pick()
+        {
+            if (!__Swept.Done)
+            {
+                global::Sharpy.StaticInit.Load(ref __host, __Sweep);
+                if (!global::Sharpy.StaticInit.IsReady(ref UNICODE__state))
+                    return new global::System.Runtime.CompilerServices.StrongBox<int>();
+            }
+
+            return null;
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        internal static ref int UNICODE__out(out global::System.Runtime.CompilerServices.StrongBox<int>? spill)
+        {
+            spill = UNICODE__pick();
+            if (spill != null)
+                return ref spill.Value!;
+            return ref UNICODE__field;
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        internal static R UNICODE__commit<R>(R result, global::System.Runtime.CompilerServices.StrongBox<int>? spill)
+        {
+            if (spill != null)
+                UNICODE__set(spill.Value!);
+            return result;
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        internal static int U__field = default!;
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        private static byte U__state;
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        private static void U__init()
+        {
+            U__field = 32;
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        private static void U__slow() => global::Sharpy.StaticInit.Read(ref __host, __Sweep, ref U__state, "U", U__init);
         [global::Sharpy.SharpyFieldName("U")]
-        public static int U = 32;
-        public static int ASCII = 256;
+        [global::Sharpy.SharpyStaticStorage(global::Sharpy.StaticStorageKind.Guarded)]
+        public static ref int U
+        {
+            get
+            {
+                if (!__Swept.Done)
+                    U__slow();
+                return ref U__field;
+            }
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        internal static void U__ensure()
+        {
+            if (!__Swept.Done)
+                U__slow();
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        private static void U__storeSlow(int value) => global::Sharpy.StaticInit.Store(ref __host, __Sweep, ref U__state, ref U__field, value);
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        internal static int U__set(int value)
+        {
+            if (__Swept.Done)
+                U__field = value;
+            else
+                U__storeSlow(value);
+            return value;
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        internal static global::System.Runtime.CompilerServices.StrongBox<int>? U__pick()
+        {
+            if (!__Swept.Done)
+            {
+                global::Sharpy.StaticInit.Load(ref __host, __Sweep);
+                if (!global::Sharpy.StaticInit.IsReady(ref U__state))
+                    return new global::System.Runtime.CompilerServices.StrongBox<int>();
+            }
+
+            return null;
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        internal static ref int U__out(out global::System.Runtime.CompilerServices.StrongBox<int>? spill)
+        {
+            spill = U__pick();
+            if (spill != null)
+                return ref spill.Value!;
+            return ref U__field;
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        internal static R U__commit<R>(R result, global::System.Runtime.CompilerServices.StrongBox<int>? spill)
+        {
+            if (spill != null)
+                U__set(spill.Value!);
+            return result;
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        internal static int ASCII__field = default!;
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        private static byte ASCII__state;
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        private static void ASCII__init()
+        {
+            ASCII__field = 256;
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        private static void ASCII__slow() => global::Sharpy.StaticInit.Read(ref __host, __Sweep, ref ASCII__state, "ASCII", ASCII__init);
+        [global::Sharpy.SharpyStaticStorage(global::Sharpy.StaticStorageKind.Guarded)]
+        public static ref int ASCII
+        {
+            get
+            {
+                if (!__Swept.Done)
+                    ASCII__slow();
+                return ref ASCII__field;
+            }
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        internal static void ASCII__ensure()
+        {
+            if (!__Swept.Done)
+                ASCII__slow();
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        private static void ASCII__storeSlow(int value) => global::Sharpy.StaticInit.Store(ref __host, __Sweep, ref ASCII__state, ref ASCII__field, value);
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        internal static int ASCII__set(int value)
+        {
+            if (__Swept.Done)
+                ASCII__field = value;
+            else
+                ASCII__storeSlow(value);
+            return value;
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        internal static global::System.Runtime.CompilerServices.StrongBox<int>? ASCII__pick()
+        {
+            if (!__Swept.Done)
+            {
+                global::Sharpy.StaticInit.Load(ref __host, __Sweep);
+                if (!global::Sharpy.StaticInit.IsReady(ref ASCII__state))
+                    return new global::System.Runtime.CompilerServices.StrongBox<int>();
+            }
+
+            return null;
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        internal static ref int ASCII__out(out global::System.Runtime.CompilerServices.StrongBox<int>? spill)
+        {
+            spill = ASCII__pick();
+            if (spill != null)
+                return ref spill.Value!;
+            return ref ASCII__field;
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        internal static R ASCII__commit<R>(R result, global::System.Runtime.CompilerServices.StrongBox<int>? spill)
+        {
+            if (spill != null)
+                ASCII__set(spill.Value!);
+            return result;
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        internal static int A__field = default!;
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        private static byte A__state;
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        private static void A__init()
+        {
+            A__field = 256;
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        private static void A__slow() => global::Sharpy.StaticInit.Read(ref __host, __Sweep, ref A__state, "A", A__init);
         [global::Sharpy.SharpyFieldName("A")]
-        public static int A = 256;
+        [global::Sharpy.SharpyStaticStorage(global::Sharpy.StaticStorageKind.Guarded)]
+        public static ref int A
+        {
+            get
+            {
+                if (!__Swept.Done)
+                    A__slow();
+                return ref A__field;
+            }
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        internal static void A__ensure()
+        {
+            if (!__Swept.Done)
+                A__slow();
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        private static void A__storeSlow(int value) => global::Sharpy.StaticInit.Store(ref __host, __Sweep, ref A__state, ref A__field, value);
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        internal static int A__set(int value)
+        {
+            if (__Swept.Done)
+                A__field = value;
+            else
+                A__storeSlow(value);
+            return value;
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        internal static global::System.Runtime.CompilerServices.StrongBox<int>? A__pick()
+        {
+            if (!__Swept.Done)
+            {
+                global::Sharpy.StaticInit.Load(ref __host, __Sweep);
+                if (!global::Sharpy.StaticInit.IsReady(ref A__state))
+                    return new global::System.Runtime.CompilerServices.StrongBox<int>();
+            }
+
+            return null;
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        internal static ref int A__out(out global::System.Runtime.CompilerServices.StrongBox<int>? spill)
+        {
+            spill = A__pick();
+            if (spill != null)
+                return ref spill.Value!;
+            return ref A__field;
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        internal static R A__commit<R>(R result, global::System.Runtime.CompilerServices.StrongBox<int>? spill)
+        {
+            if (spill != null)
+                A__set(spill.Value!);
+            return result;
+        }
+
         /// <summary>
         /// Fast path: check if pattern contains Python-specific syntax.
         /// </summary>
@@ -441,6 +1293,43 @@ namespace Sharpy.ReModule
         public static string Escape(string pattern)
         {
             return global::Sharpy.ReModule.ReModuleModule._EscapePattern(pattern);
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        private static global::Sharpy.StaticInitHost __host;
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        private static void __Sweep()
+        {
+            global::Sharpy.StaticInit.Run(ref IGNORECASE__state, "IGNORECASE", IGNORECASE__init);
+            global::Sharpy.StaticInit.Run(ref I__state, "I", I__init);
+            global::Sharpy.StaticInit.Run(ref MULTILINE__state, "MULTILINE", MULTILINE__init);
+            global::Sharpy.StaticInit.Run(ref M__state, "M", M__init);
+            global::Sharpy.StaticInit.Run(ref DOTALL__state, "DOTALL", DOTALL__init);
+            global::Sharpy.StaticInit.Run(ref S__state, "S", S__init);
+            global::Sharpy.StaticInit.Run(ref VERBOSE__state, "VERBOSE", VERBOSE__init);
+            global::Sharpy.StaticInit.Run(ref X__state, "X", X__init);
+            global::Sharpy.StaticInit.Run(ref UNICODE__state, "UNICODE", UNICODE__init);
+            global::Sharpy.StaticInit.Run(ref U__state, "U", U__init);
+            global::Sharpy.StaticInit.Run(ref ASCII__state, "ASCII", ASCII__init);
+            global::Sharpy.StaticInit.Run(ref A__state, "A", A__init);
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        private static class __Swept
+        {
+            internal static readonly bool Done;
+            static __Swept()
+            {
+                Done = global::Sharpy.StaticInit.TryLoad(ref __host, __Sweep);
+            }
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        [global::Sharpy.SharpyLoadEntry(true)]
+        public static void __Load()
+        {
+            if (!__Swept.Done)
+                global::Sharpy.StaticInit.Load(ref __host, __Sweep);
         }
     }
 

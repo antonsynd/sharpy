@@ -72,6 +72,44 @@ public class HoverTests : IDisposable
     }
 
     [Fact]
+    public async Task Hover_OverAGuardedStdlibValue_ShowsItsElementType()
+    {
+        // plan-775c50 D10: a spy module value with an initializer is a `public static ref double Pi`
+        // property in Sharpy.Stdlib.dll (D4). Every surface reads a by-reference member as its element
+        // type — discovery maps it, so hover shows `float64`, never `Double&`. The server's reference
+        // set (Sharpy.Lsp.Program) is needed: a bare CompilerApi cannot resolve `import math` at all.
+        var baseDir = AppContext.BaseDirectory;
+        var references = new[] { "Sharpy.Core.dll", "Sharpy.Stdlib.dll" }
+            .Select(dll => System.IO.Path.Combine(baseDir, dll)).ToArray();
+        foreach (var reference in references)
+            File.Exists(reference).Should().BeTrue($"{reference} sits next to the test assembly");
+        var api = new CompilerApi(null, references);
+        using var workspace = new SharpyWorkspace(api, NullLogger<SharpyWorkspace>.Instance);
+
+        var source = "import math\nimport string\ndef main() -> None:\n    print(math.pi, string.digits)\n";
+        workspace.OpenDocument("file:///guarded_value.spy", source, 1);
+
+        var analysis = await workspace.GetAnalysisAsync("file:///guarded_value.spy");
+        analysis.Should().NotBeNull();
+        var hover = new HoverService(api);
+
+        // "    print(math.pi, string.digits)": `pi` at col 16, `digits` at col 25 (1-based).
+        foreach (var (col, expected) in new[] { (16, SemanticType.Double), (25, SemanticType.Str) })
+        {
+            var access = api.FindNodeOfType<MemberAccess>(analysis!.Ast!, 4, col);
+            access.Should().NotBeNull($"the member access at col {col}");
+            var type = analysis.SemanticQuery!.GetEffectiveType(access!);
+            type.Should().NotBeNull();
+            var shown = SymbolFormatter.FormatTypeInfo(expected);
+            SymbolFormatter.FormatTypeInfo(type!).Should().Be(shown);
+
+            var markdown = hover.GetHoverMarkdown(analysis, 4, col);
+            markdown.Should().NotBeNull($"hover at col {col}");
+            markdown.Should().Contain(shown).And.NotContain("&").And.NotContain("ref ");
+        }
+    }
+
+    [Fact]
     public async Task Hover_OverModuleProperty_SaysPropertyAndReadOnly()
     {
         // #851: a module-level property is a VariableSymbol carrying accessor flags, so hover

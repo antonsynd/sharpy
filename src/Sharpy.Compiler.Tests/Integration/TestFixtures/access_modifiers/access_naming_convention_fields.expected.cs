@@ -12,6 +12,7 @@ namespace AccessNamingConventionFields
     {
         public static void Main()
         {
+            __Load();
 #line (25, 5) - (25, 40) 12 "access_naming_convention_fields.spy"
             global::AccessNamingConventionFields.MyClass obj = new global::AccessNamingConventionFields.MyClass(10, 20, 30);
 #line (26, 5) - (26, 29) 12 "access_naming_convention_fields.spy"
@@ -25,6 +26,12 @@ namespace AccessNamingConventionFields
 #line (31, 5) - (31, 30) 12 "access_naming_convention_fields.spy"
             global::Sharpy.Builtins.Print(child.PublicField);
 #line hidden
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        [global::Sharpy.SharpyLoadEntry(false)]
+        public static void __Load()
+        {
         }
     }
 

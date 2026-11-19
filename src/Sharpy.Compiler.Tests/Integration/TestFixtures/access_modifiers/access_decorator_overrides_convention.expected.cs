@@ -12,6 +12,7 @@ namespace AccessDecoratorOverridesConvention
     {
         public static void Main()
         {
+            __Load();
 #line (16, 5) - (16, 26) 12 "access_decorator_overrides_convention.spy"
             global::AccessDecoratorOverridesConvention.Config c = new global::AccessDecoratorOverridesConvention.Config();
 #line (18, 5) - (18, 32) 12 "access_decorator_overrides_convention.spy"
@@ -19,6 +20,12 @@ namespace AccessDecoratorOverridesConvention
 #line (19, 5) - (19, 33) 12 "access_decorator_overrides_convention.spy"
             global::Sharpy.Builtins.Print(c._ShouldBePublic());
 #line hidden
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        [global::Sharpy.SharpyLoadEntry(false)]
+        public static void __Load()
+        {
         }
     }
 

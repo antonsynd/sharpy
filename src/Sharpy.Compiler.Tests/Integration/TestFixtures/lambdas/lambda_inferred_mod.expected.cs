@@ -40,6 +40,7 @@ namespace LambdaInferredMod
 
         public static void Main()
         {
+            __Load();
 #line (13, 5) - (13, 49) 12 "lambda_inferred_mod.spy"
             Sharpy.List<int> nums = new Sharpy.List<int>()
 #line hidden
@@ -67,6 +68,12 @@ namespace LambdaInferredMod
 #line (34, 5) - (34, 57) 12 "lambda_inferred_mod.spy"
             global::Sharpy.Builtins.Print(new Sharpy.List<int>(global::Sharpy.Builtins.Filter<int>((int x) => global::Sharpy.Builtins.FloorMod(x, 3) == 1, nums)));
 #line hidden
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        [global::Sharpy.SharpyLoadEntry(false)]
+        public static void __Load()
+        {
         }
     }
 }

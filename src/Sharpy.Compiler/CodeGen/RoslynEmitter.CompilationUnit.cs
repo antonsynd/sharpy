@@ -61,7 +61,7 @@ internal partial class RoslynEmitter
         // this call (instead of being emitted as static methods on the module class).
         // @test.fixture functions are collected into _pendingFixtures and emitted as
         // sibling classes alongside the test class.
-        var moduleClass = GenerateModuleMembers(nonImportStatements, fromImports);
+        var moduleClass = GenerateModuleMembers(nonImportStatements, fromImports, module.Body);
 
         if (!string.IsNullOrEmpty(module.DocString))
         {

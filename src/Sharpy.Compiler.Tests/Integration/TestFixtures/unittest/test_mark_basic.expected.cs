@@ -15,9 +15,16 @@ namespace TestMarkBasic
     {
         public static void Main()
         {
+            __Load();
 #line (14, 5) - (14, 16) 12 "test_mark_basic.spy"
             global::Sharpy.Builtins.Print("ok");
 #line hidden
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        [global::Sharpy.SharpyLoadEntry(false)]
+        public static void __Load()
+        {
         }
     }
 

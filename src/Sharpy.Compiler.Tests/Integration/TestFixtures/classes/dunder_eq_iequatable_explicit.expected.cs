@@ -12,6 +12,7 @@ namespace DunderEqIequatableExplicit
     {
         public static void Main()
         {
+            __Load();
 #line (13, 5) - (13, 15) 12 "dunder_eq_iequatable_explicit.spy"
             var a = new global::DunderEqIequatableExplicit.Foo(1);
 #line (14, 5) - (14, 15) 12 "dunder_eq_iequatable_explicit.spy"
@@ -19,6 +20,12 @@ namespace DunderEqIequatableExplicit
 #line (16, 5) - (16, 18) 12 "dunder_eq_iequatable_explicit.spy"
             global::Sharpy.Builtins.Print(a == b);
 #line hidden
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        [global::Sharpy.SharpyLoadEntry(false)]
+        public static void __Load()
+        {
         }
     }
 

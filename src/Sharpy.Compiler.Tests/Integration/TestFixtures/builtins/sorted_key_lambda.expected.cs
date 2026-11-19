@@ -12,6 +12,7 @@ namespace SortedKeyLambda
     {
         public static void Main()
         {
+            __Load();
 #line (3, 5) - (3, 64) 12 "sorted_key_lambda.spy"
             Sharpy.List<string> data = new Sharpy.List<string>()
 #line hidden
@@ -30,6 +31,12 @@ namespace SortedKeyLambda
 #line (5, 5) - (5, 18) 12 "sorted_key_lambda.spy"
             global::Sharpy.Builtins.Print(result);
 #line hidden
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        [global::Sharpy.SharpyLoadEntry(false)]
+        public static void __Load()
+        {
         }
     }
 }

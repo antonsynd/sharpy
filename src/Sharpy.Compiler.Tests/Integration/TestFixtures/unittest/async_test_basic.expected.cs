@@ -15,9 +15,16 @@ namespace AsyncTestBasic
     {
         public static void Main()
         {
+            __Load();
 #line (12, 5) - (12, 16) 12 "async_test_basic.spy"
             global::Sharpy.Builtins.Print("ok");
 #line hidden
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        [global::Sharpy.SharpyLoadEntry(false)]
+        public static void __Load()
+        {
         }
     }
 

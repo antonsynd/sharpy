@@ -20,11 +20,18 @@ namespace NarrowingTernary
 
         public static void Main()
         {
+            __Load();
 #line (9, 5) - (9, 23) 12 "narrowing_ternary.spy"
             global::Sharpy.Builtins.Print(global::NarrowingTernary.NarrowingTernaryModule.F(Optional<int>.Some(41)));
 #line (10, 5) - (10, 21) 12 "narrowing_ternary.spy"
             global::Sharpy.Builtins.Print(global::NarrowingTernary.NarrowingTernaryModule.F(Optional<int>.None));
 #line hidden
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        [global::Sharpy.SharpyLoadEntry(false)]
+        public static void __Load()
+        {
         }
     }
 }

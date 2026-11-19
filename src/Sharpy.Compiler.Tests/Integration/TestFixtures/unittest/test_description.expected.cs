@@ -15,9 +15,16 @@ namespace TestDescription
     {
         public static void Main()
         {
+            __Load();
 #line (6, 5) - (6, 16) 12 "test_description.spy"
             global::Sharpy.Builtins.Print("ok");
 #line hidden
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        [global::Sharpy.SharpyLoadEntry(false)]
+        public static void __Load()
+        {
         }
     }
 

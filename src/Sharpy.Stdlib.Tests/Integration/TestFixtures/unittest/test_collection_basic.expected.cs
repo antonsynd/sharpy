@@ -15,9 +15,16 @@ namespace TestCollectionBasic
     {
         public static void Main()
         {
+            __Load();
 #line (22, 5) - (22, 16) 12 "test_collection_basic.spy"
             global::Sharpy.Builtins.Print("ok");
 #line hidden
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        [global::Sharpy.SharpyLoadEntry(false)]
+        public static void __Load()
+        {
         }
     }
 

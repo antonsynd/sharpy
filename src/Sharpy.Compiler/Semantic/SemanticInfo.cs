@@ -179,7 +179,11 @@ public class SemanticInfo : ISemanticQuery
     // Map member access expressions to their resolved symbols (type owner + member).
     // Used to communicate TypeChecker's resolution to codegen so it doesn't re-resolve.
     // Covers: ClassName.FIELD (static/const), ClassName.method (static), self.static_field.
-    private readonly ConcurrentDictionary<MemberAccess, (TypeSymbol Owner, Symbol Member)> _memberAccessResolutions =
+    // ChainSpelled (plan-775c50): a static bound through a receiver naming a type nested under a
+    // generic (`G[int].N.s`); its owner has no closed carrier of its own (#1941), so the emitter
+    // spells the receiver as its own chain generates it (`G<int>.N`), never the owner's open name
+    // (`G.N`, CS0305). A bare `N.s` inside `G[T]` is spelled `G.N` and is still CS0305 (#1941).
+    private readonly ConcurrentDictionary<MemberAccess, (TypeSymbol Owner, Symbol Member, bool ChainSpelled)> _memberAccessResolutions =
         new(ReferenceEqualityComparer.Instance);
 
     // #2242 (P53 D6): which export a MODULE-qualified member access bound — `lib.build`,
@@ -293,6 +297,22 @@ public class SemanticInfo : ISemanticQuery
     // or chain link. Recorded only by TypeChecker.ClassifyMembership; absent for a container with no
     // slot (#2249) and a needle only the CLR call seam takes. Read by the emitter's needle-first bind.
     private readonly ConcurrentDictionary<Expression, SemanticType> _membershipNeedleBindings = new(ReferenceEqualityComparer.Instance);
+
+    // plan-775c50 D6 (P77 T6): inside an `async def` body, a use of a Guarded module or `@static` value
+    // that is neither a plain read nor a plain store — a ref / in / out operand, or the receiver root of
+    // a member or element path that is stored to, passed by modifier, or a method call's receiver. The
+    // value's accessor returns by reference (D4) and a reference cannot live across an `await`
+    // (CS8178), so the emitter hoists the value's ensure (or, for an `out` operand, its arm pick) before
+    // the enclosing statement and names the backing field at the use. Node-keyed on the use node (the
+    // Identifier or MemberAccess that names the value); recorded by AsyncGuardedUseAnalyzer.
+    private readonly ConcurrentDictionary<Expression, AsyncGuardedUse> _asyncGuardedUses = new(ReferenceEqualityComparer.Instance);
+
+    // plan-775c50 D5 (P77 T5): per import statement (`import` and `from … import`), the Sharpy modules it
+    // makes Python run, in Python's order, each with its layout and HasSweep — what an importer requires
+    // at the import's position. Which modules run depends on the statement's spelling (`import a.b.c`
+    // and `import a.b` both bind `a`), so the fact is per statement, never on the bound ModuleSymbol.
+    private readonly ConcurrentDictionary<Statement, IReadOnlyList<ModuleLayout>> _importRequirements =
+        new(ReferenceEqualityComparer.Instance);
 
     // #1747: a null-conditional access (`obj?.member`, `obj?.method()`) whose member/result type
     // is a bare T that the checker WRAPPED into Optional<T> (the "flatten" rule leaves an already
@@ -1314,9 +1334,10 @@ public class SemanticInfo : ISemanticQuery
     /// static method access via type name (ClassName.method).
     /// Allows codegen to skip re-resolving the symbol table lookup.
     /// </summary>
-    public void SetMemberAccessResolution(MemberAccess memberAccess, TypeSymbol owner, Symbol member)
+    public void SetMemberAccessResolution(MemberAccess memberAccess, TypeSymbol owner, Symbol member,
+        bool chainSpelledReceiver = false)
     {
-        Put(_memberAccessResolutions, memberAccess, (owner, member));
+        Put(_memberAccessResolutions, memberAccess, (owner, member, chainSpelledReceiver));
     }
 
     /// <summary>
@@ -1325,8 +1346,14 @@ public class SemanticInfo : ISemanticQuery
     /// </summary>
     public (TypeSymbol Owner, Symbol Member)? GetMemberAccessResolution(MemberAccess memberAccess)
     {
-        return _memberAccessResolutions.TryGetValue(memberAccess, out var resolution) ? resolution : null;
+        return _memberAccessResolutions.TryGetValue(memberAccess, out var resolution)
+            ? (resolution.Owner, resolution.Member)
+            : null;
     }
+
+    /// <summary>Whether the bound static value's receiver is spelled by its own chain (plan-775c50).</summary>
+    public bool IsChainSpelledStaticReceiver(MemberAccess memberAccess)
+        => _memberAccessResolutions.TryGetValue(memberAccess, out var resolution) && resolution.ChainSpelled;
 
     /// <summary>
     /// Records that a module-qualified MemberAccess (<c>lib.build</c>, <c>l.build</c> after
@@ -1344,6 +1371,18 @@ public class SemanticInfo : ISemanticQuery
     {
         return _moduleMemberResolutions.TryGetValue(memberAccess, out var resolution) ? resolution : null;
     }
+
+    /// <summary>
+    /// The symbol a use binds, as the checker recorded it: an identifier's bound symbol, or a member
+    /// access's type-member resolution, else its module-member resolution. Null for any other
+    /// expression and for an unresolved use. A reader over the tables above, never a lookup by spelling.
+    /// </summary>
+    public Symbol? GetBoundValueSymbol(Expression use) => use switch
+    {
+        Identifier id => GetIdentifierSymbol(id),
+        MemberAccess ma => GetMemberAccessResolution(ma)?.Member ?? GetModuleMemberResolution(ma)?.Member,
+        _ => null,
+    };
 
     /// <summary>
     /// Records that a pattern was resolved to a specific union case type symbol, together with the
@@ -1632,6 +1671,53 @@ public class SemanticInfo : ISemanticQuery
     {
         return _membershipNeedleBindings.TryGetValue(needle, out bindingType);
     }
+
+    /// <summary>
+    /// Records that <paramref name="node"/>, inside an <c>async def</c> body, names the Guarded value
+    /// <paramref name="value"/> by a use other than a plain read or a plain store (plan-775c50 D6), and
+    /// the arm it takes. Set only by <c>AsyncGuardedUseAnalyzer</c>, after the storage facts are computed.
+    /// </summary>
+    public void SetAsyncGuardedUse(Expression node, Symbol value, AsyncGuardedUseKind kind)
+    {
+        Put(_asyncGuardedUses, node, new AsyncGuardedUse(node, value, kind));
+    }
+
+    /// <summary>
+    /// The D6 fact recorded on <paramref name="node"/> (an Identifier or MemberAccess naming a Guarded
+    /// value in an <c>async def</c> body), or null for every other node: a plain read, a plain store,
+    /// a use outside an <c>async def</c> body, or a node naming no Guarded value.
+    /// <para><b>Contract (the emitter).</b> For <see cref="AsyncGuardedUseKind.Ensure"/> the emitter
+    /// hoists the value's ensure call before the enclosing statement and names the backing field at the
+    /// node; for <see cref="AsyncGuardedUseKind.OutOperand"/> it picks the <c>out</c> arm before the
+    /// statement. Recorded whether or not the statement holds an <c>await</c>.</para>
+    /// </summary>
+    public AsyncGuardedUse? GetAsyncGuardedUse(Expression node)
+        => _asyncGuardedUses.TryGetValue(node, out var use) ? use : null;
+
+    /// <summary>
+    /// Records the modules the import statement <paramref name="importStatement"/> makes Python run
+    /// (plan-775c50 D5). Set only by <c>CodeGenInfoComputer</c>, on every module-level <c>import</c> and
+    /// <c>from … import</c>.
+    /// </summary>
+    public void SetImportRequirements(Statement importStatement, IReadOnlyList<ModuleLayout> modules)
+    {
+        Put(_importRequirements, importStatement, modules);
+    }
+
+    /// <summary>
+    /// The Sharpy modules an <c>import</c> or <c>from … import</c> statement makes Python run, in
+    /// Python's order, each once, as its <see cref="ModuleLayout"/> with <see cref="ModuleLayout.HasSweep"/>
+    /// (plan-775c50 D5): <c>import a.b.c</c> → a, a.b, a.b.c; <c>import a.b as x</c> → a, a.b; several
+    /// aliases → each chain in turn; <c>from a.b import n</c> → a, a.b, then a.b.n when n is a submodule and
+    /// no export of a.b. A Sharpy module imported by reference (every regenerated Sharpy.Stdlib module, a
+    /// referenced Sharpy library) is in the list by its discovered load entry (D10):
+    /// <see cref="ModuleLayout.ClrMembersClass"/> set, no namespace segments. Empty for a statement whose
+    /// modules are all .NET with no load entry, synthetic or unresolved; a
+    /// namespace-only package (no <c>__init__.spy</c>) and the importing module itself stand for nothing.
+    /// Null for any other statement, and for an import the checker did not reach.
+    /// </summary>
+    public IReadOnlyList<ModuleLayout>? GetImportRequirements(Statement importStatement)
+        => _importRequirements.TryGetValue(importStatement, out var modules) ? modules : null;
 
     public SemanticType? GetConditionalBranchNarrowing(Expression branch)
         => _conditionalBranchNarrowing.TryGetValue(branch, out var t) ? t : null;
@@ -2046,6 +2132,15 @@ public class SemanticInfo : ISemanticQuery
         => _inlineOutSymbols.GetValueOrDefault(argument);
 
     /// <summary>
+    /// Whether an inline <c>out</c> argument's binding has a resolved type on its symbol: its
+    /// annotation, or for <c>auto</c> / <c>out let</c> the callee's resolved, substituted parameter
+    /// type the checker wrote back (#1675). plan-775c50 D6: the emitter declares such a binding by
+    /// that type before a call emitted once per arm, and has no declaration without one.
+    /// </summary>
+    public bool HasResolvedInlineOutType(ModifiedArgument argument)
+        => GetInlineOutSymbol(argument)?.Type is { } type && type is not UnknownType;
+
+    /// <summary>
     /// Records that <paramref name="rebinding"/> replaced <paramref name="predecessor"/> — the same
     /// variable, rebound. Called from the checker where both are in hand and the scope is alive.
     /// </summary>
@@ -2427,6 +2522,12 @@ public class SemanticInfo : ISemanticQuery
 
         foreach (var kvp in other._membershipNeedleBindings)
             MergeEntry(_membershipNeedleBindings, kvp, other);
+
+        foreach (var kvp in other._asyncGuardedUses)
+            MergeEntry(_asyncGuardedUses, kvp, other);
+
+        foreach (var kvp in other._importRequirements)
+            MergeEntry(_importRequirements, kvp, other, SequenceValueComparer<ModuleLayout>.Instance);
 
         foreach (var kvp in other._charMaterializations)
             MergeEntry(_charMaterializations, kvp, other);
@@ -3265,13 +3366,36 @@ public enum InterpolationKind
 /// collision check seeds the namespace with them, and the emitter names the classes from them.
 /// Recorded by <c>CodeGenInfoComputer</c>. Not on the incremental-cache wire (a per-node fact); an
 /// imported module's layout crosses files on its <see cref="ModuleSymbol"/>'s CodeGenInfo.
+/// <see cref="HasSweep"/> is set only on the source layout a <c>from m import x</c> records: the
+/// imported module has a sweep its importer requires at the import's position (plan-775c50 D2, read
+/// through <see cref="ImportedStaticFacts"/>, the same fact an <c>import m</c> carries on
+/// <see cref="CodeGenInfo.HasSweep"/>).
 /// </summary>
 public sealed record ModuleLayout(
     IReadOnlyList<string> NamespaceSegments,
     string MembersClassName,
     string? TestClassName = null,
-    IReadOnlyDictionary<string, string>? FixtureClassNames = null)
+    IReadOnlyDictionary<string, string>? FixtureClassNames = null,
+    bool HasSweep = false,
+    string? ClrMembersClass = null)
 {
+    /// <summary>
+    /// The layout of a Sharpy module imported by reference (plan-775c50 D10), as an import requirement
+    /// names it (<see cref="SemanticInfo.GetImportRequirements"/>): <see cref="ClrMembersClass"/> is the
+    /// discovered <c>[SharpyModule]</c> class's CLR full name (nested types joined by <c>.</c>, as
+    /// discovery reports it), the class whose
+    /// <c>Sharpy.SharpyLoadEntryAttribute</c> member loads it; <see cref="NamespaceSegments"/> is empty
+    /// (the module is no source of this project, so no project namespace applies), and
+    /// <see cref="MembersClassName"/> is the class's simple name. Never on the incremental-cache wire:
+    /// the cache carries a file's OWN layout only (a source module's, which has no CLR class), and
+    /// import requirements are recomputed whenever their importer is checked.
+    /// </summary>
+    public static ModuleLayout ByReference(string clrMembersClass, bool hasSweep)
+    {
+        var simple = clrMembersClass[(Math.Max(clrMembersClass.LastIndexOf('.'), clrMembersClass.LastIndexOf('+')) + 1)..];
+        return new ModuleLayout(Array.Empty<string>(), simple, HasSweep: hasSweep, ClrMembersClass: clrMembersClass);
+    }
+
     /// <summary>
     /// The C# namespace the module's members class and sibling types are declared in, under
     /// <paramref name="rootNamespace"/> (the project namespace; empty or null for none).
@@ -3290,7 +3414,7 @@ public sealed record ModuleLayout(
     /// type a self-contained publish invokes <c>Main</c> on (<c>Thing.ThingModule</c>).
     /// </summary>
     public string MembersClassFullName(string? rootNamespace)
-        => string.Join(".", NamespaceParts(rootNamespace).Append(MembersClassName));
+        => ClrMembersClass ?? string.Join(".", NamespaceParts(rootNamespace).Append(MembersClassName));
 
     /// <summary>
     /// The ONE layout authority for a module's own layout (#2039, #2102): its namespace segments and

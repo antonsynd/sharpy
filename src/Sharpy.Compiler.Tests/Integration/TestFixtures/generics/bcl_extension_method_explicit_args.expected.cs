@@ -13,6 +13,7 @@ namespace BclExtensionMethodExplicitArgs
     {
         public static void Main()
         {
+            __Load();
 #line (11, 5) - (11, 22) 12 "bcl_extension_method_explicit_args.spy"
             var lst = new global::System.Collections.Generic.List<int>();
 #line (12, 5) - (12, 15) 12 "bcl_extension_method_explicit_args.spy"
@@ -48,6 +49,12 @@ namespace BclExtensionMethodExplicitArgs
                 global::Sharpy.Builtins.Print(t);
 #line hidden
             }
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        [global::Sharpy.SharpyLoadEntry(false)]
+        public static void __Load()
+        {
         }
     }
 }

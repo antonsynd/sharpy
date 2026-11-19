@@ -13,6 +13,7 @@ namespace UnusedVariableInTryElse
     {
         public static void Main()
         {
+            __Load();
 #line (3, 5) - (8, 27) 12 "unused_variable_in_try_else.spy"
             {
 #line hidden
@@ -42,6 +43,12 @@ namespace UnusedVariableInTryElse
 #line (9, 5) - (9, 18) 12 "unused_variable_in_try_else.spy"
             global::Sharpy.Builtins.Print("done");
 #line hidden
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        [global::Sharpy.SharpyLoadEntry(false)]
+        public static void __Load()
+        {
         }
     }
 }

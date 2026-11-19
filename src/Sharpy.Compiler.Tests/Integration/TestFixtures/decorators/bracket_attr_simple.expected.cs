@@ -12,11 +12,18 @@ namespace BracketAttrSimple
     {
         public static void Main()
         {
+            __Load();
 #line (10, 5) - (10, 19) 12 "bracket_attr_simple.spy"
             var c = new global::BracketAttrSimple.Config(42);
 #line (11, 5) - (11, 19) 12 "bracket_attr_simple.spy"
             global::Sharpy.Builtins.Print(c.Value);
 #line hidden
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        [global::Sharpy.SharpyLoadEntry(false)]
+        public static void __Load()
+        {
         }
     }
 

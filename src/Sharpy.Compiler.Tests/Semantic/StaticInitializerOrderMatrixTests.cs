@@ -14,36 +14,37 @@ namespace Sharpy.Compiler.Tests.Semantic;
 /// type's static initializers run in SOURCE order</b>. A <c>@static</c> field, a <c>const</c> whose initializer is not
 /// a compile-time constant (emitted <c>static readonly</c>) and a <c>@static</c> property default that read a static
 /// sibling declared EARLIER see its initialized value, in every spelling (bare, qualified <c>Host.x</c>, alias
-/// <c>H.x</c>) and every host (class, <c>@dataclass</c>, struct); a FORWARD read — or a read of the reader itself — of
-/// a sibling whose storage is ordered (a <c>@static</c> field, property or method, a non-compile-time <c>const</c>) is
-/// refused with ONE diagnostic at the read; a compile-time <c>const</c> is order-free in every spelling (#1795).
+/// <c>H.x</c>) and every host (class, <c>@dataclass</c>, struct). Since plan-775c50 (rule N3, D9) the generator is
+/// N3's warm control: a FORWARD read of an ordered sibling runs too, because the sibling is initialized before its
+/// first read (SPY0618, P75's forward refusal, is retired), and a read of the reader ITSELF is a value that reads
+/// itself on every run, the cycle graph's SPY0278 (D8); a compile-time <c>const</c> is order-free in every spelling
+/// (#1795). P75's source-order layout stays as the sweep order.
 ///
 /// <para><b>Matrix.</b> host {class, dataclass, struct} × reader {static-field, const, static-property-default} × read
 /// {static-property, static-field, nonliteral-const, literal-const, static-method} × spelling {bare, qualified, alias} ×
 /// order {earlier, forward}, plus the reader reading ITSELF (read <c>itself</c>, order <c>self</c>) per host × reader ×
 /// spelling — a self cell has no sibling, so it is not multiplied by the read axis; ids <c>static-init-order ×
 /// &lt;host&gt; × &lt;reader&gt; × &lt;read&gt; × &lt;spelling&gt; × &lt;order&gt;</c>. Beside the generated grid,
-/// seventeen cells change one axis each: a later non-literal const SHADOWED by a module binding (pinned at SPY0618,
-/// decision #2415), the NESTED receiver (<c>Outer.Inner.s</c>, earlier and forward), a later
+/// seventeen cells change one axis each: a later non-literal const SHADOWED by a module binding (R-KJ: a refusal, N2's
+/// code once P78 lands — #2423 C08; allowlisted until then), the NESTED receiver (<c>Outer.Inner.s</c>, earlier and forward), a later
 /// method read as a method GROUP (admitted: nothing runs), the INTERFACE host (a non-literal const read through its name, earlier and
 /// forward), the GENERIC host (<c>class Host[T]</c> read through the constructed reference
 /// <c>Host[int].x</c>, earlier and forward, a <c>@static</c> property and a <c>@static</c> field), and the two SPLIT
 /// property anchors (a split reader whose default sits on its later half, a split sibling whose default does) — a
 /// split property is ONE C# property emitted at its FIRST half, so both are anchored there — and the read's
 /// EXECUTION CONTEXT inside a GENERATOR EXPRESSION (a stored generator's element, condition and inner iterable run
-/// when it is consumed, admitted; its first iterable and a generator consumed in the initializer run there,
-/// SPY0618). Every value is distinct
+/// when it is consumed; its first iterable and a generator consumed in the initializer run where the initializer
+/// stands — every one sees the value). Every value is distinct
 /// — <c>@static</c> property 4, <c>@static</c> field 2, non-literal const 7 (<c>seven()</c>), literal const 1,
 /// <c>@static</c> method 6 — and an uninitialized read is <c>0</c>, so a wrong order, a wrong binding or an un-run
 /// initializer each print a different number.</para>
 ///
-/// <para><b>The contract in code.</b> <see cref="Cell"/> is this test's OWN literal copy of R-JT, never a call into
-/// the compiler: an earlier read runs printing the sibling's value; a forward literal const runs <c>1</c>; a forward
-/// BARE read of a <c>@static</c> field, property or method, and a bare self read, are P21h's F1 refusal (one SPY0200
-/// carrying <see cref="ClassBodyReadPositionMatrixTests.DeclaredLaterPhrase"/>, unchanged by P75); the const reader
-/// reading itself is the constant cycle (SPY0278, either spelling); every other forward or self read — a qualified
-/// or alias spelling of an ordered sibling, and the bare non-literal const F1 exempts — is exactly ONE SPY0618 at the
-/// read. A refusal names its position's phrase and says "declared later".</para>
+/// <para><b>The contract in code.</b> <see cref="Cell"/> is this test's OWN literal copy of R-JT and N3, never a call
+/// into the compiler: an earlier read and a forward read run printing the sibling's value; a forward BARE read of a
+/// <c>@static</c> field, property or method, and a bare self read of a non-const reader, are P21h's F1 refusal (one
+/// SPY0200 carrying <see cref="ClassBodyReadPositionMatrixTests.DeclaredLaterPhrase"/>; a name's visibility, N1's,
+/// #2423); every other self read is SPY0278. An F1 refusal names its position's phrase and says "declared
+/// later".</para>
 ///
 /// <para><b>The oracle.</b> <see cref="CSharpRunsStaticInitializersInTextualOrder"/> compiles AND RUNS, with Roslyn,
 /// the C# shapes the layout decides between, so the fact this contract rests on — C# runs static initializers in the
@@ -63,8 +64,9 @@ public class StaticInitializerOrderMatrixTests : IntegrationTestBase
         MuteCompilePath = true;
     }
 
-    /// <summary>The SPY0618 code (<c>DiagnosticCodes.SemanticOverflow.StaticInitializerForwardRead</c>), spelled as a
-    /// literal so the contract does not read the compiler's table.</summary>
+    /// <summary>The SPY0618 code (<c>DiagnosticCodes.SemanticOverflow.StaticInitializerForwardRead</c>), spelled as a literal
+    /// so the contract does not read the compiler's table. Rule N3 retired its forward-read rule (plan-775c50 D9); it is
+    /// narrowed to N2's order-vs-scope shape until P78 (#2423) gives N2 its own code, so only the shadowed cell names it.</summary>
     internal const string ForwardReadCode = "SPY0618";
 
     /// <summary>The const reader reading itself — the constant cycle, pinned by code alone.</summary>
@@ -190,35 +192,35 @@ public class StaticInitializerOrderMatrixTests : IntegrationTestBase
     private static string Id(string host, string reader, string read, string spelling, string order)
         => $"static-init-order × {host} × {reader} × {read} × {spelling} × {order}";
 
-    /// <summary>R-JT for one sibling read: earlier runs; a forward literal const runs; a forward bare read of a
-    /// <c>@static</c> member is F1's SPY0200; every other forward read is SPY0618.</summary>
+    /// <summary>R-JT and N3 for one sibling read: a forward bare read of a <c>@static</c> member is F1's SPY0200; every
+    /// other read runs.</summary>
     private static OrderCell Cell(Host host, Reader reader, Read read, string spelling, string order)
     {
         var expression = Prefix(spelling, host.Qualifier) + read.Member + read.Call;
         var (source, line, column) = Program(host.Header, order == "earlier" ? read.Lines : null, reader.Lines, expression,
             order == "forward" ? read.Lines : null, spelling == "alias", $"Host.{reader.ReaderName}");
         var id = Id(host.Name, reader.Name, read.Name, spelling, order);
-        if (order == "earlier" || !read.Ordered)
-            return new OrderCell(id, source, Array.Empty<(string, int, int)>(), null, $"{read.Value}\n");
+        // F1 (P21h) refuses the bare forward read of a @static member: a name's visibility, N1's (#2423), not N3's.
+        if (order == "forward" && read.Ordered && spelling == "bare" && read.Name != "nonliteral-const")
+            return new OrderCell(id, source, new[] { ("SPY0200", line, column) }, reader.Phrase, null);
 
-        // F1 (P21h) refuses the bare forward read of a @static member; a const is exempt from F1, so the bare
-        // non-literal const is P75's.
-        var code = spelling == "bare" && read.Name != "nonliteral-const" ? "SPY0200" : ForwardReadCode;
-        return new OrderCell(id, source, new[] { (code, line, column) }, reader.Phrase, null);
+        // N3 (plan-775c50 D9): every other read runs and sees the sibling's value — an earlier one, and a forward one
+        // in any spelling, which initializes the sibling first (SPY0618 retired).
+        return new OrderCell(id, source, Array.Empty<(string, int, int)>(), null, $"{read.Value}\n");
     }
 
-    /// <summary>The reader reading itself: the const reader is a constant cycle; a bare self read is F1's SPY0200; a
-    /// qualified or alias self read is SPY0618 (it would read its own default, 0).</summary>
+    /// <summary>The reader reading itself: a bare self read of a non-const reader is F1's SPY0200; every other self
+    /// read is the cycle graph's SPY0278 (plan-775c50 D8), a value that reads itself on every run — the const reader
+    /// in every spelling, the alias one included (#2412), and the qualified or alias read of the others.</summary>
     private static OrderCell SelfCell(Host host, Reader reader, string spelling)
     {
         var expression = Prefix(spelling, host.Qualifier) + reader.ReaderName;
         var (source, line, column) = Program(host.Header, null, reader.Lines, expression, null, spelling == "alias",
             $"Host.{reader.ReaderName}");
         var id = Id(host.Name, reader.Name, "itself", spelling, "self");
-        if (reader.IsConst)
-            return new OrderCell(id, source, new[] { (ConstCycleCode, 0, 0) }, null, null);
-        var code = spelling == "bare" ? "SPY0200" : ForwardReadCode;
-        return new OrderCell(id, source, new[] { (code, line, column) }, reader.Phrase, null);
+        if (!reader.IsConst && spelling == "bare")
+            return new OrderCell(id, source, new[] { ("SPY0200", line, column) }, reader.Phrase, null);
+        return new OrderCell(id, source, new[] { (ConstCycleCode, 0, 0) }, null, null);
     }
 
     /// <summary>The cells one axis away from the grid: the generic host read through its constructed reference, and the
@@ -238,9 +240,7 @@ public class StaticInitializerOrderMatrixTests : IntegrationTestBase
                 var (source, line, column) = Program(generic, order == "earlier" ? read.Lines : null, staticField.Lines,
                     $"Host[int].{read.Member}", order == "forward" ? read.Lines : null, alias: false, "Host[int].b");
                 var id = Id("generic-class", staticField.Name, read.Name, "constructed", order);
-                yield return order == "earlier"
-                    ? new OrderCell(id, source, Array.Empty<(string, int, int)>(), null, $"{read.Value}\n")
-                    : new OrderCell(id, source, new[] { (ForwardReadCode, line, column) }, staticField.Phrase, null);
+                yield return new OrderCell(id, source, Array.Empty<(string, int, int)>(), null, $"{read.Value}\n");
             }
         }
 
@@ -255,9 +255,7 @@ public class StaticInitializerOrderMatrixTests : IntegrationTestBase
             var (source, line, column) = Program(new[] { "interface Host:" }, order == "earlier" ? nonliteral.Lines : null,
                 constReader.Lines, "Host.K", order == "forward" ? nonliteral.Lines : null, alias: false, "Host.B");
             var id = Id("interface", constReader.Name, nonliteral.Name, "qualified", order);
-            yield return order == "earlier"
-                ? new OrderCell(id, source, Array.Empty<(string, int, int)>(), null, "7\n")
-                : new OrderCell(id, source, new[] { (ForwardReadCode, line, column) }, constReader.Phrase, null);
+            yield return new OrderCell(id, source, Array.Empty<(string, int, int)>(), null, "7\n");
         }
 
         // NESTED receiver (P75 verify F1): inside `class Outer:` / `class Inner:`, the reader names its own type through
@@ -271,9 +269,7 @@ public class StaticInitializerOrderMatrixTests : IntegrationTestBase
                 order == "earlier" ? Nest(field.Lines) : null, Nest(staticField.Lines), "Outer.Inner.s",
                 order == "forward" ? Nest(field.Lines) : null, alias: false, "Outer.Inner.b");
             var id = Id("nested-class", staticField.Name, field.Name, "nested-qualified", order);
-            yield return order == "earlier"
-                ? new OrderCell(id, source, Array.Empty<(string, int, int)>(), null, "2\n")
-                : new OrderCell(id, source, new[] { (ForwardReadCode, line, column) }, staticField.Phrase, null);
+            yield return new OrderCell(id, source, Array.Empty<(string, int, int)>(), null, "2\n");
         }
 
         // METHOD GROUP (P75 verify F3): a later @static method read as a VALUE (`g: () -> int = Host.sm`) creates a
@@ -286,10 +282,10 @@ public class StaticInitializerOrderMatrixTests : IntegrationTestBase
                 source, Array.Empty<(string, int, int)>(), null, "6\n");
         }
 
-        // SHADOWED later non-literal const (P75 verify F2; decision #2415): a module binding `K` above the class, and
-        // `@static b: int = K + 0` above `const K: int = seven()`. A later @static FIELD yields to the module binding
-        // (P21h F2 — python3 prints 9); the const is pinned at the implemented verdict, SPY0618 at the read, until #2415
-        // rules (option (a), two-way).
+        // SHADOWED later non-literal const (P75 verify F2; #2415, closed by R-KJ): a module binding `K` above the
+        // class, and `@static b: int = K + 0` above `const K: int = seven()`. python3 prints 9; reading by scope (N1)
+        // names the class const. N2 refuses the read (R-KJ; #2423's C08), so the refusal stays this cell's verdict:
+        // SPY0618, narrowed to this shape (plan-775c50, the owner's ruling at T9) until P78 adds N2's own code.
         {
             var (source, line, column) = Program(new[] { "class Host:" }, null, new[] { "@static", "b: int = § + 0" }, "K",
                 new[] { "const K: int = seven()" }, alias: false, "Host.b");
@@ -299,35 +295,33 @@ public class StaticInitializerOrderMatrixTests : IntegrationTestBase
         }
 
         // SPLIT READER: `@static property get b`, then the sibling, then `@static property set b: int = Host.sp` — the
-        // reader is emitted at its FIRST half, above the sibling, so the read is forward (P21h verify C2): SPY0618.
+        // reader is emitted at its FIRST half, above the sibling, so the read is forward (P21h verify C2), and runs (N3).
         {
-            var (source, line, column) = Program(new[] { "class Host:" }, new[] { "@static", "property get b: int", "@static", "property sp: int = 4" },
+            var (source, _, _) = Program(new[] { "class Host:" }, new[] { "@static", "property get b: int", "@static", "property sp: int = 4" },
                 new[] { "@static", "property set b: int = §" }, "Host.sp", null, alias: false, "Host.b");
             yield return new OrderCell(Id("class", "split-static-property-default", "static-property", "qualified", "forward"),
-                source, new[] { (ForwardReadCode, line, column) }, StaticInitializerPhrase, null);
+                source, Array.Empty<(string, int, int)>(), null, "4\n");
         }
 
         // GENERATOR EXPRESSION (P75 verify, owner ruling 2026-11-01): a generator that IS the initializer's value is
         // stored as a deferred iterator — its element, condition and inner iterables run when it is consumed (in main,
         // after every static initializer), so a forward read there sees the value (python3 `[3, 4]`; at 6d1c9021f it ran
         // `[3, 4]`). Its FIRST iterable is evaluated where the initializer stands, and a generator CONSUMED inside the
-        // initializer (`sum(...)`) runs there — both read the default (0), so both are SPY0618 at the read.
+        // initializer (`sum(...)`) runs there: under N3 both initialize the sibling first and see its value.
         var later = new[] { "@static", "s: int = 2" };
         foreach (var (shape, template, stored, stdout) in new[]
         {
             ("stored-generator-element", "g: Iterator[int] = (x + § for x in [1, 2])", true, "[3, 4]\n"),
             ("stored-generator-condition", "g: Iterator[int] = (x for x in [1, 2, 3] if x < §)", true, "[1]\n"),
             ("stored-generator-inner-iterable", "g: Iterator[int] = (x + y for x in [1] for y in [§])", true, "[3]\n"),
-            ("stored-generator-first-iterable", "g: Iterator[int] = (x for x in [§])", false, null),
-            ("consumed-generator-element", "g: int = sum(x + § for x in [1, 2])", false, null),
+            ("stored-generator-first-iterable", "g: Iterator[int] = (x for x in [§])", true, "[2]\n"),
+            ("consumed-generator-element", "g: int = sum(x + § for x in [1, 2])", false, "7\n"),
         })
         {
-            var (source, line, column) = Program(new[] { "class Host:" }, null, new[] { "@static", template }, "Host.s",
+            var (source, _, _) = Program(new[] { "class Host:" }, null, new[] { "@static", template }, "Host.s",
                 later, alias: false, stored ? "list(Host.g)" : "Host.g");
             var id = Id("class", shape, "static-field", "qualified", "forward");
-            yield return stored
-                ? new OrderCell(id, source, Array.Empty<(string, int, int)>(), null, stdout)
-                : new OrderCell(id, source, new[] { (ForwardReadCode, line, column) }, StaticInitializerPhrase, null);
+            yield return new OrderCell(id, source, Array.Empty<(string, int, int)>(), null, stdout);
         }
 
         // SPLIT SIBLING: `@static property get sp`, then the reader, then `@static property set sp: int = 4` — the
@@ -356,22 +350,23 @@ public class StaticInitializerOrderMatrixTests : IntegrationTestBase
         Assert.Equal(3 * 3 * 3 * (5 * 2 + 1) + 17, cells.Count);
         Assert.Equal(cells.Count, cells.Select(c => c.Id).Distinct(StringComparer.Ordinal).Count());
         bool Has(OrderCell c, string code) => c.ExpectedErrors.Any(e => e.Code == code);
-        // Runs: every earlier read (3 × 3 × 3 spellings × 5 reads), every forward literal const (27), the two
-        // generic earlier cells, the interface earlier cell, the nested earlier cell, the method group, the split
-        // sibling and the three stored-generator deferred reads.
-        Assert.Equal(3 * 3 * 3 * 5 + 27 + 2 + 1 + 1 + 1 + 1 + 3, cells.Count(c => c.ExpectedStdout != null));
+        // Runs: every earlier read (3 × 3 × 3 spellings × 5 reads), every forward literal const (27), every qualified
+        // and alias forward read of the 4 ordered siblings (3 × 3 × 2 × 4 = 72) and the bare forward non-literal const
+        // per host × reader (9) — N3 initializes the sibling first (plan-775c50 D9) — and the axis changes: the generic
+        // host (4), the interface (2), the nested receiver (2), the method group, the split sibling, the split reader
+        // and the five generator cells.
+        Assert.Equal(3 * 3 * 3 * 5 + 27 + 72 + 9 + 4 + 2 + 2 + 1 + 1 + 1 + 5, cells.Count(c => c.ExpectedStdout != null));
         Assert.Equal(27, cells.Count(c => c.Id.Contains("× literal-const ×", StringComparison.Ordinal)
             && c.Id.EndsWith("× forward", StringComparison.Ordinal) && c.ExpectedStdout == "1\n"));
-        // F1 (unchanged): the bare forward @static field, property and method per host × reader (27), and the bare self
-        // read of the two non-const readers per host (6).
+        // F1 (unchanged; N1's, #2423): the bare forward @static field, property and method per host × reader (27), and
+        // the bare self read of the two non-const readers per host (6).
         Assert.Equal(27 + 6, cells.Count(c => Has(c, "SPY0200")));
-        // SPY0618: the bare forward non-literal const per host × reader (9); every qualified and alias forward read of
-        // the 4 ordered siblings (3 × 3 × 2 × 4 = 72); the qualified and alias self read of the two non-const readers
-        // per host (12); the two generic forward cells, the interface, nested and shadowed forward cells, the split
-        // reader, and the stored generator's first iterable and the consumed generator.
-        Assert.Equal(9 + 72 + 12 + 2 + 1 + 1 + 1 + 1 + 2, cells.Count(c => Has(c, ForwardReadCode)));
-        // The const reader reading itself, per host × spelling.
-        Assert.Equal(9, cells.Count(c => Has(c, ConstCycleCode)));
+        // SPY0618's forward-read rule is retired (D9). The one cell that keeps its refusal is the shadowed later const:
+        // N2 (#2423, C08) rules it refused (R-KJ), under SPY0618 narrowed to N2's shape until P78 gives it N2's code.
+        Assert.Equal(1, cells.Count(c => Has(c, ForwardReadCode)));
+        // The cycle graph (D8): the const reader reading itself in every spelling (9), and the qualified and alias
+        // self read of the two non-const readers per host (12).
+        Assert.Equal(9 + 12, cells.Count(c => Has(c, ConstCycleCode)));
         foreach (var cell in cells)
         {
             Assert.True(cell.ExpectedErrors.Count <= 1, $"{cell.Id}: the expected set names {cell.ExpectedErrors.Count} codes");
@@ -409,13 +404,14 @@ public class StaticInitializerOrderMatrixTests : IntegrationTestBase
         if (!module.Success || module.StandardOutput != "4\n")
             problems.Add($"control module host does not run 4: success={module.Success} stdout=[{module.StandardOutput.ReplaceLineEndings("\\n")}]");
 
-        // The const reader of a non-literal read is `static readonly` storage — ordered like a @static field, which is
-        // why the const reader is a row of this matrix at all.
+        // The const reader of a non-literal read is storage, not a C# `const` — ordered like a @static field, which is
+        // why the const reader is a row of this matrix at all. Under plan-775c50 D4 it is a Guarded value: its accessor
+        // returns `ref readonly`.
         var (constSource, _, _) = Program(Hosts[0].Header, null, Readers[1].Lines, "seven()", null, alias: false, "Host.B");
         var constRun = CompileAndExecute(constSource);
         if (!constRun.Success || constRun.StandardOutput != "7\n"
-            || constRun.GeneratedCSharp?.Contains("static readonly int B", StringComparison.Ordinal) != true)
-            problems.Add($"control: 'const B: int = seven() + 0' is not emitted 'static readonly' or does not run 7: success={constRun.Success} "
+            || constRun.GeneratedCSharp?.Contains("static ref readonly int B", StringComparison.Ordinal) != true)
+            problems.Add($"control: 'const B: int = seven() + 0' is not emitted 'static ref readonly' or does not run 7: success={constRun.Success} "
                 + $"stdout=[{constRun.StandardOutput.ReplaceLineEndings("\\n")}]");
 
         var ran = 0;

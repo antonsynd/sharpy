@@ -436,9 +436,10 @@ x: int = 10
     }
 
     [Fact]
-    public void ComputeForModule_ModuleLevelVariable_ReferencesAssignmentVariable_HasExecutionOrderIssues()
+    public void ComputeForModule_ModuleLevelVariable_ReferencesAssignmentVariable_IsModuleLevel()
     {
-        // Referencing an assignment variable (no type annotation) is an execution order issue
+        // What an initializer reads is not an execution order issue (plan-775c50 D1, #2420); the
+        // sibling ..._AssignmentBeforeDeclaration_HasExecutionOrderIssues test above is the remaining kind's positive control.
         var source = @"
 x = 5
 y: int = x
@@ -453,8 +454,8 @@ y: int = x
         symbol.Should().NotBeNull();
         var cgi = semanticBinding.GetCodeGenInfo(symbol!);
         cgi.Should().NotBeNull();
-        cgi!.HasExecutionOrderIssues.Should().BeTrue();
-        cgi.IsModuleLevel.Should().BeFalse();
+        cgi!.HasExecutionOrderIssues.Should().BeFalse();
+        cgi.IsModuleLevel.Should().BeTrue();
     }
 
     [Fact]

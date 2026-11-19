@@ -17,6 +17,11 @@ namespace Sharpy.Stdlib.Tests.Spy.Configparser.ConfigparserTests
     [global::Sharpy.SharpyModule("configparser.configparser_tests")]
     public static partial class ConfigparserTestsModule
     {
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        [global::Sharpy.SharpyLoadEntry(false)]
+        public static void __Load()
+        {
+        }
     }
 
     public partial class ConfigparserTestsModuleTests

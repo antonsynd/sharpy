@@ -18,6 +18,11 @@ namespace Sharpy.Stdlib.Tests.Spy.Collections.CounterCompleteTests
     [global::Sharpy.SharpyModule("collections.counter_complete_tests")]
     public static partial class CounterCompleteTestsModule
     {
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        [global::Sharpy.SharpyLoadEntry(false)]
+        public static void __Load()
+        {
+        }
     }
 
     public partial class CounterCompleteTestsModuleTests

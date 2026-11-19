@@ -837,5 +837,11 @@ namespace Sharpy.Itertools
         {
             return global::Sharpy.Builtins.Iter<Sharpy.List<T>>(global::Sharpy.Itertools.ItertoolsModule._CombinationsWithReplacementCore<T>(iterable, r));
         }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        [global::Sharpy.SharpyLoadEntry(false)]
+        public static void __Load()
+        {
+        }
     }
 }

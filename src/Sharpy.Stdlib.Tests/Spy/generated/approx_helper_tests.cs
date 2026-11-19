@@ -26,6 +26,12 @@ namespace Sharpy.Stdlib.Tests.Spy.Unittest.ApproxHelperTests
                 throw new global::Sharpy.AssertionError();
             }
         }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        [global::Sharpy.SharpyLoadEntry(false)]
+        public static void __Load()
+        {
+        }
     }
 
     public partial class ApproxHelperTestsModuleTests

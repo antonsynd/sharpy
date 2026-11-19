@@ -19,11 +19,18 @@ namespace AsyncBasic
 
         public static async System.Threading.Tasks.Task Main()
         {
+            __Load();
 #line (5, 5) - (5, 33) 12 "async_basic.spy"
             string result = await global::AsyncBasic.AsyncBasicModule.Greet();
 #line (6, 5) - (6, 18) 12 "async_basic.spy"
             global::Sharpy.Builtins.Print(result);
 #line hidden
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        [global::Sharpy.SharpyLoadEntry(false)]
+        public static void __Load()
+        {
         }
     }
 }

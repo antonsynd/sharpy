@@ -1021,6 +1021,11 @@ def main() -> None:
         ["NamespaceSegments"] = "RoundTrips",
         ["MembersClassName"] = "RoundTrips",
         ["IsNamespaceSibling"] = "RoundTrips",
+        // plan-775c50 D2: a value's storage and its module's sweep are read cross-file (an importer's
+        // store and sweep arms), so carried through CachedCodeGenInfo (schema 42).
+        ["StaticStorage"] = "RoundTrips",
+        ["IsOnGenericHost"] = "RoundTrips",
+        ["HasSweep"] = "RoundTrips",
 
         // --- Same-file-only: read by the emitter for the file that declares the symbol ---
         ["IsCompileTimeConstant"] = "same-file-only — read at RoslynEmitter.Statements.Assignments.cs module-level const path (#1460)",
@@ -1094,6 +1099,9 @@ def main() -> None:
             NamespaceSegments = new List<string> { "Pkg", "Thing" },
             MembersClassName = "ThingModule",
             IsNamespaceSibling = true,
+            StaticStorage = StaticStorage.Guarded,
+            IsOnGenericHost = true,
+            HasSweep = true,
             OverridesClrBaseMember = true,
             ForwardingConstructors = new List<FunctionSymbol>(),
             SelfInterfaceBridges = new List<SelfInterfaceBridgeSpec>(),
@@ -1141,6 +1149,9 @@ def main() -> None:
             cgi.NamespaceSegments == null ? null : string.Join(".", cgi.NamespaceSegments));
         Check("MembersClassName", original.MembersClassName, cgi.MembersClassName);
         Check("IsNamespaceSibling", original.IsNamespaceSibling, cgi.IsNamespaceSibling);
+        Check("StaticStorage", original.StaticStorage, cgi.StaticStorage);
+        Check("IsOnGenericHost", original.IsOnGenericHost, cgi.IsOnGenericHost);
+        Check("HasSweep", original.HasSweep, cgi.HasSweep);
 
         failures.Should().BeEmpty(
             "a property declared as RoundTrips must survive SymbolSerializer. If the serializer no "

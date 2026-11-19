@@ -1051,9 +1051,31 @@ def _is_hidden_from_surface(attr_lines: list[str]) -> bool:
 
     Sharpy.Core uses the attribute for compiler-only mutators (e.g. ``List<T>.InPlaceRepeat``,
     the ``list *=`` lowering, #1614); the interop sweep skips them for the same reason.
+
+    Nor is a member marked ``[CompilerGenerated]`` (plan-775c50 D10): the members the compiler adds
+    beside a spy module's own — its load entry ``__Load`` — which module discovery skips too.
     """
     text = " ".join(attr_lines)
-    return "EditorBrowsable" in text and "Never" in text
+    return ("EditorBrowsable" in text and "Never" in text) or re.search(
+        r"\bCompilerGenerated(?:Attribute)?\b", text
+    ) is not None
+
+
+_BY_REFERENCE_RE = re.compile(r"^ref\s+(?:readonly\s+)?")
+
+
+def member_value_type(cs_type: str) -> str:
+    """The type a member's VALUE has: a ``ref T`` / ``ref readonly T`` property or return reads as
+    ``T`` (plan-775c50 D10; the rule module discovery applies, ``ClrTypeHelper.ValueTypeOf``). A spy
+    module value with an initializer is a ``ref`` property (D4). A parameter keeps its passing mode
+    (``_PARAMETER_MODIFIER_RE``); this is for a member's own type only."""
+    return _BY_REFERENCE_RE.sub("", cs_type.strip())
+
+
+def _is_python_private(sharpy_name: str) -> bool:
+    """A module value spelled ``_name`` is private by Python's convention (``random._random``,
+    ``socket._lock``): module discovery binds it, but it is no documented surface."""
+    return sharpy_name.startswith("_")
 
 
 def _collect_doc_lines(lines: list[str], decl_index: int) -> list[str]:
@@ -1737,7 +1759,7 @@ def _parse_cs_text(
             sharpy_name = pascal_to_snake(mname)
             if is_builtins:
                 sharpy_name = _builtin_function_name(sharpy_name)
-            mapped_ret = map_type(ret_type.strip())
+            mapped_ret = map_type(member_value_type(ret_type))
             is_static = "static" in modifiers
             # `ToString(format, provider)` is `IFormattable`'s method — the CLR spelling of
             # `__format__` (dunder_methods.md), not a second `__str__`. The name table is keyed on
@@ -1812,8 +1834,15 @@ def _parse_cs_text(
                 modifiers, ptype, pname = prop_match.groups()
                 doc_lines = _collect_doc_lines(lines, i)
                 attr_lines = _collect_attribute_lines(lines, i)
-                if not _is_skippable(pname, doc_lines) and not _is_hidden_from_surface(
-                    attr_lines
+                bound_name = (
+                    sharpy_field_name(pname, attr_lines)
+                    if "static" in modifiers
+                    else pascal_to_snake(pname)
+                )
+                if (
+                    not _is_skippable(pname, doc_lines)
+                    and not _is_hidden_from_surface(attr_lines)
+                    and not ("static" in modifiers and _is_python_private(bound_name))
                 ):
                     doc = _parse_xml_doc(doc_lines)
                     members.append(
@@ -1822,15 +1851,11 @@ def _parse_cs_text(
                             # A STATIC property is bound by the field rule, as a static field is
                             # (OverloadIndexBuilder discovers both into one table, #2264); an
                             # instance property is snake-cased.
-                            name=(
-                                sharpy_field_name(pname, attr_lines)
-                                if "static" in modifiers
-                                else pascal_to_snake(pname)
-                            ),
+                            name=bound_name,
                             cs_name=pname,
                             signature="",
                             summary=doc.get("summary", ""),
-                            return_type=map_type(ptype.strip()),
+                            return_type=map_type(member_value_type(ptype)),
                             is_static="static" in modifiers,
                             declaring_type=_declaring_type(i),
                             declaring_static=_declaring_static(i),

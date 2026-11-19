@@ -197,7 +197,11 @@ internal partial class NameResolver
     /// </summary>
     private void DetectCircularInheritance()
     {
-        // Check class base-type chains for cycles
+        // Check class base-type chains for cycles. A chain is walked by IDENTITY: `class Outer:
+        // class C(C)` inherits the module's `C`, two types of one name and no cycle. Every class
+        // whose chain closes has its base edge removed once all are reported, so no later walk of
+        // the hierarchy (a member lookup, an MRO, a protocol check) runs on the cycle.
+        var inCycle = new List<TypeSymbol>();
         foreach (var (classDef, symbol, modulePath, filePath) in _classDefs)
         {
             _currentFilePath = filePath;
@@ -207,19 +211,22 @@ internal partial class NameResolver
             {
                 var typeSymbol = symbol;
 
-                var visited = new HashSet<string>();
+                var visited = new HashSet<TypeSymbol>(ReferenceEqualityComparer.Instance);
+                var walked = new List<string>();
                 var current = typeSymbol;
                 while (current != null)
                 {
-                    if (!visited.Add(current.Name))
+                    if (!visited.Add(current))
                     {
                         // Found a cycle - build the chain for the error message
-                        var chain = string.Join(" -> ", visited) + " -> " + current.Name;
+                        var chain = string.Join(" -> ", walked) + " -> " + current.Name;
                         AddError($"Circular inheritance detected: {chain}",
                             classDef.LineStart, classDef.ColumnStart,
                             code: DiagnosticCodes.Semantic.CircularInheritance, span: classDef.Span);
+                        inCycle.Add(typeSymbol);
                         break;
                     }
+                    walked.Add(current.Name);
                     current = _semanticBinding.GetBaseType(current);
                 }
             }
@@ -229,6 +236,9 @@ internal partial class NameResolver
                     _symbolTable.ExitScope();
             }
         }
+
+        foreach (var symbol in inCycle)
+            _semanticBinding.RemoveBaseType(symbol);
 
         // Check struct base-type chains for cycles (structs only implement interfaces)
         foreach (var (structDef, symbol, modulePath, filePath) in _structDefs)
@@ -568,6 +578,16 @@ internal partial class NameResolver
         PropagateInterfaceMethods(typeSymbol);
     }
 
+    /// <summary>The sibling of <paramref name="nested"/> named <paramref name="name"/> that its
+    /// enclosing type's body declares BEFORE it, or null.</summary>
+    private static TypeSymbol? EarlierSibling(TypeSymbol nested, string name)
+        => nested.DeclaringType!.NestedTypes.FirstOrDefault(n =>
+            n.Name == name && !ReferenceEquals(n, nested) && IsDeclaredBefore(n, nested));
+
+    private static bool IsDeclaredBefore(Symbol earlier, Symbol later)
+        => (earlier.DeclarationLine, later.DeclarationLine) is (int a, int b)
+           && (a < b || (a == b && (earlier.DeclarationColumn ?? 0) < (later.DeclarationColumn ?? 0)));
+
     /// <summary>
     /// Resolves a base-list reference to its symbol, honoring the backtick escape both ways
     /// (#1325) by IDENTITY, not flag equality: an escaped spelling never binds the registry's
@@ -578,24 +598,30 @@ internal partial class NameResolver
     private TypeSymbol? ResolveBaseReference(TypeAnnotation baseAnnot, out Symbol? rawSymbol,
         TypeSymbol? resolvingType = null)
     {
-        rawSymbol = _symbolTable.Lookup(baseAnnot.Name);
+        // A class statement's base expressions are evaluated in the IMMEDIATELY enclosing scope, at
+        // that point, before the new name binds (CPython's rule): a nested class's bare base names
+        // a sibling its enclosing class body declared EARLIER, else the module scope. It never names
+        // the class itself, a later sibling, or an outer class's body — `class Outer: class C(C)`
+        // inherits the module's `C` (#1371; plan-775c50). The sibling scope is transient and gone by
+        // pass 2, so it is read from the enclosing type's NestedTypes by declaration position.
+        rawSymbol = null;
+        var isBareNested = resolvingType?.DeclaringType != null
+            && !baseAnnot.Name.Contains('.', StringComparison.Ordinal);
+        if (isBareNested)
+            rawSymbol = EarlierSibling(resolvingType!, baseAnnot.Name);
 
-        // For nested types, the base name may be a sibling nested type whose class scope
-        // is transient and gone by pass 2. Walk the enclosing chain's NestedTypes
-        // (innermost first — an inner name shadows an outer one, the #1371 rule).
-        if (rawSymbol == null && resolvingType?.DeclaringType != null
-            && !baseAnnot.Name.Contains('.', StringComparison.Ordinal))
+        rawSymbol ??= _symbolTable.Lookup(baseAnnot.Name);
+
+        // No such name in either scope: Python refuses the class statement (NameError), and C#
+        // binds the name in the enclosing chain, innermost first — the chain is kept, never
+        // reaching the class itself (#1371).
+        if (rawSymbol == null && isBareNested)
         {
-            var enclosing = resolvingType.DeclaringType;
-            while (enclosing != null)
+            for (var enclosing = resolvingType!.DeclaringType; enclosing != null && rawSymbol == null;
+                 enclosing = enclosing.DeclaringType)
             {
-                var nested = enclosing.NestedTypes.FirstOrDefault(n => n.Name == baseAnnot.Name);
-                if (nested != null)
-                {
-                    rawSymbol = nested;
-                    break;
-                }
-                enclosing = enclosing.DeclaringType;
+                rawSymbol = enclosing.NestedTypes.FirstOrDefault(
+                    n => n.Name == baseAnnot.Name && !ReferenceEquals(n, resolvingType));
             }
         }
 

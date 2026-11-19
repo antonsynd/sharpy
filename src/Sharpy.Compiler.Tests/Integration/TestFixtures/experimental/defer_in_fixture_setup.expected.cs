@@ -15,9 +15,16 @@ namespace DeferInFixtureSetup
     {
         public static void Main()
         {
+            __Load();
 #line (16, 5) - (16, 16) 12 "defer_in_fixture_setup.spy"
             global::Sharpy.Builtins.Print("ok");
 #line hidden
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        [global::Sharpy.SharpyLoadEntry(false)]
+        public static void __Load()
+        {
         }
     }
 

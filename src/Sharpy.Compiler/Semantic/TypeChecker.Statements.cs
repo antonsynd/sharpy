@@ -1503,6 +1503,15 @@ internal partial class TypeChecker
                     ErrorRecoveryReason.Propagated("the iterated sequence's element type"));
             }
         }
+        // A member or element target (`for H.t in xs:`, `for o.x in xs:`, `for xs[0] in ys:`) stores
+        // through a resolved member: check it as the comprehension for-clause and the with-as target
+        // do, so its resolution (MemberAccessResolution, ModuleMemberResolution) is recorded and the
+        // emitter reads the target's storage fact instead of re-deriving it (plan-775c50, P77).
+        else if (forStmt.Target is MemberAccess or IndexAccess)
+        {
+            CheckExpression(forStmt.Target);
+            _semanticInfo.SetExpressionType(forStmt.Target, elementType);
+        }
 
         // Check loop body statements
         _controlFlowDepth++;

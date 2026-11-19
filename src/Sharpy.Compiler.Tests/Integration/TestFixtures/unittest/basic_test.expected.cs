@@ -15,9 +15,16 @@ namespace BasicTest
     {
         public static void Main()
         {
+            __Load();
 #line (7, 5) - (7, 13) 12 "basic_test.spy"
             global::Sharpy.Builtins.Print(2);
 #line hidden
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        [global::Sharpy.SharpyLoadEntry(false)]
+        public static void __Load()
+        {
         }
     }
 

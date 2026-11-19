@@ -15,9 +15,16 @@ namespace CapturedOutputTest
     {
         public static void Main()
         {
+            __Load();
 #line (12, 5) - (12, 16) 12 "captured_output_test.spy"
             global::Sharpy.Builtins.Print("ok");
 #line hidden
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        [global::Sharpy.SharpyLoadEntry(false)]
+        public static void __Load()
+        {
         }
     }
 

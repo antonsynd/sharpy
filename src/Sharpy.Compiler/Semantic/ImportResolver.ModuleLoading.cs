@@ -27,6 +27,8 @@ internal partial class ImportResolver
         _logger.LogDebug($"Resolving import: {string.Join(", ", importStmt.Names.Select(n => n.Name))}");
 
         var result = new List<ModuleInfo?>();
+        // The Sharpy modules the statement makes Python run, in order (plan-775c50 D5).
+        var chain = new List<ImportRequirement>();
 
         foreach (var importAlias in importStmt.Names)
         {
@@ -79,7 +81,11 @@ internal partial class ImportResolver
 
             // Track .NET module names for codegen to emit correct using directives
             if (moduleInfo is { IsNetModule: true })
+            {
                 _semanticBinding.MarkAsNetModule(importAlias.Name, moduleInfo.CSharpNamespace, moduleInfo.CSharpClassName);
+                // A Sharpy module imported by reference loads at the import's position (plan-775c50 D10).
+                AppendByReferenceChain(importAlias.Name, chain);
+            }
 
             // If not found in .NET assemblies, try .spy file
             if (moduleInfo == null)
@@ -118,6 +124,8 @@ internal partial class ImportResolver
                     _dependencyRecorder.AddDependency(_currentModulePath, modulePath);
                 }
 
+                AppendImportChain(importAlias.Name, ImportRequirement.Source(modulePath, isImported: true), chain);
+
                 moduleInfo = LoadModule(modulePath, importAlias.LineStart, importAlias.ColumnStart);
 
                 // Plain imports of stub modules can't be deferred
@@ -129,6 +137,7 @@ internal partial class ImportResolver
             result.Add(moduleInfo);
         }
 
+        _semanticBinding.SetImportChain(importStmt, chain);
         return result;
     }
 
@@ -420,10 +429,14 @@ internal partial class ImportResolver
             }
 
             moduleInfo = LoadModule(resolution.FullPath, fromImport.LineStart, fromImport.ColumnStart);
+            RecordFromImportChain(fromImport, resolvedPath, ImportRequirement.Source(resolution.FullPath, isImported: true), moduleInfo);
         }
         else
         {
             _logger.LogDebug($"[ImportResolver]   Resolved as .NET module");
+            // A Sharpy module imported by reference loads at the import's position (plan-775c50 D10).
+            if (moduleInfo.IsNetModule)
+                RecordFromImportChain(fromImport, fromImport.Module, ByReference(fromImport.Module, isImported: true), moduleInfo);
         }
 
         // Validate imported names and populate re-export information for code generation

@@ -17,6 +17,11 @@ namespace Sharpy.Stdlib.Tests.Spy.IO.IoStringioTests
     [global::Sharpy.SharpyModule("io.io_stringio_tests")]
     public static partial class IoStringioTestsModule
     {
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        [global::Sharpy.SharpyLoadEntry(false)]
+        public static void __Load()
+        {
+        }
     }
 
     public partial class IoStringioTestsModuleTests

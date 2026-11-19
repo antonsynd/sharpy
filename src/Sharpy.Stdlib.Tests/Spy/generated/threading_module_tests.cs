@@ -18,26 +18,381 @@ namespace Sharpy.Stdlib.Tests.Spy.Threading.ThreadingModuleTests
     [global::Sharpy.SharpyModule("threading.threading_module_tests")]
     public static partial class ThreadingModuleTestsModule
     {
-        public static Sharpy.List<bool> Executed = new Sharpy.List<bool>()
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        internal static Sharpy.List<bool> Executed__field = default!;
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        private static byte Executed__state;
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        private static void Executed__init()
         {
-            false
-        };
-        public static Sharpy.List<bool> RanFlag = new Sharpy.List<bool>()
+            Executed__field = new Sharpy.List<bool>()
+            {
+                false
+            };
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        private static void Executed__slow() => global::Sharpy.StaticInit.Read(ref __host, __Sweep, ref Executed__state, "executed", Executed__init);
+        [global::Sharpy.SharpyStaticStorage(global::Sharpy.StaticStorageKind.Guarded)]
+        public static ref Sharpy.List<bool> Executed
         {
-            false
-        };
-        public static Sharpy.List<bool> FiredFlag = new Sharpy.List<bool>()
+            get
+            {
+                if (!__Swept.Done)
+                    Executed__slow();
+                return ref Executed__field;
+            }
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        internal static void Executed__ensure()
         {
-            false
-        };
-        public static Sharpy.List<bool> ReceivedFlag = new Sharpy.List<bool>()
+            if (!__Swept.Done)
+                Executed__slow();
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        private static void Executed__storeSlow(Sharpy.List<bool> value) => global::Sharpy.StaticInit.Store(ref __host, __Sweep, ref Executed__state, ref Executed__field, value);
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        internal static Sharpy.List<bool> Executed__set(Sharpy.List<bool> value)
         {
-            false
-        };
-        public static Sharpy.List<int> BarrierCount = new Sharpy.List<int>()
+            if (__Swept.Done)
+                Executed__field = value;
+            else
+                Executed__storeSlow(value);
+            return value;
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        internal static global::System.Runtime.CompilerServices.StrongBox<Sharpy.List<bool>>? Executed__pick()
         {
-            0
-        };
+            if (!__Swept.Done)
+            {
+                global::Sharpy.StaticInit.Load(ref __host, __Sweep);
+                if (!global::Sharpy.StaticInit.IsReady(ref Executed__state))
+                    return new global::System.Runtime.CompilerServices.StrongBox<Sharpy.List<bool>>();
+            }
+
+            return null;
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        internal static ref Sharpy.List<bool> Executed__out(out global::System.Runtime.CompilerServices.StrongBox<Sharpy.List<bool>>? spill)
+        {
+            spill = Executed__pick();
+            if (spill != null)
+                return ref spill.Value!;
+            return ref Executed__field;
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        internal static R Executed__commit<R>(R result, global::System.Runtime.CompilerServices.StrongBox<Sharpy.List<bool>>? spill)
+        {
+            if (spill != null)
+                Executed__set(spill.Value!);
+            return result;
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        internal static Sharpy.List<bool> RanFlag__field = default!;
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        private static byte RanFlag__state;
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        private static void RanFlag__init()
+        {
+            RanFlag__field = new Sharpy.List<bool>()
+            {
+                false
+            };
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        private static void RanFlag__slow() => global::Sharpy.StaticInit.Read(ref __host, __Sweep, ref RanFlag__state, "ran_flag", RanFlag__init);
+        [global::Sharpy.SharpyStaticStorage(global::Sharpy.StaticStorageKind.Guarded)]
+        public static ref Sharpy.List<bool> RanFlag
+        {
+            get
+            {
+                if (!__Swept.Done)
+                    RanFlag__slow();
+                return ref RanFlag__field;
+            }
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        internal static void RanFlag__ensure()
+        {
+            if (!__Swept.Done)
+                RanFlag__slow();
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        private static void RanFlag__storeSlow(Sharpy.List<bool> value) => global::Sharpy.StaticInit.Store(ref __host, __Sweep, ref RanFlag__state, ref RanFlag__field, value);
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        internal static Sharpy.List<bool> RanFlag__set(Sharpy.List<bool> value)
+        {
+            if (__Swept.Done)
+                RanFlag__field = value;
+            else
+                RanFlag__storeSlow(value);
+            return value;
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        internal static global::System.Runtime.CompilerServices.StrongBox<Sharpy.List<bool>>? RanFlag__pick()
+        {
+            if (!__Swept.Done)
+            {
+                global::Sharpy.StaticInit.Load(ref __host, __Sweep);
+                if (!global::Sharpy.StaticInit.IsReady(ref RanFlag__state))
+                    return new global::System.Runtime.CompilerServices.StrongBox<Sharpy.List<bool>>();
+            }
+
+            return null;
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        internal static ref Sharpy.List<bool> RanFlag__out(out global::System.Runtime.CompilerServices.StrongBox<Sharpy.List<bool>>? spill)
+        {
+            spill = RanFlag__pick();
+            if (spill != null)
+                return ref spill.Value!;
+            return ref RanFlag__field;
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        internal static R RanFlag__commit<R>(R result, global::System.Runtime.CompilerServices.StrongBox<Sharpy.List<bool>>? spill)
+        {
+            if (spill != null)
+                RanFlag__set(spill.Value!);
+            return result;
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        internal static Sharpy.List<bool> FiredFlag__field = default!;
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        private static byte FiredFlag__state;
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        private static void FiredFlag__init()
+        {
+            FiredFlag__field = new Sharpy.List<bool>()
+            {
+                false
+            };
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        private static void FiredFlag__slow() => global::Sharpy.StaticInit.Read(ref __host, __Sweep, ref FiredFlag__state, "fired_flag", FiredFlag__init);
+        [global::Sharpy.SharpyStaticStorage(global::Sharpy.StaticStorageKind.Guarded)]
+        public static ref Sharpy.List<bool> FiredFlag
+        {
+            get
+            {
+                if (!__Swept.Done)
+                    FiredFlag__slow();
+                return ref FiredFlag__field;
+            }
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        internal static void FiredFlag__ensure()
+        {
+            if (!__Swept.Done)
+                FiredFlag__slow();
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        private static void FiredFlag__storeSlow(Sharpy.List<bool> value) => global::Sharpy.StaticInit.Store(ref __host, __Sweep, ref FiredFlag__state, ref FiredFlag__field, value);
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        internal static Sharpy.List<bool> FiredFlag__set(Sharpy.List<bool> value)
+        {
+            if (__Swept.Done)
+                FiredFlag__field = value;
+            else
+                FiredFlag__storeSlow(value);
+            return value;
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        internal static global::System.Runtime.CompilerServices.StrongBox<Sharpy.List<bool>>? FiredFlag__pick()
+        {
+            if (!__Swept.Done)
+            {
+                global::Sharpy.StaticInit.Load(ref __host, __Sweep);
+                if (!global::Sharpy.StaticInit.IsReady(ref FiredFlag__state))
+                    return new global::System.Runtime.CompilerServices.StrongBox<Sharpy.List<bool>>();
+            }
+
+            return null;
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        internal static ref Sharpy.List<bool> FiredFlag__out(out global::System.Runtime.CompilerServices.StrongBox<Sharpy.List<bool>>? spill)
+        {
+            spill = FiredFlag__pick();
+            if (spill != null)
+                return ref spill.Value!;
+            return ref FiredFlag__field;
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        internal static R FiredFlag__commit<R>(R result, global::System.Runtime.CompilerServices.StrongBox<Sharpy.List<bool>>? spill)
+        {
+            if (spill != null)
+                FiredFlag__set(spill.Value!);
+            return result;
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        internal static Sharpy.List<bool> ReceivedFlag__field = default!;
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        private static byte ReceivedFlag__state;
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        private static void ReceivedFlag__init()
+        {
+            ReceivedFlag__field = new Sharpy.List<bool>()
+            {
+                false
+            };
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        private static void ReceivedFlag__slow() => global::Sharpy.StaticInit.Read(ref __host, __Sweep, ref ReceivedFlag__state, "received_flag", ReceivedFlag__init);
+        [global::Sharpy.SharpyStaticStorage(global::Sharpy.StaticStorageKind.Guarded)]
+        public static ref Sharpy.List<bool> ReceivedFlag
+        {
+            get
+            {
+                if (!__Swept.Done)
+                    ReceivedFlag__slow();
+                return ref ReceivedFlag__field;
+            }
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        internal static void ReceivedFlag__ensure()
+        {
+            if (!__Swept.Done)
+                ReceivedFlag__slow();
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        private static void ReceivedFlag__storeSlow(Sharpy.List<bool> value) => global::Sharpy.StaticInit.Store(ref __host, __Sweep, ref ReceivedFlag__state, ref ReceivedFlag__field, value);
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        internal static Sharpy.List<bool> ReceivedFlag__set(Sharpy.List<bool> value)
+        {
+            if (__Swept.Done)
+                ReceivedFlag__field = value;
+            else
+                ReceivedFlag__storeSlow(value);
+            return value;
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        internal static global::System.Runtime.CompilerServices.StrongBox<Sharpy.List<bool>>? ReceivedFlag__pick()
+        {
+            if (!__Swept.Done)
+            {
+                global::Sharpy.StaticInit.Load(ref __host, __Sweep);
+                if (!global::Sharpy.StaticInit.IsReady(ref ReceivedFlag__state))
+                    return new global::System.Runtime.CompilerServices.StrongBox<Sharpy.List<bool>>();
+            }
+
+            return null;
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        internal static ref Sharpy.List<bool> ReceivedFlag__out(out global::System.Runtime.CompilerServices.StrongBox<Sharpy.List<bool>>? spill)
+        {
+            spill = ReceivedFlag__pick();
+            if (spill != null)
+                return ref spill.Value!;
+            return ref ReceivedFlag__field;
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        internal static R ReceivedFlag__commit<R>(R result, global::System.Runtime.CompilerServices.StrongBox<Sharpy.List<bool>>? spill)
+        {
+            if (spill != null)
+                ReceivedFlag__set(spill.Value!);
+            return result;
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        internal static Sharpy.List<int> BarrierCount__field = default!;
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        private static byte BarrierCount__state;
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        private static void BarrierCount__init()
+        {
+            BarrierCount__field = new Sharpy.List<int>()
+            {
+                0
+            };
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        private static void BarrierCount__slow() => global::Sharpy.StaticInit.Read(ref __host, __Sweep, ref BarrierCount__state, "barrier_count", BarrierCount__init);
+        [global::Sharpy.SharpyStaticStorage(global::Sharpy.StaticStorageKind.Guarded)]
+        public static ref Sharpy.List<int> BarrierCount
+        {
+            get
+            {
+                if (!__Swept.Done)
+                    BarrierCount__slow();
+                return ref BarrierCount__field;
+            }
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        internal static void BarrierCount__ensure()
+        {
+            if (!__Swept.Done)
+                BarrierCount__slow();
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        private static void BarrierCount__storeSlow(Sharpy.List<int> value) => global::Sharpy.StaticInit.Store(ref __host, __Sweep, ref BarrierCount__state, ref BarrierCount__field, value);
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        internal static Sharpy.List<int> BarrierCount__set(Sharpy.List<int> value)
+        {
+            if (__Swept.Done)
+                BarrierCount__field = value;
+            else
+                BarrierCount__storeSlow(value);
+            return value;
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        internal static global::System.Runtime.CompilerServices.StrongBox<Sharpy.List<int>>? BarrierCount__pick()
+        {
+            if (!__Swept.Done)
+            {
+                global::Sharpy.StaticInit.Load(ref __host, __Sweep);
+                if (!global::Sharpy.StaticInit.IsReady(ref BarrierCount__state))
+                    return new global::System.Runtime.CompilerServices.StrongBox<Sharpy.List<int>>();
+            }
+
+            return null;
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        internal static ref Sharpy.List<int> BarrierCount__out(out global::System.Runtime.CompilerServices.StrongBox<Sharpy.List<int>>? spill)
+        {
+            spill = BarrierCount__pick();
+            if (spill != null)
+                return ref spill.Value!;
+            return ref BarrierCount__field;
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        internal static R BarrierCount__commit<R>(R result, global::System.Runtime.CompilerServices.StrongBox<Sharpy.List<int>>? spill)
+        {
+            if (spill != null)
+                BarrierCount__set(spill.Value!);
+            return result;
+        }
+
         public static void SetExecuted()
         {
 #line (41, 5) - (41, 23) 12 "src/Sharpy.Stdlib.Tests/Spy/threading/threading_module_tests.spy"
@@ -57,6 +412,36 @@ namespace Sharpy.Stdlib.Tests.Spy.Threading.ThreadingModuleTests
 #line (329, 5) - (329, 24) 12 "src/Sharpy.Stdlib.Tests/Spy/threading/threading_module_tests.spy"
             t.Join(timeout: 5.0d);
 #line hidden
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        private static global::Sharpy.StaticInitHost __host;
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        private static void __Sweep()
+        {
+            global::Sharpy.StaticInit.Run(ref Executed__state, "executed", Executed__init);
+            global::Sharpy.StaticInit.Run(ref RanFlag__state, "ran_flag", RanFlag__init);
+            global::Sharpy.StaticInit.Run(ref FiredFlag__state, "fired_flag", FiredFlag__init);
+            global::Sharpy.StaticInit.Run(ref ReceivedFlag__state, "received_flag", ReceivedFlag__init);
+            global::Sharpy.StaticInit.Run(ref BarrierCount__state, "barrier_count", BarrierCount__init);
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        private static class __Swept
+        {
+            internal static readonly bool Done;
+            static __Swept()
+            {
+                Done = global::Sharpy.StaticInit.TryLoad(ref __host, __Sweep);
+            }
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        [global::Sharpy.SharpyLoadEntry(true)]
+        public static void __Load()
+        {
+            if (!__Swept.Done)
+                global::Sharpy.StaticInit.Load(ref __host, __Sweep);
         }
     }
 

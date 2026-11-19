@@ -13,6 +13,7 @@ namespace GenericClass0005
     {
         public static void Main()
         {
+            __Load();
 #line (12, 5) - (12, 27) 12 "generic_class_0005.spy"
             var intBox = new global::GenericClass0005.Box<int>(42);
 #line (13, 5) - (13, 25) 12 "generic_class_0005.spy"
@@ -22,6 +23,12 @@ namespace GenericClass0005
 #line (16, 5) - (16, 25) 12 "generic_class_0005.spy"
             global::Sharpy.Builtins.Print(strBox.Get());
 #line hidden
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        [global::Sharpy.SharpyLoadEntry(false)]
+        public static void __Load()
+        {
         }
     }
 

@@ -13,6 +13,31 @@ tuple lists that are cleaner to express directly in C#.
 import socket
 ```
 
+## Properties
+
+| Name | Type | Description |
+|------|------|-------------|
+| `AF_INET` | `int` |  |
+| `AF_INET6` | `int` |  |
+| `AF_UNIX` | `int` |  |
+| `SOCK_STREAM` | `int` |  |
+| `SOCK_DGRAM` | `int` |  |
+| `SOCK_RAW` | `int` |  |
+| `IPPROTO_IP` | `int` |  |
+| `IPPROTO_TCP` | `int` |  |
+| `IPPROTO_UDP` | `int` |  |
+| `SOL_SOCKET` | `int` |  |
+| `SO_REUSEADDR` | `int` |  |
+| `SO_KEEPALIVE` | `int` |  |
+| `SO_BROADCAST` | `int` |  |
+| `SO_RCVBUF` | `int` |  |
+| `SO_SNDBUF` | `int` |  |
+| `TCP_NODELAY` | `int` |  |
+| `SHUT_RD` | `int` |  |
+| `SHUT_WR` | `int` |  |
+| `SHUT_RDWR` | `int` |  |
+| `SOMAXCONN` | `int` |  |
+
 ## Functions
 
 ### `socket.getdefaulttimeout() -> float | None`

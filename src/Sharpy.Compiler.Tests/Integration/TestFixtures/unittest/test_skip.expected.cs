@@ -15,9 +15,16 @@ namespace TestSkip
     {
         public static void Main()
         {
+            __Load();
 #line (17, 5) - (17, 16) 12 "test_skip.spy"
             global::Sharpy.Builtins.Print("ok");
 #line hidden
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        [global::Sharpy.SharpyLoadEntry(false)]
+        public static void __Load()
+        {
         }
     }
 

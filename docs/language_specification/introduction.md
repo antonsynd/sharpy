@@ -43,7 +43,7 @@ Given any language design question, apply the axioms in order:
 | Can a variable be uninitialized? | Axiom 3 → No |
 | In what order do a class's initializers run? | Axiom 1 → Declaration order (C#'s rule, and Python's for a class body) |
 | What does passing an argument `out` mean, when Python has no such thing? | Axiom 2 is silent (no twin) → Axiom 1 (C#'s rule) |
-| What does a read give when the value's initializer has not run? | Axiom 3 → Never a default: the initializer runs first, or it is an error ([N3](variable_scoping.md#governing-principle); pending #2422) |
+| What does a read give when the value's initializer has not run? | Axiom 3 → Never a default: the initializer runs first, or it is an error ([N3](variable_scoping.md#values-are-ready-before-use-n3)) |
 | Why `snake_case` in source but `PascalCase` in .NET? | Resolution → Zero-cost naming transformation |
 | Why do builtins like `len()` work on both Sharpy and .NET types? | Resolution → Zero-cost polymorphic dispatch |
 

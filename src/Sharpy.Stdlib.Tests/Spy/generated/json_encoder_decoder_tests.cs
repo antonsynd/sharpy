@@ -27,6 +27,12 @@ namespace Sharpy.Stdlib.Tests.Spy.JSON.JsonEncoderDecoderTests
             return d;
 #line hidden
         }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        [global::Sharpy.SharpyLoadEntry(false)]
+        public static void __Load()
+        {
+        }
     }
 
     [global::Sharpy.SharpyModuleType("json.json_encoder_decoder_tests", "Unserializable")]

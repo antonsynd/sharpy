@@ -79,6 +79,7 @@ namespace System.Text.RegularExpressions :: System.Text.RegularExpressions.Regex
 namespace System.Text.RegularExpressions :: System.Text.RegularExpressions.Regex.Split(string, int)
 namespace System.Threading :: System.Threading.Monitor.Exit(object)
 namespace System.Threading :: System.Threading.Monitor.PulseAll(object)
+namespace System.Threading :: System.Threading.Monitor.TryEnter(object)
 namespace System.Threading :: System.Threading.Monitor.TryEnter(object, int)
 namespace System.Threading :: System.Threading.Monitor.Wait(object)
 namespace System.Threading :: System.Threading.Monitor.Wait(object, int)

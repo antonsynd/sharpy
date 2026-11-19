@@ -32,6 +32,7 @@ namespace ListShorthand
 
         public static void Main()
         {
+            __Load();
 #line (9, 5) - (9, 38) 12 "list_shorthand.spy"
             Sharpy.List<int> numbers = new Sharpy.List<int>()
 #line hidden
@@ -45,6 +46,12 @@ namespace ListShorthand
 #line (10, 5) - (10, 29) 12 "list_shorthand.spy"
             global::Sharpy.Builtins.Print(global::ListShorthand.ListShorthandModule.SumList(numbers));
 #line hidden
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        [global::Sharpy.SharpyLoadEntry(false)]
+        public static void __Load()
+        {
         }
     }
 }

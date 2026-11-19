@@ -13,6 +13,7 @@ namespace TypeInference
     {
         public static void Main()
         {
+            __Load();
 #line (2, 5) - (2, 11) 12 "type_inference.spy"
             var x = 42;
 #line (3, 5) - (3, 13) 12 "type_inference.spy"
@@ -30,6 +31,12 @@ namespace TypeInference
 #line (10, 5) - (10, 16) 12 "type_inference.spy"
             global::Sharpy.Builtins.Print(flag);
 #line hidden
+        }
+
+        [global::System.Runtime.CompilerServices.CompilerGenerated]
+        [global::Sharpy.SharpyLoadEntry(false)]
+        public static void __Load()
+        {
         }
     }
 }

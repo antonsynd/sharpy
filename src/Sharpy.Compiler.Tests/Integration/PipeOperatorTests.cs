@@ -204,4 +204,41 @@ def main():
         // 16 |> add_one → 17
         Assert.Equal("17\n", result.StandardOutput);
     }
+
+    /// <summary>
+    /// A pipe into a method with its own type parameter is typed at the argument the piped value
+    /// infers, as the direct call is: the call's value is the inferred return type, never the method's
+    /// open parameter (<c>"s" |> Box().gm()</c> is <c>str</c>, not <c>U</c>, which SPY0220 refused at
+    /// an annotated store). Crossed with the method's host (a plain class, a generic class), a further
+    /// argument after the piped one, and the piped value's type.
+    /// </summary>
+    [Theory]
+    [InlineData("Box().gm()", "\"s\"", "str", "s!")]
+    [InlineData("Box().second(2)", "\"s\"", "str", "s!")]
+    [InlineData("Pair[int]().gm()", "\"s\"", "str", "s!")]
+    [InlineData("Box().gm()", "4", "int", "5")]
+    public void PipeForward_IntoAGenericMethod_IsTypedAtTheInferredReturn(string target, string piped, string type, string expected)
+    {
+        var source = $@"
+class Box:
+    def gm[U](self, x: U) -> U:
+        return x
+    def second[U](self, x: U, n: int) -> U:
+        return x
+
+class Pair[T]:
+    def gm[U](self, x: U) -> U:
+        return x
+
+def main():
+    r = {piped} |> {target}
+    y: {type} = r
+    print(y + {(type == "str" ? "\"!\"" : "1")})
+";
+
+        var result = CompileAndExecute(source);
+
+        Assert.True(result.Success, $"Compilation failed: {string.Join(", ", result.CompilationErrors)}");
+        Assert.Equal(expected + "\n", result.StandardOutput);
+    }
 }
