@@ -37,15 +37,20 @@ of the scanned files:
   the citing file's directory (a leading ``/`` is the repo root), to a file or directory, and the
   anchor is a heading slug of the target (duplicate headings get GitHub's ``-1``, ``-2``).
 
-Fenced code is not prose: skill, link, section and shorthand citations are read outside fences only;
-links are not read inside inline code either.
+A fence with an info string (```bash) is code: no skill, link, section or shorthand is read there;
+a bare fence is read as prose (here it holds agent prompts). Links are not read in inline code; in a
+code span only a ``/name`` that starts it is a skill citation.
 
 Out of scope, counted (``OUT_OF_SCOPE``): a bare ``§N`` / ``step N`` / ``item N`` with no named target
-(its target is the enclosing text); ``Name step|item|§ N`` where Name is no section of the citing
-file (prose: ``Repeat step 2``) -- a known limit: an own-file citation whose heading was renamed
-falls into this bucket instead of going red; ``charter §N`` (a round charter, not a fixed file); and
-absolute URLs. Anything the grammar starts to parse but cannot finish (a ``›`` with nothing
-resolvable on its left) is a failure, never a skip.
+(its target is the enclosing text), or ``Name step|item|§ N`` whose Name is not exactly a section
+of the citing file (prose: ``Repeat step 2``); ``charter §N`` (a round charter, not a fixed file);
+absolute URLs; a slash-less file name in a code span (``sharpy.sln``). Anything the grammar starts
+to parse but cannot finish (a ``›`` with nothing resolvable on its left) is a failure, never a skip.
+
+Known limits (missed forms, never false reds): an own-file citation whose heading was renamed, or
+that shortens it (``Cleanup step 4``), counts as bare; a heading cut to a prefix of its citation
+stays green; a family example also passes a deleted member (a sound rule needs git history); no
+reference-style links (``[r]: path``; none exist yet); no code span split by a hard wrap.
 
 Usage::
 
@@ -66,7 +71,7 @@ from typing import Dict, Iterator, List, Optional, Set, Tuple
 
 if __package__ in (None, ""):
     sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
-from build_tools.check_plan_refs import FENCE_LINE_RE, PATH_RE, heading_name
+from build_tools.check_plan_refs import FENCE_LINE_RE, PATH_EXTS, PATH_RE, heading_name
 
 SCANNED_GLOBS = (
     "CLAUDE.md",
@@ -85,17 +90,24 @@ OUT_OF_SCOPE = {
     "the citing file: it means the enclosing text",
     "charter": "charter §N cites a round charter, a per-round file, not a fixed target",
     "url": "an absolute URL is outside the repository",
+    "filename": "a slash-less file name in a code span (`sharpy.sln`) does not say its directory",
 }
 # Harness built-ins the text cites as /name; each must still be cited (the test checks it).
 BUILTIN_SKILLS = {
     "simplify",  # /implement-plan Final Verification step 2
 }
+# Filesystem roots that open a code span (`/tmp`): never a skill. Each must be a directory under `/`.
+NOT_SKILLS = {"tmp"}
 
 # A list or range of numbers: `2, 3, 5, 8 and 9`, `1–5`, `8 and 9`; with `§` on each for sections.
 _SEP = r"(?:\s*,\s*(?:and\s+|or\s+)?|\s+(?:and|or)\s+|\s*[–-]\s*)"
-NUMS = r"\d+(?:" + _SEP + r"\d+(?![\w-]))*"
+NUM = r"\d+(?:\.\d+)*(?:-[a-z]+)?"  # 1.25, 4-design (Dimension 4's design half)
+NUMS = NUM + r"(?:" + _SEP + NUM + r"(?![\w-]))*"
 SECT_NUMS = r"§\d+(?:\.\d+)?(?:" + _SEP + r"§\d+(?:\.\d+)?)*"
+CONTRACT_NUMS = r"§\d+(?:\.\d+)?(?:" + _SEP + r"§?\d+(?:\.\d+)?(?![\w-]|\.\d))*"
 STEP = r"(?:steps?|items?)"
+# After a target or a chain, `Step 2` is a citation too.
+STEP_ANY = r"(?:[Ss]teps?|[Ii]tems?)"
 
 # Shorthand -> (target file, section name), from the census.
 ALIASES = (
@@ -132,18 +144,22 @@ NAME = r"(?:[A-Z][\w-]*)(?: [A-Z][\w-]*)*"
 SECTION_NAME = r"(?:[A-Z][\w-]*)(?: (?:[A-Z&][\w-]*|and))*(?<! and)"
 
 TICK_TARGET = r"`(/[a-z][\w-]*|[\w./-]+\.md)`"
+# A bare CLAUDE.md, never the tail of build_tools/CLAUDE.md (that one is its own file).
+CLAUDE_TARGET = r"(?<![\w/.-])((?:[\w.-]+/)*CLAUDE\.md)"
+LINK_TARGET = r"\[(?:[^\]\n]|\n(?!\n))*\]\(([^)\s]+)\)"
+AHEAD_TARGETS = CLAUDE_TARGET + r"|" + LINK_TARGET
 TARGET_RE = re.compile(
-    r"(?:" + TICK_TARGET + r"|\[[^\]\n]*\]\(([^)\s]+)\)|\b(CLAUDE\.md)\b)\s*$"
+    r"(?:" + TICK_TARGET + r"|" + LINK_TARGET + r"|" + CLAUDE_TARGET + r")\s*$"
 )
 # `/x` Name §N, `/x` §N, `/x` Name step 4, `path` item 6, `/x` §Name; `/x` may be unticked.
 TARGET_AHEAD_RE = re.compile(
-    r"(?:" + TICK_TARGET + r"|(?<![\w/`.-])(/[a-z][\w-]*))"
+    r"(?:" + TICK_TARGET + r"|(?<![\w/`.-])(/[a-z][\w-]*)|" + AHEAD_TARGETS + r")"
     r"(?: ("
     + SECTION_NAME
     + r"))? (?:("
     + SECT_NUMS
     + r")|"
-    + STEP
+    + STEP_ANY
     + r" ("
     + NUMS
     + r")|§("
@@ -151,8 +167,8 @@ TARGET_AHEAD_RE = re.compile(
     + r"))"
 )
 CHAIN_HEAD_RE = re.compile(r"((?:[A-Z][\w-]*)(?: (?:[A-Z&][\w-]*|and))*)\s*$")
-SEG_END_RE = re.compile(r"[)(,;:]|\.(?:\s|$)|\s" + STEP + r" \d|\s§\d|\s›|$")
-TAIL_RE = re.compile(r",?\s*(?:" + STEP + r" (" + NUMS + r")|(" + SECT_NUMS + r"))")
+SEG_END_RE = re.compile(r"[)(,;:]|\.(?:\s|$)|\s" + STEP_ANY + r" \d|\s§\d|\s›|$")
+TAIL_RE = re.compile(r",?\s*(?:" + STEP_ANY + r" (" + NUMS + r")|(" + SECT_NUMS + r"))")
 NAMED_NUM_RE = re.compile(
     r"(?<![\w`/.-])("
     + SECTION_NAME
@@ -168,12 +184,15 @@ SELF_SECTION_RE = re.compile(
     r"(?<![\w§])§(" + NAME.replace("[\\w-]*", "[\\w-]+", 1) + r")"
 )
 CONTRACT_RE = re.compile(
-    r"(?:\b[Cc]ontract|verification-contract\.md`?) (" + SECT_NUMS + r")"
+    r"(?:\b[Cc]ontract|verification-contract\.md`?) (" + CONTRACT_NUMS + r")"
 )
-CHARTER_RE = re.compile(r"\b[Cc]harter §\d")
+CHARTER_RE = re.compile(r"(?i)\bcharter §\d")
 BARE_NUM_RE = re.compile(r"§\d+|\b[Ss]teps? \d+|\b[Ii]tems? \d+")
 SKILL_RE = re.compile(r"/([a-z][\w-]*)(:[\w-]+)?")
-LINK_RE = re.compile(r"\[[^\]\n]*\]\(([^)\s]+)\)")
+LINK_RE = re.compile(  # text may wrap one line; the target may carry a "title"
+    r"\[(?:[^\]\n]|\n(?!\n))*\]\(\s*([^)\s]+)(?:\s+\"[^\"]*\")?\s*\)"
+)
+FILENAME_RE = re.compile(r"[\w.-]*\w\." + PATH_EXTS + r"|\.[a-z]+(?:-[a-z]+)+")
 CODE_PATH_RE = re.compile(
     r"(?<![\w/.$}-])((?:src|docs|build_tools|benchmarks|editors|\.claude|\.github)/[\w./-]*)"
 )
@@ -182,8 +201,8 @@ CODE_SPAN_RE = re.compile(r"(`+)([^`].*?)\1", re.S)
 
 
 def numbers(text: str) -> List[str]:
-    """`2, 3 and 9` -> 2 3 9; `§10–§12` -> 10 11 12; a sub-number (`§2.1`) checks its section."""
-    text = re.sub(r"(\d+)\.\d+", r"\1", text.replace("§", ""))
+    """`2, 3 and 9` -> 2 3 9; `§10–§12` -> 10 11 12; `4-design` -> 4; `1.25` stays whole."""
+    text = re.sub(r"(\d)-[a-z]+", r"\1", text.replace("§", ""))
     out: List[str] = []
     for part in re.split(r"\s*,\s*(?:and\s+|or\s+)?|\s+(?:and|or)\s+", text.strip()):
         m = re.fullmatch(r"(\d+)\s*[–-]\s*(\d+)", part.strip())
@@ -250,11 +269,13 @@ def code_regions(text: str) -> Iterator[Tuple[int, int]]:
         pos += len(line)
 
 
-def span_starts(prose: str) -> Set[int]:
-    """Offsets where an inline code span's content begins (a backtick run opens it)."""
-    out, pos = set(), 0
+def code_spans(prose: str) -> List[Tuple[int, int]]:
+    """(start, end) of each inline code span's content, one line at a time."""
+    out, pos = [], 0
     for line in prose.split("\n"):
-        out.update(pos + m.start(2) for m in CODE_SPAN_RE.finditer(line))
+        out.extend(
+            (pos + m.start(2), pos + m.end(2)) for m in CODE_SPAN_RE.finditer(line)
+        )
         pos += len(line) + 1
     return out
 
@@ -366,7 +387,7 @@ class Doc:
             if i in self.code_lines:
                 continue
             line = self.lines[i]
-            h = ATX_RE.match(line)
+            h = None if i in self.fenced else ATX_RE.match(line)  # `# Role` in a prompt
             if h:
                 m = NUMBERED_RE.match(h.group(2))
                 if m and m.group(1) == num:
@@ -511,8 +532,9 @@ class Checker:
         d = self.doc(rel)
         words = run.split(" ")
         for k in range(len(words)):
-            if d is not None and d.find(" ".join(words[k:])):
-                return " ".join(words[k:])
+            name = norm(" ".join(words[k:]))
+            if d is not None and any(name in s.names for s in d.sections):
+                return " ".join(words[k:])  # exactly: "Do" is not "**Do not**"
         return None
 
     # -- extraction -------------------------------------------------------------------------------
@@ -562,12 +584,17 @@ class Checker:
             add("path", pos, ref, err)
 
         # skills: prose and inline code, never fenced code
-        starts = span_starts(prose)
+        spans = code_spans(prose)
+        links = [m.span(1) for m in LINK_RE.finditer(prose_of(text, spans=True))]
         for m in SKILL_RE.finditer(prose):
             a, b = m.start(), m.end()
             before, after = prose[a - 1 : a] if a else "", prose[b : b + 1]
+            if any(s < a < e for s, e in spans) or any(s <= a < e for s, e in links):
+                continue  # mid-span (`msbuild /nologo`) or a link target ([d](/docs))
+            if m.group(1) in NOT_SKILLS:
+                continue
             if before == "`":
-                if a not in starts:
+                if not any(s == a for s, _ in spans):
                     continue  # the backtick closes a span: `a`/b is not a citation
             elif before not in ("", " ", "\n", "\t", "(", "[", '"', "'", "*"):
                 continue  # inside a word or a path: a/b, src/x, https://x.org/push
@@ -698,7 +725,8 @@ class Checker:
             have = {
                 n for s in (d.sections if d else []) if s.level == 2 for n in s.names
             }
-            missing = [k for k in numbers(m.group(1)) if k not in have]
+            nums = numbers(re.sub(r"(\d+)\.\d+", r"\1", m.group(1)))  # §2.1: section 2
+            missing = [k for k in nums if k not in have]
             add(
                 "contract",
                 m.start(),
@@ -706,13 +734,20 @@ class Checker:
                 f"no '## {', '.join(missing)}.' in {CONTRACT}" if missing else None,
             )
 
+        for m in CHARTER_RE.finditer(text_flat):  # before any own-section reading
+            claimed.append((m.start(), m.end()))
+            self.out_of_scope["charter"] += 1
+
         # TARGET [Name] §N / TARGET [Name] step|item N / TARGET §Name
         for m in TARGET_AHEAD_RE.finditer(flat):
             if not free(m.start(), m.end()):
                 continue
-            target = self.target_file(m.group(1) or m.group(2))
-            names = [n for n in (m.group(3), m.group(6)) if n]
-            nums = numbers(m.group(4) or m.group(5) or "") if not m.group(6) else []
+            if m.group(4):
+                target = self.link_dest(m.group(4).split("#")[0], rel)
+            else:
+                target = self.target_file(m.group(1) or m.group(2) or m.group(3))
+            names = [n for n in (m.group(5), m.group(8)) if n]
+            nums = numbers(m.group(6) or m.group(7) or "") if not m.group(8) else []
             claimed.append((m.start(), m.end()))
             add("section", m.start(), m.group(0), self.resolve(target, names, nums))
 
@@ -755,9 +790,10 @@ class Checker:
             )
 
         # out of scope, counted
-        for m in CHARTER_RE.finditer(text_flat):
-            claimed.append((m.start(), m.end()))
-            self.out_of_scope["charter"] += 1
+        for a, b in spans:
+            self.out_of_scope["filename"] += sum(
+                1 for tok in prose[a:b].split() if FILENAME_RE.fullmatch(tok)
+            )
         for m in BARE_NUM_RE.finditer(flat):
             if free(m.start(), m.end()):
                 self.out_of_scope["bare-number"] += 1

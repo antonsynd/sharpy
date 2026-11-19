@@ -73,10 +73,14 @@ SKILL_TEXT = (
     "```bash\n3. not a step\n```\n\n### 1.25. Version bump check\n\n4. four, under 1.25\n\n"
     "## Agent Instructions\n\n```\n1. a\n6. six, in a bare fence: a prompt's steps\n```\n\n"
     "## Indented\n\n- list:\n  1. a\n  2. b\n\n## Steps\n\n### Step 2: Do it\n\n"
-    "## Anchored Heading\n\n## Anchored Heading\n"
+    "## Anchored Heading\n\n## Anchored Heading\n\n"
+    "## Prompt\n\n```\n# Role\n1. a\n2. b\n### 7. a fenced heading\n```\n"
 ).replace("```", "```")
 PLAN_TEMPLATE_TEXT = "# create-plan\n\n```markdown\n## Defect Class\n\n- **Violated contract:** <x>\n```\n"
-CLAUDE_TEXT = "# CLAUDE.md\n\n## Testing\n\n**Commit gate** = the solution.\n\n## Critical Rules\n\n1. a\n2. b\n"
+CLAUDE_TEXT = (
+    "# CLAUDE.md\n\n## Testing\n\n**Commit gate** = the solution.\n\n## Critical Rules\n\n1. a\n2. b\n\n"
+    "**Charter says** x.\n\n**Do not** y.\n\n**See also** z.\n"
+)
 
 
 def _repo(tmp_path: Path, citing: str, where: str = "CLAUDE.md") -> Path:
@@ -89,6 +93,7 @@ def _repo(tmp_path: Path, citing: str, where: str = "CLAUDE.md") -> Path:
         ".claude/skills/verify-plan/SKILL.md": "# v\n\n## Verification Dimensions\n\n"
         + "".join(f"### {k}. D{k}\n\n" for k in range(1, 6)),
         "docs/process/plans/plan-0a1b2c.md": "x\n",
+        "build_tools/CLAUDE.md": "# build_tools\n\n## Commands\n",
         ".gitignore": ".claude/tmp/\n",
     }
     files[where] += "\n" + citing + "\n"
@@ -151,6 +156,21 @@ def _errors(tmp_path: Path, citing: str, kind: str, where: str = "CLAUDE.md"):
         ("section", "See `/push` › Cleanup and Report step 4."),
         ("section", "See `/push` › Cleanup and Report step 5."),  # a nested list item
         ("section", "See `/push` step 9."),
+        # second round: B -- an own-file Name that IS a section, number missing, stays red
+        ("section", "As Critical Rules step 9 says, and Charter says §3."),
+        # D -- `# Role` in a fence is no subheading; a fenced `### 7.` is no step 7
+        ("section", "See `/push` › Prompt step 7."),
+        # E -- a bare nested CLAUDE.md is its own file
+        ("section", "See build_tools/CLAUDE.md › Testing."),
+        # F -- 4-design keeps the list going; 1.3 is not 1; capitalised Step; bare continuation
+        ("section", "Run Dimensions 4-design, 6."),
+        ("section", "See `/push` step 1.3."),
+        ("section", "See `/push` › Cleanup and Report, Step 9."),
+        ("contract", "Per contract §1–99."),
+        ("contract", "Per contract §1 and 99."),
+        # G -- link text that wraps, a target with a title
+        ("link", "[a\nb](docs/missing.md)"),
+        ("link", '[x](docs/missing.md "a title")'),
         # a citation in a bare fence (a prompt) is read like prose
         ("skill", "```\nrun /no-such-skill\n```"),
     ],
@@ -178,7 +198,10 @@ def test_a_broken_reference_is_red(tmp_path, kind, citing):
         ("section", "See §Critical Rules."),
         ("contract", "Per contract §1–§2."),
         ("link", "[x](.claude/skills/push/SKILL.md#anchored-heading)"),
-        ("link", "[x](.claude/skills/push/SKILL.md#anchored-heading-1)"),  # GitHub's duplicate
+        (
+            "link",
+            "[x](.claude/skills/push/SKILL.md#anchored-heading-1)",
+        ),  # GitHub's duplicate
         ("section", "Run Dimensions 2, 3, 5 and 1–4."),
         ("section", "See `/push` › Cleanup and Report, steps 1, 2 and 8."),
         ("section", "See `/push` › Output §1 and §5."),
@@ -193,6 +216,11 @@ def test_a_broken_reference_is_red(tmp_path, kind, citing):
         ("section", "See `/push` › Indented, item 2."),
         ("section", "See `/push` › Steps, step 2."),
         ("section", "See `/push` step 8."),
+        ("section", "See `/push` › Prompt step 2."),
+        ("section", "Run Dimensions 4-design, 5."),
+        ("section", "See `/push` step 1.25; `/push` Step 8."),
+        ("contract", "Per contract §1 and 2."),
+        ("link", '[a\nb](docs/process/README.md "t")'),
     ],
 )
 def test_a_resolving_reference_is_green(tmp_path, kind, citing):
@@ -211,6 +239,10 @@ def test_a_resolving_reference_is_green(tmp_path, kind, citing):
         "```bash\ncd /tmp && msbuild /p:X=1 /nologo\nDimension 9, Rule 99, /no-such\n```",
         "```markdown\n[plan](docs/process/plans/<plan-id>.md)\n```",
         "Index it as `a[i](x)`.",
+        # B -- prose whose first word only STARTS a lead-in; any-case charter
+        "Charter §3 says so. Do step 3 first. See §2 of the plan. CHARTER §4.",
+        # C -- /word that is no skill citation: mid-span, a filesystem root, a link target
+        "Run `msbuild /nologo`, write to `/tmp`.",
     ],
 )
 def test_text_that_is_not_a_checked_reference_extracts_nothing(tmp_path, citing):
@@ -248,7 +280,9 @@ def test_a_builtin_cited_at_a_sentence_end_counts_as_cited(tmp_path):
 def test_prose_numbers_fall_to_the_counted_bare_bucket(tmp_path):
     # Known limit (docstring): a Name that is no section of the citing file is prose, so an own-file
     # citation whose heading was renamed is counted here instead of going red.
-    counts = _out_of_scope(tmp_path, "Repeat step 2. Charter §3. Critical Ruling step 9.")
+    counts = _out_of_scope(
+        tmp_path, "Repeat step 2. Charter §3. Critical Ruling step 9."
+    )
     assert counts["bare-number"] == 2
     assert counts["charter"] == 1
 
@@ -292,8 +326,7 @@ def test_every_target_the_check_reads_starts_the_python_workflow(tree):
     """A PR that renames a cited file must run this test, or it merges green and the next PR goes
     red. Every file the checker read (the scanned files, each target, .gitignore) is matched by
     the Python Build Tools workflow's RELEVANT_PATHS and push `paths` (one list, kept equal by
-    test_workflow_relevance). A cited directory goes missing only when every file in it moves, so
-    it is covered when one of its tracked files is."""
+    test_workflow_relevance); see `_uncovered`."""
     from build_tools.tests import test_workflow_relevance as twr
 
     workflow = twr.load(twr.WORKFLOWS / "python-build-tools.yml")
@@ -304,15 +337,86 @@ def test_every_target_the_check_reads_starts_the_python_workflow(tree):
     _, checker = tree
     reads = set(checker.reads)
     assert {".gitignore", "CLAUDE.md", csr.CONTRACT} <= reads  # positive control
-    tracked = _tracked()
+    missed = _uncovered(reads, _tracked(), lists, lambda r: (REPO / r).is_dir())
+    assert not missed, "targets outside the workflow's paths:\n" + "\n".join(missed)
+
+
+@pytest.mark.parametrize(
+    "citing,kind",
+    [
+        ("As CLAUDE.md §Testing says.", "section"),
+        ("[c](../../../CLAUDE.md) §Testing", "section"),
+    ],
+)
+def test_a_target_ahead_is_the_named_file_green(tmp_path, citing, kind):
+    # E: judged against CLAUDE.md, from a file (/push) that has no Testing of its own
+    assert _errors(tmp_path, citing, kind, ".claude/skills/push/SKILL.md") == []
+
+
+def test_a_target_ahead_is_the_named_file_red(tmp_path):
+    # E: /push has `## Output`; CLAUDE.md does not
+    citing = "As CLAUDE.md §Output says."
+    assert _errors(tmp_path, citing, "section", ".claude/skills/push/SKILL.md")
+
+
+def test_not_skills_stay_filesystem_roots(tree):
+    # C: each entry is a directory at `/` and no skill or built-in; the list is never a skip list
+    _, checker = tree
+    assert csr.NOT_SKILLS and all(Path("/", n).is_dir() for n in csr.NOT_SKILLS)
+    assert not csr.NOT_SKILLS & (checker.skills | csr.BUILTIN_SKILLS)
+
+
+def test_slash_less_file_names_in_code_are_counted(tmp_path, tree):
+    # H: not resolved; counted so the gap shows in the report line
+    citing = "Build `sharpy.sln`; see `Directory.Build.props`, `.python-version`, `mkdocs.yml`."
+    assert _out_of_scope(tmp_path, citing)["filename"] == 4
+    assert tree[1].out_of_scope["filename"] > 0
+
+
+def _uncovered(reads, tracked, lists, is_dir):
+    """Reads that no list covers. An untracked read (gitignored `.claude/tmp/`, a local file) is
+    skipped: no pull request can rename it. A cited directory goes missing only when every file in
+    it moves, so it is covered when one of its tracked files is."""
     missed = []
+    from build_tools.tests import test_workflow_relevance as twr
+
     for read in sorted(reads):
+        inside = [
+            f for f in tracked if f == read or f.startswith(read.rstrip("/") + "/")
+        ]
+        if not inside:
+            continue
         for label, patterns in lists.items():
-            if (REPO / read).is_dir():
-                inside = [f for f in tracked if f.startswith(read.rstrip("/") + "/")]
+            if is_dir(read):
                 ok = any(twr.matches(f, patterns) for f in inside)
             else:
                 ok = twr.matches(read, patterns)
             if not ok:
                 missed.append(f"{read} ({label})")
-    assert not missed, "targets outside the workflow's paths:\n" + "\n".join(missed)
+    return missed
+
+
+def test_coverage_skips_untracked_reads_green():
+    # A: `.claude/tmp/` exists on any machine that ran dotnet-serialized; it is not tracked
+    assert (
+        _uncovered(
+            {".claude/tmp", "docs/x.md"},
+            ["docs/x.md"],
+            {"L": ["docs/**"]},
+            lambda r: r == ".claude/tmp",
+        )
+        == []
+    )
+
+
+def test_coverage_misses_a_tracked_read_red():
+    assert _uncovered(
+        {"docs/x.md"}, ["docs/x.md"], {"L": ["src/**"]}, lambda r: False
+    ) == ["docs/x.md (L)"]
+
+
+def test_a_root_relative_link_is_a_link_not_a_skill(tmp_path):
+    # C: [d](/docs) is a valid root-relative link and must not also be a missing skill
+    refs, _ = csr.check(_repo(tmp_path, "Read [d](/docs)."))
+    mine = [r for r in refs if r.file == "CLAUDE.md" and r.cite == "/docs"]
+    assert [(r.kind, r.error) for r in mine] == [("link", None)]
