@@ -263,6 +263,12 @@ public class SemanticInfo : ISemanticQuery
     // on its CLR identity (rung 3).
     private readonly ConcurrentDictionary<Expression, byte> _pyDunderNameReads = new(ReferenceEqualityComparer.Instance);
 
+    // plan-775c50: a static value bound through a receiver that names a type nested under a generic
+    // (`G[int].N.s`, or `N.s` inside `G[T]`). Its owner has no closed carrier of its own (#1941), so
+    // the emitter spells the receiver as its own chain generates it (`G<int>.N`) and the member from
+    // the recorded binding, never the owner's open name (`G.N`, CS0305).
+    private readonly ConcurrentDictionary<MemberAccess, byte> _chainSpelledStaticReceivers = new(ReferenceEqualityComparer.Instance);
+
     // plan-14853b Decision 1 / #1698: a branch of a ConditionalExpression admitted into a narrow
     // integer slot by the §10.2.11 constant arm. C# gives `c ? 7 : 8` the natural type int, so
     // `sbyte b = c ? 7 : 8` is CS0266; the seam records the slot type per admitted branch and the
@@ -1589,6 +1595,12 @@ public class SemanticInfo : ISemanticQuery
     /// </summary>
     public bool IsLiteralDerived(Expression expr) => _literalDerivedStrings.ContainsKey(expr);
 
+    /// <summary>Marks a bound static value whose receiver the emitter spells by its own chain (plan-775c50).</summary>
+    public void MarkChainSpelledStaticReceiver(MemberAccess memberAccess) => Mark(_chainSpelledStaticReceivers, memberAccess);
+
+    /// <summary>Whether the bound static value's receiver is spelled by its own chain (plan-775c50).</summary>
+    public bool IsChainSpelledStaticReceiver(MemberAccess memberAccess) => _chainSpelledStaticReceivers.ContainsKey(memberAccess);
+
     /// <summary>Marks a <c>__name__</c> read on a class object as python's <c>__name__</c> (#2035).</summary>
     public void MarkPyDunderNameRead(Expression memberAccess) => Mark(_pyDunderNameReads, memberAccess);
 
@@ -2562,6 +2574,8 @@ public class SemanticInfo : ISemanticQuery
 
         foreach (var kvp in other._pyDunderNameReads)
             MergeEntry(_pyDunderNameReads, kvp, other);
+        foreach (var kvp in other._chainSpelledStaticReceivers)
+            MergeEntry(_chainSpelledStaticReceivers, kvp, other);
 
         foreach (var kvp in other._conditionalBranchNarrowing)
             MergeEntry(_conditionalBranchNarrowing, kvp, other);

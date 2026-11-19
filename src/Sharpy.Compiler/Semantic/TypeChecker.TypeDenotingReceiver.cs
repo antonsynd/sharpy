@@ -109,9 +109,9 @@ internal partial class TypeChecker
     /// navigation and the initializer-cycle validator — sees one value for every spelling.
     /// <para>A generic owner reached through a receiver that spells no constructed type (<c>GD.s</c> of
     /// <c>class GD(G[int])</c>) is spelled at the closed instantiation the base chain pins, recorded as
-    /// the receiver's denoted type (<c>G&lt;int&gt;.S</c>). Declined, for the arms after it: a bare open
-    /// generic (<c>G.s</c>, SPY0339) and a type nested under a generic, which has no closed carrier
-    /// (#1941).</para>
+    /// the receiver's denoted type (<c>G&lt;int&gt;.S</c>). A type nested under a generic (#1941) is
+    /// spelled by the receiver's own chain (<c>G&lt;int&gt;.N.S</c>), its type closed by that chain's
+    /// arguments. Declined, for the arms after it: a bare open generic (<c>G.s</c>, SPY0339).</para>
     /// Returns the member's type, or null when the access binds no static value.
     /// </summary>
     private SemanticType? BindStaticValueThroughType(MemberAccess memberAccess, SemanticType receiverType)
@@ -124,12 +124,25 @@ internal partial class TypeChecker
         var denoted = _semanticInfo.GetDenotedType(memberAccess.Object);
         IReadOnlyList<SemanticType> receiverArguments =
             (denoted ?? receiverType) is GenericType constructed ? constructed.TypeArguments : Array.Empty<SemanticType>();
-        if ((typeSymbol.IsGeneric && receiverArguments.Count == 0) || IsNestedUnderGeneric(typeSymbol))
+        if (typeSymbol.IsGeneric && receiverArguments.Count == 0)
             return null;
 
         var (field, owner) = TypeHierarchyService.FindStaticValueField(typeSymbol, memberAccess.Member, SemanticBinding);
-        if (field == null || owner == null || IsNestedUnderGeneric(owner))
+        if (field == null || owner == null)
             return null;
+        field = DeclaredField(owner, field);
+
+        // A type nested under a generic has no closed carrier of its own (#1941): the receiver keeps
+        // the spelling its own chain generates (`G<int>.N`, or `N` inside `G[T]`), and the field's
+        // type is read at the arguments the chain constructs the enclosing generic with.
+        if (IsNestedUnderGeneric(typeSymbol) || IsNestedUnderGeneric(owner))
+        {
+            _semanticInfo.SetMemberAccessResolution(memberAccess, owner, field);
+            _semanticInfo.MarkChainSpelledStaticReceiver(memberAccess);
+            var nestedFieldType = ClosedByReceiverChain(memberAccess.Object, GetVariableType(field));
+            _semanticInfo.SetExpressionType(memberAccess, nestedFieldType);
+            return nestedFieldType;
+        }
 
         if (owner.IsGeneric && denoted == null)
         {
@@ -146,6 +159,18 @@ internal partial class TypeChecker
         _semanticInfo.SetExpressionType(memberAccess, fieldType);
         return fieldType;
     }
+
+    /// <summary>
+    /// The field <paramref name="owner"/>'s DECLARATION has for <paramref name="field"/>: an import
+    /// alias (<c>from lib import LC as CC</c>) is a clone whose fields are the loader's extraction's,
+    /// while the storage fact (D2) is on the declared field; the clone stays the owner, for its
+    /// spelling.
+    /// </summary>
+    private static VariableSymbol DeclaredField(TypeSymbol owner, VariableSymbol field)
+        => owner.DeclarationRoot() is TypeSymbol root && !ReferenceEquals(root, owner)
+            && root.Fields.FirstOrDefault(f => f.Name == field.Name) is { } declared
+            ? declared
+            : field;
 
     /// <summary>
     /// A member no type on the chain declares, named through a NESTED type (<c>Outer.D.s</c>), is
@@ -172,6 +197,34 @@ internal partial class TypeChecker
         MarkExpressionAsErrorRecovery(memberAccess,
             ErrorRecoveryReason.AlreadyReported("a member absent from a nested type's chain (SPY0203)"));
         return true;
+    }
+
+    /// <summary>
+    /// <paramref name="memberType"/> under the arguments the receiver chain constructs its generic
+    /// enclosing types with (<c>G[int].N</c>: <c>G</c>'s <c>T</c> is <c>int</c>); unchanged where the
+    /// chain constructs none (inside <c>G[T]</c>, where <c>T</c> is in scope).
+    /// </summary>
+    private SemanticType ClosedByReceiverChain(Expression receiver, SemanticType memberType)
+    {
+        for (var segment = receiver; segment != null;)
+        {
+            if (_semanticInfo.GetDenotedType(segment) is GenericType { GenericDefinition: { } definition } constructed
+                && definition.TypeParameters.Count == constructed.TypeArguments.Count)
+            {
+                memberType = SubstituteTypeParameters(
+                    memberType, definition.TypeParameters, constructed.TypeArguments.ToList(),
+                    substituteNamedUserTypes: true);
+            }
+
+            segment = segment switch
+            {
+                MemberAccess access => access.Object,
+                IndexAccess index => index.Object,
+                _ => null,
+            };
+        }
+
+        return memberType;
     }
 
     private static bool IsNestedUnderGeneric(TypeSymbol type)

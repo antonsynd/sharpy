@@ -159,6 +159,12 @@ public class DispatchSiteInventoryTests
         // a receiver it cannot read is no type-denoting spelling — and the spelling generator's cells
         // (each Guarded spelling an `out` operand across an `await`) are the net over every arm.
         ["Semantic/AsyncGuardedUseAnalyzer.cs::AsyncGuardedUseAnalyzer.StructuralType"] = "refusal-net:AsyncGuardedOutCallPathTests",
+        // plan-775c50 (review 6): the receiver chain of a static nested under a generic (`G[int].N.s`),
+        // walked through its member-access and index segments to close the field's type by each
+        // constructed enclosing generic; any other node ends the chain. The spelling generator's
+        // nested-under-generic cells (an `out` operand, an augmented assignment, a mutating call and
+        // a store, across an `await` and in a plain def) are the net.
+        ["Semantic/TypeChecker.TypeDenotingReceiver.cs::TypeChecker.ClosedByReceiverChain"] = "refusal-net:AsyncGuardedStaticSpellingTests",
         // plan-775c50 D4/D6: a Guarded value's own spelling, by its two value spellings (a name, a member
         // access); any other node is an internal error. The run generator crosses every narrowing form.
         ["CodeGen/RoslynEmitter.StaticValues.cs::RoslynEmitter.GuardedValueSpelling"] = "refusal-net:AsyncGuardedNarrowedUseTests",

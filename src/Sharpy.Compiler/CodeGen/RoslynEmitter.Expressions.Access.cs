@@ -1704,7 +1704,7 @@ internal partial class RoslynEmitter
         var denotedReceiver = _context.SemanticInfo?.GetDenotedType(memberAccess.Object);
 
         var resolution = _context.SemanticInfo?.GetMemberAccessResolution(memberAccess);
-        VariableSymbol? nestedEnumMember = null;
+        VariableSymbol? chainSpelledMember = null;
         if (resolution is { } res && res.Member is VariableSymbol resolvedField)
         {
             // The owner is the recorded CLOSED denoted type when the receiver denotes one (`G<int>.K`);
@@ -1720,10 +1720,17 @@ internal partial class RoslynEmitter
             // receiver keeps the spelling the chain itself generates (global::-rooted in value
             // position, as before the member was resolved); only the member reads its fact. The
             // receiver is generated once, below, with every other generated receiver.
-            if (classSymbol.TypeKind == Semantic.TypeKind.Enum && memberAccess.Object is MemberAccess)
-                nestedEnumMember = resolvedField;
+            // A static of a type nested under a generic (`G[int].N.s`, plan-775c50): the checker
+            // recorded that its receiver is spelled by its own chain (`G<int>.N`), the owner having
+            // no closed carrier of its own (#1941).
+            if ((classSymbol.TypeKind == Semantic.TypeKind.Enum && memberAccess.Object is MemberAccess)
+                || _context.SemanticInfo?.IsChainSpelledStaticReceiver(memberAccess) == true)
+                chainSpelledMember = resolvedField;
             else
-                return GenerateStaticFieldAccess(classSymbol, classSymbol.Name, resolvedField, memberAccess.Member);
+                // An import alias's clone (`from lib import LC as CC`) is spelled by the declared name
+                // its CodeGenInfo records (`Lib.LC`), as every other type position spells it.
+                return GenerateStaticFieldAccess(
+                    classSymbol, GetOriginalImportName(classSymbol) ?? classSymbol.Name, resolvedField, memberAccess.Member);
         }
 
         // A denoted receiver is spelled from its recorded type, never generated from the AST shape:
@@ -1743,8 +1750,8 @@ internal partial class RoslynEmitter
                 .WithArgumentList(ArgumentList(SingletonSeparatedList(Argument(obj))));
         }
 
-        if (nestedEnumMember != null)
-            return GenerateStaticFieldAccessOnType(obj, nestedEnumMember, memberAccess.Member);
+        if (chainSpelledMember != null)
+            return GenerateStaticFieldAccessOnType(obj, chainSpelledMember, memberAccess.Member);
 
         // .value / .name on an enum instance: the lowering the checker recorded (#2007).
         if (_context.SemanticInfo?.GetEnumMemberAccessLowering(memberAccess) is { } enumAccess)

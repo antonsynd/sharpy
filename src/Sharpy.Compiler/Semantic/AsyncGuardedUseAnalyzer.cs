@@ -135,8 +135,9 @@ internal sealed class AsyncGuardedUseAnalyzer
             ?? ImportedStaticFacts.ImportedStorage(_importFacts, variable).Storage) == StaticStorage.Guarded;
 
     /// <summary>
-    /// The totality guard (plan-775c50 D6): a member access in a D6 position that names a Guarded
-    /// static through a type-denoting receiver must carry the checker's binding, or the emitter would
+    /// The totality guard (plan-775c50 D6): a member access in a D6 position or at a store site (a
+    /// plain or augmented assignment's target) that names a Guarded static through a type-denoting
+    /// receiver must carry the checker's binding to that Guarded declaration, or the emitter would
     /// pass the value's by-reference accessor across an <c>await</c> (CS8178 behind SPY0908). The
     /// receiver is read STRUCTURALLY here — a type name, a module's exported type, a nested type by
     /// name, a constructed generic's definition, a recorded type reference — never through the
@@ -144,16 +145,41 @@ internal sealed class AsyncGuardedUseAnalyzer
     /// </summary>
     private void RequireBound(Expression node)
     {
-        if (!_requireBound || node is not MemberAccess access || _info.GetBoundValueSymbol(access) != null
+        if (!_requireBound || node is not MemberAccess access
             || StructuralType(access.Object) is not { } type
-            || TypeHierarchyService.FindStaticValueField(type, access.Member, _binding).field is not { } field
-            || !IsGuarded(field)
-            || UseKind(access) == null)
+            || TypeHierarchyService.FindStaticValueField(type, access.Member, _binding) is not ({ } field, { } owner)
+            || !IsGuarded(DeclarationField(owner, field))
+            || (UseKind(access) == null && !IsStoreSite(access)))
             return;
 
+        var bound = _info.GetBoundValueSymbol(access);
         throw new InternalCompilerErrorException("AsyncGuardedUseAnalyzer",
             $"'{access.Member}' names the Guarded value '{field.Name}' through '{type.Name}' in an async def "
-            + "body, but the checker bound no value symbol to the access (plan-775c50 D6)", access);
+            + (bound == null
+                ? "body, but the checker bound no value symbol to the access (plan-775c50 D6)"
+                : $"body, but the checker bound '{bound.Name}', which is not the Guarded declaration (plan-775c50 D6)"),
+            access);
+    }
+
+    /// <summary>The field of <paramref name="owner"/>'s declaration (its origin chain's root) named as
+    /// <paramref name="field"/>: an import alias's clone (<c>from lib import LC as CC</c>) holds the
+    /// loader's fields, not the declared ones whose storage is Guarded.</summary>
+    private static VariableSymbol DeclarationField(TypeSymbol owner, VariableSymbol field)
+        => owner.DeclarationRoot() is TypeSymbol root
+            && root.Fields.FirstOrDefault(f => f.Name == field.Name) is { } declared
+            ? declared
+            : field;
+
+    /// <summary>Whether <paramref name="node"/> (whose parent ends <c>_ancestors</c>) is itself a store
+    /// site's target — a plain or augmented assignment's, a tuple leaf of one, a <c>for</c> /
+    /// <c>with</c> / comprehension target: the emitter routes a bound Guarded target through its
+    /// setter, and an unbound one keeps the by-reference accessor across the statement.</summary>
+    private bool IsStoreSite(Expression node)
+    {
+        var i = _ancestors.Count - 1;
+        var current = node;
+        SkipParentheses(ref current, ref i);
+        return i >= 0 && IsStoreTarget(current, i);
     }
 
     /// <summary>The type a receiver spells, read from its shape and the symbols its names bind.</summary>
