@@ -423,7 +423,7 @@ def scanned_files(repo: Path) -> List[str]:
 
 
 def _ignored(repo: Path, rel: str) -> bool:
-    """A gitignored location (`.claude/tmp/…`, `.claude/plans/…`): a session's file, never tracked.
+    """A location any `.gitignore` rule matches (`.claude/tmp/…`, build output): never tracked.
     A missing path may name a directory, so `rel/` is asked too (a `dir/` pattern needs the slash)."""
     rel = rel.rstrip("/")
     r = subprocess.run(
