@@ -69,7 +69,7 @@ Check before you relay. An agent's mistakes arrive in the same confident registe
 2. The plan's first line matches the result the agent reported.
 3. `git diff --name-only origin/dev...HEAD` lists only the plan file and, for a `full` generator group, its stage-0 test files (contract §11). A product path there is a stage that went wrong: stop and report it.
 4. File the out-of-contract cells it reported (contract §10), and point any exclusion or allowlist citation that borrowed an issue number at the right tracker in the next agent's brief.
-5. Tell the user the result in a few lines: the verdict, what was measured and what was only inferred, what is owed, and what you are starting next. Say whose claim each figure is.
+5. Tell the user the result in a few lines: the verdict and a verifier's paraphrase, what was measured and what was only inferred, what is owed, and what you are starting next. Say whose claim each figure is.
 
 ## The pull request
 

@@ -25,7 +25,7 @@ If `$ARGUMENTS` is empty, list the three newest plans (stage trail item 1) and a
 
 Read the plan file completely before proceeding. Record `git rev-parse --short HEAD` — every check below is made against that sha, and the stamp names it (line numbers drift; a sha does not).
 
-**Paraphrase first**, before any probe or grade, from the plan text alone: a few sentences each on what the plan changes and how the code works today by its account, into the Verification Summary's `### Paraphrase` for the author and owner to check against the intent. A section you cannot paraphrase is a finding on the dimension grading it (Defect Class → 6, guards → 7, else → 4); a wrong paraphrase is evidence against the text, not the reader. A nine-dimension pass by the plan's own session writes `not written: author's session`.
+**Paraphrase first**, before any probe or grade, from the plan's body alone (never a prior Verification Summary): a few sentences each on what the plan changes and how the code works today by its account, into the Verification Summary's `### Paraphrase` for the author and owner to check against the intent. A section you cannot paraphrase is a Dimension 4 error: NEEDS REVISION, never corrected inline. A wrong paraphrase is evidence against the text, not the reader. A nine-dimension pass by the plan's own session writes `not written: author's session`.
 
 ## Probing rules
 
@@ -192,7 +192,7 @@ Adequacy: `CLASS` / `CELL` / `N/A` per Dimension 6. `/implement-plan` refuses a 
 **Plan file:** `docs/process/plans/<plan-id>.md` (committed in §4 at every result, NEEDS REVISION included)
 
 ### Paraphrase
-- **Changes:** <plan text only> · **Today:** <per the plan>
+- **Changes:** <the body as read, before corrections> · **Today:** <per the plan> · **Could not paraphrase:** <sections / none>
 
 ### Corrections Made
 - (each correction and added section, before/after)
@@ -230,7 +230,7 @@ Adequacy: `CLASS` / `CELL` / `N/A` per Dimension 6. `/implement-plan` refuses a 
 
 Rewrite the plan text so it reads as if first written correctly: no `[CORRECTED…]` or `[ADDED…]` markers, no pass history, no "(first pass)" tags. Each change's before/after lives only in the Verification Summary.
 
-Present a brief summary to the user: result, adequacy verdict, the corrections that changed a decision (not every path fix), the warnings the author must act on before `/implement-plan`, and the commit that holds the stamped plan (§4).
+Present a brief summary to the user: the paraphrase, result, adequacy verdict, the corrections that changed a decision (not every path fix), the warnings the author must act on before `/implement-plan`, and the commit that holds the stamped plan (§4).
 
 ### 4. Commit the stamped plan
 
