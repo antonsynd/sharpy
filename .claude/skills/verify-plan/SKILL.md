@@ -179,6 +179,8 @@ Result:
 
 Adequacy: `CLASS` / `CELL` / `N/A` per Dimension 6. `/implement-plan` refuses a `CELL` plan for bug-fix inputs unless the user explicitly overrides or the result is `CONVERGED`; `N/A` is for plans with no bug/ICE/regression input.
 
+**Second pass** (the `## Revision log` shows a prior pass): grade fresh, then label each finding in the Verification Summary. **settled**: owner-ruled, never raised; or declined in the log with a reason, raised only as `settled, reason refuted: <probe>`. **re-opened**: the log changed a decision to answer it and the defect stands at the same text (the revision failed). **churn**: against text the revision rewrote that the prior pass's commit (§4) would not have drawn: an owner decision with both texts, never a revision on your word alone. **new**: the rest. Labels change no stamp; an unraised settled one is not a finding.
+
 ### 2. Add a Verification Summary section at the end of the plan
 
 ```markdown
