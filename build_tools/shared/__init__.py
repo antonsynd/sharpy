@@ -7,7 +7,6 @@ This module provides common functionality used across multiple build tools:
 - Task type and complexity taxonomy
 - Configuration management
 - Execution logging
-- CLI command building
 """
 
 from .config import BaseConfig
@@ -20,7 +19,6 @@ from .logging import (
     LogEventType,
     ExecutionLogger,
 )
-from .cli_builder import CLICommand, CLIBuilder
 
 __all__ = [
     # Configuration
@@ -32,7 +30,4 @@ __all__ = [
     "LogEvent",
     "LogEventType",
     "ExecutionLogger",
-    # CLI building
-    "CLICommand",
-    "CLIBuilder",
 ]

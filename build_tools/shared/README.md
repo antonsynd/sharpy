@@ -9,7 +9,6 @@ This shared module eliminates code duplication across tools by providing:
 - **Rate limiting** - Detection, tracking, and handling of API rate limits
 - **Configuration** - Base configuration with path resolution and serialization
 - **Execution logging** - Structured JSONL logging for analysis and debugging
-- **CLI building** - Consistent command construction for different backends
 
 ## Quick Start
 
@@ -200,7 +199,7 @@ Structured JSONL logging for tracking AI backend executions, prompts, responses,
 
 - **`LogEventType`** - Enum of event types
 - **`LogEvent`** - Individual log event with timestamp
-- **`ExecutionLogger`** - JSONL-based logger with query utilities
+- **`ExecutionLogger`** - JSONL-based logger
 
 **Basic Logging:**
 
@@ -211,18 +210,16 @@ from pathlib import Path
 logger = ExecutionLogger(Path("execution.log"))
 
 # Log a prompt
-event_id = logger.log_prompt(
-    prompt="Generate a function",
-    backend="claude",
-    model="claude-sonnet-4-6",
+event_id = logger.log(
+    LogEventType.PROMPT_SENT,
+    {"prompt": "Generate a function", "backend": "claude"},
 )
 
 # Log the response (correlated to prompt)
-logger.log_response(
+logger.log(
+    LogEventType.RESPONSE_RECEIVED,
+    {"response": "def my_function():\n    pass", "success": True},
     event_id=event_id,
-    response="def my_function():\n    pass",
-    success=True,
-    duration_seconds=2.5,
 )
 ```
 
@@ -234,56 +231,16 @@ logger.log(LogEventType.PROMPT_SENT, {"prompt": "..."})
 logger.log(LogEventType.RESPONSE_RECEIVED, {"response": "..."})
 
 # Rate limiting
-logger.log_rate_limit(
-    backend="claude",
-    wait_seconds=300,
-    error_message="Rate limit exceeded",
-)
+logger.log(LogEventType.RATE_LIMIT_HIT, {"backend": "claude", "wait_seconds": 300})
 
 # Backend switching
-logger.log_backend_switch(
-    from_backend="claude",
-    to_backend="copilot",
-    reason="Rate limited",
-)
+logger.log(LogEventType.BACKEND_SWITCH, {"from_backend": "claude", "to_backend": "copilot"})
 
 # Model selection
-logger.log_model_selection(
-    task_type="code_generation",
-    complexity="medium",
-    selected_model="claude-sonnet-4-6",
-    reasoning="Standard code generation task",
-)
+logger.log(LogEventType.MODEL_SELECTED, {"selected_model": "claude-sonnet-4-6"})
 
 # Task lifecycle
-logger.log_task(
-    event_type=LogEventType.TASK_START,
-    task_id="task_001",
-    description="Implement rate limiting",
-)
-```
-
-**Querying Logs:**
-
-```python
-# Read all events
-events = logger.read_log()
-for event in events:
-    print(f"{event.timestamp}: {event.event_type}")
-
-# Filter by event type
-prompts = logger.query_log(event_types=[LogEventType.PROMPT_SENT])
-
-# Filter by time range
-from datetime import datetime, timedelta
-recent = logger.query_log(
-    start_time=datetime.now() - timedelta(hours=1)
-)
-
-# Get correlated events
-prompt_event_id = "abc-123"
-related = logger.get_correlated_events(prompt_event_id)
-# Returns both PROMPT_SENT and RESPONSE_RECEIVED events
+logger.log(LogEventType.TASK_START, {"task_id": "task_001"})
 ```
 
 **Log Format (JSONL):**
@@ -294,57 +251,6 @@ Each line in the log file is a JSON object:
 {"timestamp": "2026-01-14T10:30:00", "event_type": "prompt_sent", "event_id": "abc-123", "details": {"prompt": "...", "backend": "claude"}}
 {"timestamp": "2026-01-14T10:30:02", "event_type": "response_received", "event_id": "abc-123", "details": {"success": true, "duration": 2.1}}
 {"timestamp": "2026-01-14T10:30:05", "event_type": "rate_limit_hit", "details": {"backend": "claude", "wait_seconds": 300}}
-```
-
-### CLI Command Building (`cli_builder.py`)
-
-Utilities for building CLI commands for different backend types with proper argument formatting.
-
-**Key Components:**
-
-- **`CLICommand`** - Represents a CLI command (args, stdin, cwd)
-- **`CLIBuilder`** - Builds commands for different backends
-
-**Building Claude Commands:**
-
-```python
-from build_tools.shared.cli_builder import CLIBuilder
-from build_tools.shared.backends import ToolPermission
-
-tools = {ToolPermission.READ, ToolPermission.WRITE}
-cmd = CLIBuilder.build_claude_command(
-    prompt="Generate a function",
-    tools=tools,
-    model="claude-sonnet-4-6",
-    print_mode=True,
-)
-
-print(cmd.args)   # ["claude", "--print", "--allowedTools", "Read,Write", "--model", "..."]
-print(cmd.stdin)  # "Generate a function"
-```
-
-**Building Copilot Commands:**
-
-```python
-cmd = CLIBuilder.build_copilot_command(
-    prompt="Fix this bug",
-    tools={ToolPermission.READ, ToolPermission.EDIT},
-)
-
-print(cmd.args)  # ["/opt/homebrew/bin/copilot", "--prompt", "Fix this bug", "--allow-tool", "read", ...]
-```
-
-**Generic Builder:**
-
-```python
-from build_tools.shared.backends import BackendType
-
-# Automatically selects appropriate builder
-cmd = CLIBuilder.build_command(
-    backend_type=BackendType.CLAUDE_CODE,
-    prompt="Write a test",
-    tools={ToolPermission.READ},
-)
 ```
 
 ## API Reference
@@ -444,25 +350,6 @@ JSONL-based execution logger.
 
 **Methods:**
 - `log(event_type: LogEventType, details: dict) -> str` - Log event
-- `log_prompt(prompt: str, backend: str, model: Optional[str]) -> str` - Log prompt
-- `log_response(event_id: str, response: str, success: bool, duration_seconds: float)` - Log response
-- `log_rate_limit(backend: str, wait_seconds: int, error_message: str)` - Log rate limit
-- `log_backend_switch(from_backend: str, to_backend: str, reason: str)` - Log backend switch
-- `log_model_selection(task_type: str, complexity: str, selected_model: str, reasoning: str)` - Log model selection
-- `log_task(event_type: LogEventType, task_id: str, description: str, details: Optional[dict])` - Log task event
-- `read_log() -> list[LogEvent]` - Read all events
-- `query_log(event_types: Optional[list], start_time: Optional[datetime], end_time: Optional[datetime], task_id: Optional[str]) -> list[LogEvent]` - Query events
-- `get_correlated_events(event_id: str) -> list[LogEvent]` - Get related events
-
-### CLI Building
-
-#### `CLIBuilder`
-Build CLI commands for backends.
-
-**Methods:**
-- `build_claude_command(prompt: str, tools: set[ToolPermission], model: Optional[str], print_mode: bool) -> CLICommand` - Build Claude command
-- `build_copilot_command(prompt: str, tools: set[ToolPermission]) -> CLICommand` - Build Copilot command
-- `build_command(backend_type: BackendType, prompt: str, tools: set[ToolPermission], model: Optional[str]) -> CLICommand` - Generic builder
 
 ## Testing
 
@@ -478,7 +365,6 @@ python -m pytest build_tools/tests/test_rate_limiting.py
 python -m pytest build_tools/tests/test_backends.py
 python -m pytest build_tools/tests/test_config.py
 python -m pytest build_tools/tests/test_logging.py
-python -m pytest build_tools/tests/test_cli_builder.py
 ```
 
 ## Design Principles
