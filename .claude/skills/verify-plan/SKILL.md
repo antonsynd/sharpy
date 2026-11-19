@@ -25,6 +25,8 @@ If `$ARGUMENTS` is empty, list the three newest plans (stage trail item 1) and a
 
 Read the plan file completely before proceeding. Record `git rev-parse --short HEAD` — every check below is made against that sha, and the stamp names it (line numbers drift; a sha does not).
 
+**Paraphrase first**, before any probe or grade, from the plan text alone: a few sentences each on what the plan changes and how the code works today by its account, into the Verification Summary's `### Paraphrase` for the author and owner to check against the intent. A section you cannot paraphrase is a finding on the dimension grading it (Defect Class → 6, guards → 7, else → 4); a wrong paraphrase is evidence against the text, not the reader. A nine-dimension pass by the plan's own session writes `not written: author's session`.
+
 ## Probing rules
 
 - Never run `dotnet` directly — `.claude/scripts/dotnet-serialized` (drop-in wrapper; needs `dangerouslyDisableSandbox: true`), or the `/spy-run` / `/spy-emit` / `/quick-check` skills for inline Sharpy source.
@@ -167,7 +169,7 @@ After verification, edit the plan file directly.
 <!-- Scope: [ONE-GROUP / MULTI-GROUP (override) / N/A] · Generator: [existing / built-first / not-required / MISSING] -->
 ```
 
-In `--adequacy` mode all four stamp lines are written: the first reads `<!-- Verified by /verify-plan --adequacy (Adequacy-only: Dimensions 4-design, 6, 7; check_plan_refs clean) on YYYY-MM-DD @ <sha> -->`; the result is `PASS`, `NEEDS REVISION` or `CONVERGED`; `Adequacy:` is Dimension 6's verdict; `Scope:` is copied from the plan's `## Scope` block and `Generator:` row without grading Dimension 9 (a light plan that reads `MULTI-GROUP` or needs a generator is `NEEDS REVISION: promote to full`, §12). The Verification Summary carries only `### Adequacy`, `### Falsifiability`, `### Design decisions checked` and `### Unchecked Claims`, plus `### Deferred findings` on `CONVERGED`; downstream skills read the stamp as a full one.
+In `--adequacy` mode all four stamp lines are written: the first reads `<!-- Verified by /verify-plan --adequacy (Adequacy-only: Dimensions 4-design, 6, 7; check_plan_refs clean) on YYYY-MM-DD @ <sha> -->`; the result is `PASS`, `NEEDS REVISION` or `CONVERGED`; `Adequacy:` is Dimension 6's verdict; `Scope:` is copied from the plan's `## Scope` block and `Generator:` row without grading Dimension 9 (a light plan that reads `MULTI-GROUP` or needs a generator is `NEEDS REVISION: promote to full`, §12). The Verification Summary carries only `### Paraphrase`, `### Adequacy`, `### Falsifiability`, `### Design decisions checked` and `### Unchecked Claims`, plus `### Deferred findings` on `CONVERGED`; downstream skills read the stamp as a full one.
 
 Result:
 - **PASS** — no errors; at most minor suggestions
@@ -186,6 +188,9 @@ Adequacy: `CLASS` / `CELL` / `N/A` per Dimension 6. `/implement-plan` refuses a 
 **Adequacy:** [CLASS / CELL / N/A]
 **Verified on:** YYYY-MM-DD @ <sha>
 **Plan file:** `docs/process/plans/<plan-id>.md` (committed in §4 at every result, NEEDS REVISION included)
+
+### Paraphrase
+- **Changes:** <plan text only> · **Today:** <per the plan>
 
 ### Corrections Made
 - (each correction and added section, before/after)
