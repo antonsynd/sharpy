@@ -18,7 +18,7 @@ Investigates `dogfood_output/` results, classifies failures, produces triage rep
 | Prompting Issue | C1 | AI generated invalid code because prompts are wrong/misleading | `build_tools/sharpy_dogfood/prompts.py` |
 | Validation Pipeline Bug | C2 | Dogfood orchestrator itself has a bug | `build_tools/sharpy_dogfood/orchestrator.py` |
 | Compiler Bug | C3 | Compiler incorrectly rejects/miscompiles valid code | `src/Sharpy.Compiler/` |
-| Correct Rejection | C4 | Compiler correctly errors; should become test fixture | Test fixture via `/project:add-test-fixture` |
+| Correct Rejection | C4 | Compiler correctly errors; should become test fixture | Test fixture via `/add-test-fixture` |
 | Retry Flow Issue | C5 | Regeneration loop failed to fix a known issue | `build_tools/sharpy_dogfood/orchestrator.py` |
 
 ## Classification Heuristics
