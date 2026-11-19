@@ -1,25 +1,27 @@
 {
-  "_comment": "Allocation-regression baseline (BenchmarkDotNet [MemoryDiagnoser] BytesAllocatedPerOperation). Deliberately updated only via `python -m build_tools.allocation_gate update`; review the diff like a snapshot.",
+  "_comment": "Allocation-regression baseline (BenchmarkDotNet [MemoryDiagnoser] BytesAllocatedPerOperation), measured in CI only (#2462). Deliberately updated only via `python -m build_tools.allocation_gate update` from CI runs' benchmark-results artifacts (the median of several); review the diff like a snapshot. Over `threshold` warns while within `threshold + noise`, then fails.",
+  "measured_on": "GitHub-hosted ubuntu-latest runner, .github/workflows/benchmarks.yml: Linux Ubuntu 26.04.1 LTS (Resolute Raccoon); .NET 10.0.15 (10.0.15, 10.0.1526.53008)",
   "threshold": 0.1,
+  "noise": 0.02,
   "benchmarks": {
     "Sharpy.Compiler.Benchmarks.CompilerBenchmarks.Compile_Classes": {
-      "allocated_bytes": 5506288,
+      "allocated_bytes": 6100499,
       "description": "Classes + Inheritance (35 lines)"
     },
     "Sharpy.Compiler.Benchmarks.CompilerBenchmarks.Compile_Comprehensions": {
-      "allocated_bytes": 5498291,
+      "allocated_bytes": 5881483,
       "description": "Comprehensions (26 lines)"
     },
     "Sharpy.Compiler.Benchmarks.CompilerBenchmarks.Compile_Fibonacci": {
-      "allocated_bytes": 5175115,
+      "allocated_bytes": 5497542,
       "description": "Fibonacci (22 lines)"
     },
     "Sharpy.Compiler.Benchmarks.CompilerBenchmarks.Compile_HelloWorld": {
-      "allocated_bytes": 4757914,
+      "allocated_bytes": 4922722,
       "description": "Hello World (4 lines)"
     },
     "Sharpy.Compiler.Benchmarks.CompilerBenchmarks.Compile_LargeFunctions": {
-      "allocated_bytes": 6371837,
+      "allocated_bytes": 7054872,
       "description": "Large Functions (73 lines)"
     }
   }

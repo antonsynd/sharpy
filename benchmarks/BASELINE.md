@@ -501,25 +501,51 @@ To view results from a PR:
 ## Allocation-Regression Gate (Phase 14 — borrowing list)
 
 The benchmarks workflow fails the build if any `CompilerBenchmarks` benchmark's **Allocated**
-column (BenchmarkDotNet `[MemoryDiagnoser]` `BytesAllocatedPerOperation`) regresses more than
-**10%** versus the checked-in baseline `benchmarks/allocation-baseline.json`. Allocated bytes are
-measured precisely (not statistically), so this is a stable, machine-independent signal — and the
-prerequisite for the object-pooling work ([#1100](https://github.com/antonsynd/sharpy/issues/1100)),
-which needs regression detection before it starts.
+column (BenchmarkDotNet `[MemoryDiagnoser]` `BytesAllocatedPerOperation`) grows more than its
+**threshold plus noise** over the checked-in baseline `benchmarks/allocation-baseline.json`. Both
+widths live in the baseline: `threshold` (10%) is the growth budget, `noise` (2%) is the
+run-to-run spread of identical code. Past the threshold but within the noise band, the run passes
+with a warning annotation; past both, it fails. The gate was the prerequisite for the
+object-pooling work ([#1100](https://github.com/antonsynd/sharpy/issues/1100)).
+
+Allocated bytes are **not exact**: the same tree measured 1.2% apart on two CI runs and up to 1.6%
+apart on two local runs, and different machines differ by more
+([#2759](https://github.com/antonsynd/sharpy/issues/2759)). So the gate is **CI only**
+([#2462](https://github.com/antonsynd/sharpy/issues/2462)): the baseline is measured on the
+GitHub-hosted runners, and `allocation_gate check` refuses to run outside GitHub Actions. To compare
+two refs locally, measure both on the same machine (two `--exporters json` runs) and compare those.
 
 The baseline is a **deliberate artifact**, treated like a `.expected.cs` snapshot: it is only
 updated on purpose and the change is reviewed. "Regenerate to green" is exactly what the gate exists
-to prevent. If an allocation increase is intentional, refresh it and review the diff:
+to prevent. If an allocation increase is intentional, refresh it from several CI runs and review the
+diff:
+
+1. Run the Benchmarks workflow (Actions → Benchmarks → Run workflow) on the branch, three times.
+   Each run's log prints every benchmark's bytes, and each uploads a `benchmark-results-N` artifact.
+2. Download the three artifacts and rewrite the baseline from their median:
 
 ```bash
-# 1) Produce a fresh JSON export (a short job is fine — allocation is precise regardless of length):
-dotnet run -c Release --project src/Sharpy.Compiler.Benchmarks -- \
-  --filter "*CompilerBenchmarks*" --job short --exporters json --artifacts ./BenchmarkResults
-
-# 2) Rewrite the baseline from that export, then review the git diff before committing:
-python -m build_tools.allocation_gate update \
-  --baseline benchmarks/allocation-baseline.json --results ./BenchmarkResults
+python -m build_tools.allocation_gate update --baseline benchmarks/allocation-baseline.json --results run1/ --results run2/ --results run3/
 ```
+
+**Current baseline** (reset 2026-11-19, [#2759](https://github.com/antonsynd/sharpy/issues/2759)).
+Each value is the per-benchmark median of three `workflow_dispatch` runs of `benchmarks.yml` at
+`c26e27a91`, all on Linux Ubuntu 26.04.1 LTS with .NET 10.0.15. The bytes were read from each run's
+`check` table, because the artifacts were not reachable from the session that set them, and written
+with the gate's own `median_allocations` and `build_baseline_document`.
+
+| benchmark | [44611771836](https://github.com/antonsynd/sharpy/actions/runs/44611771836) (EPYC 9V74, v3) | [44611790419](https://github.com/antonsynd/sharpy/actions/runs/44611790419) (EPYC 9V74, v4) | [44611808902](https://github.com/antonsynd/sharpy/actions/runs/44611808902) (Xeon 6975P-C, v4) | baseline (median) |
+|---|---:|---:|---:|---:|
+| Compile_HelloWorld | 4,922,831 | 4,922,722 | 4,871,249 | 4,922,722 |
+| Compile_Fibonacci | 5,497,542 | 5,498,609 | 5,435,697 | 5,497,542 |
+| Compile_Classes | 6,100,886 | 6,100,499 | 6,027,427 | 6,100,499 |
+| Compile_Comprehensions | 5,882,592 | 5,881,483 | 5,811,822 | 5,881,483 |
+| Compile_LargeFunctions | 7,054,872 | 7,057,562 | 6,969,799 | 7,054,872 |
+
+The reset accepts growth that is not in the code. On one machine (Linux x64, .NET 10.0.15) the five
+benchmarks are flat from `180ffeb27`, the 2026-07-25 baseline commit, through 2026-11-19. The old
+baseline came from another machine and runtime, and CI's own numbers rose with its runtime
+(10.0.13 → 10.0.15) and image (ubuntu-24.04 → 26.04).
 
 The comparison script and its pytest live in `build_tools/allocation_gate.py` and
 `build_tools/tests/test_allocation_gate.py` (run via the standard `python -m pytest build_tools/tests/`).
