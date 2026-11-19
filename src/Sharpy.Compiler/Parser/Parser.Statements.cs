@@ -1912,19 +1912,7 @@ public partial class Parser
         var nameToken = Current;
         Advance();
 
-        var name = new Ast.Identifier
-        {
-            Name = nameToken.Value,
-            // The one capture site that did not copy the escape: the BindingPattern and star
-            // captures do, and Decision 4 is that the parser copies Token.IsBacktickEscaped at every
-            // name site (#2157).
-            IsNameBacktickEscaped = nameToken.IsBacktickEscaped,
-            LineStart = nameToken.Line,
-            ColumnStart = nameToken.Column,
-            LineEnd = nameToken.Line,
-            ColumnEnd = nameToken.Column + nameToken.Length,
-            Span = GetSpanFromToken(nameToken)
-        };
+        var name = IdentifierFromToken(nameToken);
         RefuseAlternativeAfterAsBinding();
 
         Text.TextSpan? span = null;
@@ -2018,15 +2006,29 @@ public partial class Parser
     {
         var token = Current;
         Advance();
-        return new WildcardPattern
-        {
-            LineStart = token.Line,
-            ColumnStart = token.Column,
-            LineEnd = token.Line,
-            ColumnEnd = token.Column + token.Length,
-            Span = GetSpanFromToken(token)
-        };
+        return WildcardFromToken(token);
     }
+
+    /// <summary>A wildcard pattern spanning exactly <paramref name="token"/>.</summary>
+    private static WildcardPattern WildcardFromToken(Token token) => new WildcardPattern
+    {
+        LineStart = token.Line,
+        ColumnStart = token.Column,
+        LineEnd = token.Line,
+        ColumnEnd = token.Column + token.Length,
+        Span = GetSpanFromToken(token)
+    };
+
+    /// <summary>A capture pattern binding the name <paramref name="token"/> spells, spanning exactly it.</summary>
+    private static BindingPattern BindingFromToken(Token token) => new BindingPattern
+    {
+        Name = IdentifierFromToken(token),
+        LineStart = token.Line,
+        ColumnStart = token.Column,
+        LineEnd = token.Line,
+        ColumnEnd = token.Column + token.Length,
+        Span = GetSpanFromToken(token)
+    };
 
     private Pattern ParseIdentifierOrMemberAccessPattern()
     {
@@ -2094,24 +2096,7 @@ public partial class Parser
             };
         }
 
-        return new BindingPattern
-        {
-            Name = new Identifier
-            {
-                Name = token.Value,
-                IsNameBacktickEscaped = token.IsBacktickEscaped,
-                LineStart = token.Line,
-                ColumnStart = token.Column,
-                LineEnd = token.Line,
-                ColumnEnd = token.Column + token.Length,
-                Span = GetSpanFromToken(token)
-            },
-            LineStart = token.Line,
-            ColumnStart = token.Column,
-            LineEnd = token.Line,
-            ColumnEnd = token.Column + token.Length,
-            Span = GetSpanFromToken(token)
-        };
+        return BindingFromToken(token);
     }
 
 
@@ -2408,35 +2393,11 @@ public partial class Parser
                 endToken = nameToken;
                 if (IsContextualKeyword(nameToken, ContextualKeywords.Placeholder))
                 {
-                    capture = new WildcardPattern
-                    {
-                        LineStart = nameToken.Line,
-                        ColumnStart = nameToken.Column,
-                        LineEnd = nameToken.Line,
-                        ColumnEnd = nameToken.Column + nameToken.Length,
-                        Span = GetSpanFromToken(nameToken)
-                    };
+                    capture = WildcardFromToken(nameToken);
                 }
                 else
                 {
-                    capture = new BindingPattern
-                    {
-                        Name = new Identifier
-                        {
-                            Name = nameToken.Value,
-                            IsNameBacktickEscaped = nameToken.IsBacktickEscaped,
-                            LineStart = nameToken.Line,
-                            ColumnStart = nameToken.Column,
-                            LineEnd = nameToken.Line,
-                            ColumnEnd = nameToken.Column + nameToken.Length,
-                            Span = GetSpanFromToken(nameToken)
-                        },
-                        LineStart = nameToken.Line,
-                        ColumnStart = nameToken.Column,
-                        LineEnd = nameToken.Line,
-                        ColumnEnd = nameToken.Column + nameToken.Length,
-                        Span = GetSpanFromToken(nameToken)
-                    };
+                    capture = BindingFromToken(nameToken);
                 }
             }
 

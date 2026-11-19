@@ -824,7 +824,7 @@ internal static class NameResolutionRosters
 
     /// <summary>
     /// A dead AST property, measured by the renderer agent @ f1418767d: <c>case v: Later</c> is SPY0102 because the parser never
-    /// sets <c>BindingPattern.Type</c> (neither of its two constructions does, <c>Parser.Statements.cs</c>). The class stays
+    /// sets <c>BindingPattern.Type</c> (its one construction, <c>BindingFromToken</c> in <c>Parser.Statements.cs</c>, does not). The class stays
     /// <see cref="PatternClass.NamesTypeOrMember"/> since it owns the property, but there is no typed-capture cell: the generator
     /// reaches a later type's name in a capture through <c>case Later() as v:</c>. A producer appearing is red.
     /// </summary>

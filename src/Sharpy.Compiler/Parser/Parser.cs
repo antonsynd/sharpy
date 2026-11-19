@@ -840,16 +840,7 @@ public partial class Parser
         }
 
         Advance(); // consume the name
-        var name = new Ast.Identifier
-        {
-            Name = nameToken.Value,
-            IsNameBacktickEscaped = nameToken.IsBacktickEscaped,
-            LineStart = nameToken.Line,
-            ColumnStart = nameToken.Column,
-            LineEnd = nameToken.Line,
-            ColumnEnd = nameToken.Column + nameToken.Length,
-            Span = GetSpanFromToken(nameToken)
-        };
+        var name = IdentifierFromToken(nameToken);
 
         TypeAnnotation? inlineType = null;
         if (Current.Type == TokenType.Colon)

@@ -559,6 +559,21 @@ public partial class Parser
     }
 
     /// <summary>
+    /// An identifier spanning exactly <paramref name="token"/>. Decision 4 is that the parser copies
+    /// Token.IsBacktickEscaped at every name site (#2157).
+    /// </summary>
+    private static Identifier IdentifierFromToken(Token token) => new Identifier
+    {
+        Name = token.Value,
+        IsNameBacktickEscaped = token.IsBacktickEscaped,
+        LineStart = token.Line,
+        ColumnStart = token.Column,
+        LineEnd = token.Line,
+        ColumnEnd = token.Column + token.Length,
+        Span = GetSpanFromToken(token)
+    };
+
+    /// <summary>
     /// Gets a TextSpan spanning from start token to end token (inclusive).
     /// Returns null if either token doesn't have position information.
     /// </summary>
