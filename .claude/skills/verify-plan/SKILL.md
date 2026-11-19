@@ -179,7 +179,7 @@ Result:
 
 Adequacy: `CLASS` / `CELL` / `N/A` per Dimension 6. `/implement-plan` refuses a `CELL` plan for bug-fix inputs unless the user explicitly overrides or the result is `CONVERGED`; `N/A` is for plans with no bug/ICE/regression input.
 
-**Second pass** (the `## Revision log` shows a prior pass): grade fresh, then label each finding in the Verification Summary against that pass's commit (§4). **settled**: an owner ruling decides it; not raised. **declined**: the log declined it; quote its reason. **re-opened**: the log says the revision answered it, and it is still drawn. **churn**: its cure would undo the revision's answer to a prior finding; also list it under `### Unchecked Claims`, with both texts, as needing the owner's word. **new**: the rest. Labels change no stamp.
+**Second pass** (the `## Revision log` shows a prior pass): grade fresh, then label each finding in the Verification Summary against that pass's commit (§4). **settled**: an owner ruling decides it; not raised. **declined**: the log declined it; quote its reason. **re-opened**: the log says it was answered; it is still drawn. **churn**: its cure would undo the revision's answer to a prior finding; also list it under `### Unchecked Claims`, with both texts, as needing the owner's word. **new**: the rest. Labels change no stamp.
 
 ### 2. Add a Verification Summary section at the end of the plan
 

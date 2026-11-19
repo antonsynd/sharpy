@@ -310,7 +310,7 @@ Spawn when the plan's Design Decisions make claims about .NET, Roslyn, or Python
 
 ## Collect Audit Results
 
-Wait for all auditors to return. Do **not** begin remediation until every one has reported — a partial picture invites cell patches. An auditor the tier spawns (Agents 1–4) that times out, errors or returns no verdict has not audited: remove the worktrees its brief names and re-spawn it once. Failing again it is **not run**: its categories read `not audited`, never zero findings, and the round stops here, running only Cleanup steps 1, 2 and 6: no remediation, record, merge or issue close. Agent 1 at light tier is **not spawned**, not `not run` (§1b). Compile a unified list, categorized:
+Wait for all auditors to return. Do **not** begin remediation until every one has reported — a partial picture invites cell patches. An auditor the tier spawns (Agents 1–4) that times out, errors or returns no verdict has not audited: remove the worktrees its brief names and re-spawn it once. Failing again it is **not run**: its categories read `not audited`, never zero findings, and the round skips to Cleanup steps 1, 2 and 6: no remediation, record, merge or issue close. Agent 1 at light tier is **not spawned**, not `not run` (§1b). Compile a unified list, categorized:
 
 | Category | Source |
 |----------|--------|
