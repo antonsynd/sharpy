@@ -584,25 +584,9 @@ public partial class Parser
         // For interface methods, the colon and body are optional.
         // If we're parsing an interface and we see a newline instead of a colon,
         // synthesize an ellipsis body to represent the abstract method signature.
-        if (_parsingInterface && Current.Type != TokenType.Colon)
-        {
-            return CreateBodylessFunctionDef(
-                name,
-                nameToken.Line,
-                nameToken.Column,
-                nameToken.Column + nameToken.Length,
-                nameToken.IsBacktickEscaped,
-                typeParams.ToImmutableArray(),
-                parameters.ToImmutableArray(),
-                returnType,
-                startLine,
-                startColumn,
-                startToken);
-        }
-
-        // For @abstract methods in classes, the colon and body are optional.
+        // For @abstract methods in classes, the colon and body are optional too.
         // e.g., @abstract\ndef foo(self) -> int
-        if (Current.Type != TokenType.Colon && HasAbstractDecorator())
+        if (Current.Type != TokenType.Colon && (_parsingInterface || HasAbstractDecorator()))
         {
             return CreateBodylessFunctionDef(
                 name,
