@@ -1348,48 +1348,11 @@ public partial class Parser
 
         if (Current.Type == TokenType.Comma)
         {
-            if (firstDim.IsSlice)
-            {
-                // Any slice dimension → MultiAxisAccess
-                var dims = new List<SubscriptDimension> { firstDim };
-                while (Current.Type == TokenType.Comma)
-                {
-                    Advance();
-                    if (Current.Type == TokenType.RightBracket)
-                        break;
-                    dims.Add(ParseSubscriptElement());
-                }
-
-                return new MultiAxisAccess
-                {
-                    Object = null!,
-                    Dimensions = dims.ToImmutableArray(),
-                    LineStart = Current.Line,
-                    ColumnStart = Current.Column,
-                    LineEnd = Current.Line,
-                    ColumnEnd = Current.Column
-                };
-            }
-
-            // First element is a plain index — parse remaining elements
-            var elements = new List<Expression> { firstDim.Index! };
-            var hasSlice = false;
             var allDims = new List<SubscriptDimension> { firstDim };
+            ParseCommaTail(allDims, TokenType.RightBracket, static p => p.ParseSubscriptElement());
 
-            while (Current.Type == TokenType.Comma)
-            {
-                Advance();
-                if (Current.Type == TokenType.RightBracket)
-                    break;
-                var nextDim = ParseSubscriptElement();
-                allDims.Add(nextDim);
-                if (nextDim.IsSlice)
-                    hasSlice = true;
-                else
-                    elements.Add(nextDim.Index!);
-            }
-
-            if (hasSlice)
+            // Any slice dimension → MultiAxisAccess
+            if (allDims.Exists(static d => d.IsSlice))
             {
                 return new MultiAxisAccess
                 {
@@ -1403,6 +1366,7 @@ public partial class Parser
             }
 
             // All plain indices — keep TupleLiteral behavior (generic args, dict tuple keys)
+            var elements = allDims.ConvertAll(static d => d.Index!);
             var tuple = new TupleLiteral
             {
                 Elements = elements.ToImmutableArray(),

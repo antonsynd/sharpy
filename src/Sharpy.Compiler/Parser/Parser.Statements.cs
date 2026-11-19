@@ -331,17 +331,7 @@ public partial class Parser
         Expect(TokenType.LeftParen);
 
         var elements = new List<Expression> { ParseForTargetElement() };
-        bool trailingComma = false;
-        while (Current.Type == TokenType.Comma)
-        {
-            Advance();
-            if (Current.Type == TokenType.RightParen)
-            {
-                trailingComma = true;
-                break;  // trailing comma
-            }
-            elements.Add(ParseForTargetElement());
-        }
+        bool trailingComma = ParseCommaTail(elements, TokenType.RightParen, static p => p.ParseForTargetElement());
 
         Expect(TokenType.RightParen);
 
@@ -2342,13 +2332,7 @@ public partial class Parser
         if (Current.Type != TokenType.RightBracket)
         {
             elements.Add(ParseListElementPattern(ref sawStar));
-            while (Current.Type == TokenType.Comma)
-            {
-                Advance();
-                if (Current.Type == TokenType.RightBracket)
-                    break;
-                elements.Add(ParseListElementPattern(ref sawStar));
-            }
+            ParseCommaTail(elements, TokenType.RightBracket, p => p.ParseListElementPattern(ref sawStar));
         }
 
         var endToken = Current;

@@ -719,6 +719,22 @@ public partial class Parser
     }
 
     /// <summary>
+    /// Parses the <c>, elem</c> tail of a comma list into <paramref name="into"/>, stopping before
+    /// <paramref name="closer"/> (not consumed); returns true when the list ended in a trailing comma.
+    /// </summary>
+    private bool ParseCommaTail<T>(List<T> into, TokenType closer, Func<Parser, T> parse)
+    {
+        while (Current.Type == TokenType.Comma)
+        {
+            Advance();
+            if (Current.Type == closer)
+                return true;
+            into.Add(parse(this));
+        }
+        return false;
+    }
+
+    /// <summary>
     /// Checks if _pendingDecorators contains a decorator named "abstract".
     /// Avoids LINQ to prevent ImmutableArray boxing allocation.
     /// </summary>
