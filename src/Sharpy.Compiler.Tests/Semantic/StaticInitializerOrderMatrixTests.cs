@@ -16,7 +16,7 @@ namespace Sharpy.Compiler.Tests.Semantic;
 /// sibling declared EARLIER see its initialized value, in every spelling (bare, qualified <c>Host.x</c>, alias
 /// <c>H.x</c>) and every host (class, <c>@dataclass</c>, struct). Since plan-775c50 (rule N3, D9) the generator is
 /// N3's warm control: a FORWARD read of an ordered sibling runs too, because the sibling is initialized before its
-/// first read (SPY0618, P75's forward refusal, is retired), and a read of the reader ITSELF is a value that reads
+/// first read (SPY0618's forward-read rule, P75's refusal, is retired), and a read of the reader ITSELF is a value that reads
 /// itself on every run, the cycle graph's SPY0278 (D8); a compile-time <c>const</c> is order-free in every spelling
 /// (#1795). P75's source-order layout stays as the sweep order.
 ///
@@ -26,7 +26,7 @@ namespace Sharpy.Compiler.Tests.Semantic;
 /// spelling — a self cell has no sibling, so it is not multiplied by the read axis; ids <c>static-init-order ×
 /// &lt;host&gt; × &lt;reader&gt; × &lt;read&gt; × &lt;spelling&gt; × &lt;order&gt;</c>. Beside the generated grid,
 /// seventeen cells change one axis each: a later non-literal const SHADOWED by a module binding (R-KJ: a refusal, N2's
-/// code once P78 lands — #2423 C08; allowlisted until then), the NESTED receiver (<c>Outer.Inner.s</c>, earlier and forward), a later
+/// code once P78 lands — #2423 C08; refused by the narrowed SPY0618 until then), the NESTED receiver (<c>Outer.Inner.s</c>, earlier and forward), a later
 /// method read as a method GROUP (admitted: nothing runs), the INTERFACE host (a non-literal const read through its name, earlier and
 /// forward), the GENERIC host (<c>class Host[T]</c> read through the constructed reference
 /// <c>Host[int].x</c>, earlier and forward, a <c>@static</c> property and a <c>@static</c> field), and the two SPLIT
