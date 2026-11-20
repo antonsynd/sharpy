@@ -1,5 +1,12 @@
 // Generated from src/Sharpy.Stdlib/spy/os_module.spy — do not edit directly.
 // To regenerate: sharpyc emit csharp src/Sharpy.Stdlib/spy/os_module.spy -t library -n Sharpy
+// Portions of this file are a Sharpy port of CPython's Lib/os.py (CPython 3.15): makedirs (the
+// head/tail recursion and the curdir check) and walk's stack order (pop a directory, yield it, push
+// its subdirectories reversed).
+// Copyright (c) 2001 Python Software Foundation; All Rights Reserved
+// Licensed under the PSF License Version 2; see THIRD-PARTY-NOTICES.txt at the repository root.
+// Changes: translated from Python to Sharpy over System.IO; no mode or parent_mode, exist_ok is
+// checked before mkdir, and walk is top-down only with no onerror or followlinks.
 #nullable enable
 
 using System;

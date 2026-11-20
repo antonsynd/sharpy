@@ -136,6 +136,13 @@ for entry in "${MODULES[@]}"; do
     header_cmd="sharpyc emit csharp src/Sharpy.Stdlib/spy/${emitted_name}.spy -t library -n Sharpy"
     header="// Generated from src/Sharpy.Stdlib/spy/${emitted_name}.spy — do not edit directly.
 // To regenerate: $header_cmd"
+    # The .spy's leading `#` comment block (a CPython licence notice, #2602) is carried into the
+    # generated C# as `//` lines: the compiler drops comments, and the shipped C# is the derived work.
+    spy_notice="$(awk '/^#/ { sub(/^#/, "//"); print; next } { exit }' "$SPY_DIR/${emitted_name}.spy")"
+    if [[ -n "$spy_notice" ]]; then
+        header="$header
+$spy_notice"
+    fi
 
     # Post-process: normalize CRLF→LF, strip trailing whitespace, strip [SharpyModule]
     # (the hand-written partial carries the python-named one), rename the module in every

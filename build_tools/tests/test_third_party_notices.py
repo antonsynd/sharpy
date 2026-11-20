@@ -12,10 +12,19 @@ PyFormat.cs after an audit). This test closes the gap mechanically:
   header lines and is listed in the notices file, unless it is in ``EXEMPT`` with a reason;
 * every file the notices list exists and carries the header, and every file carrying the header is
   listed (the two places cannot drift apart);
-* the licence text at the end of the notices file is the CPython 3.15.2 ``LICENSE.txt``, byte for byte.
+* the licence text at the end of the notices file is the CPython 3.15.2 ``LICENSE.txt``, byte for byte;
+* every listed file has a numbered entry (derived portions, clause-3 changes), and every entry names
+  only listed files;
+* ``STDLIB_CENSUS`` holds the #2602 audit's verdict for every Sharpy.Stdlib module with a CPython
+  namesake: its keys are exactly the namesake modules on disk (a new module is red until someone reads
+  it against its CPython source and records a verdict), the files in a ``port`` module that carry the
+  header are exactly the files its row names (a lost header and an extra one are both red), and a
+  ``behaviour`` module has none.
 
-The guard only catches files that declare themselves ports; a port that makes no such claim (a
-structural port with no comment saying so) needs the #2602 audit, not this test.
+The claim scan only catches files that declare themselves ports; a port that makes no such claim (a
+structural port with no comment saying so) is caught by the census, which forces a reading of each new
+module. A Core file is not a module and is not in the census: its notice rests on the claim scan and on
+review.
 
 A file that only follows CPython's behaviour should say so ("matching", "the rule of"), not "port":
 the word is a licence claim. Do not reword a comment to get past this test if the code is a port.
@@ -25,8 +34,9 @@ from __future__ import annotations
 
 import hashlib
 import re
+import sys
 from pathlib import Path
-from typing import Dict, Iterable, List, Set
+from typing import Dict, FrozenSet, Iterable, List, Set, Tuple
 
 import pytest
 
@@ -245,3 +255,374 @@ def test_licence_text_is_the_cpython_file():
     data = NOTICES.read_bytes()
     tail = b"".join(data.splitlines(keepends=True)[-LICENSE_LINES:])
     assert hashlib.sha256(tail).hexdigest() == LICENSE_SHA256
+
+
+# ---- Numbered entries: every listed file has its portions and changes written down ----
+
+_ENTRY_START = re.compile(r"^\d+\. ")
+_ENTRY_PATH = re.compile(r"src/\S+?\.(?:cs|spy)\b")
+
+
+def entry_files(notices: str) -> Set[str]:
+    """The paths named in the headings of the numbered entries (a heading runs to its blank line)."""
+    named: Set[str] = set()
+    heading: List[str] = []
+    for line in notices.splitlines():
+        if _ENTRY_START.match(line):
+            heading = [line]
+        elif heading and line.strip():
+            heading.append(line)
+        elif heading:
+            named.update(_ENTRY_PATH.findall(" ".join(heading)))
+            heading = []
+    return named
+
+
+def test_every_listed_file_has_an_entry():
+    notices = NOTICES.read_text(encoding="utf-8")
+    listed = listed_files(notices)
+    named = entry_files(notices)
+    problems = [
+        f"{rel}: listed but has no numbered entry" for rel in sorted(listed - named)
+    ]
+    problems += [
+        f"{rel}: has an entry but is not listed" for rel in sorted(named - listed)
+    ]
+    assert not problems, "\n".join(problems)
+
+
+# ---- The #2602 census: every Stdlib module with a CPython namesake, read against its source ----
+
+STDLIB = "src/Sharpy.Stdlib"
+
+# Module directory -> the #2602 audit's verdict. "port": code translated from CPython (same
+# decomposition, names, constants, regexes or tables), so the module carries the PSF notice (header
+# lines + a THIRD-PARTY-NOTICES.txt entry). "behaviour": the same semantics, independently written
+# (over .NET, or a different algorithm); matching CPython's error messages or output format alone is
+# behaviour. Read against CPython 3.15.2's Lib (and 3.14.0's C sources and Doc/) in November 2026.
+# A new module is red here until it is read the same way: add its row, never a blanket default.
+#
+# A port row names its exact headed files (relative to src/Sharpy.Stdlib), and the files in the module
+# that carry the PSF header must be exactly that set: a lost header (a ported file that drifted out of
+# the notice) and an extra one (a behaviour file in a port module, headed by mistake) are both red. A
+# behaviour row's set is empty. What is enforced is that equality, nothing more: a file without the
+# header is not seen, so a new unheaded file in a port module stays green, and so does a row edited
+# together with its header. The row is the audit's record; review reads it.
+BEHAVIOUR: Tuple[str, FrozenSet[str]] = ("behaviour", frozenset())
+
+
+def port(*files: str) -> Tuple[str, FrozenSet[str]]:
+    return ("port", frozenset(files))
+
+
+STDLIB_CENSUS: Dict[str, Tuple[str, FrozenSet[str]]] = {
+    "Argparse": BEHAVIOUR,  # argparse.py: own parser and help layout
+    "Base64": BEHAVIOUR,  # base64.py: System.Convert + textbook base32/base85 loops
+    "Bisect": BEHAVIOUR,  # bisect.py: textbook binary search
+    "Calendar": BEHAVIOUR,  # calendar.py: System.DateTime; HTMLCalendar emits CPython's markup
+    "Collections": BEHAVIOUR,  # collections/__init__.py: wrappers over Sharpy Dict/List
+    # colorsys.py: every function, its names and YIQ coefficients
+    "Colorsys": port("Colorsys/Colorsys.cs"),
+    "Configparser": BEHAVIOUR,  # configparser.py: own line parser; exception messages match
+    "Csv": BEHAVIOUR,  # _csv.c: own quote state machine
+    # _datetimemodule.c: DatetimeIso.cs (fromisoformat parsers)
+    "Datetime": port("Datetime/DatetimeIso.cs"),
+    # difflib.py: SequenceMatcher, Differ, the diff functions
+    "Difflib": port(
+        "Difflib/SequenceMatcher.cs",
+        "Difflib/Differ.cs",
+        "Difflib/DifflibFunctions.cs",
+    ),
+    "Email": BEHAVIOUR,  # email package: own header/body split
+    # fnmatch.py: translate's bracket scan (spy source + generated C#)
+    "Fnmatch": port("Fnmatch/FnmatchModule.cs"),
+    # fractions.py: Fraction.Format.cs, Fraction.cs limit_denominator
+    "Fractions": port("Fractions/Fraction.Format.cs", "Fractions/Fraction.cs"),
+    "Functools": BEHAVIOUR,  # functools.py: reduce loop, own LRU cache
+    "Glob": BEHAVIOUR,  # glob.py: Directory enumeration + own pattern regex
+    "Gzip": BEHAVIOUR,  # gzip.py: System.IO.Compression
+    "Hashlib": BEHAVIOUR,  # hashlib.py: System.Security.Cryptography
+    "Heapq": BEHAVIOUR,  # heapq.py: textbook sift loops; merge is an own k-way heap
+    "Hmac": BEHAVIOUR,  # hmac.py: System.Security.Cryptography
+    "Html": BEHAVIOUR,  # html/parser.py: own scanner, WebUtility.HtmlDecode
+    "Http": BEHAVIOUR,  # http/: HttpClient; HTTPStatus phrases are RFC text
+    "Io": BEHAVIOUR,  # io.py: StringIO over StringBuilder
+    # ipaddress.py: __format__, _private_networks tables (borderline)
+    "Ipaddress": port(
+        "Ipaddress/AddressFormat.cs",
+        "Ipaddress/IPv4Address.cs",
+        "Ipaddress/IPv6Address.cs",
+    ),
+    # Doc/library/itertools.rst: combinatorics equivalents (borderline)
+    "Itertools": port("Itertools/Itertools.cs"),
+    "Json": BEHAVIOUR,  # json/: own recursive-descent parser and emitter
+    "Logging": BEHAVIOUR,  # logging/: minimal Logger
+    "Math": BEHAVIOUR,  # mathmodule.c: System.Math; fsum is Kahan, not msum
+    # os.py: makedirs, walk's stack order (borderline)
+    "Os": port("Os/Os.cs"),
+    "Pathlib": BEHAVIOUR,  # pathlib/: System.IO.Path
+    "Platform": BEHAVIOUR,  # platform.py: RuntimeInformation
+    "Pprint": BEHAVIOUR,  # pprint.py: own reflection-based layout
+    "Random": BEHAVIOUR,  # random.py: System.Random, not Mersenne Twister
+    "Re": BEHAVIOUR,  # re/: System.Text.RegularExpressions + pattern translation
+    "Secrets": BEHAVIOUR,  # secrets.py: RandomNumberGenerator
+    "Shlex": BEHAVIOUR,  # shlex.py: own POSIX split state machine
+    # shutil.py: move, _basename, _destinsrc (borderline)
+    "Shutil": port("Shutil/Shutil.cs"),
+    "Socket": BEHAVIOUR,  # socketmodule.c: System.Net.Sockets
+    "Sqlite3": BEHAVIOUR,  # _sqlite: Microsoft.Data.Sqlite
+    "Statistics": BEHAVIOUR,  # statistics.py: naive float sums, not exact _sum
+    "String": BEHAVIOUR,  # string/: the constants only
+    "Struct": BEHAVIOUR,  # _struct.c: own format parser over BinaryPrimitives
+    "Subprocess": BEHAVIOUR,  # subprocess.py: System.Diagnostics.Process
+    "Sys": BEHAVIOUR,  # sys: Environment
+    "Tarfile": BEHAVIOUR,  # tarfile.py: System.Formats.Tar
+    "Tempfile": BEHAVIOUR,  # tempfile.py: Path.GetRandomFileName
+    "Textwrap": BEHAVIOUR,  # textwrap.py: own greedy wrap, not TextWrapper
+    # threading.py: Barrier.cs (ThreadRegistry.cs is behaviour)
+    "Threading": port("Threading/Barrier.cs"),
+    "Time": BEHAVIOUR,  # timemodule.c: Stopwatch/DateTime
+    "Unittest": BEHAVIOUR,  # unittest/: xUnit-backed assertions
+    # urllib/parse.py: uses_netloc/uses_params tables (borderline)
+    "Urllib": port("Urllib/UrllibModule.cs"),
+    "Uuid": BEHAVIOUR,  # uuid.py: RFC 4122 over Guid/MD5/SHA1
+    "Xml": BEHAVIOUR,  # xml/etree/: System.Xml.Linq
+    "Zipfile": BEHAVIOUR,  # zipfile/: System.IO.Compression.ZipArchive
+    "Zlib": BEHAVIOUR,  # zlibmodule.c: System.IO.Compression; textbook CRC32/Adler-32
+    "Zoneinfo": BEHAVIOUR,  # zoneinfo/: TimeZoneInfo
+}
+VERDICTS = {"port", "behaviour"}
+
+
+def stdlib_modules(root: Path) -> List[str]:
+    """Module directories under src/Sharpy.Stdlib: a directory holding C# source (not bin/obj)."""
+    base = root / STDLIB
+    if not base.is_dir():
+        return []
+    found = []
+    for child in sorted(base.iterdir()):
+        if not child.is_dir() or child.name in ("bin", "obj"):
+            continue
+        if any(
+            p.is_file() and "bin" not in p.parts and "obj" not in p.parts
+            for p in child.rglob("*.cs")
+        ):
+            found.append(child.name)
+    return found
+
+
+def namesake_modules(root: Path, stdlib_names: Iterable[str]) -> Set[str]:
+    names = set(stdlib_names)
+    return {m for m in stdlib_modules(root) if m.lower() in names}
+
+
+def census_problems(
+    root: Path,
+    census: Dict[str, Tuple[str, FrozenSet[str]]],
+    listed: Set[str],
+    stdlib_names: Iterable[str],
+) -> List[str]:
+    problems = []
+    on_disk = namesake_modules(root, stdlib_names)
+    for module in sorted(on_disk - set(census)):
+        problems.append(
+            f"{STDLIB}/{module}: a CPython namesake with no STDLIB_CENSUS row; read it against "
+            "CPython's source and record 'port' or 'behaviour' (#2602)"
+        )
+    for module in sorted(set(census) - on_disk):
+        problems.append(
+            f"{STDLIB}/{module}: in STDLIB_CENSUS but not a namesake module on disk; delete the row"
+        )
+    stdlib_root = root / STDLIB
+    for module, row in sorted(census.items()):
+        if not (
+            isinstance(row, tuple)
+            and len(row) == 2
+            and isinstance(row[1], (set, frozenset))
+            and all(isinstance(rel, str) and rel for rel in row[1])
+        ):
+            problems.append(
+                f"{module}: row {row!r} is not (verdict, set of file paths); "
+                "use BEHAVIOUR or port(...)"
+            )
+            continue
+        verdict, recorded = row
+        if verdict not in VERDICTS:
+            problems.append(
+                f"{module}: verdict {verdict!r} is not one of {sorted(VERDICTS)}"
+            )
+            continue
+        if verdict == "port" and not recorded:
+            problems.append(
+                f"{module}: verdict 'port' but the row names no headed file"
+            )
+        if verdict == "behaviour" and recorded:
+            problems.append(
+                f"{module}: verdict 'behaviour' but the row names files "
+                f"{sorted(recorded)}; a behaviour row's set is empty"
+            )
+            continue
+        for rel in sorted(recorded):
+            if Path(rel).parts[0] != module:
+                problems.append(
+                    f"{module}: the row names {rel}, which is not in the module"
+                )
+        if module not in on_disk:
+            continue
+        headed = {
+            path.relative_to(stdlib_root).as_posix()
+            for path in sources(root)
+            if stdlib_root in path.parents
+            and path.relative_to(stdlib_root).parts[0] == module
+            and _has_header(path.read_text(encoding="utf-8"))
+        }
+        if verdict == "behaviour":
+            if headed:
+                problems.append(
+                    f"{STDLIB}/{module}: verdict 'behaviour' but "
+                    f"{', '.join(sorted(headed))} carries the PSF header; the verdict or the "
+                    "header is stale"
+                )
+            continue
+        for rel in sorted(recorded - headed):
+            problems.append(
+                f"{STDLIB}/{rel}: in {module}'s port set but carries no PSF header (lost "
+                "header, or a stale row)"
+            )
+        for rel in sorted(headed - recorded):
+            problems.append(
+                f"{STDLIB}/{rel}: carries the PSF header but is not in {module}'s port set; "
+                "record it if it is a port, else drop the header"
+            )
+        for rel in sorted(recorded | headed):
+            if f"{STDLIB}/{rel}" not in listed:
+                problems.append(
+                    f"{STDLIB}/{rel}: in a 'port' module but not listed in "
+                    "THIRD-PARTY-NOTICES.txt"
+                )
+    return problems
+
+
+def _stdlib_module_names() -> Set[str]:
+    names = getattr(sys, "stdlib_module_names", None)
+    if names is None:
+        pytest.skip(
+            "sys.stdlib_module_names needs Python 3.10+; the oracle is CPython 3.15"
+        )
+    return set(names)
+
+
+def test_census_positive_control():
+    # The census sees the module tree: port modules and a behaviour module are all on disk.
+    on_disk = namesake_modules(REPO, _stdlib_module_names())
+    assert {"Colorsys", "Difflib", "Datetime", "Bisect"} <= on_disk
+
+
+def test_stdlib_census_is_complete_and_honoured():
+    listed = listed_files(NOTICES.read_text(encoding="utf-8"))
+    problems = census_problems(REPO, STDLIB_CENSUS, listed, _stdlib_module_names())
+    assert not problems, "\n".join(problems)
+
+
+def _module(tmp_path: Path, name: str, text: str, file: str = "") -> None:
+    path = tmp_path / STDLIB / name / (file or f"{name}.cs")
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(text, encoding="utf-8")
+
+
+_HEADED = "".join(f"// {line}\n" for line in HEADER_LINES) + "namespace Sharpy { }\n"
+_PLAIN = "namespace Sharpy { }\n"
+_PICKLE = "Pickle/Pickle.cs"
+_LISTED = {f"{STDLIB}/{_PICKLE}"}
+
+
+def test_census_refuses_an_unread_namesake(tmp_path: Path):
+    _module(tmp_path, "Pickle", _PLAIN)
+    _module(tmp_path, "Grapheme", _PLAIN)  # no CPython namesake: needs no row
+    problems = census_problems(tmp_path, {}, set(), {"pickle"})
+    assert len(problems) == 1 and "Pickle: a CPython namesake" in problems[0], problems
+
+
+def test_census_refuses_a_stale_row(tmp_path: Path):
+    problems = census_problems(tmp_path, {"Pickle": BEHAVIOUR}, set(), {"pickle"})
+    assert len(problems) == 1 and "not a namesake module on disk" in problems[0], (
+        problems
+    )
+
+
+def test_census_refuses_a_port_row_with_no_files(tmp_path: Path):
+    _module(tmp_path, "Pickle", _PLAIN)
+    problems = census_problems(tmp_path, {"Pickle": port()}, set(), {"pickle"})
+    assert len(problems) == 1 and "names no headed file" in problems[0], problems
+
+
+def test_census_refuses_a_behaviour_row_with_files(tmp_path: Path):
+    _module(tmp_path, "Pickle", _PLAIN)
+    census = {"Pickle": ("behaviour", frozenset({_PICKLE}))}
+    problems = census_problems(tmp_path, census, set(), {"pickle"})
+    assert len(problems) == 1 and "set is empty" in problems[0], problems
+
+
+def test_census_refuses_a_row_naming_another_module(tmp_path: Path):
+    _module(tmp_path, "Pickle", _HEADED)
+    census = {"Pickle": port(_PICKLE, "Shelve/Shelve.cs")}
+    problems = census_problems(tmp_path, census, _LISTED, {"pickle"})
+    assert any("not in the module" in p for p in problems), problems
+
+
+def test_census_refuses_an_unnoticed_port(tmp_path: Path):
+    _module(tmp_path, "Pickle", _PLAIN)
+    census = {"Pickle": port(_PICKLE)}
+    problems = census_problems(tmp_path, census, _LISTED, {"pickle"})
+    assert len(problems) == 1 and "carries no PSF header" in problems[0], problems
+
+
+def test_census_refuses_a_lost_header_in_a_multi_file_port(tmp_path: Path):
+    # The per-module census missed this: one file of a port module losing its header (and its
+    # notice lines) while a sibling keeps one.
+    _module(tmp_path, "Pickle", _HEADED)
+    _module(tmp_path, "Pickle", _PLAIN, "Unpickler.cs")
+    census = {"Pickle": port(_PICKLE, "Pickle/Unpickler.cs")}
+    problems = census_problems(tmp_path, census, _LISTED, {"pickle"})
+    assert any(
+        "Pickle/Unpickler.cs: in Pickle's port set but carries no PSF header" in p
+        for p in problems
+    ), problems
+
+
+def test_census_refuses_an_extra_header_in_a_port_module(tmp_path: Path):
+    _module(tmp_path, "Pickle", _HEADED)
+    _module(tmp_path, "Pickle", _HEADED, "Registry.cs")
+    listed = _LISTED | {f"{STDLIB}/Pickle/Registry.cs"}
+    problems = census_problems(tmp_path, {"Pickle": port(_PICKLE)}, listed, {"pickle"})
+    assert len(problems) == 1 and "not in Pickle's port set" in problems[0], problems
+
+
+def test_census_refuses_an_unlisted_port(tmp_path: Path):
+    _module(tmp_path, "Pickle", _HEADED)
+    problems = census_problems(tmp_path, {"Pickle": port(_PICKLE)}, set(), {"pickle"})
+    assert len(problems) == 1 and "not listed" in problems[0], problems
+
+
+def test_census_refuses_a_headed_behaviour_module(tmp_path: Path):
+    _module(tmp_path, "Pickle", _HEADED)
+    problems = census_problems(tmp_path, {"Pickle": BEHAVIOUR}, _LISTED, {"pickle"})
+    assert len(problems) == 1 and "verdict 'behaviour'" in problems[0], problems
+
+
+def test_census_accepts_a_noticed_port(tmp_path: Path):
+    _module(tmp_path, "Pickle", _HEADED)
+    _module(
+        tmp_path, "Pickle", _PLAIN, "Registry.cs"
+    )  # a behaviour file in a port module
+    census = {"Pickle": port(_PICKLE)}
+    assert census_problems(tmp_path, census, _LISTED, {"pickle"}) == []
+
+
+@pytest.mark.parametrize("row", ["port", port(""), ("port",), ("port", [_PICKLE])])
+def test_census_names_a_malformed_row(tmp_path: Path, row):
+    _module(tmp_path, "Pickle", _HEADED)
+    problems = census_problems(tmp_path, {"Pickle": row}, _LISTED, {"pickle"})
+    assert (
+        len(problems) == 1 and "is not (verdict, set of file paths)" in problems[0]
+    ), problems

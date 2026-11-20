@@ -1,3 +1,10 @@
+// Portions of this file are a C# port of CPython's Lib/fractions.py (CPython 3.15): the
+// continued-fraction loop of Fraction.limit_denominator and its error message.
+// Copyright (c) 2001 Python Software Foundation; All Rights Reserved
+// Licensed under the PSF License Version 2; see THIRD-PARTY-NOTICES.txt at the repository root.
+// Changes: translated from Python to C# over System.Numerics.BigInteger; the two bounds are compared
+// by cross-multiplied distances instead of CPython's single 2*d*(q0+k*q1) test.
+
 using System;
 using System.Globalization;
 using System.Numerics;

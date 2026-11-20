@@ -1,3 +1,12 @@
+// Portions of this file are a C# port of CPython's Lib/ipaddress.py (CPython 3.15):
+// _BaseAddress.__format__ (the '(#?)(_?)([xbnX])' grammar, the 'n' default per version and the
+// full-width zero padding).
+// Copyright (c) 2001 Python Software Foundation; All Rights Reserved
+// Licensed under the PSF License Version 2; see THIRD-PARTY-NOTICES.txt at the repository root.
+// Changes: translated from Python to C#; the regular expression is a hand-written full-match
+// scanner, the digits and the '_' grouping are produced directly instead of through
+// format(int, spec), and a refused spec is Sharpy's TypeError.
+
 using System;
 using System.Numerics;
 using System.Text;

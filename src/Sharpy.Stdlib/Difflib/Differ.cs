@@ -1,3 +1,12 @@
+// Portions of this file are a C# port of CPython's Lib/difflib.py (CPython 3.15): Differ.compare,
+// _dump, _fancy_replace (its 0.74/0.75 cutoffs, the eqi/eqj fallback and the intraline tags) and
+// _fancy_helper.
+// Copyright (c) 2001 Python Software Foundation; All Rights Reserved
+// Licensed under the PSF License Version 2; see THIRD-PARTY-NOTICES.txt at the repository root.
+// Changes: translated from Python to C# iterators; lines are compared as char sequences through the
+// generic SequenceMatcher, and the '?' guide lines are emitted directly (no _qformat whitespace
+// keeping).
+
 using System;
 using System.Collections.Generic;
 using System.Linq;

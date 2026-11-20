@@ -1,5 +1,12 @@
 // Generated from src/Sharpy.Stdlib/spy/itertools.spy — do not edit directly.
 // To regenerate: sharpyc emit csharp src/Sharpy.Stdlib/spy/itertools.spy -t library -n Sharpy
+// Portions of this file are a Sharpy port of the pure-Python equivalents in CPython's
+// Doc/library/itertools.rst (CPython 3.14): combinations, permutations (its indices/cycles
+// algorithm) and combinations_with_replacement.
+// Copyright (c) 2001 Python Software Foundation; All Rights Reserved
+// Licensed under the PSF License Version 2; see THIRD-PARTY-NOTICES.txt at the repository root.
+// Changes: translated from Python to Sharpy with explicit while loops; each result is a list, and
+// all results are collected before the first is yielded.
 #nullable enable
 
 using System;

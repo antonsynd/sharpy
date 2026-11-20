@@ -1,3 +1,11 @@
+// Portions of this file are taken from CPython's Lib/ipaddress.py (CPython 3.12, unchanged in
+// 3.15): the _IPv4Constants tables _private_networks, _private_networks_exceptions and
+// _public_network, and the is_private/is_global rule built on them.
+// Copyright (c) 2001 Python Software Foundation; All Rights Reserved
+// Licensed under the PSF License Version 2; see THIRD-PARTY-NOTICES.txt at the repository root.
+// Changes: the networks are written as (uint network, prefix) pairs and tested by masking instead
+// of being IPv4Network objects.
+
 using System;
 using System.Net;
 using System.Net.Sockets;

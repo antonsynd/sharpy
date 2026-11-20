@@ -1,3 +1,11 @@
+// Portions of this file are taken from CPython's Lib/ipaddress.py (CPython 3.12, unchanged in
+// 3.15): the _IPv6Constants tables _private_networks and _private_networks_exceptions, and the
+// is_private rule built on them.
+// Copyright (c) 2001 Python Software Foundation; All Rights Reserved
+// Licensed under the PSF License Version 2; see THIRD-PARTY-NOTICES.txt at the repository root.
+// Changes: the networks are written as (byte[] network, prefix) pairs and tested by masking
+// instead of being IPv6Network objects.
+
 using System;
 using System.Net;
 using System.Net.Sockets;

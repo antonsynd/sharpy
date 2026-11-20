@@ -1,3 +1,13 @@
+// Portions of this file are a C# port of CPython's Python/formatter_unicode.c (CPython 3.14):
+// parse_internal_render_format_spec and get_integer, and the order and text of the refusals of
+// format_string_internal, format_long_internal, format_complex_internal and the per-type
+// __format__ switches (unknown format code, sign, alternate form, precision, zero padding, '=').
+// Copyright (c) 2001 Python Software Foundation; All Rights Reserved
+// Licensed under the PSF License Version 2; see THIRD-PARTY-NOTICES.txt at the repository root.
+// Changes: translated from C to C#; the parse returns a PyFormatSpec value or a FormatSpecError
+// instead of filling an InternalFormatSpec and setting a Python exception, the grouping x type
+// check runs in Validate, and the fractional-part separators are not supported.
+
 using System;
 using System.Globalization;
 
@@ -69,7 +79,7 @@ namespace Sharpy
     /// <c>[[fill]align][sign][z][#][0][width][grouping][.precision][type]</c> (#1984, R-BX).
     /// <see cref="PyFormat.Apply(object, string)"/> renders from the spec this returns, and the
     /// compiler's static twin calls the same <see cref="Validate"/> — so a rule lives in exactly one
-    /// place. The parse and the rule order are CPython 3.12's <c>Objects/stringlib/unicode_format.h</c>
+    /// place. The parse and the rule order are CPython 3.14's <c>Objects/stringlib/unicode_format.h</c>
     /// / <c>Python/formatter_unicode.c</c>: <c>parse_internal_render_format_spec</c>, then the
     /// per-type <c>__format__</c> switch, then <c>format_string_internal</c> /
     /// <c>format_long_internal</c>.
