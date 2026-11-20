@@ -251,7 +251,7 @@ public partial class NameResolutionDifferentialTests
         var expected = ExpectStore(s, outer, declared, outerValue, reads);
         return new NameCell
         {
-            Id = CellId("store", s, $"outer={outer}", body, declared ? "global" : "no-decl", order, laterRead ? "later-read" : "no-read", insideIf ? "inside-if" : null),
+            Key = CellId("store", s, $"outer={outer}", body, declared ? "global" : "no-decl", order, laterRead ? "later-read" : "no-read", insideIf ? "inside-if" : null),
             Family = Family.Store,
             Source = WithHelpers(Join(lines) + MainBlock(main.ToArray())),
             Tag = expected.Tag,
@@ -294,7 +294,7 @@ public partial class NameResolutionDifferentialTests
         var expected = ExpectStore(s, BindingKind.EnclosingLocal, declared, 13, laterRead: true);
         return new NameCell
         {
-            Id = CellId("store", s, "outer=EnclosingLocal", body, declared ? "nonlocal" : "no-decl", insideIf ? "inside-if" : null),
+            Key = CellId("store", s, "outer=EnclosingLocal", body, declared ? "nonlocal" : "no-decl", insideIf ? "inside-if" : null),
             Family = Family.Store,
             Source = WithHelpers(Join(lines) + MainBlock(call.ToArray())),
             Tag = expected.Tag,
@@ -321,7 +321,7 @@ public partial class NameResolutionDifferentialTests
         int value = s == StoreSpelling.Augmented ? 14 : 15;
         return new NameCell
         {
-            Id = CellId("store", s, "outer=LocalVar", body, enclosingBlock ? "enclosing-block" : "same-block"),
+            Key = CellId("store", s, "outer=LocalVar", body, enclosingBlock ? "enclosing-block" : "same-block"),
             Family = Family.Store,
             Source = WithHelpers(Join(host) + MainBlock(call.ToArray())),
             Tag = SharpyTag.MustRun,
@@ -431,7 +431,7 @@ public partial class NameResolutionDifferentialTests
                 var main = new List<string>(call) { "print(y)" };
                 yield return new NameCell
                 {
-                    Id = CellId("store", "declaration", "global-creates-binding", s, body),
+                    Key = CellId("store", "declaration", "global-creates-binding", s, body),
                     Family = Family.Store,
                     Source = Join(host) + MainBlock(main.ToArray()),
                     Tag = SharpyTag.Unruled,
@@ -459,7 +459,7 @@ public partial class NameResolutionDifferentialTests
         var value = enclosing ? 13 : 5;
         return new NameCell
         {
-            Id = CellId("store", "lambda-walrus", $"outer={outer}"),
+            Key = CellId("store", "lambda-walrus", $"outer={outer}"),
             Family = Family.Store,
             Source = Join(lines) + MainBlock(call.ToArray()),
             Tag = SharpyTag.MustRefuse,
@@ -480,7 +480,7 @@ public partial class NameResolutionDifferentialTests
         var moduleOuter = outer == BindingKind.ModuleVar;
         return new NameCell
         {
-            Id = CellId("store", "walrus-in-comprehension", $"outer={outer}", body),
+            Key = CellId("store", "walrus-in-comprehension", $"outer={outer}", body),
             Family = Family.Store,
             Source = Join(lines) + MainBlock(call.ToArray()),
             Tag = SharpyTag.MustRefuse,
@@ -500,7 +500,7 @@ public partial class NameResolutionDifferentialTests
         {
             NameCell Cell(string label, IReadOnlyList<string> lines, string[] main, Expected e, StoreForm form) => new()
             {
-                Id = CellId("store", "builtin", label, name),
+                Key = CellId("store", "builtin", label, name),
                 Family = Family.Store,
                 Source = Join(lines) + MainBlock(main),
                 Tag = e.Tag,
@@ -614,7 +614,7 @@ public partial class NameResolutionDifferentialTests
             : supportText + mainBlock + declText;
         return new NameCell
         {
-            Id = CellId("typemember", kind, label, order == Order.Earlier ? "before" : "after"),
+            Key = CellId("typemember", kind, label, order == Order.Earlier ? "before" : "after"),
             Family = Family.TypeMember,
             Source = source,
             Tag = SharpyTag.MustRun,
@@ -762,7 +762,7 @@ public partial class NameResolutionDifferentialTests
         }
     }
 
-    private static NameCell LocalProgram(string id, BindingKind binding, BindingKind outer, ReadPosition body, IReadOnlyList<string> stmts, Expected e, string? shape, ReadName n, LocalTarget? construct = null)
+    private static NameCell LocalProgram(CellKey id, BindingKind binding, BindingKind outer, ReadPosition body, IReadOnlyList<string> stmts, Expected e, string? shape, ReadName n, LocalTarget? construct = null)
     {
         var members = outer is BindingKind.StaticMethod or BindingKind.StaticField ? MemberDecl(outer, n) : new List<string>();
         var effectiveBody = stmts;
@@ -786,7 +786,7 @@ public partial class NameResolutionDifferentialTests
         lines.AddRange(host);
         return new NameCell
         {
-            Id = id,
+            Key = id,
             Family = Family.Local,
             Source = WithHelpers(Join(lines) + MainBlock(call.ToArray())),
             Tag = e.Tag,
@@ -831,7 +831,7 @@ public partial class NameResolutionDifferentialTests
             foreach (var u in LocalOuters)
                 foreach (var body in u is BindingKind.StaticMethod or BindingKind.StaticField ? new[] { ReadPosition.MethodBody } : LocalBodies)
                 {
-                    string Id(string read) => CellId("local", k, read, $"outer={u}", body);
+                    CellKey Id(string read) => CellId("local", k, read, $"outer={u}", body);
 
                     // Read below the binding: the innermost binding, in both languages.
                     yield return LocalProgram(Id("below"), k, u, body, LocalDecl(k, plain).Append($"print({own})").ToList(), Run(value, "N1-innermost"), null, plain) with { Timing = ReadTimings.SameBlockBelow };
@@ -864,7 +864,7 @@ public partial class NameResolutionDifferentialTests
                 {
                     var own = ReadText(FormOf(k), "", n);
                     var builtinCall = ReadText(Form.Call, "", n);
-                    string Id(string read) => CellId("local", k, read, "outer=Builtin", body, name);
+                    CellKey Id(string read) => CellId("local", k, read, "outer=Builtin", body, name);
                     yield return LocalProgram(Id("below"), k, BindingKind.Builtin, body, LocalDecl(k, n).Append($"print({own})").ToList(), Run(BuiltinBindingValue, "N1-innermost"), null, n);
                     var above = new List<string> { $"print({builtinCall})" };
                     above.AddRange(LocalDecl(k, n));
@@ -1123,7 +1123,7 @@ public partial class NameResolutionDifferentialTests
         // The control: the import read with nothing else of the name, the probe every other arm is measured against.
         yield return WithImport(new NameCell
         {
-            Id = CellId("read", BindingKind.ImportedName, ReadPosition.FunctionBody, "control", "outer=ImportedName"),
+            Key = CellId("read", BindingKind.ImportedName, ReadPosition.FunctionBody, "control", "outer=ImportedName"),
             Family = Family.Read,
             Source = MainBlock($"print({ImportedReadText})"),
             Tag = SharpyTag.MustRun,
@@ -1142,7 +1142,7 @@ public partial class NameResolutionDifferentialTests
             lines.AddRange(ModuleDecl(t, Imported));
             yield return WithImport(new NameCell
             {
-                Id = CellId("read", t, ReadPosition.ModuleInitializer, Order.Later, "outer=ImportedName"),
+                Key = CellId("read", t, ReadPosition.ModuleInitializer, Order.Later, "outer=ImportedName"),
                 Family = Family.Read,
                 Source = Join(lines) + MainBlock("print(r)"),
                 Tag = SharpyTag.MustRefuse,
@@ -1181,7 +1181,7 @@ public partial class NameResolutionDifferentialTests
                 };
                 yield return WithImport(new NameCell
                 {
-                    Id = CellId("store", s, "outer=ImportedName", body),
+                    Key = CellId("store", s, "outer=ImportedName", body),
                     Family = Family.Store,
                     Source = WithHelpers(Join(lines) + MainBlock(main.ToArray())),
                     Tag = expected.Tag,
@@ -1200,7 +1200,7 @@ public partial class NameResolutionDifferentialTests
             foreach (var body in LocalBodies)
             {
                 var own = ReadText(FormOf(k), "", Imported);
-                string Id(string read) => CellId("local", k, read, "outer=ImportedName", body);
+                CellKey Id(string read) => CellId("local", k, read, "outer=ImportedName", body);
                 yield return WithImport(LocalProgram(Id("below"), k, BindingKind.ImportedName, body,
                     LocalDecl(k, Imported).Append($"print({own})").ToList(), Run(BuiltinBindingValue, "N1-innermost"), null, Imported));
 
@@ -1256,7 +1256,7 @@ public partial class NameResolutionDifferentialTests
             var source = File.ReadAllText(Path.Combine(dir, id + ".spy"));
             yield return new NameCell
             {
-                Id = CellId("seed", id),
+                Key = CellId("seed", id),
                 Family = Family.Seed,
                 Source = source,
                 Tag = tag,
@@ -1368,7 +1368,7 @@ public partial class NameResolutionDifferentialTests
         foreach (var failure in RequiredDeviationFailures(pool).Take(20))
             yield return failure;
 
-        foreach (var failure in RuleAxesFailures(pool))
+        foreach (var failure in RuleTableFailures(pool).Concat(AdmittedRuleFailures(pool)))
             yield return failure;
 
         // N3's cycles are the one question where a throw also keeps the promise. Any other rule under this tag would read a throw as agreement.

@@ -183,7 +183,7 @@ public partial class NameResolutionDifferentialTests
         var expected = ExpectClass(t, p, nesting, order, s, outer, n, form);
         return new NameCell
         {
-            Id = CellId("read", t, p, nesting == Nesting.Direct ? null : nesting, order, s, $"outer={outer}", n.IsBuiltin ? n.Name : null),
+            Key = CellId("read", t, p, nesting == Nesting.Direct ? null : nesting, order, s, $"outer={outer}", n.IsBuiltin ? n.Name : null),
             Relation = DeclaringRelation.Self,
             Family = Family.Read,
             Source = source,
@@ -221,7 +221,7 @@ public partial class NameResolutionDifferentialTests
         var value = ValueOf(outer);
         return new NameCell
         {
-            Id = CellId("read", t, p, order, Spelling.Bare, $"outer={outer}"),
+            Key = CellId("read", t, p, order, Spelling.Bare, $"outer={outer}"),
             Family = Family.Read,
             Source = source,
             Tag = SharpyTag.MustRun,
@@ -359,7 +359,7 @@ public partial class NameResolutionDifferentialTests
         var expected = IsInstance(t) ? Refuse(python, "kind:SPY0290") : Run(python, value, "N7");
         return new NameCell
         {
-            Id = CellId("read", t, ReadPosition.FunctionBody, order, s, "outer=None"),
+            Key = CellId("read", t, ReadPosition.FunctionBody, order, s, "outer=None"),
             Family = Family.Read,
             Source = source,
             Tag = expected.Tag,
@@ -405,6 +405,10 @@ public partial class NameResolutionDifferentialTests
         || IsInitializer(p));
 
     private static bool IsCompileTimeModule(BindingKind t) => t is BindingKind.ModuleLiteralConst;
+
+    /// <summary>A module binding whose read is a constant where a position takes constants only: a literal const, and an enum,
+    /// read as its member's <c>.value</c> (the owner's ruling of 2026-11-20, #2423 comment 7030074628 item 2: must-run).</summary>
+    private static bool IsConstantModuleRead(BindingKind t) => IsCompileTimeModule(t) || t == BindingKind.ModuleEnum;
 
     private static NameCell ModuleCell(BindingKind t, ReadPosition p, Nesting nesting, Order order, Spelling s)
     {
@@ -469,7 +473,7 @@ public partial class NameResolutionDifferentialTests
                 rule = "N1-nesting";
             if (t == BindingKind.ModuleLet)
                 expected = new Expected(SharpyTag.MayRefuse, Str(value), python, "kind:SPY0340");
-            else if ((IsConstantOnly(p) || p == ReadPosition.EnumMemberValue) && !IsCompileTimeModule(t))
+            else if ((IsConstantOnly(p) || p == ReadPosition.EnumMemberValue) && !IsConstantModuleRead(t))
                 expected = Refuse(python, p == ReadPosition.EnumMemberValue ? "kind:enum-member-constant" : "SPY0401");
             else
                 expected = Run(python, value, rule);
@@ -477,7 +481,7 @@ public partial class NameResolutionDifferentialTests
 
         return new NameCell
         {
-            Id = CellId("read", t, p, nesting == Nesting.Direct ? null : nesting, order, s, "outer=None"),
+            Key = CellId("read", t, p, nesting == Nesting.Direct ? null : nesting, order, s, "outer=None"),
             Family = Family.Read,
             Source = source,
             TwinSource = p == ReadPosition.ModuleAccessorBody ? Build(ReadPosition.FunctionBody).Replace("print(r)", "print(r())", StringComparison.Ordinal) : null,
@@ -506,7 +510,7 @@ public partial class NameResolutionDifferentialTests
         var value = ValueOf(outer);
         return new NameCell
         {
-            Id = CellId("read", t, p, Order.Earlier, Spelling.Bare, $"outer={outer}"),
+            Key = CellId("read", t, p, Order.Earlier, Spelling.Bare, $"outer={outer}"),
             Family = Family.Read,
             Source = source,
             Tag = t == BindingKind.ModuleLet ? SharpyTag.MayRefuse : SharpyTag.MustRun,
@@ -565,7 +569,7 @@ public partial class NameResolutionDifferentialTests
     {
         NameCell Cell(BindingKind t, ReadPosition p, string shape, Expected e, IEnumerable<string> lines, string print) => new()
         {
-            Id = CellId("read", "str", t, p, shape),
+            Key = CellId("read", "str", t, p, shape),
             Family = Family.Read,
             Source = WithHelpers(Join(lines) + MainBlock(print)),
             Tag = e.Tag,
@@ -644,7 +648,7 @@ public partial class NameResolutionDifferentialTests
                     var all = o == Order.Earlier ? decl.Concat(lines) : lines.Concat(decl);
                     yield return new NameCell
                     {
-                        Id = CellId("read", t, p, o, Spelling.Bare, "outer=None"),
+                        Key = CellId("read", t, p, o, Spelling.Bare, "outer=None"),
                         Family = Family.Read,
                         Source = Join(all) + MainBlock($"print({access})"),
                         Tag = SharpyTag.MustRun,
@@ -695,7 +699,7 @@ public partial class NameResolutionDifferentialTests
                 var reader = $"def r() -> None:\n    print({n.Name})\n";
                 yield return new NameCell
                 {
-                    Id = CellId("read", BindingKind.ModuleVar, ReadPosition.FunctionBody, o, "PrintedValue", "outer=Builtin", n.Name),
+                    Key = CellId("read", BindingKind.ModuleVar, ReadPosition.FunctionBody, o, "PrintedValue", "outer=Builtin", n.Name),
                     Family = Family.Read,
                     Source = (o == Order.Earlier ? decl + reader : reader + decl) + MainBlock("r()"),
                     Tag = SharpyTag.MustRun,
@@ -759,7 +763,7 @@ public partial class NameResolutionDifferentialTests
 
         return new NameCell
         {
-            Id = CellId("read", t, p, order, form, "outer=Builtin", n.Name),
+            Key = CellId("read", t, p, order, form, "outer=Builtin", n.Name),
             Family = Family.Read,
             Source = source,
             Tag = expected.Tag,
@@ -788,7 +792,7 @@ public partial class NameResolutionDifferentialTests
             : arityMatches ? Run(9, "N1") : Refuse(python, "N1-arity");
         return new NameCell
         {
-            Id = CellId("read", BindingKind.ModuleClass, ReadPosition.FunctionBody, order, arityMatches ? "arity-match" : "arity-mismatch", "outer=Builtin", n.Name),
+            Key = CellId("read", BindingKind.ModuleClass, ReadPosition.FunctionBody, order, arityMatches ? "arity-match" : "arity-mismatch", "outer=Builtin", n.Name),
             Family = Family.Read,
             Source = Join(lines) + MainBlock("print(r())"),
             Tag = expected.Tag,
@@ -822,7 +826,7 @@ public partial class NameResolutionDifferentialTests
                 var main = MainBlock($"print({read})");
                 yield return new NameCell
                 {
-                    Id = CellId("read", kind, ReadPosition.FunctionBody, order, "GenericReceiver", "outer=None"),
+                    Key = CellId("read", kind, ReadPosition.FunctionBody, order, "GenericReceiver", "outer=None"),
                     Family = Family.Read,
                     Source = order == Order.Earlier ? Join(type) + main : main + Join(type),
                     Tag = SharpyTag.MustRun,
@@ -881,7 +885,7 @@ public partial class NameResolutionDifferentialTests
                     }
                     yield return new NameCell
                     {
-                        Id = CellId("read", t, p, "base", Spelling.Bare, $"outer={u}"),
+                        Key = CellId("read", t, p, "base", Spelling.Bare, $"outer={u}"),
                         Relation = DeclaringRelation.Base,
                         Family = Family.Read,
                         Source = WithHelpers(Join(lines) + MainPrinting(placed.Access, placed.Setup)),
@@ -906,12 +910,13 @@ public partial class NameResolutionDifferentialTests
                     lines.AddRange(Indent(placed.Members));
                     bool load = IsInitializer(p);
                     var python = prefix == "H." && load ? PyOutcome.Name("H") : PyOutcome.Ran(value);
-                    var expected = IsConstantOnly(p) && (t != BindingKind.ClassLiteralConst || prefix != "B.")
+                    // A literal const is a constant through its declaring class or a subclass of it (the same ruling, item 2).
+                    var expected = IsConstantOnly(p) && (t != BindingKind.ClassLiteralConst || prefix == "self.")
                         ? Refuse(python, "SPY0401")
                         : Run(python, value, "N7");
                     yield return new NameCell
                     {
-                        Id = CellId("read", t, p, "base", label),
+                        Key = CellId("read", t, p, "base", label),
                         Relation = DeclaringRelation.Base,
                         Family = Family.Read,
                         Source = WithHelpers(Join(lines) + MainPrinting(placed.Access, placed.Setup)),
@@ -939,7 +944,7 @@ public partial class NameResolutionDifferentialTests
                     var python = o == Order.Later && IsInitializer(p) ? PyOutcome.Name("B") : PyOutcome.Ran(value);
                     yield return new NameCell
                     {
-                        Id = CellId("read", t, p, "other", o, "B.x"),
+                        Key = CellId("read", t, p, "other", o, "B.x"),
                         Relation = DeclaringRelation.Other,
                         Family = Family.Read,
                         Source = WithHelpers(Join(lines) + MainPrinting(placed.Access, placed.Setup)),
@@ -982,7 +987,7 @@ public partial class NameResolutionDifferentialTests
                         expected = Refuse(PyOutcome.Other("TypeError"), "N1-type-error");
                     yield return new NameCell
                     {
-                        Id = CellId("read", t, label, "enclosing", Spelling.Bare, $"outer={u}"),
+                        Key = CellId("read", t, label, "enclosing", Spelling.Bare, $"outer={u}"),
                         Relation = DeclaringRelation.Enclosing,
                         Family = Family.Read,
                         Source = WithHelpers(Join(lines) + MainBlock($"print({access})")),
@@ -1003,7 +1008,7 @@ public partial class NameResolutionDifferentialTests
                     lines.AddRange(Indent(inner.Select(l => l.Replace("{E}", ReadText(form, "H.", n), StringComparison.Ordinal))));
                     yield return new NameCell
                     {
-                        Id = CellId("read", t, label, "enclosing", Spelling.Qualified),
+                        Key = CellId("read", t, label, "enclosing", Spelling.Qualified),
                         Relation = DeclaringRelation.Enclosing,
                         Family = Family.Read,
                         Source = WithHelpers(Join(lines) + MainBlock($"print({access})")),
@@ -1064,7 +1069,7 @@ public partial class NameResolutionDifferentialTests
                 var twinMain = at == TypePosition.ResultError ? new[] { "print(r())" } : main;
                 yield return new NameCell
                 {
-                    Id = CellId("read", "type-position", label, o),
+                    Key = CellId("read", "type-position", label, o),
                     Family = Family.Read,
                     Source = (o == Order.Earlier ? target + reader : reader + target) + MainBlock(main),
                     TwinSource = twin == null ? null : (o == Order.Earlier ? target + twin : twin + target) + MainBlock(twinMain),
@@ -1086,7 +1091,7 @@ public partial class NameResolutionDifferentialTests
             const string Reader = "def r() -> str:\n    try:\n        raise Later()\n    except Later as e:\n        return \"caught\"\n";
             yield return new NameCell
             {
-                Id = CellId("read", "type-position", "except-clause", o),
+                Key = CellId("read", "type-position", "except-clause", o),
                 Family = Family.Read,
                 Source = (o == Order.Earlier ? Raising + Reader : Reader + Raising) + MainBlock("print(r())"),
                 Tag = SharpyTag.MustRun,
@@ -1102,7 +1107,7 @@ public partial class NameResolutionDifferentialTests
             const string TryReader = "def boom() -> int:\n    raise Later()\ndef r() -> str:\n    x = try[Later] boom()\n    match x:\n        case Ok(v):\n            return str(v)\n        case Err(e):\n            return \"caught\"\n";
             yield return new NameCell
             {
-                Id = CellId("read", "type-position", "try-exception-type", o),
+                Key = CellId("read", "type-position", "try-exception-type", o),
                 Family = Family.Read,
                 Source = (o == Order.Earlier ? Raising + TryReader : TryReader + Raising) + MainBlock("print(r())"),
                 TwinSource = "def r() -> str:\n    return \"caught\"\n" + MainBlock("print(r())"),

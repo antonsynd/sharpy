@@ -80,7 +80,18 @@ internal enum VerdictClass
 /// <summary>One generated cell: one Sharpy program, its twin (rendered from the source) and both predictions.</summary>
 internal sealed record NameCell
 {
-    public required string Id { get; init; }
+    private readonly string? _id;
+
+    /// <summary>The cell's id. A generated cell's is its <see cref="Key"/>'s text; a fact's literal cell sets it alone.</summary>
+    public string Id
+    {
+        get => _id ?? Key?.Text ?? throw new InvalidOperationException("a cell carries an id or a key");
+        init => _id = value;
+    }
+
+    /// <summary>The values the generator built the id from, each with its type: what the rule table's key axes read
+    /// (<c>NameResolutionDifferentialTests.RuleTableAxes</c>), so no axis is read back from the id's text.</summary>
+    public CellKey? Key { get; init; }
     public required Family Family { get; init; }
     public required string Source { get; init; }
     public required SharpyTag Tag { get; init; }

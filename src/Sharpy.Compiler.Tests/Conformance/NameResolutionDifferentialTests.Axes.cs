@@ -170,7 +170,7 @@ public partial class NameResolutionDifferentialTests
         var expected = Run(python, 5, first ? "N1" : "N1-nesting");
         return new NameCell
         {
-            Id = CellId("read", "comprehension", family, shape, slot, nesting, order),
+            Key = CellId("read", "comprehension", family, shape, slot, nesting, order),
             Family = Family.Read,
             Source = Program(twin: false),
             TwinSource = family == "dict-spread-comprehension" ? Program(twin: true) : null,
@@ -239,7 +239,7 @@ public partial class NameResolutionDifferentialTests
         var moduleOuter = outer == BindingKind.ModuleVar;
         return new NameCell
         {
-            Id = CellId("store", "walrus-in-comprehension", family, shape, slot, $"outer={outer}"),
+            Key = CellId("store", "walrus-in-comprehension", family, shape, slot, $"outer={outer}"),
             Family = Family.Store,
             Source = Program(twin: false),
             TwinSource = family == "dict-spread-comprehension" ? Program(twin: true) : null,
@@ -440,7 +440,7 @@ public partial class NameResolutionDifferentialTests
         var expected = Cycle(PyOutcome.Name(python), "N3-cycle");
         return new NameCell
         {
-            Id = CellId("read", "cycle", spelling, pair, through, a, b),
+            Key = CellId("read", "cycle", spelling, pair, through, a, b),
             Family = Family.Read,
             Source = Join(lines) + MainBlock($"print({print})"),
             Tag = expected.Tag,
@@ -505,7 +505,7 @@ public partial class NameResolutionDifferentialTests
         var model = instance ? JoinOut("main", $"init {kind}", value) : JoinOut($"init {kind}", "main", value);
         return new NameCell
         {
-            Id = CellId("read", "order-observation", kind, order),
+            Key = CellId("read", "order-observation", kind, order),
             Family = Family.Read,
             Source = Program(decl),
             TwinSource = instance ? Program(twinDecl) : null,
@@ -801,7 +801,7 @@ public partial class NameResolutionDifferentialTests
             : Run(method ? PyOutcome.Ran(Value) : PyOutcome.Name("O"), Value, "N7");
         return new NameCell
         {
-            Id = CellId("read", "sibling", spelling, position, order),
+            Key = CellId("read", "sibling", spelling, position, order),
             Family = Family.Read,
             Source = Join(new[] { "class O:" }.Concat(body)) + MainBlock(method ? "print(O.J().r())" : "print(O.J.r)"),
             Tag = expected.Tag,
@@ -879,7 +879,7 @@ public partial class NameResolutionDifferentialTests
                 string Program(string reader, string[] main) => (order == Order.Earlier ? r.Target + Alias + reader : reader + r.Target + Alias) + MainBlock(main);
                 yield return new NameCell
                 {
-                    Id = CellId("read", "type-position-alias", r.Label, order),
+                    Key = CellId("read", "type-position-alias", r.Label, order),
                     Family = Family.Read,
                     Source = Program(r.Reader, r.Main),
                     TwinSource = r.Twin == null ? null : Program(r.Twin, r.TwinMain ?? r.Main),
@@ -906,7 +906,7 @@ public partial class NameResolutionDifferentialTests
             const string Reads = "print(r().unwrap())";
             yield return new NameCell
             {
-                Id = CellId("read", "result-form", ResultValueForm.BareValue, order),
+                Key = CellId("read", "result-form", ResultValueForm.BareValue, order),
                 Family = Family.Read,
                 Source = Program("def r() -> int !Later:\n    return Later().v\n", Reads),
                 TwinSource = Program("def r() -> int:\n    return Later().v\n", "print(r())"),
@@ -921,7 +921,7 @@ public partial class NameResolutionDifferentialTests
 
             yield return new NameCell
             {
-                Id = CellId("read", "result-form", ResultValueForm.Err, order),
+                Key = CellId("read", "result-form", ResultValueForm.Err, order),
                 Family = Family.Read,
                 Source = (order == Order.Earlier ? LaterError + "def r() -> int !Later:\n    return Err(Later())\n" : "def r() -> int !Later:\n    return Err(Later())\n" + LaterError)
                     + MainBlock("match r():", "    case Ok(v):", "        print(v)", "    case Err(e):", "        print(\"err\")"),
@@ -1011,7 +1011,7 @@ public partial class NameResolutionDifferentialTests
         var (host, call) = Host(body, stmts);
         return new NameCell
         {
-            Id = CellId("store", "declaration", shape, s, body),
+            Key = CellId("store", "declaration", shape, s, body),
             Family = Family.Store,
             Source = Join(module.Concat(host)) + MainBlock(call.Concat(later).ToArray()),
             Tag = e.Tag,
@@ -1104,7 +1104,7 @@ public partial class NameResolutionDifferentialTests
         var refused = spelling == Spelling.SelfDot && closure && target is not (BindingKind.StaticField or BindingKind.StaticMethod);
         return cell with
         {
-            Id = CellId("read", "struct", target, body, nesting == Nesting.Direct ? null : nesting, order, spelling),
+            Key = CellId("read", "struct", target, body, nesting == Nesting.Direct ? null : nesting, order, spelling),
             Tag = refused ? SharpyTag.MustRefuse : cell.Tag,
             Model = refused ? null : cell.Model,
             Rule = refused ? "R-KT" : cell.Rule,
@@ -1225,7 +1225,7 @@ public partial class NameResolutionDifferentialTests
 
         return new NameCell
         {
-            Id = CellId("store", "attribute", receiver, member, form, body),
+            Key = CellId("store", "attribute", receiver, member, form, body),
             Family = Family.Store,
             Source = WithHelpers(Join(lines) + MainBlock(call.ToArray())),
             Tag = expected.Tag,
@@ -1357,7 +1357,7 @@ public partial class NameResolutionDifferentialTests
 
         return new NameCell
         {
-            Id = CellId(new object?[] { "store", "attribute", "augmented", host, body, position }.Concat(spelled).Append(tuple ? null : slots).ToArray()),
+            Key = CellId(new object?[] { "store", "attribute", "augmented", host, body, position }.Concat(spelled).Append(tuple ? null : slots).ToArray()),
             Family = Family.Store,
             Source = Join(lines2) + MainBlock(call),
             Tag = expected.Tag,
