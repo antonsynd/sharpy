@@ -79,6 +79,7 @@ mkdir -p "$WORK/bin" "$WORK/repo/build_tools/sub" "$WORK/repo/other" "$WORK/repo
          "$WORK/repo/src/Proj/Sub" "$WORK/repo/src/NoProj"
 # The stub records "<cwd>|<argv>": `dotnet format --include` resolves paths against the CURRENT
 # DIRECTORY (an absolute path matches 0 files, silently), so the cwd is part of the contract.
+# shellcheck disable=SC2016  # $PWD and $* belong to the stub, expanded when it runs
 printf '#!/bin/sh\necho "$PWD|$*" >> "%s/dotnet-calls"\n[ -n "${HOOKTEST_HANG:-}" ] && sleep 60\nexit 0\n' "$WORK" > "$WORK/bin/dotnet"; chmod +x "$WORK/bin/dotnet"
 printf 'x=1\n' > "$WORK/repo/build_tools/a.py"
 printf 'x=1\n' > "$WORK/repo/build_tools/sub/b.py"
@@ -156,6 +157,110 @@ allowed 'ls'
 # the workaround is single quotes.
 run enforce-dotnet-serialized.sh 'garbage'
 if [ "$RC" -eq 0 ]; then ok "bad stdin: allow (Bash hook fails open by design; the lock is the safety net)"; else bad "bad stdin: allow" "rc=$RC"; fi
+
+echo "== guard-shared-tree.sh"
+# A scratch repository with the session layout: MAIN (the shared main worktree), a linked worktree
+# under MAIN/.claude/worktrees (as an isolated agent gets), one outside it (a scratchpad worktree),
+# a .NET project with build outputs, and build_tools/bin/ (tracked source, not a build output).
+G="$WORK/g"; MAIN="$G/main"; WT="$MAIN/.claude/worktrees/wt1"; SWT="$G/scratch/wt2"
+mkdir -p "$G"
+git init -q -b dev "$MAIN"
+mkdir -p "$MAIN/src/P/bin" "$MAIN/src/P/obj" "$MAIN/build_tools/bin" "$MAIN/.claude/tmp/x"
+echo x > "$MAIN/src/a.txt"; echo '<Project/>' > "$MAIN/src/P/P.csproj"; echo t > "$MAIN/build_tools/bin/tool"
+git -C "$MAIN" add src build_tools
+git -C "$MAIN" -c user.email=t@t -c user.name=t commit -qm init
+git -C "$MAIN" worktree add -q "$WT" -b claude/x
+git -C "$MAIN" worktree add -q "$SWT" -b claude/y
+gjson() { python3 -c 'import json,sys; print(json.dumps({"session_id":"t","hook_event_name":"PreToolUse","cwd":sys.argv[2],"tool_name":"Bash","tool_input":{"command":sys.argv[1]}}))' "$1" "$2"; }
+gname()  { local c="${1//$'\n'/\\n}"; printf '%s @ %s' "${c//"$G"\//}" "${2#"$G"/}"; }
+gdeny()  { CLAUDE_PROJECT_DIR="$MAIN" run guard-shared-tree.sh "$(gjson "$1" "$2")"; if [ "$RC" -eq 2 ] && [ -n "$ERR" ]; then ok "deny: $(gname "$1" "$2")"; else bad "deny: $(gname "$1" "$2")" "rc=$RC err=$ERR"; fi; }
+gallow() { CLAUDE_PROJECT_DIR="$MAIN" run guard-shared-tree.sh "$(gjson "$1" "$2")"; if [ "$RC" -eq 0 ] && [ -z "$ERR" ]; then ok "allow: $(gname "$1" "$2")"; else bad "allow: $(gname "$1" "$2")" "rc=$RC err=$ERR"; fi; }
+# 1. tree-mutating git verbs: denied in MAIN (by cwd, -C, --work-tree, cd, compound, nested) ...
+for v in 'checkout dev' 'checkout -- src/a.txt' 'restore src/a.txt' 'restore --staged .' 'clean -fd' 'stash' 'stash list' 'reset --hard' 'reset' 'switch -c y'; do
+  gdeny "git $v" "$MAIN"
+done
+gdeny "git -C $MAIN reset --hard" "$WT"
+gdeny "git --work-tree=$MAIN checkout ." "$G"
+gdeny "cd $MAIN && git checkout ." "$WT"
+gdeny "cd src; git restore a.txt" "$MAIN"
+gdeny 'FOO=1 git -c core.pager=cat --no-pager checkout dev' "$MAIN"
+gdeny 'git status && git diff --stat || git stash' "$MAIN"
+gdeny 'echo start
+git reset --hard' "$MAIN"
+gdeny '(git stash)' "$MAIN"
+gdeny "bash -c 'git reset --hard'" "$MAIN"
+# shellcheck disable=SC2016  # the $(...) is the command under test, not this shell's
+gdeny 'echo "$(git stash)"' "$MAIN"
+gdeny 'git status | cat; timeout 60 git switch dev' "$MAIN"
+# ... and allowed in a linked worktree (the session's own), in a scratch repo, or when only named.
+for v in 'switch -c y' 'checkout dev' 'reset --hard' 'stash list' 'restore src/a.txt' 'clean -fd'; do
+  gallow "git $v" "$WT"
+done
+gallow 'git reset --hard HEAD' "$SWT"
+gallow "cd $WT && git checkout claude/x" "$MAIN"
+gallow "git -C $WT stash list" "$MAIN"
+gallow "(cd $WT && git switch -c z)" "$MAIN"
+gallow 'git status --short; git diff --stat; git log --oneline -1; git worktree list' "$MAIN"
+gallow 'echo "git reset --hard"; grep -n "git checkout" docs.md' "$MAIN"
+gallow "git commit -m \"\$(cat <<'EOF'
+fix: say why git reset --hard and rm -rf src are denied
+EOF
+)\"" "$MAIN"
+git init -q "$G/other"
+gallow 'git reset --hard' "$G/other"
+# a subshell's cd does not leak: the trailing reset runs in MAIN again
+gdeny "(cd $WT && git switch -c z2); git reset --hard" "$MAIN"
+# 2. rm: denied inside MAIN, allowed for .claude/tmp/, .NET bin/obj, linked worktrees, outside.
+gdeny 'rm src/a.txt' "$MAIN"
+gdeny "rm -rf $MAIN/src" "$G"
+gdeny 'cd src && rm -f a.txt' "$MAIN"
+gdeny 'rm -rf build_tools/bin' "$MAIN"
+gdeny "rm -rf $WT" "$MAIN"
+gdeny 'rm -rf -- src/a.txt' "$MAIN"
+gdeny 'sudo rm -rf src' "$MAIN"
+gallow 'rm -rf .claude/tmp/x' "$MAIN"
+gallow 'rm -rf src/P/bin src/P/obj/Debug' "$MAIN"
+gallow 'rm -rf src/*/obj' "$MAIN"
+gallow "rm -f $WT/src/a.txt" "$MAIN"
+gallow 'rm src/a.txt' "$WT"
+gallow "rm -rf $G/scratch/junk /tmp/sharpy-hook-nonexistent" "$MAIN"
+gallow 'grep -rn "rm -rf" src' "$MAIN"
+# 3. staging without per-file pathspecs: denied in every worktree of this repository.
+for a in 'add -A' 'add --all' 'add .' 'add ./' 'add -u' 'add --update' 'add -Av' 'commit -am wip' 'commit --all -m wip' 'commit -a'; do
+  gdeny "git $a" "$WT"
+done
+gdeny 'git add .' "$MAIN"
+gdeny "git -C $WT add -A" "$G"
+gallow 'git add src/a.txt' "$WT"
+gallow 'git add -- src/a.txt src/P/P.csproj' "$MAIN"
+gallow 'git commit -m "fix -a and --all handling"' "$WT"
+gallow 'git commit -m wip -- src/a.txt' "$WT"
+gallow 'git add -A' "$G/other"
+# 4. forced push: only lease + includes, only claude/* refs.
+gdeny 'git push --force origin claude/x' "$WT"
+gdeny 'git push -f origin claude/x' "$WT"
+gdeny 'git push -uf origin claude/x' "$WT"
+gdeny 'git push origin +claude/x' "$WT"
+gdeny 'git push --force-with-lease origin claude/x' "$WT"
+gdeny 'git push --force-if-includes origin +claude/x' "$WT"
+gdeny 'git push --force --force-with-lease --force-if-includes origin claude/x' "$WT"
+gdeny 'git push --force-with-lease --force-if-includes origin dev' "$WT"
+gdeny 'git push --force-with-lease --force-if-includes origin mainline' "$WT"
+gdeny 'git push --force-with-lease --force-if-includes origin claude/x:dev' "$WT"
+gdeny 'git push --force-with-lease --force-if-includes origin HEAD:refs/heads/mainline' "$WT"
+gdeny 'git push --force-with-lease --force-if-includes origin feature/x' "$WT"
+gdeny 'git push --force-with-lease --force-if-includes origin claude/x dev' "$WT"
+gdeny 'git push --force-with-lease --force-if-includes origin' "$MAIN"
+gdeny 'git push --mirror origin' "$WT"
+gallow 'git push --force-with-lease --force-if-includes origin claude/x' "$WT"
+gallow 'git push --force-with-lease=claude/x:abc123 --force-if-includes origin claude/x' "$WT"
+gallow 'git push --force-with-lease --force-if-includes origin HEAD' "$WT"
+gallow 'git push --force-with-lease --force-if-includes -u origin HEAD:refs/heads/claude/x' "$WT"
+gallow 'git push -u origin claude/x' "$WT"
+# unparseable (bash refuses it too) and unreadable input: allowed.
+gallow "git reset --hard 'unterminated" "$MAIN"
+run guard-shared-tree.sh 'garbage'
+if [ "$RC" -eq 0 ]; then ok "bad stdin: allow"; else bad "bad stdin: allow" "rc=$RC"; fi
 
 echo
 echo "hooks: $pass passed, $fail failed, $skip skipped"
