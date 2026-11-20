@@ -218,13 +218,14 @@ carries the .spy file's notice.
 
    Upstream source: CPython 3.15, Lib/fractions.py
 
-   Ported to C#: the continued-fraction loop of Fraction.limit_denominator
-   (p0, q0, p1, q1, a, q2, k, bound1, bound2) and its error message.
+   Ported to C#: Fraction.limit_denominator (its refusal and message, the
+   early return, the continued-fraction loop over p0, q0, p1, q1, a, q2, k,
+   and the 2*d*(q0+k*q1) <= denominator choice between the two bounds).
 
    Summary of changes: translated from Python to C# over
-   System.Numerics.BigInteger. The two bounds are compared by
-   cross-multiplied distances instead of CPython's single
-   2*d*(q0+k*q1) <= denominator test.
+   System.Numerics.BigInteger. Python's floored // is the FloorDivRem
+   helper, and results are built by the normalizing Fraction constructor
+   instead of _from_coprime_ints.
 
 12. src/Sharpy.Stdlib/Threading/Barrier.cs
 
