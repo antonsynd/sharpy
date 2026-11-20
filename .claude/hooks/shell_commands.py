@@ -1,48 +1,242 @@
 """Split a Bash tool command into the simple commands bash would run, for the PreToolUse hooks.
 
 Used by guard-shared-tree.sh and enforce-dotnet-serialized.sh (imported from this directory).
-``walk(src, cwd, visit)`` calls ``visit(argv, cwd)`` for every simple command, in order, with:
+``walk(src, cwd, visit)`` calls ``visit(argv, cwd, env, assigns)`` for every simple command, in
+order, with:
 
-- separators split: ``;`` ``&&`` ``||`` ``|`` ``|&`` ``&`` and newlines;
+- here-document bodies removed first, at any depth (inside ``"$(cat <<'EOF' ... EOF)"`` too), so
+  a body's quotes, parentheses and command-like text are never read as code;
+- separators split: ``;`` ``&&`` ``||`` ``|`` ``|&`` ``&`` and newlines; ``#`` comments dropped;
 - ``( ... )`` subshells and ``$( ... )`` / backtick substitutions walked as nested commands, their
-  ``cd`` not leaking out; ``bash|sh|zsh|dash -c '<script>'`` and ``eval <words>`` walked as scripts;
-- quotes removed, ``\\`` escapes and line continuations applied, ``#`` comments and here-document
-  bodies dropped, redirections (``>f``, ``2>&1``, ``<<EOF``, ``<<<w``) removed from argv;
-- leading ``VAR=value`` assignments and the prefix commands ``env sudo nohup time command exec
-  nice timeout stdbuf xargs`` (with their options) stripped, so argv[0] is the program run;
-- ``cd`` / ``pushd`` tracked: ``cwd`` is the directory the command runs in, as far as the text says.
+  ``cd`` and assignments not leaking out; ``bash|sh|zsh|dash|ksh -c '<script>'``, ``eval``,
+  ``env -S``, ``flock -c``, ``watch`` and ``parallel`` walked as scripts;
+- quotes removed, ``\\`` escapes and line continuations applied, redirections removed from argv;
+- leading ``VAR=value`` assignments (passed to visit as ``assigns``) and the launchers in
+  PREFIXES stripped with their options, so argv[0] is the program run; ``find -exec/-execdir/
+  -ok/-okdir ... ;|+`` visited as commands (``{}`` read as ``<start path>/{}``) and ``find
+  -delete`` as ``rm <start path>/{}``;
+- ``cd`` / ``cd -`` / ``pushd`` / ``popd`` and plain assignments (``X=v``, ``export X=v``)
+  tracked: ``cwd`` is the directory the command runs in and ``env`` the variables the command text
+  set, as far as the text says. ``None`` means unknown (a ``cd "$(mktemp -d)"``, a loop variable).
 
-It does not evaluate the shell: variables expand from the hook's own environment (an unset one to
-""), a ``$(...)`` inside a word stays literal text, globs stay unexpanded, functions and aliases are
-unknown, and control keywords (``if``/``then``/``do``/``{``...) are skipped as argv[0], not parsed.
-An unterminated quote or substitution raises ParseError: bash refuses that command too.
+It does not evaluate the shell: a variable not set in the text resolves from the hook's own
+environment, else it is unknown; globs stay unexpanded; functions, aliases and script files are
+unknown; control keywords (``if``/``then``/``do``/``{``...) are skipped as argv[0], not parsed.
+Launchers not in PREFIXES (ssh, su -c, script -c, docker exec, chroot, make, npm run ...) hide
+their command. An unterminated quote or substitution raises ParseError; ``bash_accepts`` tells
+whether bash itself would refuse the text.
 """
 
 import os
 import re
+import subprocess
 
-PREFIX_OPTS_WITH_ARG = {
-    "env": {"-u", "--unset", "-C", "--chdir", "-S", "--split-string"},
-    "sudo": {"-u", "-g", "-C", "-D", "-h", "-p", "-r", "-t", "-U", "-T"},
-    "nice": {"-n", "--adjustment"},
-    "timeout": {"-s", "--signal", "-k", "--kill-after"},
-    "stdbuf": {"-i", "-o", "-e", "--input", "--output", "--error"},
-    "xargs": {"-I", "-n", "-L", "-P", "-s", "-d", "-E", "-a", "--arg-file", "--delimiter",
-              "--max-args", "--max-lines", "--max-procs", "--max-chars", "--eof", "--replace"},
-    "exec": {"-a"},
-    "command": set(),
-    "nohup": set(),
-    "time": set(),
+# launcher -> (options that take a separate argument, positional args before the command, mode)
+# mode: "cmd" (the rest is argv), "script" (the rest, joined, is a shell script)
+PREFIXES = {
+    "env": ({"-u", "--unset", "-C", "--chdir"}, 0, "cmd"),
+    "sudo": ({"-u", "-g", "-C", "-D", "-h", "-p", "-r", "-t", "-U", "-T"}, 0, "cmd"),
+    "nice": ({"-n", "--adjustment"}, 0, "cmd"),
+    "timeout": ({"-s", "--signal", "-k", "--kill-after"}, 1, "cmd"),
+    "stdbuf": ({"-i", "-o", "-e", "--input", "--output", "--error"}, 0, "cmd"),
+    "xargs": ({"-I", "-n", "-L", "-P", "-s", "-d", "-E", "-a", "--arg-file", "--delimiter",
+               "--max-args", "--max-lines", "--max-procs", "--max-chars", "--eof", "--replace"},
+              0, "cmd"),
+    "exec": ({"-a"}, 0, "cmd"),
+    "command": (set(), 0, "cmd"),
+    "nohup": (set(), 0, "cmd"),
+    "setsid": (set(), 0, "cmd"),
+    "time": ({"-f", "--format", "-o", "--output"}, 0, "cmd"),
+    "ionice": ({"-c", "--class", "-n", "--classdata", "-p", "--pid", "-P", "--pgid", "-u",
+                "--uid"}, 0, "cmd"),
+    "taskset": (set(), 1, "cmd"),
+    "chrt": (set(), 1, "cmd"),
+    "flock": ({"-w", "--wait", "--timeout", "-E", "--conflict-exit-code"}, 1, "cmd"),
+    "strace": ({"-e", "-o", "-p", "-s", "-u", "-E", "-P", "-a", "-b", "-I", "-O", "-S", "-X",
+                "-U"}, 0, "cmd"),
+    "watch": ({"-n", "--interval", "-q", "--equexit"}, 0, "script"),
+    "parallel": ({"-j", "--jobs", "-S", "--sshlogin", "-a", "--arg-file", "--delay", "--timeout",
+                  "-n", "--max-args", "-N", "--colsep", "-C", "-d", "--delimiter", "-I", "-E",
+                  "--env", "--joblog", "--results", "--tmpdir", "--workdir", "--wd", "-P",
+                  "--max-procs", "--halt", "--retries"}, 0, "script"),
 }
 SHELLS = {"bash", "sh", "zsh", "dash", "ksh"}
 KEYWORDS = {"if", "then", "else", "elif", "fi", "do", "done", "while", "until", "{", "}", "!",
-            "time", "coproc"}
-ASSIGN = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*(\[[^]]*\])?\+?=")
+            "coproc"}
+DECLARERS = {"export", "declare", "local", "readonly", "typeset"}
+ASSIGN = re.compile(r"^([A-Za-z_][A-Za-z0-9_]*)(\[[^]]*\])?\+?=(.*)$", re.S)
+FIND_EXEC = {"-exec", "-execdir", "-ok", "-okdir"}
 
 
 class ParseError(Exception):
     pass
 
+
+def bash_accepts(src):
+    """True when `bash -n` parses src (it runs nothing); also True if bash cannot be run."""
+    try:
+        r = subprocess.run(["bash", "-n", "-c", src], capture_output=True, timeout=3)
+    except Exception:
+        return True
+    return r.returncode == 0
+
+
+# ---------------------------------------------------------------------------------------------
+# Pre-pass: here-document bodies out, at every nesting depth.
+
+_DELIM_END = set(" \t\n;&|<>()")
+
+
+def strip_heredocs(src):
+    """``src`` with each ``<<[-]WORD`` replaced by ``</dev/null`` and its body removed."""
+    out, pending = [], []
+    stack = [["sh", 0, False]]  # kind, paren depth, is a $( frame
+    i, n, prev = 0, len(src), "\n"
+    while i < n:
+        c = src[i]
+        kind = stack[-1][0]
+        if c == "\n":
+            out.append(c)
+            i += 1
+            prev = c
+            if pending and kind in ("sh", "bt"):
+                for delim, strip_tabs in pending:
+                    while i < n:
+                        j = src.find("\n", i)
+                        line = src[i:] if j < 0 else src[i:j]
+                        i = n if j < 0 else j + 1
+                        if (line.lstrip("\t") if strip_tabs else line) == delim:
+                            break
+                pending = []
+            continue
+        if kind == "dq":
+            if c == "\\":
+                out.append(src[i:i + 2])
+                i += 2
+            elif c == '"':
+                stack.pop()
+                out.append(c)
+                i += 1
+            elif src.startswith("$((", i):
+                stack.append(["ar", 0, False])
+                out.append("$((")
+                i += 3
+            elif src.startswith("$(", i):
+                stack.append(["sh", 0, True])
+                out.append("$(")
+                i += 2
+            elif c == "`":
+                stack.append(["bt", 0, False])
+                out.append(c)
+                i += 1
+            else:
+                out.append(c)
+                i += 1
+            prev = c
+            continue
+        if kind == "ar":
+            if c == "(":
+                stack[-1][1] += 1
+            elif c == ")":
+                if stack[-1][1] > 0:
+                    stack[-1][1] -= 1
+                elif src.startswith("))", i):
+                    stack.pop()
+                    out.append("))")
+                    i += 2
+                    prev = ")"
+                    continue
+            out.append(c)
+            i += 1
+            prev = c
+            continue
+        # shell code: "sh" (top level or a $( frame) or "bt" (inside backticks)
+        if c == "\\":
+            out.append(src[i:i + 2])
+            i += 2
+            prev = "a"
+            continue
+        if c == "'":
+            j = src.find("'", i + 1)
+            j = n - 1 if j < 0 else j
+            out.append(src[i:j + 1])
+            i = j + 1
+            prev = "'"
+            continue
+        if src.startswith("$'", i):
+            j = i + 2
+            while j < n and src[j] != "'":
+                j += 2 if src[j] == "\\" else 1
+            out.append(src[i:j + 1])
+            i = j + 1
+            prev = "'"
+            continue
+        if c == "#" and prev in " \t\n;&|(":
+            j = src.find("\n", i)
+            j = n if j < 0 else j
+            out.append(src[i:j])
+            i = j
+            continue
+        if c == '"':
+            stack.append(["dq", 0, False])
+        elif c == "`":
+            if kind == "bt":
+                stack.pop()
+            else:
+                stack.append(["bt", 0, False])
+        elif src.startswith("$((", i):
+            stack.append(["ar", 0, False])
+            out.append("$((")
+            i += 3
+            prev = "("
+            continue
+        elif src.startswith("$(", i):
+            stack.append(["sh", 0, True])
+            out.append("$(")
+            i += 2
+            prev = "("
+            continue
+        elif c == "(":
+            stack[-1][1] += 1
+        elif c == ")":
+            if stack[-1][1] > 0:
+                stack[-1][1] -= 1
+            elif stack[-1][2]:
+                stack.pop()
+        elif src.startswith("<<", i) and not src.startswith("<<<", i):
+            j = i + 2
+            strip_tabs = j < n and src[j] == "-"
+            j += 1 if strip_tabs else 0
+            while j < n and src[j] in " \t":
+                j += 1
+            word = []
+            while j < n and src[j] not in _DELIM_END:
+                d = src[j]
+                if d in "'\"":
+                    k = src.find(d, j + 1)
+                    k = n if k < 0 else k
+                    word.append(src[j + 1:k])
+                    j = k + 1
+                elif d == "\\":
+                    word.append(src[j + 1:j + 2])
+                    j += 2
+                else:
+                    word.append(d)
+                    j += 1
+            if word:
+                pending.append(("".join(word), strip_tabs))
+                out.append("</dev/null ")
+                i = j
+                prev = " "
+                continue
+        out.append(c)
+        i += 1
+        prev = c
+    return "".join(out)
+
+
+# ---------------------------------------------------------------------------------------------
+# Tokenizer.
 
 def _match_close(src, i, open_ch, close_ch):
     """Index just past the ``close_ch`` matching the ``open_ch`` already consumed before ``i``."""
@@ -63,6 +257,10 @@ def _match_close(src, i, open_ch, close_ch):
             continue
         if c == "`":
             i = _skip_backtick(src, i + 1)
+            continue
+        if c == "#" and i > 0 and src[i - 1] in " \t\n;&|(":
+            j = src.find("\n", i)
+            i = n if j < 0 else j
             continue
         if c == open_ch:
             depth += 1
@@ -105,11 +303,15 @@ def _skip_backtick(src, i):
     raise ParseError("unterminated `")
 
 
+_REDIR = re.compile(r"&>>|&>|<<<|<<-|<<|<>|>>|>&|<&|>\||<|>")
+
+
 def tokenize(src):
-    """Tokens: ('w', text, [substitution sources]), ('op', text) or ('redir', text)."""
+    """Tokens: ('w', text, [substitution sources]), ('op', text) or ('redir', text).
+
+    Expects heredoc bodies already removed (strip_heredocs)."""
     toks = []
     word, subs = None, []
-    heredocs = []  # (delimiter, strip_tabs) awaiting the next newline
     i, n = 0, len(src)
 
     def flush():
@@ -130,14 +332,6 @@ def tokenize(src):
             flush()
             toks.append(("op", ";"))
             i += 1
-            for delim, strip_tabs in heredocs:
-                while i < n:
-                    j = src.find("\n", i)
-                    line = src[i:] if j < 0 else src[i:j]
-                    i = n if j < 0 else j + 1
-                    if (line.lstrip("\t") if strip_tabs else line) == delim:
-                        break
-            heredocs = []
             continue
         if c in " \t\r":
             flush()
@@ -183,7 +377,7 @@ def tokenize(src):
                         buf.append(src[j + 1])
                     j += 2
                     continue
-                if src.startswith("$(", j):
+                if src.startswith("$(", j) and not src.startswith("$((", j):
                     k = _match_close(src, j + 2, "(", ")")
                     subs.append(src[j + 2:k - 1])
                     buf.append(src[j:k])
@@ -228,16 +422,9 @@ def tokenize(src):
             if word is not None and "".join(word).isdigit():
                 word, subs = None, []  # an fd number: 2>&1
             flush()
-            m = re.compile(r"&>>|&>|<<<|<<-|<<|<>|>>|>&|<&|>\||<|>").match(src, i)
-            op = m.group(0)
+            m = _REDIR.match(src, i)
             i = m.end()
-            toks.append(("redir", op))
-            if op in ("<<", "<<-"):
-                m2 = re.compile(r"[ \t]*(['\"]?)([^\s'\";&|<>()]+)\1").match(src, i)
-                if m2:
-                    heredocs.append((m2.group(2), op == "<<-"))
-                    i = m2.end()
-                    toks.append(("w", m2.group(2), []))
+            toks.append(("redir", m.group(0)))
             continue
         if c in ";&|()":
             flush()
@@ -255,66 +442,165 @@ def tokenize(src):
     return toks
 
 
+# ---------------------------------------------------------------------------------------------
+# Words.
+
+_VAR = re.compile(r"\$(?:\{([A-Za-z_][A-Za-z0-9_]*)\}|([A-Za-z_][A-Za-z0-9_]*))")
+
+
 def expand(word, env=None):
-    """Tilde and $VAR / ${VAR} expansion against ``env`` (default: this process's), unset -> ''."""
-    env = os.environ if env is None else env
+    """``word`` with ~ and $VAR / ${VAR} expanded, or None when it cannot be resolved: it holds a
+    substitution, a special or unset variable, or one the command text made unknown."""
+    env = {} if env is None else env
+    if "`" in word or "$(" in word:
+        return None
     if word == "~" or word.startswith("~/"):
-        word = env.get("HOME", "~") + word[1:]
-
-    def sub(m):
+        home = env.get("HOME", os.environ.get("HOME"))
+        if home is None:
+            return None
+        word = home + word[1:]
+    out, pos = [], 0
+    for m in _VAR.finditer(word):
         name = m.group(1) or m.group(2)
-        return env.get(name, "")
+        val = env[name] if name in env else os.environ.get(name)
+        if val is None:
+            return None
+        out.append(word[pos:m.start()])
+        out.append(val)
+        pos = m.end()
+    rest = word[pos:]
+    if "$" in rest:
+        return None  # $1, $@, $$, ${x:-y} ...
+    return "".join(out) + rest
 
-    return re.sub(r"\$\{([A-Za-z_][A-Za-z0-9_]*)\}|\$([A-Za-z_][A-Za-z0-9_]*)", sub, word)
+
+def resolve(path, cwd, env=None):
+    """Absolute normalized path for ``path`` run in ``cwd``, or None when unknown."""
+    p = expand(path, env)
+    if p is None or p == "":
+        return None
+    if not os.path.isabs(p):
+        if cwd is None:
+            return None
+        p = os.path.join(cwd, p)
+    return os.path.normpath(p)
 
 
-def resolve(path, cwd):
-    return os.path.normpath(os.path.join(cwd, expand(path)))
+def _skip_opts(argv, takes):
+    while argv and argv[0].startswith("-") and argv[0] != "-":
+        opt = argv.pop(0)
+        if opt == "--":
+            break
+        if opt in takes and argv:
+            argv.pop(0)
+
+
+def _find(argv):
+    """The commands ``find`` runs: its -exec family, and -delete as an rm."""
+    args = argv[1:]
+    while args and args[0] in ("-H", "-L", "-P") or (args and args[0].startswith("-O")):
+        args.pop(0)
+    if args and args[0] == "-D" and len(args) > 1:
+        args = args[2:]
+    starts = []
+    while args and not args[0].startswith("-") and args[0] not in ("(", "!", "\\("):
+        starts.append(args.pop(0))
+    base = (starts or ["."])[0]
+    placeholder = base.rstrip("/") + "/{}"
+    extras, k = [], 0
+    while k < len(args):
+        if args[k] in FIND_EXEC:
+            cmd, k = [], k + 1
+            while k < len(args) and args[k] not in (";", "+"):
+                cmd.append(placeholder if args[k] == "{}" else args[k])
+                k += 1
+            if cmd:
+                extras.append(cmd)
+        elif args[k] == "-delete":
+            extras.extend(["rm", s.rstrip("/") + "/{}"] for s in (starts or ["."]))
+        k += 1
+    return extras
 
 
 def unwrap(argv):
-    """Strip assignments and prefix commands. Returns (argv, nested_scripts)."""
-    argv = list(argv)
-    while argv:
+    """Strip assignments, keywords and launchers. Returns (argv, scripts, extras, assigns):
+    the program's argv, shell scripts it runs, further argvs it runs (find -exec), and the
+    VAR=value assignments that prefixed it."""
+    argv, scripts, extras, assigns = list(argv), [], [], {}
+
+    def take_assigns():
         while argv and ASSIGN.match(argv[0]):
-            argv.pop(0)
+            m = ASSIGN.match(argv.pop(0))
+            assigns[m.group(1)] = m.group(3)
+
+    while argv:
+        take_assigns()
         if not argv:
             break
         if argv[0] in KEYWORDS:
             argv.pop(0)
             continue
         name = os.path.basename(argv[0])
-        if name in PREFIX_OPTS_WITH_ARG:
-            takes = PREFIX_OPTS_WITH_ARG[name]
+        if name == "env":
             argv.pop(0)
             while argv and argv[0].startswith("-") and argv[0] != "-":
                 opt = argv.pop(0)
+                if opt in ("-S", "--split-string") and argv:
+                    scripts.append(argv.pop(0))
+                    return [], scripts, extras, assigns
+                if opt.startswith("--split-string="):
+                    scripts.append(opt.split("=", 1)[1])
+                    return [], scripts, extras, assigns
                 if opt == "--":
                     break
-                if opt in takes and argv:
+                if opt in PREFIXES["env"][0] and argv:
                     argv.pop(0)
-            if name == "env":
-                while argv and ASSIGN.match(argv[0]):
-                    argv.pop(0)
-            if name == "timeout" and argv:
-                argv.pop(0)  # the duration
             continue
+        if name in PREFIXES:
+            takes, npos, mode = PREFIXES[name]
+            argv.pop(0)
+            _skip_opts(argv, takes)
+            if name == "flock":
+                if argv:
+                    argv.pop(0)  # the lock file or fd
+                if argv and argv[0] in ("-c", "--command"):
+                    return [], argv[1:2], extras, assigns
+                _skip_opts(argv, takes)
+            else:
+                for _ in range(npos):
+                    if argv:
+                        argv.pop(0)
+            if mode == "script":
+                if name == "parallel":
+                    for k, a in enumerate(argv):
+                        if a.startswith(":::"):
+                            argv = argv[:k]
+                            break
+                if argv:
+                    scripts.append(" ".join(argv))
+                return [], scripts, extras, assigns
+            continue
+        if name == "find":
+            extras.extend(_find(argv))
+            return argv, scripts, extras, assigns
         if name in SHELLS:
             for k, a in enumerate(argv[1:], 1):
                 if not a.startswith("-"):
                     break
                 if not a.startswith("--") and "c" in a[1:]:
-                    rest = [x for x in argv[k + 1:]]
-                    return [], rest[:1]
-            return argv, []
+                    return [], argv[k + 1:k + 2], extras, assigns
+            return argv, scripts, extras, assigns
         if name == "eval":
-            return [], [" ".join(argv[1:])]
+            return [], [" ".join(argv[1:])], extras, assigns
         break
-    return argv, []
+    return argv, scripts, extras, assigns
 
+
+# ---------------------------------------------------------------------------------------------
+# The walk.
 
 def _split(toks):
-    """Group tokens into (kind, payload): ('cmd', [words]), ('open',), ('close',)."""
+    """Group tokens into ('cmd', [words]), ('open',), ('close',), ('subs', [sources])."""
     out, cur, skip_next = [], [], False
     for t in toks:
         if t[0] == "redir":
@@ -340,38 +626,82 @@ def _split(toks):
     return out
 
 
-def walk(src, cwd, visit, _depth=0):
-    """Call visit(argv, cwd) for each simple command in ``src``. Returns the final cwd."""
-    if _depth > 8:
-        return cwd
+class _State:
+    def __init__(self, cwd, env, old=None, dirs=None):
+        self.cwd, self.env, self.old, self.dirs = cwd, dict(env), old, list(dirs or [])
+
+    def copy(self):
+        return _State(self.cwd, self.env, self.old, self.dirs)
+
+
+def walk(src, cwd, visit, env=None, _depth=0):
+    """Call visit(argv, cwd, env, assigns) for each simple command in ``src``."""
+    _walk(src, _State(cwd, env or {}), visit, _depth)
+
+
+def _walk(src, st, visit, depth):
+    if depth > 8:
+        return
     stack = []
-    for item in _split(tokenize(src)):
+    for item in _split(tokenize(strip_heredocs(src))):
         if item[0] == "open":
-            stack.append(cwd)
+            stack.append(st)
+            st = st.copy()
             continue
         if item[0] == "close":
-            cwd = stack.pop() if stack else cwd
+            st = stack.pop() if stack else st
             continue
         if item[0] == "subs":
             for s in item[1]:
-                walk(s, cwd, visit, _depth + 1)
+                _walk(s, st.copy(), visit, depth + 1)
             continue
         words = item[1]
         for w in words:
             for s in w[2]:
-                walk(s, cwd, visit, _depth + 1)
-        argv, scripts = unwrap([w[1] for w in words])
-        for s in scripts:
-            walk(s, cwd, visit, _depth + 1)
-        if not argv:
-            continue
+                _walk(s, st.copy(), visit, depth + 1)
+        _command([w[1] for w in words], st, visit, depth)
+
+
+def _command(raw, st, visit, depth):
+    if raw and raw[0] in ("for", "select") and len(raw) > 1:
+        st.env[raw[1]] = None
+        return
+    if raw and raw[0] == "read":
+        for a in raw[1:]:
+            if not a.startswith("-"):
+                st.env[a] = None
+        return
+    if raw and all(ASSIGN.match(a) for a in raw):
+        for a in raw:
+            m = ASSIGN.match(a)
+            st.env[m.group(1)] = expand(m.group(3), st.env)
+        return
+    argv, scripts, extras, assigns = unwrap(raw)
+    for s in scripts:
+        _walk(s, st.copy(), visit, depth + 1)
+    if argv and argv[0] in DECLARERS:
+        for a in argv[1:]:
+            m = ASSIGN.match(a)
+            if m:
+                st.env[m.group(1)] = expand(m.group(3), st.env)
+        return
+    if argv:
         name = argv[0]
-        if name in ("cd", "pushd"):
-            args = [a for a in argv[1:] if not a.startswith("-")]
-            if not args:
-                cwd = os.environ.get("HOME", cwd) if name == "cd" else cwd
+        if name in ("cd", "pushd", "popd"):
+            args = [a for a in argv[1:] if not a.startswith("-") or a == "-"]
+            prev = st.cwd
+            if name == "popd":
+                st.cwd = st.dirs.pop() if st.dirs else None
+            elif not args:
+                st.cwd = resolve("~", None, st.env) if name == "cd" else st.cwd
+            elif args[0] == "-":
+                st.cwd = st.old
             else:
-                cwd = resolve(args[0], cwd)
-            continue
-        visit(argv, cwd)
-    return cwd
+                st.cwd = resolve(args[0], st.cwd, st.env)
+            if name == "pushd":
+                st.dirs.append(prev)
+            st.old = prev
+            return
+        visit(argv, st.cwd, st.env, assigns)
+    for e in extras:
+        _command(e, st.copy(), visit, depth + 1)

@@ -5,23 +5,28 @@
 #   1. In the repository's MAIN worktree (`git rev-parse --git-dir` = `--git-common-dir`), the one
 #      a session's agents share (a linked worktree — .claude/worktrees/*, a scratchpad `git
 #      worktree add` — is its owner's own and is never judged here):
-#      a. a SUBAGENT (hook input has `agent_id`) may not run `git checkout|restore|clean|stash|
-#         reset|switch` in any form but `stash list|show`: agents never move the shared branch;
-#      b. the LEAD (no `agent_id`) may move and create branches — `switch <b>`, `switch -c <new>
-#         [start]`, `switch --detach <c>`, `checkout <b>`, `checkout -b <new> [start]`, which git
-#         itself refuses when they would overwrite local changes — but not the forms that destroy
-#         uncommitted work: `restore`; `clean` without -n/--dry-run; `stash` but list/show;
-#         `reset` but --soft; checkout/switch with -f/--force/--discard-changes/-m/--merge/
-#         --ours/--theirs/-p/--patch; `checkout` with a pathspec (`--`, `.`, or an argument that
-#         is neither a commit, by `rev-parse --verify <arg>^{commit}`, nor a refs/remotes/*/<arg>).
+#      a. a SUBAGENT (hook input has `agent_id`) may not run the verbs §9 names — `git checkout|
+#         restore|clean|stash|reset` — in any form but `stash list|show`;
+#      b. the LEAD, and a subagent's `git switch`, may move and create branches (`switch <b>`,
+#         `switch -c <new> [start]`, `switch --detach`, `checkout <b>`, `checkout -b <new>
+#         [start]`; git refuses them when they would overwrite local changes) and unstage
+#         (`restore --staged|-S` without `--worktree|-W`; `reset [-q] [<tree-ish>] [--] <paths>`),
+#         but not the forms that destroy uncommitted work: other `restore`; `clean` without
+#         -n/--dry-run; `stash` but list/show; `reset` without paths, but --soft; checkout/switch
+#         with -f/--force/--discard-changes/-m/--merge/--ours/--theirs/-p/--patch; `checkout` of a
+#         pathspec (`--`, `.`, or an argument neither a commit by `rev-parse --verify <arg>^{commit}`
+#         nor a refs/remotes/*/<arg>).
 #      The docs (code.claude.com/docs/en/hooks, "Hooks in subagents"): "When a subagent calls a
 #      tool, tool events such as `PreToolUse` and `PostToolUse` fire the same configured hooks as
 #      in the main conversation, and the input carries the `agent_id` and `agent_type` common
 #      input fields that identify the subagent."
-#   2. `rm` of a path inside the main worktree, except under .claude/tmp/ and a .NET build output
-#      (a `bin/` or `obj/` directory beside a *.*proj file; build_tools/bin/ is source). A path
-#      in a linked worktree or outside the repository (scratchpad, /tmp) is allowed. The path's
-#      parent decides, so removing a linked worktree's root is denied: `git worktree remove`.
+#   2. `rm` (and `find -delete`, `find -exec rm`) of the main worktree itself or any directory
+#      above it, for anyone; and of a path inside the main worktree, except under .claude/tmp/, a
+#      .NET build output (`bin/` or `obj/` beside a *.*proj; build_tools/bin/ is source), and a
+#      directory under .claude/worktrees/ that `git worktree list` does not register. The path's
+#      parent decides, so removing a registered linked worktree's root is denied: `git worktree
+#      remove`. A target the text cannot resolve (`"$tmp"` from `$(mktemp -d)`, a loop variable,
+#      an unset variable) is skipped.
 #   3. Staging without per-file pathspecs, in any worktree of this repository: `git add -A|--all|
 #      -u|--update|.|./|:/` and `git commit -a|--all`. -u and commit -a are the same hazard as -A:
 #      they stage every tracked file's changes, a peer's uncommitted hunks included.
@@ -30,20 +35,22 @@
 #      `claude/*` (so never dev or mainline). `--mirror`, `--all`, `--branches`, `--tags` never.
 #
 # The worktree is resolved from the command itself: `git -C <dir>` (cumulative), `--work-tree`,
-# a preceding `cd <dir>`/`pushd`, else the hook input's `cwd`. "This repository" is the one whose
-# common dir matches that of $CLAUDE_PROJECT_DIR (else `cwd`), so a scratch repo is not guarded.
-# Commands are found by .claude/hooks/shell_commands.py: compound lists, pipes, subshells,
-# `$(...)`, backticks, `bash -c '...'`, `eval`, leading VAR=v, `env`/`sudo`/`timeout`/`xargs`...
+# `--git-dir`, `GIT_DIR=`/`GIT_WORK_TREE=` (prefixed or set earlier in the text), a preceding
+# `cd`/`cd -`/`pushd`/`popd`, else the hook input's `cwd`. "This repository" is the one whose common
+# dir matches that of $CLAUDE_PROJECT_DIR (else `cwd`), so a scratch repo is not guarded. Commands
+# are found by .claude/hooks/shell_commands.py (its docstring lists what it follows).
 #
-# Cannot see: a script file (`bash x.sh`), a function or alias, a python/node subprocess, `find
-# -delete`, `xargs rm` input, `git rm`, `unlink`/`mv`, a path held in `$(...)`, a variable set
-# earlier in the same command, a `git` alias, `--git-dir` without `--work-tree`. An unparseable
-# command (unterminated quote) is allowed: bash refuses to run it as well.
+# Cannot see: a script file (`bash x.sh`), a function or alias, a python/node subprocess, `xargs
+# rm` input, `git rm`, `unlink`/`mv`, a path or directory the text cannot resolve, a `git` alias,
+# launchers outside shell_commands.PREFIXES (ssh, su -c, script -c, docker exec, make, npm run).
+# Unparseable text: allowed when `bash -n` refuses it too (bash will not run it); otherwise a
+# whole-string pattern check denies the verbs above in the main worktree.
 #
-# Hook input is JSON on stdin (tool_input.command, cwd). Falsified by .claude/hooks/test-hooks.sh.
+# Hook input is JSON on stdin (tool_input.command, cwd, agent_id). Falsified by
+# .claude/hooks/test-hooks.sh.
 input=$(cat)
 read -r -d '' PROG <<'PY'
-import glob, json, os, subprocess, sys
+import glob, json, os, re, subprocess, sys
 sys.dont_write_bytecode = True
 sys.path.insert(0, os.environ["HOOKS_DIR"])
 import shell_commands as sc
@@ -58,6 +65,9 @@ except Exception:
 if not isinstance(cmd, str) or not cmd:
     sys.exit(0)
 
+def git(*args):
+    return subprocess.run(["git"] + list(args), capture_output=True, text=True)
+
 _cache = {}
 def repo_of(path):
     """(toplevel, git_dir, common_dir) of the worktree holding path, or None."""
@@ -67,19 +77,35 @@ def repo_of(path):
     if not p:
         return None
     if p not in _cache:
-        r = subprocess.run(["git", "-C", p, "rev-parse", "--path-format=absolute",
-                            "--show-toplevel", "--git-dir", "--git-common-dir"],
-                           capture_output=True, text=True)
+        r = git("-C", p, "rev-parse", "--path-format=absolute", "--show-toplevel", "--git-dir",
+                "--git-common-dir")
         lines = r.stdout.split("\n")
         _cache[p] = (tuple(os.path.realpath(x) for x in lines[:3])
                      if r.returncode == 0 and len(lines) >= 3 and all(lines[:3]) else None)
     return _cache[p]
+
+def repo_of_gitdir(gitdir):
+    r = git("--git-dir=" + gitdir, "rev-parse", "--path-format=absolute", "--git-dir",
+            "--git-common-dir")
+    lines = r.stdout.split("\n")
+    if r.returncode or len(lines) < 2 or not all(lines[:2]):
+        return None
+    gd, common = (os.path.realpath(x) for x in lines[:2])
+    return (os.path.dirname(common), gd, common)
 
 project = repo_of(os.environ.get("CLAUDE_PROJECT_DIR") or cwd)
 def ours(info):
     return bool(info and project and info[2] == project[2])
 def main_tree(info):
     return ours(info) and info[1] == info[2]
+
+_wt = []
+def worktrees():
+    """Registered worktree roots of this repository, the main one first."""
+    if not _wt and project:
+        out = git("-C", project[0], "worktree", "list", "--porcelain").stdout
+        _wt.extend(os.path.realpath(l[9:]) for l in out.split("\n") if l.startswith("worktree "))
+    return _wt
 
 def deny(msg):
     sys.stderr.write("BLOCKED by .claude/hooks/guard-shared-tree.sh: " + msg + "\n")
@@ -88,42 +114,65 @@ def deny(msg):
 SHARED = ("The main worktree is shared with this session's agents (contract §9): REPORT `git status`, "
           "do not make it clean; restore a mutation from your `cp` copy. To reset, stash or discard, "
           "work in your own worktree (`git worktree add <scratchpad>/wt <ref>`), where it is allowed.")
-AGENT = ("Agents never move or clean the shared tree's branch (contract §9); the lead does. "
-         "Work in your own worktree (`git worktree add <scratchpad>/wt <ref>`) if you need one.")
+AGENT = ("Agents never run contract §9's checkout/restore/clean/stash/reset in the shared tree "
+         "(`git switch` to move branches is allowed); work in your own worktree "
+         "(`git worktree add <scratchpad>/wt <ref>`) if you need one.")
+S9 = {"checkout", "restore", "clean", "stash", "reset"}
 GIT_OPTS_WITH_ARG = {"-C", "-c", "--git-dir", "--work-tree", "--namespace", "--config-env",
                      "--exec-path", "--super-prefix"}
 FORCE_LONG = {"--force", "--discard-changes", "--merge", "--ours", "--theirs", "--patch"}
 CO_NAME_OPTS = {"-b", "-B", "--orphan", "-c", "-C", "--create", "--force-create"}
 
 def is_commit(arg, where):
-    r = subprocess.run(["git", "-C", where, "rev-parse", "--verify", "--quiet", arg + "^{commit}"],
-                       capture_output=True, text=True)
-    if r.returncode == 0:
+    if git("-C", where, "rev-parse", "--verify", "--quiet", arg + "^{commit}").returncode == 0:
         return True
-    r = subprocess.run(["git", "-C", where, "for-each-ref", "--count=1", "--format=%(refname)",
-                        "refs/remotes/*/" + arg], capture_output=True, text=True)
+    r = git("-C", where, "for-each-ref", "--count=1", "--format=%(refname)", "refs/remotes/*/" + arg)
     return bool(r.stdout.strip())
 
+def positionals(rest, name_opts=()):
+    pos, j = [], 0
+    while j < len(rest):
+        a = rest[j]
+        if a == "--":
+            break
+        if a in name_opts:
+            j += 2
+            continue
+        if not a.startswith("-"):  # `-` alone is the previous branch: an option here
+            pos.append(a)
+        j += 1
+    return pos
+
 def destroys(verb, rest, where):
-    """Why this lead-run verb can destroy uncommitted work in the main worktree, or None."""
+    """Why this verb can destroy uncommitted work in the main worktree, or None."""
     shorts = "".join(a[1:] for a in rest if a.startswith("-") and not a.startswith("--"))
     if verb == "restore":
-        return "`git restore` discards uncommitted changes"
+        staged = "--staged" in rest or "S" in shorts
+        worktree = "--worktree" in rest or "W" in shorts
+        return None if staged and not worktree else "`git restore` discards uncommitted changes"
     if verb == "clean":
-        if "--dry-run" in rest or "n" in shorts:
-            return None
-        return "`git clean` deletes untracked files"
+        return None if "--dry-run" in rest or "n" in shorts else "`git clean` deletes untracked files"
     if verb == "stash":
         if rest and rest[0] in ("list", "show"):
             return None
         return "`git stash` moves uncommitted changes (a peer's included) off the tree"
     if verb == "reset":
-        return None if "--soft" in rest else "`git reset` (other than --soft) discards or unstages work"
+        if {"--hard", "--merge", "--keep"} & set(rest):
+            return "`git reset --hard|--merge|--keep` discards uncommitted changes"
+        if "--soft" in rest:
+            return None
+        if "--" in rest and rest.index("--") < len(rest) - 1:
+            return None  # a path reset: only the index moves
+        if any(a.startswith("--pathspec-from-file") for a in rest):
+            return None
+        if any(not is_commit(a, where) for a in positionals(rest)):
+            return None
+        return "`git reset` without paths moves the branch and unstages every file"
     # checkout / switch
-    for k, a in enumerate(rest):
+    for a in rest:
         if a == "--":
             break
-        if a.split("=", 1)[0] in FORCE_LONG or a == "--pathspec-from-file":
+        if a.split("=", 1)[0] in FORCE_LONG or a.startswith("--pathspec-from-file"):
             return "`git %s %s` overwrites uncommitted changes" % (verb, a)
         if a.startswith("-") and not a.startswith("--"):
             for ch in a[1:]:
@@ -135,43 +184,46 @@ def destroys(verb, rest, where):
         return None
     if "--" in rest:
         return "`git checkout -- <path>` overwrites the path's uncommitted changes"
-    pos, j = [], 0
-    while j < len(rest):
-        a = rest[j]
-        if a in CO_NAME_OPTS:
-            j += 2
-            continue
-        if a.startswith("-"):  # an option, or `-` (the previous branch)
-            j += 1
-            continue
-        pos.append(a)
-        j += 1
-    for a in pos:
+    for a in positionals(rest, CO_NAME_OPTS):
         if a == "." or not is_commit(a, where):
             return "`git checkout %s` names a path: it overwrites that path's uncommitted changes" % a
     return None
 
-def check_git(argv, cwd):
+def check_git(argv, cwd, env, assigns):
     args, i, where = argv[1:], 0, cwd
+    gitdir = sc.resolve(assigns["GIT_DIR"], cwd, env) if "GIT_DIR" in assigns else (
+        sc.resolve(env["GIT_DIR"], cwd, env) if env.get("GIT_DIR") else None)
+    worktree = sc.resolve(assigns["GIT_WORK_TREE"], cwd, env) if "GIT_WORK_TREE" in assigns else (
+        sc.resolve(env["GIT_WORK_TREE"], cwd, env) if env.get("GIT_WORK_TREE") else None)
     while i < len(args) and args[i].startswith("-"):
         a = args[i]
         if a in GIT_OPTS_WITH_ARG and i + 1 < len(args):
+            v = args[i + 1]
             if a == "-C":
-                where = sc.resolve(args[i + 1], where)
+                where = sc.resolve(v, where, env)
             elif a == "--work-tree":
-                where = sc.resolve(args[i + 1], where)
+                worktree = sc.resolve(v, where, env)
+            elif a == "--git-dir":
+                gitdir = sc.resolve(v, where, env)
             i += 2
             continue
         if a.startswith("--work-tree="):
-            where = sc.resolve(a.split("=", 1)[1], where)
+            worktree = sc.resolve(a.split("=", 1)[1], where, env)
+        elif a.startswith("--git-dir="):
+            gitdir = sc.resolve(a.split("=", 1)[1], where, env)
         i += 1
     if i >= len(args):
         return
     verb, rest = args[i], args[i + 1:]
-    info = repo_of(where)
-    if verb in ("checkout", "restore", "clean", "stash", "reset", "switch"):
+    if gitdir:
+        info = repo_of_gitdir(gitdir)
+    elif worktree or where:
+        info = repo_of(worktree or where)
+    else:
+        info = None
+    if verb in S9 or verb == "switch":
         if main_tree(info):
-            if agent:
+            if agent and verb in S9:
                 if not (verb == "stash" and rest and rest[0] in ("list", "show")):
                     deny("`git %s` by a subagent in the main worktree %s. %s" % (verb, info[0], AGENT))
             else:
@@ -211,10 +263,10 @@ def check_git(argv, cwd):
                             j += 1
                         break
             j += 1
-    elif verb == "push":
-        check_push(rest, where, info)
+    elif verb == "push" and where:
+        check_push(rest, where)
 
-def check_push(rest, where, info):
+def check_push(rest, where):
     flags, pos, j = set(), [], 0
     while j < len(rest):
         a = rest[j]
@@ -249,15 +301,13 @@ def check_push(rest, where, info):
         r = r.lstrip("+")
         dst = r.split(":", 1)[1] if ":" in r else r
         if dst == "HEAD":
-            out = subprocess.run(["git", "-C", where, "symbolic-ref", "--short", "-q", "HEAD"],
-                                 capture_output=True, text=True).stdout.strip()
-            dst = out or "HEAD"
+            dst = git("-C", where, "symbolic-ref", "--short", "-q", "HEAD").stdout.strip() or "HEAD"
         dsts.append(dst[len("refs/heads/"):] if dst.startswith("refs/heads/") else dst)
     for d in dsts:
         if not d.startswith("claude/"):
             deny("a forced `git push` to `%s`. %s" % (d, rule))
 
-def check_rm(argv, cwd):
+def check_rm(argv, cwd, env):
     targets, opts = [], True
     for a in argv[1:]:
         if opts and a == "--":
@@ -266,36 +316,56 @@ def check_rm(argv, cwd):
         if opts and a.startswith("-") and a != "-":
             continue
         targets.append(a)
+    wts = worktrees()
+    top = wts[0] if wts else None
     for t in targets:
-        path = sc.resolve(t, cwd)
+        path = sc.resolve(t, cwd, env)
+        if path is None:
+            continue  # cannot resolve: "$tmp", a loop variable, an unknown cwd
+        if top:
+            for c in [path] + (glob.glob(path) if glob.has_magic(path) else []):
+                rp = os.path.realpath(c)
+                if rp == top or top.startswith(rp.rstrip("/") + "/"):
+                    deny("`rm %s` removes the main worktree %s%s. Contract §9." % (
+                        t, top, "" if rp == top else " (it is below " + rp + ")"))
         parent = os.path.dirname(path)
         info = repo_of(parent)
         if not main_tree(info):
             continue
         rel = os.path.relpath(os.path.join(os.path.realpath(parent), os.path.basename(path)), info[0])
         parts = rel.split(os.sep)
-        if rel == "." or not parts:
-            deny("`rm` of the main worktree itself.")
         if parts[:2] == [".claude", "tmp"] and len(parts) > 2:
             continue
+        if parts[:2] == [".claude", "worktrees"] and len(parts) > 2 and os.path.realpath(
+                os.path.join(info[0], ".claude", "worktrees", parts[2])) not in wts:
+            continue  # a stale directory, no longer a registered worktree
         if any(p in ("bin", "obj") and glob.glob(os.path.join(info[0], *parts[:k], "*.*proj"))
                for k, p in enumerate(parts)):
             continue
         deny("`rm %s` inside the shared main worktree %s. Restore a mutation from the copy you made "
              "(`cp`); put scratch files in your scratchpad or .claude/tmp/ (bin/ and obj/ build "
-             "outputs may be removed). Contract §9." % (t, info[0]))
+             "outputs may be removed; a registered worktree goes with `git worktree remove`). "
+             "Contract §9." % (t, info[0]))
 
-def visit(argv, cwd):
+def visit(argv, cwd, env, assigns):
     name = os.path.basename(argv[0])
     if name == "git":
-        check_git(argv, cwd)
+        check_git(argv, cwd, env, assigns)
     elif name == "rm":
-        check_rm(argv, cwd)
+        check_rm(argv, cwd, env)
 
+FALLBACK = [r"\bgit\b[^\n;&|]*\b(checkout|restore|clean|stash|reset|switch)\b",
+            r"(^|[\s;&|(`])rm\s",
+            r"\bgit\b[^\n;&|]*\badd\b[^\n;&|]*\s(-A|--all|-u|--update|\.)(\s|$)",
+            r"\bgit\b[^\n;&|]*\bpush\b[^\n;&|]*(\s--force\b|\s-f\b|\s\+)"]
 try:
     sc.walk(cmd, cwd, visit)
 except sc.ParseError:
-    sys.exit(0)
+    if not sc.bash_accepts(cmd):
+        sys.exit(0)  # bash refuses it too: nothing runs
+    if main_tree(repo_of(cwd)) and any(re.search(p, cmd) for p in FALLBACK):
+        deny("this command could not be parsed (bash can parse it) and names a guarded git verb "
+             "or rm in the main worktree. Split it into simpler commands.")
 sys.exit(0)
 PY
 HOOK_INPUT="$input" HOOKS_DIR="$(cd "$(dirname "$0")" && pwd)" exec python3 -c "$PROG"

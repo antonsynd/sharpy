@@ -11,7 +11,9 @@
 # `dotnet tool`, `dotnet <app>.dll`.
 #
 # Each simple command is judged on its own (.claude/hooks/shell_commands.py splits lists, pipes,
-# subshells, `$(...)`, `bash -c '...'`, `eval`, VAR=v / env / timeout / xargs prefixes): it is
+# subshells, `$(...)`, heredoc bodies, `bash -c '...'`, `eval`, VAR=v and the launchers in its
+# PREFIXES — env, sudo, time, timeout, nice, ionice, taskset, chrt, flock, strace, watch, parallel,
+# xargs, setsid, nohup, stdbuf — and `find -exec`): it is
 # blocked when the program it runs is `dotnet` by any path (`/root/.dotnet/dotnet build`) and its
 # first non-option argument is a covered verb. The wrapper is a different program, so it passes,
 # and a raw call beside it in the same command (`echo dotnet-serialized; dotnet test`) is blocked.
@@ -19,15 +21,16 @@
 #
 # Cannot see: a script that calls dotnet internally (`bash build_tools/regenerate_spy_stdlib.sh`;
 # those scripts take SHARPYC=<built sharpyc> to stay off the lock), a program named by a
-# substitution (`$(which dotnet) build`) or a variable set earlier in the command, an alias or
-# function, a python/node subprocess. An unparseable command (unterminated quote) is allowed:
-# bash refuses to run it as well.
+# substitution (`$(which dotnet) build`), an alias or function, a python/node subprocess, a
+# launcher outside PREFIXES (ssh, su -c, script -c, docker exec, make, npm run). Unparseable text
+# is allowed when `bash -n` refuses it too (bash will not run it); otherwise a whole-string
+# pattern for a raw dotnet verb blocks it.
 #
 # Hook input is JSON on stdin; the command is tool_input.command.
 # Falsified by .claude/hooks/test-hooks.sh.
 input=$(cat)
 read -r -d '' PROG <<'PY'
-import json, os, sys
+import json, os, re, sys
 sys.dont_write_bytecode = True
 sys.path.insert(0, os.environ["HOOKS_DIR"])
 import shell_commands as sc
@@ -40,24 +43,31 @@ except Exception:
 if not isinstance(cmd, str):
     sys.exit(0)
 
-def visit(argv, cwd):
-    if os.path.basename(sc.expand(argv[0])) not in ("dotnet", "dotnet.exe"):
+def block(verb):
+    sys.stderr.write(
+        "BLOCKED by .claude/hooks/enforce-dotnet-serialized.sh: raw `dotnet " + verb + "` "
+        "(any of build|test|vstest|run|format|pack|publish|msbuild|clean|stryker) is forbidden: "
+        "parallel runs OOM the machine. Use the drop-in wrapper instead, same args, same "
+        "output, same exit code: .claude/scripts/dotnet-serialized test --filter "
+        "\"FullyQualifiedName~Lexer\" --no-build   (lock-free alternative for probes: "
+        "src/Sharpy.Cli/bin/Debug/net10.0/sharpyc run file.spy)\n")
+    sys.exit(2)
+
+def visit(argv, *_):
+    if os.path.basename(sc.expand(argv[0]) or argv[0]) not in ("dotnet", "dotnet.exe"):
         return
     verb = next((a for a in argv[1:] if not a.startswith("-")), "")
     if verb in VERBS:
-        sys.stderr.write(
-            "BLOCKED by .claude/hooks/enforce-dotnet-serialized.sh: raw `dotnet " + verb + "` "
-            "(any of build|test|vstest|run|format|pack|publish|msbuild|clean|stryker) is forbidden: "
-            "parallel runs OOM the machine. Use the drop-in wrapper instead, same args, same "
-            "output, same exit code: .claude/scripts/dotnet-serialized test --filter "
-            "\"FullyQualifiedName~Lexer\" --no-build   (lock-free alternative for probes: "
-            "src/Sharpy.Cli/bin/Debug/net10.0/sharpyc run file.spy)\n")
-        sys.exit(2)
+        block(verb)
 
 try:
     sc.walk(cmd, os.getcwd(), visit)
 except sc.ParseError:
-    pass
+    if sc.bash_accepts(cmd):
+        m = re.search(r"(^|[\s;&|(\"'`])(\S*/)?dotnet(\.exe)?\s+(-\S+\s+)*(" + "|".join(VERBS)
+                      + r")\b", cmd)
+        if m:
+            block(m.group(5))
 sys.exit(0)
 PY
 HOOK_INPUT="$input" HOOKS_DIR="$(cd "$(dirname "$0")" && pwd)" exec python3 -c "$PROG"
