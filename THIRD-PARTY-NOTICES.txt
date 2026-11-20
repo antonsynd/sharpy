@@ -22,7 +22,7 @@ Unicode Character Database
 
 Copyright © 1991-2026 Unicode, Inc.
 
-Sharpy file derived from it:
+Sharpy files derived from this source:
 
     src/Sharpy.Core/StringExtensions.Format.cs (only the case-folding
     data: the table s_caseFoldTable and the Cherokee ranges in
@@ -92,22 +92,37 @@ PyYAML
 Copyright (c) 2017-2021 Ingy döt Net
 Copyright (c) 2006-2016 Kirill Simonov
 
-Sharpy file derived from it:
+Sharpy files derived from this source:
 
     src/Sharpy.Stdlib/Yaml/YamlScalarResolver.cs (only the regular
     expressions Yaml11Int and Yaml11Float)
+    src/Sharpy.Stdlib/Yaml/YamlScalarStyle.cs
 
-Upstream source: PyYAML 6.0.3, lib/yaml/resolver.py
-(https://github.com/yaml/pyyaml)
+Upstream source: PyYAML 6.0.3, lib/yaml/resolver.py and
+lib/yaml/emitter.py (https://github.com/yaml/pyyaml)
 
-Derived portion: Yaml11Int is the expression of the implicit resolver
-for tag:yaml.org,2002:int, with its binary, octal, decimal and
-hexadecimal arms (hexadecimal moved before octal) and without its
-sexagesimal arm. Yaml11Float is the first two arms of the resolver for
-tag:yaml.org,2002:float (digits with a required dot, and a leading dot),
-without its sexagesimal, .inf and .nan arms. Both were rewritten as .NET
-regular expressions, with a non-capturing group dropped and no other
-change to what they match within those arms.
+Derived portions:
+
+- YamlScalarResolver.cs: Yaml11Int is the expression of the implicit
+  resolver for tag:yaml.org,2002:int, with its binary, octal, decimal and
+  hexadecimal arms (hexadecimal moved before octal) and without its
+  sexagesimal arm. Yaml11Float is the first two arms of the resolver for
+  tag:yaml.org,2002:float (digits with a required dot, and a leading
+  dot), without its sexagesimal, .inf and .nan arms. Both were rewritten
+  as .NET regular expressions, with a non-capturing group dropped and no
+  other change to what they match within those arms.
+
+- YamlScalarStyle.cs: YamlScalarStyleAuthority.Choose is a C# port of
+  Emitter.analyze_scalar and Emitter.choose_scalar_style, reduced to the
+  plain, single-quoted and double-quoted styles: the same flag variables
+  (block and flow indicators, line breaks, special characters, leading
+  and trailing space, space followed by a break), the document-indicator
+  check, the leading and inner indicator character sets, and the order
+  of the style decision. It drops the block styles, the simple-key
+  context, canonical output, the line-break characters other than \n and
+  the allow_unicode handling (only C0 controls and DEL are special), and
+  takes the caller's resolver verdict in place of the event's implicit
+  flag.
 
 The PyYAML license text follows, verbatim from the LICENSE file at
 PyYAML's 6.0.3 tag
@@ -449,49 +464,71 @@ carries the .spy file's notice.
 API documentation summaries adapted from CPython docstrings
 -----------------------------------------------------------
 
-Some one-line API summaries in the files below (a .spy docstring, or a C#
-<summary>) are sentences taken from the docstrings of CPython's standard
-library, Lib/ in CPython 3.15 (compared against 3.15.2). Only those
-summaries are derived from CPython: unless a file is also listed above,
-its code is Sharpy's own and it carries no PSF header. The summaries are
+Some API summaries in the files below (a .spy docstring, or a C#
+<summary>) contain sentences taken word for word from CPython 3.15's
+docstrings (compared against 3.15.2): those of the Python modules in its
+Lib/, and the __doc__ strings of its built-in and C-implemented modules
+(builtins, math, itertools, posix, _collections and the like). Only those
+sentences are derived from CPython: unless a file is also listed above,
+its code is Sharpy's own and it carries no PSF header. The sentences are
 used under the PSF License Version 2, whose text follows this section. A
 .spy file stands for itself and the C# generated from it.
 
 Sharpy files holding these summaries:
 
+    src/Sharpy.Core/Any.cs
+    src/Sharpy.Core/Builtins/Exceptions.cs
+    src/Sharpy.Core/IList.cs
+    src/Sharpy.Core/Id.cs
     src/Sharpy.Core/Partial.Dict/Dict.Methods.cs
+    src/Sharpy.Core/Partial.Iterator/Iterator.cs
+    src/Sharpy.Core/Partial.List/List.cs
+    src/Sharpy.Core/Partial.Set/Set.Methods.cs
+    src/Sharpy.Core/Reversed.cs
+    src/Sharpy.Core/StringExtensions.Split.cs
+    src/Sharpy.Core/StringExtensions.cs
+    src/Sharpy.Stdlib/Collections/ChainMap.cs
+    src/Sharpy.Stdlib/Collections/Collections.cs
     src/Sharpy.Stdlib/Datetime/Datetime.cs
     src/Sharpy.Stdlib/Heapq/Heapq.Merge.cs
+    src/Sharpy.Stdlib/Itertools/__Init__.cs
     src/Sharpy.Stdlib/Logging/LoggingModule.cs
     src/Sharpy.Stdlib/Pathlib/Path.cs
     src/Sharpy.Stdlib/Pathlib/__Init__.cs
+    src/Sharpy.Stdlib/Secrets/Secrets.cs
     src/Sharpy.Stdlib/spy/calendar_module.spy
     src/Sharpy.Stdlib/spy/fnmatch_module.spy
+    src/Sharpy.Stdlib/spy/glob_module.spy
     src/Sharpy.Stdlib/spy/heapq.spy
+    src/Sharpy.Stdlib/spy/itertools.spy
     src/Sharpy.Stdlib/spy/logging_module.spy
+    src/Sharpy.Stdlib/spy/math_module.spy
+    src/Sharpy.Stdlib/spy/os_module.spy
     src/Sharpy.Stdlib/spy/os_path_module.spy
     src/Sharpy.Stdlib/spy/pathlib_module.spy
     src/Sharpy.Stdlib/spy/pprint_module.spy
+    src/Sharpy.Stdlib/spy/shlex_module.spy
     src/Sharpy.Stdlib/spy/shutil_module.spy
     src/Sharpy.Stdlib/spy/statistics.spy
     src/Sharpy.Stdlib/spy/subprocess_module.spy
     src/Sharpy.Stdlib/spy/textwrap.spy
 
-Upstream source: CPython 3.15, the docstrings of Lib/calendar.py,
-collections/__init__.py, fnmatch.py, genericpath.py, heapq.py,
-logging/__init__.py, ntpath.py, pathlib/__init__.py, pathlib/types.py,
-pprint.py, _pydatetime.py, shutil.py, statistics.py, subprocess.py and
-textwrap.py.
+Upstream source: CPython 3.15 (https://github.com/python/cpython): the
+docstrings of Lib/, and of the built-in and C-implemented modules.
 
 Summary of changes: each sentence documents the Sharpy API of the same
 name. It may differ from its CPython docstring in letter case, line
-wrapping and a final full stop; the rest of each Sharpy docstring is
-Sharpy's own. The list above is the set of files in which
-build_tools/tests/test_third_party_notices.py finds a summary whose first
-paragraph (for a C# summary, its whole text or its first sentence)
-equals, ignoring letter case, whitespace and a final full stop, the first
-paragraph of a docstring in CPython 3.15's Lib/ that is longer than 30
-characters (Lib's test packages, idlelib and site-packages are not read).
+wrapping, reStructuredText markup (* and `) and a final full stop.
+
+Verbatim sentences are what is credited here. The list above is the set
+of files in which build_tools/tests/test_third_party_notices.py finds a
+paragraph or sentence of a summary that equals, ignoring letter case,
+whitespace, * and ` markup and a final full stop, a paragraph or sentence
+of at least 30 characters of one of those docstrings (Lib's test
+packages, idlelib, site-packages and CPython's test modules are not
+read). Paraphrases of CPython docstrings, and text taken from CPython's
+documentation (Doc/*.rst), are not matched, were not audited, and are not
+listed.
 
 The CPython license text follows, verbatim from the LICENSE.txt shipped with
 CPython 3.15.2 (lib/python3.15/LICENSE.txt). It is the complete file.
