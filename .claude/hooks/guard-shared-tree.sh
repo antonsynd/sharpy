@@ -194,25 +194,26 @@ def positionals(rest, name_opts=()):
 
 def destroys(verb, rest, where):
     """Why this verb can destroy uncommitted work in the main worktree, or None."""
-    shorts = "".join(a[1:] for a in rest if a.startswith("-") and not a.startswith("--"))
+    opts = rest[:rest.index("--")] if "--" in rest else rest  # after `--` come paths only
+    shorts = "".join(a[1:] for a in opts if a.startswith("-") and not a.startswith("--"))
     if verb == "restore":
-        staged = "--staged" in rest or "S" in shorts
-        worktree = "--worktree" in rest or "W" in shorts
+        staged = "--staged" in opts or "S" in shorts
+        worktree = "--worktree" in opts or "W" in shorts
         return None if staged and not worktree else "`git restore` discards uncommitted changes"
     if verb == "clean":
-        return None if "--dry-run" in rest or "n" in shorts else "`git clean` deletes untracked files"
+        return None if "--dry-run" in opts or "n" in shorts else "`git clean` deletes untracked files"
     if verb == "stash":
         if rest and rest[0] in ("list", "show"):
             return None
         return "`git stash` moves uncommitted changes (a peer's included) off the tree"
     if verb == "reset":
-        if {"--hard", "--merge", "--keep"} & set(rest):
+        if {"--hard", "--merge", "--keep"} & set(opts):
             return "`git reset --hard|--merge|--keep` discards uncommitted changes"
-        if "--soft" in rest:
+        if "--soft" in opts:
             return None
         if "--" in rest and rest.index("--") < len(rest) - 1:
             return None  # a path reset: only the index moves
-        if any(a.startswith("--pathspec-from-file") for a in rest):
+        if any(a.startswith("--pathspec-from-file") for a in opts):
             return None
         if any(not is_commit(a, where) for a in positionals(rest)):
             return None

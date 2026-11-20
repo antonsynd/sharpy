@@ -209,9 +209,9 @@ jobs:
         python -m build_tools stdlib generate --check
 
   # The falsification harness for the Claude Code hooks (W0.1, 7c9567288; run in CI since #2458,
-  # W0.4): 351 cases in about 35 s locally, needing bash, git and python3 only (each hook's `dotnet`
+  # W0.4): 375 cases in about 40 s locally, needing bash, git and python3 only (each hook's `dotnet`
   # is a stub). Its python branch of format-on-save.sh SKIPS without ruff or black on PATH, so ruff
-  # is installed and the step fails on any skip: a runner without it would otherwise pass 348 cases.
+  # is installed and the step fails on any skip: a runner without it would otherwise pass 372 cases.
   hooks:
     needs: changes
     if: ${{ needs.changes.outputs.relevant == 'true' }}

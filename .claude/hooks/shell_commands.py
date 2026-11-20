@@ -172,13 +172,8 @@ def strip_heredocs(src):
                 continue
             if c == '"':
                 stack.append(["dq", 0, False])
-            elif c == "{":
-                stack[-1][1] += 1
-            elif c == "}":
-                if stack[-1][1] > 0:
-                    stack[-1][1] -= 1
-                else:
-                    stack.pop()
+            elif c == "}":  # a bare { does not nest: `${x:-{}` is complete (bash prints `{`)
+                stack.pop()
             out.append(c)
             i += 1
             prev = c
@@ -312,6 +307,47 @@ def _match_close(src, i, open_ch, close_ch):
     raise ParseError("unterminated " + open_ch)
 
 
+def _match_brace(src, i):
+    """Index just past the ``}`` closing a ``${`` consumed before ``i``. A nested ``${`` nests;
+    a bare ``{`` does not (bash: ``echo ${x:-{a}b}`` prints ``{ab}``)."""
+    depth, n = 1, len(src)
+    while i < n:
+        c = src[i]
+        if c == "\\":
+            i += 2
+            continue
+        if c == "'":
+            j = src.find("'", i + 1)
+            if j < 0:
+                raise ParseError("unterminated '")
+            i = j + 1
+            continue
+        if c == '"':
+            i = _skip_dquote(src, i + 1)
+            continue
+        if c == "`":
+            i = _skip_backtick(src, i + 1)
+            continue
+        if src.startswith("$(", i):
+            i = _match_close(src, i + 2, "(", ")")
+            continue
+        if src.startswith("${", i):
+            depth += 1
+            i += 2
+            continue
+        if c == "}":
+            depth -= 1
+            if depth == 0:
+                return i + 1
+        i += 1
+    raise ParseError("unterminated ${")
+
+
+def _subs_in(text):
+    """The command substitutions ($(...), backticks) inside a span of shell words."""
+    return [sub for t in tokenize(text) if t[0] == "w" for sub in t[2]]
+
+
 def _skip_dquote(src, i):
     n = len(src)
     while i < n:
@@ -436,9 +472,10 @@ def tokenize(src):
             i = j + 1
             continue
         if src.startswith("$((", i):
-            k = _match_close(src, i + 3, "(", ")")  # arithmetic: no commands inside
+            k = _match_close(src, i + 3, "(", ")")  # arithmetic, which may hold $(...)
             if k < n and src[k] == ")":
                 k += 1
+            subs.extend(_subs_in(src[i + 3:k - 2]))
             add(src[i:k])
             i = k
             continue
@@ -449,7 +486,8 @@ def tokenize(src):
             i = k
             continue
         if src.startswith("${", i):
-            k = _match_close(src, i + 2, "{", "}")
+            k = _match_brace(src, i + 2)
+            subs.extend(_subs_in(src[i + 2:k - 1]))  # ${x:-$(cmd)} runs cmd
             add(src[i:k])
             i = k
             continue
@@ -468,7 +506,8 @@ def tokenize(src):
             toks.append(("redir", m.group(0)))
             continue
         if c == "(" and word is not None and _ARRAY_ASSIGN.match("".join(word)):
-            k = _match_close(src, i + 1, "(", ")")  # NAME=( ... ): words, not a subshell
+            k = _match_close(src, i + 1, "(", ")")  # NAME=( ... ): words, not a subshell,
+            subs.extend(_subs_in(src[i + 1:k - 1]))  # but their $(...) still run
             add(src[i:k])
             i = k
             continue
@@ -736,18 +775,37 @@ def _command(raw, st, visit, depth):
     if argv:
         name = argv[0]
         if name in ("cd", "pushd", "popd"):
-            args = [a for a in argv[1:] if not a.startswith("-") or a == "-"]
             prev = st.cwd
-            if name == "popd":
-                st.cwd = st.dirs.pop() if st.dirs else None
-            elif not args:
-                st.cwd = resolve("~", None, st.env) if name == "cd" else st.cwd
-            elif args[0] == "-":
-                st.cwd = st.old
+            if name == "cd":
+                args = [a for a in argv[1:] if not a.startswith("-") or a == "-"]
+                if not args:
+                    st.cwd = resolve("~", None, st.env)
+                elif args[0] == "-":
+                    st.cwd = st.old
+                else:
+                    st.cwd = resolve(args[0], st.cwd, st.env)
             else:
-                st.cwd = resolve(args[0], st.cwd, st.env)
-            if name == "pushd":
-                st.dirs.append(prev)
+                # bash's directory stack: index 0 is the cwd, then the most recently pushed.
+                full, args = [st.cwd] + st.dirs[::-1], argv[1:]
+                rot = args[0] if args and re.match(r"^[+-][0-9]+$", args[0]) else None
+                if "-n" in args:
+                    full = [None]  # stack edited without a cd: not followed
+                elif rot is not None:  # pushd/popd +N|-N: rotate, or drop, entry N
+                    k = int(rot[1:]) if rot[0] == "+" else len(full) - 1 - int(rot[1:])
+                    if not 0 <= k < len(full):
+                        full = [None]  # bash refuses it
+                    elif name == "pushd":
+                        full = full[k:] + full[:k]
+                    else:
+                        del full[k]
+                elif name == "pushd" and args:
+                    full = [resolve(args[0], st.cwd, st.env)] + full
+                elif len(full) >= 2:  # pushd swaps the top two; popd drops the top
+                    full = [full[1], full[0]] + full[2:] if name == "pushd" else full[1:]
+                else:
+                    full = [None]
+                full = full or [None]
+                st.cwd, st.dirs = full[0], full[1:][::-1]
             st.old = prev
             st.env["PWD"], st.env["OLDPWD"] = st.cwd, prev
             return

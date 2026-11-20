@@ -173,6 +173,11 @@ blocked 'parallel -j2 dotnet build ::: a b'
 blocked 'chrt -i 0 dotnet build'
 blocked "env -S 'dotnet test --no-build'"
 blocked $'(( n = 1 << 4 ))\ndotnet test'
+blocked 'b=($(dotnet test))'
+allowed 'b=($(dotnet --version))'
+blocked 'echo ${x:-$(dotnet test)}'
+allowed 'echo ${x:-$(dotnet --version)}'
+blocked 'echo $(( $(dotnet build | wc -l) + 1 ))'
 allowed $'(( n = 1 << 4 ))\ndotnet --version'
 # Here-documents: a body with an odd quote must not hide the call beside it.
 HDC=$(cat <<'EOS'
@@ -438,6 +443,30 @@ gdeny 'args=(a b); git reset --hard' "$MAIN"
 gdeny 'arr+=(x) && rm -rf src' "$MAIN"
 # find cleanup of a .NET output: the allowed form names the output directory (header note).
 gallow "find src/P/bin -name '*.dll' -delete" "$MAIN"
+# 1f. Review round 4.
+# Substitutions inside an array, a ${...} or a $((...)) still run.
+gdeny 'a=( "$(git reset --hard)" )' "$MAIN"
+gdeny 'a=($(git reset --hard))' "$MAIN"
+gdeny 'a=(`git stash`)' "$MAIN"
+gallow 'a=($(git status --short))' "$MAIN"
+gdeny 'echo ${x:-$(git reset --hard)}' "$MAIN"
+gdeny ': ${x:=`git stash`}' "$MAIN"
+gdeny 'echo ${x:-${y:-$(git stash)}}' "$MAIN"
+gdeny 'echo $(( $(git stash) + 1 ))' "$MAIN"
+gallow 'echo ${x:-$(git status)} $(( $(git rev-parse HEAD | wc -c) + 1 ))' "$MAIN"
+# A bare { inside ${...} does not nest (bash prints `{` for ${x:-{}); a nested ${ does.
+gallow $'echo "${x:-{}"\ncat <<EOF\ngit reset --hard\nEOF' "$MAIN"
+gallow $'echo ${x:-{}\ncat <<EOF\ngit reset --hard\nEOF' "$MAIN"
+gallow $'echo ${x:-${y:-z}}w\ncat <<EOF\ngit reset --hard\nEOF' "$MAIN"
+gdeny $'echo ${x:-{}\ngit reset --hard' "$MAIN"
+# pushd/popd +N|-N rotate bash's directory stack ([cwd, last pushed, ...]).
+gdeny "pushd $MAIN && pushd $WT && pushd +1 && git reset --hard" "$G"
+gdeny "pushd $MAIN && pushd $WT && pushd -1 && git reset --hard" "$G"
+gallow "pushd $WT && pushd $MAIN && pushd +1 && git reset --hard" "$G"
+gdeny "pushd $WT && pushd $MAIN && popd +1 && git reset --hard" "$G"
+# After `--` come paths: a file named --worktree is not the option.
+gallow 'git restore -S -- --worktree' "$MAIN"
+gdeny 'git restore -S --worktree -- src/a.txt' "$MAIN"
 # 2. rm: denied inside MAIN, allowed for .claude/tmp/, .NET bin/obj, stale .claude/worktrees/*
 # directories, linked worktrees, outside, and targets the text cannot resolve.
 gdeny 'rm src/a.txt' "$MAIN"
