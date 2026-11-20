@@ -379,16 +379,7 @@ internal partial class ProjectCompiler
         {
             _logger.LogInfo("Project compilation cancelled");
             _diagnostics.AddError("Compilation cancelled", code: DiagnosticCodes.Infrastructure.CompilationCancelled);
-            return new ProjectCompilationResult
-            {
-                Success = false,
-                Diagnostics = _diagnostics,
-                Metrics = _projectMetricsBacking,
-                DependencyGraph = _dependencyGraph,
-                ProjectModel = _projectModel,
-                EffectiveFeatures = _features,
-                ImportResolver = _importResolverBacking
-            };
+            return CreateFailureResult();
         }
         catch (Exception ex)
         {
@@ -396,16 +387,7 @@ internal partial class ProjectCompiler
             _logger.LogError($"Project compilation failed with {ex.GetType().Name}: {ex}", 0, 0);
 
             ReportInternalCompilerError(ex, config);
-            return new ProjectCompilationResult
-            {
-                Success = false,
-                Diagnostics = _diagnostics,
-                Metrics = _projectMetricsBacking,
-                DependencyGraph = _dependencyGraph,
-                ProjectModel = _projectModel,
-                EffectiveFeatures = _features,
-                ImportResolver = _importResolverBacking
-            };
+            return CreateFailureResult();
         }
     }
 
