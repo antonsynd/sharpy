@@ -2,7 +2,8 @@
 """Check: a pull request into `dev` that changes code carries a current independent-review line.
 
 The rule (docs/process/README.md item 6; `/implement-plan` > Cleanup and Report step 4): a pull
-request into `dev` whose diff touches a code path (CODE_PREFIXES) merges only with a body line
+request into `dev` whose diff touches a code path (CODE_PREFIXES, CODE_FILES) merges only with a
+body line
 
     Independent review @ <sha>: <verdict>; <n> applied, <m> declined (reasons below); fixes <sha>..<head> read by the lead
 
@@ -116,7 +117,9 @@ CODE_PREFIXES = (
     "docs/language_specification/",
 )
 # Root build files that change every project (owner, 2026-11-20, goals document §7 decision 1: "1 add").
-CODE_FILES = frozenset(("Directory.Build.props", "Directory.Build.targets", "global.json"))
+CODE_FILES = frozenset(
+    ("Directory.Build.props", "Directory.Build.targets", "global.json")
+)
 RULE_BASE = "dev"
 # Owner ruling (2026-11-17): a dependency bump opened by Dependabot needs no review line. The author
 # login is set by GitHub and cannot be chosen by a PR (a branch name can), and the exemption holds
