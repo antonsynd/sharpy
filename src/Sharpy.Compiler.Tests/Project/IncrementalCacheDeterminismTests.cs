@@ -10,8 +10,8 @@ namespace Sharpy.Compiler.Tests.Project;
 
 /// <summary>
 /// The incremental cache files are a function of the cache's content, not of the order the build
-/// reached it in (#2114). Three cold builds of one project wrote <c>main.spy</c>'s dependencies in
-/// three orders: the dependency graph holds them in an <c>ImmutableHashSet</c>, whose order follows
+/// reached it in (the cell on #2114, issuecomment-7046628875). Cold builds of one project wrote
+/// <c>main.spy</c>'s dependencies in two orders in three runs: the dependency graph holds them in an <c>ImmutableHashSet</c>, whose order follows
 /// the per-process randomized string hash. The same class covers every keyed map the cache writes:
 /// the file entries and file hashes (a warm build appends a new file after the ones the last build
 /// wrote) and each entry's generator outputs (filled in generator-run order, merged with the last

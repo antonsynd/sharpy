@@ -721,9 +721,10 @@ internal class IncrementalCompilationCache
             ContentHash = contentHash,
             Symbols = cachedSymbols,
             GeneratedCSharp = generatedCSharp,
-            // A set, ordinal-ordered (#2114): the graph's direct dependencies are an ImmutableHashSet,
-            // whose order follows the per-process randomized string hash, and every reader (the
-            // outside-import check, the cached dependency graph) treats the list as a set.
+            // A set, ordinal-ordered (the cell on #2114, issuecomment-7046628875): the graph's direct
+            // dependencies are an ImmutableHashSet, whose order follows the per-process randomized
+            // string hash, and every reader (the outside-import check, the cached dependency graph)
+            // treats the list as a set.
             Dependencies = dependencies.Select(PathNormalizer.Normalize)
                 .OrderBy(p => p, StringComparer.Ordinal).ToList(),
             ModulePath = modulePath,
@@ -1207,9 +1208,9 @@ internal class IncrementalCompilationCache
 
     /// <summary>
     /// A copy of a keyed map the cache writes, filled in ordinal key order, so the same cache state
-    /// is written as the same bytes (#2114). System.Text.Json writes a dictionary in its enumeration
-    /// order, which for a dictionary nothing was removed from is its insertion order; the maps the
-    /// cache holds are filled in whatever order this build or an earlier one reached their keys (a
+    /// is written as the same bytes (the cell on #2114, issuecomment-7046628875). System.Text.Json
+    /// writes a dictionary in its enumeration order, which for a dictionary nothing was removed from
+    /// is its insertion order; the maps the cache holds are filled in whatever order this build or an earlier one reached their keys (a
     /// warm build appends a new file after the files the last build wrote). Every reader looks a key
     /// up, so the order carries no meaning and the copy keeps the map's comparer.
     /// </summary>
