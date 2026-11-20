@@ -17,6 +17,11 @@ import fractions
 
 ### `limit_denominator(max_denominator: BigInteger) -> Fraction`
 
+The closest Fraction to this one whose denominator is at most `max_denominator`, as CPython's
+`fractions.Fraction.limit_denominator`. On a tie the candidate with the smaller denominator is
+returned; with `max_denominator` 1 and a value midway between two integers, that is the floor.
+Raises `ValueError` when `max_denominator` is less than 1.
+
 ### `floor_div(other: Fraction) -> int64`
 
 ### `mod(a: Fraction, b: Fraction) -> Fraction`
