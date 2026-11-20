@@ -12,7 +12,7 @@ If `$ARGUMENTS` is non-empty, narrow to that focus area (e.g. `semantic`, `codeg
 
 ## Ground rules for every agent
 
-- **Read-only.** Read files, search, run tests. No edits, no `git` mutations. Shared-tree block (contract §9): *The working tree is shared. Never run `git checkout`, `git restore`, `git clean`, `git stash`, `git reset`, or `rm` on repo paths. REPORT `git status`; do not "make it clean".*
+- **Read-only.** Read files, search, run tests. No edits, no `git` mutations. Paste contract §9's block verbatim into every brief (`.claude/hooks/require-agent-brief.sh` denies a spawn without it).
 - **dotnet only via the wrapper**, with `dangerouslyDisableSandbox: true` (a PreToolUse hook blocks raw `dotnet`; sandboxed callers exit 125): `.claude/scripts/dotnet-serialized test --filter "FullyQualifiedName~X" --no-build`. Filtered runs are for the agent's own probes.
 - **The whole-solution run happens once**, started by the lead in the background before spawning: `/ci-gate` by default (~20 min), or the local `.claude/scripts/dotnet-serialized test --filter "Category!=Benchmark" --logger "console;verbosity=normal"` when it exits 3. Hand every agent the run id (`gh run view <id> --log`, `gh run download <id> -p 'trx-*'`) or the log path the wrapper printed (`dotnet-serialized: log -> <path>`) — agents read it, they do not re-run it. A run must be at HEAD; a local log's binaries must postdate HEAD's build, and a log older than the last build is not a measurement.
 - **Every count carries its sha**: `value @ <sha> (measured)`, never derived. `git rev-parse --short HEAD` first.

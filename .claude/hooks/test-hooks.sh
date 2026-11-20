@@ -189,19 +189,60 @@ git -C "$MAIN" add src build_tools
 git -C "$MAIN" -c user.email=t@t -c user.name=t commit -qm init
 git -C "$MAIN" worktree add -q "$WT" -b claude/x
 git -C "$MAIN" worktree add -q "$SWT" -b claude/y
-gjson() { python3 -c 'import json,sys; print(json.dumps({"session_id":"t","hook_event_name":"PreToolUse","cwd":sys.argv[2],"tool_name":"Bash","tool_input":{"command":sys.argv[1]}}))' "$1" "$2"; }
-gname()  { local c="${1//$'\n'/\\n}"; printf '%s @ %s' "${c//"$G"\//}" "${2#"$G"/}"; }
-gdeny()  { CLAUDE_PROJECT_DIR="$MAIN" run guard-shared-tree.sh "$(gjson "$1" "$2")"; if [ "$RC" -eq 2 ] && [ -n "$ERR" ]; then ok "deny: $(gname "$1" "$2")"; else bad "deny: $(gname "$1" "$2")" "rc=$RC err=$ERR"; fi; }
-gallow() { CLAUDE_PROJECT_DIR="$MAIN" run guard-shared-tree.sh "$(gjson "$1" "$2")"; if [ "$RC" -eq 0 ] && [ -z "$ERR" ]; then ok "allow: $(gname "$1" "$2")"; else bad "allow: $(gname "$1" "$2")" "rc=$RC err=$ERR"; fi; }
-# 1. tree-mutating git verbs: denied in MAIN (by cwd, -C, --work-tree, cd, compound, nested) ...
-for v in 'checkout dev' 'checkout -- src/a.txt' 'restore src/a.txt' 'restore --staged .' 'clean -fd' 'stash' 'stash list' 'reset --hard' 'reset' 'switch -c y'; do
-  gdeny "git $v" "$MAIN"
-done
+git -C "$MAIN" update-ref refs/remotes/origin/dev HEAD
+git -C "$MAIN" update-ref refs/remotes/origin/claude/remote-only HEAD
+# gjson COMMAND CWD [AGENT_ID]: a non-empty AGENT_ID is the input a subagent's tool call carries.
+gjson() { python3 -c 'import json,sys; d={"session_id":"t","hook_event_name":"PreToolUse","cwd":sys.argv[2],"tool_name":"Bash","tool_input":{"command":sys.argv[1]}}; d.update({"agent_id":sys.argv[3],"agent_type":"general-purpose"} if sys.argv[3] else {}); print(json.dumps(d))' "$1" "$2" "${3:-}"; }
+gname()  { local c="${1//$'\n'/\\n}"; printf '%s%s @ %s' "${3:+[agent] }" "${c//"$G"\//}" "${2#"$G"/}"; }
+gdeny()  { CLAUDE_PROJECT_DIR="$MAIN" run guard-shared-tree.sh "$(gjson "$1" "$2" "${3:-}")"; if [ "$RC" -eq 2 ] && [ -n "$ERR" ]; then ok "deny: $(gname "$1" "$2" "${3:-}")"; else bad "deny: $(gname "$1" "$2" "${3:-}")" "rc=$RC err=$ERR"; fi; }
+gallow() { CLAUDE_PROJECT_DIR="$MAIN" run guard-shared-tree.sh "$(gjson "$1" "$2" "${3:-}")"; if [ "$RC" -eq 0 ] && [ -z "$ERR" ]; then ok "allow: $(gname "$1" "$2" "${3:-}")"; else bad "allow: $(gname "$1" "$2" "${3:-}")" "rc=$RC err=$ERR"; fi; }
+# 1a. The LEAD (no agent_id) in MAIN: branch moves and creation are allowed — these are the
+# skills' own set-up lines (create-plan, verify-plan, bump-version), and git itself refuses them
+# when they would overwrite local changes ...
+L_ALLOW=('git fetch origin dev && git switch -c claude/x origin/dev'
+         'git switch claude/x && git merge --ff-only'
+         'git checkout dev'
+         'git stash list'
+         'git switch -c claude/bump-1.2.3 origin/dev'
+         'git switch dev'
+         'git switch --detach HEAD'
+         'git checkout -b claude/new origin/dev'
+         'git checkout claude/remote-only'
+         'git checkout -'
+         'git stash show'
+         'git reset --soft HEAD'
+         'git clean -n -d'
+         'git clean --dry-run')
+for c in "${L_ALLOW[@]}"; do gallow "$c" "$MAIN"; done
+# ... the forms that destroy uncommitted work are not.
+L_DENY=('git checkout -- src/a.cs'
+        'git checkout .'
+        'git checkout HEAD -- x'
+        'git checkout src/a.cs'
+        'git checkout dev src/a.txt'
+        'git switch -f dev'
+        'git switch --discard-changes dev'
+        'git checkout --force dev'
+        'git checkout -m dev'
+        'git checkout -p'
+        'git checkout --theirs src/a.txt'
+        'git restore x'
+        'git restore --staged x'
+        'git stash'
+        'git stash push -m wip'
+        'git stash pop'
+        'git stash drop'
+        'git reset --hard'
+        'git reset'
+        'git reset HEAD~1'
+        'git clean -fd')
+for c in "${L_DENY[@]}"; do gdeny "$c" "$MAIN"; done
+# The worktree is found from -C, --work-tree, cd, compound lists and nested commands.
 gdeny "git -C $MAIN reset --hard" "$WT"
 gdeny "git --work-tree=$MAIN checkout ." "$G"
-gdeny "cd $MAIN && git checkout ." "$WT"
+gdeny "cd $MAIN && git checkout -- src/a.txt" "$WT"
 gdeny "cd src; git restore a.txt" "$MAIN"
-gdeny 'FOO=1 git -c core.pager=cat --no-pager checkout dev' "$MAIN"
+gdeny 'FOO=1 git -c core.pager=cat --no-pager checkout -f dev' "$MAIN"
 gdeny 'git status && git diff --stat || git stash' "$MAIN"
 gdeny 'echo start
 git reset --hard' "$MAIN"
@@ -209,23 +250,31 @@ gdeny '(git stash)' "$MAIN"
 gdeny "bash -c 'git reset --hard'" "$MAIN"
 # shellcheck disable=SC2016  # the $(...) is the command under test, not this shell's
 gdeny 'echo "$(git stash)"' "$MAIN"
-gdeny 'git status | cat; timeout 60 git switch dev' "$MAIN"
-# ... and allowed in a linked worktree (the session's own), in a scratch repo, or when only named.
-for v in 'switch -c y' 'checkout dev' 'reset --hard' 'stash list' 'restore src/a.txt' 'clean -fd'; do
+gdeny 'git status | cat; timeout 60 git clean -fdx' "$MAIN"
+# 1b. A SUBAGENT (agent_id set) in MAIN: every form is denied, the lead's allowed set included,
+# except stash list/show.
+for c in "${L_ALLOW[@]}"; do
+  case "$c" in 'git stash list'|'git stash show') gallow "$c" "$MAIN" agent-1 ;; *) gdeny "$c" "$MAIN" agent-1 ;; esac
+done
+gdeny 'git checkout -- src/a.cs' "$MAIN" agent-1
+# 1c. Linked worktrees (an owner's own), scratch repos and mere mentions: never judged.
+for v in 'switch -c y' 'checkout dev' 'reset --hard' 'stash' 'restore src/a.txt' 'clean -fd' 'checkout -- src/a.txt'; do
   gallow "git $v" "$WT"
+  gallow "git $v" "$WT" agent-1
 done
 gallow 'git reset --hard HEAD' "$SWT"
-gallow "cd $WT && git checkout claude/x" "$MAIN"
-gallow "git -C $WT stash list" "$MAIN"
-gallow "(cd $WT && git switch -c z)" "$MAIN"
-gallow 'git status --short; git diff --stat; git log --oneline -1; git worktree list' "$MAIN"
-gallow 'echo "git reset --hard"; grep -n "git checkout" docs.md' "$MAIN"
+gallow "cd $WT && git reset --hard" "$MAIN"
+gallow "git -C $WT stash" "$MAIN" agent-1
+gallow "(cd $WT && git restore src/a.txt)" "$MAIN"
+gallow 'git status --short; git diff --stat; git log --oneline -1; git worktree list' "$MAIN" agent-1
+gallow 'echo "git reset --hard"; grep -n "git checkout -- x" docs.md' "$MAIN"
 gallow "git commit -m \"\$(cat <<'EOF'
 fix: say why git reset --hard and rm -rf src are denied
 EOF
 )\"" "$MAIN"
 git init -q "$G/other"
 gallow 'git reset --hard' "$G/other"
+gallow 'git reset --hard' "$G/other" agent-1
 # a subshell's cd does not leak: the trailing reset runs in MAIN again
 gdeny "(cd $WT && git switch -c z2); git reset --hard" "$MAIN"
 # 2. rm: denied inside MAIN, allowed for .claude/tmp/, .NET bin/obj, linked worktrees, outside.

@@ -2,10 +2,22 @@
 # PreToolUse(Bash) hook: the shared-tree contract (docs/design/verification-contract.md §9) and the
 # force-push rule (CLAUDE.md › Git & Release), enforced instead of asked for. Denies (exit 2):
 #
-#   1. `git checkout|restore|clean|stash|reset|switch` (any form) whose worktree is the repository's
-#      MAIN worktree (`git rev-parse --git-dir` = `--git-common-dir`), the one parallel sessions
-#      share. A linked worktree (.claude/worktrees/*, a scratchpad `git worktree add`) is the
-#      session's own and is allowed.
+#   1. In the repository's MAIN worktree (`git rev-parse --git-dir` = `--git-common-dir`), the one
+#      a session's agents share (a linked worktree — .claude/worktrees/*, a scratchpad `git
+#      worktree add` — is its owner's own and is never judged here):
+#      a. a SUBAGENT (hook input has `agent_id`) may not run `git checkout|restore|clean|stash|
+#         reset|switch` in any form but `stash list|show`: agents never move the shared branch;
+#      b. the LEAD (no `agent_id`) may move and create branches — `switch <b>`, `switch -c <new>
+#         [start]`, `switch --detach <c>`, `checkout <b>`, `checkout -b <new> [start]`, which git
+#         itself refuses when they would overwrite local changes — but not the forms that destroy
+#         uncommitted work: `restore`; `clean` without -n/--dry-run; `stash` but list/show;
+#         `reset` but --soft; checkout/switch with -f/--force/--discard-changes/-m/--merge/
+#         --ours/--theirs/-p/--patch; `checkout` with a pathspec (`--`, `.`, or an argument that
+#         is neither a commit, by `rev-parse --verify <arg>^{commit}`, nor a refs/remotes/*/<arg>).
+#      The docs (code.claude.com/docs/en/hooks, "Hooks in subagents"): "When a subagent calls a
+#      tool, tool events such as `PreToolUse` and `PostToolUse` fire the same configured hooks as
+#      in the main conversation, and the input carries the `agent_id` and `agent_type` common
+#      input fields that identify the subagent."
 #   2. `rm` of a path inside the main worktree, except under .claude/tmp/ and a .NET build output
 #      (a `bin/` or `obj/` directory beside a *.*proj file; build_tools/bin/ is source). A path
 #      in a linked worktree or outside the repository (scratchpad, /tmp) is allowed. The path's
@@ -40,6 +52,7 @@ try:
     data = json.loads(os.environ["HOOK_INPUT"])
     cmd = data.get("tool_input", {}).get("command", "")
     cwd = data.get("cwd") or os.getcwd()
+    agent = bool(data.get("agent_id"))
 except Exception:
     sys.exit(0)
 if not isinstance(cmd, str) or not cmd:
@@ -72,11 +85,71 @@ def deny(msg):
     sys.stderr.write("BLOCKED by .claude/hooks/guard-shared-tree.sh: " + msg + "\n")
     sys.exit(2)
 
-SHARED = ("The main worktree is shared with parallel sessions (contract §9): REPORT `git status`, "
-          "do not make it clean; restore a mutation from your `cp` copy. To switch, reset or stash, "
+SHARED = ("The main worktree is shared with this session's agents (contract §9): REPORT `git status`, "
+          "do not make it clean; restore a mutation from your `cp` copy. To reset, stash or discard, "
           "work in your own worktree (`git worktree add <scratchpad>/wt <ref>`), where it is allowed.")
+AGENT = ("Agents never move or clean the shared tree's branch (contract §9); the lead does. "
+         "Work in your own worktree (`git worktree add <scratchpad>/wt <ref>`) if you need one.")
 GIT_OPTS_WITH_ARG = {"-C", "-c", "--git-dir", "--work-tree", "--namespace", "--config-env",
                      "--exec-path", "--super-prefix"}
+FORCE_LONG = {"--force", "--discard-changes", "--merge", "--ours", "--theirs", "--patch"}
+CO_NAME_OPTS = {"-b", "-B", "--orphan", "-c", "-C", "--create", "--force-create"}
+
+def is_commit(arg, where):
+    r = subprocess.run(["git", "-C", where, "rev-parse", "--verify", "--quiet", arg + "^{commit}"],
+                       capture_output=True, text=True)
+    if r.returncode == 0:
+        return True
+    r = subprocess.run(["git", "-C", where, "for-each-ref", "--count=1", "--format=%(refname)",
+                        "refs/remotes/*/" + arg], capture_output=True, text=True)
+    return bool(r.stdout.strip())
+
+def destroys(verb, rest, where):
+    """Why this lead-run verb can destroy uncommitted work in the main worktree, or None."""
+    shorts = "".join(a[1:] for a in rest if a.startswith("-") and not a.startswith("--"))
+    if verb == "restore":
+        return "`git restore` discards uncommitted changes"
+    if verb == "clean":
+        if "--dry-run" in rest or "n" in shorts:
+            return None
+        return "`git clean` deletes untracked files"
+    if verb == "stash":
+        if rest and rest[0] in ("list", "show"):
+            return None
+        return "`git stash` moves uncommitted changes (a peer's included) off the tree"
+    if verb == "reset":
+        return None if "--soft" in rest else "`git reset` (other than --soft) discards or unstages work"
+    # checkout / switch
+    for k, a in enumerate(rest):
+        if a == "--":
+            break
+        if a.split("=", 1)[0] in FORCE_LONG or a == "--pathspec-from-file":
+            return "`git %s %s` overwrites uncommitted changes" % (verb, a)
+        if a.startswith("-") and not a.startswith("--"):
+            for ch in a[1:]:
+                if ch in "bBcC":
+                    break
+                if ch in "fmp":
+                    return "`git %s %s` overwrites uncommitted changes" % (verb, a)
+    if verb != "checkout":
+        return None
+    if "--" in rest:
+        return "`git checkout -- <path>` overwrites the path's uncommitted changes"
+    pos, j = [], 0
+    while j < len(rest):
+        a = rest[j]
+        if a in CO_NAME_OPTS:
+            j += 2
+            continue
+        if a.startswith("-"):  # an option, or `-` (the previous branch)
+            j += 1
+            continue
+        pos.append(a)
+        j += 1
+    for a in pos:
+        if a == "." or not is_commit(a, where):
+            return "`git checkout %s` names a path: it overwrites that path's uncommitted changes" % a
+    return None
 
 def check_git(argv, cwd):
     args, i, where = argv[1:], 0, cwd
@@ -98,7 +171,13 @@ def check_git(argv, cwd):
     info = repo_of(where)
     if verb in ("checkout", "restore", "clean", "stash", "reset", "switch"):
         if main_tree(info):
-            deny("`git %s` in the main worktree %s. %s" % (verb, info[0], SHARED))
+            if agent:
+                if not (verb == "stash" and rest and rest[0] in ("list", "show")):
+                    deny("`git %s` by a subagent in the main worktree %s. %s" % (verb, info[0], AGENT))
+            else:
+                why = destroys(verb, rest, info[0])
+                if why:
+                    deny("%s in the main worktree %s. %s" % (why, info[0], SHARED))
     elif verb == "add" and ours(info):
         for a in rest:
             if a == "--":
