@@ -255,7 +255,7 @@ internal static class CompileCommand
 
             if (clean)
             {
-                CleanProject(projectConfig);
+                CliHelpers.CleanProject(projectConfig);
             }
 
             Console.WriteLine($"Project: {projectConfig.RootNamespace}");
@@ -285,11 +285,7 @@ internal static class CompileCommand
 
             // Inject CLI default references into ProjectConfig so AssemblyCompiler can resolve
             // types from Sharpy.Core/Stdlib during Roslyn compilation.
-            foreach (var defaultRef in defaultReferences)
-            {
-                if (!projectConfig.References.Contains(defaultRef))
-                    projectConfig.References.Add(defaultRef);
-            }
+            DefaultReferences.ApplyTo(projectConfig, defaultReferences);
 
             var compiler = new Sharpy.Compiler.Compiler(compilerOptions, logger);
             var result = compiler.CompileProject(projectConfig);
@@ -310,13 +306,9 @@ internal static class CompileCommand
             }
 
             var outputPath = result.OutputAssemblyPath;
-            if (outputPath != null && !noDeps)
+            if (!noDeps)
             {
-                var outputDir = Path.GetDirectoryName(outputPath) ?? Directory.GetCurrentDirectory();
-                // The project result does not expose per-module used assemblies, so
-                // conservatively copy every referenced runtime assembly, plus every user reference.
-                RuntimeDependencyHelper.CopyRuntimeDependencies(
-                    outputDir, new HashSet<string>(defaultReferences, StringComparer.OrdinalIgnoreCase), userReferences);
+                CliHelpers.DeployOutput(result, defaultReferences, userReferences);
             }
 
             // --self-contained is refused for a project up front, by the option table, before
@@ -338,17 +330,7 @@ internal static class CompileCommand
             }
             return 0;
         }
-        catch (FileNotFoundException ex)
-        {
-            Console.Error.WriteLine($"Error: {ex.Message}");
-            return 1;
-        }
-        catch (InvalidDataException ex)
-        {
-            Console.Error.WriteLine($"Error: {ex.Message}");
-            return 1;
-        }
-        catch (InvalidOperationException ex)
+        catch (Exception ex) when (ex is FileNotFoundException or InvalidDataException or InvalidOperationException)
         {
             Console.Error.WriteLine($"Error: {ex.Message}");
             return 1;
@@ -394,40 +376,6 @@ internal static class CompileCommand
         {
             var size = new FileInfo(outputPath).Length;
             Console.WriteLine($"Size: {CliHelpers.FormatBytes(size)}");
-        }
-    }
-
-    static void CleanProject(ProjectConfig projectConfig)
-    {
-        try
-        {
-            var projectDir = Path.GetDirectoryName(projectConfig.ProjectFilePath);
-            if (projectDir == null)
-            {
-                Console.Error.WriteLine("Warning: Could not determine project directory");
-                return;
-            }
-
-            var binDir = Path.Combine(projectDir, "bin");
-            if (Directory.Exists(binDir))
-            {
-                Console.WriteLine($"Deleting: {binDir}");
-                Directory.Delete(binDir, recursive: true);
-            }
-
-            var objDir = Path.Combine(projectDir, "obj");
-            if (Directory.Exists(objDir))
-            {
-                Console.WriteLine($"Deleting: {objDir}");
-                Directory.Delete(objDir, recursive: true);
-            }
-
-            Console.WriteLine("Clean completed.");
-            Console.WriteLine();
-        }
-        catch (Exception ex)
-        {
-            Console.Error.WriteLine($"Warning: Clean failed: {ex.Message}");
         }
     }
 }

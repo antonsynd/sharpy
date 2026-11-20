@@ -544,6 +544,58 @@ internal static class CliHelpers
         return unresolved;
     }
 
+    /// <summary>The <c>--clean</c> step of <c>compile app.spyproj</c> and <c>project</c>: deletes the project's bin/ and obj/.</summary>
+    internal static void CleanProject(ProjectConfig projectConfig)
+    {
+        try
+        {
+            var projectDir = Path.GetDirectoryName(projectConfig.ProjectFilePath);
+            if (projectDir == null)
+            {
+                Console.Error.WriteLine("Warning: Could not determine project directory");
+                return;
+            }
+
+            var binDir = Path.Combine(projectDir, "bin");
+            if (Directory.Exists(binDir))
+            {
+                Console.WriteLine($"Deleting: {binDir}");
+                Directory.Delete(binDir, recursive: true);
+            }
+
+            var objDir = Path.Combine(projectDir, "obj");
+            if (Directory.Exists(objDir))
+            {
+                Console.WriteLine($"Deleting: {objDir}");
+                Directory.Delete(objDir, recursive: true);
+            }
+
+            Console.WriteLine("Clean completed.");
+            Console.WriteLine();
+        }
+        catch (Exception ex)
+        {
+            Console.Error.WriteLine($"Warning: Clean failed: {ex.Message}");
+        }
+    }
+
+    /// <summary>
+    /// `project` deploys like `compile app.spyproj` (#2313 cell 0, R-HF c): the output runs in
+    /// place, as `dotnet build`'s does. The project result does not expose per-module used
+    /// assemblies, so every default reference seeds the closure, plus every user reference. The
+    /// one deployment step of every project route: `compile app.spyproj`, the `project` command
+    /// and the compile server's `project` request (cell 0b).
+    /// </summary>
+    internal static void DeployOutput(ProjectCompilationResult result, IReadOnlyCollection<string> defaultReferences, IReadOnlyList<string> userReferences)
+    {
+        if (result.OutputAssemblyPath == null)
+            return;
+
+        var outputDir = Path.GetDirectoryName(result.OutputAssemblyPath) ?? Directory.GetCurrentDirectory();
+        RuntimeDependencyHelper.CopyRuntimeDependencies(
+            outputDir, new HashSet<string>(defaultReferences, StringComparer.OrdinalIgnoreCase), userReferences);
+    }
+
     /// <summary>
     /// <c>--project-reference</c> is parsed by <c>build</c>, <c>run</c> and <c>compile</c> but no
     /// mode builds a .NET project, so it was silently dropped (#2173). Refuse it instead. Prints the
