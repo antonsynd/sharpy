@@ -1,7 +1,5 @@
 extern alias SharpyRT;
 using System.Diagnostics.CodeAnalysis;
-using System.Text.Json;
-using System.Text.Json.Nodes;
 using System.Text.RegularExpressions;
 using Sharpy.Compiler;
 using Sharpy.Compiler.Diagnostics;
@@ -17,9 +15,6 @@ internal static class CliHelpers
 {
     internal static readonly DiagnosticRenderer Renderer = new(DiagnosticRenderer.IsColorSupported());
     internal static readonly bool UseColor = DiagnosticRenderer.IsColorSupported();
-
-    /// <summary>Process exit code for a successful compile.</summary>
-    internal const int ExitSuccess = 0;
 
     /// <summary>Process exit code for a normal (user-caused) compilation failure.</summary>
     internal const int ExitCompileError = 1;
@@ -228,60 +223,6 @@ internal static class CliHelpers
         }
 
         var output = format == "json" ? metrics.FormatAsJson() : metrics.FormatAsText();
-        WriteMetricsOutput(output, metricsOutput);
-    }
-
-    /// <summary>
-    /// Emit combined front-end and assembly metrics for a single-file compile as one
-    /// document. In JSON mode the result is <c>{ "frontend": {...}, "assembly": {...} }</c>,
-    /// so that the front-end phases (module discovery, lexing, parsing, type checking,
-    /// code generation) and the assembly phases (C# parsing, Roslyn compilation, IL
-    /// emission) are reported together rather than the front-end metrics being discarded.
-    /// In text mode the two <see cref="CompilationMetrics.FormatAsText"/> blocks are
-    /// emitted under labeled sections.
-    /// </summary>
-    internal static void OutputCombinedMetrics(
-        CompilationMetrics? frontend,
-        CompilationMetrics? assembly,
-        string? metricsFormat,
-        FileInfo? metricsOutput)
-    {
-        if (!MetricsRequested(metricsFormat, metricsOutput) || (frontend == null && assembly == null))
-            return;
-
-        var format = (metricsFormat ?? DefaultMetricsFormat).ToLowerInvariant();
-        if (format != "text" && format != "json")
-        {
-            Console.Error.WriteLine($"Invalid metrics format: {metricsFormat}. Use 'text' or 'json'.");
-            return;
-        }
-
-        string output;
-        if (format == "json")
-        {
-            var combined = new JsonObject
-            {
-                ["frontend"] = frontend != null ? JsonNode.Parse(frontend.FormatAsJson()) : null,
-                ["assembly"] = assembly != null ? JsonNode.Parse(assembly.FormatAsJson()) : null
-            };
-            output = combined.ToJsonString(new JsonSerializerOptions { WriteIndented = true });
-        }
-        else
-        {
-            var sections = new List<string>();
-            if (frontend != null)
-            {
-                sections.Add("=== Front-End Compilation ===");
-                sections.Add(frontend.FormatAsText());
-            }
-            if (assembly != null)
-            {
-                sections.Add("=== Assembly Compilation ===");
-                sections.Add(assembly.FormatAsText());
-            }
-            output = string.Join(Environment.NewLine, sections);
-        }
-
         WriteMetricsOutput(output, metricsOutput);
     }
 
@@ -718,31 +659,11 @@ internal static class CliHelpers
 
     internal static void RenderDiagnostics(IEnumerable<CompilerDiagnostic> diagnostics, SourceText? sourceText, TextWriter writer)
     {
-        var diagList = diagnostics.ToList();
-        var phases = diagList.Select(d => d.Phase).Distinct().ToList();
-        var groupByPhase = phases.Count > 1;
-        var isWarnings = diagList.Count > 0 && diagList.All(d => d.IsWarning);
-
-        if (groupByPhase)
+        RenderGroupedByPhase(diagnostics, writer, diagnostic =>
         {
-            foreach (var phase in PhaseOrder.Where(p => diagList.Any(d => d.Phase == p)))
-            {
-                writer.WriteLine($"{PhaseLabel(phase, isWarnings)}:");
-                foreach (var diagnostic in diagList.Where(d => d.Phase == phase))
-                {
-                    RenderDiagnostic(diagnostic, sourceText, writer);
-                    writer.WriteLine();
-                }
-            }
-        }
-        else
-        {
-            foreach (var diagnostic in diagList)
-            {
-                RenderDiagnostic(diagnostic, sourceText, writer);
-                writer.WriteLine();
-            }
-        }
+            RenderDiagnostic(diagnostic, sourceText, writer);
+            writer.WriteLine();
+        });
     }
 
     /// <param name="fallbackFilePath">
@@ -753,6 +674,14 @@ internal static class CliHelpers
         string? fallbackFilePath = null)
     {
         var sourceCache = new Dictionary<string, SourceText?>();
+        RenderGroupedByPhase(diagnostics, writer,
+            diagnostic => RenderDiagnosticFromFile(diagnostic, sourceCache, writer, fallbackFilePath));
+    }
+
+    /// <summary>Renders each diagnostic with <paramref name="render"/>, under phase headers when more than one phase is present.</summary>
+    private static void RenderGroupedByPhase(IEnumerable<CompilerDiagnostic> diagnostics, TextWriter writer,
+        Action<CompilerDiagnostic> render)
+    {
         var diagList = diagnostics.ToList();
         var phases = diagList.Select(d => d.Phase).Distinct().ToList();
         var groupByPhase = phases.Count > 1;
@@ -765,7 +694,7 @@ internal static class CliHelpers
                 writer.WriteLine($"{PhaseLabel(phase, isWarnings)}:");
                 foreach (var diagnostic in diagList.Where(d => d.Phase == phase))
                 {
-                    RenderDiagnosticFromFile(diagnostic, sourceCache, writer, fallbackFilePath);
+                    render(diagnostic);
                 }
             }
         }
@@ -773,7 +702,7 @@ internal static class CliHelpers
         {
             foreach (var diagnostic in diagList)
             {
-                RenderDiagnosticFromFile(diagnostic, sourceCache, writer, fallbackFilePath);
+                render(diagnostic);
             }
         }
     }
