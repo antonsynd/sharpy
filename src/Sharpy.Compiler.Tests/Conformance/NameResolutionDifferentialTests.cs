@@ -593,6 +593,10 @@ public partial class NameResolutionDifferentialTests
                 // A nested-scope `def` over a same-function `def` of the name is SPY0204: #1974's question, whose B-rules admit nested shadowing.
                 if (cell.Rule == "#1974")
                     return "#1974";
+                // `self.N()` / `A.N()` on a nested type is refused as no such member (SPY0203). R-LQ admits it, in P16: the cell is
+                // #2397's (the owner's ruling of 2026-11-20, #2423 comment 7030074628).
+                if (cell.Target == BindingKind.NestedType && cell.Rule == "N7")
+                    return "#2397";
                 // A read refused at a module initializer is refused because a later module VARIABLE is not visible yet (SPY0200): N1's
                 // order-free resolution is the cure, and values-ready (#2422) cannot make a name visible (owner, 2026-11-16, #2422
                 // comment 6920337855).
