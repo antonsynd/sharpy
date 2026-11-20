@@ -29,7 +29,7 @@ Read the plan file completely before proceeding. Record `git rev-parse --short H
 
 ## Probing rules
 
-- Never run `dotnet` directly — `.claude/scripts/dotnet-serialized` (drop-in wrapper; needs `dangerouslyDisableSandbox: true`), or the `/spy-run` / `/spy-emit` / `/quick-check` skills for inline Sharpy source.
+- `dotnet` via `.claude/scripts/dotnet-serialized` (hook-enforced; `dangerouslyDisableSandbox: true`), or `/spy-run` / `/spy-emit` / `/quick-check` for inline Sharpy source.
 - An ICE claim (SPY0908 / CS-leak) is confirmed or refuted with **`run`**, never `emit` — `emit csharp` succeeds on broken C#, and `emit diagnostics` cannot see the C# stage. A failing `run` cannot show warnings; use `emit diagnostics` for those.
 - `python3 -c "..."` for every claimed Python behavior; `print(x)` is never a type probe — bind to a deliberately wrong annotation (`b: bool = expr`).
 - `gh` needs `dangerouslyDisableSandbox: true` (TLS in the sandbox).

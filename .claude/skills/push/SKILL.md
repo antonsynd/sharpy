@@ -77,7 +77,7 @@ Then run the matching regeneration checks (use `dangerouslyDisableSandbox` — t
 git push -u origin <current-branch>
 ```
 
-If the push fails due to diverged history, **do not force push**: report the error and suggest `git pull --rebase` or ask the user how to proceed. The one exception is CLAUDE.md › Git & Release: `git push --force-with-lease --force-if-includes` on a `claude/*` branch this session created, after it rewrote its own unmerged commits. A `GH013: Repository rule violations` refusal on `dev` is the PR-only ruleset, not a transient: move the commits to a lane branch (`git branch claude/<lane>` then open the PR) rather than retrying.
+If the push fails due to diverged history, **do not force push**: report the error and suggest `git pull --rebase` or ask the user how to proceed. The one exception is CLAUDE.md › Git & Release (its flags and refs enforced by `.claude/hooks/guard-shared-tree.sh`). A `GH013: Repository rule violations` refusal on `dev` is the PR-only ruleset, not a transient: move the commits to a lane branch (`git branch claude/<lane>` then open the PR) rather than retrying.
 
 ### 3. Report
 
