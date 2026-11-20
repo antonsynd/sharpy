@@ -127,12 +127,14 @@ added that others must read, which stop rule came closest.
 
 ## 7. Decisions open for the owner
 
-| # | Decision | Default while waiting |
+Ruled 2026-11-20 ("1 add, 2 keep, 3 leave, 4 add with a cut"):
+
+| # | Decision | Ruling |
 |---|---|---|
-| 1 | Add root `Directory.Build.props`, `Directory.Build.targets` and `global.json` to the process README item 6's code paths, so a PR touching them needs a review line? | not added: green alone, as item 6 reads today |
+| 1 | Add root `Directory.Build.props`, `Directory.Build.targets` and `global.json` to the process README item 6's code paths, so a PR touching them needs a review line? | added (README item 6; `check_review_line.py` `CODE_FILES`) |
 | 2 | Run the coverage-on path on pull requests that change package versions? | no: bumps go through `dev`, and the daily coverage run meets them |
-| 3 | Whether `:=` keeps its Python role once `let`/`var` land (11-06 handoff D17; owner note 2026-11-08); charter row 19 carries it to P21b's plan (R-LR) | unchanged: `:=` stays as the spec has it |
-| 4 | Add §5's axes to `/implement-plan` step 4 (raises the procedure key)? | not added: the watch's reviews carry them |
+| 3 | Whether `:=` keeps its Python role once `let`/`var` land (11-06 handoff D17; owner note 2026-11-08); charter row 19 carries it to P21b's plan (R-LR) | left to P21b's plan: `:=` stays as the spec has it |
+| 4 | Add §5's axes to `/implement-plan` step 4 (raises the procedure key)? | added, with an equal cut in the counted procedure text |
 
 Ruled since this document was drafted (owner, 2026-11-17), answering the draft's first decision,
 since removed, in two parts (fix `a is c`, file the watch's cells): "1) your rec; 2) yes, file
