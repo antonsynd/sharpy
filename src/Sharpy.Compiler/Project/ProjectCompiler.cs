@@ -65,13 +65,11 @@ internal partial class ProjectCompiler
     /// (#2345, R-HD): the explicit N, else semantic analysis's documented default of 100. The
     /// parser keeps its own per-file default of 25 (<c>ProjectCompiler.Parsing</c>).
     /// </summary>
-    private int SinkErrorCap => SinkErrorCapOf(_maxErrors);
-
     private static int SinkErrorCapOf(int maxErrors) => maxErrors > 0 ? maxErrors : 100;
 
     /// <summary>
     /// The project's diagnostic sink: the one bag that applies the build's policy — warnings-as-errors,
-    /// suppressed warnings and the <c>--max-errors</c> cap (<see cref="SinkErrorCap"/>). Shared by a
+    /// suppressed warnings and the <c>--max-errors</c> cap (<see cref="SinkErrorCapOf"/>). Shared by a
     /// compile and the whole-build up-to-date replay, so a replayed report meets the same policy (#2468).
     /// </summary>
     private static DiagnosticBag ProjectSinkOf(bool warningsAsErrors, HashSet<string> suppressedWarnings, int maxErrors)
