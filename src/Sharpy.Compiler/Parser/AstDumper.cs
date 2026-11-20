@@ -133,21 +133,6 @@ internal class AstDumper : AstVisitor
         }
     }
 
-    public override void VisitPassStatement(PassStatement node)
-    {
-        _output.AppendLine(CultureInfo.InvariantCulture, $"{_indent}{_prefix}PassStatement @ L{node.LineStart}:C{node.ColumnStart}");
-    }
-
-    public override void VisitBreakStatement(BreakStatement node)
-    {
-        _output.AppendLine(CultureInfo.InvariantCulture, $"{_indent}{_prefix}BreakStatement @ L{node.LineStart}:C{node.ColumnStart}");
-    }
-
-    public override void VisitContinueStatement(ContinueStatement node)
-    {
-        _output.AppendLine(CultureInfo.InvariantCulture, $"{_indent}{_prefix}ContinueStatement @ L{node.LineStart}:C{node.ColumnStart}");
-    }
-
     public override void VisitRaiseStatement(RaiseStatement node)
     {
         var (indent, prefix, depth) = CaptureContext();
@@ -174,11 +159,6 @@ internal class AstDumper : AstVisitor
         }
     }
 
-    public override void VisitYieldStatement(YieldStatement node)
-    {
-        DefaultVisit(node);
-    }
-
     #endregion
 
     #region Statements - Compound
@@ -190,11 +170,7 @@ internal class AstDumper : AstVisitor
         _output.AppendLine(CultureInfo.InvariantCulture, $"{indent}{prefix}IfStatement @ L{node.LineStart}:C{node.ColumnStart}");
         _output.AppendLine(CultureInfo.InvariantCulture, $"{indent}{childPrefix}Test:");
         VisitChild(node.Test, depth + 2, false);
-        _output.AppendLine(CultureInfo.InvariantCulture, $"{indent}{childPrefix}ThenBody: [{node.ThenBody.Length} statement(s)]");
-        for (int i = 0; i < node.ThenBody.Length; i++)
-        {
-            VisitChild(node.ThenBody[i], depth + 2, i == node.ThenBody.Length - 1);
-        }
+        DumpStatements(indent, childPrefix, "ThenBody", node.ThenBody, depth);
         if (node.ElifClauses.Length > 0)
         {
             _output.AppendLine(CultureInfo.InvariantCulture, $"{indent}{childPrefix}ElifClauses: [{node.ElifClauses.Length}]");
@@ -215,11 +191,7 @@ internal class AstDumper : AstVisitor
         }
         if (node.ElseBody.Length > 0)
         {
-            _output.AppendLine(CultureInfo.InvariantCulture, $"{indent}{childPrefix}ElseBody: [{node.ElseBody.Length} statement(s)]");
-            for (int i = 0; i < node.ElseBody.Length; i++)
-            {
-                VisitChild(node.ElseBody[i], depth + 2, i == node.ElseBody.Length - 1);
-            }
+            DumpStatements(indent, childPrefix, "ElseBody", node.ElseBody, depth);
         }
     }
 
@@ -230,11 +202,7 @@ internal class AstDumper : AstVisitor
         _output.AppendLine(CultureInfo.InvariantCulture, $"{indent}{prefix}WhileStatement @ L{node.LineStart}:C{node.ColumnStart}");
         _output.AppendLine(CultureInfo.InvariantCulture, $"{indent}{childPrefix}Test:");
         VisitChild(node.Test, depth + 2, false);
-        _output.AppendLine(CultureInfo.InvariantCulture, $"{indent}{childPrefix}Body: [{node.Body.Length} statement(s)]");
-        for (int i = 0; i < node.Body.Length; i++)
-        {
-            VisitChild(node.Body[i], depth + 2, i == node.Body.Length - 1);
-        }
+        DumpStatements(indent, childPrefix, "Body", node.Body, depth);
     }
 
     public override void VisitForStatement(ForStatement node)
@@ -246,11 +214,7 @@ internal class AstDumper : AstVisitor
         VisitChild(node.Target, depth + 2, false);
         _output.AppendLine(CultureInfo.InvariantCulture, $"{indent}{childPrefix}Iterator:");
         VisitChild(node.Iterator, depth + 2, false);
-        _output.AppendLine(CultureInfo.InvariantCulture, $"{indent}{childPrefix}Body: [{node.Body.Length} statement(s)]");
-        for (int i = 0; i < node.Body.Length; i++)
-        {
-            VisitChild(node.Body[i], depth + 2, i == node.Body.Length - 1);
-        }
+        DumpStatements(indent, childPrefix, "Body", node.Body, depth);
     }
 
     public override void VisitTryStatement(TryStatement node)
@@ -258,11 +222,7 @@ internal class AstDumper : AstVisitor
         var (indent, prefix, depth) = CaptureContext();
         var childPrefix = _childPrefix;
         _output.AppendLine(CultureInfo.InvariantCulture, $"{indent}{prefix}TryStatement @ L{node.LineStart}:C{node.ColumnStart}");
-        _output.AppendLine(CultureInfo.InvariantCulture, $"{indent}{childPrefix}Body: [{node.Body.Length} statement(s)]");
-        for (int i = 0; i < node.Body.Length; i++)
-        {
-            VisitChild(node.Body[i], depth + 2, i == node.Body.Length - 1);
-        }
+        DumpStatements(indent, childPrefix, "Body", node.Body, depth);
         if (node.Handlers.Length > 0)
         {
             _output.AppendLine(CultureInfo.InvariantCulture, $"{indent}{childPrefix}Handlers: [{node.Handlers.Length}]");
@@ -299,17 +259,8 @@ internal class AstDumper : AstVisitor
         }
         if (node.FinallyBody.Length > 0)
         {
-            _output.AppendLine(CultureInfo.InvariantCulture, $"{indent}{childPrefix}FinallyBody: [{node.FinallyBody.Length} statement(s)]");
-            for (int i = 0; i < node.FinallyBody.Length; i++)
-            {
-                VisitChild(node.FinallyBody[i], depth + 2, i == node.FinallyBody.Length - 1);
-            }
+            DumpStatements(indent, childPrefix, "FinallyBody", node.FinallyBody, depth);
         }
-    }
-
-    public override void VisitWithStatement(WithStatement node)
-    {
-        DefaultVisit(node);
     }
 
     #endregion
@@ -340,11 +291,7 @@ internal class AstDumper : AstVisitor
             _output.AppendLine(CultureInfo.InvariantCulture, $"{indent}{childPrefix}ReturnType:");
             DumpTypeAnnotation(node.ReturnType, depth + 2, false);
         }
-        _output.AppendLine(CultureInfo.InvariantCulture, $"{indent}{childPrefix}Body: [{node.Body.Length} statement(s)]");
-        for (int i = 0; i < node.Body.Length; i++)
-        {
-            VisitChild(node.Body[i], depth + 2, i == node.Body.Length - 1);
-        }
+        DumpStatements(indent, childPrefix, "Body", node.Body, depth);
     }
 
     public override void VisitClassDef(ClassDef node)
@@ -370,11 +317,7 @@ internal class AstDumper : AstVisitor
                 DumpTypeAnnotation(node.BaseClasses[i], depth + 2, i == node.BaseClasses.Length - 1);
             }
         }
-        _output.AppendLine(CultureInfo.InvariantCulture, $"{indent}{childPrefix}Body: [{node.Body.Length} statement(s)]");
-        for (int i = 0; i < node.Body.Length; i++)
-        {
-            VisitChild(node.Body[i], depth + 2, i == node.Body.Length - 1);
-        }
+        DumpStatements(indent, childPrefix, "Body", node.Body, depth);
     }
 
     public override void VisitStructDef(StructDef node)
@@ -400,11 +343,7 @@ internal class AstDumper : AstVisitor
                 DumpTypeAnnotation(node.BaseClasses[i], depth + 2, i == node.BaseClasses.Length - 1);
             }
         }
-        _output.AppendLine(CultureInfo.InvariantCulture, $"{indent}{childPrefix}Body: [{node.Body.Length} statement(s)]");
-        for (int i = 0; i < node.Body.Length; i++)
-        {
-            VisitChild(node.Body[i], depth + 2, i == node.Body.Length - 1);
-        }
+        DumpStatements(indent, childPrefix, "Body", node.Body, depth);
     }
 
     public override void VisitInterfaceDef(InterfaceDef node)
@@ -429,11 +368,7 @@ internal class AstDumper : AstVisitor
                 DumpTypeAnnotation(node.BaseInterfaces[i], depth + 2, i == node.BaseInterfaces.Length - 1);
             }
         }
-        _output.AppendLine(CultureInfo.InvariantCulture, $"{indent}{childPrefix}Body: [{node.Body.Length} statement(s)]");
-        for (int i = 0; i < node.Body.Length; i++)
-        {
-            VisitChild(node.Body[i], depth + 2, i == node.Body.Length - 1);
-        }
+        DumpStatements(indent, childPrefix, "Body", node.Body, depth);
     }
 
     public override void VisitEnumDef(EnumDef node)
@@ -562,11 +497,6 @@ internal class AstDumper : AstVisitor
         DumpDecorators(node.Decorators, depth, indent, childPrefix);
     }
 
-    public override void VisitTypeAlias(TypeAlias node)
-    {
-        DefaultVisit(node);
-    }
-
     #endregion
 
     #region Statements - Imports
@@ -577,20 +507,7 @@ internal class AstDumper : AstVisitor
         var childPrefix = _childPrefix;
         _output.AppendLine(CultureInfo.InvariantCulture, $"{indent}{prefix}ImportStatement @ L{node.LineStart}:C{node.ColumnStart}");
         _output.AppendLine(CultureInfo.InvariantCulture, $"{indent}{childPrefix}Names: [{node.Names.Length}]");
-        for (int i = 0; i < node.Names.Length; i++)
-        {
-            var import = node.Names[i];
-            var impIndent = new string(' ', (depth + 2) * IndentUnit.Length);
-            var impPrefix = i == node.Names.Length - 1 ? "└─ " : "├─ ";
-            if (import.AsName != null)
-            {
-                _output.AppendLine(CultureInfo.InvariantCulture, $"{impIndent}{impPrefix}{import.Name} as {import.AsName} @ L{import.LineStart}:C{import.ColumnStart}");
-            }
-            else
-            {
-                _output.AppendLine(CultureInfo.InvariantCulture, $"{impIndent}{impPrefix}{import.Name} @ L{import.LineStart}:C{import.ColumnStart}");
-            }
-        }
+        DumpImportAliases(node.Names, depth);
     }
 
     public override void VisitFromImportStatement(FromImportStatement node)
@@ -606,35 +523,8 @@ internal class AstDumper : AstVisitor
         else
         {
             _output.AppendLine(CultureInfo.InvariantCulture, $"{indent}{childPrefix}Names: [{node.Names.Length}]");
-            for (int i = 0; i < node.Names.Length; i++)
-            {
-                var import = node.Names[i];
-                var impIndent = new string(' ', (depth + 2) * IndentUnit.Length);
-                var impPrefix = i == node.Names.Length - 1 ? "└─ " : "├─ ";
-                if (import.AsName != null)
-                {
-                    _output.AppendLine(CultureInfo.InvariantCulture, $"{impIndent}{impPrefix}{import.Name} as {import.AsName} @ L{import.LineStart}:C{import.ColumnStart}");
-                }
-                else
-                {
-                    _output.AppendLine(CultureInfo.InvariantCulture, $"{impIndent}{impPrefix}{import.Name} @ L{import.LineStart}:C{import.ColumnStart}");
-                }
-            }
+            DumpImportAliases(node.Names, depth);
         }
-    }
-
-    #endregion
-
-    #region Statements - Future
-
-    public override void VisitMatchStatement(MatchStatement node)
-    {
-        DefaultVisit(node);
-    }
-
-    public override void VisitUnionDef(UnionDef node)
-    {
-        DefaultVisit(node);
     }
 
     #endregion
@@ -666,15 +556,21 @@ internal class AstDumper : AstVisitor
 
     public override void VisitFStringLiteral(FStringLiteral node)
     {
+        DumpStringParts("FStringLiteral", node, node.Parts);
+    }
+
+    /// <summary>Dumps an f-string or t-string literal: the label line, then each text or replacement-field part.</summary>
+    private void DumpStringParts(string label, Node node, ImmutableArray<FStringPart> parts)
+    {
         var (indent, prefix, depth) = CaptureContext();
         var childPrefix = _childPrefix;
-        _output.AppendLine(CultureInfo.InvariantCulture, $"{indent}{prefix}FStringLiteral @ L{node.LineStart}:C{node.ColumnStart}");
-        _output.AppendLine(CultureInfo.InvariantCulture, $"{indent}{childPrefix}Parts: [{node.Parts.Length}]");
-        for (int i = 0; i < node.Parts.Length; i++)
+        _output.AppendLine(CultureInfo.InvariantCulture, $"{indent}{prefix}{label} @ L{node.LineStart}:C{node.ColumnStart}");
+        _output.AppendLine(CultureInfo.InvariantCulture, $"{indent}{childPrefix}Parts: [{parts.Length}]");
+        for (int i = 0; i < parts.Length; i++)
         {
-            var part = node.Parts[i];
+            var part = parts[i];
             var partIndent = new string(' ', (depth + 2) * IndentUnit.Length);
-            var partPrefix = i == node.Parts.Length - 1 ? "└─ " : "├─ ";
+            var partPrefix = i == parts.Length - 1 ? "└─ " : "├─ ";
             if (part.Text != null)
             {
                 _output.AppendLine(CultureInfo.InvariantCulture, $"{partIndent}{partPrefix}Text: \"{EscapeString(part.Text)}\"");
@@ -715,41 +611,12 @@ internal class AstDumper : AstVisitor
 
     public override void VisitTStringLiteral(TStringLiteral node)
     {
-        var (indent, prefix, depth) = CaptureContext();
-        var childPrefix = _childPrefix;
-        _output.AppendLine(CultureInfo.InvariantCulture, $"{indent}{prefix}TStringLiteral @ L{node.LineStart}:C{node.ColumnStart}");
-        _output.AppendLine(CultureInfo.InvariantCulture, $"{indent}{childPrefix}Parts: [{node.Parts.Length}]");
-        for (int i = 0; i < node.Parts.Length; i++)
-        {
-            var part = node.Parts[i];
-            var partIndent = new string(' ', (depth + 2) * IndentUnit.Length);
-            var partPrefix = i == node.Parts.Length - 1 ? "└─ " : "├─ ";
-            if (part.Text != null)
-            {
-                _output.AppendLine(CultureInfo.InvariantCulture, $"{partIndent}{partPrefix}Text: \"{EscapeString(part.Text)}\"");
-            }
-            else if (part.Expression != null)
-            {
-                _output.AppendLine(CultureInfo.InvariantCulture, $"{partIndent}{partPrefix}Expression:");
-                VisitChild(part.Expression, depth + 3, true);
-                DumpFStringSpec(part, depth);
-            }
-        }
+        DumpStringParts("TStringLiteral", node, node.Parts);
     }
 
     public override void VisitBooleanLiteral(BooleanLiteral node)
     {
         _output.AppendLine(CultureInfo.InvariantCulture, $"{_indent}{_prefix}BooleanLiteral: {node.Value} @ L{node.LineStart}:C{node.ColumnStart}");
-    }
-
-    public override void VisitNoneLiteral(NoneLiteral node)
-    {
-        _output.AppendLine(CultureInfo.InvariantCulture, $"{_indent}{_prefix}NoneLiteral @ L{node.LineStart}:C{node.ColumnStart}");
-    }
-
-    public override void VisitEllipsisLiteral(EllipsisLiteral node)
-    {
-        _output.AppendLine(CultureInfo.InvariantCulture, $"{_indent}{_prefix}EllipsisLiteral @ L{node.LineStart}:C{node.ColumnStart}");
     }
 
     #endregion
@@ -1079,46 +946,6 @@ internal class AstDumper : AstVisitor
         VisitChild(node.Expression, depth + 1, true);
     }
 
-    public override void VisitSuperExpression(SuperExpression node)
-    {
-        DefaultVisit(node);
-    }
-
-    public override void VisitWalrusExpression(WalrusExpression node)
-    {
-        DefaultVisit(node);
-    }
-
-    public override void VisitTryExpression(TryExpression node)
-    {
-        DefaultVisit(node);
-    }
-
-    public override void VisitMaybeExpression(MaybeExpression node)
-    {
-        DefaultVisit(node);
-    }
-
-    public override void VisitStarExpression(StarExpression node)
-    {
-        DefaultVisit(node);
-    }
-
-    public override void VisitSpreadElement(SpreadElement node)
-    {
-        DefaultVisit(node);
-    }
-
-    public override void VisitAwaitExpression(AwaitExpression node)
-    {
-        DefaultVisit(node);
-    }
-
-    public override void VisitMatchExpression(MatchExpression node)
-    {
-        DefaultVisit(node);
-    }
-
     #endregion
 
     #region Helper methods
@@ -1234,6 +1061,35 @@ internal class AstDumper : AstVisitor
             else
             {
                 _output.AppendLine(CultureInfo.InvariantCulture, $"{decIndent}{decPrefix}@{nameDisplay} @ L{decorator.LineStart}:C{decorator.ColumnStart}");
+            }
+        }
+    }
+
+    /// <summary>Writes a "label: [N statement(s)]" header, then visits each statement at depth + 2.</summary>
+    private void DumpStatements(string indent, string childPrefix, string label, ImmutableArray<Statement> body, int depth)
+    {
+        _output.AppendLine(CultureInfo.InvariantCulture, $"{indent}{childPrefix}{label}: [{body.Length} statement(s)]");
+        for (int i = 0; i < body.Length; i++)
+        {
+            VisitChild(body[i], depth + 2, i == body.Length - 1);
+        }
+    }
+
+    /// <summary>Writes one line per import alias at depth + 2.</summary>
+    private void DumpImportAliases(ImmutableArray<ImportAlias> names, int depth)
+    {
+        for (int i = 0; i < names.Length; i++)
+        {
+            var import = names[i];
+            var impIndent = new string(' ', (depth + 2) * IndentUnit.Length);
+            var impPrefix = i == names.Length - 1 ? "└─ " : "├─ ";
+            if (import.AsName != null)
+            {
+                _output.AppendLine(CultureInfo.InvariantCulture, $"{impIndent}{impPrefix}{import.Name} as {import.AsName} @ L{import.LineStart}:C{import.ColumnStart}");
+            }
+            else
+            {
+                _output.AppendLine(CultureInfo.InvariantCulture, $"{impIndent}{impPrefix}{import.Name} @ L{import.LineStart}:C{import.ColumnStart}");
             }
         }
     }
