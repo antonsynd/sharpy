@@ -212,3 +212,16 @@ MustRun P52 family=TypeMember route=class,dataclass,enum,interface,struct,union
 
 # --- Seed: 1 rows, 168 cells ---
 * seed family=Seed route=-
+
+# --- ScopeMeaningDifferentialTests: the cells the P77a pool has no program for (hand-written; the test reads its
+# --- verdicts from these rows and carries none) ---
+MustRefuse R-QI family=Read route=no-initializer initializer=Absent target=ModuleVar,ModuleProperty,StaticField,StaticProperty
+MustRun N1 family=Read route=no-initializer initializer=Absent target=InstanceField,InstanceProperty,LocalVar
+MustRun N1 family=Read route=no-initializer initializer=Present,AccessorBodies
+MustRefuse N1-typed-read family=Read route=typed-read
+MustRun N1-innermost family=Local route=callee
+MustRun N4 family=Read route=constant-kind constantKind=ClrLiteralField,ComparisonChain
+MustRefuse SPY0401 family=Read route=constant-kind constantKind=StdlibModuleVariable,ChainWithNonConstantLink
+MustRun N1 family=Read route=init-overload
+MustRefuse N1-alias-target family=Read route=alias-target aliasTarget=Missing
+MustRun N1 family=Read route=alias-target aliasTarget=Declared

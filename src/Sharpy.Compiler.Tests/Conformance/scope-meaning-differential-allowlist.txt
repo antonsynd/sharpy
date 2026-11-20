@@ -1,0 +1,37 @@
+# Known-red cells of ScopeMeaningDifferentialTests (stage 0 of plan-777361, P78; verification contract §11).
+# `<cell-id> <Ice|FalseRefusal|SilentWrong|RuntimeThrow> # #<issue> <lane>`: the issue is the one whose fix turns the
+# cell green, by the cell's route (ScopeMeaningDifferentialTests.RouteIssues). A row whose cell passes fails the test
+# until it is deleted. `wrong-code` is a must-refuse cell refused under a code its cell does not admit.
+local/callee/Comprehension/outer=ModuleDef SilentWrong # #2423 silent-wrong
+local/callee/For/outer=ModuleDef SilentWrong # #2423 silent-wrong
+local/callee/Parameter/outer=ModuleDef SilentWrong # #2423 silent-wrong
+local/callee/WithAs/outer=ModuleDef SilentWrong # #2423 silent-wrong
+read/alias-target/Missing/Unused/Earlier SilentWrong # #2423 missing-refusal
+read/constant-kind/DataclassFieldInitializer/ComparisonChain/ordered FalseRefusal # #2432 false-refusal
+read/constant-kind/DataclassFieldInitializer/StdlibModuleVariable/math.pi Ice # #2432 ice
+read/constant-kind/DataclassFieldInitializer/StdlibModuleVariable/socket.AF_INET Ice # #2432 ice
+read/constant-kind/EnumMemberValue/StdlibModuleVariable/socket.AF_INET Ice # #2432 ice
+read/constant-kind/ParameterDefault/ComparisonChain/ordered FalseRefusal # #2432 false-refusal
+read/constant-kind/ParameterDefault/StdlibModuleVariable/math.pi Ice # #2432 ice
+read/constant-kind/ParameterDefault/StdlibModuleVariable/socket.AF_INET Ice # #2432 ice
+read/constant-kind/StructFieldInitializer/ComparisonChain/ordered FalseRefusal # #2432 false-refusal
+read/constant-kind/StructFieldInitializer/StdlibModuleVariable/math.pi Ice # #2432 ice
+read/constant-kind/StructFieldInitializer/StdlibModuleVariable/socket.AF_INET Ice # #2432 ice
+read/init-overload/InitDelegation/Later FalseRefusal # #2423 false-refusal
+read/no-initializer/ModuleProperty/Absent SilentWrong # #2423 missing-refusal
+read/no-initializer/ModuleVar/Absent SilentWrong # #2423 missing-refusal
+read/no-initializer/StaticField/Absent SilentWrong # #2423 missing-refusal
+read/no-initializer/StaticProperty/Absent SilentWrong # #2423 missing-refusal
+read/typed-read/ClassComputedConst/Annotated/Later Ice # #2423 ice
+read/typed-read/ClassComputedConst/Inferred/Later Ice # #2423 ice
+read/typed-read/ClassLiteralConst/Annotated/Later Ice # #2423 ice
+read/typed-read/ClassLiteralConst/Inferred/Later Ice # #2423 ice
+read/typed-read/ModuleComputedConst/Inferred/Later Ice # #2423 ice
+read/typed-read/ModuleLiteralConst/Inferred/Later Ice # #2423 ice
+read/typed-read/ModuleProperty/Annotated/Later Ice # #2423 ice
+read/typed-read/ModuleVar/Annotated/Later FalseRefusal # #2423 wrong-code
+read/typed-read/ModuleVar/Inferred/Later FalseRefusal # #2423 wrong-code
+read/typed-read/StaticField/Annotated/Later Ice # #2423 ice
+read/typed-read/StaticField/Inferred/Earlier Ice # #2423 ice
+read/typed-read/StaticField/Inferred/Later Ice # #2423 ice
+read/typed-read/StaticMethod/Annotated/Later Ice # #2423 ice

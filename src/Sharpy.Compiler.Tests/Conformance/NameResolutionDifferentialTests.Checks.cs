@@ -809,8 +809,9 @@ public partial class NameResolutionDifferentialTests
         AssertNoProblems(RuleTableFailures(pool).Concat(AdmittedRuleFailures(pool)),
             "a cell's tag and rule are its one row's, a row no cell matches rules nothing, and a refusal under a rule says which codes it admits");
 
-        // Measured literals: a table or a generator that stopped citing a rule would otherwise pass an emptier check.
-        RuleTable().Select(r => r.Rule).Distinct(StringComparer.Ordinal).Should().HaveCount(44);
+        // Measured literals: a table or a generator that stopped citing a rule would otherwise pass an emptier check. 44 rules of this
+        // pool, and the four only ScopeMeaningDifferentialTests has cells for (R-QI, N1-typed-read, N4, N1-alias-target).
+        RuleTable().Select(r => r.Rule).Distinct(StringComparer.Ordinal).Should().HaveCount(48);
         // 29 rules with an entry, and the seeds', which carry their own codes.
         pool.Where(RefusalIsAnOutcome).Select(c => c.Rule).Distinct(StringComparer.Ordinal).Should().HaveCount(30);
     }

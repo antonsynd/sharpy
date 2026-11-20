@@ -150,6 +150,12 @@ public partial class NameResolutionDifferentialTests
         KeyAxis<AttributeReceiver>("receiver"),
         KeyAxis<ResultValueForm>("resultForm"),
         KeyAxis<StoreSpelling>("storeSpelling"),
+        KeyAxis<ScopeInitializer>("initializer"),
+        KeyAxis<ScopeAnnotation>("annotation"),
+        KeyAxis<ScopeConstantKind>("constantKind"),
+        KeyAxis<ScopeAliasTarget>("aliasTarget"),
+        KeyAxis<ScopeAliasUse>("aliasUse"),
+        KeyAxis<ScopeOverloadCaller>("overloadCaller"),
         new RuleAxis("route", c => One(c.Family == Family.Seed ? null : c.Key?.Route), null, new Dictionary<string, IReadOnlySet<string>>()),
         new RuleAxis("mark", c => c.Family == Family.Seed ? Array.Empty<string>() : c.Key?.Marks ?? Array.Empty<string>(), null, new Dictionary<string, IReadOnlySet<string>>(), SetValued: true),
         new RuleAxis("shape", c => One(c.Shape), null, new Dictionary<string, IReadOnlySet<string>>()),
@@ -240,6 +246,7 @@ public partial class NameResolutionDifferentialTests
     internal static readonly IReadOnlyList<(string Name, Func<IReadOnlyList<NameCell>> Cells)> RuleTablePools = new (string, Func<IReadOnlyList<NameCell>>)[]
     {
         (nameof(NameResolutionDifferentialTests), GeneratedCells),
+        (nameof(ScopeMeaningDifferentialTests), ScopeMeaningDifferentialTests.DraftCells),
     };
 
     /// <summary>The rows that claim a cell. One is the verdict; none or several is a totality failure.</summary>
