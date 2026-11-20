@@ -13,10 +13,13 @@
 #
 # Cannot see: a message sent to a running agent (SendMessage), a resumed agent, an agent started
 # outside Claude Code's agent tool (create_session, a scheduled task), and whether the agent
-# obeys the block. A prompt that is not a string, and unreadable input, are allowed.
+# obeys the block.
+#
+# FAILS CLOSED: unreadable input (not JSON, a prompt that is not a string), an internal error,
+# and a python3 that fails to start or dies are denied. The input is read from stdin by python
+# (no size limit).
 #
 # Hook input is JSON on stdin (tool_input.prompt, tool_input.subagent_type).
-input=$(cat)
 read -r -d '' PROG <<'PY'
 import json, os, re, sys
 
@@ -30,16 +33,20 @@ def norm(text):
     lines = (re.sub(r"^[\s>]*", "", line) for line in text.split("\n"))
     return re.sub(r"\s+", " ", " ".join(lines)).strip()
 
+def deny(msg):
+    sys.stderr.write("BLOCKED by .claude/hooks/require-agent-brief.sh: " + msg)
+    sys.exit(2)
+
 try:
-    tool_input = json.loads(os.environ["HOOK_INPUT"]).get("tool_input", {})
-    prompt = tool_input.get("prompt")
+    tool_input = json.loads(sys.stdin.buffer.read())["tool_input"]
     kind = tool_input.get("subagent_type") or "general-purpose"
-except Exception:
-    sys.exit(0)
-if not isinstance(prompt, str) or kind in EXEMPT:
-    sys.exit(0)
-brief = norm(prompt)
-missing = [k for k in KEYS if norm(k) not in brief]
+    if kind in EXEMPT:
+        sys.exit(0)
+    prompt = tool_input["prompt"]
+    assert isinstance(prompt, str)
+    missing = [k for k in KEYS if norm(k) not in norm(prompt)]
+except Exception as e:
+    deny("cannot read the hook input (%s: %s); the hook fails closed.\n" % (type(e).__name__, e))
 if not missing:
     sys.exit(0)
 
@@ -49,12 +56,17 @@ try:
                                  "verification-contract.md"), encoding="utf-8").read()
     m = re.search(r"^## 9\.[^\n]*\n(?:(?!> )[^\n]*\n)*?((?:> [^\n]*\n)+)", contract, re.M)
     block = m.group(1) if m else ""
-except OSError:
+except (OSError, KeyError):
     pass
-sys.stderr.write(
-    "BLOCKED by .claude/hooks/require-agent-brief.sh: this " + kind + " agent's prompt lacks the "
-    "shared-tree block (docs/design/verification-contract.md §9), missing: " + " / ".join(missing)
-    + "\nPaste the block verbatim into the prompt and spawn again:\n\n" + block)
-sys.exit(2)
+deny("this " + kind + " agent's prompt lacks the shared-tree block "
+     "(docs/design/verification-contract.md §9), missing: " + " / ".join(missing)
+     + "\nPaste the block verbatim into the prompt and spawn again:\n\n" + block)
 PY
-HOOK_INPUT="$input" HOOKS_DIR="$(cd "$(dirname "$0")" && pwd)" exec python3 -c "$PROG"
+HOOKS_DIR="$(cd "$(dirname "$0")" && pwd)" python3 -c "$PROG"
+rc=$?
+case $rc in
+  0 | 2) exit "$rc" ;;
+esac
+echo "BLOCKED by .claude/hooks/require-agent-brief.sh: the hook could not judge this spawn" \
+  "(python3 exit $rc); it fails closed." >&2
+exit 2

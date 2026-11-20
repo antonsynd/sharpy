@@ -25,16 +25,20 @@
 #      .NET build output (`bin/` or `obj/` beside a *.*proj; build_tools/bin/ is source), and a
 #      directory under .claude/worktrees/ that `git worktree list` does not register. The path's
 #      parent decides, so removing a registered linked worktree's root is denied: `git worktree
-#      remove`. A target the text cannot resolve (`"$tmp"` from `$(mktemp -d)`, a loop variable,
-#      an unset variable) is skipped. `$PWD`/`$OLDPWD` are the command's own (input cwd, then
+#      remove`. A target the text cannot resolve (a loop variable, an unset variable, a `$(cmd)`
+#      other than mktemp) is skipped. `$PWD`/`$OLDPWD` are the command's own (input cwd, then
 #      each cd), never the hook process's. The top/ancestor check reads a target without a
 #      trailing `/` through its parent's realpath, so `rm -f <symlink to the repo>` is allowed.
 #      Known false deny: `find src -name bin -type d -exec rm -rf {} +` (find's `{}` is read as
 #      `src/{}`); name the output directory instead: `find src/X/bin -name '*.dll' -delete`.
 #   An UNKNOWN directory fails closed: when the text loses the cwd (`cd "$X"`, a `cd` into a
-#   substitution) a git command with no -C/--git-dir/GIT_DIR/--work-tree/GIT_WORK_TREE is judged
-#   as if run in the main worktree. Known false deny: `cd "$X" && git reset --hard` from a linked
-#   worktree; name the directory instead: `git -C <path> reset --hard`, or `cd <literal path>`.
+#   substitution, a pop after `pushd -n`), or names a -C, GIT_DIR/--git-dir or GIT_WORK_TREE/
+#   --work-tree it cannot resolve, the git command is judged as if run in the main worktree.
+#   Known false deny: `cd "$X" && git reset --hard` from a linked worktree; name the directory
+#   instead: `git -C <path> reset --hard`, or `cd <literal path>`. `$(mktemp [-d])` is a fresh
+#   path in $TMPDIR, `$(git rev-parse --show-toplevel)` the cwd's toplevel, and a directory that
+#   `git init <dir>` / `git clone <url> <dir>` creates earlier in the text (one that does not
+#   exist yet, or is empty) is a new repository, not this one.
 #   3. Staging without per-file pathspecs, in any worktree of this repository: `git add -A|--all|
 #      -u|--update|.|./|:/` and `git commit -a|--all`. -u and commit -a are the same hazard as -A:
 #      they stage every tracked file's changes, a peer's uncommitted hunks included.
@@ -45,44 +49,97 @@
 #      `claude/*` (so never dev or mainline). `--mirror`, `--all`, `--branches`, `--tags` never.
 #
 # The worktree is resolved from the command itself: `git -C <dir>` (cumulative), `--work-tree`,
-# `--git-dir`, `GIT_DIR=`/`GIT_WORK_TREE=` (prefixed or set earlier in the text), a preceding
-# `cd`/`cd -`/`pushd`/`popd`, else the hook input's `cwd`. "This repository" is the one whose common
+# `--git-dir`, `GIT_DIR=`/`GIT_WORK_TREE=` (prefixed or set earlier in the text), `env -C`/`sudo
+# -D`, a preceding `cd`/`cd -`/`pushd`/`popd`, else the hook input's `cwd`. "This repository" is the one whose common
 # dir matches that of $CLAUDE_PROJECT_DIR (else `cwd`), so a scratch repo is not guarded. Commands
 # are found by .claude/hooks/shell_commands.py (its docstring lists what it follows).
 #
-# Cannot see: a script file (`bash x.sh`), a function or alias, a python/node subprocess, `xargs
-# rm` input, `git rm`, `unlink`/`mv`, a path or directory the text cannot resolve, a `git` alias,
-# launchers outside shell_commands.PREFIXES (ssh, su -c, script -c, docker exec, make, npm run).
-# Unparseable text (or substitutions nested more than 8 deep): allowed when `bash -n` refuses it
-# too (bash will not run it); otherwise a whole-string pattern check denies rules 1-2's verbs in
-# the main worktree and rules 3-4's (add -A/./-u, commit -a, a forced push without both lease
-# flags or to dev/mainline) in every worktree of this repository.
+# Out of scope (not followed, and not pattern-checked): a script file run by path (`bash x.sh`,
+# `./x.sh`), `source`/`.`, a function or alias, a python/node subprocess, `xargs rm` input, `git
+# rm`, `unlink`/`mv`, an rm target the text cannot resolve, a `git` alias, launchers outside
+# shell_commands.PREFIXES (ssh, su -c, script -c, docker exec, make, npm run).
+# PATTERN-CHECKED instead of walked: unparseable text (or substitutions nested more than 8
+# deep), allowed when `bash -n` refuses it too (bash will not run it); and a script the text
+# runs but does not show — `eval "$X"`, `bash -c "$X"`, `$X args`, `... | bash`, `sh -s`, `bash
+# < file`, `bash <(...)` (a literal `bash -c '...'`, here-string or here-document body is
+# walked). The whole text is then searched for rules 1-2's verbs (where the opaque script runs
+# in the main worktree, or anywhere unknown) and rules 3-4's (add -A/./-u, commit -a, a forced
+# push without both lease flags or to dev/mainline; in every worktree of this repository).
+# Known false deny: a guarded verb anywhere in such a text, e.g. `cat x.sh | bash; git stash
+# list` in the main worktree; run the two commands separately.
+#
+# FAILS CLOSED: whenever the hook cannot judge, it denies. Unreadable input (not JSON, no string
+# command) is denied; an internal error pattern-checks the whole text for every rule, in any
+# worktree; a python3 that fails to start or dies is denied by the shell wrapper. The input is
+# read from stdin by python (no size limit). A hook timeout (settings.json, 5 s) is Claude Code's
+# to handle; a 200 KB command takes well under one second.
 #
 # Hook input is JSON on stdin (tool_input.command, cwd, agent_id). Falsified by
 # .claude/hooks/test-hooks.sh.
-input=$(cat)
 read -r -d '' PROG <<'PY'
 import glob, json, os, re, subprocess, sys
 sys.dont_write_bytecode = True
-sys.path.insert(0, os.environ["HOOKS_DIR"])
-import shell_commands as sc
+
+def deny(msg):
+    sys.stderr.write("BLOCKED by .claude/hooks/guard-shared-tree.sh: " + msg + "\n")
+    sys.exit(2)
 
 try:
-    data = json.loads(os.environ["HOOK_INPUT"])
-    cmd = data.get("tool_input", {}).get("command", "")
+    data = json.loads(sys.stdin.buffer.read())
+    cmd = data["tool_input"]["command"]
     cwd = data.get("cwd") or os.getcwd()
     agent = bool(data.get("agent_id"))
-except Exception:
+    assert isinstance(cmd, str) and isinstance(cwd, str)
+except Exception as e:
+    deny("cannot read the hook input (%s: %s); the hook fails closed." % (type(e).__name__, e))
+if not cmd:
     sys.exit(0)
-if not isinstance(cmd, str) or not cmd:
+
+# Whole-string patterns for text the walk cannot follow: rules 1 and 2 in the main worktree,
+# rules 3 and 4 in every worktree of this repository.
+FALLBACK_MAIN = [r"\bgit\b[^\n;&|]*\b(checkout|restore|clean|stash|reset|switch)\b",
+                 r"(^|[\s;&|(`])rm\s"]
+FALLBACK_ANY = [r"\bgit\b[^\n;&|]*\badd\b[^\n;&|]*\s(-A|--all|-u|--update|\.)(?=[\s;&|)]|$)",
+                r"\bgit\b[^\n;&|]*\bcommit\b[^\n;&|]*\s(-[A-Za-z]*a[A-Za-z]*|--all)(?=[\s;&|)]|$)"]
+
+def forced_push_text(text):
+    for m in re.finditer(r"\bgit\b[^\n;&|]*\bpush\b[^\n;&|]*", text):
+        seg = m.group(0)
+        if re.search(r"\s(--force(?![-\w])|-[A-Za-z]*f[A-Za-z]*|--mirror|\+\S)", seg):
+            return True
+        if "--force-with-lease" in seg and ("--force-if-includes" not in seg
+                                            or re.search(r"\b(dev|mainline)\b", seg)):
+            return True
+    return False
+
+def matches(text, main, any_tree):
+    return (main and any(re.search(p, text) for p in FALLBACK_MAIN)) or (any_tree and (
+        any(re.search(p, text) for p in FALLBACK_ANY) or forced_push_text(text)))
+
+def failed(e):
+    """An internal error: every pattern, in any worktree."""
+    if matches(cmd, True, True):
+        deny("the hook failed (%s: %s) and the command names a guarded git verb, rm, a "
+             "stage-everything add/commit or a forced push; the hook fails closed." % (
+                 type(e).__name__, e))
     sys.exit(0)
+
+try:
+    sys.path.insert(0, os.environ["HOOKS_DIR"])
+    import shell_commands as sc
+except Exception as e:
+    failed(e)
 
 def git(*args):
     return subprocess.run(["git"] + list(args), capture_output=True, text=True)
 
 _cache = {}
+NEW_REPOS = []  # directories `git init`/`git clone` creates earlier in the text
 def repo_of(path):
     """(toplevel, git_dir, common_dir) of the worktree holding path, or None."""
+    real = os.path.realpath(path)
+    if any(real == d or real.startswith(d + "/") for d in NEW_REPOS):
+        return None
     p = path
     while p and not os.path.isdir(p):
         p = os.path.dirname(p)
@@ -105,7 +162,7 @@ def repo_of_gitdir(gitdir):
     gd, common = (os.path.realpath(x) for x in lines[:2])
     return (os.path.dirname(common), gd, common)
 
-project = repo_of(os.environ.get("CLAUDE_PROJECT_DIR") or cwd)
+project = None  # set by run()
 def ours(info):
     return bool(info and project and info[2] == project[2])
 def main_tree(info):
@@ -119,9 +176,9 @@ def worktrees():
         _wt.extend(os.path.realpath(l[9:]) for l in out.split("\n") if l.startswith("worktree "))
     return _wt
 
-def deny(msg):
-    sys.stderr.write("BLOCKED by .claude/hooks/guard-shared-tree.sh: " + msg + "\n")
-    sys.exit(2)
+def main_info():
+    """The main worktree, for a command whose directory or repository the text lost."""
+    return (worktrees()[0], project[2], project[2]) if project and worktrees() else None
 
 SHARED = ("The main worktree is shared with this session's agents (contract §9): REPORT `git status`, "
           "do not make it clean; restore a mutation from your `cp` copy. To reset, stash or discard, "
@@ -245,12 +302,44 @@ def destroys(verb, rest, where):
             return "`git checkout %s` names a path: it overwrites that path's uncommitted changes" % a
     return None
 
+def from_env(name, cwd, env, assigns):
+    """(given, path) for GIT_DIR / GIT_WORK_TREE: a prefix assignment, else one the text set
+    earlier (env holds None for a value it lost)."""
+    if name in assigns:
+        return True, sc.resolve(assigns[name], cwd, env)
+    if name in env and env[name] != "":
+        return True, None if env[name] is None else sc.resolve(env[name], cwd, env)
+    return False, None
+
+INIT_OPTS = ("-b", "--initial-branch", "--separate-git-dir", "--template", "--object-format",
+             "--ref-format")
+CLONE_OPTS = ("-o", "--origin", "-b", "--branch", "-u", "--upload-pack", "--reference",
+              "--reference-if-able", "--separate-git-dir", "--depth", "--shallow-since",
+              "--shallow-exclude", "-c", "--config", "-j", "--jobs", "--template",
+              "--server-option", "--filter", "--bundle-uri", "--ref-format")
+
+def new_repo(verb, rest, where, env):
+    """Record the directory `git init [dir]` / `git clone <url> [dir]` makes a new repository:
+    only one that does not exist yet, or is empty (an existing tree stays this repository's)."""
+    pos = positionals(rest, INIT_OPTS if verb == "init" else CLONE_OPTS)
+    if verb == "init":
+        target = sc.resolve(pos[0], where, env) if pos else where
+    elif len(pos) >= 2:
+        target = sc.resolve(pos[1], where, env)
+    elif pos:
+        name = re.sub(r"(/\.git|\.git)?/*$", "", pos[0]).rstrip("/")
+        name = re.split(r"[/:]", name)[-1] if name else ""
+        target = sc.resolve(name, where, env) if name else None
+    else:
+        target = None
+    if target and (not os.path.lexists(target) or (
+            os.path.isdir(target) and not os.path.islink(target) and not os.listdir(target))):
+        NEW_REPOS.append(os.path.realpath(target))
+
 def check_git(argv, cwd, env, assigns):
     args, i, where = argv[1:], 0, cwd
-    gitdir = sc.resolve(assigns["GIT_DIR"], cwd, env) if "GIT_DIR" in assigns else (
-        sc.resolve(env["GIT_DIR"], cwd, env) if env.get("GIT_DIR") else None)
-    worktree = sc.resolve(assigns["GIT_WORK_TREE"], cwd, env) if "GIT_WORK_TREE" in assigns else (
-        sc.resolve(env["GIT_WORK_TREE"], cwd, env) if env.get("GIT_WORK_TREE") else None)
+    gd_given, gitdir = from_env("GIT_DIR", cwd, env, assigns)
+    wt_given, worktree = from_env("GIT_WORK_TREE", cwd, env, assigns)
     while i < len(args) and args[i].startswith("-"):
         a = args[i]
         if a in GIT_OPTS_WITH_ARG and i + 1 < len(args):
@@ -258,29 +347,30 @@ def check_git(argv, cwd, env, assigns):
             if a == "-C":
                 where = sc.resolve(v, where, env)
             elif a == "--work-tree":
-                worktree = sc.resolve(v, where, env)
+                wt_given, worktree = True, sc.resolve(v, where, env)
             elif a == "--git-dir":
-                gitdir = sc.resolve(v, where, env)
+                gd_given, gitdir = True, sc.resolve(v, where, env)
             i += 2
             continue
         if a.startswith("--work-tree="):
-            worktree = sc.resolve(a.split("=", 1)[1], where, env)
+            wt_given, worktree = True, sc.resolve(a.split("=", 1)[1], where, env)
         elif a.startswith("--git-dir="):
-            gitdir = sc.resolve(a.split("=", 1)[1], where, env)
+            gd_given, gitdir = True, sc.resolve(a.split("=", 1)[1], where, env)
         i += 1
     if i >= len(args):
         return
     verb, rest = args[i], canon(args[i], args[i + 1:])
-    if gitdir:
+    if verb in ("init", "clone"):
+        new_repo(verb, rest, worktree or where, env)
+        return
+    if (gd_given and gitdir is None) or (wt_given and worktree is None) or where is None:
+        # The text lost the directory or the repository (cd "$X", GIT_DIR="$X", a pop after
+        # pushd -n): fail closed, judge it as the main worktree.
+        info = main_info()
+    elif gitdir:
         info = repo_of_gitdir(gitdir)
-    elif worktree or where:
-        info = repo_of(worktree or where)
-    elif project and worktrees():
-        # The text lost the directory (cd "$X", a refused pushd): fail closed, judge it as
-        # the main worktree. -C, --git-dir/GIT_DIR and --work-tree/GIT_WORK_TREE resolve above.
-        info = (worktrees()[0], project[2], project[2])
     else:
-        info = None
+        info = repo_of(worktree or where)
     if verb in S9 or verb == "switch":
         if main_tree(info):
             if agent and verb in S9:
@@ -417,33 +507,38 @@ def visit(argv, cwd, env, assigns):
     elif name == "rm":
         check_rm(argv, cwd, env)
 
-# Whole-string fallback for text the walk cannot follow but bash runs: rules 1 and 2 in the main
-# worktree, rules 3 and 4 in every worktree of this repository.
-FALLBACK_MAIN = [r"\bgit\b[^\n;&|]*\b(checkout|restore|clean|stash|reset|switch)\b",
-                 r"(^|[\s;&|(`])rm\s"]
-FALLBACK_ANY = [r"\bgit\b[^\n;&|]*\badd\b[^\n;&|]*\s(-A|--all|-u|--update|\.)(?=[\s;&|)]|$)",
-                r"\bgit\b[^\n;&|]*\bcommit\b[^\n;&|]*\s(-[A-Za-z]*a[A-Za-z]*|--all)(?=[\s;&|)]|$)"]
-
-def forced_push_text(text):
-    for m in re.finditer(r"\bgit\b[^\n;&|]*\bpush\b[^\n;&|]*", text):
-        seg = m.group(0)
-        if re.search(r"\s(--force(?![-\w])|-[A-Za-z]*f[A-Za-z]*|--mirror|\+\S)", seg):
-            return True
-        if "--force-with-lease" in seg and ("--force-if-includes" not in seg
-                                            or re.search(r"\b(dev|mainline)\b", seg)):
-            return True
-    return False
+def run():
+    global project
+    project = repo_of(os.environ.get("CLAUDE_PROJECT_DIR") or cwd)
+    opaque = []
+    try:
+        sc.walk(cmd, cwd, visit, opaque=lambda where, what: opaque.append((where, what)))
+    except sc.ParseError:
+        if not sc.bash_accepts(cmd):
+            sys.exit(0)  # bash refuses it too: nothing runs
+        here = repo_of(cwd)
+        if matches(cmd, main_tree(here), ours(here)):
+            deny("this command could not be parsed (bash can parse it) and names a guarded git "
+                 "verb, rm, a stage-everything add/commit or a forced push. Split it into simpler "
+                 "commands.")
+    for where, what in opaque:
+        info = repo_of(where) if where else main_info()
+        if matches(cmd, main_tree(info), ours(info)):
+            deny("this command runs a script the hook cannot read (%s) in %s, and its text names "
+                 "a guarded git verb, rm, a stage-everything add/commit or a forced push. Run the "
+                 "commands directly." % (what, where or "an unknown directory"))
 
 try:
-    sc.walk(cmd, cwd, visit)
-except sc.ParseError:
-    if not sc.bash_accepts(cmd):
-        sys.exit(0)  # bash refuses it too: nothing runs
-    here = repo_of(cwd)
-    if (main_tree(here) and any(re.search(p, cmd) for p in FALLBACK_MAIN)) or (
-            ours(here) and (any(re.search(p, cmd) for p in FALLBACK_ANY) or forced_push_text(cmd))):
-        deny("this command could not be parsed (bash can parse it) and names a guarded git verb, "
-             "rm, a stage-everything add/commit or a forced push. Split it into simpler commands.")
+    run()
+except Exception as e:
+    failed(e)
 sys.exit(0)
 PY
-HOOK_INPUT="$input" HOOKS_DIR="$(cd "$(dirname "$0")" && pwd)" exec python3 -c "$PROG"
+HOOKS_DIR="$(cd "$(dirname "$0")" && pwd)" python3 -c "$PROG"
+rc=$?
+case $rc in
+  0 | 2) exit "$rc" ;;
+esac
+echo "BLOCKED by .claude/hooks/guard-shared-tree.sh: the hook could not judge this command" \
+  "(python3 exit $rc); it fails closed." >&2
+exit 2

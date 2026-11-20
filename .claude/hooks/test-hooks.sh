@@ -26,7 +26,7 @@ skp()  { skip=$((skip+1)); printf 'SKIP  %s (%s)\n' "$1" "$2"; }
 
 # json TOOL KEY VALUE  → the stdin Claude Code would send for that tool call.
 json() {
-  python3 -c 'import json,sys; print(json.dumps({"session_id":"t","hook_event_name":"PreToolUse","tool_name":sys.argv[1],"tool_input":{sys.argv[2]:sys.argv[3]}}))' "$1" "$2" "$3"
+  printf '%s' "$3" | python3 -c 'import json,sys; print(json.dumps({"session_id":"t","hook_event_name":"PreToolUse","tool_name":sys.argv[1],"tool_input":{sys.argv[2]:sys.stdin.read()}}))' "$1" "$2"
 }
 
 # run HOOK STDIN → sets OUT, ERR, RC
@@ -215,8 +215,34 @@ allowed 'bash build_tools/regenerate_spy_stdlib.sh'
 allowed 'src/Sharpy.Cli/bin/Debug/net10.0/sharpyc run file.spy'
 allowed 'ls'
 allowed "dotnet build 'unterminated"
+# A script the text runs but does not show is pattern-checked; a literal one is walked.
+blocked $'bash <<EOF\ndotnet test\nEOF'
+blocked 'bash <<< "dotnet build"'
+blocked $'cat <<< x\ndotnet test\nx'
+blocked 'echo "dotnet build" | bash'
+blocked 'D=dotnet; $D test'
+blocked '$(which dotnet) build'
+blocked 'eval "$(echo dotnet test)"'
+allowed 'eval "$X"'
+allowed 'echo "dotnet --info" | bash'
+allowed $'cat <<EOF > .claude/tmp/n.md\nrun dotnet test\nEOF'
+# The hook fails closed (review round 6): unreadable input, a python3 that cannot start, and a
+# command past the 128 KiB argv/env string cap (it used to exit 126, which does not block).
+# big HOOK STDIN RC NAME: the case name stands in for the 200 KB+ input.
+big() { run "$1" "$2"; if [ "$RC" -eq "$3" ]; then ok "$4"; else bad "$4" "rc=$RC err=${ERR:0:300}"; fi; }
+nopy() { printf '%s' "$2" | PATH=/nonexistent "$HOOKS/$1" 2>/dev/null; RC=$?; if [ "$RC" -eq 2 ]; then ok "$1: python3 missing: deny"; else bad "$1: python3 missing: deny" "rc=$RC"; fi; }
+BIG=$(python3 - <<'PY'
+print("cat <<'EOF'\n" + "a long here-document body line, $(not run) \"quoted\" 'single'\n" * 4000 + "EOF")
+PY
+)
+if [ "${#BIG}" -gt 200000 ]; then ok "BIG is ${#BIG} bytes"; else bad "BIG is over 200 KB" "${#BIG}"; fi
+big enforce-dotnet-serialized.sh "$(json Bash command "$BIG"$'\n''dotnet test')" 2 "block: a 200 KB+ command ending in dotnet test"
+big enforce-dotnet-serialized.sh "$(json Bash command "$BIG"$'\n''echo done')" 0 "allow: a 200 KB+ command ending in echo done"
 run enforce-dotnet-serialized.sh 'garbage'
-if [ "$RC" -eq 0 ]; then ok "bad stdin: allow (Bash hook fails open by design; the lock is the safety net)"; else bad "bad stdin: allow" "rc=$RC"; fi
+if [ "$RC" -eq 2 ] && [ -n "$ERR" ]; then ok "bad stdin: block"; else bad "bad stdin: block" "rc=$RC"; fi
+run enforce-dotnet-serialized.sh '{"tool_name":"Bash","tool_input":{}}'
+if [ "$RC" -eq 2 ] && [ -n "$ERR" ]; then ok "no command string: block"; else bad "no command string: block" "rc=$RC"; fi
+nopy enforce-dotnet-serialized.sh "$(json Bash command 'ls')"
 
 echo "== guard-shared-tree.sh"
 # A scratch repository with the session layout: MAIN (the shared main worktree), a linked worktree
@@ -239,7 +265,7 @@ mkdir -p "$WT/obj"
 git -C "$MAIN" update-ref refs/remotes/origin/dev HEAD
 git -C "$MAIN" update-ref refs/remotes/origin/claude/remote-only HEAD
 # gjson COMMAND CWD [AGENT_ID]: a non-empty AGENT_ID is the input a subagent's tool call carries.
-gjson() { python3 -c 'import json,sys; d={"session_id":"t","hook_event_name":"PreToolUse","cwd":sys.argv[2],"tool_name":"Bash","tool_input":{"command":sys.argv[1]}}; d.update({"agent_id":sys.argv[3],"agent_type":"general-purpose"} if sys.argv[3] else {}); print(json.dumps(d))' "$1" "$2" "${3:-}"; }
+gjson() { printf '%s' "$1" | python3 -c 'import json,sys; d={"session_id":"t","hook_event_name":"PreToolUse","cwd":sys.argv[1],"tool_name":"Bash","tool_input":{"command":sys.stdin.read()}}; d.update({"agent_id":sys.argv[2],"agent_type":"general-purpose"} if sys.argv[2] else {}); print(json.dumps(d))' "$2" "${3:-}"; }
 gname()  { local c="${1//$'\n'/\\n}"; printf '%s%s @ %s' "${3:+[agent] }" "${c//"$G"\//}" "${2#"$G"/}"; }
 gdeny()  { CLAUDE_PROJECT_DIR="$MAIN" run guard-shared-tree.sh "$(gjson "$1" "$2" "${3:-}")"; if [ "$RC" -eq 2 ] && [ -n "$ERR" ]; then ok "deny: $(gname "$1" "$2" "${3:-}")"; else bad "deny: $(gname "$1" "$2" "${3:-}")" "rc=$RC err=$ERR"; fi; }
 gallow() { CLAUDE_PROJECT_DIR="$MAIN" run guard-shared-tree.sh "$(gjson "$1" "$2" "${3:-}")"; if [ "$RC" -eq 0 ] && [ -z "$ERR" ]; then ok "allow: $(gname "$1" "$2" "${3:-}")"; else bad "allow: $(gname "$1" "$2" "${3:-}")" "rc=$RC err=$ERR"; fi; }
@@ -482,11 +508,11 @@ gdeny 'popd; git reset --hard' "$MAIN" agent-1
 gdeny 'pushd +3; git reset --hard' "$MAIN" agent-1
 gdeny "( pushd $WT ); popd; git reset --hard" "$MAIN" agent-1
 gallow 'pushd /tmp; popd -n; git reset --hard' "$MAIN" agent-1
-gallow "pushd -n $WT; pushd +1; git reset --hard" "$MAIN" agent-1
+gdeny "pushd -n $WT; pushd +1; git reset --hard" "$MAIN" agent-1  # round 6: after -n, unknown
 # An unknown directory is judged as the main worktree (header: known false deny) unless git is
 # pointed at a known path.
 gdeny 'cd "$X" && git reset --hard' "$WT"
-gdeny 'cd "$(mktemp -d)" && git stash' "$WT" agent-1
+gdeny 'cd "$(mktemp -d -p "$X")" && git stash' "$WT" agent-1  # round 6: plain mktemp is known
 gdeny 'cd "$X" && git push --force origin HEAD' "$WT"
 gallow "cd \"\$X\" && git -C $WT reset --hard" "$MAIN"
 gallow 'cd "$X" && git status && git switch dev' "$MAIN"
@@ -534,6 +560,85 @@ EOS
 )
 gdeny "$E1" "$WT"
 gdeny "${E2/MAINDIR/$MAIN}" "$WT"   # out of the fallback's reach
+# 1h. Review round 6.
+# Whenever the hook cannot judge, it denies: a 200 KB+ command, a python3 that cannot start, an
+# internal error (here a NUL byte reaching a path call: every pattern, in any worktree).
+CLAUDE_PROJECT_DIR="$MAIN" big guard-shared-tree.sh "$(gjson "$BIG"$'\n''git reset --hard' "$MAIN" agent-1)" 2 "deny: [agent] a 200 KB+ command ending in git reset --hard @ main"
+CLAUDE_PROJECT_DIR="$MAIN" big guard-shared-tree.sh "$(gjson "$BIG"$'\n''git status' "$MAIN" agent-1)" 0 "allow: [agent] a 200 KB+ command ending in git status @ main"
+nopy guard-shared-tree.sh "$(gjson 'git status' "$MAIN")"
+CLAUDE_PROJECT_DIR="$MAIN" run guard-shared-tree.sh "{\"cwd\":\"$MAIN\",\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"git -C \\u0000x reset --hard\"}}"
+if [ "$RC" -eq 2 ] && printf '%s' "$ERR" | grep -q 'the hook failed'; then ok "internal error: pattern deny"; else bad "internal error: pattern deny" "rc=$RC err=$ERR"; fi
+CLAUDE_PROJECT_DIR="$MAIN" run guard-shared-tree.sh "{\"cwd\":\"$MAIN\",\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"git -C \\u0000x status\"}}"
+if [ "$RC" -eq 0 ]; then ok "internal error: pattern allow"; else bad "internal error: pattern allow" "rc=$RC err=$ERR"; fi
+# A git directory or work tree the text names but cannot resolve is the main one; env -C and
+# sudo -D set the command's directory (the last -C of one env wins, as in GNU env).
+gdeny 'GIT_DIR="$X" git reset --hard' "$WT" agent-1
+gdeny 'export GIT_DIR=$(cat .git-path); git stash' "$WT" agent-1
+gdeny 'git --git-dir="$X" reset --hard' "$WT"
+gdeny 'GIT_WORK_TREE="$X" git checkout -- src/a.txt' "$WT"
+gdeny 'git --work-tree="$X" clean -fd' "$WT"
+gallow 'GIT_DIR="$X" git status' "$WT" agent-1
+gdeny "env -C $MAIN git reset --hard" "$WT" agent-1
+gdeny "env --chdir=$MAIN git stash" "$WT" agent-1
+gdeny "env -C .. -C ../../.. git stash" "$WT" agent-1  # ../../.. from wt1 is main
+gdeny "sudo -D $MAIN git reset --hard" "$WT"
+gdeny 'env -C "$X" git reset --hard' "$WT" agent-1
+gallow "env -C .claude -C .claude/worktrees/wt1 git stash" "$MAIN" agent-1
+gallow "env -C $WT git reset --hard" "$MAIN" agent-1
+gallow 'env -C src git status' "$MAIN" agent-1
+# A shell's literal here-string or here-document script is walked; one read from a pipe, a file,
+# -s or <(...), and eval / bash -c / $X of a string the text does not show, is pattern-checked
+# over the whole text where it runs (an unknown directory: as the main worktree).
+gdeny $'bash <<EOF\ngit reset --hard\nEOF' "$MAIN" agent-1
+gdeny $'sh <<\'EOF\'\ngit stash\nEOF' "$MAIN" agent-1
+gdeny 'bash <<< "git reset --hard"' "$MAIN" agent-1
+gdeny $'cat <<< x\ngit reset --hard\nx' "$MAIN" agent-1  # <<< opens no here-document
+gdeny 'sudo bash -s <<< "git clean -fd"' "$MAIN"
+gdeny 'bash -o pipefail -c "git reset --hard"' "$MAIN" agent-1
+gdeny 'echo "git reset --hard" | bash' "$MAIN" agent-1
+gdeny 'echo "git stash" | sh -s' "$MAIN" agent-1
+gdeny 'bash < <(echo git reset --hard)' "$MAIN" agent-1
+gdeny 'bash <(echo git stash)' "$MAIN" agent-1
+gdeny 'eval "$(echo git reset --hard)"' "$MAIN" agent-1
+gdeny 'X="git reset --hard"; eval "$X"' "$MAIN" agent-1
+gdeny 'CMD="git stash"; bash -c "$CMD"' "$MAIN" agent-1
+gdeny 'G=git; $G reset --hard' "$MAIN" agent-1
+gdeny '$(which git) reset --hard' "$MAIN" agent-1
+gdeny "cd $MAIN; echo 'git stash' | bash" "$WT" agent-1
+gdeny 'cd "$X"; echo "git push --force origin dev" | bash' "$WT"
+gdeny $'cat <<EOF\n$(git stash)\nEOF' "$MAIN" agent-1
+gallow $'cat <<\'EOF\'\n$(git stash)\nEOF' "$MAIN" agent-1
+gallow 'eval "$X"' "$MAIN" agent-1
+gallow 'bash -c "$CMD"' "$MAIN" agent-1
+gallow 'echo "echo hi" | bash' "$MAIN" agent-1
+gallow 'G=git; $G status' "$MAIN" agent-1
+gallow 'echo "git reset --hard" | bash' "$WT" agent-1
+gallow $'bash <<EOF\ngit reset --hard\nEOF' "$WT" agent-1
+gallow 'bash build_tools/x.sh' "$MAIN" agent-1
+# pushd/popd: OLDPWD moves only when bash changes directory (pushd +0 does), and after any -n the
+# stack below the top is unknown. Each case ends where real bash ends (main, main, main, wt1).
+gdeny "pushd -n $SWT; popd -n +1; pushd -n $WT; { pushd $G/other; }; pushd $SWT; pushd -1; git reset --hard" "$MAIN" agent-1
+gdeny "pushd $WT; pushd +2; popd -n -0; cd -; git reset --hard" "$MAIN" agent-1
+gdeny "pushd $WT; popd +1; cd -; git reset --hard" "$MAIN" agent-1
+gallow "pushd $WT; pushd +0; cd -; git reset --hard" "$MAIN" agent-1
+# Past the parse limit, from a linked worktree: rules 3-4's patterns.
+gdeny "$(nest 'git push --force-with-lease --force-if-includes origin dev' 9)" "$WT"
+gallow "$(nest 'git push --force-with-lease --force-if-includes origin claude/x' 9)" "$WT"
+gdeny "$(nest 'git commit -am x' 9)" "$WT"
+gdeny "$(nest 'git commit -a -m x' 9)" "$WT"
+# $(mktemp ...) is a fresh path in $TMPDIR, $(git rev-parse --show-toplevel) the cwd's toplevel,
+# and a directory git init/clone creates (absent or empty) is a new repository.
+gallow 'D=$(mktemp -d); cd "$D"; git init -q; echo x > f; git add -A; git commit -qm init' "$MAIN" agent-1
+gallow 'T=$(mktemp -d) && git init -q "$T" && git -C "$T" add -A' "$MAIN" agent-1
+gallow 'cd "$(git rev-parse --show-toplevel)" && git checkout -- src/a.cs' "$WT" agent-1
+gdeny 'cd "$(git rev-parse --show-toplevel)" && git checkout -- src/a.cs' "$MAIN" agent-1
+gdeny 'cd "$(git rev-parse --show-toplevel)" && git checkout -- src/a.cs' "$MAIN"
+gdeny 'cd "$(git rev-parse --show-toplevel)/src" && git stash' "$MAIN" agent-1
+gdeny "TMPDIR=$MAIN/.claude/tmp; D=\$(mktemp -d); cd \"\$D\" && git add -A" "$MAIN"
+gallow 'mkdir -p .claude/tmp/n && cd .claude/tmp/n && git init -q && git add -A' "$MAIN" agent-1
+gallow "git clone -q $G/other .claude/tmp/c && git -C .claude/tmp/c add -A" "$MAIN" agent-1
+gdeny 'git init -q && git add -A' "$MAIN"
+gdeny 'git init -q src && git -C src clean -fdx' "$MAIN"
 # 2. rm: denied inside MAIN, allowed for .claude/tmp/, .NET bin/obj, stale .claude/worktrees/*
 # directories, linked worktrees, outside, and targets the text cannot resolve.
 gdeny 'rm src/a.txt' "$MAIN"
@@ -609,16 +714,18 @@ gallow 'git push --force-with-lease=claude/x:abc123 --force-if-includes origin c
 gallow 'git push --force-with-lease --force-if-includes origin HEAD' "$WT"
 gallow 'git push --force-with-lease --force-if-includes -u origin HEAD:refs/heads/claude/x' "$WT"
 gallow 'git push -u origin claude/x' "$WT"
-# unparseable (bash refuses it too) and unreadable input: allowed.
+# unparseable text bash refuses too: allowed (nothing runs); unreadable input: denied.
 gallow "git reset --hard 'unterminated" "$MAIN"
 run guard-shared-tree.sh 'garbage'
-if [ "$RC" -eq 0 ]; then ok "bad stdin: allow"; else bad "bad stdin: allow" "rc=$RC"; fi
+if [ "$RC" -eq 2 ] && [ -n "$ERR" ]; then ok "bad stdin: deny"; else bad "bad stdin: deny" "rc=$RC"; fi
+run guard-shared-tree.sh '{"tool_name":"Bash","tool_input":{}}'
+if [ "$RC" -eq 2 ] && [ -n "$ERR" ]; then ok "no command string: deny"; else bad "no command string: deny" "rc=$RC"; fi
 
 echo "== require-agent-brief.sh"
 # The block as contract §9 holds it today: a brief that pastes it must pass (drift between the
 # hook's key sentences and the contract turns this red).
 BLOCK=$(python3 -c 'import re,sys; s=open(sys.argv[1],encoding="utf-8").read(); print(re.search(r"^## 9\.[^\n]*\n(?:(?!> )[^\n]*\n)*?((?:> [^\n]*\n)+)", s, re.M).group(1), end="")' "$HOOKS/../../docs/design/verification-contract.md")
-ajson() { python3 -c 'import json,sys; ti={"description":"d","prompt":sys.argv[2]}; ti.update({"subagent_type":sys.argv[3]} if sys.argv[3] else {}); print(json.dumps({"session_id":"t","hook_event_name":"PreToolUse","tool_name":sys.argv[1],"tool_input":ti}))' "$1" "$2" "$3"; }
+ajson() { printf '%s' "$2" | python3 -c 'import json,sys; ti={"description":"d","prompt":sys.stdin.read()}; ti.update({"subagent_type":sys.argv[2]} if sys.argv[2] else {}); print(json.dumps({"session_id":"t","hook_event_name":"PreToolUse","tool_name":sys.argv[1],"tool_input":ti}))' "$1" "$3"; }
 adeny()  { run require-agent-brief.sh "$(ajson "$1" "$2" "$3")"; if [ "$RC" -eq 2 ] && printf '%s' "$ERR" | grep -qF 'never from git.'; then ok "deny: $4"; else bad "deny: $4" "rc=$RC err=$ERR"; fi; }
 aallow() { run require-agent-brief.sh "$(ajson "$1" "$2" "$3")"; if [ "$RC" -eq 0 ] && [ -z "$ERR" ]; then ok "allow: $4"; else bad "allow: $4" "rc=$RC err=$ERR"; fi; }
 if [ -n "$BLOCK" ]; then ok "contract §9 block found"; else bad "contract §9 block found" "no '> ' block under '## 9.'"; fi
@@ -651,10 +758,14 @@ $TASK" test-expert "the block indented"
 for t in fork web-fetch claude-code-guide statusline-setup; do
   aallow Agent "$TASK" "$t" "exempt subagent_type $t"
 done
+BIGP=$(python3 -c 'print("Context the agent needs, repeated to pass 200 KB.\n" * 4500, end="")')
+big require-agent-brief.sh "$(ajson Agent "$BIGP" general-purpose)" 2 "deny: a 200 KB+ brief without the block"
+big require-agent-brief.sh "$(ajson Agent "$BIGP"$'\n'"$BLOCK" general-purpose)" 0 "allow: a 200 KB+ brief with the block"
 run require-agent-brief.sh '{"tool_name":"Agent","tool_input":{"subagent_type":"general-purpose"}}'
-if [ "$RC" -eq 0 ]; then ok "no prompt string: allow"; else bad "no prompt string: allow" "rc=$RC"; fi
+if [ "$RC" -eq 2 ] && [ -n "$ERR" ]; then ok "no prompt string: deny"; else bad "no prompt string: deny" "rc=$RC"; fi
 run require-agent-brief.sh 'garbage'
-if [ "$RC" -eq 0 ]; then ok "bad stdin: allow"; else bad "bad stdin: allow" "rc=$RC"; fi
+if [ "$RC" -eq 2 ] && [ -n "$ERR" ]; then ok "bad stdin: deny"; else bad "bad stdin: deny" "rc=$RC"; fi
+nopy require-agent-brief.sh "$(ajson Agent "$TASK" general-purpose)"
 
 echo
 echo "hooks: $pass passed, $fail failed, $skip skipped"

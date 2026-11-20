@@ -90,7 +90,7 @@ Break the plan into commit-sized tasks (via `TaskCreate` or the plan-file checkl
 4. **Class tasks** — if the plan has a **Defect Class** section: create the **matrix/sweep task** (the sibling cells the plan enumerated go green, or the standing harness gains the cells) and the **drain task** (every allowlist row the fix drains is deleted, stale rows fail; with stage 0, the plan's known-red rows, never a matrix re-derived from the plan), both blocked by the fix tasks. A bug-fix plan with a Defect Class section but no matrix task is incomplete — add it.
 5. **Regen task** — immediately after the **first** task that touches `Semantic/`, `Lowering/`, or `CodeGen/`, not at the end: regenerate spy-stdlib C# (`build_tools/regenerate_spy_stdlib.sh`), spy-test C#, stdlib docs (`build_tools stdlib generate --force`), and the oracle ledger (`/regenerate-snapshots` covers the C# snapshots). Read the regen diff as **findings**: a newly red regenerated test is a live regression until disproven.
 6. **Excluded sections**: skip any sections listed in `--exclude`
-7. **Final tasks**: a "Run final verification" task (lead + standalone `verification-expert`) and a "Run dotnet format whitespace" task, both blocked by all implementation tasks
+7. **Final tasks**: a "Run final verification" task (lead + standalone `verification-expert`) and a "Run /format" task, both blocked by all implementation tasks
 
 ## Implementation Workflow
 
