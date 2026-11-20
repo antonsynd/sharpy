@@ -132,6 +132,7 @@ internal partial class ProjectCompiler
             .Select(unit => (unit.FilePath, unit.Ast!))
             .ToList();
         var generatorIr = new LoweringPass().Lower(generatorModules, SemanticInfo, _projectModel!.SemanticBinding, SymbolTable);
+        var sourceRoot = ComputeSourceRootPath(config);
 
         foreach (var filePath in partition.GeneratorFiles)
         {
@@ -150,7 +151,7 @@ internal partial class ProjectCompiler
                 TargetsTestHost = config.TestHost,
                 SourceFilePath = filePath,
                 ProjectNamespace = config.RootNamespace,
-                ProjectRootPath = ComputeSourceRootPath(config),
+                ProjectRootPath = sourceRoot,
                 IsEntryPoint = isEntryPoint,
                 IsPackageInit = isPackageInit,
                 Logger = _logger,
@@ -464,6 +465,7 @@ internal partial class ProjectCompiler
     {
         _logger.LogInfo("Stage 3: Integrating generated source into compilation");
 
+        var sourceRoot = ComputeSourceRootPath(config);
         foreach (var genSource in generatedSources)
         {
             cancellationToken.ThrowIfCancellationRequested();
@@ -585,7 +587,7 @@ internal partial class ProjectCompiler
                 existingDiagnostics: _diagnostics,
                 cancellationToken: cancellationToken,
                 moduleRegistry: _moduleRegistry,
-                sourceRootPath: ComputeSourceRootPath(config),
+                sourceRootPath: sourceRoot,
                     rootNamespace: config.RootNamespace);
 
             foreach (var error in typeCheckResult.TypeChecker.Diagnostics.GetErrors())

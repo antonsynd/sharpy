@@ -861,6 +861,8 @@ internal partial class ProjectCompiler
             modulesToProcess = _projectModel!.Units.Keys;
         }
 
+        var referenceClosure = BuildReferenceClosure(config);
+        var sourceRoot = ComputeSourceRootPath(config);
         foreach (var sourceFile in modulesToProcess)
         {
             cancellationToken.ThrowIfCancellationRequested();
@@ -944,9 +946,9 @@ internal partial class ProjectCompiler
                     deferredCycleFiles: deferredFiles,
                     moduleRegistry: _moduleRegistry,
                     features: fileFeatures,
-                    referenceClosure: BuildReferenceClosure(config),
+                    referenceClosure: referenceClosure,
                     moduleIdentityFilePath: unit.FilePath,
-                    sourceRootPath: ComputeSourceRootPath(config),
+                    sourceRootPath: sourceRoot,
                     rootNamespace: config.RootNamespace);
                 var typeChecker = typeCheckResult.TypeChecker;
 
