@@ -1,7 +1,7 @@
 # ported from CPython 3.12 Lib/test/test_textwrap.py::WrapTestCase, DedentTestCase,
 #                                                    IndentTestCase, ShortenTestCase
 #
-# Derived from the CPython 3.12 standard-library test suite (PSF-2.0); see the
+# Derived from the CPython 3.12 standard-library test suite (Python-2.0); see the
 # NOTICE file in this directory.
 #
 # LOW YIELD vs the classifier's 100% prediction. The classifier scores CPython-AST

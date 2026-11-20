@@ -27,7 +27,7 @@ double as a systematic map of Sharpy's distance from Python.
 ## Oracle source (pinned CPython 3.12.x)
 
 The oracle is pinned to **CPython 3.12.x**. Test files are **not vendored** into
-this repo — they are PSF-2.0 material and re-syncs must be deliberate classifier
+this repo — they are Python-2.0 material and re-syncs must be deliberate classifier
 re-runs. The tool reads them from a local CPython 3.12 install.
 
 Resolution order:
@@ -65,7 +65,7 @@ python -m build_tools.cpython_oracle classify test_int --format yaml --cpython-l
 `--skeleton-dir` emits one `<module>_skeleton.spy` per module containing, for each
 `PORTABLE` method, a provenance comment plus a signature-only `@test def …(): pass`
 stub. **Bodies are not ported** — that is manual/agent work in #1030 phase 1. Each
-skeleton carries the PSF-2.0 attribution required for CPython-derived material, and
+skeleton carries the Python-2.0 attribution required for CPython-derived material, and
 function names are de-collided so the same-stem `Spy/` regen constraint holds.
 
 ## Dual-execution harness (`shim/` + `dual_run.py`)

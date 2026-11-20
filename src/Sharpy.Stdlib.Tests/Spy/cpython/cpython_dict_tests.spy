@@ -1,6 +1,6 @@
 # ported from CPython 3.12 Lib/test/test_dict.py::DictTest
 #
-# Derived from the CPython 3.12 standard-library test suite (PSF-2.0); see the
+# Derived from the CPython 3.12 standard-library test suite (Python-2.0); see the
 # NOTICE file in this directory.
 #
 # The classifier scores test_dict at 40% portable, but most of that leans on set

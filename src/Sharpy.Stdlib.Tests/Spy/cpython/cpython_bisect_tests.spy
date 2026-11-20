@@ -1,6 +1,6 @@
 # ported from CPython 3.12 Lib/test/test_bisect.py::TestBisect, TestInsort, TestDocExample
 #
-# Derived from the CPython 3.12 standard-library test suite (PSF-2.0); see the
+# Derived from the CPython 3.12 standard-library test suite (Python-2.0); see the
 # NOTICE file in this directory. The C-vs-Python module split (py_bisect/c_bisect)
 # collapses to Sharpy's single `bisect` module. Table-driven cases are unrolled.
 #
