@@ -80,4 +80,4 @@ Unless you explicitly state otherwise, any contribution intentionally submitted
 for inclusion in this project shall be dual licensed as above, without any
 additional terms or conditions.
 
-Sharpy is Apache-2.0 OR MIT; portions ported from CPython are under the CPython licence (SPDX `Python-2.0`), see [THIRD-PARTY-NOTICES.txt](THIRD-PARTY-NOTICES.txt).
+Sharpy is Apache-2.0 OR MIT. Some packages also ship third-party code or data, credited with its licence text in [THIRD-PARTY-NOTICES.txt](THIRD-PARTY-NOTICES.txt), and their licence expressions add those licences (SPDX ids): `SharpyLang.Core` adds `Python-2.0` (CPython ports) and `Unicode-3.0` (Unicode case-folding data); `SharpyLang.Stdlib` adds `Python-2.0` (CPython ports) and `MIT` (PyYAML's resolver patterns and scalar-style rules); `sharpyc`, which ships both libraries, adds `Python-2.0`, `Unicode-3.0` and `MIT`.

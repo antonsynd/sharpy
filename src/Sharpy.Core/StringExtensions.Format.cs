@@ -1,3 +1,6 @@
+// The case-folding data in this file (s_caseFoldTable and the Cherokee ranges in CaseFoldChar) is
+// derived from the Unicode Character Database's CaseFolding.txt, Copyright (c) 1991-2026 Unicode, Inc.,
+// used under the Unicode License V3 (SPDX Unicode-3.0); see THIRD-PARTY-NOTICES.txt.
 using System;
 using System.Collections;
 using System.Collections.Generic;
