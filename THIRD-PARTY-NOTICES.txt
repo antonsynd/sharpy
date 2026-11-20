@@ -4,15 +4,12 @@ THIRD-PARTY NOTICES
 Sharpy is dual-licensed under the Apache License, Version 2.0 and the MIT
 License (see LICENSE, LICENSE-APACHE and LICENSE-MIT). Some files in this
 repository contain code derived from third-party software that is distributed
-under its own license. The components identified so far are listed below,
-each with the Sharpy files derived from it, the upstream source, and the full
-license text under which it is used. This list is not yet exhaustive. The
-audit of CPython-derived code, including files that do not describe
-themselves as ports, is tracked in issue #2602 of the Sharpy repository.
-Among the files still open in that audit are, for example,
-src/Sharpy.Core/PyFormatSpec.cs, src/Sharpy.Stdlib/Threading/Barrier.cs,
-src/Sharpy.Core/Str.cs (the format_float_short layout rule) and
-src/Sharpy.Stdlib/Threading/ThreadRegistry.cs.
+under its own license. Each such component is listed below, with the Sharpy
+files derived from it, the upstream source, and the full license text under
+which it is used. The CPython list is the result of the audit in issue #2602
+of the Sharpy repository, which read every Sharpy.Stdlib module that has a
+CPython namesake, and the Sharpy.Core files that follow CPython's
+implementation, against their CPython sources.
 
 
 CPython
@@ -25,11 +22,36 @@ Sharpy files derived from it:
     src/Sharpy.Stdlib/Datetime/DatetimeIso.cs
     src/Sharpy.Stdlib/Fractions/Fraction.Format.cs
     src/Sharpy.Core/PyFormat.cs
+    src/Sharpy.Core/PyFormatSpec.cs
+    src/Sharpy.Core/FloorDiv.cs
+    src/Sharpy.Core/FloorMod.cs
+    src/Sharpy.Core/NumericText.cs
+    src/Sharpy.Core/UnicodeCodec.cs
+    src/Sharpy.Stdlib/Colorsys/Colorsys.cs
+    src/Sharpy.Stdlib/Difflib/SequenceMatcher.cs
+    src/Sharpy.Stdlib/Difflib/Differ.cs
+    src/Sharpy.Stdlib/Difflib/DifflibFunctions.cs
+    src/Sharpy.Stdlib/Fractions/Fraction.cs
+    src/Sharpy.Stdlib/Threading/Barrier.cs
+    src/Sharpy.Stdlib/Ipaddress/AddressFormat.cs
+    src/Sharpy.Stdlib/Ipaddress/IPv4Address.cs
+    src/Sharpy.Stdlib/Ipaddress/IPv6Address.cs
+    src/Sharpy.Stdlib/Urllib/UrllibModule.cs
+    src/Sharpy.Stdlib/spy/fnmatch_module.spy
+    src/Sharpy.Stdlib/Fnmatch/FnmatchModule.cs
+    src/Sharpy.Stdlib/spy/itertools.spy
+    src/Sharpy.Stdlib/Itertools/Itertools.cs
+    src/Sharpy.Stdlib/spy/os_module.spy
+    src/Sharpy.Stdlib/Os/Os.cs
+    src/Sharpy.Stdlib/spy/shutil_module.spy
+    src/Sharpy.Stdlib/Shutil/Shutil.cs
 
 Upstream: https://github.com/python/cpython
 
 Each file's derived portions and the summary of changes required by clause 3
-of the PSF License Version 2 follow.
+of the PSF License Version 2 follow. A .spy file and the C# generated from it
+by build_tools/regenerate_spy_stdlib.sh share one entry; the generated file
+carries the .spy file's notice.
 
 1. src/Sharpy.Stdlib/Datetime/DatetimeIso.cs
 
@@ -65,16 +87,241 @@ of the PSF License Version 2 follow.
    raises ValueError. The entry point is IFormattable.ToString, and errors
    are raised as Sharpy's ValueError.
 
-3. src/Sharpy.Core/PyFormat.cs (only the private method
-   InsertThousandsGrouping)
+3. src/Sharpy.Core/PyFormat.cs (only the private methods
+   InsertThousandsGrouping and RenderComplex)
 
    Upstream source: _PyUnicode_InsertThousandsGrouping, in CPython's C
-   implementation (Objects/).
+   implementation (Objects/), and format_complex_internal in CPython 3.14,
+   Python/formatter_unicode.c.
+
+   Ported to C#: the thousands-grouping loop, and the set-up of
+   format_complex_internal (the 'r' default type when no type is given,
+   skip_re and add_parens for a +0 real part, 'n' read as 'g', and the
+   imaginary part's forced sign).
 
    Summary of changes: translated from C to C#. Only a uniform group size is
    handled (no locale grouping string), and the result is built as a .NET
    string from right to left instead of being written into a preallocated
-   Unicode buffer.
+   Unicode buffer. The complex parts are rendered by Sharpy's own float
+   formatting and padded as one string.
+
+4. src/Sharpy.Core/PyFormatSpec.cs
+
+   Upstream source: CPython 3.14, Python/formatter_unicode.c
+
+   Ported to C#: parse_internal_render_format_spec (fill and alignment, sign,
+   'z', '#', the backward-compatible '0' flag, width, the ',' and '_'
+   separators and their conflict, precision) and get_integer, and the order
+   and messages of the refusals in format_string_internal,
+   format_long_internal, format_complex_internal and the str, int, float and
+   complex __format__ switches.
+
+   Summary of changes: translated from C to C#. The parser returns a
+   PyFormatSpec value or a FormatSpecError instead of filling an
+   InternalFormatSpec and setting a Python exception; the grouping-with-type
+   check runs in Validate, where the operand's default type is known; the
+   fractional-part separators are not supported; digits are read as Unicode
+   decimal digits from a UTF-16 string.
+
+5. src/Sharpy.Core/FloorDiv.cs (only the double and float overloads of
+   FloorDiv)
+
+   Upstream source: CPython 3.14, Objects/floatobject.c
+
+   Ported to C#: the quotient half of _float_div_mod, which float_floor_div
+   uses (div = (vx - mod) / wx, the adjustment when the remainder's sign
+   differs from the divisor's, the snap to the nearest integral value, and
+   the signed zero quotient).
+
+   Summary of changes: translated from C to C#. fmod is the C# % operator,
+   copysign(0.0, vx / wx) is a sign-bit test (netstandard2.1 has no
+   Math.CopySign), the float overload repeats the algorithm in single
+   precision, and a zero divisor raises Sharpy's ZeroDivisionError.
+
+6. src/Sharpy.Core/FloorMod.cs (only the double and float overloads of
+   FloorMod)
+
+   Upstream source: CPython 3.14, Objects/floatobject.c
+
+   Ported to C#: float_rem (the remainder half of _float_div_mod): the
+   adjustment by the divisor when the signs differ, and the divisor-signed
+   zero remainder.
+
+   Summary of changes: translated from C to C#. fmod is the C# % operator,
+   copysign(0.0, wx) is a conditional on the divisor's sign, and a zero
+   divisor raises Sharpy's ZeroDivisionError.
+
+7. src/Sharpy.Core/NumericText.cs (only NumericText.Normalize)
+
+   Upstream source: CPython 3.14, Objects/unicodeobject.c
+
+   Ported to C#: _PyUnicode_TransformDecimalAndSpaceToASCII (a code point
+   below 127 kept, a Unicode space made ' ', a decimal digit made its ASCII
+   digit, anything else made '?').
+
+   Summary of changes: translated from C to C# over UTF-16 (a surrogate pair
+   is one code point). The result is a new .NET string, the '?' does not
+   truncate it, and the whitespace strip that int() and float() apply next
+   is part of the same method.
+
+8. src/Sharpy.Core/UnicodeCodec.cs (only the alias table s_aliases)
+
+   Upstream source: CPython 3.15, Lib/encodings/aliases.py
+
+   Taken: the rows of the aliases table whose codec Sharpy implements
+   (ascii, latin_1, utf_8, utf_8_sig, utf_16, utf_16_le, utf_16_be, utf_32,
+   utf_32_le and utf_32_be).
+
+   Summary of changes: the rows are a C# Dictionary from the normalized
+   alias to Sharpy's codec. The encoders and decoders are Sharpy's own.
+
+9. src/Sharpy.Stdlib/Colorsys/Colorsys.cs
+
+   Upstream source: CPython 3.15, Lib/colorsys.py
+
+   Ported to C#: rgb_to_yiq and yiq_to_rgb (their coefficients),
+   rgb_to_hsv, hsv_to_rgb, rgb_to_hls (with the gh-106498 denominator),
+   hls_to_rgb and the helper _v.
+
+   Summary of changes: translated from Python to C# over double. Each
+   function returns a value tuple, a negative hue left by % is lifted into
+   [0, 1) explicitly, and yiq_to_rgb's clamps are written as comparisons.
+
+10. src/Sharpy.Stdlib/Difflib/SequenceMatcher.cs,
+    src/Sharpy.Stdlib/Difflib/Differ.cs and
+    src/Sharpy.Stdlib/Difflib/DifflibFunctions.cs
+
+   Upstream source: CPython 3.15, Lib/difflib.py
+
+   Ported to C#: SequenceMatcher (__chain_b with its b2j, junk and popular
+   sets and the autojunk rule n >= 200, ntest = n // 100 + 1;
+   find_longest_match with j2len/newj2len and the four junk-extension
+   loops; get_matching_blocks, get_opcodes, get_grouped_opcodes, ratio,
+   quick_ratio with fullbcount/avail, and real_quick_ratio); Differ
+   (compare, _dump, _fancy_replace with its 0.74/0.75 cutoffs, the eqi/eqj
+   fallback and the intraline tags, and _fancy_helper); and the module
+   functions unified_diff, context_diff, get_close_matches, ndiff, restore,
+   IS_LINE_JUNK (its regular expression), IS_CHARACTER_JUNK,
+   _format_range_unified and _format_range_context.
+
+   Summary of changes: translated from Python to C#. SequenceMatcher is a
+   generic class over IList<T>, opcodes are value tuples, the work queue is
+   a list used as a stack, and the generators are C# iterators. Differ
+   compares lines as char sequences and emits its '?' guide lines without
+   _qformat's whitespace keeping. get_close_matches sorts its (score, word)
+   pairs instead of using heapq.nlargest, and errors are raised as Sharpy's
+   ValueError.
+
+11. src/Sharpy.Stdlib/Fractions/Fraction.cs (only LimitDenominator)
+
+   Upstream source: CPython 3.15, Lib/fractions.py
+
+   Ported to C#: the continued-fraction loop of Fraction.limit_denominator
+   (p0, q0, p1, q1, a, q2, k, bound1, bound2) and its error message.
+
+   Summary of changes: translated from Python to C# over
+   System.Numerics.BigInteger. The two bounds are compared by
+   cross-multiplied distances instead of CPython's single
+   2*d*(q0+k*q1) <= denominator test.
+
+12. src/Sharpy.Stdlib/Threading/Barrier.cs
+
+   Upstream source: CPython 3.15, Lib/threading.py
+
+   Ported to C#: the Barrier class's wait, reset and abort and its helpers
+   _enter, _release, _wait, _exit and _break, with their four-state machine
+   (0 filling, 1 draining, -1 resetting, -2 broken) and arrival index.
+
+   Summary of changes: translated from Python to C# on one monitor (a lock
+   with Monitor.Wait and Monitor.PulseAll) instead of a threading.Condition.
+   The timeout is a Stopwatch budget, a timeout the CLR cannot represent is
+   refused before any wait, and the action is an Action delegate.
+
+13. src/Sharpy.Stdlib/Ipaddress/AddressFormat.cs,
+    src/Sharpy.Stdlib/Ipaddress/IPv4Address.cs and
+    src/Sharpy.Stdlib/Ipaddress/IPv6Address.cs
+
+   Upstream source: CPython Lib/ipaddress.py (the tables as of 3.12,
+   unchanged in 3.15.2)
+
+   Ported to C#: _BaseAddress.__format__ (the '(#?)(_?)([xbnX])' grammar,
+   'n' as 'b' for IPv4 and 'x' for IPv6, and the zero padding to the full
+   address width). Taken: the _IPv4Constants tables _private_networks,
+   _private_networks_exceptions and _public_network, the _IPv6Constants
+   tables _private_networks and _private_networks_exceptions, and the
+   is_private and is_global rules built on them.
+
+   Summary of changes: the format grammar is a hand-written full-match
+   scanner, the digits and the '_' grouping are produced directly rather
+   than through format(int, spec), and a refused spec raises Sharpy's
+   TypeError. The networks are written as (network, prefix) pairs of a
+   uint or a byte array and tested by masking, not held as network objects.
+
+14. src/Sharpy.Stdlib/Urllib/UrllibModule.cs (only the scheme lists)
+
+   Upstream source: CPython 3.15, Lib/urllib/parse.py
+
+   Taken: the uses_netloc and uses_params scheme lists.
+
+   Summary of changes: the lists are case-insensitive HashSets, and
+   uses_netloc omits 'itms-services'. The URL parsing code around them is
+   Sharpy's own.
+
+15. src/Sharpy.Stdlib/spy/fnmatch_module.spy and the C# generated from it,
+    src/Sharpy.Stdlib/Fnmatch/FnmatchModule.cs
+
+   Upstream source: CPython 3.15, Lib/fnmatch.py
+
+   Ported to Sharpy: translate (the bracket scan with its i, j and stuff
+   variables, the '!' and ']' look-ahead, the backslash doubling, the '!'
+   negation, and the \A(?s:...)\Z wrapping).
+
+   Summary of changes: translated from Python to Sharpy over
+   System.Text.RegularExpressions. Runs of '*' are not compressed, '-'
+   ranges are passed through unchecked, and fnmatch and filter fold case on
+   Windows only.
+
+16. src/Sharpy.Stdlib/spy/itertools.spy and the C# generated from it,
+    src/Sharpy.Stdlib/Itertools/Itertools.cs
+
+   Upstream source: the "roughly equivalent to" Python code in CPython 3.14,
+   Doc/library/itertools.rst. (Code in CPython's documentation is dual
+   licensed under the PSF License Version 2 and the Zero-Clause BSD
+   license; it is listed here under the former.)
+
+   Ported to Sharpy: combinations, permutations (its indices and cycles
+   algorithm) and combinations_with_replacement.
+
+   Summary of changes: translated from Python to Sharpy with explicit while
+   loops. Each result is a list rather than a tuple, and every result is
+   collected before the first is yielded.
+
+17. src/Sharpy.Stdlib/spy/os_module.spy and the C# generated from it,
+    src/Sharpy.Stdlib/Os/Os.cs
+
+   Upstream source: CPython 3.15, Lib/os.py
+
+   Ported to Sharpy: makedirs (the head/tail recursion and the curdir
+   check) and walk's traversal order (pop a directory, yield it, push its
+   subdirectories reversed).
+
+   Summary of changes: translated from Python to Sharpy over System.IO.
+   There is no mode or parent_mode, exist_ok is checked before mkdir rather
+   than after it fails, and walk is top-down only, with no onerror or
+   followlinks.
+
+18. src/Sharpy.Stdlib/spy/shutil_module.spy and the C# generated from it,
+    src/Sharpy.Stdlib/Shutil/Shutil.cs
+
+   Upstream source: CPython 3.15, Lib/shutil.py
+
+   Ported to Sharpy: move (into an existing directory, then rename, then
+   the copy-and-remove fallback with its _destinsrc refusal), _basename and
+   _destinsrc, and copytree's order of steps.
+
+   Summary of changes: translated from Python to Sharpy over System.IO.
+   There is no copy_function, symlink or ignore handling, and errors are
+   raised as Sharpy's OSError family.
 
 The CPython license text follows, verbatim from the LICENSE.txt shipped with
 CPython 3.15.2 (lib/python3.15/LICENSE.txt). It is the complete file.

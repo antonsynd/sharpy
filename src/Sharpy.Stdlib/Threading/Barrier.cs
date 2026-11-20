@@ -1,3 +1,11 @@
+// Portions of this file are a C# port of CPython's Lib/threading.py (CPython 3.15): the Barrier
+// class's wait, reset and abort and its helpers _enter, _release, _wait, _exit and _break, with
+// their four-state machine (0 filling, 1 draining, -1 resetting, -2 broken).
+// Copyright (c) 2001 Python Software Foundation; All Rights Reserved
+// Licensed under the PSF License Version 2; see THIRD-PARTY-NOTICES.txt at the repository root.
+// Changes: translated from Python to C# on one monitor (lock with Monitor.Wait/PulseAll) instead of
+// a threading.Condition; the timeout is a Stopwatch budget, and the action is an Action delegate.
+
 using System;
 using System.Diagnostics;
 using System.Threading;

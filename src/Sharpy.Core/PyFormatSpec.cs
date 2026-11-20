@@ -1,3 +1,13 @@
+// Portions of this file are a C# port of CPython's Python/formatter_unicode.c (CPython 3.14):
+// parse_internal_render_format_spec and get_integer, and the order and text of the refusals of
+// format_string_internal, format_long_internal, format_complex_internal and the per-type
+// __format__ switches (unknown format code, sign, alternate form, precision, zero padding, '=').
+// Copyright (c) 2001 Python Software Foundation; All Rights Reserved
+// Licensed under the PSF License Version 2; see THIRD-PARTY-NOTICES.txt at the repository root.
+// Changes: translated from C to C#; the parse returns a PyFormatSpec value or a FormatSpecError
+// instead of filling an InternalFormatSpec and setting a Python exception, the grouping x type
+// check runs in Validate, and the fractional-part separators are not supported.
+
 using System;
 using System.Globalization;
 

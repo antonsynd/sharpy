@@ -1,3 +1,11 @@
+// Portions of this file are a C# port of CPython's Objects/floatobject.c (CPython 3.14): the
+// quotient half of _float_div_mod (float_floor_div), in the double and float overloads of FloorDiv.
+// Copyright (c) 2001 Python Software Foundation; All Rights Reserved
+// Licensed under the PSF License Version 2; see THIRD-PARTY-NOTICES.txt at the repository root.
+// Changes: translated from C to C#; copysign(0.0, vx / wx) is a sign-bit test (netstandard2.1 has
+// no Math.CopySign), the float overload repeats the algorithm in single precision, and a zero
+// divisor is Sharpy's ZeroDivisionError.
+
 namespace Sharpy
 {
     public static partial class Builtins

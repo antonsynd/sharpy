@@ -1,9 +1,12 @@
-// Portions of this file are a C# port of _PyUnicode_InsertThousandsGrouping, in CPython's C
-// implementation (Objects/): only the private method InsertThousandsGrouping below.
+// Portions of this file are a C# port of CPython's C implementation: _PyUnicode_InsertThousandsGrouping
+// (Objects/), in the private method InsertThousandsGrouping, and the set-up of format_complex_internal
+// (Python/formatter_unicode.c, CPython 3.14: the 'r' default type, skip_re/add_parens and the
+// imaginary part's sign), in RenderComplex.
 // Copyright (c) 2001 Python Software Foundation; All Rights Reserved
 // Licensed under the PSF License Version 2; see THIRD-PARTY-NOTICES.txt at the repository root.
-// Changes: translated from C to C#; handles only a uniform group size (no locale grouping string);
-// builds a .NET string from right to left instead of writing into a preallocated Unicode buffer.
+// Changes: translated from C to C#; the grouping handles only a uniform group size (no locale grouping
+// string) and builds a .NET string from right to left instead of writing into a preallocated Unicode
+// buffer; the complex parts are rendered by Sharpy's own float formatting and padded as one string.
 
 using System;
 using System.Globalization;

@@ -1,5 +1,11 @@
 // Generated from src/Sharpy.Stdlib/spy/shutil_module.spy — do not edit directly.
 // To regenerate: sharpyc emit csharp src/Sharpy.Stdlib/spy/shutil_module.spy -t library -n Sharpy
+// Portions of this file are a Sharpy port of CPython's Lib/shutil.py (CPython 3.15): move (the
+// rename-then-copy fallback), _basename and _destinsrc, and copytree's order of steps.
+// Copyright (c) 2001 Python Software Foundation; All Rights Reserved
+// Licensed under the PSF License Version 2; see THIRD-PARTY-NOTICES.txt at the repository root.
+// Changes: translated from Python to Sharpy over System.IO; no copy_function, symlink or
+// ignore handling, and errors are Sharpy's OSError family.
 #nullable enable
 
 using System;

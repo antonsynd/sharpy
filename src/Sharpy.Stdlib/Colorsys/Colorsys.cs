@@ -1,3 +1,10 @@
+// Portions of this file are a C# port of CPython's Lib/colorsys.py (CPython 3.15): rgb_to_yiq,
+// yiq_to_rgb (its coefficients), rgb_to_hsv, hsv_to_rgb, rgb_to_hls, hls_to_rgb and the helper _v.
+// Copyright (c) 2001 Python Software Foundation; All Rights Reserved
+// Licensed under the PSF License Version 2; see THIRD-PARTY-NOTICES.txt at the repository root.
+// Changes: translated from Python to C# over double; each function returns a value tuple; a negative
+// hue left by % is lifted into [0, 1) explicitly, and yiq_to_rgb's clamps are written as comparisons.
+
 #nullable enable
 
 using System;

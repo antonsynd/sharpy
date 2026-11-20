@@ -1,3 +1,10 @@
+// Portions of this file are a C# port of CPython's Objects/unicodeobject.c (CPython 3.14):
+// _PyUnicode_TransformDecimalAndSpaceToASCII, in NumericText.Normalize.
+// Copyright (c) 2001 Python Software Foundation; All Rights Reserved
+// Licensed under the PSF License Version 2; see THIRD-PARTY-NOTICES.txt at the repository root.
+// Changes: translated from C to C# over UTF-16 (a surrogate pair is one code point); the result is
+// a new .NET string that the '?' sentinel does not truncate, and the strip that follows is fused in.
+
 using System;
 using System.Globalization;
 using System.Text;

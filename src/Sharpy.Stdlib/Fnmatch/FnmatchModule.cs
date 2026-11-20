@@ -1,5 +1,12 @@
 // Generated from src/Sharpy.Stdlib/spy/fnmatch_module.spy — do not edit directly.
 // To regenerate: sharpyc emit csharp src/Sharpy.Stdlib/spy/fnmatch_module.spy -t library -n Sharpy
+// Portions of this file are a Sharpy port of CPython's Lib/fnmatch.py (CPython 3.15): translate
+// (its bracket scan with the i/j/stuff variables, the backslash doubling, the '!' negation and the
+// \A(?s:...)\Z wrapping).
+// Copyright (c) 2001 Python Software Foundation; All Rights Reserved
+// Licensed under the PSF License Version 2; see THIRD-PARTY-NOTICES.txt at the repository root.
+// Changes: translated from Python to Sharpy over System.Text.RegularExpressions; '*' runs are not
+// compressed, '-' ranges are passed through unchecked, and fnmatch/filter fold case on Windows only.
 #nullable enable
 
 using System;

@@ -1,3 +1,10 @@
+// Portions of this file are a C# port of CPython's Objects/floatobject.c (CPython 3.14): float_rem
+// (the remainder half of _float_div_mod), in the double and float overloads of FloorMod.
+// Copyright (c) 2001 Python Software Foundation; All Rights Reserved
+// Licensed under the PSF License Version 2; see THIRD-PARTY-NOTICES.txt at the repository root.
+// Changes: translated from C to C#; fmod is the C# % operator, copysign(0.0, wx) is a conditional
+// on the divisor's sign, and a zero divisor is Sharpy's ZeroDivisionError.
+
 namespace Sharpy
 {
     public static partial class Builtins
