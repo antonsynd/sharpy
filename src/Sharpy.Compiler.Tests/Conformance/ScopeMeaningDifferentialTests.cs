@@ -32,8 +32,9 @@ internal enum ScopeAnnotation
 /// owner's ruling 7 of 2026-11-20, #2423 comment 7042723494): every kind of member a constant position's answer is
 /// asked about, and the two chains. Each member kind is the image of what the compiler records for the member:
 /// <list type="bullet">
-/// <item>a value of a referenced MODULE: discovery's <c>FieldSignature.IsConst</c> × <c>IsGuarded</c>
-/// (<see cref="ScopeMeaningDifferentialTests.ModuleValueShapes"/>);</item>
+/// <item>a member of a referenced MODULE: the collection of discovery's <c>ModuleOverloads</c> that holds it, a field refined
+/// by <c>FieldSignature.IsConst</c> × <c>IsGuarded</c> and a function by its overload count
+/// (<see cref="ScopeMeaningDifferentialTests.ModuleMemberShapes"/>; ruling 13, comment 7046304965);</item>
 /// <item>a member of a referenced TYPE: the subclasses of <c>ClrMemberResolution</c>, a field refined by
 /// <c>FieldInfo.IsLiteral</c> and whether its type is an enum (<see cref="ScopeMeaningDifferentialTests.ClrTypeMemberShapes"/>);</item>
 /// <item>a member of an enum the program declares: <c>EnumMemberAccessKind</c> and the member itself, per enum shape
@@ -41,7 +42,8 @@ internal enum ScopeAnnotation
 /// <item>any other name the program declares: <see cref="OwnMember"/>, refined by <see cref="BindingKind"/>
 /// (<see cref="ScopeMeaningDifferentialTests.OwnReads"/>).</item>
 /// </list>
-/// The two chains are closed by call 45.</summary>
+/// The two chains are closed by call 45. How each member is SPELLED and where its reader stands is a second axis, per where
+/// the member lives (ruling 12; <c>ScopeMeaningDifferentialTests.Axes.cs</c>).</summary>
 internal enum ScopeConstantKind
 {
     /// <summary>A constant of a referenced assembly: a CLR literal field read through a Stdlib module.</summary>
@@ -53,6 +55,13 @@ internal enum ScopeConstantKind
     /// <summary>A static of a referenced assembly's module that is neither literal nor guarded (a static property, a
     /// static readonly field): no constant.</summary>
     ClrStaticMember,
+
+    /// <summary>A function of a referenced module with one overload, read uncalled (<c>math.sqrt</c>): a function value, no constant.</summary>
+    ModuleFunction,
+
+    /// <summary>A function of a referenced module with several overloads, read uncalled (<c>math.log</c>): the slot's type picks
+    /// one, and the value is no constant.</summary>
+    ModuleFunctionGroup,
 
     /// <summary>A literal field of a referenced type (<c>int.max_value</c>, <c>Math.PI</c>): a C# constant.</summary>
     ClrTypeLiteralField,
@@ -68,6 +77,10 @@ internal enum ScopeConstantKind
 
     /// <summary>A static method of a referenced type with one overload, read uncalled: a function value, no constant.</summary>
     ClrTypeMethod,
+
+    /// <summary>A static method of a referenced type whose signature the checker's resolver declines to type (a <c>char</c>
+    /// parameter: <c>Char.is_ascii_digit</c>), read uncalled: the checker types it <c>object</c>, and the value is no constant.</summary>
+    ClrTypeDeclinedMethod,
 
     /// <summary>A static method group of a referenced type, read uncalled: no value at all (SPY0336).</summary>
     ClrTypeMethodGroup,
@@ -90,8 +103,8 @@ internal enum ScopeConstantKind
     /// <summary>A string enum member's <c>.name</c>: the singleton's property, no constant.</summary>
     StringEnumName,
 
-    /// <summary>A name the program declares, read where its kind says (bare at module level, through its type's
-    /// name or a subclass's): the cell's target is the kind.</summary>
+    /// <summary>A name the program declares, read under each spelling and from each placement the typed-read set has a
+    /// reader for (<c>OwnSpellings</c>): the cell's target is the kind.</summary>
     OwnMember,
 
     /// <summary>A comparison chain whose every link is a constant.</summary>
@@ -129,7 +142,7 @@ internal enum ScopeOverloadCaller
 
 /// <summary>
 /// Stage 0 of plan-777361 (P78; verification contract §11), the owner's rulings of 2026-11-20 (#2423 comments
-/// 7030074628 item 1, 7039834146 item 5 and 7042723494 items 7 to 9): the cells of rules N1, N2, N4 and N7 that the P77a pool
+/// 7030074628 item 1, 7039834146 item 5, 7042723494 items 7 to 9 and 7046304965 items 12 and 13): the cells of rules N1, N2, N4 and N7 that the P77a pool
 /// (<see cref="NameResolutionDifferentialTests"/>) has no program for, as a generated test type of their own. A cell is
 /// a <see cref="NameCell"/>, and its tag and rule are READ from the rule table (<c>name-resolution-rules.txt</c>, #2487):
 /// the generator writes the program, what it prints when it runs and the codes a refusal may carry, and never a verdict.
@@ -147,14 +160,16 @@ internal enum ScopeOverloadCaller
 /// <item><c>callee</c>: a binder's name called under an outer binding of the name, binder (<see cref="LocalTarget"/> and
 /// the parameter) × outer (<see cref="BindingKind"/>);</item>
 /// <item><c>constant-kind</c> (#2432): host (the call sites of <c>ConstantDefaultClassifier.IsAdmitted</c>, each with its
-/// <c>AdmissionTable</c>, and the enum member's value) × <see cref="ScopeConstantKind"/>;</item>
+/// <c>AdmissionTable</c>, and the enum member's value) × <see cref="ScopeConstantKind"/> × the read's spelling and the
+/// reader's placement (an import's forms, a type's alias, and for the program's own names <c>Spelling</c> × inside or outside
+/// the member's type, as the typed-read set's readers have them);</item>
 /// <item><c>init-overload</c>: <see cref="ScopeOverloadCaller"/> × order;</item>
 /// <item><c>alias-target</c>: declaration site (<c>ScopeKind</c> × <c>TypeKind</c>) × target shape (the properties of the
 /// alias's AST records) × <see cref="ScopeAliasTarget"/> × <see cref="ScopeAliasUse"/> × order. An alias that reaches
 /// itself has its unused cells, which must run, and no used one (#2769).</item>
 /// </list>
 /// Known-red cells are rows of <c>scope-meaning-differential-allowlist.txt</c> (a missing file reads as empty), each citing
-/// the issue whose fix turns it green. A must-refuse cell refused under a code its cell does not admit is listed as
+/// the issue whose fix turns it green, by the cell's class (<see cref="ProposedCite"/>). A must-refuse cell refused under a code its cell does not admit is listed as
 /// <see cref="VerdictClass.FalseRefusal"/> with the lane <c>wrong-code</c>: the refusal is another rule's.
 /// </summary>
 [Trait("Category", "GapDiscovery")]
@@ -181,7 +196,7 @@ public sealed partial class ScopeMeaningDifferentialTests : IntegrationTestBase
     /// <paramref name="refusal"/> the codes a refusal of it may carry.</summary>
     private static Case Draft(CellKey key, Family family, string source, string? model, string[] refusal, bool twin,
         BindingKind target = BindingKind.None, BindingKind outer = BindingKind.None, ReadPosition? position = null,
-        LocalTarget? construct = null, bool stdlib = false)
+        LocalTarget? construct = null, bool stdlib = false, DeclaringRelation? relation = null)
         => new(
             new NameCell
             {
@@ -196,6 +211,7 @@ public sealed partial class ScopeMeaningDifferentialTests : IntegrationTestBase
                 Outer = outer,
                 Position = position,
                 Construct = construct,
+                Relation = relation,
                 SeedRefusalCodes = new HashSet<string>(refusal, StringComparer.Ordinal),
                 NeedsStdlib = stdlib,
             },
@@ -443,25 +459,32 @@ public sealed partial class ScopeMeaningDifferentialTests : IntegrationTestBase
                 {
                     if (HostSkips(host, e.Type) != null)
                         continue;
-                    yield return ConstantCase(Key("read", "constant-kind", table, host.Label, kind, e.Form, e.Label), table, host, kind, e.Text, e.Type, e.Prints, e.Show,
-                        imports: e.Import, prelude: e.Prelude, refusals: e.Refusals, target: e.Target, stdlib: e.Stdlib,
-                        twin: host.Twin && e.Target == BindingKind.None && kind is ScopeConstantKind.ClrLiteralField or ScopeConstantKind.ComparisonChain);
+                    // Python has the module-qualified read of a literal and the chain; every other spelling is Sharpy's own cell.
+                    bool twin = host.Twin && (kind == ScopeConstantKind.ComparisonChain || (kind == ScopeConstantKind.ClrLiteralField && e.Spelling == ImportSpellings[0].Label));
+                    yield return ConstantCase(Key("read", "constant-kind", table, host.Label, kind, e.Form, e.Label, e.Spelling), table, host, kind, e.Text, e.Type, e.Prints, e.Show,
+                        imports: e.Import, prelude: e.Prelude, refusals: e.Refusals, target: e.Target, stdlib: e.Stdlib, twin: twin);
                 }
             }
-            foreach (var own in OwnReads)
+            foreach (var own in OwnReadsOf(host))
             {
                 if (HostSkips(host, own.Type) != null)
                     continue;
-                yield return ConstantCase(Key("read", "constant-kind", table, host.Label, ScopeConstantKind.OwnMember, own.Kind, own.Annotation, own.Relation, own.Form), table, host,
-                    ScopeConstantKind.OwnMember, own.Text, own.Type, "5", own.Show, imports: null, prelude: own.Prelude, refusals: own.Refusals, target: own.Kind, stdlib: false, twin: false);
+                bool inside = own.Relation == DeclaringRelation.Self;
+                yield return ConstantCase(
+                    Key("read", "constant-kind", table, host.Label, ScopeConstantKind.OwnMember, own.Kind, own.Annotation, own.Spelling, own.Relation, own.Order,
+                        own.Outer == BindingKind.None ? null : $"outer={own.Outer}", own.Form,
+                        inside && own.Spelling == Harness.Spelling.Bare ? BareSibling : null, inside && host.InMethod ? InMethod : null),
+                    table, host, ScopeConstantKind.OwnMember, own.Text, own.Type, own.Prints, own.Show, imports: null, prelude: own.Prelude, refusals: own.Refusals, target: own.Kind,
+                    stdlib: false, twin: false, own: own);
             }
         }
     }
 
     /// <summary>One cell: the expression's imports and declarations, then the host's program around it. What <c>main</c> shows is
-    /// the slot's value read into a local of the slot's type first, since a call on a function-typed property is #2770's.</summary>
+    /// the slot's value read into a local of the slot's type first, since a call on a function-typed property is #2770's. A
+    /// read from the member's own type takes the host's <c>Inside</c> program, with the member above or below the slot.</summary>
     private static Case ConstantCase(CellKey key, AdmissionTable? table, ConstantHost host, ScopeConstantKind kind, string text, string type, string prints, string show,
-        string? imports, string? prelude, string[]? refusals, BindingKind target, bool stdlib, bool twin)
+        string? imports, string? prelude, string[]? refusals, BindingKind target, bool stdlib, bool twin, OwnRead? own = null)
     {
         var lines = new List<string>();
         if (host.Imports != null)
@@ -470,10 +493,19 @@ public sealed partial class ScopeMeaningDifferentialTests : IntegrationTestBase
             lines.Add(imports);
         if (prelude != null)
             lines.Add(prelude);
-        lines.Add(host.Program.Replace("{T}", type, StringComparison.Ordinal).Replace("{e}", text, StringComparison.Ordinal)
+        string program = host.Program;
+        if (own?.Relation == DeclaringRelation.Self)
+        {
+            bool below = own.Order == Harness.Order.Later;
+            program = host.Inside!
+                .Replace("{above}", below ? "" : own.Member, StringComparison.Ordinal)
+                .Replace("{below}", below ? own.Member : "", StringComparison.Ordinal)
+                .Replace("{after}", own.After ?? "", StringComparison.Ordinal);
+        }
+        lines.Add(program.Replace("{T}", type, StringComparison.Ordinal).Replace("{e}", text, StringComparison.Ordinal)
             .Replace("{s}", string.Format(System.Globalization.CultureInfo.InvariantCulture, show, "v"), StringComparison.Ordinal));
-        return Draft(key, Family.Read, Lines(lines), host.PrintsOne ? "1" : prints, new[] { host.Refusal }.Concat(refusals ?? Array.Empty<string>()).ToArray(), twin,
-            target: target, position: host.Position, stdlib: stdlib);
+        return Draft(key, Family.Read, Lines(lines), host.PrintsOne ? "1" : prints, own?.Only ?? new[] { host.Refusal }.Concat(refusals ?? Array.Empty<string>()).ToArray(), twin,
+            target: target, outer: own?.Outer ?? BindingKind.None, position: host.Position, stdlib: stdlib, relation: own?.Relation == DeclaringRelation.Self ? DeclaringRelation.Self : null);
     }
 
     // ------------------------------------------------------------------------------------------- //
@@ -635,7 +667,8 @@ public sealed partial class ScopeMeaningDifferentialTests : IntegrationTestBase
     /// <summary>The issue whose fix turns a red cell of a route green: #2432 for a constant position's verdict, #2423 for the rest
     /// (R-QI's cells, the untyped forward read, the callee lookup, the alias refusal: charter §3.20l). A typed read that is
     /// red at the EARLIER order is no order defect, and it and its later twin are #2417's; an alias that reaches itself is
-    /// #2769's (<see cref="ProposedCite"/>).</summary>
+    /// #2769's; in a constant position, N2's cells are #2423's, as is a bare sibling read red at the later order alone, and a
+    /// member that dies of an instance receiver is #2147's (<see cref="ProposedCite"/>).</summary>
     internal static readonly IReadOnlyDictionary<string, string> RouteIssues = new Dictionary<string, string>(StringComparer.Ordinal)
     {
         ["no-initializer"] = "#2423",
@@ -652,6 +685,17 @@ public sealed partial class ScopeMeaningDifferentialTests : IntegrationTestBase
     /// <summary>The class of an alias whose target reaches the alias itself (#2769): unruled, so the unused cells keep running
     /// and a red one is that tracker's.</summary>
     internal const string SelfReachingAlias = "#2769";
+
+    /// <summary>The class of a bare sibling read at-or-after its member under a module binding of the name (N2): the class-body
+    /// rule's refusal is #2423's whatever the position, a constant one included.</summary>
+    internal const string ClassBodyRule = "#2423";
+
+    /// <summary>The class of a constant or static member read through an instance (#2147): C# refuses the emitted instance
+    /// access (CS0176) at every position, so a constant position's cell that dies of it waits on that tracker.</summary>
+    internal const string StaticThroughInstance = "#2147";
+
+    /// <summary>The C# error that is #2147's symptom.</summary>
+    internal const string StaticThroughInstanceCs = "CS0176";
 
     internal sealed record Result(Case Case, Harness.SharpyRun Run, SharpyKind Kind, VerdictClass Class, bool WrongCode, string? PythonFailure);
 
@@ -671,6 +715,15 @@ public sealed partial class ScopeMeaningDifferentialTests : IntegrationTestBase
         return order == Harness.Order.Earlier ? cell.Id : Key(key.Parts.Select(p => p is Harness.Order ? Harness.Order.Earlier : p).ToArray()).Text;
     }
 
+    /// <summary>The id of a bare sibling read's twin above the reader in a constant position, or null for a cell that is no
+    /// such read at the later order.</summary>
+    internal static string? SiblingAboveTwinId(NameCell cell)
+    {
+        if (cell.Key is not { Route: "constant-kind" } key || !key.Marks.Contains(BareSibling) || key.Part<Harness.Order>() != Harness.Order.Later)
+            return null;
+        return Key(key.Parts.Select(p => p is Harness.Order ? Harness.Order.Earlier : p).ToArray()).Text;
+    }
+
     /// <summary>The cite a red cell's row must carry. <paramref name="redIds"/> are the ids red in the same run: a typed read
     /// whose earlier twin is red is untyped whatever the order, so declaring before reading does not cure it and it is #2417's.</summary>
     internal static string ProposedCite(Result r, IReadOnlySet<string> redIds)
@@ -680,6 +733,14 @@ public sealed partial class ScopeMeaningDifferentialTests : IntegrationTestBase
             issue = UntypedAtEitherOrder;
         if (r.Case.Cell.Key.Part<ScopeAliasTarget>() == ScopeAliasTarget.Itself)
             issue = SelfReachingAlias;
+        // N2's refusal, and a sibling read that is red BELOW its member alone (above it the same position gives the same
+        // member its verdict): the class-body rule's order, whatever the position.
+        if (r.Case.Cell.Key.Route == "constant-kind" && r.Case.Cell.Rule == "N2")
+            issue = ClassBodyRule;
+        if (SiblingAboveTwinId(r.Case.Cell) is { } above && !redIds.Contains(above))
+            issue = ClassBodyRule;
+        if (r.Case.Cell.Key.Route == "constant-kind" && r.Case.Cell.Key.Part<Harness.Spelling>() == Harness.Spelling.SelfDot && r.Run.CsCode == StaticThroughInstanceCs)
+            issue = StaticThroughInstance;
         string lane = r.WrongCode ? "wrong-code" : r.Class switch
         {
             VerdictClass.Ice => "ice",
@@ -892,5 +953,35 @@ public sealed partial class ScopeMeaningDifferentialTests : IntegrationTestBase
         var refusedItself = new[] { Of(itself, Refused("SPY0202")) };
         Assert.Empty(RatchetFailures(refusedItself, Rows((itself, VerdictClass.FalseRefusal, "#2769 false-refusal"))));
         Assert.Contains("the route says '#2769", Assert.Single(RatchetFailures(refusedItself, Rows((itself, VerdictClass.FalseRefusal, "#2423 false-refusal")))));
+
+        // A constant position's cell is #2432's, with three classes that are another tracker's whatever the position.
+        static Harness.SharpyRun Ice(string cs) => new(false, null, false, false, "", "", new[] { "SPY0908" }, new[] { "SPY0908" }, cs);
+        bool Constant(Case c) => c.Cell.Key!.Route == "constant-kind";
+        var member = pool.First(c => Constant(c) && c.Cell.Tag == SharpyTag.MustRun && c.Cell.Key!.Part<Harness.Spelling>() == Harness.Spelling.Qualified);
+        Assert.Contains("the route says '#2432", Assert.Single(RatchetFailures(new[] { Of(member, Ice("CS0133")) }, Rows((member, VerdictClass.Ice, "#2423 ice")))));
+        // N2: a bare sibling at-or-after its reader under a module binding of the name is the class-body rule's refusal (#2423).
+        // It is so whatever its twin above the member does: red there too, the twin is the position's own and N2 is still N2.
+        var shadowed = pool.First(c => Constant(c) && c.Cell.Rule == "N2");
+        var shadowedAbove = pool.Single(c => c.Cell.Id == SiblingAboveTwinId(shadowed.Cell));
+        Assert.Equal(SharpyTag.MustRefuse, shadowed.Cell.Tag);
+        var shadowedBoth = new[] { Of(shadowedAbove, Ice("CS0133")), Of(shadowed, Ran("12")) };
+        Assert.Empty(RatchetFailures(shadowedBoth, Rows((shadowedAbove, VerdictClass.Ice, "#2432 ice"), (shadowed, VerdictClass.SilentWrong, "#2423 missing-refusal"))));
+        Assert.Contains("the route says '#2423", Assert.Single(RatchetFailures(shadowedBoth, Rows((shadowedAbove, VerdictClass.Ice, "#2432 ice"), (shadowed, VerdictClass.SilentWrong, "#2432 missing-refusal")))));
+        // A member read through `self` that dies of CS0176 is #2147's; dying of anything else it is the position's own.
+        var throughSelf = pool.First(c => Constant(c) && c.Cell.Tag == SharpyTag.MustRun && c.Cell.Key!.Part<Harness.Spelling>() == Harness.Spelling.SelfDot);
+        Assert.Empty(RatchetFailures(new[] { Of(throughSelf, Ice(StaticThroughInstanceCs)) }, Rows((throughSelf, VerdictClass.Ice, "#2147 ice"))));
+        Assert.Contains("the route says '#2147", Assert.Single(RatchetFailures(new[] { Of(throughSelf, Ice(StaticThroughInstanceCs)) }, Rows((throughSelf, VerdictClass.Ice, "#2432 ice")))));
+        Assert.Contains("the route says '#2432", Assert.Single(RatchetFailures(new[] { Of(throughSelf, Ice("CS1736")) }, Rows((throughSelf, VerdictClass.Ice, "#2147 ice")))));
+        // A bare sibling read red BELOW its member alone is the class-body rule's order (#2423); red above it too, no order
+        // cures it and it is the position's own (#2432).
+        var below = pool.First(c => Constant(c) && c.Cell.Tag == SharpyTag.MustRun && c.Cell.Rule != "N2" && SiblingAboveTwinId(c.Cell) != null);
+        var aboveTwin = pool.Single(c => c.Cell.Id == SiblingAboveTwinId(below.Cell));
+        Assert.Equal(SharpyTag.MustRun, aboveTwin.Cell.Tag);
+        var belowOnly = new[] { Of(aboveTwin, Ran(aboveTwin.Cell.Model)), Of(below, Refused("SPY0200")) };
+        Assert.Empty(RatchetFailures(belowOnly, Rows((below, VerdictClass.FalseRefusal, "#2423 false-refusal"))));
+        Assert.Contains("the route says '#2423", Assert.Single(RatchetFailures(belowOnly, Rows((below, VerdictClass.FalseRefusal, "#2432 false-refusal")))));
+        var atBoth = new[] { Of(aboveTwin, Refused("SPY0425")), Of(below, Refused("SPY0425")) };
+        Assert.Empty(RatchetFailures(atBoth, Rows((aboveTwin, VerdictClass.FalseRefusal, "#2432 false-refusal"), (below, VerdictClass.FalseRefusal, "#2432 false-refusal"))));
+        Assert.Contains("the route says '#2432", Assert.Single(RatchetFailures(atBoth, Rows((aboveTwin, VerdictClass.FalseRefusal, "#2432 false-refusal"), (below, VerdictClass.FalseRefusal, "#2423 false-refusal")))));
     }
 }

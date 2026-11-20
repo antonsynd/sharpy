@@ -100,6 +100,110 @@ public sealed partial class ScopeMeaningDifferentialTests
             .Select(f => (Path.GetFileName(f), File.ReadAllText(f))));
     });
 
+    // ------------------------------------------------------------------------------------------- //
+    // The compiler in a child process: for a behaviour that ends the process
+    // ------------------------------------------------------------------------------------------- //
+
+    /// <summary>How a child process that compiled one source ended: its exit code, what it wrote, whether the compiler
+    /// answered (compiled or refused), and whether the process died of a stack overflow.</summary>
+    internal sealed record ChildCompile(int ExitCode, string Stdout, string Stderr)
+    {
+        public bool Compiled => ExitCode == 0 && Stdout.Contains(ChildCompiledMark, StringComparison.Ordinal);
+        public bool Answered => Compiled || Stdout.Contains(ChildRefusedMark, StringComparison.Ordinal);
+        public bool Overflowed => ExitCode != 0 && !Answered && Stderr.Contains("Stack overflow", StringComparison.OrdinalIgnoreCase);
+
+        public override string ToString()
+            => $"exit {ExitCode}, stdout '{Stdout.Trim()}', stderr '{Stderr.TrimStart().Split('\n', 2)[0].Trim()}'";
+    }
+
+    private const string ChildCompiledMark = "CHILD-COMPILED";
+    private const string ChildRefusedMark = "CHILD-REFUSED";
+
+    /// <summary>The child's whole program: compile the file it is handed with the compiler's public API and say how it went.</summary>
+    private const string ChildDriverSource =
+        "public static class ScopeMeaningChild\n"
+        + "{\n"
+        + "    public static int Main(string[] args)\n"
+        + "    {\n"
+        + "        var api = new Sharpy.Compiler.CompilerApi(null, new[] { args[1] });\n"
+        + "        var result = api.Compile(System.IO.File.ReadAllText(args[0]));\n"
+        + "        System.Console.WriteLine(result.Success ? \"" + ChildCompiledMark + "\" : \"" + ChildRefusedMark + "\");\n"
+        + "        return result.Success ? 0 : 1;\n"
+        + "    }\n"
+        + "}\n";
+
+    /// <summary>
+    /// Compiles <paramref name="source"/> in a process of its own and reports how the process ended. The child is a driver
+    /// compiled here against the compiler this test loaded, written beside it (the test's output directory), so <c>dotnet exec</c>
+    /// resolves the compiler and everything it references from the driver's own directory; nothing depends on a built CLI.
+    /// </summary>
+    internal static ChildCompile CompileInChildProcess(string source)
+    {
+        var compilerAssembly = typeof(Sharpy.Compiler.CompilerApi).Assembly.Location;
+        var directory = Path.GetDirectoryName(compilerAssembly)!;
+        var name = $"scope-meaning-child-{Environment.ProcessId}-{Guid.NewGuid():N}";
+        var driver = Path.Combine(directory, name + ".dll");
+        var runtimeConfig = Path.Combine(directory, name + ".runtimeconfig.json");
+        var sourceFile = Path.Combine(Path.GetTempPath(), name + ".spy");
+        try
+        {
+            var runtime = Path.GetDirectoryName(typeof(object).Assembly.Location)!;
+            var references = new[] { typeof(object).Assembly.Location, Path.Combine(runtime, "System.Runtime.dll"), Path.Combine(runtime, "System.Console.dll"), compilerAssembly }
+                .Select(path => (MetadataReference)MetadataReference.CreateFromFile(path));
+            var compilation = CSharpCompilation.Create(name, new[] { CSharpSyntaxTree.ParseText(ChildDriverSource) }, references, new CSharpCompilationOptions(OutputKind.ConsoleApplication));
+            var emitted = compilation.Emit(driver);
+            Assert.True(emitted.Success, "the child's driver does not compile: " + string.Join("; ", emitted.Diagnostics.Where(d => d.Severity == DiagnosticSeverity.Error)));
+            File.WriteAllText(runtimeConfig, "{ \"runtimeOptions\": { \"tfm\": \"net" + Environment.Version.Major + ".0\", \"framework\": { \"name\": \"Microsoft.NETCore.App\", \"version\": \"" + Environment.Version.Major + ".0.0\" } } }");
+            File.WriteAllText(sourceFile, source);
+
+            var start = new System.Diagnostics.ProcessStartInfo("dotnet")
+            {
+                RedirectStandardOutput = true,
+                RedirectStandardError = true,
+                UseShellExecute = false,
+                WorkingDirectory = directory,
+            };
+            start.ArgumentList.Add("exec");
+            start.ArgumentList.Add(driver);
+            start.ArgumentList.Add(sourceFile);
+            start.ArgumentList.Add(Sharpy.TestInfrastructure.SharpyCoreReference.Location);
+            using var process = System.Diagnostics.Process.Start(start)!;
+            var stdout = process.StandardOutput.ReadToEndAsync();
+            var stderr = process.StandardError.ReadToEndAsync();
+            if (!process.WaitForExit(120_000))
+            {
+                process.Kill(entireProcessTree: true);
+                return new ChildCompile(-1, stdout.Result, "timed out after 120 s");
+            }
+            process.WaitForExit();
+            return new ChildCompile(process.ExitCode, stdout.Result, stderr.Result);
+        }
+        finally
+        {
+            foreach (var file in new[] { driver, runtimeConfig, sourceFile })
+            {
+                try
+                {
+                    File.Delete(file);
+                }
+                catch (IOException)
+                {
+                }
+            }
+        }
+    }
+
+    /// <summary>The child's own control: it compiles a program that compiles and refuses one that does not, so a death is the
+    /// compiler's and not the child's.</summary>
+    [Fact]
+    public void CompileInChildProcess_AnswersForAProgramThatCompiles_AndForOneThatDoesNot()
+    {
+        var compiled = CompileInChildProcess("def main() -> None:\n    print(1)\n");
+        Assert.True(compiled.Compiled && !compiled.Overflowed, compiled.ToString());
+        var refused = CompileInChildProcess("def main() -> None:\n    print(nosuch)\n");
+        Assert.True(refused is { Compiled: false, Answered: true, Overflowed: false }, refused.ToString());
+    }
+
     /// <summary>The census's own control: it sees a call that names its table, follows a table that is a parameter to each
     /// caller, numbers a method's second site, and reports a call it cannot trace. An absence ("no reader without a host") is
     /// only as good as this.</summary>
