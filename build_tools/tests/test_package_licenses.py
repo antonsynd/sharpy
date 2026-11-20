@@ -11,6 +11,8 @@ from __future__ import annotations
 import re
 from pathlib import Path
 
+import pytest
+
 REPO = Path(__file__).resolve().parent.parent.parent
 
 # SPDX ids checked against https://spdx.org/licenses/ (isOsiApproved or isFsfLibre true).
@@ -194,3 +196,84 @@ def test_the_retired_id_pattern_matches_only_the_id():
         "PSF License Version 2",
     ):
         assert not _RETIRED_IDS.search(text), text
+
+
+# ---- The per-module Stdlib projects never pack ----
+#
+# src/Sharpy.Stdlib/modules/ holds one tree-shaking project per module (#696). They compile code
+# ported from CPython (Fnmatch, Itertools, Os, Shutil, Difflib, ...) but carry neither
+# THIRD-PARTY-NOTICES.txt nor the Python-2.0 term that SharpyLang.Stdlib's package does, so a
+# `dotnet pack` of one would ship a port under `Apache-2.0 OR MIT` alone (#2602 follow-up, owner
+# 2026-11-20). Their shared Directory.Build.props sets IsPackable to false, and no project there
+# may set it back.
+
+MODULES = "src/Sharpy.Stdlib/modules"
+_IS_PACKABLE = re.compile(r"<IsPackable\b[^>]*>([^<]*)</IsPackable>")
+
+
+def unpackable_problems(modules: Path) -> list[str]:
+    props = modules / "Directory.Build.props"
+    text = props.read_text(encoding="utf-8") if props.is_file() else ""
+    values = _IS_PACKABLE.findall(text)
+    problems = []
+    if [v.strip().lower() for v in values] != ["false"]:
+        problems.append(
+            f"{props.name}: sets IsPackable {values!r}; it must set it once, to false"
+        )
+    for project in sorted(modules.glob("*.csproj")):
+        for value in _IS_PACKABLE.findall(project.read_text(encoding="utf-8")):
+            if value.strip().lower() != "false":
+                problems.append(
+                    f"{project.name}: overrides IsPackable with {value!r}; the per-module "
+                    "projects never pack"
+                )
+    return problems
+
+
+def test_the_module_scan_sees_the_per_module_projects():
+    # Positive control: the projects that compile CPython ports are among those checked.
+    names = {p.name for p in (REPO / MODULES).glob("*.csproj")}
+    assert {
+        "Sharpy.Stdlib.Fnmatch.csproj",
+        "Sharpy.Stdlib.Itertools.csproj",
+        "Sharpy.Stdlib.Os.csproj",
+        "Sharpy.Stdlib.Shutil.csproj",
+        "Sharpy.Stdlib.Difflib.csproj",
+    } <= names
+
+
+def test_no_per_module_stdlib_project_is_packable():
+    problems = unpackable_problems(REPO / MODULES)
+    assert not problems, "\n".join(problems)
+
+
+_PROPS = "<Project>\n  <PropertyGroup>\n    <IsPackable>false</IsPackable>\n  </PropertyGroup>\n</Project>\n"
+_PROJECT = '<Project Sdk="Microsoft.NET.Sdk">\n</Project>\n'
+_OVERRIDE = '<Project Sdk="Microsoft.NET.Sdk">\n  <PropertyGroup>\n    <IsPackable>true</IsPackable>\n  </PropertyGroup>\n</Project>\n'
+
+
+def test_the_packable_check_accepts_the_shared_default(tmp_path: Path):
+    (tmp_path / "Directory.Build.props").write_text(_PROPS, encoding="utf-8")
+    (tmp_path / "Sharpy.Stdlib.Fnmatch.csproj").write_text(_PROJECT, encoding="utf-8")
+    assert unpackable_problems(tmp_path) == []
+
+
+def test_the_packable_check_refuses_a_project_override(tmp_path: Path):
+    (tmp_path / "Directory.Build.props").write_text(_PROPS, encoding="utf-8")
+    (tmp_path / "Sharpy.Stdlib.Os.csproj").write_text(_OVERRIDE, encoding="utf-8")
+    problems = unpackable_problems(tmp_path)
+    assert len(problems) == 1 and "Sharpy.Stdlib.Os.csproj: overrides" in problems[0], (
+        problems
+    )
+
+
+@pytest.mark.parametrize(
+    "props", ["<Project>\n</Project>\n", _PROPS.replace("false", "true")]
+)
+def test_the_packable_check_refuses_a_packable_default(tmp_path: Path, props: str):
+    (tmp_path / "Directory.Build.props").write_text(props, encoding="utf-8")
+    (tmp_path / "Sharpy.Stdlib.Fnmatch.csproj").write_text(_PROJECT, encoding="utf-8")
+    problems = unpackable_problems(tmp_path)
+    assert (
+        len(problems) == 1 and "Directory.Build.props: sets IsPackable" in problems[0]
+    ), problems
