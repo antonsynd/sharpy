@@ -199,9 +199,10 @@ namespace Sharpy
         }
 
         /// <summary>
-        /// fractions.py <c>Fraction.limit_denominator</c>: the closest Fraction to this one whose denominator is at
-        /// most <paramref name="maxDenominator"/>. On a tie the bound with the smaller denominator, <c>p1/q1</c>, is
-        /// returned (with <c>maxDenominator == 1</c> and a value midway between two integers, the floor).
+        /// The closest Fraction to this one whose denominator is at most <c>max_denominator</c>, as CPython's
+        /// <c>fractions.Fraction.limit_denominator</c>. On a tie the candidate with the smaller denominator is
+        /// returned; with <c>max_denominator</c> 1 and a value midway between two integers, that is the floor.
+        /// Raises <c>ValueError</c> when <c>max_denominator</c> is less than 1.
         /// </summary>
         public Fraction LimitDenominator(BigInteger maxDenominator)
         {
@@ -214,7 +215,8 @@ namespace Sharpy
             BigInteger n = Numerator, d = Denominator;
             while (true)
             {
-                // a = n//d (floored, as Python's //); d > 0 throughout, so the remainder n-a*d is in [0, d).
+                // a = n//d, floored as Python's //: n is negative on the first step for a negative Fraction, where
+                // truncation picks the wrong partial quotient. d > 0 throughout, so the remainder n-a*d is in [0, d).
                 BigInteger a = FloorDivRem(n, d, out BigInteger rem);
                 BigInteger q2 = q0 + a * q1;
                 if (q2 > maxDenominator)
@@ -227,6 +229,8 @@ namespace Sharpy
                 n = d;
                 d = rem;
             }
+            // k = (maxDenominator-q0)//q1. Here q0 <= maxDenominator and q1 >= 1 (the loop always runs once), so
+            // floored and truncating division agree; FloorDivRem only keeps the port's spelling of //.
             BigInteger k = FloorDivRem(maxDenominator - q0, q1, out _);
 
             // The distance between the candidates (p0+k*p1)/(q0+k*q1) and p1/q1 is 1/(q1*(q0+k*q1)), and the
