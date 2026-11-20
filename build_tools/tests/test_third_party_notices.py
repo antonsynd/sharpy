@@ -305,8 +305,9 @@ STDLIB = "src/Sharpy.Stdlib"
 # A port row names its exact headed files (relative to src/Sharpy.Stdlib), and the files in the module
 # that carry the PSF header must be exactly that set: a lost header (a ported file that drifted out of
 # the notice) and an extra one (a behaviour file in a port module, headed by mistake) are both red. A
-# behaviour row's set is empty. A file added to a port module is read like a new module: header and
-# row, or neither.
+# behaviour row's set is empty. What is enforced is that equality, nothing more: a file without the
+# header is not seen, so a new unheaded file in a port module stays green, and so does a row edited
+# together with its header. The row is the audit's record; review reads it.
 BEHAVIOUR: Tuple[str, FrozenSet[str]] = ("behaviour", frozenset())
 
 
@@ -433,7 +434,19 @@ def census_problems(
             f"{STDLIB}/{module}: in STDLIB_CENSUS but not a namesake module on disk; delete the row"
         )
     stdlib_root = root / STDLIB
-    for module, (verdict, recorded) in sorted(census.items()):
+    for module, row in sorted(census.items()):
+        if not (
+            isinstance(row, tuple)
+            and len(row) == 2
+            and isinstance(row[1], (set, frozenset))
+            and all(isinstance(rel, str) and rel for rel in row[1])
+        ):
+            problems.append(
+                f"{module}: row {row!r} is not (verdict, set of file paths); "
+                "use BEHAVIOUR or port(...)"
+            )
+            continue
+        verdict, recorded = row
         if verdict not in VERDICTS:
             problems.append(
                 f"{module}: verdict {verdict!r} is not one of {sorted(VERDICTS)}"
@@ -604,3 +617,12 @@ def test_census_accepts_a_noticed_port(tmp_path: Path):
     )  # a behaviour file in a port module
     census = {"Pickle": port(_PICKLE)}
     assert census_problems(tmp_path, census, _LISTED, {"pickle"}) == []
+
+
+@pytest.mark.parametrize("row", ["port", port(""), ("port",), ("port", [_PICKLE])])
+def test_census_names_a_malformed_row(tmp_path: Path, row):
+    _module(tmp_path, "Pickle", _HEADED)
+    problems = census_problems(tmp_path, {"Pickle": row}, _LISTED, {"pickle"})
+    assert (
+        len(problems) == 1 and "is not (verdict, set of file paths)" in problems[0]
+    ), problems
