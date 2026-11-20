@@ -616,7 +616,8 @@ internal class IncrementalCompilationCache
     {
         try
         {
-            var metadata = new CacheMetadata(GetCompilerVersion(), _fileHashes, _projectFacts, _emittedAssembly, _lastBuild);
+            var metadata = new CacheMetadata(
+                GetCompilerVersion(), OrdinalOrdered(_fileHashes), _projectFacts, _emittedAssembly, _lastBuild);
             var json = JsonSerializer.Serialize(metadata, s_jsonOptions);
 
             var directory = Path.GetDirectoryName(_cacheFilePath);
@@ -720,9 +721,14 @@ internal class IncrementalCompilationCache
             ContentHash = contentHash,
             Symbols = cachedSymbols,
             GeneratedCSharp = generatedCSharp,
-            Dependencies = dependencies.Select(PathNormalizer.Normalize).ToList(),
+            // A set, ordinal-ordered (the cell on #2114, issuecomment-7046628875): the graph's direct
+            // dependencies are an ImmutableHashSet, whose order follows the per-process randomized
+            // string hash, and every reader (the outside-import check, the cached dependency graph)
+            // treats the list as a set.
+            Dependencies = dependencies.Select(PathNormalizer.Normalize)
+                .OrderBy(p => p, StringComparer.Ordinal).ToList(),
             ModulePath = modulePath,
-            GeneratorOutputs = generatorOutputs,
+            GeneratorOutputs = generatorOutputs is null ? null : OrdinalOrdered(generatorOutputs),
             Diagnostics = diagnostics,
             LayoutNamespaceSegments = layout?.NamespaceSegments.ToList(),
             LayoutMembersClassName = layout?.MembersClassName,
@@ -933,7 +939,7 @@ internal class IncrementalCompilationCache
                 : new Dictionary<string, GeneratedCacheEntry>(existing.GeneratorOutputs, StringComparer.Ordinal);
             outputs[generatorIdentity] = generated;
 
-            _fileCache[normalizedTarget] = existing with { GeneratorOutputs = outputs };
+            _fileCache[normalizedTarget] = existing with { GeneratorOutputs = OrdinalOrdered(outputs) };
         }
         else
         {
@@ -1152,7 +1158,7 @@ internal class IncrementalCompilationCache
 
         try
         {
-            var envelope = new SymbolCacheEnvelope(CurrentSchemaVersion, _fileCache);
+            var envelope = new SymbolCacheEnvelope(CurrentSchemaVersion, OrdinalOrdered(_fileCache));
             var json = JsonSerializer.Serialize(envelope, s_jsonOptions);
 
             var directory = Path.GetDirectoryName(_symbolCachePath);
@@ -1199,6 +1205,22 @@ internal class IncrementalCompilationCache
     /// both this cache and the overload index cache read the assembly exactly once (#1313).
     /// </summary>
     internal static string GetCompilerVersion() => Shared.CompilerIdentity.Version;
+
+    /// <summary>
+    /// A copy of a keyed map the cache writes, filled in ordinal key order, so the same cache state
+    /// is written as the same bytes (the cell on #2114, issuecomment-7046628875). System.Text.Json
+    /// writes a dictionary in its enumeration order, which for a dictionary nothing was removed from
+    /// is its insertion order; the maps the cache holds are filled in whatever order this build or an earlier one reached their keys (a
+    /// warm build appends a new file after the files the last build wrote). Every reader looks a key
+    /// up, so the order carries no meaning and the copy keeps the map's comparer.
+    /// </summary>
+    internal static Dictionary<string, T> OrdinalOrdered<T>(Dictionary<string, T> map)
+    {
+        var ordered = new Dictionary<string, T>(map.Count, map.Comparer);
+        foreach (var key in map.Keys.OrderBy(k => k, StringComparer.Ordinal))
+            ordered.Add(key, map[key]);
+        return ordered;
+    }
 
     #endregion
 }
