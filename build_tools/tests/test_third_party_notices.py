@@ -344,12 +344,14 @@ def test_only_the_cpython_section_uses_the_cpython_label():
 
 # ---- Sources other than CPython (Unicode, PyYAML): the notices and the file headers agree ----
 #
-# A file derived from a non-CPython source carries a header comment naming it and ending "see
-# THIRD-PARTY-NOTICES.txt" (no PSF lines), and is listed under OTHER_LABEL in that source's section.
-# The two sets must be equal. What this cannot see is a derived file with neither: review reads it.
+# A file derived from a non-CPython source carries a header comment naming it and pointing at
+# THIRD-PARTY-NOTICES.txt (no PSF lines), and is listed under OTHER_LABEL in that source's section.
+# A file is "headed" when it names THIRD-PARTY-NOTICES anywhere, in any case and wording ("see",
+# "See ... .", a bare mention), and carries no PSF header. The two sets must be equal. What this
+# cannot see is a derived file with neither: review reads it.
 
 OTHER_LABEL = "Sharpy files derived from this source:"
-NOTICES_POINTER = "see THIRD-PARTY-NOTICES.txt"
+NOTICES_POINTER = re.compile(r"THIRD-PARTY-NOTICES", re.IGNORECASE)
 
 
 def other_listed_files(notices: str) -> Set[str]:
@@ -377,7 +379,7 @@ def other_headed_files(root: Path) -> Set[str]:
         path.relative_to(root).as_posix()
         for path in sources(root)
         for text in [path.read_text(encoding="utf-8")]
-        if NOTICES_POINTER in text and not _has_header(text)
+        if NOTICES_POINTER.search(text) and not _has_header(text)
     }
 
 
@@ -423,6 +425,22 @@ def test_non_cpython_check_refuses_either_side_alone(tmp_path: Path):
     assert len(unheaded) == 1 and "B.cs: under" in unheaded[0], unheaded
     unlisted = other_problems({"src/Sharpy.Stdlib/Yaml/A.cs"}, listed)
     assert len(unlisted) == 1 and "B.cs: points at" in unlisted[0], unlisted
+
+
+@pytest.mark.parametrize(
+    "header",
+    [
+        "// Derived from Foo 1.0 (MIT License). See THIRD-PARTY-NOTICES.txt.",
+        "// from Foo 1.0, used under the MIT License; see THIRD-PARTY-NOTICES.txt.",
+        "/* Foo's tables (see third-party-notices.txt) */",
+    ],
+)
+def test_any_pointer_at_the_notices_marks_a_file_headed(tmp_path: Path, header: str):
+    _source(tmp_path, "src/Sharpy.Stdlib/Foo/Foo.cs", header + "\nnamespace Sharpy { }\n")
+    _source(tmp_path, "src/Sharpy.Stdlib/Foo/Plain.cs", "namespace Sharpy { }\n")
+    psf = "".join(f"// {line}\n" for line in HEADER_LINES)  # a CPython port, not this guard's
+    _source(tmp_path, "src/Sharpy.Core/Port.cs", psf + "namespace Sharpy { }\n")
+    assert other_headed_files(tmp_path) == {"src/Sharpy.Stdlib/Foo/Foo.cs"}
 
 
 # ---- The #2602 census: every Stdlib module with a CPython namesake, read against its source ----
@@ -801,11 +819,18 @@ def doc_keys(text):
     return keys
 
 
+def indexed_module(name):
+    """Whether the index reads a built-in or C-implemented module: never a test module (any name
+    containing "test", e.g. _testcapi or _ctypes_test) or one of CPython's xx example modules."""
+    return "test" not in name.lower() and not name.lstrip("_").startswith("xx")
+
+
 # Run under the oracle's python (`-I`): prints {"version": ..., "index": {key: where}}, `where` being
 # "Lib/<path>" or "<module>.<name>". argv[1], when not empty, is the Lib directory to read instead of
 # the interpreter's own; argv[2] == "--no-runtime" skips the built-in and C-implemented modules.
 _INDEX_SCRIPT = (
     inspect.getsource(doc_keys)
+    + inspect.getsource(indexed_module)
     + r"""
 import ast, importlib, inspect, json, os, sys
 
@@ -870,7 +895,7 @@ if runtime:
             f.split(".")[0] for f in os.listdir(dynload) if f.endswith((".so", ".pyd"))
         )
     for name in sorted(names):
-        if name.startswith(("_test", "_xx", "xx")):
+        if not indexed_module(name):
             continue
         try:
             module = importlib.import_module(name)
@@ -963,7 +988,8 @@ def resolve_oracle(
         f"the docstring oracle is CPython {oracle[0]}.{oracle[1]} (.python-version); this is "
         f"Python {version[0]}.{version[1]} and {name} is not on PATH"
     )
-    return ("fail" if environ.get("CI") else "skip"), reason
+    on_ci = environ.get("CI", "").lower() in ("true", "1")
+    return ("fail" if on_ci else "skip"), reason
 
 
 def _run_index(python: str, lib: str = "", runtime: bool = True) -> Dict[str, object]:
@@ -1030,6 +1056,14 @@ def test_docstring_notice_names_the_oracle_minor():
     assert f"CPython {major}.{minor}" in section, (
         "the docstring section names the oracle CPython minor of .python-version"
     )
+    named = {
+        (int(a), int(b))
+        for a, b in re.findall(r"(?<![\d.])(3)\.(\d+)(?:\.\d+)*(?![\d])", section)
+    }
+    assert named == {(major, minor)}, (
+        f"the docstring section names CPython minors {sorted(named)}; only the oracle's "
+        f"{major}.{minor} belongs there"
+    )
 
 
 def test_docstring_index_rule_over_a_stand_in_lib(tmp_path: Path):
@@ -1055,6 +1089,19 @@ def test_docstring_index_rule_over_a_stand_in_lib(tmp_path: Path):
         "super-frob; frobnicate a widget and all its parts. short one": "Lib/frob.py",
         "super-frob; frobnicate a widget and all its parts": "Lib/frob.py",
     }
+
+
+def test_docstring_index_skips_test_modules():
+    # A stand-in module list: every test module CPython builds is skipped, including
+    # _ctypes_test (which a prefix rule missed); ordinary C modules are read.
+    names = [
+        "math", "_collections", "itertools", "posix", "_ctypes", "_testcapi",
+        "_testinternalcapi", "_ctypes_test", "_testimportmultiple", "_xxtestfuzz",
+        "xxsubtype", "_xxinterpchannels", "xxlimited",
+    ]
+    assert [n for n in names if indexed_module(n)] == [
+        "math", "_collections", "itertools", "posix", "_ctypes",
+    ]
 
 
 def test_docstring_index_reads_c_implemented_modules():
@@ -1142,6 +1189,11 @@ def test_oracle_minor_reads_the_version_file(tmp_path: Path):
         ((3, 15, 2), "/bin/python3.16", {}, ("run", "/bin/python3.16")),
         ((3, 15, 2), None, {}, ("skip", "python3.16 is not on PATH")),
         ((3, 15, 2), None, {"CI": "true"}, ("fail", "python3.16 is not on PATH")),
+        ((3, 15, 2), None, {"CI": "1"}, ("fail", "python3.16 is not on PATH")),
+        ((3, 15, 2), None, {"CI": "TRUE"}, ("fail", "python3.16 is not on PATH")),
+        ((3, 15, 2), None, {"CI": "false"}, ("skip", "python3.16 is not on PATH")),
+        ((3, 15, 2), None, {"CI": "0"}, ("skip", "python3.16 is not on PATH")),
+        ((3, 15, 2), None, {"CI": ""}, ("skip", "python3.16 is not on PATH")),
     ],
 )
 def test_the_oracle_skips_locally_and_fails_on_ci(version, which, environ, expected):
