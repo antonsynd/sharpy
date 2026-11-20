@@ -521,8 +521,8 @@ internal static class CliHelpers
     }
 
     /// <summary>
-    /// `project` deploys like `compile app.spyproj` (#2313 cell 0, R-HF c): the output runs in
-    /// place, as `dotnet build`'s does. The project result does not expose per-module used
+    /// Every project route deploys its output in place, as `dotnet build`'s does (#2313 cell 0,
+    /// R-HF c). The project result does not expose per-module used
     /// assemblies, so every default reference seeds the closure, plus every user reference. The
     /// one deployment step of every project route: `compile app.spyproj`, the `project` command
     /// and the compile server's `project` request (cell 0b).

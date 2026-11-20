@@ -590,8 +590,9 @@ internal partial class ProjectCompiler
             Exports = ImportResolver.BuildExportsFor(moduleInfo),
             FunctionOverloads = ImportResolver.BuildFunctionOverloadsFor(moduleInfo),
             // A module that failed to resolve binds an error-recovery module, so
-            // a use of the alias draws nothing beyond the SPY0300 (the root-cause
-            // mark is keyed by the MODULE name, which the alias does not spell).
+            // a use of the bound name draws nothing beyond the SPY0300 (for an alias,
+            // the root-cause mark is keyed by the MODULE name, which the alias does
+            // not spell).
             IsErrorRecovery = moduleInfo.IsErrorRecovery,
             IsNetModule = moduleInfo.IsNetModule,
             CanonicalModuleName = moduleInfo.CanonicalModuleName,
@@ -604,7 +605,7 @@ internal partial class ProjectCompiler
         };
 
     /// <summary>
-    /// The module scope of the module a from-import RESOLVED to — found from its file's compilation
+    /// The module scope of the module an import RESOLVED to — found from its file's compilation
     /// unit, the key every module scope is created under (<c>unit.ModulePath</c>, project-relative:
     /// <c>src.other</c> in a src/ layout) — or null when the module is not one of this compilation's
     /// sources (a .NET or Stdlib module, a file outside the source set). Never from the import's

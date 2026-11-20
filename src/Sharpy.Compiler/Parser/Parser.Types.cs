@@ -268,7 +268,7 @@ public partial class Parser
         ImmutableArray<bool> TupleElementNamesEscaped)
         ParseTypeArgumentList(string name, Token startToken, int startLine, int startColumn)
     {
-        // Generic type arguments [T, U]
+        // No [T, U] list follows (or an empty []): nothing to consume.
         if (Current.Type != TokenType.LeftBracket || Peek().Type == TokenType.RightBracket)
             return (ImmutableArray<TypeAnnotation>.Empty, ImmutableArray<string?>.Empty, ImmutableArray<bool>.Empty);
 

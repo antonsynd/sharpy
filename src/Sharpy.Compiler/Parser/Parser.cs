@@ -1741,11 +1741,10 @@ public partial class Parser
     }
 
     /// <summary>
-    /// Closes an indented suite whose body was parsed by a custom loop (not
-    /// <see cref="ParseBlock"/>). Records the suite's end position from the supplied last-body
+    /// Closes an indented suite: records the suite's end position from the supplied last-body
     /// values (or <see cref="Previous"/> if the body is empty, indicated by passing negative
-    /// <paramref name="lastEndLine"/>) and consumes the Dedent. Use
-    /// <see cref="ParseIndentedSuite()"/> for the common case of a statement block.
+    /// <paramref name="lastEndLine"/>) and consumes the Dedent. <see cref="ParseIndentedSuite()"/>
+    /// and the custom-loop sites (not <see cref="ParseBlock"/>) all close through it.
     /// </summary>
     private (int EndLine, int EndColumn, Text.TextSpan? EndSpan) CloseSuite(
         int lastEndLine, int lastEndColumn, Text.TextSpan? lastEndSpan)
