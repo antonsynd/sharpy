@@ -2,6 +2,7 @@ using System.Diagnostics;
 using System.Text.Json;
 using System.Text.RegularExpressions;
 using Sharpy.Compiler.Diagnostics;
+using Sharpy.Compiler.Semantic.Validation;
 using Sharpy.Compiler.Tests.Properties.Differential;
 using Sharpy.TestInfrastructure.Integration;
 using Sharpy.TestInfrastructure.Oracles;
@@ -28,14 +29,20 @@ internal enum ScopeAnnotation
 }
 
 /// <summary>What a constant position is handed (#2432's expression-kind axis, the kinds the P77a pool has no cell
-/// for; charter §3.20l calls 43 and 45). Closed by those two calls.</summary>
+/// for; charter §3.20l calls 43 and 45). The three member kinds are the image of what discovery records for a value
+/// of a referenced module (<c>FieldSignature.IsConst</c> × <c>IsGuarded</c>,
+/// <see cref="ScopeMeaningDifferentialTests.ModuleValueShapes"/>); the two chains are closed by call 45.</summary>
 internal enum ScopeConstantKind
 {
     /// <summary>A constant of a referenced assembly: a CLR literal field read through a Stdlib module.</summary>
     ClrLiteralField,
 
-    /// <summary>A module variable of the <c>.spy</c> stdlib: no constant.</summary>
+    /// <summary>A module variable of the <c>.spy</c> stdlib, whose storage is guarded (N3): no constant.</summary>
     StdlibModuleVariable,
+
+    /// <summary>A static of a referenced assembly that is neither literal nor guarded (a static property, a static
+    /// readonly field): no constant.</summary>
+    ClrStaticMember,
 
     /// <summary>A comparison chain whose every link is a constant.</summary>
     ComparisonChain,
@@ -69,28 +76,35 @@ internal enum ScopeOverloadCaller
 }
 
 /// <summary>
-/// Stage 0 of plan-777361 (P78; verification contract §11), the owner's ruling of 2026-11-20 (#2423 comment
-/// 7030074628, item 1): the cells of rules N1, N2, N4 and N7 that the P77a pool
+/// Stage 0 of plan-777361 (P78; verification contract §11), the owner's rulings of 2026-11-20 (#2423 comments
+/// 7030074628 item 1 and 7039834146 item 5): the cells of rules N1, N2, N4 and N7 that the P77a pool
 /// (<see cref="NameResolutionDifferentialTests"/>) has no program for, as a generated test type of their own. A cell is
 /// a <see cref="NameCell"/>, and its tag and rule are READ from the rule table (<c>name-resolution-rules.txt</c>, #2487):
 /// the generator writes the program, what it prints when it runs and the codes a refusal may carry, and never a verdict.
 ///
-/// Six cell sets, each over an enumeration or a set named closed, with every value generated or excluded with its reason
-/// (<see cref="Axes_EveryValueIsGeneratedOrExcluded"/>):
+/// Six cell sets. Every axis is the image of a compiler enumeration read by reflection, a census of the compiler's own
+/// output, the P77a pool, or a set named closed; every value is generated or excluded with its reason
+/// (<see cref="Axes_EveryValueIsGeneratedOrExcluded"/>), and an exclusion that rests on what the compiler does today
+/// has a probe that goes red when it stops (<see cref="Exclusions_RestingOnTheCompiler_GoRedWhenItChanges"/>). The
+/// axes and their sources are in <c>ScopeMeaningDifferentialTests.Axes.cs</c>:
 /// <list type="bullet">
-/// <item><c>no-initializer</c> (R-QI): <see cref="BindingKind"/> × <see cref="ScopeInitializer"/>;</item>
-/// <item><c>typed-read</c>: <c>b: bool = &lt;read&gt;</c>, <see cref="BindingKind"/> × <see cref="ScopeAnnotation"/> × order;</item>
-/// <item><c>callee</c>: a binder's name called under a module <c>def</c> of the name, <see cref="LocalTarget"/> and the parameter;</item>
-/// <item><c>constant-kind</c> (#2432): the constant positions of <see cref="ReadPosition"/> × <see cref="ScopeConstantKind"/>;</item>
+/// <item><c>no-initializer</c> (R-QI): <see cref="BindingKind"/> × <see cref="ScopeInitializer"/> × host
+/// (<c>TypeKind</c>) × declared type (<c>SemanticType</c>'s subclasses);</item>
+/// <item><c>typed-read</c>: a read handed to a <c>bool</c> slot, <see cref="BindingKind"/> × <see cref="ScopeAnnotation"/>
+/// × order × <c>Spelling</c> × <see cref="ReadPosition"/>, the last two as the P77a pool runs them;</item>
+/// <item><c>callee</c>: a binder's name called under an outer binding of the name, binder (<see cref="LocalTarget"/> and
+/// the parameter) × outer (<see cref="BindingKind"/>);</item>
+/// <item><c>constant-kind</c> (#2432): host (<c>AdmissionTable</c> and the enum member's value) × <see cref="ScopeConstantKind"/>;</item>
 /// <item><c>init-overload</c>: <see cref="ScopeOverloadCaller"/> × order;</item>
-/// <item><c>alias-target</c>: <see cref="ScopeAliasTarget"/> × <see cref="ScopeAliasUse"/> × order.</item>
+/// <item><c>alias-target</c>: declaration site (<c>ScopeKind</c> × <c>TypeKind</c>) × target shape (the properties of the
+/// alias's AST records) × <see cref="ScopeAliasTarget"/> × <see cref="ScopeAliasUse"/> × order.</item>
 /// </list>
 /// Known-red cells are rows of <c>scope-meaning-differential-allowlist.txt</c> (a missing file reads as empty), each citing
 /// the issue whose fix turns it green. A must-refuse cell refused under a code its cell does not admit is listed as
 /// <see cref="VerdictClass.FalseRefusal"/> with the lane <c>wrong-code</c>: the refusal is another rule's.
 /// </summary>
 [Trait("Category", "GapDiscovery")]
-public sealed class ScopeMeaningDifferentialTests : IntegrationTestBase
+public sealed partial class ScopeMeaningDifferentialTests : IntegrationTestBase
 {
     private const string AllowlistFileName = "scope-meaning-differential-allowlist.txt";
     private const int SharpyExecTimeoutMs = 12_000;
@@ -133,154 +147,91 @@ public sealed class ScopeMeaningDifferentialTests : IntegrationTestBase
             },
             twin);
 
+    private static string Indent(string text) => string.Join("\n", text.Split('\n').Select(l => "    " + l));
+
+    private static string Lines(IEnumerable<string> lines) => string.Join("\n", lines) + "\n";
+
     // ------------------------------------------------------------------------------------------- //
     // no-initializer (R-QI)
     // ------------------------------------------------------------------------------------------- //
-
-    /// <summary>How a kind declares <c>x</c> with a type and no value, where the declaration sits and how <c>main</c> reads it.
-    /// <see cref="Stored"/>: the statements that give it a value before the read, for the kinds R-QI leaves alone.</summary>
-    internal sealed record Declared(string Text, bool InType, string Read, string? Accessor = null, string[]? Stored = null, bool Twin = false);
-
-    internal static readonly IReadOnlyDictionary<BindingKind, Declared> Declarations = new Dictionary<BindingKind, Declared>
-    {
-        [BindingKind.ModuleVar] = new("x: int", false, "x", Twin: true),
-        [BindingKind.ModuleProperty] = new("property x: int", false, "x", Accessor: "property get x() -> int:\n    return 5"),
-        [BindingKind.StaticField] = new("@static\nx: int", true, "H.x", Twin: true),
-        [BindingKind.StaticProperty] = new("@static\nproperty x: int", true, "H.x", Accessor: "@static\nproperty get x() -> int:\n    return 5"),
-        [BindingKind.InstanceField] = new("x: int", true, "H().x", Stored: new[] { "def __init__(self):", "    self.x = 5" }, Twin: true),
-        [BindingKind.InstanceProperty] = new("property x: int", true, "H().x", Accessor: "property get x(self) -> int:\n    return 5", Stored: new[] { "def __init__(self):", "    self.x = 5" }),
-        [BindingKind.LocalVar] = new("x: int", false, "x", Stored: new[] { "x = 5" }, Twin: true),
-    };
-
-    private const string NeedsItsValue = "the declaration's grammar takes a value: there is no spelling without one";
-    private const string NoValueSlot = "declares no storage with a type annotation, so it has no initializer to leave out";
-
-    internal static readonly IReadOnlyDictionary<BindingKind, string> ExcludedDeclarations = new Dictionary<BindingKind, string>
-    {
-        [BindingKind.ModuleLet] = "a module `let` is refused at every order (SPY0340, P21b)",
-        [BindingKind.ModuleLiteralConst] = NeedsItsValue,
-        [BindingKind.ModuleComputedConst] = NeedsItsValue,
-        [BindingKind.ClassLiteralConst] = NeedsItsValue,
-        [BindingKind.ClassComputedConst] = NeedsItsValue,
-        [BindingKind.LocalLet] = NeedsItsValue,
-        [BindingKind.LocalLiteralConst] = NeedsItsValue,
-        [BindingKind.LocalComputedConst] = NeedsItsValue,
-        [BindingKind.LambdaTypedLocal] = "a local `x: T` with another type: the LocalVar cell is its shape",
-        [BindingKind.ModuleDef] = NoValueSlot,
-        [BindingKind.ModuleClass] = NoValueSlot,
-        [BindingKind.ModuleStruct] = NoValueSlot,
-        [BindingKind.ModuleEnum] = NoValueSlot,
-        [BindingKind.ModuleUnion] = NoValueSlot,
-        [BindingKind.ModuleInterface] = NoValueSlot,
-        [BindingKind.ModuleTypeAlias] = NoValueSlot,
-        [BindingKind.StaticMethod] = NoValueSlot,
-        [BindingKind.NestedType] = NoValueSlot,
-        [BindingKind.InstanceMethod] = NoValueSlot,
-        [BindingKind.Constructor] = NoValueSlot,
-        [BindingKind.LocalDef] = NoValueSlot,
-        [BindingKind.EnclosingLocal] = "a local read from a nested function: the LocalVar cell's declaration",
-        [BindingKind.Parameter] = "a parameter's value is its argument",
-        [BindingKind.Inner] = "bound by its comprehension or lambda",
-        [BindingKind.Builtin] = "not declared by the program",
-        [BindingKind.ImportedName] = "not declared by the program",
-        [BindingKind.None] = "no binding",
-    };
-
-    private static string Indent(string text) => string.Join("\n", text.Split('\n').Select(l => "    " + l));
 
     private static IEnumerable<Case> NoInitializerCases()
     {
         foreach (var (kind, d) in Declarations.OrderBy(e => e.Key))
         {
-            foreach (var initializer in Enum.GetValues<ScopeInitializer>())
+            foreach (var host in d.InType ? DeclarationHosts.Values.SelectMany(h => h).ToArray() : new string?[] { null })
             {
-                if (initializer == ScopeInitializer.AccessorBodies && d.Accessor == null)
-                    continue;
-                string decl = initializer switch
+                foreach (var type in ValueTypes.OrderBy(e => e.Key.Name, StringComparer.Ordinal).SelectMany(e => e.Value))
                 {
-                    ScopeInitializer.Present => d.Text + " = 5",
-                    ScopeInitializer.Absent => d.Text,
-                    _ => d.Accessor!,
-                };
-                var lines = new List<string>();
-                if (kind == BindingKind.LocalVar)
-                {
-                    lines.Add(Main.TrimEnd());
-                    lines.Add(Indent(decl));
-                    if (initializer == ScopeInitializer.Absent)
-                        lines.AddRange(d.Stored!.Select(Indent));
-                    lines.Add($"    print({d.Read})");
-                }
-                else
-                {
-                    if (d.InType)
+                    foreach (var initializer in Enum.GetValues<ScopeInitializer>())
                     {
-                        lines.Add("class H:");
-                        lines.Add(Indent(decl));
-                        if (initializer == ScopeInitializer.Absent && d.Stored != null)
-                            lines.AddRange(d.Stored.Select(Indent));
+                        if (initializer == ScopeInitializer.AccessorBodies && d.Accessor == null)
+                            continue;
+                        // A struct's instance field initializer is a constant position (the 8951 pool's StructFieldInitializer):
+                        // a declared type whose value is no constant has no initializer to write there.
+                        if (initializer == ScopeInitializer.Present && kind == BindingKind.InstanceField && host == "struct" && !type.Constant)
+                            continue;
+                        string F(string text) => text.Replace("{T}", type.Spelling, StringComparison.Ordinal).Replace("{L}", type.Literal, StringComparison.Ordinal);
+                        string decl = initializer switch
+                        {
+                            ScopeInitializer.Present => F(d.Text) + " = " + type.Literal,
+                            ScopeInitializer.Absent => F(d.Text),
+                            _ => F(d.Accessor!),
+                        };
+                        var lines = new List<string>();
+                        if (type.Prelude != null)
+                            lines.Add(type.Prelude);
+                        // The read lands in a local of the declared type before it is shown: a member of an untyped read is #2417's.
+                        var print = $"    v: {type.Spelling} = {d.Read}\n    print({string.Format(System.Globalization.CultureInfo.InvariantCulture, type.Show, "v")})";
+                        if (kind == BindingKind.LocalVar)
+                        {
+                            lines.Add(Main.TrimEnd());
+                            lines.Add(Indent(decl));
+                            if (initializer == ScopeInitializer.Absent)
+                                lines.AddRange(d.Stored!.Select(s => Indent(F(s))));
+                            lines.Add(print);
+                        }
+                        else
+                        {
+                            if (d.InType)
+                            {
+                                lines.Add($"{host} H:");
+                                lines.Add(Indent(decl));
+                                if (initializer == ScopeInitializer.Absent && d.Stored != null)
+                                    lines.AddRange(d.Stored.Select(s => Indent(F(s))));
+                            }
+                            else
+                                lines.Add(decl);
+                            lines.Add(Main.TrimEnd());
+                            lines.Add(print);
+                        }
+                        // Read where R-QI refuses; the kinds it leaves alone store first, so every cell that runs prints the stored value.
+                        bool twin = d.Twin && type.Twin && host is null or "class"
+                            && (initializer == ScopeInitializer.Present || (initializer == ScopeInitializer.Absent && d.Stored != null));
+                        yield return Draft(Key("read", "no-initializer", kind, initializer, host, type.Label), Family.Read, Lines(lines), "5",
+                            Array.Empty<string>(), twin, target: kind);
                     }
-                    else
-                        lines.Add(decl);
-                    lines.Add(Main.TrimEnd());
-                    lines.Add($"    print({d.Read})");
                 }
-                // Read where R-QI refuses; the kinds it leaves alone store first, so every cell that runs prints 5.
-                yield return Draft(Key("read", "no-initializer", kind, initializer), Family.Read, string.Join("\n", lines) + "\n", "5",
-                    Array.Empty<string>(), d.Twin && (initializer == ScopeInitializer.Present || (initializer == ScopeInitializer.Absent && d.Stored != null)), target: kind);
             }
         }
     }
 
     // ------------------------------------------------------------------------------------------- //
-    // typed-read: `b: bool = <read>` is the type mismatch at either order
+    // typed-read: a read handed to a bool slot is the type mismatch, whatever the order, spelling and position
     // ------------------------------------------------------------------------------------------- //
 
-    /// <summary>An int-valued declaration of <c>x</c> per kind, with its inferred spelling where the kind has one, and the read of it.</summary>
-    internal sealed record Typed(string Annotated, string? Inferred, bool InType, string Read, bool NeedsFive = false);
+    /// <summary>The probe: a function that takes a <c>bool</c>. Handed an <c>int</c> the checker has typed, the call is
+    /// SPY0220; handed a read it has not typed, it is C#'s CS1503 behind SPY0908 (measured @ 55846bb3f).</summary>
+    private const string Probe = "def nb(v: bool) -> int:\n    return 1";
 
-    internal static readonly IReadOnlyDictionary<BindingKind, Typed> TypedReads = new Dictionary<BindingKind, Typed>
+    private const string Five = "def five() -> int:\n    return 5";
+
+    /// <summary>The reader of a constant-only position: its slot is declared <c>bool</c>, since a call is no constant there.</summary>
+    private static string[] BoolSlot(ReadPosition p, string read) => p switch
     {
-        [BindingKind.ModuleVar] = new("x: int = 5", "x: auto = 5", false, "x"),
-        [BindingKind.ModuleLiteralConst] = new("const x: int = 5", "const x = 5", false, "x"),
-        [BindingKind.ModuleComputedConst] = new("const x: int = five()", "const x = five()", false, "x", NeedsFive: true),
-        [BindingKind.ModuleProperty] = new("property x: int = 5", null, false, "x"),
-        [BindingKind.ModuleDef] = new("def x() -> int:\n    return 5", null, false, "x()"),
-        [BindingKind.StaticField] = new("@static\nx: int = 5", "@static\nx: auto = 5", true, "H.x"),
-        [BindingKind.StaticMethod] = new("@static\ndef x() -> int:\n    return 5", null, true, "H.x()"),
-        [BindingKind.ClassLiteralConst] = new("const x: int = 5", "const x = 5", true, "H.x"),
-        [BindingKind.ClassComputedConst] = new("const x: int = five()", "const x = five()", true, "H.x", NeedsFive: true),
-    };
-
-    private const string NotAnIntValue = "its read is no int value at a module or type level: the mismatch against bool is not a question of order";
-
-    internal static readonly IReadOnlyDictionary<BindingKind, string> ExcludedTypedReads = new Dictionary<BindingKind, string>
-    {
-        [BindingKind.ModuleLet] = "a module `let` is refused at every order (SPY0340, P21b)",
-        [BindingKind.ModuleClass] = NotAnIntValue,
-        [BindingKind.ModuleStruct] = NotAnIntValue,
-        [BindingKind.ModuleEnum] = NotAnIntValue,
-        [BindingKind.ModuleUnion] = NotAnIntValue,
-        [BindingKind.ModuleInterface] = NotAnIntValue,
-        [BindingKind.ModuleTypeAlias] = NotAnIntValue,
-        [BindingKind.NestedType] = NotAnIntValue,
-        [BindingKind.StaticProperty] = "read through its type's name it is untyped at either order: #2417's class, not a question of order (CS0029 at both, measured @ e5991c887)",
-        [BindingKind.InstanceField] = "an instance member has no read from another declaration's initializer (kind:SPY0290)",
-        [BindingKind.InstanceProperty] = "an instance member has no read from another declaration's initializer (kind:SPY0290)",
-        [BindingKind.InstanceMethod] = "an instance member has no read from another declaration's initializer (kind:SPY0290)",
-        [BindingKind.Constructor] = NotAnIntValue,
-        [BindingKind.EnclosingLocal] = "a local: a read above it is R-KX's (P80)",
-        [BindingKind.Parameter] = "a local: a read above it is R-KX's (P80)",
-        [BindingKind.Inner] = "a local: a read above it is R-KX's (P80)",
-        [BindingKind.LocalVar] = "a local: a read above it is R-KX's (P80)",
-        [BindingKind.LocalLet] = "a local: a read above it is R-KX's (P80)",
-        [BindingKind.LocalLiteralConst] = "a local: a read above it is R-KX's (P80)",
-        [BindingKind.LocalComputedConst] = "a local: a read above it is R-KX's (P80)",
-        [BindingKind.LocalDef] = "a local: a read above it is R-KX's (P80)",
-        [BindingKind.LambdaTypedLocal] = "a local: a read above it is R-KX's (P80)",
-        [BindingKind.Builtin] = "not declared by the program",
-        [BindingKind.ImportedName] = "not declared by the program",
-        [BindingKind.None] = "no binding",
+        ReadPosition.ParameterDefault => new[] { $"def r(self, p0: bool = {read}) -> int:", "    return 1" },
+        ReadPosition.DataclassFieldInitializer or ReadPosition.StructFieldInitializer => new[] { $"r: bool = {read}" },
+        _ => throw new ArgumentOutOfRangeException(nameof(p), p, "not a constant-only position"),
     };
 
     private static IEnumerable<Case> TypedReadCases()
@@ -292,18 +243,68 @@ public sealed class ScopeMeaningDifferentialTests : IntegrationTestBase
                 var text = annotation == ScopeAnnotation.Annotated ? t.Annotated : t.Inferred;
                 if (text == null)
                     continue;
-                foreach (var order in new[] { Harness.Order.Earlier, Harness.Order.Later })
+                foreach (var reader in TypedReaders.Where(r => r.Kind == kind))
                 {
-                    var target = t.InType ? "class H:\n" + Indent(text) : text;
-                    // The reader is a function's local: a body resolves every module-level and type-level name, whatever the order.
-                    var reader = "def r() -> int:\n    b: bool = " + t.Read + "\n    return 1";
-                    var lines = new List<string>();
-                    if (t.NeedsFive)
-                        lines.Add("def five() -> int:\n    return 5");
-                    lines.AddRange(order == Harness.Order.Earlier ? new[] { target, reader } : new[] { reader, target });
-                    lines.Add(Main + "    print(r())");
-                    yield return Draft(Key("read", "typed-read", kind, annotation, order), Family.Read, string.Join("\n", lines) + "\n", null,
-                        new[] { "SPY0220" }, twin: false, target: kind, position: ReadPosition.FunctionBody);
+                    foreach (var order in new[] { Harness.Order.Earlier, Harness.Order.Later })
+                    {
+                        string receiver = reader.Spelling switch
+                        {
+                            Harness.Spelling.Bare => "",
+                            Harness.Spelling.SelfDot => "self.",
+                            Harness.Spelling.Alias => t.Level == MemberLevel.Instance ? "A()." : "A.",
+                            Harness.Spelling.Qualified => t.Level == MemberLevel.Instance ? "H()." : "H.",
+                            _ => throw new ArgumentOutOfRangeException(nameof(reader), reader.Spelling, "no receiver"),
+                        };
+                        string read = receiver + t.Member;
+                        bool constantOnly = Harness.IsConstantOnly(reader.Position);
+                        string probed = constantOnly ? read : $"nb({read})";
+                        var prelude = new List<string> { Probe };
+                        if (t.NeedsFive)
+                            prelude.Add(Five);
+                        var body = new List<string>();
+                        if (reader.Inside)
+                        {
+                            // The reader is a sibling of the member, in the member's own type.
+                            var members = constantOnly ? BoolSlot(reader.Position, probed) : Harness.PlaceInClass(reader.Position, reader.Nesting, probed).Members.ToArray();
+                            var member = text.Split('\n');
+                            body.Add(Harness.HostHeader(reader.Position));
+                            body.AddRange((order == Harness.Order.Earlier ? member.Concat(members) : members.Concat(member)).Select(l => "    " + l));
+                            if (reader.Spelling == Harness.Spelling.Alias)
+                                body.Add("type A = H");
+                        }
+                        else
+                        {
+                            var target = new List<string>();
+                            if (t.Level == MemberLevel.Module)
+                                target.Add(text);
+                            else
+                            {
+                                target.Add("class H:\n" + Indent(text));
+                                if (reader.Spelling == Harness.Spelling.Alias)
+                                    target.Add("type A = H");
+                            }
+                            var host = new List<string>();
+                            if (constantOnly)
+                            {
+                                host.Add(Harness.HostHeader(reader.Position).Replace("H:", "Rd:", StringComparison.Ordinal));
+                                host.AddRange(BoolSlot(reader.Position, probed).Select(l => "    " + l));
+                            }
+                            else if (ModulePlacedPositions.Contains(reader.Position))
+                                host.AddRange(Harness.PlaceAtModule(reader.Position, reader.Nesting, probed).Lines);
+                            else
+                            {
+                                host.Add(Harness.HostHeader(reader.Position).Replace("H:", "Rd:", StringComparison.Ordinal));
+                                host.AddRange(Harness.PlaceInClass(reader.Position, reader.Nesting, probed).Members.Select(l => "    " + l));
+                            }
+                            body.AddRange(order == Harness.Order.Earlier ? target.Concat(host) : host.Concat(target));
+                        }
+                        var lines = prelude.Concat(body).ToList();
+                        if (string.Join("\n", body).Contains("ap(lambda", StringComparison.Ordinal))
+                            lines.Insert(0, "def ap(f: () -> int) -> int:\n    return f()");
+                        lines.Add(Main + "    print(1)");
+                        yield return Draft(Key("read", "typed-read", kind, annotation, order, reader.Spelling, reader.Position, reader.Nesting), Family.Read, Lines(lines), null,
+                            new[] { "SPY0220" }, twin: false, target: kind, position: reader.Position);
+                    }
                 }
             }
         }
@@ -313,43 +314,63 @@ public sealed class ScopeMeaningDifferentialTests : IntegrationTestBase
     // callee: the innermost binding of a name is what a call of it calls
     // ------------------------------------------------------------------------------------------- //
 
-    /// <summary>The statements of <c>main</c> that bind <c>x</c> to a function returning 1 and print its call, per binder.</summary>
-    internal static readonly IReadOnlyDictionary<LocalTarget, string[]> CalleeBinders = new Dictionary<LocalTarget, string[]>
-    {
-        [LocalTarget.For] = new[] { "for x in [one]:", "    print(x())" },
-        [LocalTarget.Comprehension] = new[] { "print([x() for x in [one]][0])" },
-        [LocalTarget.WithAs] = new[] { "with CM() as x:", "    print(x())" },
-    };
-
-    internal static readonly IReadOnlyDictionary<LocalTarget, string> ExcludedCalleeBinders = new Dictionary<LocalTarget, string>
-    {
-        [LocalTarget.ExceptAs] = "binds an exception, which no call calls",
-        [LocalTarget.MatchCapture] = "`match one:` / `case x:` over a function value is SPY0908 CS8119 with no module def of the name (measured @ e5991c887): no callee verdict",
-        [LocalTarget.AsPatternCapture] = "a capture of the same subject: the MatchCapture exclusion's shape",
-        [LocalTarget.OutLet] = "binds an out argument: a function-typed out parameter is #2154's class",
-    };
-
     private const string One = "def one() -> int:\n    return 1";
+    private const string Twelve = "def twelve() -> int:\n    return 12";
     private const string CalleeCm = "class CM:\n    def __enter__(self) -> () -> int:\n        return one\n    def __exit__(self) -> None:\n        pass";
 
     private static IEnumerable<Case> CalleeCases()
     {
-        foreach (var outer in new[] { BindingKind.ModuleDef, BindingKind.None })
+        foreach (var (outer, o) in CalleeOuters.OrderBy(e => e.Key))
         {
-            var module = outer == BindingKind.ModuleDef ? new[] { "def x() -> int:\n    return 12", One } : new[] { One };
-            yield return Draft(Key("local", "callee", BindingKind.Parameter, $"outer={outer}"), Family.Local,
-                string.Join("\n", module.Append("def f(x: () -> int) -> int:\n    return x()").Append(Main + "    print(f(one))")) + "\n",
-                "1", Array.Empty<string>(), twin: true, target: BindingKind.Parameter, outer: outer, position: ReadPosition.FunctionBody);
-            foreach (var (binder, stmts) in CalleeBinders.OrderBy(e => e.Key))
+            // The binders: a parameter, which is no LocalTarget, and each construct target.
+            foreach (var binder in new object[] { BindingKind.Parameter }.Concat(CalleeBinders.Keys.OrderBy(k => k).Cast<object>()))
             {
-                var lines = module.ToList();
-                if (binder == LocalTarget.WithAs)
+                string n = o.Name;
+                bool parameter = binder is BindingKind;
+                // The statements that bind n to `one` and print its call; a parameter binder's function is declared below.
+                string[] stmts = parameter ? new[] { "print(f(one))" } : CalleeBinders[(LocalTarget)binder].Select(s => s.Replace("{n}", n, StringComparison.Ordinal)).ToArray();
+                var lines = new List<string> { One };
+                if (o.Text.Contains("twelve()", StringComparison.Ordinal))
+                    lines.Add(Twelve);
+                if (binder is LocalTarget.WithAs)
                     lines.Add(CalleeCm);
-                lines.Add(Main + string.Join("\n", stmts.Select(s => "    " + s)));
-                yield return Draft(Key("local", "callee", binder, $"outer={outer}"), Family.Local, string.Join("\n", lines) + "\n",
-                    "1", Array.Empty<string>(), twin: binder is LocalTarget.For or LocalTarget.Comprehension,
-                    target: binder == LocalTarget.Comprehension ? BindingKind.Inner : BindingKind.LocalVar, outer: outer,
-                    position: ReadPosition.FunctionBody, construct: binder);
+                string call;
+                switch (o.Scope)
+                {
+                    case OuterScope.Module:
+                        if (o.Text.Length > 0)
+                            lines.Insert(0, o.Text);
+                        if (parameter)
+                            lines.Add($"def f({n}: () -> int) -> int:\n    return {n}()");
+                        lines.Add(Main + string.Join("\n", stmts.Select(s => "    " + s)));
+                        break;
+                    case OuterScope.Member:
+                        // The outer binding is a member of H, and the binder sits in a method of H.
+                        lines.Add("class H:\n" + Indent(o.Text) + "\n"
+                            + (parameter
+                                ? $"    def m(self, {n}: () -> int) -> int:\n        return {n}()"
+                                : "    def m(self) -> None:\n" + string.Join("\n", stmts.Select(s => "        " + s))));
+                        call = parameter ? "print(H().m(one))" : "H().m()";
+                        lines.Add(Main + "    " + call);
+                        break;
+                    default:
+                        // The outer binding is a local of the enclosing function, and the binder sits in a nested def.
+                        string signature = outer == BindingKind.Parameter ? $"def outer0({n}: int) -> None:" : "def outer0() -> None:";
+                        var enclosing = new List<string> { signature };
+                        if (outer != BindingKind.Parameter)
+                            enclosing.Add(Indent(o.Text));
+                        enclosing.Add(parameter
+                            ? $"    def g({n}: () -> int) -> int:\n        return {n}()\n    print(g(one))"
+                            : "    def g() -> None:\n" + string.Join("\n", stmts.Select(s => "        " + s)) + "\n    g()");
+                        lines.Add(string.Join("\n", enclosing));
+                        lines.Add(Main + (outer == BindingKind.Parameter ? "    outer0(12)" : "    outer0()"));
+                        break;
+                }
+                var construct = binder as LocalTarget?;
+                yield return Draft(Key("local", "callee", binder, $"outer={outer}"), Family.Local, Lines(lines), "1", Array.Empty<string>(),
+                    twin: o.Twin && binder is BindingKind or LocalTarget.For or LocalTarget.Comprehension,
+                    target: parameter ? BindingKind.Parameter : construct == LocalTarget.Comprehension ? BindingKind.Inner : BindingKind.LocalVar,
+                    outer: outer, position: ReadPosition.FunctionBody, construct: construct, stdlib: o.Stdlib);
             }
         }
     }
@@ -358,48 +379,21 @@ public sealed class ScopeMeaningDifferentialTests : IntegrationTestBase
     // constant-kind (#2432)
     // ------------------------------------------------------------------------------------------- //
 
-    /// <summary>The positions that take constants only: <see cref="Harness.IsConstantOnly"/>'s and the enum member's value.</summary>
-    internal static IReadOnlyList<ReadPosition> ConstantPositions =>
-        Enum.GetValues<ReadPosition>().Where(p => Harness.IsConstantOnly(p) || p == ReadPosition.EnumMemberValue).ToList();
-
-    /// <summary>The expression, its type, what it prints and what it imports.</summary>
-    internal sealed record ConstantExpression(string Label, string Text, string Type, string Prints, string? Import);
-
-    internal static readonly IReadOnlyDictionary<ScopeConstantKind, ConstantExpression[]> ConstantExpressions = new Dictionary<ScopeConstantKind, ConstantExpression[]>
-    {
-        [ScopeConstantKind.ClrLiteralField] = new[] { new ConstantExpression("subprocess.PIPE", "subprocess.PIPE", "int", "-1", "subprocess") },
-        [ScopeConstantKind.StdlibModuleVariable] = new[]
-        {
-            new ConstantExpression("socket.AF_INET", "socket.AF_INET", "int", "2", "socket"),
-            new ConstantExpression("math.pi", "math.pi", "float", "3.141592653589793", "math"),
-        },
-        [ScopeConstantKind.ComparisonChain] = new[] { new ConstantExpression("ordered", "1 < 2 < 3", "bool", "True", null) },
-        [ScopeConstantKind.ChainWithNonConstantLink] = new[] { new ConstantExpression("membership", "0 < 2 in [1, 2]", "bool", "True", null) },
-    };
-
     private static IEnumerable<Case> ConstantKindCases()
     {
-        foreach (var position in ConstantPositions)
+        foreach (var (table, host) in ConstantHosts.OrderBy(e => e.Key).SelectMany(e => e.Value.Select(h => ((AdmissionTable?)e.Key, h))).Append(((AdmissionTable?)null, EnumMemberHost)))
         {
             foreach (var (kind, expressions) in ConstantExpressions.OrderBy(e => e.Key))
             {
                 foreach (var e in expressions)
                 {
-                    // An enum member's value is an int: the other types have no cell there.
-                    if (position == ReadPosition.EnumMemberValue && e.Type != "int")
+                    if (host.IntOnly && e.Type != "int")
                         continue;
-                    string host = position switch
-                    {
-                        ReadPosition.ParameterDefault => $"def f(p: {e.Type} = {e.Text}) -> {e.Type}:\n    return p\n{Main}    print(f())",
-                        ReadPosition.DataclassFieldInitializer => $"@dataclass\nclass H:\n    p: {e.Type} = {e.Text}\n{Main}    print(H().p)",
-                        ReadPosition.StructFieldInitializer => $"struct H:\n    p: {e.Type} = {e.Text}\n{Main}    print(H().p)",
-                        ReadPosition.EnumMemberValue => $"enum H:\n    RED = {e.Text}\n{Main}    print(H.RED.value)",
-                        _ => throw new ArgumentOutOfRangeException(nameof(position), position, "not a constant position"),
-                    };
-                    var source = (e.Import == null ? "" : $"import {e.Import}\n") + host + "\n";
-                    yield return Draft(Key("read", "constant-kind", position, kind, e.Label), Family.Read, source, e.Prints,
-                        new[] { "SPY0401" }, twin: kind is ScopeConstantKind.ClrLiteralField or ScopeConstantKind.ComparisonChain && position != ReadPosition.EnumMemberValue,
-                        position: position, stdlib: e.Import != null);
+                    var source = (e.Import == null ? "" : $"import {e.Import}\n")
+                        + host.Program.Replace("{T}", e.Type, StringComparison.Ordinal).Replace("{e}", e.Text, StringComparison.Ordinal) + "\n";
+                    yield return Draft(Key("read", "constant-kind", table, host.Label, kind, e.Label), Family.Read, source, host.PrintsOne ? "1" : e.Prints,
+                        new[] { host.Refusal }, twin: host.Twin && kind is ScopeConstantKind.ClrLiteralField or ScopeConstantKind.ComparisonChain,
+                        position: host.Position, stdlib: e.Import != null);
                 }
             }
         }
@@ -437,32 +431,43 @@ public sealed class ScopeMeaningDifferentialTests : IntegrationTestBase
     }
 
     // ------------------------------------------------------------------------------------------- //
-    // alias-target: an alias names a type that exists, used or not
+    // alias-target: an alias names a type that exists, used or not, wherever it is declared and whatever its shape
     // ------------------------------------------------------------------------------------------- //
+
+    private const string AliasTargetClass = "class C0:\n    v: int = 1";
 
     private static IEnumerable<Case> AliasTargetCases()
     {
-        foreach (var target in Enum.GetValues<ScopeAliasTarget>())
+        foreach (var site in AllAliasSites())
         {
-            foreach (var use in Enum.GetValues<ScopeAliasUse>())
+            foreach (var shape in AliasShapes.Values.DistinctBy(s => s.Label).OrderBy(s => s.Label, StringComparer.Ordinal))
             {
-                foreach (var order in new[] { Harness.Order.Earlier, Harness.Order.Later })
+                foreach (var target in Enum.GetValues<ScopeAliasTarget>())
                 {
-                    // The order is the alias against its target's declaration: a missing target has none.
-                    if (target == ScopeAliasTarget.Missing && order == Harness.Order.Later)
-                        continue;
-                    var alias = target == ScopeAliasTarget.Declared ? "type K0 = C0" : "type K0 = nosuch";
-                    var lines = new List<string>();
-                    if (target == ScopeAliasTarget.Declared && order == Harness.Order.Earlier)
-                        lines.Add("class C0:\n    v: int = 1");
-                    lines.Add(alias);
-                    if (target == ScopeAliasTarget.Declared && order == Harness.Order.Later)
-                        lines.Add("class C0:\n    v: int = 1");
-                    if (use == ScopeAliasUse.Used)
-                        lines.Add("def f(k: K0) -> int:\n    return 1");
-                    lines.Add(Main + "    print(1)");
-                    yield return Draft(Key("read", "alias-target", target, use, order), Family.Read, string.Join("\n", lines) + "\n", "1",
-                        new[] { "SPY0202" }, twin: false, target: BindingKind.ModuleTypeAlias, position: ReadPosition.TypeAliasTarget);
+                    foreach (var use in Enum.GetValues<ScopeAliasUse>())
+                    {
+                        foreach (var order in new[] { Harness.Order.Earlier, Harness.Order.Later })
+                        {
+                            // The order is the alias against its target's declaration: a missing target has none.
+                            if (target == ScopeAliasTarget.Missing && order == Harness.Order.Later)
+                                continue;
+                            var alias = $"type K0{(shape.Generic ? "[T]" : "")} = " + shape.Target.Replace("{N}", target == ScopeAliasTarget.Declared ? shape.Declared : "nosuch", StringComparison.Ordinal);
+                            var named = shape.Generic ? "K0[int]" : "K0";
+                            var lines = new List<string>();
+                            if (shape.Import != null)
+                                lines.Add($"import {shape.Import}");
+                            if (target == ScopeAliasTarget.Declared && order == Harness.Order.Earlier)
+                                lines.Add(AliasTargetClass);
+                            lines.Add(site.Program
+                                .Replace("{alias}", alias, StringComparison.Ordinal)
+                                .Replace("{use}", use == ScopeAliasUse.Used ? site.Use.Replace("{K}", named, StringComparison.Ordinal) : site.NoUse, StringComparison.Ordinal));
+                            if (target == ScopeAliasTarget.Declared && order == Harness.Order.Later)
+                                lines.Add(AliasTargetClass);
+                            lines.Add(Main + "    print(1)");
+                            yield return Draft(Key("read", "alias-target", target, use, order, site.Label, shape.Label), Family.Read, Lines(lines), "1",
+                                new[] { "SPY0202" }, twin: false, target: BindingKind.ModuleTypeAlias, position: ReadPosition.TypeAliasTarget, stdlib: shape.Import != null);
+                        }
+                    }
                 }
             }
         }
@@ -507,9 +512,11 @@ public sealed class ScopeMeaningDifferentialTests : IntegrationTestBase
                 failures.Add($"{c.Cell.Id}: its row says must-run and the generator gives it nothing to print");
             if (c.Twin && c.Cell.Tag != SharpyTag.MustRun)
                 failures.Add($"{c.Cell.Id}: a twin is python running the same program, and the cell does not run");
+            if (c.Cell.Id.Any(char.IsWhiteSpace))
+                failures.Add($"'{c.Cell.Id}': an id is one word, since an allowlist row is `<id> <class> # <cite>`");
         }
         failures.AddRange(Harness.RuleTableRowFailures(rows, Harness.RuleTablePools.SelectMany(p => p.Cells()).ToList()));
-        return failures;
+        return failures.Count > 60 ? failures.Take(60).Append($"… {failures.Count} failures in all").ToList() : failures;
     }
 
     [Fact]
@@ -519,58 +526,13 @@ public sealed class ScopeMeaningDifferentialTests : IntegrationTestBase
         Assert.True(failures.Count == 0, string.Join("\n", failures));
     }
 
-    /// <summary>Each axis against its enumeration: a value is generated or carries its reason, never both, never neither.</summary>
-    [Fact]
-    public void Axes_EveryValueIsGeneratedOrExcluded()
-    {
-        var pool = GeneratedCases();
-        var problems = new List<string>();
-
-        void Partition<T>(string axis, IEnumerable<T> generated, IEnumerable<T> excluded) where T : struct, Enum
-        {
-            var g = generated.ToHashSet();
-            var e = excluded.ToHashSet();
-            foreach (var value in Enum.GetValues<T>())
-            {
-                if (g.Contains(value) == e.Contains(value))
-                    problems.Add($"{axis}: {value} is {(g.Contains(value) ? "generated and excluded" : "neither generated nor excluded")}");
-            }
-        }
-
-        Partition("no-initializer", Declarations.Keys, ExcludedDeclarations.Keys);
-        Partition("typed-read", TypedReads.Keys, ExcludedTypedReads.Keys);
-        Partition("callee", CalleeBinders.Keys, ExcludedCalleeBinders.Keys);
-
-        void Fed<T>(string route, IEnumerable<T> owed) where T : struct, Enum
-        {
-            var carried = pool.Where(c => c.Cell.Key!.Route == route).Select(c => c.Cell.Key!.Part<T>()).ToHashSet();
-            foreach (var value in owed.Where(v => !carried.Contains(v)))
-                problems.Add($"{route}: no cell carries {typeof(T).Name}.{value}");
-        }
-
-        Fed("no-initializer", Declarations.Keys);
-        Fed("no-initializer", Enum.GetValues<ScopeInitializer>());
-        Fed("typed-read", TypedReads.Keys);
-        Fed("typed-read", Enum.GetValues<ScopeAnnotation>());
-        Fed("callee", CalleeBinders.Keys);
-        Fed("constant-kind", ConstantPositions);
-        Fed("constant-kind", Enum.GetValues<ScopeConstantKind>());
-        Fed("init-overload", Enum.GetValues<ScopeOverloadCaller>());
-        Fed("alias-target", Enum.GetValues<ScopeAliasTarget>());
-        Fed("alias-target", Enum.GetValues<ScopeAliasUse>());
-        foreach (var kind in Enum.GetValues<ScopeConstantKind>().Where(k => !ConstantExpressions.ContainsKey(k)))
-            problems.Add($"constant-kind: {kind} has no expression");
-
-        Assert.True(problems.Count == 0, string.Join("\n", problems));
-        Assert.Equal(4, ConstantPositions.Count);
-    }
-
     // ------------------------------------------------------------------------------------------- //
     // Judge, route, ratchet
     // ------------------------------------------------------------------------------------------- //
 
     /// <summary>The issue whose fix turns a red cell of a route green: #2432 for a constant position's verdict, #2423 for the rest
-    /// (R-QI's cells, the untyped forward read, the callee lookup, the alias refusal: charter §3.20l).</summary>
+    /// (R-QI's cells, the untyped forward read, the callee lookup, the alias refusal: charter §3.20l). A typed read that is
+    /// red at the EARLIER order is no order defect, and it and its later twin are #2417's (<see cref="ProposedCite"/>).</summary>
     internal static readonly IReadOnlyDictionary<string, string> RouteIssues = new Dictionary<string, string>(StringComparer.Ordinal)
     {
         ["no-initializer"] = "#2423",
@@ -580,6 +542,9 @@ public sealed class ScopeMeaningDifferentialTests : IntegrationTestBase
         ["init-overload"] = "#2423",
         ["alias-target"] = "#2423",
     };
+
+    /// <summary>The class of an untyped member-access read (#2417): typed at neither order.</summary>
+    internal const string UntypedAtEitherOrder = "#2417";
 
     internal sealed record Result(Case Case, Harness.SharpyRun Run, SharpyKind Kind, VerdictClass Class, bool WrongCode, string? PythonFailure);
 
@@ -591,9 +556,21 @@ public sealed class ScopeMeaningDifferentialTests : IntegrationTestBase
         return (wrongCode ? VerdictClass.FalseRefusal : verdict, wrongCode);
     }
 
-    internal static string ProposedCite(Result r)
+    /// <summary>The id of a typed-read cell's twin at the earlier order, or null for a cell that has none.</summary>
+    internal static string? EarlierTwinId(NameCell cell)
+    {
+        if (cell.Key is not { Route: "typed-read" } key || key.Part<Harness.Order>() is not { } order)
+            return null;
+        return order == Harness.Order.Earlier ? cell.Id : Key(key.Parts.Select(p => p is Harness.Order ? Harness.Order.Earlier : p).ToArray()).Text;
+    }
+
+    /// <summary>The cite a red cell's row must carry. <paramref name="redIds"/> are the ids red in the same run: a typed read
+    /// whose earlier twin is red is untyped whatever the order, so declaring before reading does not cure it and it is #2417's.</summary>
+    internal static string ProposedCite(Result r, IReadOnlySet<string> redIds)
     {
         var issue = RouteIssues.GetValueOrDefault(r.Case.Cell.Key!.Route ?? "", "UNROUTED");
+        if (EarlierTwinId(r.Case.Cell) is { } earlier && redIds.Contains(earlier))
+            issue = UntypedAtEitherOrder;
         string lane = r.WrongCode ? "wrong-code" : r.Class switch
         {
             VerdictClass.Ice => "ice",
@@ -612,6 +589,7 @@ public sealed class ScopeMeaningDifferentialTests : IntegrationTestBase
     internal static List<string> RatchetFailures(IReadOnlyList<Result> results, IReadOnlyDictionary<string, InitializerDependencyDifferentialTests.AllowRow> rows)
     {
         var failures = new List<string>();
+        var redIds = results.Where(r => IsRed(r.Class)).Select(r => r.Case.Cell.Id).ToHashSet(StringComparer.Ordinal);
         foreach (var r in results)
         {
             rows.TryGetValue(r.Case.Cell.Id, out var row);
@@ -625,8 +603,8 @@ public sealed class ScopeMeaningDifferentialTests : IntegrationTestBase
                 failures.Add($"{r.Case.Cell.Id}: listed as {row.Class}, now {r.Class}: MOVED, update or delete the row");
             else if (!IsRed(r.Class) && row != null)
                 failures.Add($"{r.Case.Cell.Id}: listed as {row.Class}, now {r.Class}: STALE, delete the row");
-            else if (IsRed(r.Class) && row!.Cite != ProposedCite(r))
-                failures.Add($"{r.Case.Cell.Id}: the row cites '{row.Cite}' and the route says '{ProposedCite(r)}'");
+            else if (IsRed(r.Class) && row!.Cite != ProposedCite(r, redIds))
+                failures.Add($"{r.Case.Cell.Id}: the row cites '{row.Cite}' and the route says '{ProposedCite(r, redIds)}'");
         }
         return failures;
     }
@@ -645,10 +623,10 @@ public sealed class ScopeMeaningDifferentialTests : IntegrationTestBase
             yield return SharpyStdlibReference.Location;
     }
 
-    private Harness.SharpyRun RunSharpy(NameCell cell, int timeoutMs)
+    private Harness.SharpyRun RunSharpy(string source, bool needsStdlib, int timeoutMs)
     {
-        _currentCellNeedsStdlib = cell.NeedsStdlib;
-        var r = CompileAndExecute(cell.Source, "scope_meaning.spy", executionTimeoutMs: timeoutMs);
+        _currentCellNeedsStdlib = needsStdlib;
+        var r = CompileAndExecute(source, "scope_meaning.spy", executionTimeoutMs: timeoutMs);
         var diagnostics = r.RawDiagnostics;
         var all = diagnostics.Select(d => d.Code).Where(c => c != null).Select(c => c!).ToList();
         var errors = diagnostics.Where(d => d.Severity == CompilerDiagnosticSeverity.Error).Select(d => d.Code).Where(c => c != null).Select(c => c!).ToList();
@@ -694,9 +672,9 @@ public sealed class ScopeMeaningDifferentialTests : IntegrationTestBase
                 if (python != c.Cell.Python)
                     pythonFailure = $"the cell is modelled to print '{c.Cell.Model}' and python {python}";
             }
-            var run = RunSharpy(c.Cell, SharpyExecTimeoutMs);
+            var run = RunSharpy(c.Cell.Source, c.Cell.NeedsStdlib, SharpyExecTimeoutMs);
             if (run.TimedOut)
-                run = RunSharpy(c.Cell, SharpyExecTimeoutMs * 2);
+                run = RunSharpy(c.Cell.Source, c.Cell.NeedsStdlib, SharpyExecTimeoutMs * 2);
             var kind = Harness.ClassifySharpy(run);
             var (cls, wrongCode) = Judge(c.Cell, kind, run);
             results.Add(new Result(c, run, kind, cls, wrongCode, pythonFailure));
@@ -710,6 +688,7 @@ public sealed class ScopeMeaningDifferentialTests : IntegrationTestBase
 
         wall.Stop();
         var red = results.Where(r => IsRed(r.Class)).ToList();
+        var redIds = red.Select(r => r.Case.Cell.Id).ToHashSet(StringComparer.Ordinal);
         var dir = ReportDirectory();
         using (var writer = new StreamWriter(Path.Combine(dir, "scope-meaning-differential-cells.jsonl")))
         {
@@ -731,11 +710,12 @@ public sealed class ScopeMeaningDifferentialTests : IntegrationTestBase
         }
         File.WriteAllLines(
             Path.Combine(dir, "scope-meaning-differential-proposed-allowlist.txt"),
-            red.OrderBy(r => r.Case.Cell.Id, StringComparer.Ordinal).Select(r => $"{r.Case.Cell.Id} {r.Class} # {ProposedCite(r)}"));
+            red.OrderBy(r => r.Case.Cell.Id, StringComparer.Ordinal).Select(r => $"{r.Case.Cell.Id} {r.Class} # {ProposedCite(r, redIds)}"));
 
         var report = $"scope-meaning-differential: pool {pool.Count} ({pool.Count(c => c.Cell.Tag == SharpyTag.MustRun)} must-run, {pool.Count(c => c.Cell.Tag == SharpyTag.MustRefuse)} must-refuse), "
             + $"python agreed {results.Count(r => r.Case.Twin && r.PythonFailure == null)}/{pool.Count(c => c.Twin)}, red {red.Count}, allowlist {rows.Count}, wall {wall.Elapsed.TotalSeconds:F1}s. "
-            + string.Join(" ", results.GroupBy(r => r.Case.Cell.Key!.Route).Select(g => $"{g.Key}={g.Count()}/red {g.Count(r => IsRed(r.Class))}"));
+            + string.Join(" ", results.GroupBy(r => r.Case.Cell.Key!.Route).Select(g => $"{g.Key}={g.Count()}/red {g.Count(r => IsRed(r.Class))}"))
+            + " cites: " + string.Join(" ", rows.Values.GroupBy(r => r.Cite.Split(' ')[0]).OrderBy(g => g.Key, StringComparer.Ordinal).Select(g => $"{g.Key}={g.Count()}"));
         Output.WriteLine(report);
         Assert.True(failures.Count == 0, $"{failures.Count} failures. {report}\n{string.Join("\n", failures.Take(120))}");
     }
@@ -759,7 +739,8 @@ public sealed class ScopeMeaningDifferentialTests : IntegrationTestBase
     {
         var pool = GeneratedCases();
         var running = pool.First(c => c.Cell.Tag == SharpyTag.MustRun && c.Cell.Key!.Route == "callee");
-        var refusing = pool.First(c => c.Cell.Tag == SharpyTag.MustRefuse && c.Cell.Key!.Route == "typed-read");
+        var later = pool.First(c => c.Cell.Tag == SharpyTag.MustRefuse && c.Cell.Key!.Route == "typed-read" && c.Cell.Key.Part<Harness.Order>() == Harness.Order.Later);
+        var earlier = pool.Single(c => c.Cell.Id == EarlierTwinId(later.Cell));
         static Harness.SharpyRun Ran(string stdout) => new(true, 0, false, false, stdout, "", Array.Empty<string>(), Array.Empty<string>(), null);
         static Harness.SharpyRun Refused(string code) => new(false, null, false, false, "", "", new[] { code }, new[] { code }, null);
         Result Of(Case c, Harness.SharpyRun run, string? pythonFailure = null)
@@ -768,22 +749,31 @@ public sealed class ScopeMeaningDifferentialTests : IntegrationTestBase
             var (cls, wrongCode) = Judge(c.Cell, kind, run);
             return new Result(c, run, kind, cls, wrongCode, pythonFailure);
         }
-        var none = new Dictionary<string, InitializerDependencyDifferentialTests.AllowRow>();
-        var listed = new Dictionary<string, InitializerDependencyDifferentialTests.AllowRow> { [running.Cell.Id] = new(VerdictClass.SilentWrong, "#2423 silent-wrong") };
-        var wrong = new Dictionary<string, InitializerDependencyDifferentialTests.AllowRow> { [refusing.Cell.Id] = new(VerdictClass.FalseRefusal, "#2423 wrong-code") };
+        static Dictionary<string, InitializerDependencyDifferentialTests.AllowRow> Rows(params (Case Case, VerdictClass Class, string Cite)[] rows)
+            => rows.ToDictionary(r => r.Case.Cell.Id, r => new InitializerDependencyDifferentialTests.AllowRow(r.Class, r.Cite), StringComparer.Ordinal);
+        var none = Rows();
+        var listed = Rows((running, VerdictClass.SilentWrong, "#2423 silent-wrong"));
+        var wrong = Rows((later, VerdictClass.FalseRefusal, "#2423 wrong-code"));
 
         Assert.Empty(RatchetFailures(new[] { Of(running, Ran("1")) }, none));
         Assert.Empty(RatchetFailures(new[] { Of(running, Ran("12")) }, listed));
-        Assert.Empty(RatchetFailures(new[] { Of(refusing, Refused("SPY0220")) }, none));
-        Assert.Empty(RatchetFailures(new[] { Of(refusing, Refused("SPY0200")) }, wrong));
+        Assert.Empty(RatchetFailures(new[] { Of(later, Refused("SPY0220")) }, none));
+        Assert.Empty(RatchetFailures(new[] { Of(later, Refused("SPY0200")) }, wrong));
 
         Assert.Contains("model", Assert.Single(RatchetFailures(new[] { Of(running, Ran("12")) }, none)));
         Assert.Contains("STALE", Assert.Single(RatchetFailures(new[] { Of(running, Ran("1")) }, listed)));
         Assert.Contains("MOVED", Assert.Single(RatchetFailures(new[] { Of(running, Refused("SPY0200")) }, listed)));
-        Assert.Contains("FalseRefusal", Assert.Single(RatchetFailures(new[] { Of(refusing, Refused("SPY0200")) }, none)));
-        Assert.Contains("STALE", Assert.Single(RatchetFailures(new[] { Of(refusing, Refused("SPY0220")) }, wrong)));
-        Assert.Contains("the route says", Assert.Single(RatchetFailures(new[] { Of(running, Ran("12")) },
-            new Dictionary<string, InitializerDependencyDifferentialTests.AllowRow> { [running.Cell.Id] = new(VerdictClass.SilentWrong, "#2432 silent-wrong") })));
+        Assert.Contains("FalseRefusal", Assert.Single(RatchetFailures(new[] { Of(later, Refused("SPY0200")) }, none)));
+        Assert.Contains("STALE", Assert.Single(RatchetFailures(new[] { Of(later, Refused("SPY0220")) }, wrong)));
+        Assert.Contains("the route says", Assert.Single(RatchetFailures(new[] { Of(running, Ran("12")) }, Rows((running, VerdictClass.SilentWrong, "#2432 silent-wrong")))));
         Assert.Contains("GeneratorBug", Assert.Single(RatchetFailures(new[] { Of(running, Ran("1"), "python 4") }, none)));
+
+        // By class (contract §10): a typed read red at BOTH orders is no order defect, so both rows are #2417's; red at the
+        // later order alone it is #2423's, and a row citing the other issue is refused.
+        var both = new[] { Of(earlier, Refused("SPY0200")), Of(later, Refused("SPY0200")) };
+        Assert.Empty(RatchetFailures(both, Rows((earlier, VerdictClass.FalseRefusal, "#2417 wrong-code"), (later, VerdictClass.FalseRefusal, "#2417 wrong-code"))));
+        Assert.Contains("the route says '#2417", Assert.Single(RatchetFailures(both, Rows((earlier, VerdictClass.FalseRefusal, "#2417 wrong-code"), (later, VerdictClass.FalseRefusal, "#2423 wrong-code")))));
+        var laterOnly = new[] { Of(earlier, Refused("SPY0220")), Of(later, Refused("SPY0200")) };
+        Assert.Contains("the route says '#2423", Assert.Single(RatchetFailures(laterOnly, Rows((later, VerdictClass.FalseRefusal, "#2417 wrong-code")))));
     }
 }

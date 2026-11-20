@@ -1,4 +1,5 @@
 using System.Text.Json;
+using Sharpy.Compiler.Semantic.Validation;
 using Sharpy.TestInfrastructure.Oracles;
 using Xunit;
 
@@ -153,6 +154,7 @@ public partial class NameResolutionDifferentialTests
         KeyAxis<ScopeInitializer>("initializer"),
         KeyAxis<ScopeAnnotation>("annotation"),
         KeyAxis<ScopeConstantKind>("constantKind"),
+        KeyAxis<AdmissionTable>("admission"),
         KeyAxis<ScopeAliasTarget>("aliasTarget"),
         KeyAxis<ScopeAliasUse>("aliasUse"),
         KeyAxis<ScopeOverloadCaller>("overloadCaller"),

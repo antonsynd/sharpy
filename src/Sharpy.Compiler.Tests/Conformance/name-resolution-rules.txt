@@ -214,14 +214,18 @@ MustRun P52 family=TypeMember route=class,dataclass,enum,interface,struct,union
 * seed family=Seed route=-
 
 # --- ScopeMeaningDifferentialTests: the cells the P77a pool has no program for (hand-written; the test reads its
-# --- verdicts from these rows and carries none) ---
+# --- verdicts from these rows and carries none). A constant position's verdict is its table's (`admission`, the
+# --- validator's AdmissionTable; `-` is the enum member's value, which has no table): a `const` initializer takes a
+# --- non-constant and is then a computed constant (N4), and an attribute argument refuses under its own code. ---
 MustRefuse R-QI family=Read route=no-initializer initializer=Absent target=ModuleVar,ModuleProperty,StaticField,StaticProperty
 MustRun N1 family=Read route=no-initializer initializer=Absent target=InstanceField,InstanceProperty,LocalVar
 MustRun N1 family=Read route=no-initializer initializer=Present,AccessorBodies
 MustRefuse N1-typed-read family=Read route=typed-read
 MustRun N1-innermost family=Local route=callee
 MustRun N4 family=Read route=constant-kind constantKind=ClrLiteralField,ComparisonChain
-MustRefuse SPY0401 family=Read route=constant-kind constantKind=StdlibModuleVariable,ChainWithNonConstantLink
+MustRun N4 family=Read route=constant-kind admission=ConstInitializer constantKind=StdlibModuleVariable,ClrStaticMember,ChainWithNonConstantLink
+MustRefuse SPY0401 family=Read route=constant-kind admission=ParameterDefault,LambdaParameterDefault,PerInstanceFieldDefault,- constantKind=StdlibModuleVariable,ClrStaticMember,ChainWithNonConstantLink
+MustRefuse SPY0425 family=Read route=constant-kind admission=DecoratorArgument constantKind=StdlibModuleVariable,ClrStaticMember,ChainWithNonConstantLink
 MustRun N1 family=Read route=init-overload
 MustRefuse N1-alias-target family=Read route=alias-target aliasTarget=Missing
 MustRun N1 family=Read route=alias-target aliasTarget=Declared
