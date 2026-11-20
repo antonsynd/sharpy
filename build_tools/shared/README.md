@@ -297,8 +297,8 @@ Configuration for backend execution.
 - `allowed_tools: set[ToolPermission] = {READ}`
 - `model: Optional[str] = None`
 - `max_retries: int = 3`
-- `task_type: Optional[TaskType] = None`
-- `task_complexity: Optional[TaskComplexity] = None`
+- `task_type: Optional[TaskType] = None` (informational: no shared code reads it)
+- `task_complexity: Optional[TaskComplexity] = None` (informational: no shared code reads it)
 
 #### `BackendResponse`
 Standardized response from any backend.
