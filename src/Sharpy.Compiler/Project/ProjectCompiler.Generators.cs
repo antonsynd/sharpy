@@ -262,7 +262,7 @@ internal partial class ProjectCompiler
         _logger.LogInfo("Stage 2: Executing generators against target declarations");
 
         var results = new List<GeneratedSource>();
-        var contextBuilder = new GeneratorContextBuilder(SemanticInfo, _projectModel!.SemanticBinding, _logger);
+        var contextBuilder = new GeneratorContextBuilder();
 
         // Defense-in-depth: track which (generator type, target declaration) pairs we've
         // already executed during this pipeline run. The semantic phase normally prevents
@@ -354,7 +354,7 @@ internal partial class ProjectCompiler
                         continue;
                     }
 
-                    var context = contextBuilder.Build(declaration, binding.Trigger, _projectModel.Config.RootNamespace);
+                    var context = contextBuilder.Build(declaration, binding.Trigger, _projectModel!.Config.RootNamespace);
 
                     // Execute with timeout
                     var task = Task.Run(() => generator.Generate(context), cancellationToken);

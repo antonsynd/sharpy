@@ -1,7 +1,6 @@
 extern alias SharpyRT;
-using Sharpy.Compiler.Logging;
+using System.Collections.Immutable;
 using Sharpy.Compiler.Parser.Ast;
-using Sharpy.Compiler.Semantic;
 using Sharpy.Compiler.Shared;
 
 namespace Sharpy.Compiler.Project;
@@ -16,52 +15,38 @@ using GGeneratorContext = SharpyRT::Sharpy.Generators.GeneratorContext;
 
 internal class GeneratorContextBuilder
 {
-    private readonly SemanticInfo _semanticInfo;
-    private readonly SemanticBinding _semanticBinding;
-    private readonly ICompilerLogger _logger;
-
-    public GeneratorContextBuilder(SemanticInfo semanticInfo, SemanticBinding semanticBinding, ICompilerLogger logger)
-    {
-        _semanticInfo = semanticInfo;
-        _semanticBinding = semanticBinding;
-        _logger = logger;
-    }
-
     public GGeneratorContext Build(Statement declaration, Decorator trigger, string moduleName)
     {
         GClassInfo? classInfo = null;
         GFunctionInfo? functionInfo = null;
 
         if (declaration is ClassDef classDef)
-            classInfo = BuildClassInfo(classDef);
+            classInfo = BuildTypeInfo(classDef.Name, classDef.Body, classDef.BaseClasses, classDef.Decorators,
+                classDef.Decorators.Any(d => d.Name == "dataclass"));
         else if (declaration is FunctionDef funcDef)
             functionInfo = BuildFunctionInfo(funcDef);
         else if (declaration is StructDef structDef)
-            classInfo = BuildStructInfo(structDef);
+            classInfo = BuildTypeInfo(structDef.Name, structDef.Body, structDef.BaseClasses, structDef.Decorators, false);
 
-        var arguments = new List<object>();
-        foreach (var arg in trigger.Arguments)
-        {
-            arguments.Add(ExtractLiteralValue(arg));
-        }
-
-        var keywordArgs = new Dictionary<string, object>();
-        foreach (var kwarg in trigger.KeywordArguments)
-        {
-            keywordArgs[kwarg.Name] = ExtractLiteralValue(kwarg.Value);
-        }
+        var (arguments, keywordArgs) = ExtractArguments(trigger);
 
         return new GGeneratorContext(classInfo, functionInfo, arguments, keywordArgs, moduleName);
     }
 
-    private GClassInfo BuildClassInfo(ClassDef classDef)
+    /// <summary>Builds the generator ClassInfo for a class or struct declaration.</summary>
+    private GClassInfo BuildTypeInfo(
+        string name,
+        ImmutableArray<Statement> body,
+        ImmutableArray<TypeAnnotation> bases,
+        ImmutableArray<Decorator> decoratorNodes,
+        bool isDataclass)
     {
         var fields = new List<GFieldInfo>();
         var methods = new List<GMethodInfo>();
         var baseClasses = new List<string>();
         var decorators = new List<GDecoratorInfo>();
 
-        foreach (var stmt in classDef.Body)
+        foreach (var stmt in body)
         {
             if (stmt is VariableDeclaration varDecl)
             {
@@ -77,55 +62,17 @@ internal class GeneratorContextBuilder
             }
         }
 
-        foreach (var baseAnnot in classDef.BaseClasses)
+        foreach (var baseAnnot in bases)
         {
             baseClasses.Add(baseAnnot.Name);
         }
 
-        foreach (var dec in classDef.Decorators)
+        foreach (var dec in decoratorNodes)
         {
             decorators.Add(BuildDecoratorInfo(dec));
         }
 
-        var isDataclass = classDef.Decorators.Any(d => d.Name == "dataclass");
-
-        return new GClassInfo(classDef.Name, fields, methods, baseClasses, decorators, isDataclass);
-    }
-
-    private GClassInfo BuildStructInfo(StructDef structDef)
-    {
-        var fields = new List<GFieldInfo>();
-        var methods = new List<GMethodInfo>();
-        var baseClasses = new List<string>();
-        var decorators = new List<GDecoratorInfo>();
-
-        foreach (var stmt in structDef.Body)
-        {
-            if (stmt is VariableDeclaration varDecl)
-            {
-                fields.Add(new GFieldInfo(
-                    varDecl.Name,
-                    varDecl.Type?.ToString(),
-                    varDecl.InitialValue != null,
-                    varDecl.InitialValue?.ToString()));
-            }
-            else if (stmt is FunctionDef method)
-            {
-                methods.Add(BuildMethodInfo(method));
-            }
-        }
-
-        foreach (var baseAnnot in structDef.BaseClasses)
-        {
-            baseClasses.Add(baseAnnot.Name);
-        }
-
-        foreach (var dec in structDef.Decorators)
-        {
-            decorators.Add(BuildDecoratorInfo(dec));
-        }
-
-        return new GClassInfo(structDef.Name, fields, methods, baseClasses, decorators, false);
+        return new GClassInfo(name, fields, methods, baseClasses, decorators, isDataclass);
     }
 
     private GFunctionInfo BuildFunctionInfo(FunctionDef funcDef)
@@ -179,6 +126,13 @@ internal class GeneratorContextBuilder
 
     private static GDecoratorInfo BuildDecoratorInfo(Decorator dec)
     {
+        var (args, kwargs) = ExtractArguments(dec);
+        return new GDecoratorInfo(dec.Name, args, kwargs, dec.IsBracketAttribute);
+    }
+
+    /// <summary>Fresh positional and keyword argument collections for a decorator, one per call.</summary>
+    private static (List<object> Args, Dictionary<string, object> Kwargs) ExtractArguments(Decorator dec)
+    {
         var args = new List<object>();
         foreach (var arg in dec.Arguments)
         {
@@ -191,7 +145,7 @@ internal class GeneratorContextBuilder
             kwargs[kwarg.Name] = ExtractLiteralValue(kwarg.Value);
         }
 
-        return new GDecoratorInfo(dec.Name, args, kwargs, dec.IsBracketAttribute);
+        return (args, kwargs);
     }
 
     /// <summary>
