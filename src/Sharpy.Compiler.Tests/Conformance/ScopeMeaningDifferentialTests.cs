@@ -28,10 +28,20 @@ internal enum ScopeAnnotation
     Inferred,
 }
 
-/// <summary>What a constant position is handed (#2432's expression-kind axis, the kinds the P77a pool has no cell
-/// for; charter §3.20l calls 43 and 45). The three member kinds are the image of what discovery records for a value
-/// of a referenced module (<c>FieldSignature.IsConst</c> × <c>IsGuarded</c>,
-/// <see cref="ScopeMeaningDifferentialTests.ModuleValueShapes"/>); the two chains are closed by call 45.</summary>
+/// <summary>What a constant position is handed (#2432's expression-kind axis; charter §3.20l calls 43 and 45; the
+/// owner's ruling 7 of 2026-11-20, #2423 comment 7042723494): every kind of member a constant position's answer is
+/// asked about, and the two chains. Each member kind is the image of what the compiler records for the member:
+/// <list type="bullet">
+/// <item>a value of a referenced MODULE: discovery's <c>FieldSignature.IsConst</c> × <c>IsGuarded</c>
+/// (<see cref="ScopeMeaningDifferentialTests.ModuleValueShapes"/>);</item>
+/// <item>a member of a referenced TYPE: the subclasses of <c>ClrMemberResolution</c>, a field refined by
+/// <c>FieldInfo.IsLiteral</c> and whether its type is an enum (<see cref="ScopeMeaningDifferentialTests.ClrTypeMemberShapes"/>);</item>
+/// <item>a member of an enum the program declares: <c>EnumMemberAccessKind</c> and the member itself, per enum shape
+/// (<see cref="ScopeMeaningDifferentialTests.EnumReadKinds"/>);</item>
+/// <item>any other name the program declares: <see cref="OwnMember"/>, refined by <see cref="BindingKind"/>
+/// (<see cref="ScopeMeaningDifferentialTests.OwnReads"/>).</item>
+/// </list>
+/// The two chains are closed by call 45.</summary>
 internal enum ScopeConstantKind
 {
     /// <summary>A constant of a referenced assembly: a CLR literal field read through a Stdlib module.</summary>
@@ -40,9 +50,49 @@ internal enum ScopeConstantKind
     /// <summary>A module variable of the <c>.spy</c> stdlib, whose storage is guarded (N3): no constant.</summary>
     StdlibModuleVariable,
 
-    /// <summary>A static of a referenced assembly that is neither literal nor guarded (a static property, a static
-    /// readonly field): no constant.</summary>
+    /// <summary>A static of a referenced assembly's module that is neither literal nor guarded (a static property, a
+    /// static readonly field): no constant.</summary>
     ClrStaticMember,
+
+    /// <summary>A literal field of a referenced type (<c>int.max_value</c>, <c>Math.PI</c>): a C# constant.</summary>
+    ClrTypeLiteralField,
+
+    /// <summary>A member of a referenced enum (<c>DayOfWeek.Monday</c>): a C# constant.</summary>
+    ClrTypeEnumMember,
+
+    /// <summary>A static field of a referenced type that is no literal (<c>static readonly</c>): no constant.</summary>
+    ClrTypeStaticField,
+
+    /// <summary>A static property of a referenced type: no constant.</summary>
+    ClrTypeStaticProperty,
+
+    /// <summary>A static method of a referenced type with one overload, read uncalled: a function value, no constant.</summary>
+    ClrTypeMethod,
+
+    /// <summary>A static method group of a referenced type, read uncalled: no value at all (SPY0336).</summary>
+    ClrTypeMethodGroup,
+
+    /// <summary>A member of an int enum of the program: a C# constant.</summary>
+    IntEnumMember,
+
+    /// <summary>An int enum member's <c>.value</c>: the underlying integer, a C# constant (ruling 2).</summary>
+    IntEnumValue,
+
+    /// <summary>An int enum member's <c>.name</c>: a call of the name channel, no constant.</summary>
+    IntEnumName,
+
+    /// <summary>A member of a string enum of the program: a singleton object, no C# constant.</summary>
+    StringEnumMember,
+
+    /// <summary>A string enum member's <c>.value</c>: the singleton's property, no constant.</summary>
+    StringEnumValue,
+
+    /// <summary>A string enum member's <c>.name</c>: the singleton's property, no constant.</summary>
+    StringEnumName,
+
+    /// <summary>A name the program declares, read where its kind says (bare at module level, through its type's
+    /// name or a subclass's): the cell's target is the kind.</summary>
+    OwnMember,
 
     /// <summary>A comparison chain whose every link is a constant.</summary>
     ComparisonChain,
@@ -51,11 +101,13 @@ internal enum ScopeConstantKind
     ChainWithNonConstantLink,
 }
 
-/// <summary>Whether a type alias's target exists. Closed.</summary>
+/// <summary>What a type alias's target names: a type that exists, nothing, or the alias itself, directly or
+/// through a ring of aliases. Closed.</summary>
 internal enum ScopeAliasTarget
 {
     Declared,
     Missing,
+    Itself,
 }
 
 /// <summary>Whether anything names a type alias. Closed.</summary>
@@ -77,7 +129,7 @@ internal enum ScopeOverloadCaller
 
 /// <summary>
 /// Stage 0 of plan-777361 (P78; verification contract §11), the owner's rulings of 2026-11-20 (#2423 comments
-/// 7030074628 item 1 and 7039834146 item 5): the cells of rules N1, N2, N4 and N7 that the P77a pool
+/// 7030074628 item 1, 7039834146 item 5 and 7042723494 items 7 to 9): the cells of rules N1, N2, N4 and N7 that the P77a pool
 /// (<see cref="NameResolutionDifferentialTests"/>) has no program for, as a generated test type of their own. A cell is
 /// a <see cref="NameCell"/>, and its tag and rule are READ from the rule table (<c>name-resolution-rules.txt</c>, #2487):
 /// the generator writes the program, what it prints when it runs and the codes a refusal may carry, and never a verdict.
@@ -94,10 +146,12 @@ internal enum ScopeOverloadCaller
 /// × order × <c>Spelling</c> × <see cref="ReadPosition"/>, the last two as the P77a pool runs them;</item>
 /// <item><c>callee</c>: a binder's name called under an outer binding of the name, binder (<see cref="LocalTarget"/> and
 /// the parameter) × outer (<see cref="BindingKind"/>);</item>
-/// <item><c>constant-kind</c> (#2432): host (<c>AdmissionTable</c> and the enum member's value) × <see cref="ScopeConstantKind"/>;</item>
+/// <item><c>constant-kind</c> (#2432): host (the call sites of <c>ConstantDefaultClassifier.IsAdmitted</c>, each with its
+/// <c>AdmissionTable</c>, and the enum member's value) × <see cref="ScopeConstantKind"/>;</item>
 /// <item><c>init-overload</c>: <see cref="ScopeOverloadCaller"/> × order;</item>
 /// <item><c>alias-target</c>: declaration site (<c>ScopeKind</c> × <c>TypeKind</c>) × target shape (the properties of the
-/// alias's AST records) × <see cref="ScopeAliasTarget"/> × <see cref="ScopeAliasUse"/> × order.</item>
+/// alias's AST records) × <see cref="ScopeAliasTarget"/> × <see cref="ScopeAliasUse"/> × order. An alias that reaches
+/// itself has its unused cells, which must run, and no used one (#2769).</item>
 /// </list>
 /// Known-red cells are rows of <c>scope-meaning-differential-allowlist.txt</c> (a missing file reads as empty), each citing
 /// the issue whose fix turns it green. A must-refuse cell refused under a code its cell does not admit is listed as
@@ -381,22 +435,45 @@ public sealed partial class ScopeMeaningDifferentialTests : IntegrationTestBase
 
     private static IEnumerable<Case> ConstantKindCases()
     {
-        foreach (var (table, host) in ConstantHosts.OrderBy(e => e.Key).SelectMany(e => e.Value.Select(h => ((AdmissionTable?)e.Key, h))).Append(((AdmissionTable?)null, EnumMemberHost)))
+        foreach (var (table, host) in AllConstantHosts())
         {
             foreach (var (kind, expressions) in ConstantExpressions.OrderBy(e => e.Key))
             {
                 foreach (var e in expressions)
                 {
-                    if (host.IntOnly && e.Type != "int")
+                    if (HostSkips(host, e.Type) != null)
                         continue;
-                    var source = (e.Import == null ? "" : $"import {e.Import}\n")
-                        + host.Program.Replace("{T}", e.Type, StringComparison.Ordinal).Replace("{e}", e.Text, StringComparison.Ordinal) + "\n";
-                    yield return Draft(Key("read", "constant-kind", table, host.Label, kind, e.Label), Family.Read, source, host.PrintsOne ? "1" : e.Prints,
-                        new[] { host.Refusal }, twin: host.Twin && kind is ScopeConstantKind.ClrLiteralField or ScopeConstantKind.ComparisonChain,
-                        position: host.Position, stdlib: e.Import != null);
+                    yield return ConstantCase(Key("read", "constant-kind", table, host.Label, kind, e.Form, e.Label), table, host, kind, e.Text, e.Type, e.Prints, e.Show,
+                        imports: e.Import, prelude: e.Prelude, refusals: e.Refusals, target: e.Target, stdlib: e.Stdlib,
+                        twin: host.Twin && e.Target == BindingKind.None && kind is ScopeConstantKind.ClrLiteralField or ScopeConstantKind.ComparisonChain);
                 }
             }
+            foreach (var own in OwnReads)
+            {
+                if (HostSkips(host, own.Type) != null)
+                    continue;
+                yield return ConstantCase(Key("read", "constant-kind", table, host.Label, ScopeConstantKind.OwnMember, own.Kind, own.Annotation, own.Relation, own.Form), table, host,
+                    ScopeConstantKind.OwnMember, own.Text, own.Type, "5", own.Show, imports: null, prelude: own.Prelude, refusals: own.Refusals, target: own.Kind, stdlib: false, twin: false);
+            }
         }
+    }
+
+    /// <summary>One cell: the expression's imports and declarations, then the host's program around it. What <c>main</c> shows is
+    /// the slot's value read into a local of the slot's type first, since a call on a function-typed property is #2770's.</summary>
+    private static Case ConstantCase(CellKey key, AdmissionTable? table, ConstantHost host, ScopeConstantKind kind, string text, string type, string prints, string show,
+        string? imports, string? prelude, string[]? refusals, BindingKind target, bool stdlib, bool twin)
+    {
+        var lines = new List<string>();
+        if (host.Imports != null)
+            lines.Add(host.Imports);
+        if (imports != null)
+            lines.Add(imports);
+        if (prelude != null)
+            lines.Add(prelude);
+        lines.Add(host.Program.Replace("{T}", type, StringComparison.Ordinal).Replace("{e}", text, StringComparison.Ordinal)
+            .Replace("{s}", string.Format(System.Globalization.CultureInfo.InvariantCulture, show, "v"), StringComparison.Ordinal));
+        return Draft(key, Family.Read, Lines(lines), host.PrintsOne ? "1" : prints, new[] { host.Refusal }.Concat(refusals ?? Array.Empty<string>()).ToArray(), twin,
+            target: target, position: host.Position, stdlib: stdlib);
     }
 
     // ------------------------------------------------------------------------------------------- //
@@ -436,6 +513,15 @@ public sealed partial class ScopeMeaningDifferentialTests : IntegrationTestBase
 
     private const string AliasTargetClass = "class C0:\n    v: int = 1";
 
+    /// <summary>The orders an alias has against what its target names: a declared type stands above or below it, a missing one
+    /// has no declaration to stand anywhere, and the alias itself is reached directly or through a ring.</summary>
+    internal static Harness.Order[] AliasOrders(ScopeAliasTarget target) => target switch
+    {
+        ScopeAliasTarget.Declared => new[] { Harness.Order.Earlier, Harness.Order.Later },
+        ScopeAliasTarget.Missing => new[] { Harness.Order.Earlier },
+        _ => new[] { Harness.Order.Self, Harness.Order.Cycle },
+    };
+
     private static IEnumerable<Case> AliasTargetCases()
     {
         foreach (var site in AllAliasSites())
@@ -444,23 +530,39 @@ public sealed partial class ScopeMeaningDifferentialTests : IntegrationTestBase
             {
                 foreach (var target in Enum.GetValues<ScopeAliasTarget>())
                 {
+                    // A name a module qualifies is never the alias (ExcludedSelfReachingShapes says so, and the axes fact holds the two together).
+                    if (target == ScopeAliasTarget.Itself && shape.Import != null)
+                        continue;
                     foreach (var use in Enum.GetValues<ScopeAliasUse>())
                     {
-                        foreach (var order in new[] { Harness.Order.Earlier, Harness.Order.Later })
+                        // Named by an annotation, a self-reaching alias kills the compiler's process (#2769; ExcludedAliasUses).
+                        if (target == ScopeAliasTarget.Itself && use == ScopeAliasUse.Used)
+                            continue;
+                        foreach (var order in AliasOrders(target))
                         {
-                            // The order is the alias against its target's declaration: a missing target has none.
-                            if (target == ScopeAliasTarget.Missing && order == Harness.Order.Later)
-                                continue;
-                            var alias = $"type K0{(shape.Generic ? "[T]" : "")} = " + shape.Target.Replace("{N}", target == ScopeAliasTarget.Declared ? shape.Declared : "nosuch", StringComparison.Ordinal);
-                            var named = shape.Generic ? "K0[int]" : "K0";
+                            string generic = shape.Generic ? "[T]" : "";
+                            // What the target names: the program's class, nothing, the alias itself, or the next alias of a ring of two.
+                            string named = target switch
+                            {
+                                ScopeAliasTarget.Declared => shape.Declared,
+                                ScopeAliasTarget.Missing => "nosuch",
+                                _ when order == Harness.Order.Self => "K0" + generic,
+                                _ => "K1",
+                            };
+                            var aliases = new List<string> { $"type K0{generic} = " + shape.Target.Replace("{N}", named, StringComparison.Ordinal) };
+                            if (target == ScopeAliasTarget.Itself && order == Harness.Order.Cycle)
+                                aliases.Add("type K1 = K0" + (shape.Generic ? "[int]" : ""));
                             var lines = new List<string>();
                             if (shape.Import != null)
                                 lines.Add($"import {shape.Import}");
                             if (target == ScopeAliasTarget.Declared && order == Harness.Order.Earlier)
                                 lines.Add(AliasTargetClass);
+                            // Every alias of the site stands at the site's own indentation.
+                            var slot = site.Program.Split('\n').First(l => l.Contains("{alias}", StringComparison.Ordinal));
+                            var indent = slot[..slot.IndexOf("{alias}", StringComparison.Ordinal)];
                             lines.Add(site.Program
-                                .Replace("{alias}", alias, StringComparison.Ordinal)
-                                .Replace("{use}", use == ScopeAliasUse.Used ? site.Use.Replace("{K}", named, StringComparison.Ordinal) : site.NoUse, StringComparison.Ordinal));
+                                .Replace("{alias}", string.Join("\n" + indent, aliases), StringComparison.Ordinal)
+                                .Replace("{use}", use == ScopeAliasUse.Used ? site.Use.Replace("{K}", shape.Generic ? "K0[int]" : "K0", StringComparison.Ordinal) : site.NoUse, StringComparison.Ordinal));
                             if (target == ScopeAliasTarget.Declared && order == Harness.Order.Later)
                                 lines.Add(AliasTargetClass);
                             lines.Add(Main + "    print(1)");
@@ -532,7 +634,8 @@ public sealed partial class ScopeMeaningDifferentialTests : IntegrationTestBase
 
     /// <summary>The issue whose fix turns a red cell of a route green: #2432 for a constant position's verdict, #2423 for the rest
     /// (R-QI's cells, the untyped forward read, the callee lookup, the alias refusal: charter §3.20l). A typed read that is
-    /// red at the EARLIER order is no order defect, and it and its later twin are #2417's (<see cref="ProposedCite"/>).</summary>
+    /// red at the EARLIER order is no order defect, and it and its later twin are #2417's; an alias that reaches itself is
+    /// #2769's (<see cref="ProposedCite"/>).</summary>
     internal static readonly IReadOnlyDictionary<string, string> RouteIssues = new Dictionary<string, string>(StringComparer.Ordinal)
     {
         ["no-initializer"] = "#2423",
@@ -545,6 +648,10 @@ public sealed partial class ScopeMeaningDifferentialTests : IntegrationTestBase
 
     /// <summary>The class of an untyped member-access read (#2417): typed at neither order.</summary>
     internal const string UntypedAtEitherOrder = "#2417";
+
+    /// <summary>The class of an alias whose target reaches the alias itself (#2769): unruled, so the unused cells keep running
+    /// and a red one is that tracker's.</summary>
+    internal const string SelfReachingAlias = "#2769";
 
     internal sealed record Result(Case Case, Harness.SharpyRun Run, SharpyKind Kind, VerdictClass Class, bool WrongCode, string? PythonFailure);
 
@@ -571,6 +678,8 @@ public sealed partial class ScopeMeaningDifferentialTests : IntegrationTestBase
         var issue = RouteIssues.GetValueOrDefault(r.Case.Cell.Key!.Route ?? "", "UNROUTED");
         if (EarlierTwinId(r.Case.Cell) is { } earlier && redIds.Contains(earlier))
             issue = UntypedAtEitherOrder;
+        if (r.Case.Cell.Key.Part<ScopeAliasTarget>() == ScopeAliasTarget.Itself)
+            issue = SelfReachingAlias;
         string lane = r.WrongCode ? "wrong-code" : r.Class switch
         {
             VerdictClass.Ice => "ice",
@@ -775,5 +884,13 @@ public sealed partial class ScopeMeaningDifferentialTests : IntegrationTestBase
         Assert.Contains("the route says '#2417", Assert.Single(RatchetFailures(both, Rows((earlier, VerdictClass.FalseRefusal, "#2417 wrong-code"), (later, VerdictClass.FalseRefusal, "#2423 wrong-code")))));
         var laterOnly = new[] { Of(earlier, Refused("SPY0220")), Of(later, Refused("SPY0200")) };
         Assert.Contains("the route says '#2423", Assert.Single(RatchetFailures(laterOnly, Rows((later, VerdictClass.FalseRefusal, "#2417 wrong-code")))));
+
+        // An alias whose target reaches the alias itself is unruled (#2769): its unused cell must run, and one that stops
+        // running is that tracker's row, never the alias refusal's (#2423).
+        var itself = pool.First(c => c.Cell.Key!.Part<ScopeAliasTarget>() == ScopeAliasTarget.Itself);
+        Assert.Equal(SharpyTag.MustRun, itself.Cell.Tag);
+        var refusedItself = new[] { Of(itself, Refused("SPY0202")) };
+        Assert.Empty(RatchetFailures(refusedItself, Rows((itself, VerdictClass.FalseRefusal, "#2769 false-refusal"))));
+        Assert.Contains("the route says '#2769", Assert.Single(RatchetFailures(refusedItself, Rows((itself, VerdictClass.FalseRefusal, "#2423 false-refusal")))));
     }
 }

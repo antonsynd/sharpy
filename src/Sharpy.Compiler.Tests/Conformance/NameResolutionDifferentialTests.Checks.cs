@@ -810,8 +810,9 @@ public partial class NameResolutionDifferentialTests
             "a cell's tag and rule are its one row's, a row no cell matches rules nothing, and a refusal under a rule says which codes it admits");
 
         // Measured literals: a table or a generator that stopped citing a rule would otherwise pass an emptier check. 44 rules of this
-        // pool, and the five only ScopeMeaningDifferentialTests has cells for (R-QI, N1-typed-read, N4, SPY0425, N1-alias-target).
-        RuleTable().Select(r => r.Rule).Distinct(StringComparer.Ordinal).Should().HaveCount(49);
+        // pool, and the eight only ScopeMeaningDifferentialTests has cells for (R-QI, N1-typed-read, N4, #1938, SPY0425, kind:SPY0336,
+        // N1-alias-target, #2769).
+        RuleTable().Select(r => r.Rule).Distinct(StringComparer.Ordinal).Should().HaveCount(52);
         // 29 rules with an entry, and the seeds', which carry their own codes.
         pool.Where(RefusalIsAnOutcome).Select(c => c.Rule).Distinct(StringComparer.Ordinal).Should().HaveCount(30);
     }

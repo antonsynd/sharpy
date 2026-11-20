@@ -1,4 +1,5 @@
 using System.Reflection;
+using Sharpy.Compiler.Discovery;
 using Sharpy.Compiler.Discovery.Caching;
 using Sharpy.Compiler.Semantic;
 using Sharpy.Compiler.Semantic.Validation;
@@ -23,10 +24,14 @@ namespace Sharpy.Compiler.Tests.Conformance;
 /// <item><term>typed-read × spelling, × reader position</term><description><c>Spelling</c> and <see cref="ReadPosition"/>, as the
 /// P77a pool runs a read of the kind (<see cref="TypedReaders"/>): the pool's own rosters decide where a read is legal</description></item>
 /// <item><term>callee × outer</term><description><see cref="BindingKind"/> (<c>Enum.GetValues</c>)</description></item>
-/// <item><term>constant-kind × host</term><description><c>AdmissionTable</c>, the validator's own enumeration of constant positions</description></item>
-/// <item><term>constant-kind × member kind</term><description>a census of what discovery records for every value of every
-/// Stdlib module (<c>FieldSignature.IsConst</c> × <c>IsGuarded</c>), which is what a checker's answer for a bound module
-/// member can rest on</description></item>
+/// <item><term>constant-kind × host</term><description>the call sites of <c>ConstantDefaultClassifier.IsAdmitted</c> in the compiler's
+/// source (a census: <c>ScopeMeaningDifferentialTests.Readers.cs</c>), each with the <c>AdmissionTable</c> it passes; the one
+/// site that judges a <c>const</c> at every scope is refined by <c>ScopeKind</c> × <c>TypeKind</c></description></item>
+/// <item><term>constant-kind × member kind</term><description>what the compiler records for a member, per where the member
+/// lives: a referenced module's value (a census of discovery's <c>FieldSignature.IsConst</c> × <c>IsGuarded</c> over the
+/// Stdlib), a referenced type's member (the subclasses of <c>ClrMemberResolution</c>, a field refined by
+/// <c>FieldInfo.IsLiteral</c>), the program's own enum (<c>EnumMemberAccessKind</c>), and any other name of the program
+/// (<see cref="BindingKind"/>)</description></item>
 /// <item><term>alias-target × site</term><description><c>ScopeKind</c> × <c>TypeKind</c>: the scope an alias's binder declares into</description></item>
 /// <item><term>alias-target × shape</term><description>the public properties of the alias's three AST records
 /// (<c>TypeAlias</c>, <c>TypeAnnotation</c>, <c>FunctionType</c>): each place a target can hold a type's name</description></item>
@@ -62,6 +67,15 @@ public sealed partial class ScopeMeaningDifferentialTests
         [EnumBodyHoldsCases] = new("enum H:\n    type K0 = int\n    RED = 1\n" + TailMain, "SPY0103", r => Refused(r, "SPY0103") || Refused(r, "SPY0101")),
         [UnionBodyHoldsCases] = new("union H:\n    type K0 = int\n    case A()\n" + TailMain, "SPY0104", r => Refused(r, "SPY0104")),
         [NeedsItsValue] = new("const x: int\ndef main() -> None:\n    let y: int\n    print(1)\n", "SPY0104", r => r.ErrorCodes.Count(c => c == "SPY0104") == 2),
+        [DelegateHasNoBody] = new("delegate D(x: int) -> int:\n    type K0 = int\n" + TailMain, "SPY0100", r => Refused(r, "SPY0100")),
+        [EnumBodyHoldsNoConst] = new("enum H:\n    const K: int = 1\n    RED = 1\n" + TailMain, "SPY0101", r => Refused(r, "SPY0101")),
+        [UnionBodyHoldsNoConst] = new("union H:\n    const K: int = 1\n    case A()\n" + TailMain, "SPY0104", r => Refused(r, "SPY0104")),
+        [LambdaTakesNoCallableSlot] = new("def five() -> int:\n    return 5\ndef main() -> None:\n    f = lambda p: () -> int = five: p\n    print(1)\n", "SPY0103", r => Refused(r, "SPY0103")),
+        [AnIntEnum] = new("enum H:\n    RED = 1.5\n" + TailMain, "SPY0253", r => Refused(r, "SPY0253")),
+        [NamesAType] = new("class G:\n    class x:\n        v: int = 5\ndef f(p: int = G.x) -> int:\n    return p\n" + TailMain, "SPY0220", r => Refused(r, "SPY0220")),
+        [NoSuchMember] = new("def f(p: int = int.nosuch) -> int:\n    return p\n" + TailMain, "SPY0203", r => Refused(r, "SPY0203")),
+        [ACallByShape] = new("def five() -> int:\n    return 5\ndef f(p: int = five()) -> int:\n    return p\n" + TailMain, "SPY0401", r => Refused(r, "SPY0401")),
+        [ALocalInAConstantPosition] = new("def main() -> None:\n    y: int = 5\n    f = lambda p: int = y: p\n    print(f())\n", "SPY0401", r => Refused(r, "SPY0401")),
     };
 
     // ------------------------------------------------------------------------------------------- //
@@ -133,7 +147,7 @@ public sealed partial class ScopeMeaningDifferentialTests
         [TypeKind.Interface] = InterfaceStaticIsNoStatic,
         [TypeKind.Enum] = EnumBodyHoldsCases,
         [TypeKind.Union] = UnionBodyHoldsCases,
-        [TypeKind.Delegate] = "no Sharpy declaration: `() -> int` is an annotation, never a host",
+        [TypeKind.Delegate] = DelegateHasNoBody,
     };
 
     /// <summary>A declared type: its label in a cell's id, its spelling, a value of it, how <c>main</c> shows that value as
@@ -310,14 +324,26 @@ public sealed partial class ScopeMeaningDifferentialTests
 
     private const string AReadOfItself = "a declaration that reads itself, directly or through a ring, is N3-cycle's: refused or thrown whatever its slot's type (the 8951 pool's Self and Cycle cells)";
     private const string ARecursion = "a constructor that calls itself is a recursion, not an order of two declarations";
-    private const string ARecursiveAlias = "an alias that names itself, directly or through a ring, has a target that is neither missing nor a declared type: a recursive alias is unruled (owner question raised with plan-777361's first revision)";
+    private const string OverflowsTheCompiler = "#2769: named by an annotation, an alias whose target reaches the alias overflows the compiler's stack (`TypeResolver.ExpandTypeAlias`), and a process that dies leaves no verdict a cell can read (so no probe either: it would take the test host with it). The class is unruled and out of P78 (owner, #2423 comment 7042723494 item 9), so only the UNUSED alias has cells, and they keep running";
 
     /// <summary>The orders with no cell, per cell set that has the axis: total over <c>Order</c> with the two every set generates.</summary>
     internal static readonly IReadOnlyDictionary<string, IReadOnlyDictionary<Harness.Order, string>> ExcludedOrders = new Dictionary<string, IReadOnlyDictionary<Harness.Order, string>>(StringComparer.Ordinal)
     {
         ["typed-read"] = new Dictionary<Harness.Order, string> { [Harness.Order.Self] = AReadOfItself, [Harness.Order.Cycle] = AReadOfItself },
         ["init-overload"] = new Dictionary<Harness.Order, string> { [Harness.Order.Self] = ARecursion, [Harness.Order.Cycle] = ARecursion },
-        ["alias-target"] = new Dictionary<Harness.Order, string> { [Harness.Order.Self] = ARecursiveAlias, [Harness.Order.Cycle] = ARecursiveAlias },
+        ["alias-target"] = new Dictionary<Harness.Order, string>(),
+    };
+
+    /// <summary>The target × use pairs with no cell, total over the two enums with the pairs a cell carries.</summary>
+    internal static readonly IReadOnlyDictionary<(ScopeAliasTarget Target, ScopeAliasUse Use), string> ExcludedAliasUses = new Dictionary<(ScopeAliasTarget, ScopeAliasUse), string>
+    {
+        [(ScopeAliasTarget.Itself, ScopeAliasUse.Used)] = OverflowsTheCompiler,
+    };
+
+    /// <summary>The shapes whose name cannot be the alias itself, by label: every other shape has its self-reaching cells.</summary>
+    internal static readonly IReadOnlyDictionary<string, string> ExcludedSelfReachingShapes = new Dictionary<string, string>(StringComparer.Ordinal)
+    {
+        ["dotted"] = "the name is qualified by a module, and an alias is no member of one: `pathlib.K0` names nothing, which is the Missing cell",
     };
 
     // ------------------------------------------------------------------------------------------- //
@@ -399,63 +425,196 @@ public sealed partial class ScopeMeaningDifferentialTests
     };
 
     // ------------------------------------------------------------------------------------------- //
-    // constant-kind (#2432): host × kind
+    // constant-kind (#2432): reader site × host × kind
     // ------------------------------------------------------------------------------------------- //
 
-    /// <summary>A host of a constant position: its label, the program around <c>{e}</c> typed <c>{T}</c>, the code its refusal
-    /// carries, the 8951 pool's position where it has one, whether the program prints <c>1</c> and not the value, whether it
-    /// takes an int only, and whether python has the same position.</summary>
-    internal sealed record ConstantHost(string Label, string Program, string Refusal, ReadPosition? Position = null, bool PrintsOne = false, bool IntOnly = false, bool Twin = false);
+    /// <summary>A host of a constant position: its label, the program around <c>{e}</c> typed <c>{T}</c> (with <c>{s}</c> where
+    /// <c>main</c> shows the slot's value, read into the local <c>v</c>), the code its refusal carries, the 8951 pool's position
+    /// where it has one, the imports the program itself needs, whether the program prints <c>1</c> and not the value, whether
+    /// it takes an int only, whether its slot can be given a function type, and whether python has the same position.</summary>
+    internal sealed record ConstantHost(string Label, string Program, string Refusal, ReadPosition? Position = null, string? Imports = null, bool PrintsOne = false,
+        bool IntOnly = false, bool NoCallableSlot = false, bool Twin = false);
 
-    /// <summary>The constant positions, total over <c>AdmissionTable</c> with <see cref="ExcludedAdmissionTables"/>: every table the
-    /// validator judges a position by, each with the hosts that reach it.</summary>
-    internal static readonly IReadOnlyDictionary<AdmissionTable, ConstantHost[]> ConstantHosts = new Dictionary<AdmissionTable, ConstantHost[]>
+    /// <summary><c>main</c> for a host whose slot is read by <paramref name="read"/>, after <paramref name="before"/>.</summary>
+    private static string ShowIn(string read, string before = "") => $"{Main}{before}    v: {{T}} = {read}\n    print({{s}})";
+
+    private const string AttributeTarget = "    def f(self) -> int:\n        return 1\n" + Main + "    print(H().f())";
+
+    private const string DelegateHasNoBody = "a `delegate` declaration is a signature on one line (`delegate D(x: int) -> int`, `DelegateDef`): it has no body to hold a member, a `const` or an alias (SPY0100)";
+    private const string EnumBodyHoldsNoConst = "an enum body holds `NAME = value` cases and nothing else: a `const` there is SPY0101";
+    private const string UnionBodyHoldsNoConst = "a union body holds cases and methods and nothing else: a `const` there is SPY0104";
+    private const string NotADeclarationScope = "the scope of an initializer EXPRESSION's own locals: a declaration statement is no expression";
+    private const string HoldsTypeParameters = "pushed to hold type parameters for one resolution step: it declares nothing a program writes";
+
+    /// <summary>Where a <c>const</c> is declared, total over <c>ScopeKind</c> with <see cref="ExcludedConstScopes"/>: the one
+    /// classifier call that judges a <c>const</c> initializer (<c>ConstEligibility.Compute</c>) judges it at every scope a
+    /// declaration can stand in. A type body is refined by <see cref="ConstTypeHosts"/>.</summary>
+    internal static readonly IReadOnlyDictionary<ScopeKind, ConstantHost[]> ConstSites = new Dictionary<ScopeKind, ConstantHost[]>
     {
-        [AdmissionTable.ParameterDefault] = new[]
+        [ScopeKind.Module] = new[] { new ConstantHost("module-const", "const K: {T} = {e}\n" + ShowIn("K"), "SPY0401") },
+        [ScopeKind.TypeBody] = Array.Empty<ConstantHost>(),
+        [ScopeKind.FunctionLike] = new[] { new ConstantHost("local-const", ShowIn("K", "    const K: {T} = {e}\n"), "SPY0401") },
+        [ScopeKind.Block] = new[] { new ConstantHost("block-const", $"{Main}    if True:\n        const K: {{T}} = {{e}}\n        v: {{T}} = K\n        print({{s}})", "SPY0401") },
+    };
+
+    internal static readonly IReadOnlyDictionary<ScopeKind, string> ExcludedConstScopes = new Dictionary<ScopeKind, string>
+    {
+        [ScopeKind.InitializerHost] = NotADeclarationScope,
+        [ScopeKind.Transparent] = HoldsTypeParameters,
+    };
+
+    /// <summary>The type bodies a <c>const</c> is declared in, total over <c>TypeKind</c> with <see cref="ExcludedConstTypeHosts"/>.</summary>
+    internal static readonly IReadOnlyDictionary<TypeKind, ConstantHost[]> ConstTypeHosts = new Dictionary<TypeKind, ConstantHost[]>
+    {
+        [TypeKind.Class] = new[] { new ConstantHost("class-const", "class H:\n    const K: {T} = {e}\n" + ShowIn("H.K"), "SPY0401", ReadPosition.ConstInitializer) },
+        [TypeKind.Struct] = new[] { new ConstantHost("struct-const", "struct H:\n    const K: {T} = {e}\n    w: int = 1\n" + ShowIn("H.K"), "SPY0401") },
+        [TypeKind.Interface] = new[] { new ConstantHost("interface-const", "interface H:\n    const K: {T} = {e}\n    def m(self) -> int: ...\n" + ShowIn("H.K"), "SPY0401") },
+    };
+
+    internal static readonly IReadOnlyDictionary<TypeKind, string> ExcludedConstTypeHosts = new Dictionary<TypeKind, string>
+    {
+        [TypeKind.Enum] = EnumBodyHoldsNoConst,
+        [TypeKind.Union] = UnionBodyHoldsNoConst,
+        [TypeKind.Delegate] = DelegateHasNoBody,
+    };
+
+    internal static IEnumerable<ConstantHost> AllConstSites()
+        => ConstSites.OrderBy(e => e.Key).SelectMany(e => e.Key == ScopeKind.TypeBody ? ConstTypeHosts.OrderBy(h => h.Key).SelectMany(h => h.Value) : e.Value);
+
+    private const string OutsideOneFile = "the cross-module route: `ModuleLoader` judging a const another module of a project exports, with no SemanticInfo; this type compiles one file, and the route is plan-777361's hand control (A3)";
+
+    /// <summary>
+    /// The hosts of a constant position, keyed by the READER that judges them: a call site of
+    /// <c>ConstantDefaultClassifier.IsAdmitted</c>, as <see cref="ScanClassifierReaders"/> finds it in the compiler's source
+    /// (<c>File:Method</c>, <c>#n</c> for a method's nth site; a site whose table is its method's parameter is counted at each
+    /// caller that passes one). Total over that census with <see cref="ExcludedConstantReaders"/>, so a reader the compiler gains
+    /// has no host here and is red, and a reader whose host is deleted is red too (the owner's ruling 8 of 2026-11-20). A host's
+    /// <c>AdmissionTable</c> is READ from its reader's call, never written here.
+    /// </summary>
+    internal static readonly IReadOnlyDictionary<string, ConstantHost[]> ConstantReaders = new Dictionary<string, ConstantHost[]>(StringComparer.Ordinal)
+    {
+        ["ConstantPositionValidator.cs:ValidateFunctionDefaults"] = new[]
         {
-            new ConstantHost("def", $"def f(p: {{T}} = {{e}}) -> {{T}}:\n    return p\n{Main}    print(f())", "SPY0401", ReadPosition.ParameterDefault, Twin: true),
+            new ConstantHost("def", "def f(p: {T} = {e}) -> {T}:\n    return p\n" + ShowIn("f()"), "SPY0401", ReadPosition.ParameterDefault, Twin: true),
         },
-        [AdmissionTable.LambdaParameterDefault] = new[]
+        ["ConstantPositionValidator.cs:ValidateLambdaDefaults"] = new[]
         {
-            new ConstantHost("lambda", $"{Main}    f = lambda p: {{T}} = {{e}}: p\n    print(f())", "SPY0401"),
+            new ConstantHost("lambda", ShowIn("f()", "    f = lambda p: {T} = {e}: p\n"), "SPY0401", NoCallableSlot: true),
         },
-        [AdmissionTable.DecoratorArgument] = new[]
+        // The two loops of one method: an attribute's positional arguments, then its named ones.
+        ["ConstantPositionValidator.cs:ValidateDecoratorConstantArguments"] = new[]
         {
-            new ConstantHost("attribute", $"class H:\n    @[system.component_model.default_value({{e}})]\n    def f(self) -> int:\n        return 1\n{Main}    print(H().f())", "SPY0425", PrintsOne: true),
+            new ConstantHost("attribute", "class H:\n    @[system.component_model.default_value({e})]\n" + AttributeTarget, "SPY0425", PrintsOne: true),
         },
-        [AdmissionTable.ConstInitializer] = new[]
+        ["ConstantPositionValidator.cs:ValidateDecoratorConstantArguments#2"] = new[]
         {
-            new ConstantHost("module-const", $"const K: {{T}} = {{e}}\n{Main}    print(K)", "SPY0401"),
-            new ConstantHost("class-const", $"class H:\n    const K: {{T}} = {{e}}\n{Main}    print(H.K)", "SPY0401", ReadPosition.ConstInitializer),
-            new ConstantHost("local-const", $"{Main}    const K: {{T}} = {{e}}\n    print(K)", "SPY0401"),
+            new ConstantHost("attribute-keyword", "class Mark(Attribute):\n    w: object = 0\nclass H:\n    @[Mark(w={e})]\n" + AttributeTarget, "SPY0425",
+                Imports: "from system import Attribute", PrintsOne: true),
         },
-        [AdmissionTable.PerInstanceFieldDefault] = new[]
+        ["ConstantPositionValidator.cs:ValidateDataclassFieldDefaults"] = new[]
         {
-            new ConstantHost("dataclass", $"@dataclass\nclass H:\n    p: {{T}} = {{e}}\n{Main}    print(H().p)", "SPY0401", ReadPosition.DataclassFieldInitializer, Twin: true),
-            new ConstantHost("struct", $"struct H:\n    p: {{T}} = {{e}}\n{Main}    print(H().p)", "SPY0401", ReadPosition.StructFieldInitializer, Twin: true),
+            new ConstantHost("dataclass", "@dataclass\nclass H:\n    p: {T} = {e}\n" + ShowIn("H().p"), "SPY0401", ReadPosition.DataclassFieldInitializer, Twin: true),
         },
+        ["ConstantPositionValidator.cs:ValidateStructFieldDefaults"] = new[]
+        {
+            new ConstantHost("struct", "struct H:\n    p: {T} = {e}\n" + ShowIn("H().p"), "SPY0401", ReadPosition.StructFieldInitializer, Twin: true),
+        },
+        ["ConstEligibility.cs:Compute"] = AllConstSites().ToArray(),
+        // A struct's defaulted auto-property (#1938): a constant default becomes the synthesized constructor's parameter default,
+        // and any other default keeps its initializer, so every expression must run here (ruling 8).
+        ["CodeGenInfoComputer.cs:MarkStructConstructorProperty"] = new[]
+        {
+            new ConstantHost("struct-auto-property", "struct H:\n    property p: {T} = {e}\n" + ShowIn("H().p"), "SPY0401"),
+        },
+    };
+
+    internal static readonly IReadOnlyDictionary<string, string> ExcludedConstantReaders = new Dictionary<string, string>(StringComparer.Ordinal)
+    {
+        ["ConstEligibility.cs:IsExportedConstCompileTime"] = OutsideOneFile,
     };
 
     internal static readonly IReadOnlyDictionary<AdmissionTable, string> ExcludedAdmissionTables = new Dictionary<AdmissionTable, string>();
 
-    /// <summary>The one constant position the validator judges by no table: an enum member's value. A table value added for it
-    /// has no entry in <see cref="ConstantHosts"/>, which is red until this host moves under it.</summary>
+    /// <summary>The one constant position no classifier call judges: an enum member's value. A table value added for it has no
+    /// reader here, which is red until this host moves under it.</summary>
     internal static readonly ConstantHost EnumMemberHost = new("enum-member", $"enum H:\n    RED = {{e}}\n{Main}    print(H.RED.value)", "SPY0401", ReadPosition.EnumMemberValue, IntOnly: true);
 
-    /// <summary>The expression, its type, what it prints and what it imports.</summary>
-    internal sealed record ConstantExpression(string Label, string Text, string Type, string Prints, string? Import);
+    /// <summary>Every host with the table its reader passes; the enum member's value last, with none.</summary>
+    internal static IEnumerable<(AdmissionTable? Table, ConstantHost Host)> AllConstantHosts()
+    {
+        var census = ClassifierReaders.Value.Sites;
+        return ConstantReaders.Where(r => census.ContainsKey(r.Key))
+            .SelectMany(r => r.Value.Select(h => (Table: (AdmissionTable?)census[r.Key], Host: h)))
+            .OrderBy(h => h.Table).ThenBy(h => h.Host.Label, StringComparer.Ordinal)
+            .Append((Table: null, Host: EnumMemberHost));
+    }
+
+    private const string LambdaTakesNoCallableSlot = "a lambda parameter's annotation cannot be a function type and take a default: `lambda p: () -> int = five: p` is SPY0103";
+    private const string AnIntEnum = "the host is an int enum, whose member's value is an int: a `str` value declares a string enum, another host, and any other type is SPY0253";
+
+    /// <summary>Why a host has no cell for a slot of <paramref name="type"/>, or null when it has one.</summary>
+    internal static string? HostSkips(ConstantHost host, string type)
+        => host.IntOnly && type != "int" ? AnIntEnum
+            : host.NoCallableSlot && type.Contains("->", StringComparison.Ordinal) ? LambdaTakesNoCallableSlot
+            : null;
+
+    /// <summary>The expression: its label, text, type and what it prints; the import line and the declarations it needs; how
+    /// <c>main</c> shows a value of its type (<c>{0}</c> the read); the codes its own kind's refusal carries beside the host's;
+    /// the binding kind a bare name of it has; the value of a referenced module it names (<c>module.name</c>, what
+    /// <see cref="StdlibModuleValues"/> is keyed by) or the member of a referenced type; and its read form where it has one.</summary>
+    internal sealed record ConstantExpression(string Label, string Text, string Type, string Prints, string? Import = null, string? Prelude = null, string Show = "{0}",
+        string[]? Refusals = null, BindingKind Target = BindingKind.None, string? ModuleValue = null, Type? Owner = null, string? Member = null, Harness.Form? Form = null)
+    {
+        public bool Stdlib => ModuleValue != null;
+    }
+
+    private static ConstantExpression ModuleValue(string module, string name, string type, string prints)
+        => new($"{module}.{name}", $"{module}.{name}", type, prints, Import: $"import {module}", ModuleValue: $"{module}.{name}");
+
+    /// <summary>The same value named bare through <c>from module import name</c>: a spelling, which changes no verdict (N7).</summary>
+    private static ConstantExpression ImportedValue(string module, string name, string type, string prints)
+        => new($"from-{module}-import-{name}", name, type, prints, Import: $"from {module} import {name}", Target: BindingKind.ImportedName, ModuleValue: $"{module}.{name}");
+
+    private static ConstantExpression TypeMember(string text, string type, string prints, Type owner, string member, string? import = null, string show = "{0}", string[]? refusals = null, Harness.Form? form = null)
+        => new(text, text, type, prints, Import: import, Show: show, Refusals: refusals, Owner: owner, Member: member, Form: form);
+
+    private const string IntEnum = "enum E0:\n    RED = 5";
+    private const string StringEnum = "enum E0:\n    RED = \"r\"";
 
     internal static readonly IReadOnlyDictionary<ScopeConstantKind, ConstantExpression[]> ConstantExpressions = new Dictionary<ScopeConstantKind, ConstantExpression[]>
     {
-        [ScopeConstantKind.ClrLiteralField] = new[] { new ConstantExpression("subprocess.PIPE", "subprocess.PIPE", "int", "-1", "subprocess") },
+        [ScopeConstantKind.ClrLiteralField] = new[] { ModuleValue("subprocess", "PIPE", "int", "-1"), ImportedValue("subprocess", "PIPE", "int", "-1") },
         [ScopeConstantKind.StdlibModuleVariable] = new[]
         {
-            new ConstantExpression("socket.AF_INET", "socket.AF_INET", "int", "2", "socket"),
-            new ConstantExpression("math.pi", "math.pi", "float", "3.141592653589793", "math"),
+            ModuleValue("socket", "AF_INET", "int", "2"),
+            ModuleValue("math", "pi", "float", "3.141592653589793"),
+            ImportedValue("math", "pi", "float", "3.141592653589793"),
         },
-        [ScopeConstantKind.ClrStaticMember] = new[] { new ConstantExpression("sys.maxsize", "sys.maxsize", "int", "2147483647", "sys") },
-        [ScopeConstantKind.ComparisonChain] = new[] { new ConstantExpression("ordered", "1 < 2 < 3", "bool", "True", null) },
-        [ScopeConstantKind.ChainWithNonConstantLink] = new[] { new ConstantExpression("membership", "0 < 2 in [1, 2]", "bool", "True", null) },
+        [ScopeConstantKind.ClrStaticMember] = new[] { ModuleValue("sys", "maxsize", "int", "2147483647"), ImportedValue("sys", "maxsize", "int", "2147483647") },
+        // A literal field through each receiver a type has: a builtin's own name, an imported name, a module-qualified name.
+        [ScopeConstantKind.ClrTypeLiteralField] = new[]
+        {
+            TypeMember("int.max_value", "int", "2147483647", typeof(int), "max_value"),
+            TypeMember("Int32.max_value", "int", "2147483647", typeof(int), "max_value", "from system import Int32"),
+            TypeMember("system.Int32.max_value", "int", "2147483647", typeof(int), "max_value", "import system"),
+            TypeMember("Math.PI", "float", "3.141592653589793", typeof(Math), "PI", "from system import Math"),
+        },
+        [ScopeConstantKind.ClrTypeEnumMember] = new[] { TypeMember("DayOfWeek.Monday", "DayOfWeek", "DayOfWeek.Monday", typeof(DayOfWeek), "Monday", "from system import DayOfWeek") },
+        [ScopeConstantKind.ClrTypeStaticField] = new[] { TypeMember("BitConverter.is_little_endian", "bool", "True", typeof(BitConverter), "is_little_endian", "from system import BitConverter") },
+        [ScopeConstantKind.ClrTypeStaticProperty] = new[] { TypeMember("Array.max_length", "int", "2147483591", typeof(Array), "max_length", "from system import Array") },
+        [ScopeConstantKind.ClrTypeMethod] = new[] { TypeMember("Math.sqrt", "(float) -> float", "5.0", typeof(Math), "sqrt", "from system import Math", "{0}(25.0)", form: Harness.Form.Value) },
+        [ScopeConstantKind.ClrTypeMethodGroup] = new[]
+        {
+            TypeMember("Math.abs", "(int) -> int", "5", typeof(Math), "abs", "from system import Math", "{0}(-5)", new[] { "SPY0336" }, Harness.Form.Value),
+        },
+        [ScopeConstantKind.IntEnumMember] = new[] { new ConstantExpression("member", "E0.RED", "E0", "5", Prelude: IntEnum, Show: "{0}.value", Target: BindingKind.ModuleEnum) },
+        [ScopeConstantKind.IntEnumValue] = new[] { new ConstantExpression("value", "E0.RED.value", "int", "5", Prelude: IntEnum, Target: BindingKind.ModuleEnum, Form: Harness.Form.EnumValue) },
+        [ScopeConstantKind.IntEnumName] = new[] { new ConstantExpression("name", "E0.RED.name", "str", "RED", Prelude: IntEnum, Target: BindingKind.ModuleEnum) },
+        [ScopeConstantKind.StringEnumMember] = new[] { new ConstantExpression("member", "E0.RED", "E0", "r", Prelude: StringEnum, Show: "{0}.value", Target: BindingKind.ModuleEnum) },
+        [ScopeConstantKind.StringEnumValue] = new[] { new ConstantExpression("value", "E0.RED.value", "str", "r", Prelude: StringEnum, Target: BindingKind.ModuleEnum, Form: Harness.Form.EnumValue) },
+        [ScopeConstantKind.StringEnumName] = new[] { new ConstantExpression("name", "E0.RED.name", "str", "RED", Prelude: StringEnum, Target: BindingKind.ModuleEnum) },
+        [ScopeConstantKind.ComparisonChain] = new[] { new ConstantExpression("ordered", "1 < 2 < 3", "bool", "True") },
+        [ScopeConstantKind.ChainWithNonConstantLink] = new[] { new ConstantExpression("membership", "0 < 2 in [1, 2]", "bool", "True") },
     };
 
     /// <summary>What discovery records for a value of a referenced module, and the kind that is its image: the two facts of
@@ -473,9 +632,6 @@ public sealed partial class ScopeMeaningDifferentialTests
         [(true, true)] = "a literal has no storage to guard",
     };
 
-    /// <summary>The kinds that are no member of a module: closed by call 45 (a chain is admitted when each link is).</summary>
-    internal static readonly IReadOnlySet<ScopeConstantKind> ChainKinds = new HashSet<ScopeConstantKind> { ScopeConstantKind.ComparisonChain, ScopeConstantKind.ChainWithNonConstantLink };
-
     /// <summary>Every value of every module of the Stdlib, as discovery records it.</summary>
     private static readonly Lazy<IReadOnlyDictionary<string, (bool IsConst, bool IsGuarded)>> StdlibModuleValues = new(() =>
     {
@@ -488,6 +644,141 @@ public sealed partial class ScopeMeaningDifferentialTests
         }
         return values;
     });
+
+    private const string LiteralFieldShape = "Field/literal";
+    private const string EnumFieldShape = "Field/enum";
+    private const string StaticFieldShape = "Field/static";
+
+    /// <summary>
+    /// What the checker's resolver of a referenced type's member (<c>ClrMemberTypeResolver</c>) answers for a member read through
+    /// the type, and the kind that is its image: the subclasses of <c>ClrMemberResolution</c>, by name, with a field refined by
+    /// the two facts reflection has and discovery does not (<c>FieldInfo.IsLiteral</c>; a literal of an enum type is the enum's
+    /// member). Total over those subclasses with <see cref="ExcludedClrTypeMemberShapes"/>.
+    /// </summary>
+    internal static readonly IReadOnlyDictionary<string, ScopeConstantKind> ClrTypeMemberShapes = new Dictionary<string, ScopeConstantKind>(StringComparer.Ordinal)
+    {
+        [LiteralFieldShape] = ScopeConstantKind.ClrTypeLiteralField,
+        [EnumFieldShape] = ScopeConstantKind.ClrTypeEnumMember,
+        [StaticFieldShape] = ScopeConstantKind.ClrTypeStaticField,
+        [nameof(ClrMemberResolution.Property)] = ScopeConstantKind.ClrTypeStaticProperty,
+        [nameof(ClrMemberResolution.Method)] = ScopeConstantKind.ClrTypeMethod,
+        [nameof(ClrMemberResolution.MethodGroup)] = ScopeConstantKind.ClrTypeMethodGroup,
+    };
+
+    private const string UncheckedAtAnAttribute = "; at an attribute argument, which the checker does not visit today, it is one more cell of the class the instance-member and method-group cells there hold red, with the same cure";
+    private const string NamesAType = "names a type: handed to a slot of another type it is the checker's own mismatch (SPY0220) at every position the checker checks" + UncheckedAtAnAttribute;
+    private const string NoSuchMember = "no member of the name: the checker refuses the read itself (SPY0203) and binds nothing" + UncheckedAtAnAttribute;
+    private const string TheCheckerDeclines = "the resolver declines to describe the member, so the checker binds nothing: a member nothing bound is outside the bound-member kinds by definition, and plan-777361's D8 leaves it to the shape rule";
+
+    internal static readonly IReadOnlyDictionary<string, string> ExcludedClrTypeMemberShapes = new Dictionary<string, string>(StringComparer.Ordinal)
+    {
+        [nameof(ClrMemberResolution.NestedType)] = NamesAType,
+        [nameof(ClrMemberResolution.AbsentResult)] = NoSuchMember,
+        [nameof(ClrMemberResolution.InconclusiveResult)] = TheCheckerDeclines,
+    };
+
+    /// <summary>The shape of <paramref name="member"/> read through <paramref name="owner"/>, as the checker's resolver answers it.</summary>
+    internal static string ClrTypeMemberShape(Type owner, string member)
+    {
+        var resolution = new ClrMemberTypeResolver(new ClrTypeBridge()).Resolve(owner, member, ClrReceiverKind.StaticType);
+        if (resolution is not ClrMemberResolution.Field field)
+            return resolution.GetType().Name;
+        var info = owner.GetField(field.ClrName, BindingFlags.Public | BindingFlags.Static | BindingFlags.FlattenHierarchy);
+        return info is not { IsLiteral: true } ? StaticFieldShape : owner.IsEnum ? EnumFieldShape : LiteralFieldShape;
+    }
+
+    /// <summary>The enum reads, total over <c>EnumMemberAccessKind</c> (which half of which enum shape a <c>.name</c> / <c>.value</c>
+    /// read takes) and the member itself per shape, which has no access kind.</summary>
+    internal static readonly IReadOnlyDictionary<ScopeConstantKind, (bool IntShape, EnumMemberAccessKind? Access)> EnumReadKinds = new Dictionary<ScopeConstantKind, (bool, EnumMemberAccessKind?)>
+    {
+        [ScopeConstantKind.IntEnumMember] = (true, null),
+        [ScopeConstantKind.IntEnumValue] = (true, EnumMemberAccessKind.IntValue),
+        [ScopeConstantKind.IntEnumName] = (true, EnumMemberAccessKind.IntName),
+        [ScopeConstantKind.StringEnumMember] = (false, null),
+        [ScopeConstantKind.StringEnumValue] = (false, EnumMemberAccessKind.StringValue),
+        [ScopeConstantKind.StringEnumName] = (false, EnumMemberAccessKind.StringName),
+    };
+
+    /// <summary>The kinds that are no member: closed by call 45 (a chain is admitted when each link is).</summary>
+    internal static readonly IReadOnlySet<ScopeConstantKind> ChainKinds = new HashSet<ScopeConstantKind> { ScopeConstantKind.ComparisonChain, ScopeConstantKind.ChainWithNonConstantLink };
+
+    /// <summary>A read of a name the program declares: the kind, the spelling of its declaration's type, through which type the
+    /// member is named (<c>Base</c>: a subclass), its read form where it is a callable, the declarations, the read, the slot's
+    /// type, how <c>main</c> shows the value, and the codes the kind's own refusal carries.</summary>
+    internal sealed record OwnRead(BindingKind Kind, ScopeAnnotation? Annotation, DeclaringRelation? Relation, Harness.Form? Form, string? Prelude, string Text, string Type, string Show, string[]? Refusals);
+
+    private const string ACallByShape = "read as a call it is `EmittableConstantKind.Call`, which every table refuses by the expression's shape before a name is resolved (SPY0401 at a default), so no member's kind is asked; at an enum member's value, which no table judges, a call is the 8951 pool's kind:enum-member-constant cell";
+    private const string ALocalInAConstantPosition = "a local: only a lambda's default and a local `const` can name one, as a bare name the identifier resolver answers (a local that is no const is SPY0401 at a lambda's default)";
+
+    /// <summary>The kinds with no cell as a name of the program's own, total over <see cref="BindingKind"/> with the kinds
+    /// <see cref="OwnReads"/> generates, <c>ModuleEnum</c> (the enum reads) and <c>ImportedName</c> (a referenced module's value
+    /// named bare).</summary>
+    internal static readonly IReadOnlyDictionary<BindingKind, string> ExcludedOwnReads = new Dictionary<BindingKind, string>
+    {
+        [BindingKind.ModuleLet] = ModuleLetRefused,
+        [BindingKind.ModuleClass] = NamesAType,
+        [BindingKind.ModuleStruct] = NamesAType,
+        [BindingKind.ModuleUnion] = NamesAType,
+        [BindingKind.ModuleInterface] = NamesAType,
+        [BindingKind.ModuleTypeAlias] = NamesAType,
+        [BindingKind.NestedType] = NamesAType,
+        [BindingKind.Constructor] = ACallByShape,
+        [BindingKind.EnclosingLocal] = ALocalInAConstantPosition,
+        [BindingKind.Parameter] = ALocalInAConstantPosition,
+        [BindingKind.Inner] = ALocalInAConstantPosition,
+        [BindingKind.LocalVar] = ALocalInAConstantPosition,
+        [BindingKind.LocalLet] = ALocalInAConstantPosition,
+        [BindingKind.LocalLiteralConst] = ALocalInAConstantPosition,
+        [BindingKind.LocalComputedConst] = ALocalInAConstantPosition,
+        [BindingKind.LocalDef] = ALocalInAConstantPosition,
+        [BindingKind.LambdaTypedLocal] = ALocalInAConstantPosition,
+        [BindingKind.None] = "no binding",
+    };
+
+    /// <summary>The read forms with no cell, total over the 8951 pool's <c>Form</c> with the two a cell carries (<c>Value</c>: a
+    /// callable read uncalled; <c>EnumValue</c>: an enum member's <c>.value</c>).</summary>
+    internal static readonly IReadOnlyDictionary<Harness.Form, string> ExcludedConstantForms = new Dictionary<Harness.Form, string>
+    {
+        [Harness.Form.Call] = ACallByShape,
+        [Harness.Form.Ctor] = ACallByShape,
+    };
+
+    /// <summary>
+    /// The program's own names as a constant position is handed them: every kind of the typed-read set (<see cref="TypedReads"/>:
+    /// each kind with an int-valued declaration of <c>x</c>), under each spelling of its declaration's type, named bare at module
+    /// level and through its type's name or a subclass's otherwise, a callable read UNCALLED (called, it is
+    /// <see cref="ACallByShape"/>); and a builtin function, which is declared by no program. An instance member named through a
+    /// type is the kind refusal SPY0290 whatever the position.
+    /// </summary>
+    internal static readonly IReadOnlyList<OwnRead> OwnReads = BuildOwnReads().ToList();
+
+    private static IEnumerable<OwnRead> BuildOwnReads()
+    {
+        foreach (var (kind, t) in TypedReads.OrderBy(e => e.Key))
+        {
+            bool callable = t.Member.EndsWith("()", StringComparison.Ordinal);
+            string name = callable ? t.Member[..^2] : t.Member;
+            foreach (var annotation in Enum.GetValues<ScopeAnnotation>())
+            {
+                var declaration = annotation == ScopeAnnotation.Annotated ? t.Annotated : t.Inferred;
+                if (declaration == null)
+                    continue;
+                foreach (var relation in t.Level == MemberLevel.Module ? new DeclaringRelation?[] { null } : new DeclaringRelation?[] { null, DeclaringRelation.Base })
+                {
+                    var prelude = new List<string>();
+                    if (t.NeedsFive)
+                        prelude.Add(Five);
+                    prelude.Add(t.Level == MemberLevel.Module ? declaration : "class G:\n" + Indent(declaration));
+                    if (relation == DeclaringRelation.Base)
+                        prelude.Add("class D(G):\n    pass");
+                    string receiver = t.Level == MemberLevel.Module ? "" : relation == DeclaringRelation.Base ? "D." : "G.";
+                    yield return new OwnRead(kind, annotation, relation, callable ? Harness.Form.Value : null, string.Join("\n", prelude), receiver + name,
+                        callable ? "() -> int" : "int", callable ? "{0}()" : "{0}", t.Level == MemberLevel.Instance ? new[] { "SPY0290" } : null);
+                }
+            }
+        }
+        yield return new OwnRead(BindingKind.Builtin, null, null, Harness.Form.Value, null, "abs", "(int) -> int", "{0}(-5)", null);
+    }
 
     // ------------------------------------------------------------------------------------------- //
     // alias-target: site × shape × target × use × order
@@ -517,8 +808,8 @@ public sealed partial class ScopeMeaningDifferentialTests
 
     internal static readonly IReadOnlyDictionary<ScopeKind, string> ExcludedAliasScopes = new Dictionary<ScopeKind, string>
     {
-        [ScopeKind.InitializerHost] = "the scope of an initializer EXPRESSION's own locals: a `type` statement is no expression",
-        [ScopeKind.Transparent] = "pushed to hold type parameters for one resolution step: it declares nothing a program writes",
+        [ScopeKind.InitializerHost] = NotADeclarationScope,
+        [ScopeKind.Transparent] = HoldsTypeParameters,
     };
 
     /// <summary>The type bodies an alias is declared in, total over <c>TypeKind</c> with <see cref="ExcludedAliasTypeHosts"/>.</summary>
@@ -533,7 +824,7 @@ public sealed partial class ScopeMeaningDifferentialTests
     {
         [TypeKind.Enum] = EnumBodyHoldsCases,
         [TypeKind.Union] = UnionBodyHoldsCases,
-        [TypeKind.Delegate] = "no Sharpy declaration: `() -> int` is an annotation, never a host",
+        [TypeKind.Delegate] = DelegateHasNoBody,
     };
 
     /// <summary>A target's shape: where in it the type's name <c>{N}</c> sits, whether the alias is generic, what it imports, and the
@@ -654,29 +945,79 @@ public sealed partial class ScopeMeaningDifferentialTests
         Carried("callee", CalleeOuters.Keys, c => new[] { c.Cell.Outer });
         Carried("callee", new[] { BindingKind.Parameter }, c => new[] { c.Cell.Target });
 
-        // constant-kind
-        Partition("constant-kind × host", Enum.GetValues<AdmissionTable>(), ConstantHosts.Keys, ExcludedAdmissionTables.Keys);
-        Carried("constant-kind", ConstantHosts.Keys, Part<AdmissionTable>);
-        Carried("constant-kind", ConstantHosts.Values.SelectMany(h => h).Append(EnumMemberHost).Select(h => h.Label), Marks);
+        // constant-kind: the readers, their hosts and their tables
+        var readers = ClassifierReaders.Value;
+        problems.AddRange(readers.Problems.Select(p => $"constant-kind × reader: {p}"));
+        Partition("constant-kind × reader", readers.Sites.Keys, ConstantReaders.Keys, ExcludedConstantReaders.Keys);
+        foreach (var hostless in ConstantReaders.Where(r => r.Value.Length == 0))
+            problems.Add($"constant-kind × reader: {hostless.Key} has no host");
+        var tables = ConstantReaders.Keys.Where(readers.Sites.ContainsKey).Select(k => readers.Sites[k]).Distinct().ToList();
+        Partition("constant-kind × table", Enum.GetValues<AdmissionTable>(), tables, ExcludedAdmissionTables.Keys);
+        Partition("constant-kind × const site", Enum.GetValues<ScopeKind>(), ConstSites.Keys, ExcludedConstScopes.Keys);
+        Partition("constant-kind × const type body", Enum.GetValues<TypeKind>(), ConstTypeHosts.Keys, ExcludedConstTypeHosts.Keys);
+        foreach (var empty in ConstSites.Where(e => e.Key != ScopeKind.TypeBody && e.Value.Length == 0).Select(e => e.Key.ToString())
+            .Concat(ConstTypeHosts.Where(e => e.Value.Length == 0).Select(e => e.Key.ToString())))
+            problems.Add($"constant-kind × const site: {empty} is listed with no host");
+        var hostLabels = AllConstantHosts().Select(h => h.Host.Label).ToList();
+        foreach (var twice in hostLabels.GroupBy(l => l, StringComparer.Ordinal).Where(g => g.Count() > 1))
+            problems.Add($"constant-kind × host: {twice.Key} is the label of {twice.Count()} hosts");
+        Carried("constant-kind", tables, Part<AdmissionTable>);
+        Carried("constant-kind", hostLabels, Marks);
         Carried("constant-kind", Enum.GetValues<ScopeConstantKind>(), Part<ScopeConstantKind>);
+
+        // constant-kind: the member kinds, each against what the compiler records for the member
         var census = StdlibModuleValues.Value;
-        Partition("constant-kind × member kind", census.Values.Distinct().Concat(UnproducedModuleValueShapes.Keys), ModuleValueShapes.Keys, UnproducedModuleValueShapes.Keys);
+        Partition("constant-kind × module value", census.Values.Distinct().Concat(UnproducedModuleValueShapes.Keys), ModuleValueShapes.Keys, UnproducedModuleValueShapes.Keys);
         foreach (var shape in UnproducedModuleValueShapes.Keys.Where(s => census.Values.Contains(s)))
-            problems.Add($"constant-kind × member kind: {census.First(v => v.Value == shape).Key} is {shape}, which is listed as a shape no value has");
-        Partition("constant-kind × kind", Enum.GetValues<ScopeConstantKind>(), ModuleValueShapes.Values, ChainKinds);
+            problems.Add($"constant-kind × module value: {census.First(v => v.Value == shape).Key} is {shape}, which is listed as a shape no value has");
+        Partition("constant-kind × type member",
+            typeof(ClrMemberResolution).GetNestedTypes(BindingFlags.Public | BindingFlags.NonPublic).Where(t => t.IsSubclassOf(typeof(ClrMemberResolution)))
+                .SelectMany(t => t.Name == nameof(ClrMemberResolution.Field) ? new[] { LiteralFieldShape, EnumFieldShape, StaticFieldShape } : new[] { t.Name }),
+            ClrTypeMemberShapes.Keys, ExcludedClrTypeMemberShapes.Keys);
+        Partition("constant-kind × enum access", Enum.GetValues<EnumMemberAccessKind>(), EnumReadKinds.Values.Where(v => v.Access != null).Select(v => v.Access!.Value), Array.Empty<EnumMemberAccessKind>());
+        foreach (var intShape in new[] { true, false }.Where(isInt => !EnumReadKinds.Values.Contains((isInt, (EnumMemberAccessKind?)null))))
+            problems.Add($"constant-kind × enum access: the member of {(intShape ? "an int" : "a string")} enum has no kind");
+        Partition("constant-kind × kind", Enum.GetValues<ScopeConstantKind>(),
+            ModuleValueShapes.Values.Concat(ClrTypeMemberShapes.Values).Concat(EnumReadKinds.Keys).Append(ScopeConstantKind.OwnMember), ChainKinds);
+        var ownKinds = OwnReads.Select(r => r.Kind).Append(BindingKind.ModuleEnum).Append(BindingKind.ImportedName).Distinct().ToList();
+        Partition("constant-kind × own name", Enum.GetValues<BindingKind>(), ownKinds, ExcludedOwnReads.Keys);
+        Carried("constant-kind", ownKinds, c => new[] { c.Cell.Target });
+        Carried("constant-kind", Enum.GetValues<ScopeAnnotation>(), Part<ScopeAnnotation>);
+        Carried("constant-kind", new[] { DeclaringRelation.Base }, Part<DeclaringRelation>);
+        Partition("constant-kind × read form", Enum.GetValues<Harness.Form>(), Route("constant-kind").SelectMany(Part<Harness.Form>), ExcludedConstantForms.Keys);
         foreach (var (kind, expressions) in ConstantExpressions)
         {
             foreach (var e in expressions)
             {
-                if (ChainKinds.Contains(kind) != (e.Import == null))
-                    problems.Add($"constant-kind: {e.Label} is listed under {kind}, and a member kind is read off an imported module while a chain is not");
-                else if (e.Import != null && !census.ContainsKey(e.Text))
-                    problems.Add($"constant-kind: discovery records no value {e.Text}");
-                else if (e.Import != null && ModuleValueShapes.GetValueOrDefault(census[e.Text], kind) != kind)
-                    problems.Add($"constant-kind: {e.Text} is listed under {kind}, and discovery records it (IsConst, IsGuarded) = {census[e.Text]}");
+                if (e.ModuleValue != null)
+                {
+                    if (!census.TryGetValue(e.ModuleValue, out var recorded))
+                        problems.Add($"constant-kind: discovery records no value {e.ModuleValue}");
+                    else if (!ModuleValueShapes.TryGetValue(recorded, out var image) || image != kind)
+                        problems.Add($"constant-kind: {e.Label} is listed under {kind}, and discovery records {e.ModuleValue} (IsConst, IsGuarded) = {recorded}");
+                }
+                else if (e.Owner != null)
+                {
+                    var shape = ClrTypeMemberShape(e.Owner, e.Member!);
+                    if (!ClrTypeMemberShapes.TryGetValue(shape, out var image) || image != kind)
+                        problems.Add($"constant-kind: {e.Label} is listed under {kind}, and the checker's resolver answers {shape} for {e.Owner.Name}.{e.Member}");
+                }
+                else if (EnumReadKinds.TryGetValue(kind, out var read))
+                {
+                    string suffix = read.Access switch
+                    {
+                        null => ".RED",
+                        EnumMemberAccessKind.IntValue or EnumMemberAccessKind.StringValue => ".RED.value",
+                        _ => ".RED.name",
+                    };
+                    if (e.Prelude != (read.IntShape ? IntEnum : StringEnum) || !e.Text.EndsWith(suffix, StringComparison.Ordinal))
+                        problems.Add($"constant-kind: {e.Text} is listed under {kind}, which is `{suffix}` of {(read.IntShape ? "an int" : "a string")} enum");
+                }
+                else if (!ChainKinds.Contains(kind) || e.Import != null || e.Prelude != null)
+                    problems.Add($"constant-kind: {e.Label} is listed under {kind} and names no member the kind can be checked against");
             }
         }
-        foreach (var kind in Enum.GetValues<ScopeConstantKind>().Where(k => !ConstantExpressions.ContainsKey(k)))
+        foreach (var kind in Enum.GetValues<ScopeConstantKind>().Where(k => k != ScopeConstantKind.OwnMember && !ConstantExpressions.ContainsKey(k)))
             problems.Add($"constant-kind: {kind} has no expression");
 
         // init-overload
@@ -690,6 +1031,12 @@ public sealed partial class ScopeMeaningDifferentialTests
         Carried("alias-target", AllAliasSites().Select(s => s.Label).Concat(AliasShapes.Values.Select(s => s.Label)), Marks);
         Carried("alias-target", Enum.GetValues<ScopeAliasTarget>(), Part<ScopeAliasTarget>);
         Carried("alias-target", Enum.GetValues<ScopeAliasUse>(), Part<ScopeAliasUse>);
+        Partition("alias-target × target × use",
+            Enum.GetValues<ScopeAliasTarget>().SelectMany(t => Enum.GetValues<ScopeAliasUse>().Select(u => (Target: t, Use: u))),
+            Route("alias-target").Select(c => (Target: c.Cell.Key!.Part<ScopeAliasTarget>()!.Value, Use: c.Cell.Key.Part<ScopeAliasUse>()!.Value)), ExcludedAliasUses.Keys);
+        // A shape's name is the alias itself in some cell, or the shape says why it cannot be.
+        var selfReaching = Route("alias-target").Where(c => c.Cell.Key!.Part<ScopeAliasTarget>() == ScopeAliasTarget.Itself).SelectMany(Marks).ToHashSet(StringComparer.Ordinal);
+        Partition("alias-target × self-reaching shape", AliasShapes.Values.Select(v => v.Label).Distinct(), AliasShapes.Values.Select(v => v.Label).Where(selfReaching.Contains), ExcludedSelfReachingShapes.Keys);
         // The two binders of an alias, by the 8951 pool's census of binder sites: a third is a site this axis has not placed.
         var binders = NameResolutionRosters.BinderSites.Keys.Where(k => k.Contains("TypeAliasSymbol.CreateFrom", StringComparison.Ordinal)).OrderBy(k => k, StringComparer.Ordinal).ToList();
         if (!binders.SequenceEqual(AliasBinderSites.OrderBy(k => k, StringComparer.Ordinal)))
@@ -699,7 +1046,11 @@ public sealed partial class ScopeMeaningDifferentialTests
         var reasons = ExcludedDeclarations.Values.Concat(ExcludedDeclarationHosts.Values).Concat(ExcludedValueTypes.Values).Concat(ExcludedTypedReads.Values)
             .Concat(ExcludedTypedSpellings.Values).Concat(ExcludedTypedPositions.Values).Concat(ExcludedCalleeBinders.Values).Concat(ExcludedCalleeOuters.Values)
             .Concat(ExcludedAdmissionTables.Values).Concat(UnproducedModuleValueShapes.Values).Concat(ExcludedAliasScopes.Values).Concat(ExcludedAliasTypeHosts.Values)
-            .Concat(ExcludedAliasShapeProperties.Values).Concat(ExcludedOrders.Values.SelectMany(o => o.Values)).ToHashSet(StringComparer.Ordinal);
+            .Concat(ExcludedAliasShapeProperties.Values).Concat(ExcludedOrders.Values.SelectMany(o => o.Values))
+            .Concat(ExcludedConstScopes.Values).Concat(ExcludedConstTypeHosts.Values).Concat(ExcludedConstantReaders.Values).Concat(ExcludedClrTypeMemberShapes.Values)
+            .Concat(ExcludedOwnReads.Values).Concat(ExcludedConstantForms.Values).Concat(ExcludedAliasUses.Values).Concat(ExcludedSelfReachingShapes.Values)
+            .Concat(AllConstantHosts().SelectMany(h => new[] { "int", "() -> int" }.Select(t => HostSkips(h.Host, t))).Where(r => r != null).Select(r => r!))
+            .ToHashSet(StringComparer.Ordinal);
         foreach (var orphan in BehaviourProbes.Keys.Where(k => !reasons.Contains(k)))
             problems.Add($"a probe guards the reason '{orphan}', and no exclusion gives it");
         foreach (var blank in reasons.Where(string.IsNullOrWhiteSpace))

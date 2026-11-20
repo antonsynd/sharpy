@@ -214,18 +214,30 @@ MustRun P52 family=TypeMember route=class,dataclass,enum,interface,struct,union
 * seed family=Seed route=-
 
 # --- ScopeMeaningDifferentialTests: the cells the P77a pool has no program for (hand-written; the test reads its
-# --- verdicts from these rows and carries none). A constant position's verdict is its table's (`admission`, the
-# --- validator's AdmissionTable; `-` is the enum member's value, which has no table): a `const` initializer takes a
-# --- non-constant and is then a computed constant (N4), and an attribute argument refuses under its own code. ---
+# --- verdicts from these rows and carries none). A constant position's verdict is its reader's: the table the reader
+# --- passes (`admission`, the validator's AdmissionTable; `-` is the enum member's value, which has no table), and the
+# --- host (`mark`) where one table has two readers. Handed a constant, every position runs. Handed a non-constant: a
+# --- `const` initializer is then a computed constant (N4), a struct's auto-property keeps its initializer (#1938), an
+# --- attribute argument refuses under its own code, and every other position refuses under SPY0401. A name that is no
+# --- value there refuses under its kind's own code. An alias that reaches itself is unruled (#2769): unused, it runs. ---
 MustRefuse R-QI family=Read route=no-initializer initializer=Absent target=ModuleVar,ModuleProperty,StaticField,StaticProperty
 MustRun N1 family=Read route=no-initializer initializer=Absent target=InstanceField,InstanceProperty,LocalVar
 MustRun N1 family=Read route=no-initializer initializer=Present,AccessorBodies
 MustRefuse N1-typed-read family=Read route=typed-read
 MustRun N1-innermost family=Local route=callee
-MustRun N4 family=Read route=constant-kind constantKind=ClrLiteralField,ComparisonChain
-MustRun N4 family=Read route=constant-kind admission=ConstInitializer constantKind=StdlibModuleVariable,ClrStaticMember,ChainWithNonConstantLink
-MustRefuse SPY0401 family=Read route=constant-kind admission=ParameterDefault,LambdaParameterDefault,PerInstanceFieldDefault,- constantKind=StdlibModuleVariable,ClrStaticMember,ChainWithNonConstantLink
-MustRefuse SPY0425 family=Read route=constant-kind admission=DecoratorArgument constantKind=StdlibModuleVariable,ClrStaticMember,ChainWithNonConstantLink
+MustRun N4 family=Read route=constant-kind constantKind=ClrLiteralField,ClrTypeLiteralField,ClrTypeEnumMember,IntEnumMember,IntEnumValue,ComparisonChain
+MustRun N4 family=Read route=constant-kind constantKind=OwnMember target=ModuleLiteralConst,ClassLiteralConst
+MustRun N4 family=Read route=constant-kind admission=ConstInitializer constantKind=StdlibModuleVariable,ClrStaticMember,ClrTypeStaticField,ClrTypeStaticProperty,ClrTypeMethod,IntEnumName,StringEnumMember,StringEnumValue,StringEnumName,ChainWithNonConstantLink
+MustRun N4 family=Read route=constant-kind admission=ConstInitializer constantKind=OwnMember target=ModuleVar,ModuleComputedConst,ModuleProperty,ModuleDef,StaticField,StaticProperty,StaticMethod,ClassComputedConst,Builtin
+MustRun #1938 family=Read route=constant-kind mark=struct-auto-property constantKind=StdlibModuleVariable,ClrStaticMember,ClrTypeStaticField,ClrTypeStaticProperty,ClrTypeMethod,IntEnumName,StringEnumMember,StringEnumValue,StringEnumName,ChainWithNonConstantLink
+MustRun #1938 family=Read route=constant-kind mark=struct-auto-property constantKind=OwnMember target=ModuleVar,ModuleComputedConst,ModuleProperty,ModuleDef,StaticField,StaticProperty,StaticMethod,ClassComputedConst,Builtin
+MustRefuse SPY0401 family=Read route=constant-kind admission=ParameterDefault,LambdaParameterDefault,PerInstanceFieldDefault,- mark=def,lambda,dataclass,struct,enum-member constantKind=StdlibModuleVariable,ClrStaticMember,ClrTypeStaticField,ClrTypeStaticProperty,ClrTypeMethod,IntEnumName,StringEnumMember,StringEnumValue,StringEnumName,ChainWithNonConstantLink
+MustRefuse SPY0401 family=Read route=constant-kind admission=ParameterDefault,LambdaParameterDefault,PerInstanceFieldDefault,- mark=def,lambda,dataclass,struct,enum-member constantKind=OwnMember target=ModuleVar,ModuleComputedConst,ModuleProperty,ModuleDef,StaticField,StaticProperty,StaticMethod,ClassComputedConst,Builtin
+MustRefuse SPY0425 family=Read route=constant-kind admission=DecoratorArgument constantKind=StdlibModuleVariable,ClrStaticMember,ClrTypeStaticField,ClrTypeStaticProperty,ClrTypeMethod,IntEnumName,StringEnumMember,StringEnumValue,StringEnumName,ChainWithNonConstantLink
+MustRefuse SPY0425 family=Read route=constant-kind admission=DecoratorArgument constantKind=OwnMember target=ModuleVar,ModuleComputedConst,ModuleProperty,ModuleDef,StaticField,StaticProperty,StaticMethod,ClassComputedConst,Builtin
+MustRefuse kind:SPY0290 family=Read route=constant-kind constantKind=OwnMember target=InstanceField,InstanceProperty,InstanceMethod
+MustRefuse kind:SPY0336 family=Read route=constant-kind constantKind=ClrTypeMethodGroup
 MustRun N1 family=Read route=init-overload
 MustRefuse N1-alias-target family=Read route=alias-target aliasTarget=Missing
 MustRun N1 family=Read route=alias-target aliasTarget=Declared
+MustRun #2769 family=Read route=alias-target aliasTarget=Itself
