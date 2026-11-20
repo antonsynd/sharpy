@@ -79,7 +79,7 @@ namespace Sharpy
     /// <c>[[fill]align][sign][z][#][0][width][grouping][.precision][type]</c> (#1984, R-BX).
     /// <see cref="PyFormat.Apply(object, string)"/> renders from the spec this returns, and the
     /// compiler's static twin calls the same <see cref="Validate"/> — so a rule lives in exactly one
-    /// place. The parse and the rule order are CPython 3.12's <c>Objects/stringlib/unicode_format.h</c>
+    /// place. The parse and the rule order are CPython 3.14's <c>Objects/stringlib/unicode_format.h</c>
     /// / <c>Python/formatter_unicode.c</c>: <c>parse_internal_render_format_spec</c>, then the
     /// per-type <c>__format__</c> switch, then <c>format_string_internal</c> /
     /// <c>format_long_internal</c>.

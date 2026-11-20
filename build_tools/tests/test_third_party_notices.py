@@ -17,7 +17,8 @@ PyFormat.cs after an audit). This test closes the gap mechanically:
   only listed files;
 * ``STDLIB_CENSUS`` holds the #2602 audit's verdict for every Sharpy.Stdlib module with a CPython
   namesake: its keys are exactly the namesake modules on disk (a new module is red until someone reads
-  it against its CPython source and records a verdict), a ``port`` module has a noticed file, and a
+  it against its CPython source and records a verdict), the files in a ``port`` module that carry the
+  header are exactly the files its row names (a lost header and an extra one are both red), and a
   ``behaviour`` module has none.
 
 The claim scan only catches files that declare themselves ports; a port that makes no such claim (a
@@ -35,7 +36,7 @@ import hashlib
 import re
 import sys
 from pathlib import Path
-from typing import Dict, Iterable, List, Set
+from typing import Dict, FrozenSet, Iterable, List, Set, Tuple
 
 import pytest
 
@@ -300,62 +301,94 @@ STDLIB = "src/Sharpy.Stdlib"
 # (over .NET, or a different algorithm); matching CPython's error messages or output format alone is
 # behaviour. Read against CPython 3.15.2's Lib (and 3.14.0's C sources and Doc/) in November 2026.
 # A new module is red here until it is read the same way: add its row, never a blanket default.
-STDLIB_CENSUS: Dict[str, str] = {
-    "Argparse": "behaviour",  # argparse.py: own parser and help layout
-    "Base64": "behaviour",  # base64.py: System.Convert + textbook base32/base85 loops
-    "Bisect": "behaviour",  # bisect.py: textbook binary search
-    "Calendar": "behaviour",  # calendar.py: System.DateTime; HTMLCalendar emits CPython's markup
-    "Collections": "behaviour",  # collections/__init__.py: wrappers over Sharpy Dict/List
-    "Colorsys": "port",  # colorsys.py: every function, its names and YIQ coefficients
-    "Configparser": "behaviour",  # configparser.py: own line parser; exception messages match
-    "Csv": "behaviour",  # _csv.c: own quote state machine
-    "Datetime": "port",  # _datetimemodule.c: DatetimeIso.cs (fromisoformat parsers)
-    "Difflib": "port",  # difflib.py: SequenceMatcher, Differ, the diff functions
-    "Email": "behaviour",  # email package: own header/body split
-    "Fnmatch": "port",  # fnmatch.py: translate's bracket scan (spy source + generated C#)
-    "Fractions": "port",  # fractions.py: Fraction.Format.cs, Fraction.cs limit_denominator
-    "Functools": "behaviour",  # functools.py: reduce loop, own LRU cache
-    "Glob": "behaviour",  # glob.py: Directory enumeration + own pattern regex
-    "Gzip": "behaviour",  # gzip.py: System.IO.Compression
-    "Hashlib": "behaviour",  # hashlib.py: System.Security.Cryptography
-    "Heapq": "behaviour",  # heapq.py: textbook sift loops; merge is an own k-way heap
-    "Hmac": "behaviour",  # hmac.py: System.Security.Cryptography
-    "Html": "behaviour",  # html/parser.py: own scanner, WebUtility.HtmlDecode
-    "Http": "behaviour",  # http/: HttpClient; HTTPStatus phrases are RFC text
-    "Io": "behaviour",  # io.py: StringIO over StringBuilder
-    "Ipaddress": "port",  # ipaddress.py: __format__, _private_networks tables (borderline)
-    "Itertools": "port",  # Doc/library/itertools.rst: combinatorics equivalents (borderline)
-    "Json": "behaviour",  # json/: own recursive-descent parser and emitter
-    "Logging": "behaviour",  # logging/: minimal Logger
-    "Math": "behaviour",  # mathmodule.c: System.Math; fsum is Kahan, not msum
-    "Os": "port",  # os.py: makedirs, walk's stack order (borderline)
-    "Pathlib": "behaviour",  # pathlib/: System.IO.Path
-    "Platform": "behaviour",  # platform.py: RuntimeInformation
-    "Pprint": "behaviour",  # pprint.py: own reflection-based layout
-    "Random": "behaviour",  # random.py: System.Random, not Mersenne Twister
-    "Re": "behaviour",  # re/: System.Text.RegularExpressions + pattern translation
-    "Secrets": "behaviour",  # secrets.py: RandomNumberGenerator
-    "Shlex": "behaviour",  # shlex.py: own POSIX split state machine
-    "Shutil": "port",  # shutil.py: move, _basename, _destinsrc (borderline)
-    "Socket": "behaviour",  # socketmodule.c: System.Net.Sockets
-    "Sqlite3": "behaviour",  # _sqlite: Microsoft.Data.Sqlite
-    "Statistics": "behaviour",  # statistics.py: naive float sums, not exact _sum
-    "String": "behaviour",  # string/: the constants only
-    "Struct": "behaviour",  # _struct.c: own format parser over BinaryPrimitives
-    "Subprocess": "behaviour",  # subprocess.py: System.Diagnostics.Process
-    "Sys": "behaviour",  # sys: Environment
-    "Tarfile": "behaviour",  # tarfile.py: System.Formats.Tar
-    "Tempfile": "behaviour",  # tempfile.py: Path.GetRandomFileName
-    "Textwrap": "behaviour",  # textwrap.py: own greedy wrap, not TextWrapper
-    "Threading": "port",  # threading.py: Barrier.cs (ThreadRegistry.cs is behaviour)
-    "Time": "behaviour",  # timemodule.c: Stopwatch/DateTime
-    "Unittest": "behaviour",  # unittest/: xUnit-backed assertions
-    "Urllib": "port",  # urllib/parse.py: uses_netloc/uses_params tables (borderline)
-    "Uuid": "behaviour",  # uuid.py: RFC 4122 over Guid/MD5/SHA1
-    "Xml": "behaviour",  # xml/etree/: System.Xml.Linq
-    "Zipfile": "behaviour",  # zipfile/: System.IO.Compression.ZipArchive
-    "Zlib": "behaviour",  # zlibmodule.c: System.IO.Compression; textbook CRC32/Adler-32
-    "Zoneinfo": "behaviour",  # zoneinfo/: TimeZoneInfo
+#
+# A port row names its exact headed files (relative to src/Sharpy.Stdlib), and the files in the module
+# that carry the PSF header must be exactly that set: a lost header (a ported file that drifted out of
+# the notice) and an extra one (a behaviour file in a port module, headed by mistake) are both red. A
+# behaviour row's set is empty. A file added to a port module is read like a new module: header and
+# row, or neither.
+BEHAVIOUR: Tuple[str, FrozenSet[str]] = ("behaviour", frozenset())
+
+
+def port(*files: str) -> Tuple[str, FrozenSet[str]]:
+    return ("port", frozenset(files))
+
+
+STDLIB_CENSUS: Dict[str, Tuple[str, FrozenSet[str]]] = {
+    "Argparse": BEHAVIOUR,  # argparse.py: own parser and help layout
+    "Base64": BEHAVIOUR,  # base64.py: System.Convert + textbook base32/base85 loops
+    "Bisect": BEHAVIOUR,  # bisect.py: textbook binary search
+    "Calendar": BEHAVIOUR,  # calendar.py: System.DateTime; HTMLCalendar emits CPython's markup
+    "Collections": BEHAVIOUR,  # collections/__init__.py: wrappers over Sharpy Dict/List
+    # colorsys.py: every function, its names and YIQ coefficients
+    "Colorsys": port("Colorsys/Colorsys.cs"),
+    "Configparser": BEHAVIOUR,  # configparser.py: own line parser; exception messages match
+    "Csv": BEHAVIOUR,  # _csv.c: own quote state machine
+    # _datetimemodule.c: DatetimeIso.cs (fromisoformat parsers)
+    "Datetime": port("Datetime/DatetimeIso.cs"),
+    # difflib.py: SequenceMatcher, Differ, the diff functions
+    "Difflib": port(
+        "Difflib/SequenceMatcher.cs",
+        "Difflib/Differ.cs",
+        "Difflib/DifflibFunctions.cs",
+    ),
+    "Email": BEHAVIOUR,  # email package: own header/body split
+    # fnmatch.py: translate's bracket scan (spy source + generated C#)
+    "Fnmatch": port("Fnmatch/FnmatchModule.cs"),
+    # fractions.py: Fraction.Format.cs, Fraction.cs limit_denominator
+    "Fractions": port("Fractions/Fraction.Format.cs", "Fractions/Fraction.cs"),
+    "Functools": BEHAVIOUR,  # functools.py: reduce loop, own LRU cache
+    "Glob": BEHAVIOUR,  # glob.py: Directory enumeration + own pattern regex
+    "Gzip": BEHAVIOUR,  # gzip.py: System.IO.Compression
+    "Hashlib": BEHAVIOUR,  # hashlib.py: System.Security.Cryptography
+    "Heapq": BEHAVIOUR,  # heapq.py: textbook sift loops; merge is an own k-way heap
+    "Hmac": BEHAVIOUR,  # hmac.py: System.Security.Cryptography
+    "Html": BEHAVIOUR,  # html/parser.py: own scanner, WebUtility.HtmlDecode
+    "Http": BEHAVIOUR,  # http/: HttpClient; HTTPStatus phrases are RFC text
+    "Io": BEHAVIOUR,  # io.py: StringIO over StringBuilder
+    # ipaddress.py: __format__, _private_networks tables (borderline)
+    "Ipaddress": port(
+        "Ipaddress/AddressFormat.cs",
+        "Ipaddress/IPv4Address.cs",
+        "Ipaddress/IPv6Address.cs",
+    ),
+    # Doc/library/itertools.rst: combinatorics equivalents (borderline)
+    "Itertools": port("Itertools/Itertools.cs"),
+    "Json": BEHAVIOUR,  # json/: own recursive-descent parser and emitter
+    "Logging": BEHAVIOUR,  # logging/: minimal Logger
+    "Math": BEHAVIOUR,  # mathmodule.c: System.Math; fsum is Kahan, not msum
+    # os.py: makedirs, walk's stack order (borderline)
+    "Os": port("Os/Os.cs"),
+    "Pathlib": BEHAVIOUR,  # pathlib/: System.IO.Path
+    "Platform": BEHAVIOUR,  # platform.py: RuntimeInformation
+    "Pprint": BEHAVIOUR,  # pprint.py: own reflection-based layout
+    "Random": BEHAVIOUR,  # random.py: System.Random, not Mersenne Twister
+    "Re": BEHAVIOUR,  # re/: System.Text.RegularExpressions + pattern translation
+    "Secrets": BEHAVIOUR,  # secrets.py: RandomNumberGenerator
+    "Shlex": BEHAVIOUR,  # shlex.py: own POSIX split state machine
+    # shutil.py: move, _basename, _destinsrc (borderline)
+    "Shutil": port("Shutil/Shutil.cs"),
+    "Socket": BEHAVIOUR,  # socketmodule.c: System.Net.Sockets
+    "Sqlite3": BEHAVIOUR,  # _sqlite: Microsoft.Data.Sqlite
+    "Statistics": BEHAVIOUR,  # statistics.py: naive float sums, not exact _sum
+    "String": BEHAVIOUR,  # string/: the constants only
+    "Struct": BEHAVIOUR,  # _struct.c: own format parser over BinaryPrimitives
+    "Subprocess": BEHAVIOUR,  # subprocess.py: System.Diagnostics.Process
+    "Sys": BEHAVIOUR,  # sys: Environment
+    "Tarfile": BEHAVIOUR,  # tarfile.py: System.Formats.Tar
+    "Tempfile": BEHAVIOUR,  # tempfile.py: Path.GetRandomFileName
+    "Textwrap": BEHAVIOUR,  # textwrap.py: own greedy wrap, not TextWrapper
+    # threading.py: Barrier.cs (ThreadRegistry.cs is behaviour)
+    "Threading": port("Threading/Barrier.cs"),
+    "Time": BEHAVIOUR,  # timemodule.c: Stopwatch/DateTime
+    "Unittest": BEHAVIOUR,  # unittest/: xUnit-backed assertions
+    # urllib/parse.py: uses_netloc/uses_params tables (borderline)
+    "Urllib": port("Urllib/UrllibModule.cs"),
+    "Uuid": BEHAVIOUR,  # uuid.py: RFC 4122 over Guid/MD5/SHA1
+    "Xml": BEHAVIOUR,  # xml/etree/: System.Xml.Linq
+    "Zipfile": BEHAVIOUR,  # zipfile/: System.IO.Compression.ZipArchive
+    "Zlib": BEHAVIOUR,  # zlibmodule.c: System.IO.Compression; textbook CRC32/Adler-32
+    "Zoneinfo": BEHAVIOUR,  # zoneinfo/: TimeZoneInfo
 }
 VERDICTS = {"port", "behaviour"}
 
@@ -384,7 +417,7 @@ def namesake_modules(root: Path, stdlib_names: Iterable[str]) -> Set[str]:
 
 def census_problems(
     root: Path,
-    census: Dict[str, str],
+    census: Dict[str, Tuple[str, FrozenSet[str]]],
     listed: Set[str],
     stdlib_names: Iterable[str],
 ) -> List[str]:
@@ -400,36 +433,60 @@ def census_problems(
             f"{STDLIB}/{module}: in STDLIB_CENSUS but not a namesake module on disk; delete the row"
         )
     stdlib_root = root / STDLIB
-    for module, verdict in sorted(census.items()):
+    for module, (verdict, recorded) in sorted(census.items()):
         if verdict not in VERDICTS:
             problems.append(
                 f"{module}: verdict {verdict!r} is not one of {sorted(VERDICTS)}"
             )
             continue
+        if verdict == "port" and not recorded:
+            problems.append(
+                f"{module}: verdict 'port' but the row names no headed file"
+            )
+        if verdict == "behaviour" and recorded:
+            problems.append(
+                f"{module}: verdict 'behaviour' but the row names files "
+                f"{sorted(recorded)}; a behaviour row's set is empty"
+            )
+            continue
+        for rel in sorted(recorded):
+            if Path(rel).parts[0] != module:
+                problems.append(
+                    f"{module}: the row names {rel}, which is not in the module"
+                )
         if module not in on_disk:
             continue
-        headed = sorted(
-            path.relative_to(root).as_posix()
+        headed = {
+            path.relative_to(stdlib_root).as_posix()
             for path in sources(root)
             if stdlib_root in path.parents
             and path.relative_to(stdlib_root).parts[0] == module
             and _has_header(path.read_text(encoding="utf-8"))
-        )
-        if verdict == "port":
-            if not headed:
+        }
+        if verdict == "behaviour":
+            if headed:
                 problems.append(
-                    f"{STDLIB}/{module}: verdict 'port' but no file in it carries the PSF header"
+                    f"{STDLIB}/{module}: verdict 'behaviour' but "
+                    f"{', '.join(sorted(headed))} carries the PSF header; the verdict or the "
+                    "header is stale"
                 )
-            for rel in headed:
-                if rel not in listed:
-                    problems.append(
-                        f"{rel}: in a 'port' module but not listed in THIRD-PARTY-NOTICES.txt"
-                    )
-        elif headed:
+            continue
+        for rel in sorted(recorded - headed):
             problems.append(
-                f"{STDLIB}/{module}: verdict 'behaviour' but {', '.join(headed)} carries the PSF "
-                "header; the verdict or the header is stale"
+                f"{STDLIB}/{rel}: in {module}'s port set but carries no PSF header (lost "
+                "header, or a stale row)"
             )
+        for rel in sorted(headed - recorded):
+            problems.append(
+                f"{STDLIB}/{rel}: carries the PSF header but is not in {module}'s port set; "
+                "record it if it is a port, else drop the header"
+            )
+        for rel in sorted(recorded | headed):
+            if f"{STDLIB}/{rel}" not in listed:
+                problems.append(
+                    f"{STDLIB}/{rel}: in a 'port' module but not listed in "
+                    "THIRD-PARTY-NOTICES.txt"
+                )
     return problems
 
 
@@ -454,14 +511,16 @@ def test_stdlib_census_is_complete_and_honoured():
     assert not problems, "\n".join(problems)
 
 
-def _module(tmp_path: Path, name: str, text: str) -> None:
-    path = tmp_path / STDLIB / name / f"{name}.cs"
+def _module(tmp_path: Path, name: str, text: str, file: str = "") -> None:
+    path = tmp_path / STDLIB / name / (file or f"{name}.cs")
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(text, encoding="utf-8")
 
 
 _HEADED = "".join(f"// {line}\n" for line in HEADER_LINES) + "namespace Sharpy { }\n"
 _PLAIN = "namespace Sharpy { }\n"
+_PICKLE = "Pickle/Pickle.cs"
+_LISTED = {f"{STDLIB}/{_PICKLE}"}
 
 
 def test_census_refuses_an_unread_namesake(tmp_path: Path):
@@ -472,34 +531,76 @@ def test_census_refuses_an_unread_namesake(tmp_path: Path):
 
 
 def test_census_refuses_a_stale_row(tmp_path: Path):
-    problems = census_problems(tmp_path, {"Pickle": "behaviour"}, set(), {"pickle"})
+    problems = census_problems(tmp_path, {"Pickle": BEHAVIOUR}, set(), {"pickle"})
     assert len(problems) == 1 and "not a namesake module on disk" in problems[0], (
         problems
     )
 
 
+def test_census_refuses_a_port_row_with_no_files(tmp_path: Path):
+    _module(tmp_path, "Pickle", _PLAIN)
+    problems = census_problems(tmp_path, {"Pickle": port()}, set(), {"pickle"})
+    assert len(problems) == 1 and "names no headed file" in problems[0], problems
+
+
+def test_census_refuses_a_behaviour_row_with_files(tmp_path: Path):
+    _module(tmp_path, "Pickle", _PLAIN)
+    census = {"Pickle": ("behaviour", frozenset({_PICKLE}))}
+    problems = census_problems(tmp_path, census, set(), {"pickle"})
+    assert len(problems) == 1 and "set is empty" in problems[0], problems
+
+
+def test_census_refuses_a_row_naming_another_module(tmp_path: Path):
+    _module(tmp_path, "Pickle", _HEADED)
+    census = {"Pickle": port(_PICKLE, "Shelve/Shelve.cs")}
+    problems = census_problems(tmp_path, census, _LISTED, {"pickle"})
+    assert any("not in the module" in p for p in problems), problems
+
+
 def test_census_refuses_an_unnoticed_port(tmp_path: Path):
     _module(tmp_path, "Pickle", _PLAIN)
-    problems = census_problems(tmp_path, {"Pickle": "port"}, set(), {"pickle"})
-    assert (
-        len(problems) == 1 and "no file in it carries the PSF header" in problems[0]
+    census = {"Pickle": port(_PICKLE)}
+    problems = census_problems(tmp_path, census, _LISTED, {"pickle"})
+    assert len(problems) == 1 and "carries no PSF header" in problems[0], problems
+
+
+def test_census_refuses_a_lost_header_in_a_multi_file_port(tmp_path: Path):
+    # The per-module census missed this: one file of a port module losing its header (and its
+    # notice lines) while a sibling keeps one.
+    _module(tmp_path, "Pickle", _HEADED)
+    _module(tmp_path, "Pickle", _PLAIN, "Unpickler.cs")
+    census = {"Pickle": port(_PICKLE, "Pickle/Unpickler.cs")}
+    problems = census_problems(tmp_path, census, _LISTED, {"pickle"})
+    assert any(
+        "Pickle/Unpickler.cs: in Pickle's port set but carries no PSF header" in p
+        for p in problems
     ), problems
+
+
+def test_census_refuses_an_extra_header_in_a_port_module(tmp_path: Path):
+    _module(tmp_path, "Pickle", _HEADED)
+    _module(tmp_path, "Pickle", _HEADED, "Registry.cs")
+    listed = _LISTED | {f"{STDLIB}/Pickle/Registry.cs"}
+    problems = census_problems(tmp_path, {"Pickle": port(_PICKLE)}, listed, {"pickle"})
+    assert len(problems) == 1 and "not in Pickle's port set" in problems[0], problems
 
 
 def test_census_refuses_an_unlisted_port(tmp_path: Path):
     _module(tmp_path, "Pickle", _HEADED)
-    problems = census_problems(tmp_path, {"Pickle": "port"}, set(), {"pickle"})
+    problems = census_problems(tmp_path, {"Pickle": port(_PICKLE)}, set(), {"pickle"})
     assert len(problems) == 1 and "not listed" in problems[0], problems
 
 
 def test_census_refuses_a_headed_behaviour_module(tmp_path: Path):
     _module(tmp_path, "Pickle", _HEADED)
-    listed = {f"{STDLIB}/Pickle/Pickle.cs"}
-    problems = census_problems(tmp_path, {"Pickle": "behaviour"}, listed, {"pickle"})
+    problems = census_problems(tmp_path, {"Pickle": BEHAVIOUR}, _LISTED, {"pickle"})
     assert len(problems) == 1 and "verdict 'behaviour'" in problems[0], problems
 
 
 def test_census_accepts_a_noticed_port(tmp_path: Path):
     _module(tmp_path, "Pickle", _HEADED)
-    listed = {f"{STDLIB}/Pickle/Pickle.cs"}
-    assert census_problems(tmp_path, {"Pickle": "port"}, listed, {"pickle"}) == []
+    _module(
+        tmp_path, "Pickle", _PLAIN, "Registry.cs"
+    )  # a behaviour file in a port module
+    census = {"Pickle": port(_PICKLE)}
+    assert census_problems(tmp_path, census, _LISTED, {"pickle"}) == []

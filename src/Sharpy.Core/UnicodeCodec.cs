@@ -1,5 +1,6 @@
 // Portions of this file are taken from CPython's Lib/encodings/aliases.py (CPython 3.15): the rows
-// of its aliases table whose codec Sharpy implements (ascii, latin_1, utf_8, utf_16, utf_32).
+// of its aliases table whose codec Sharpy implements (ascii, latin_1, utf_8, utf_8_sig, utf_16,
+// utf_16_le, utf_16_be, utf_32, utf_32_le and utf_32_be).
 // Copyright (c) 2001 Python Software Foundation; All Rights Reserved
 // Licensed under the PSF License Version 2; see THIRD-PARTY-NOTICES.txt at the repository root.
 // Changes: the rows are a C# Dictionary from the normalized alias to the codec; the codecs
