@@ -348,6 +348,24 @@ public partial class Parser
         return expr;
     }
 
+    /// <summary>Builds a BinaryOp spanning <paramref name="left"/> to <paramref name="right"/>, with the operator token's position.</summary>
+    private static BinaryOp MakeBinary(BinaryOperator op, Expression left, Expression right, int opLine, int opCol)
+    {
+        return new BinaryOp
+        {
+            Operator = op,
+            Left = left,
+            Right = right,
+            OperatorLine = opLine,
+            OperatorColumn = opCol,
+            LineStart = left.LineStart,
+            ColumnStart = left.ColumnStart,
+            LineEnd = right.LineEnd,
+            ColumnEnd = right.ColumnEnd,
+            Span = CombineSpans(left.Span, right.Span)
+        };
+    }
+
     private Expression ParseNullCoalesce()
     {
         var left = ParseLogicalOr();
@@ -363,19 +381,7 @@ public partial class Parser
             Advance(); // second ?
             var right = ParseLogicalOr();
 
-            left = new BinaryOp
-            {
-                Operator = BinaryOperator.NullCoalesce,
-                Left = left,
-                Right = right,
-                OperatorLine = opLine,
-                OperatorColumn = opCol,
-                LineStart = left.LineStart,
-                ColumnStart = left.ColumnStart,
-                LineEnd = right.LineEnd,
-                ColumnEnd = right.ColumnEnd,
-                Span = CombineSpans(left.Span, right.Span)
-            };
+            left = MakeBinary(BinaryOperator.NullCoalesce, left, right, opLine, opCol);
         }
 
         return left;
@@ -395,19 +401,7 @@ public partial class Parser
             Advance();
             var right = ParseLogicalAnd();
 
-            left = new BinaryOp
-            {
-                Operator = BinaryOperator.Or,
-                Left = left,
-                Right = right,
-                OperatorLine = opLine,
-                OperatorColumn = opCol,
-                LineStart = left.LineStart,
-                ColumnStart = left.ColumnStart,
-                LineEnd = right.LineEnd,
-                ColumnEnd = right.ColumnEnd,
-                Span = CombineSpans(left.Span, right.Span)
-            };
+            left = MakeBinary(BinaryOperator.Or, left, right, opLine, opCol);
         }
 
         return left;
@@ -427,19 +421,7 @@ public partial class Parser
             Advance();
             var right = ParseLogicalNot();
 
-            left = new BinaryOp
-            {
-                Operator = BinaryOperator.And,
-                Left = left,
-                Right = right,
-                OperatorLine = opLine,
-                OperatorColumn = opCol,
-                LineStart = left.LineStart,
-                ColumnStart = left.ColumnStart,
-                LineEnd = right.LineEnd,
-                ColumnEnd = right.ColumnEnd,
-                Span = CombineSpans(left.Span, right.Span)
-            };
+            left = MakeBinary(BinaryOperator.And, left, right, opLine, opCol);
         }
 
         return left;
@@ -570,19 +552,7 @@ public partial class Parser
         if (operators.Count == 1)
         {
             // Single comparison - use BinaryOp
-            return new BinaryOp
-            {
-                Operator = ComparisonOperatorToBinary(operators[0]),
-                Left = operands[0],
-                Right = operands[1],
-                OperatorLine = operatorPositions[0].Line,
-                OperatorColumn = operatorPositions[0].Column,
-                LineStart = operands[0].LineStart,
-                ColumnStart = operands[0].ColumnStart,
-                LineEnd = operands[1].LineEnd,
-                ColumnEnd = operands[1].ColumnEnd,
-                Span = CombineSpans(operands[0].Span, operands[1].Span)
-            };
+            return MakeBinary(ComparisonOperatorToBinary(operators[0]), operands[0], operands[1], operatorPositions[0].Line, operatorPositions[0].Column);
         }
 
         // Comparison chain
@@ -706,19 +676,7 @@ public partial class Parser
             Advance();
             var right = ParseBitwiseOr();
 
-            left = new BinaryOp
-            {
-                Operator = BinaryOperator.PipeForward,
-                Left = left,
-                Right = right,
-                OperatorLine = opLine,
-                OperatorColumn = opCol,
-                LineStart = left.LineStart,
-                ColumnStart = left.ColumnStart,
-                LineEnd = right.LineEnd,
-                ColumnEnd = right.ColumnEnd,
-                Span = CombineSpans(left.Span, right.Span)
-            };
+            left = MakeBinary(BinaryOperator.PipeForward, left, right, opLine, opCol);
         }
 
         return left;
@@ -832,19 +790,7 @@ public partial class Parser
             Advance();
             var right = ParseBitwiseXor();
 
-            left = new BinaryOp
-            {
-                Operator = BinaryOperator.BitwiseOr,
-                Left = left,
-                Right = right,
-                OperatorLine = opLine,
-                OperatorColumn = opCol,
-                LineStart = left.LineStart,
-                ColumnStart = left.ColumnStart,
-                LineEnd = right.LineEnd,
-                ColumnEnd = right.ColumnEnd,
-                Span = CombineSpans(left.Span, right.Span)
-            };
+            left = MakeBinary(BinaryOperator.BitwiseOr, left, right, opLine, opCol);
         }
 
         return left;
@@ -864,19 +810,7 @@ public partial class Parser
             Advance();
             var right = ParseBitwiseAnd();
 
-            left = new BinaryOp
-            {
-                Operator = BinaryOperator.BitwiseXor,
-                Left = left,
-                Right = right,
-                OperatorLine = opLine,
-                OperatorColumn = opCol,
-                LineStart = left.LineStart,
-                ColumnStart = left.ColumnStart,
-                LineEnd = right.LineEnd,
-                ColumnEnd = right.ColumnEnd,
-                Span = CombineSpans(left.Span, right.Span)
-            };
+            left = MakeBinary(BinaryOperator.BitwiseXor, left, right, opLine, opCol);
         }
 
         return left;
@@ -896,19 +830,7 @@ public partial class Parser
             Advance();
             var right = ParseShift();
 
-            left = new BinaryOp
-            {
-                Operator = BinaryOperator.BitwiseAnd,
-                Left = left,
-                Right = right,
-                OperatorLine = opLine,
-                OperatorColumn = opCol,
-                LineStart = left.LineStart,
-                ColumnStart = left.ColumnStart,
-                LineEnd = right.LineEnd,
-                ColumnEnd = right.ColumnEnd,
-                Span = CombineSpans(left.Span, right.Span)
-            };
+            left = MakeBinary(BinaryOperator.BitwiseAnd, left, right, opLine, opCol);
         }
 
         return left;
@@ -929,19 +851,7 @@ public partial class Parser
             Advance();
             var right = ParseAdditive();
 
-            left = new BinaryOp
-            {
-                Operator = op,
-                Left = left,
-                Right = right,
-                OperatorLine = opLine,
-                OperatorColumn = opCol,
-                LineStart = left.LineStart,
-                ColumnStart = left.ColumnStart,
-                LineEnd = right.LineEnd,
-                ColumnEnd = right.ColumnEnd,
-                Span = CombineSpans(left.Span, right.Span)
-            };
+            left = MakeBinary(op, left, right, opLine, opCol);
         }
 
         return left;
@@ -962,19 +872,7 @@ public partial class Parser
             Advance();
             var right = ParseMultiplicative();
 
-            left = new BinaryOp
-            {
-                Operator = op,
-                Left = left,
-                Right = right,
-                OperatorLine = opLine,
-                OperatorColumn = opCol,
-                LineStart = left.LineStart,
-                ColumnStart = left.ColumnStart,
-                LineEnd = right.LineEnd,
-                ColumnEnd = right.ColumnEnd,
-                Span = CombineSpans(left.Span, right.Span)
-            };
+            left = MakeBinary(op, left, right, opLine, opCol);
         }
 
         return left;
@@ -1009,19 +907,7 @@ public partial class Parser
             Advance();
             var right = ParseUnary();
 
-            left = new BinaryOp
-            {
-                Operator = op,
-                Left = left,
-                Right = right,
-                OperatorLine = opLine,
-                OperatorColumn = opCol,
-                LineStart = left.LineStart,
-                ColumnStart = left.ColumnStart,
-                LineEnd = right.LineEnd,
-                ColumnEnd = right.ColumnEnd,
-                Span = CombineSpans(left.Span, right.Span)
-            };
+            left = MakeBinary(op, left, right, opLine, opCol);
         }
 
         return left;
@@ -1093,19 +979,7 @@ public partial class Parser
             Advance();
             var right = ParseUnary();  // Right-associative
 
-            return new BinaryOp
-            {
-                Operator = BinaryOperator.Power,
-                Left = left,
-                Right = right,
-                OperatorLine = opLine,
-                OperatorColumn = opCol,
-                LineStart = left.LineStart,
-                ColumnStart = left.ColumnStart,
-                LineEnd = right.LineEnd,
-                ColumnEnd = right.ColumnEnd,
-                Span = CombineSpans(left.Span, right.Span)
-            };
+            return MakeBinary(BinaryOperator.Power, left, right, opLine, opCol);
         }
 
         return left;
