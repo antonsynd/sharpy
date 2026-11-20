@@ -143,7 +143,27 @@ blocked 'dotnet clean'
 blocked 'dotnet stryker'
 blocked 'echo start; dotnet build'
 blocked 'bash -c "dotnet build"'
+# Measured bypasses of the pre-2026-11-20 hook (each exited 0): a path-qualified binary, a raw
+# call beside a mention of the wrapper, and the vstest verb.
+blocked '/root/.dotnet/dotnet build'
+# shellcheck disable=SC2016  # expanded by the hook, not this shell
+blocked '"$HOME/.dotnet/dotnet" test'
+blocked 'echo dotnet-serialized; dotnet test'
+blocked '.claude/scripts/dotnet-serialized build sharpy.sln && dotnet test --no-build'
+blocked 'dotnet vstest src/X/bin/Debug/net10.0/X.dll'
+blocked 'DOTNET_CLI_TELEMETRY_OPTOUT=1 dotnet build'
+blocked 'timeout 600 env X=1 dotnet test'
+blocked 'ls *.csproj | xargs -n1 dotnet build'
+# shellcheck disable=SC2016  # the substitution is the command under test
+blocked 'echo "$(dotnet build)"'
+blocked "bash -lc 'cd src && dotnet test'"
+blocked 'dotnet --diagnostics build'
 allowed '.claude/scripts/dotnet-serialized build sharpy.sln'
+allowed '.claude/scripts/dotnet-serialized vstest src/X/bin/Debug/net10.0/X.dll'
+allowed '.claude/scripts/dotnet-serialized build sharpy.sln && .claude/scripts/dotnet-serialized test --no-build'
+allowed 'grep -rn "dotnet build" docs/'
+allowed 'echo dotnet test'
+allowed 'dotnet src/X/bin/Debug/net10.0/X.dll'
 allowed '.claude/scripts/dotnet-serialized run --project src/Sharpy.Cli -- run file.spy'
 allowed 'dotnet --version'
 allowed 'dotnet --list-sdks'
@@ -152,9 +172,7 @@ allowed 'dotnet tool list'
 allowed 'bash build_tools/regenerate_spy_stdlib.sh'
 allowed 'src/Sharpy.Cli/bin/Debug/net10.0/sharpyc run file.spy'
 allowed 'ls'
-# Known false positive, NOT asserted either way: `grep "dotnet build" docs/` is blocked because
-# `"` is a delimiter so that `bash -c "dotnet build"` is caught. The hook errs toward blocking;
-# the workaround is single quotes.
+allowed "dotnet build 'unterminated"
 run enforce-dotnet-serialized.sh 'garbage'
 if [ "$RC" -eq 0 ]; then ok "bad stdin: allow (Bash hook fails open by design; the lock is the safety net)"; else bad "bad stdin: allow" "rc=$RC"; fi
 
