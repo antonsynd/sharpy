@@ -17,6 +17,16 @@
         ]
       },
       {
+        "matcher": "Agent|Task",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"$CLAUDE_PROJECT_DIR/.claude/hooks/require-agent-brief.sh\"",
+            "timeout": 2
+          }
+        ]
+      },
+      {
         "matcher": "Edit|Write",
         "hooks": [
           {

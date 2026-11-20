@@ -280,6 +280,48 @@ gallow "git reset --hard 'unterminated" "$MAIN"
 run guard-shared-tree.sh 'garbage'
 if [ "$RC" -eq 0 ]; then ok "bad stdin: allow"; else bad "bad stdin: allow" "rc=$RC"; fi
 
+echo "== require-agent-brief.sh"
+# The block as contract §9 holds it today: a brief that pastes it must pass (drift between the
+# hook's key sentences and the contract turns this red).
+BLOCK=$(python3 -c 'import re,sys; s=open(sys.argv[1],encoding="utf-8").read(); print(re.search(r"^## 9\.[^\n]*\n(?:(?!> )[^\n]*\n)*?((?:> [^\n]*\n)+)", s, re.M).group(1), end="")' "$HOOKS/../../docs/design/verification-contract.md")
+ajson() { python3 -c 'import json,sys; ti={"description":"d","prompt":sys.argv[2]}; ti.update({"subagent_type":sys.argv[3]} if sys.argv[3] else {}); print(json.dumps({"session_id":"t","hook_event_name":"PreToolUse","tool_name":sys.argv[1],"tool_input":ti}))' "$1" "$2" "$3"; }
+adeny()  { run require-agent-brief.sh "$(ajson "$1" "$2" "$3")"; if [ "$RC" -eq 2 ] && printf '%s' "$ERR" | grep -qF 'never from git.'; then ok "deny: $4"; else bad "deny: $4" "rc=$RC err=$ERR"; fi; }
+aallow() { run require-agent-brief.sh "$(ajson "$1" "$2" "$3")"; if [ "$RC" -eq 0 ] && [ -z "$ERR" ]; then ok "allow: $4"; else bad "allow: $4" "rc=$RC err=$ERR"; fi; }
+if [ -n "$BLOCK" ]; then ok "contract §9 block found"; else bad "contract §9 block found" "no '> ' block under '## 9.'"; fi
+TASK='Implement task 3 of the plan in src/Sharpy.Compiler/Semantic.'
+PARA='Shared tree: never run git checkout, restore, clean, stash, reset or rm on repo paths; restore a mutation with cp; use .claude/scripts/dotnet-serialized.'
+UNQUOTED=$(printf '%s\n' "$BLOCK" | sed 's/^> //')
+ONELINE=$(printf '%s' "$UNQUOTED" | tr '\n' ' ')
+INDENTED=$(printf '%s\n' "$UNQUOTED" | sed 's/^/    /')
+HALF=$(printf '%s\n' "$UNQUOTED" | grep -vF 'never from git')
+adeny  Agent "$TASK" general-purpose "general-purpose brief without the block"
+adeny  Agent "$TASK" "" "no subagent_type (general-purpose) without the block"
+adeny  Agent "$TASK" implementer "implementer brief without the block"
+adeny  Agent "$TASK" Explore "Explore brief without the block"
+adeny  Agent "$TASK
+$PARA" general-purpose "a paraphrase of the block"
+adeny  Agent "$TASK
+$HALF" general-purpose "the block with its cp/restore line dropped"
+adeny  Task "$TASK" general-purpose "the Task tool name"
+if printf '%s' "$ERR" | grep -qF '> with ' && ! printf '%s' "$ERR" | grep -q '^## 10'; then
+  ok "denial carries the §9 block and only it"; else bad "denial carries the §9 block and only it" "err=$ERR"; fi
+aallow Agent "$TASK
+
+$BLOCK" general-purpose "the block as quoted in the contract"
+aallow Agent "$UNQUOTED
+$TASK" implementer "the block unquoted"
+aallow Agent "$TASK $ONELINE" "" "the block re-wrapped onto one line"
+aallow Agent "SHARED TREE:
+$INDENTED
+$TASK" test-expert "the block indented"
+for t in fork web-fetch claude-code-guide statusline-setup; do
+  aallow Agent "$TASK" "$t" "exempt subagent_type $t"
+done
+run require-agent-brief.sh '{"tool_name":"Agent","tool_input":{"subagent_type":"general-purpose"}}'
+if [ "$RC" -eq 0 ]; then ok "no prompt string: allow"; else bad "no prompt string: allow" "rc=$RC"; fi
+run require-agent-brief.sh 'garbage'
+if [ "$RC" -eq 0 ]; then ok "bad stdin: allow"; else bad "bad stdin: allow" "rc=$RC"; fi
+
 echo
 echo "hooks: $pass passed, $fail failed, $skip skipped"
 [ "$fail" -eq 0 ]

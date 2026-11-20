@@ -11,7 +11,8 @@ Use the `dogfood-analyst` agent via the Task tool to perform the analysis:
 ```
 Task tool:
   subagent_type: dogfood-analyst
-  prompt: (see below)
+  prompt: (see below), then the contract §9 block verbatim (docs/design/verification-contract.md;
+          .claude/hooks/require-agent-brief.sh denies a prompt without it)
 ```
 
 If `$ARGUMENTS` is empty (no specific directory given), analyze all results:

@@ -54,8 +54,8 @@ Spawn one `general-purpose` agent per stage, in the background, with no model ov
 - the stage's `SKILL.md` to read and follow, the plan path, the branch and its tip sha;
 - the owner rulings that apply, as comment ids to read, never as your paraphrase;
 - for a verifier, the previous agent's notable claims **listed as claims to grade, not as facts**, with what it said it measured and what it said it inferred. Hand over the code and the question, not your conclusion: an agent given a hypothesis tends to return it confirmed;
-- the environment rules from CLAUDE.md the agent will otherwise trip on: `.claude/scripts/dotnet-serialized` for every dotnet call, the cloud-session prefixes, `run` not `emit` for a crash claim, the CPython oracle version;
-- the shared-tree contract (contract §9): a temporary mutation is copied aside first and restored with `cp` and checked with `cmp`; never `git checkout`, `restore`, `clean`, `stash`, `reset` or `rm` on repo paths; never `--no-build` after an edit; scratch files in a named scratchpad directory;
+- the environment rules from CLAUDE.md the agent will otherwise trip on: the cloud-session prefixes, `run` not `emit` for a crash claim, the CPython oracle version;
+- the contract §9 block, verbatim (`.claude/hooks/require-agent-brief.sh` denies a brief without it), plus: check a `cp`-restored mutation with `cmp`; never `--no-build` after an edit; scratch files in a named scratchpad directory;
 - its limits: which files it may commit, the branch it pushes, and that it opens no pull request, posts nothing on GitHub, files no issue and merges nothing. What its skill would have it post, it lists as owed;
 - what to report: the verdict or result, each finding with its measurement (command, sha, output), what it measured against what it inferred, what it did not run, the sha it pushed and `git status --short`.
 
