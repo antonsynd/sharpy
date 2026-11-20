@@ -26,10 +26,16 @@
 #      directory under .claude/worktrees/ that `git worktree list` does not register. The path's
 #      parent decides, so removing a registered linked worktree's root is denied: `git worktree
 #      remove`. A target the text cannot resolve (`"$tmp"` from `$(mktemp -d)`, a loop variable,
-#      an unset variable) is skipped.
+#      an unset variable) is skipped. `$PWD`/`$OLDPWD` are the command's own (input cwd, then
+#      each cd), never the hook process's. The top/ancestor check reads a target without a
+#      trailing `/` through its parent's realpath, so `rm -f <symlink to the repo>` is allowed.
+#      Known false deny: `find src -name bin -type d -exec rm -rf {} +` (find's `{}` is read as
+#      `src/{}`); name the output directory instead: `find src/X/bin -name '*.dll' -delete`.
 #   3. Staging without per-file pathspecs, in any worktree of this repository: `git add -A|--all|
 #      -u|--update|.|./|:/` and `git commit -a|--all`. -u and commit -a are the same hazard as -A:
 #      they stage every tracked file's changes, a peer's uncommitted hunks included.
+#   Long options are read as git reads them: a unique prefix (`--force-w`, `--mirr`, `--forc`,
+#   `--discard`, `--work`, `--al`) is the option it abbreviates, per subcommand (LONG_OPTS).
 #   4. A forced `git push` (`--force`, `-f`, `--force-with-lease`, `+refspec`, `--mirror`) unless it
 #      carries both `--force-with-lease` and `--force-if-includes` and every pushed ref is
 #      `claude/*` (so never dev or mainline). `--mirror`, `--all`, `--branches`, `--tags` never.
@@ -122,6 +128,49 @@ GIT_OPTS_WITH_ARG = {"-C", "-c", "--git-dir", "--work-tree", "--namespace", "--c
                      "--exec-path", "--super-prefix"}
 FORCE_LONG = {"--force", "--discard-changes", "--merge", "--ours", "--theirs", "--patch"}
 CO_NAME_OPTS = {"-b", "-B", "--orphan", "-c", "-C", "--create", "--force-create"}
+# Each judged subcommand's long options (git 2.43 docs), for git's unique-prefix abbreviation;
+# every option's --no- form counts too. An ambiguous prefix is left as typed: git refuses it.
+LONG_OPTS = {k: set(v.split()) for k, v in {
+    "push": "verbose quiet repo all branches mirror delete tags dry-run porcelain force "
+            "force-with-lease force-if-includes recurse-submodules receive-pack exec set-upstream "
+            "progress prune verify follow-tags signed atomic push-option ipv4 ipv6 thin",
+    "checkout": "quiet progress force merge conflict detach track guess orphan "
+                "ignore-skip-worktree-bits ignore-other-worktrees ours theirs patch overlay "
+                "recurse-submodules pathspec-from-file pathspec-file-nul",
+    "switch": "create force-create detach guess discard-changes force merge conflict quiet "
+              "progress track orphan ignore-other-worktrees recurse-submodules",
+    "restore": "source patch worktree staged quiet progress ours theirs merge conflict "
+               "ignore-unmerged ignore-skip-worktree-bits recurse-submodules overlay "
+               "pathspec-from-file pathspec-file-nul",
+    "reset": "quiet refresh soft mixed hard merge keep recurse-submodules patch intent-to-add "
+             "pathspec-from-file pathspec-file-nul",
+    "clean": "quiet dry-run force interactive exclude",
+    "add": "dry-run verbose force interactive patch edit all ignore-removal update sparse "
+           "intent-to-add refresh ignore-errors ignore-missing chmod pathspec-from-file "
+           "pathspec-file-nul renormalize",
+    "commit": "all patch reuse-message reedit-message fixup squash reset-author short branch "
+              "porcelain long null file author date message template signoff trailer verify "
+              "allow-empty allow-empty-message cleanup edit amend post-rewrite include only "
+              "pathspec-from-file pathspec-file-nul untracked-files verbose quiet dry-run status "
+              "gpg-sign",
+}.items()}
+for _v in LONG_OPTS.values():
+    _v |= {"no-" + o for o in list(_v)}
+
+def canon(verb, rest):
+    """rest with each `--prefix[=v]` (before `--`) spelled as the long option it abbreviates."""
+    names, out = LONG_OPTS.get(verb), []
+    for k, a in enumerate(rest):
+        if a == "--":
+            return out + rest[k:]
+        if names and a.startswith("--") and len(a) > 2:
+            name, eq, val = a[2:].partition("=")
+            if name not in names:
+                hits = [o for o in names if o.startswith(name)]
+                if len(hits) == 1:
+                    a = "--" + hits[0] + eq + val
+        out.append(a)
+    return out
 
 def is_commit(arg, where):
     if git("-C", where, "rev-parse", "--verify", "--quiet", arg + "^{commit}").returncode == 0:
@@ -214,7 +263,7 @@ def check_git(argv, cwd, env, assigns):
         i += 1
     if i >= len(args):
         return
-    verb, rest = args[i], args[i + 1:]
+    verb, rest = args[i], canon(args[i], args[i + 1:])
     if gitdir:
         info = repo_of_gitdir(gitdir)
     elif worktree or where:
@@ -324,7 +373,9 @@ def check_rm(argv, cwd, env):
             continue  # cannot resolve: "$tmp", a loop variable, an unknown cwd
         if top:
             for c in [path] + (glob.glob(path) if glob.has_magic(path) else []):
-                rp = os.path.realpath(c)
+                # without a trailing `/`, rm removes the name itself (a symlink, not its target)
+                rp = os.path.realpath(c) if t.endswith("/") else os.path.join(
+                    os.path.realpath(os.path.dirname(c)), os.path.basename(c))
                 if rp == top or top.startswith(rp.rstrip("/") + "/"):
                     deny("`rm %s` removes the main worktree %s%s. Contract §9." % (
                         t, top, "" if rp == top else " (it is below " + rp + ")"))

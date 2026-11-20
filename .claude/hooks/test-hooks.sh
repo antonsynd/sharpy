@@ -172,6 +172,8 @@ blocked 'strace -f -o /tmp/s dotnet build'
 blocked 'parallel -j2 dotnet build ::: a b'
 blocked 'chrt -i 0 dotnet build'
 blocked "env -S 'dotnet test --no-build'"
+blocked $'(( n = 1 << 4 ))\ndotnet test'
+allowed $'(( n = 1 << 4 ))\ndotnet --version'
 # Here-documents: a body with an odd quote must not hide the call beside it.
 HDC=$(cat <<'EOS'
 dotnet test && git commit -m "$(cat <<'EOF'
@@ -219,8 +221,10 @@ git -C "$MAIN" -c user.email=t@t -c user.name=t commit -qm init
 git -C "$MAIN" -c user.email=t@t -c user.name=t commit -q --allow-empty -m second
 mkdir -p "$MAIN/.claude/worktrees/stale/src"  # a leftover directory, not a registered worktree
 git init -q "$G/other"                         # a scratch repository: never guarded
+ln -s "$MAIN" "$G/link"                        # a symlink to the main worktree
 git -C "$MAIN" worktree add -q "$WT" -b claude/x
 git -C "$MAIN" worktree add -q "$SWT" -b claude/y
+mkdir -p "$WT/obj"
 git -C "$MAIN" update-ref refs/remotes/origin/dev HEAD
 git -C "$MAIN" update-ref refs/remotes/origin/claude/remote-only HEAD
 # gjson COMMAND CWD [AGENT_ID]: a non-empty AGENT_ID is the input a subagent's tool call carries.
@@ -389,6 +393,51 @@ ODD='echo "${x:-"it'"'"'s"}"'
 gdeny "git reset --hard; $ODD" "$MAIN"
 gallow "git reset --hard; $ODD" "$WT"
 gallow "ls; $ODD" "$MAIN"
+# 1e. Review round 3.
+# $PWD / $OLDPWD are the command's (input cwd, then each cd), never the hook process's own: the
+# hook runs here from MAIN (pushd), where a $PWD read from its environment would mis-judge.
+pushd "$MAIN" >/dev/null || exit 1
+gallow 'rm -rf "$PWD/obj/junk"' "$WT" agent-1
+gallow "cd $WT && rm -rf \"\$PWD/src\"" "$MAIN"
+popd >/dev/null || exit 1
+pushd "$G" >/dev/null || exit 1
+gdeny 'rm -rf "$PWD/src"' "$MAIN"
+gdeny "cd $WT && cd - && rm -rf \"\$PWD/src\"" "$MAIN"
+gdeny "cd $MAIN && cd $WT && rm -rf \"\$OLDPWD/src\"" "$G"
+popd >/dev/null || exit 1
+# (( )) and for (( )) are arithmetic: their << is a shift, not a here-document.
+gdeny $'(( y = 1 << 2 ))\ngit reset --hard' "$MAIN"
+gdeny $'(( y = 1 << 2 ))\ngit reset --hard' "$MAIN" agent-1
+gdeny $'(( y <<= 1 ))\ngit reset --hard' "$MAIN"
+gdeny $'for ((i=0; i<<2; i++)); do :; done\ngit reset --hard' "$MAIN"
+gallow $'(( y = 1 << 2 ))\ngit status' "$MAIN"
+gallow $'(( y = 1 ))\ncat <<EOF\ngit reset --hard\nEOF' "$MAIN"
+# ${...} holds no here-document either.
+gdeny $'echo ${x:-<<EOF}\ngit reset --hard' "$MAIN"
+gdeny "echo \${x:-<<EOF}"$'\n'"cd $MAIN && git reset --hard" "$G"  # out of the fallback's reach
+gallow $'echo ${x:-a}\ncat <<EOF\ngit reset --hard\nEOF' "$MAIN"
+# A unique prefix of a long option is that option, as git reads it; an ambiguous one git refuses.
+gdeny 'git push --force-w origin dev' "$WT"
+gdeny 'git push --force-w origin dev' "$WT" agent-1
+gdeny 'git push --force-with-lea --force-if-incl origin dev' "$WT"
+gdeny 'git push --mirr origin' "$WT"
+gdeny 'git checkout --forc dev' "$MAIN"
+gdeny 'git switch --discard dev' "$MAIN"
+gdeny 'git restore --staged --work src/a.txt' "$MAIN"
+gdeny 'git add --al' "$WT"
+gallow 'git push --force-with-lea --force-if-incl origin claude/x' "$WT"
+gallow 'git restore --stag src/a.txt' "$MAIN"
+gallow 'git push --forc origin dev' "$WT"
+# rm of a symlink to the repository removes the link; with a trailing / it is the repository.
+gallow "rm -f $G/link" "$G"
+gdeny "rm -rf $G/link/" "$G"
+# NAME=( ... ) is an array of words, not a subshell of commands.
+gallow 'args=(git reset --hard); echo "${args[@]}"' "$MAIN"
+gallow 'arr=(rm -rf src); echo "${arr[@]}"' "$MAIN"
+gdeny 'args=(a b); git reset --hard' "$MAIN"
+gdeny 'arr+=(x) && rm -rf src' "$MAIN"
+# find cleanup of a .NET output: the allowed form names the output directory (header note).
+gallow "find src/P/bin -name '*.dll' -delete" "$MAIN"
 # 2. rm: denied inside MAIN, allowed for .claude/tmp/, .NET bin/obj, stale .claude/worktrees/*
 # directories, linked worktrees, outside, and targets the text cannot resolve.
 gdeny 'rm src/a.txt' "$MAIN"

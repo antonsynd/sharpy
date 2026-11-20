@@ -117,6 +117,10 @@ def strip_heredocs(src):
                 stack.pop()
                 out.append(c)
                 i += 1
+            elif src.startswith("${", i):
+                stack.append(["br", 0, True])
+                out.append("${")
+                i += 2
             elif src.startswith("$((", i):
                 stack.append(["ar", 0, False])
                 out.append("$((")
@@ -146,6 +150,35 @@ def strip_heredocs(src):
                     i += 2
                     prev = ")"
                     continue
+            out.append(c)
+            i += 1
+            prev = c
+            continue
+        if kind == "br":  # ${...}: no here-documents or comments inside; True = opened in "..."
+            if c == "\\":
+                out.append(src[i:i + 2])
+                i += 2
+                continue
+            if c == "'" and not stack[-1][2]:
+                j = src.find("'", i + 1)
+                j = n - 1 if j < 0 else j
+                out.append(src[i:j + 1])
+                i = j + 1
+                continue
+            if src.startswith("${", i) or src.startswith("$(", i):
+                stack.append(["br", 0, stack[-1][2]] if src[i + 1] == "{" else ["sh", 0, True])
+                out.append(src[i:i + 2])
+                i += 2
+                continue
+            if c == '"':
+                stack.append(["dq", 0, False])
+            elif c == "{":
+                stack[-1][1] += 1
+            elif c == "}":
+                if stack[-1][1] > 0:
+                    stack[-1][1] -= 1
+                else:
+                    stack.pop()
             out.append(c)
             i += 1
             prev = c
@@ -184,10 +217,17 @@ def strip_heredocs(src):
                 stack.pop()
             else:
                 stack.append(["bt", 0, False])
-        elif src.startswith("$((", i):
+        elif src.startswith("${", i):
+            stack.append(["br", 0, False])
+            out.append("${")
+            i += 2
+            prev = "{"
+            continue
+        elif src.startswith("$((", i) or (src.startswith("((", i) and prev in " \t\n;&|("):
+            k = 3 if c == "$" else 2  # $(( )) expansion, or the (( )) / for (( )) command
             stack.append(["ar", 0, False])
-            out.append("$((")
-            i += 3
+            out.append(src[i:i + k])
+            i += k
             prev = "("
             continue
         elif src.startswith("$(", i):
@@ -303,6 +343,7 @@ def _skip_backtick(src, i):
     raise ParseError("unterminated `")
 
 
+_ARRAY_ASSIGN = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*(\[[^]]*\])?\+?=$")
 _REDIR = re.compile(r"&>>|&>|<<<|<<-|<<|<>|>>|>&|<&|>\||<|>")
 
 
@@ -425,6 +466,11 @@ def tokenize(src):
             m = _REDIR.match(src, i)
             i = m.end()
             toks.append(("redir", m.group(0)))
+            continue
+        if c == "(" and word is not None and _ARRAY_ASSIGN.match("".join(word)):
+            k = _match_close(src, i + 1, "(", ")")  # NAME=( ... ): words, not a subshell
+            add(src[i:k])
+            i = k
             continue
         if c in ";&|()":
             flush()
@@ -636,7 +682,9 @@ class _State:
 
 def walk(src, cwd, visit, env=None, _depth=0):
     """Call visit(argv, cwd, env, assigns) for each simple command in ``src``."""
-    _walk(src, _State(cwd, env or {}), visit, _depth)
+    env = dict(env or {})
+    env["PWD"], env["OLDPWD"] = cwd, None  # the command's, never the hook process's
+    _walk(src, _State(cwd, env), visit, _depth)
 
 
 def _walk(src, st, visit, depth):
@@ -701,6 +749,7 @@ def _command(raw, st, visit, depth):
             if name == "pushd":
                 st.dirs.append(prev)
             st.old = prev
+            st.env["PWD"], st.env["OLDPWD"] = st.cwd, prev
             return
         visit(argv, st.cwd, st.env, assigns)
     for e in extras:
