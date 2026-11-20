@@ -31,6 +31,10 @@
 #      trailing `/` through its parent's realpath, so `rm -f <symlink to the repo>` is allowed.
 #      Known false deny: `find src -name bin -type d -exec rm -rf {} +` (find's `{}` is read as
 #      `src/{}`); name the output directory instead: `find src/X/bin -name '*.dll' -delete`.
+#   An UNKNOWN directory fails closed: when the text loses the cwd (`cd "$X"`, a `cd` into a
+#   substitution) a git command with no -C/--git-dir/GIT_DIR/--work-tree/GIT_WORK_TREE is judged
+#   as if run in the main worktree. Known false deny: `cd "$X" && git reset --hard` from a linked
+#   worktree; name the directory instead: `git -C <path> reset --hard`, or `cd <literal path>`.
 #   3. Staging without per-file pathspecs, in any worktree of this repository: `git add -A|--all|
 #      -u|--update|.|./|:/` and `git commit -a|--all`. -u and commit -a are the same hazard as -A:
 #      they stage every tracked file's changes, a peer's uncommitted hunks included.
@@ -49,8 +53,10 @@
 # Cannot see: a script file (`bash x.sh`), a function or alias, a python/node subprocess, `xargs
 # rm` input, `git rm`, `unlink`/`mv`, a path or directory the text cannot resolve, a `git` alias,
 # launchers outside shell_commands.PREFIXES (ssh, su -c, script -c, docker exec, make, npm run).
-# Unparseable text: allowed when `bash -n` refuses it too (bash will not run it); otherwise a
-# whole-string pattern check denies the verbs above in the main worktree.
+# Unparseable text (or substitutions nested more than 8 deep): allowed when `bash -n` refuses it
+# too (bash will not run it); otherwise a whole-string pattern check denies rules 1-2's verbs in
+# the main worktree and rules 3-4's (add -A/./-u, commit -a, a forced push without both lease
+# flags or to dev/mainline) in every worktree of this repository.
 #
 # Hook input is JSON on stdin (tool_input.command, cwd, agent_id). Falsified by
 # .claude/hooks/test-hooks.sh.
@@ -269,6 +275,10 @@ def check_git(argv, cwd, env, assigns):
         info = repo_of_gitdir(gitdir)
     elif worktree or where:
         info = repo_of(worktree or where)
+    elif project and worktrees():
+        # The text lost the directory (cd "$X", a refused pushd): fail closed, judge it as
+        # the main worktree. -C, --git-dir/GIT_DIR and --work-tree/GIT_WORK_TREE resolve above.
+        info = (worktrees()[0], project[2], project[2])
     else:
         info = None
     if verb in S9 or verb == "switch":
@@ -313,7 +323,7 @@ def check_git(argv, cwd, env, assigns):
                             j += 1
                         break
             j += 1
-    elif verb == "push" and where:
+    elif verb == "push" and ours(info):
         check_push(rest, where)
 
 def check_push(rest, where):
@@ -351,7 +361,8 @@ def check_push(rest, where):
         r = r.lstrip("+")
         dst = r.split(":", 1)[1] if ":" in r else r
         if dst == "HEAD":
-            dst = git("-C", where, "symbolic-ref", "--short", "-q", "HEAD").stdout.strip() or "HEAD"
+            dst = (git("-C", where, "symbolic-ref", "--short", "-q", "HEAD").stdout.strip()
+                   if where else "") or "HEAD"  # an unknown directory: HEAD is not claude/*
         dsts.append(dst[len("refs/heads/"):] if dst.startswith("refs/heads/") else dst)
     for d in dsts:
         if not d.startswith("claude/"):
@@ -406,18 +417,33 @@ def visit(argv, cwd, env, assigns):
     elif name == "rm":
         check_rm(argv, cwd, env)
 
-FALLBACK = [r"\bgit\b[^\n;&|]*\b(checkout|restore|clean|stash|reset|switch)\b",
-            r"(^|[\s;&|(`])rm\s",
-            r"\bgit\b[^\n;&|]*\badd\b[^\n;&|]*\s(-A|--all|-u|--update|\.)(\s|$)",
-            r"\bgit\b[^\n;&|]*\bpush\b[^\n;&|]*(\s--force\b|\s-f\b|\s\+)"]
+# Whole-string fallback for text the walk cannot follow but bash runs: rules 1 and 2 in the main
+# worktree, rules 3 and 4 in every worktree of this repository.
+FALLBACK_MAIN = [r"\bgit\b[^\n;&|]*\b(checkout|restore|clean|stash|reset|switch)\b",
+                 r"(^|[\s;&|(`])rm\s"]
+FALLBACK_ANY = [r"\bgit\b[^\n;&|]*\badd\b[^\n;&|]*\s(-A|--all|-u|--update|\.)(?=[\s;&|)]|$)",
+                r"\bgit\b[^\n;&|]*\bcommit\b[^\n;&|]*\s(-[A-Za-z]*a[A-Za-z]*|--all)(?=[\s;&|)]|$)"]
+
+def forced_push_text(text):
+    for m in re.finditer(r"\bgit\b[^\n;&|]*\bpush\b[^\n;&|]*", text):
+        seg = m.group(0)
+        if re.search(r"\s(--force(?![-\w])|-[A-Za-z]*f[A-Za-z]*|--mirror|\+\S)", seg):
+            return True
+        if "--force-with-lease" in seg and ("--force-if-includes" not in seg
+                                            or re.search(r"\b(dev|mainline)\b", seg)):
+            return True
+    return False
+
 try:
     sc.walk(cmd, cwd, visit)
 except sc.ParseError:
     if not sc.bash_accepts(cmd):
         sys.exit(0)  # bash refuses it too: nothing runs
-    if main_tree(repo_of(cwd)) and any(re.search(p, cmd) for p in FALLBACK):
-        deny("this command could not be parsed (bash can parse it) and names a guarded git verb "
-             "or rm in the main worktree. Split it into simpler commands.")
+    here = repo_of(cwd)
+    if (main_tree(here) and any(re.search(p, cmd) for p in FALLBACK_MAIN)) or (
+            ours(here) and (any(re.search(p, cmd) for p in FALLBACK_ANY) or forced_push_text(cmd))):
+        deny("this command could not be parsed (bash can parse it) and names a guarded git verb, "
+             "rm, a stage-everything add/commit or a forced push. Split it into simpler commands.")
 sys.exit(0)
 PY
 HOOK_INPUT="$input" HOOKS_DIR="$(cd "$(dirname "$0")" && pwd)" exec python3 -c "$PROG"

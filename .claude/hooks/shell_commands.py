@@ -159,6 +159,13 @@ def strip_heredocs(src):
                 out.append(src[i:i + 2])
                 i += 2
                 continue
+            if src.startswith("$'", i) and not stack[-1][2]:
+                j = i + 2
+                while j < n and src[j] != "'":
+                    j += 2 if src[j] == "\\" else 1
+                out.append(src[i:j + 1])
+                i = j + 1
+                continue
             if c == "'" and not stack[-1][2]:
                 j = src.find("'", i + 1)
                 j = n - 1 if j < 0 else j
@@ -281,6 +288,9 @@ def _match_close(src, i, open_ch, close_ch):
         if c == "\\":
             i += 2
             continue
+        if src.startswith("$'", i):
+            i = _skip_ansi(src, i + 2)
+            continue
         if c == "'":
             j = src.find("'", i + 1)
             if j < 0:
@@ -316,6 +326,9 @@ def _match_brace(src, i):
         if c == "\\":
             i += 2
             continue
+        if src.startswith("$'", i):
+            i = _skip_ansi(src, i + 2)
+            continue
         if c == "'":
             j = src.find("'", i + 1)
             if j < 0:
@@ -344,8 +357,41 @@ def _match_brace(src, i):
 
 
 def _subs_in(text):
-    """The command substitutions ($(...), backticks) inside a span of shell words."""
-    return [sub for t in tokenize(text) if t[0] == "w" for sub in t[2]]
+    """The command substitutions ($(...), backticks) and process substitutions (<(...),
+    >(...)) inside a span of shell words."""
+    found = [sub for t in tokenize(text) if t[0] == "w" for sub in t[2]]
+    i, n = 0, len(text)
+    while i < n:
+        c = text[i]
+        if c == "\\":
+            i += 2
+        elif text.startswith("$'", i):
+            i = _skip_ansi(text, i + 2)
+        elif c == "'":
+            j = text.find("'", i + 1)
+            i = n if j < 0 else j + 1
+        elif c == '"':
+            i = _skip_dquote(text, i + 1)
+        elif text.startswith("<(", i) or text.startswith(">(", i):
+            k = _match_close(text, i + 2, "(", ")")
+            found.append(text[i + 2:k - 1])
+            i = k
+        else:
+            i += 1
+    return found
+
+
+def _skip_ansi(src, i):
+    """Index just past the ``'`` closing a ``$'`` consumed before ``i`` (``\\'`` is escaped)."""
+    n = len(src)
+    while i < n:
+        if src[i] == "\\":
+            i += 2
+            continue
+        if src[i] == "'":
+            return i + 1
+        i += 1
+    raise ParseError("unterminated $'")
 
 
 def _skip_dquote(src, i):
@@ -723,12 +769,15 @@ def walk(src, cwd, visit, env=None, _depth=0):
     """Call visit(argv, cwd, env, assigns) for each simple command in ``src``."""
     env = dict(env or {})
     env["PWD"], env["OLDPWD"] = cwd, None  # the command's, never the hook process's
-    _walk(src, _State(cwd, env), visit, _depth)
+    try:
+        _walk(src, _State(cwd, env), visit, _depth)
+    except RecursionError:
+        raise ParseError("nested too deeply")
 
 
 def _walk(src, st, visit, depth):
     if depth > 8:
-        return
+        raise ParseError("substitutions nested more than 8 deep")
     stack = []
     for item in _split(tokenize(strip_heredocs(src))):
         if item[0] == "open":
@@ -786,25 +835,29 @@ def _command(raw, st, visit, depth):
                     st.cwd = resolve(args[0], st.cwd, st.env)
             else:
                 # bash's directory stack: index 0 is the cwd, then the most recently pushed.
-                full, args = [st.cwd] + st.dirs[::-1], argv[1:]
+                # A refused pushd/popd (empty stack, N out of range) changes nothing, as in bash.
+                full = [st.cwd] + st.dirs[::-1]
+                no_cd = "-n" in argv[1:]
+                args = [a for a in argv[1:] if a != "-n"]
                 rot = args[0] if args and re.match(r"^[+-][0-9]+$", args[0]) else None
-                if "-n" in args:
-                    full = [None]  # stack edited without a cd: not followed
-                elif rot is not None:  # pushd/popd +N|-N: rotate, or drop, entry N
+                if rot is not None:  # +N|-N: rotate (pushd) or drop (popd) entry N
                     k = int(rot[1:]) if rot[0] == "+" else len(full) - 1 - int(rot[1:])
-                    if not 0 <= k < len(full):
-                        full = [None]  # bash refuses it
+                    if not 0 <= k < len(full) or (name == "popd" and len(full) < 2):
+                        pass
+                    elif no_cd:
+                        full = [st.cwd, None]  # the stack below the top is no longer followed
                     elif name == "pushd":
                         full = full[k:] + full[:k]
                     else:
                         del full[k]
-                elif name == "pushd" and args:
-                    full = [resolve(args[0], st.cwd, st.env)] + full
-                elif len(full) >= 2:  # pushd swaps the top two; popd drops the top
-                    full = [full[1], full[0]] + full[2:] if name == "pushd" else full[1:]
-                else:
-                    full = [None]
-                full = full or [None]
+                elif name == "pushd" and args:  # -n: add the directory below the top
+                    new = resolve(args[0], st.cwd, st.env)
+                    full = [st.cwd, new] + full[1:] if no_cd else [new] + full
+                elif len(full) >= 2:  # bare pushd swaps the top two; popd drops one
+                    if name == "pushd":
+                        full = [full[1], full[0]] + full[2:]
+                    else:
+                        full = [full[0]] + full[2:] if no_cd else full[1:]
                 st.cwd, st.dirs = full[0], full[1:][::-1]
             st.old = prev
             st.env["PWD"], st.env["OLDPWD"] = st.cwd, prev

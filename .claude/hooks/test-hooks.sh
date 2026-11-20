@@ -174,6 +174,12 @@ blocked 'chrt -i 0 dotnet build'
 blocked "env -S 'dotnet test --no-build'"
 blocked $'(( n = 1 << 4 ))\ndotnet test'
 blocked 'b=($(dotnet test))'
+blocked 'echo ${x:-<(dotnet test)}'
+blocked 'a=( <(dotnet build) )'
+allowed 'a=( <(dotnet --version) )'
+blocked "$(python3 -c 'c="dotnet test"
+for _ in range(9): c = "echo $(" + c + ")"
+print(c)')"
 allowed 'b=($(dotnet --version))'
 blocked 'echo ${x:-$(dotnet test)}'
 allowed 'echo ${x:-$(dotnet --version)}'
@@ -467,6 +473,67 @@ gdeny "pushd $WT && pushd $MAIN && popd +1 && git reset --hard" "$G"
 # After `--` come paths: a file named --worktree is not the option.
 gallow 'git restore -S -- --worktree' "$MAIN"
 gdeny 'git restore -S --worktree -- src/a.txt' "$MAIN"
+# 1g. Review round 5: when the model loses track, the verdict is deny, not allow.
+# pushd/popd as bash runs them: a refused one (empty stack, N out of range, one entry) stays put.
+gdeny 'pushd; git stash' "$MAIN" agent-1
+gdeny 'pushd -n /tmp; git reset --hard' "$MAIN" agent-1
+gdeny 'popd -n; git reset --hard' "$MAIN" agent-1
+gdeny 'popd; git reset --hard' "$MAIN" agent-1
+gdeny 'pushd +3; git reset --hard' "$MAIN" agent-1
+gdeny "( pushd $WT ); popd; git reset --hard" "$MAIN" agent-1
+gallow 'pushd /tmp; popd -n; git reset --hard' "$MAIN" agent-1
+gallow "pushd -n $WT; pushd +1; git reset --hard" "$MAIN" agent-1
+# An unknown directory is judged as the main worktree (header: known false deny) unless git is
+# pointed at a known path.
+gdeny 'cd "$X" && git reset --hard' "$WT"
+gdeny 'cd "$(mktemp -d)" && git stash' "$WT" agent-1
+gdeny 'cd "$X" && git push --force origin HEAD' "$WT"
+gallow "cd \"\$X\" && git -C $WT reset --hard" "$MAIN"
+gallow 'cd "$X" && git status && git switch dev' "$MAIN"
+# Parse limits fail closed: past 8 nested substitutions, or Python's recursion limit, the text
+# goes to bash -n and the whole-string fallback (rules 3-4 in every worktree).
+nest() { python3 -c 'import sys; c=sys.argv[1]
+for _ in range(int(sys.argv[2])): c = "echo $(" + c + ")"
+print(c)' "$1" "$2"; }
+gdeny "$(nest 'git reset --hard' 9)" "$MAIN" agent-1
+gdeny "$(nest 'git push --force origin dev' 9)" "$WT"
+gallow "$(nest 'git status' 9)" "$MAIN"
+DEEP=$(python3 -c 'print("echo " + "${x:-" * 1500 + "a" + "}" * 1500 + "; git reset --hard")')
+gdeny "$DEEP" "$MAIN" agent-1
+gdeny 'git add -A; echo "${x:-"it'"'"'s"}"' "$WT"
+gallow 'git push --force-with-lease --force-if-includes origin claude/x; echo "${x:-"it'"'"'s"}"' "$WT"
+# Process substitutions inside ${...} and arrays run.
+gdeny 'echo ${x:-<(git reset --hard)}' "$MAIN" agent-1
+gdeny 'a=( <(git reset --hard) )' "$MAIN" agent-1
+gdeny 'a=( >(git stash) )' "$MAIN"
+gallow 'a=( <(git status) )' "$MAIN" agent-1
+# $'...' with \' inside $(...) and ${...}.
+D1=$(cat <<'EOS'
+echo $(echo $'it\'s'); git push --force origin dev
+EOS
+)
+D2=$(cat <<'EOS'
+echo ${x:-$'\''}; git stash list
+EOS
+)
+D3=$(cat <<'EOS'
+echo $(echo $'it\'s'); git -C MAINDIR reset --hard
+EOS
+)
+gdeny "$D1" "$WT"
+gdeny "${D3/MAINDIR/$MAIN}" "$WT"   # out of the fallback's reach
+gallow "$D2" "$MAIN"
+# _match_brace skips a $(...) whole: its } does not close the ${.
+E1=$(cat <<'EOS'
+echo ${x:-$(echo })}; git push --force origin dev
+EOS
+)
+E2=$(cat <<'EOS'
+echo ${x:-$(echo }; git -C MAINDIR reset --hard)}
+EOS
+)
+gdeny "$E1" "$WT"
+gdeny "${E2/MAINDIR/$MAIN}" "$WT"   # out of the fallback's reach
 # 2. rm: denied inside MAIN, allowed for .claude/tmp/, .NET bin/obj, stale .claude/worktrees/*
 # directories, linked worktrees, outside, and targets the text cannot resolve.
 gdeny 'rm src/a.txt' "$MAIN"
