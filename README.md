@@ -80,4 +80,4 @@ Unless you explicitly state otherwise, any contribution intentionally submitted
 for inclusion in this project shall be dual licensed as above, without any
 additional terms or conditions.
 
-Sharpy is Apache-2.0 OR MIT; portions ported from CPython are under PSF-2.0, see [THIRD-PARTY-NOTICES.txt](THIRD-PARTY-NOTICES.txt).
+Sharpy is Apache-2.0 OR MIT; portions ported from CPython are under the CPython licence (SPDX `Python-2.0`), see [THIRD-PARTY-NOTICES.txt](THIRD-PARTY-NOTICES.txt).

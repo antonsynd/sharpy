@@ -1,6 +1,6 @@
 # ported from CPython 3.12 Lib/test/test_int.py::IntTestCases
 #
-# Derived from the CPython 3.12 standard-library test suite (PSF-2.0); see the
+# Derived from the CPython 3.12 standard-library test suite (Python-2.0); see the
 # NOTICE file in this directory. The bulk of test_int leans on int(str, base) with
 # bases 2..36, arbitrary-precision literals (2**32, '1'*600), bytes/memoryview inputs,
 # and unicode-digit parsing — none of which the Sharpy int() builtin surface supports.

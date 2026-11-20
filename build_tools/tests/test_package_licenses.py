@@ -86,3 +86,86 @@ def test_the_id_reader_splits_operators_and_parentheses():
         "Python-2.0",
     }
     assert _ids("(Apache-2.0 OR MIT) AND PSF-2.0") - NUGET_ACCEPTED == {"PSF-2.0"}
+
+
+# The repository names the CPython licence by the id its packages declare (owner, 2026-11-20:
+# "fix + guard"). `PSF-2.0` is the retired id; only these files may still name it, each as history
+# of the refusal (this test) or as a ruling quoted verbatim (the charter row R-NO). Matched exactly.
+_RETIRED_IDS = re.compile(r"(?<![A-Za-z0-9.\-+])PSF-2\.0(?![A-Za-z0-9.+])")
+_MAY_NAME_RETIRED = {
+    "build_tools/tests/test_package_licenses.py",
+    "docs/process/rounds/remediation-round-2026-09-20-batching.md",
+}
+
+
+def _tracked_text_files() -> dict[str, str]:
+    import subprocess
+
+    out = subprocess.run(
+        ["git", "-C", str(REPO), "ls-files", "-z"],
+        check=True,
+        capture_output=True,
+    ).stdout.decode("utf-8")
+    texts = {}
+    for rel in filter(None, out.split("\0")):
+        path = REPO / rel
+        if not path.is_file():
+            continue
+        data = path.read_bytes()
+        if b"\0" in data[:8192]:
+            continue
+        texts[rel] = data.decode("utf-8", errors="replace")
+    return texts
+
+
+def _third_party_ids() -> set[str]:
+    """Ids a packaged expression adds to the project's own default (Directory.Build.props)."""
+    exprs = _expressions()
+    default = {i for f, e in exprs if f == "Directory.Build.props" for i in _ids(e)}
+    return {i for _, e in exprs for i in _ids(e)} - default
+
+
+def test_the_readme_names_the_licence_the_packages_declare():
+    ids = _third_party_ids()
+    assert ids == {"Python-2.0"}, (
+        f"third-party ids in the package expressions: {sorted(ids)}"
+    )
+    readme = (REPO / "README.md").read_text(encoding="utf-8")
+    missing = [i for i in sorted(ids) if f"`{i}`" not in readme]
+    assert not missing, f"README.md does not name the packaged licence id(s) {missing}"
+
+
+def test_no_file_names_the_retired_cpython_licence_id():
+    texts = _tracked_text_files()
+    assert "README.md" in texts and len(texts) > 1000, (
+        "the tracked-file scan found too little"
+    )
+    bad = sorted(
+        f"{rel}:{text.count(chr(10), 0, m.start()) + 1}"
+        for rel, text in texts.items()
+        if rel not in _MAY_NAME_RETIRED
+        for m in _RETIRED_IDS.finditer(text)
+    )
+    assert not bad, (
+        "the CPython licence's SPDX id is `Python-2.0` (charter R-NO); `PSF-2.0` at:\n"
+        + "\n".join(bad)
+    )
+
+
+def test_each_exempt_file_still_names_the_retired_id():
+    # An exemption that no longer matches is removed, so the list cannot carry dead rows.
+    texts = _tracked_text_files()
+    stale = sorted(
+        rel
+        for rel in _MAY_NAME_RETIRED
+        if rel not in texts or not _RETIRED_IDS.search(texts[rel])
+    )
+    assert not stale, f"remove from _MAY_NAME_RETIRED: {stale}"
+
+
+def test_the_retired_id_pattern_matches_only_the_id():
+    assert _RETIRED_IDS.search("are under PSF-2.0, see")
+    assert _RETIRED_IDS.search("test suite (PSF-2.0); see")
+    assert not _RETIRED_IDS.search("PSF-2.01")
+    assert not _RETIRED_IDS.search("XPSF-2.0")
+    assert not _RETIRED_IDS.search("PSF License Version 2")

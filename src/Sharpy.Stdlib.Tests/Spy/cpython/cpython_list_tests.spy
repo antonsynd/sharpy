@@ -2,7 +2,7 @@
 #                          Lib/test/list_tests.py::CommonTest
 #                          Lib/test/seq_tests.py::CommonTest
 #
-# Derived from the CPython 3.12 standard-library test suite (PSF-2.0); see the
+# Derived from the CPython 3.12 standard-library test suite (Python-2.0); see the
 # NOTICE file in this directory.
 #
 # The CPython leaf file (test_list.py) is almost entirely subclass / impl-detail

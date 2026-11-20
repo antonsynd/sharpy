@@ -2,7 +2,7 @@
 
 The oracle is pinned to **CPython 3.12.x**. Test files are read from a local
 CPython 3.12 install's ``Lib/test`` directory; they are deliberately NOT vendored
-into this repo (PSF-2.0 material, large, and re-syncs must be deliberate).
+into this repo (Python-2.0 material, large, and re-syncs must be deliberate).
 
 Resolution order:
   1. ``--cpython-lib`` path passed on the CLI (a ``.../lib/pythonX.Y/test`` dir).
@@ -83,5 +83,5 @@ def guidance() -> str:
         "Could not locate a CPython 3.12 Lib/test directory. Install CPython 3.12\n"
         "(e.g. `brew install python@3.12`) and pass its test dir explicitly:\n"
         "  --cpython-lib /path/to/lib/python3.12/test\n"
-        "or set SHARPY_CPYTHON_TEST_DIR. Test files are not vendored (PSF-2.0)."
+        "or set SHARPY_CPYTHON_TEST_DIR. Test files are not vendored (Python-2.0)."
     )

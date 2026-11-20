@@ -2,7 +2,7 @@
 
 A skeleton carries the test signature and a provenance comment only — the body
 port is manual/agent work later (issue #1030 phase 1). Every emitted file starts
-with the PSF-2.0 attribution required for CPython-derived material.
+with the Python-2.0 attribution required for CPython-derived material.
 """
 
 from __future__ import annotations

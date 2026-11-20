@@ -1,6 +1,6 @@
 # ported from CPython 3.12 Lib/test/test_colorsys.py::ColorsysTest
 #
-# Derived from the CPython 3.12 standard-library test suite (PSF-2.0); see the
+# Derived from the CPython 3.12 standard-library test suite (Python-2.0); see the
 # NOTICE file in this directory. assertTripleEqual/assertAlmostEqual (7 decimal
 # places) are rendered as approx(..., abs=1e-7). The frange() roundtrip loops are
 # unrolled over an explicit list of sample values.

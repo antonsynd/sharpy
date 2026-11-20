@@ -590,7 +590,7 @@ def test_every_file_a_workflow_reads_is_in_its_filter(path: Path) -> None:
 
 def test_python_suite_runs_on_the_files_its_checks_read() -> None:
     # build_tools/tests/ checks read these, which no workflow step names, so the scanner cannot see
-    # them: the SemanticInfo scorecard ratchet and the allowlist severity check.
+    # them: the SemanticInfo scorecard ratchet, the allowlist severity check and the licence-id check.
     workflow = load(WORKFLOWS / "python-build-tools.yml")
     listed = relevant_paths(workflow)
     assert listed
@@ -604,6 +604,7 @@ def test_python_suite_runs_on_the_files_its_checks_read() -> None:
         "CLAUDE.md",
         ".claude/settings.json",
         "docs/process/README.md",
+        "README.md",
         *allowlists,
     ]:
         assert matches(read, listed), read

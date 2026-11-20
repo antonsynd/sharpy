@@ -2,7 +2,7 @@
 # (and the Lib/test/string_tests.py mixins it inherits: CommonTest,
 #  MixinStrUnicodeUserStringTest)
 #
-# Derived from the CPython 3.12 standard-library test suite (PSF-2.0); see the
+# Derived from the CPython 3.12 standard-library test suite (Python-2.0); see the
 # NOTICE file in this directory. CPython 3.12 has no top-level test_str.py — the `str`
 # *type* is tested by test_unicode.py, whose value-level assertions live almost entirely
 # in the string_tests.py mixin bases via a checkequal(expected, obj, method, *args)

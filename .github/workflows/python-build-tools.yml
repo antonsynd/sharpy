@@ -23,6 +23,7 @@ on:
       - 'src/Sharpy.Stdlib/**'
       - 'src/Sharpy.Stdlib.Tests/Spy/cpython/**'
       - 'THIRD-PARTY-NOTICES.txt'
+      - 'README.md'
       - 'Directory.Build.props'
       - 'global.json'
       - '.editorconfig'
@@ -99,6 +100,8 @@ jobs:
         src/Sharpy.Stdlib.Tests/Spy/cpython/**
         # test_third_party_notices.py (#2602) reads it with the Core/Stdlib sources above.
         THIRD-PARTY-NOTICES.txt
+        # test_package_licenses.py (R-NO) checks the licence id README.md names.
+        README.md
         Directory.Build.props
         global.json
         .editorconfig
