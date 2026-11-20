@@ -310,6 +310,13 @@ def test_crlf_body() -> None:
         ("a/src/b.cs", False),
         ("build_tools", False),
         ("README.md", False),
+        ("Directory.Build.props", True),
+        ("Directory.Build.targets", True),
+        ("global.json", True),
+        ("docs/Directory.Build.props", False),
+        ("Directory.Build.props.user", False),
+        ("global.json.bak", False),
+        ("Directory.Packages.props", False),
     ],
 )
 def test_code_path_classifier(path: str, code: bool) -> None:

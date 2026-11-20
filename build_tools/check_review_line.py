@@ -115,6 +115,8 @@ CODE_PREFIXES = (
     ".github/",
     "docs/language_specification/",
 )
+# Root build files that change every project (owner, 2026-11-20, goals document §7 decision 1: "1 add").
+CODE_FILES = frozenset(("Directory.Build.props", "Directory.Build.targets", "global.json"))
 RULE_BASE = "dev"
 # Owner ruling (2026-11-17): a dependency bump opened by Dependabot needs no review line. The author
 # login is set by GitHub and cannot be chosen by a PR (a branch name can), and the exemption holds
@@ -193,7 +195,7 @@ REBASE_HINT = "; if the branch was rebased with changes, the review must be repe
 
 
 def is_code_path(path: str) -> bool:
-    return path.startswith(CODE_PREFIXES)
+    return path.startswith(CODE_PREFIXES) or path in CODE_FILES
 
 
 def is_manifest_path(path: str) -> bool:

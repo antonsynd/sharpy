@@ -61,8 +61,9 @@ The shared rules for `/create-plan`, `/verify-plan`, `/implement-plan` and `/ver
    it once every check at its tip has completed green (where path filters start no gate, the subject
    check alone) and, if it changes code, its `Independent review @ <sha>` line is current and its
    verdict is not `do not merge` (`/implement-plan` › Cleanup and Report step 4). It changes code when
-   its diff touches `src/`, `build_tools/`, `.claude/scripts/`, `.claude/hooks/`, `.github/` or
-   `docs/language_specification/`; any other pull request needs green alone. Green never stands in
+   its diff touches `src/`, `build_tools/`, `.claude/scripts/`, `.claude/hooks/`, `.github/`,
+   `docs/language_specification/` or the root `Directory.Build.props`, `Directory.Build.targets` or
+   `global.json` (owner, 2026-11-20); any other pull request needs green alone. Green never stands in
    for a required review. A Dependabot pull request that changes only package manifests under `src/`
    (`*.csproj`, `packages.lock.json`) needs green alone (owner, 2026-11-17). Merge with a merge commit, the head sha the gate measured as the expected
    head, so a later push cannot ride in unmeasured. A red or a pending check is never merged over:
