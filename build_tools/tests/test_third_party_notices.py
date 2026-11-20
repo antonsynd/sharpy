@@ -19,7 +19,9 @@ PyFormat.cs after an audit). This test closes the gap mechanically:
   namesake: its keys are exactly the namesake modules on disk (a new module is red until someone reads
   it against its CPython source and records a verdict), the files in a ``port`` module that carry the
   header are exactly the files its row names (a lost header and an extra one are both red), and a
-  ``behaviour`` module has none.
+  ``behaviour`` module has none;
+* the files the notices list under "Sharpy files holding these summaries:" are exactly the files
+  whose API summaries repeat a CPython 3.15 Lib docstring (documentation, so no PSF header).
 
 The claim scan only catches files that declare themselves ports; a port that makes no such claim (a
 structural port with no comment saying so) is caught by the census, which forces a reading of each new
@@ -102,10 +104,12 @@ def _has_header(text: str) -> bool:
     return all(line in text for line in HEADER_LINES)
 
 
-def listed_files(notices: str) -> Set[str]:
-    """The paths under 'Sharpy files derived from it:' (one per 4-space-indented line)."""
+def listed_files(
+    notices: str, label: str = "Sharpy files derived from it:"
+) -> Set[str]:
+    """The paths under the first `label` line (one per 4-space-indented line)."""
     lines = notices.splitlines()
-    start = lines.index("Sharpy files derived from it:")
+    start = lines.index(label)
     listed: Set[str] = set()
     for line in lines[start + 1 :]:
         if not line.strip():
@@ -626,3 +630,223 @@ def test_census_names_a_malformed_row(tmp_path: Path, row):
     assert (
         len(problems) == 1 and "is not (verdict, set of file paths)" in problems[0]
     ), problems
+
+
+# ---- API summaries adapted from CPython docstrings (#2602 follow-up, owner 2026-11-20) ----
+#
+# Some one-line API summaries (a .spy docstring, a C# <summary>) are CPython Lib docstrings copied
+# word for word. That is documentation, not code: the files keep no PSF header (a "behaviour" census
+# row stays header-free), and THIRD-PARTY-NOTICES.txt credits them in one section whose file list
+# must equal the set this matcher finds. The rule is the #2777 review's: a summary matches when its
+# first paragraph (a C# summary: the whole text or its first sentence), whitespace collapsed, case
+# and a final full stop ignored, equals the first paragraph of a docstring (module, class or
+# function) in CPython's Lib that is longer than DOCSTRING_MIN characters. Lib's test packages,
+# idlelib and site-packages are not read. C# generated from a .spy file is skipped: the .spy file is
+# listed for it, as the notices file says.
+
+DOCSTRING_LABEL = "Sharpy files holding these summaries:"
+DOCSTRING_MIN = 30
+DOCSTRING_ORACLE = (3, 15)
+
+# Run under the oracle's python (`-I`): prints {"version": ..., "index": {key: Lib-relative path}}.
+# argv[1], when given, is the Lib directory to read instead of the interpreter's own.
+_INDEX_SCRIPT = r"""
+import ast, json, os, sys
+lib = sys.argv[1] if len(sys.argv) > 1 else os.path.dirname(os.__file__)
+index = {}
+for dirpath, dirnames, filenames in os.walk(lib):
+    dirnames.sort()
+    for name in sorted(filenames):
+        if not name.endswith(".py"):
+            continue
+        path = os.path.join(dirpath, name)
+        rel = os.path.relpath(path, lib).replace(os.sep, "/")
+        if "/test" in "/" + rel or "site-packages" in rel or "idlelib" in rel:
+            continue
+        try:
+            with open(path, encoding="utf-8") as f:
+                tree = ast.parse(f.read())
+        except Exception:
+            continue
+        for node in ast.walk(tree):
+            if isinstance(node, (ast.Module, ast.ClassDef, ast.FunctionDef, ast.AsyncFunctionDef)):
+                doc = ast.get_docstring(node)
+                if doc:
+                    first = " ".join(doc.strip().split("\n\n")[0].split())
+                    if len(first) > MIN:
+                        index.setdefault(first.rstrip(".").lower(), rel)
+print(json.dumps({"version": list(sys.version_info[:3]), "index": index}))
+""".replace("MIN", str(DOCSTRING_MIN))
+
+_SPY_DOCSTRING = re.compile(r'"""(.*?)"""', re.S)
+_CS_SUMMARY = re.compile(r"<summary>(.*?)</summary>", re.S)
+_GENERATED = "// Generated from"
+
+
+def _key(text: str) -> str:
+    return " ".join(text.strip().split("\n\n")[0].split()).rstrip(".").lower()
+
+
+def summary_keys(path: Path, text: str) -> List[str]:
+    """The match keys of a file's summaries (a C# summary gives its whole text and first sentence)."""
+    if path.suffix == ".spy":
+        return [_key(m.group(1)) for m in _SPY_DOCSTRING.finditer(text)]
+    if text.startswith(_GENERATED):
+        return []
+    keys = []
+    for m in _CS_SUMMARY.finditer(text):
+        summary = re.sub(r"<[^>]+>", "", re.sub(r"\s*///\s*", " ", m.group(1)))
+        whole = " ".join(summary.split()).rstrip(".").lower()
+        keys += [whole, whole.split(". ")[0]]
+    return keys
+
+
+def docstring_matches(root: Path, index: Dict[str, str]) -> Dict[str, List[str]]:
+    """Root-relative path -> 'summary  <- Lib path' for each summary found in the CPython index."""
+    found: Dict[str, List[str]] = {}
+    for path in sources(root):
+        hits = sorted(
+            {
+                f"{key!r} <- Lib/{index[key]}"
+                for key in summary_keys(path, path.read_text(encoding="utf-8"))
+                if key in index
+            }
+        )
+        if hits:
+            found[path.relative_to(root).as_posix()] = hits
+    return found
+
+
+def docstring_problems(listed: Set[str], found: Dict[str, List[str]]) -> List[str]:
+    problems = [
+        f"{rel}: holds CPython docstring text ({found[rel][0]}) but is not under "
+        f"{DOCSTRING_LABEL!r} in THIRD-PARTY-NOTICES.txt"
+        for rel in sorted(set(found) - listed)
+    ]
+    problems += [
+        f"{rel}: under {DOCSTRING_LABEL!r} in THIRD-PARTY-NOTICES.txt but holds no CPython "
+        "docstring text; delete the line"
+        for rel in sorted(listed - set(found))
+    ]
+    return problems
+
+
+def _run_index(python: str, lib: str = "") -> Dict[str, object]:
+    import json
+    import subprocess
+
+    argv = [python, "-I", "-c", _INDEX_SCRIPT] + ([lib] if lib else [])
+    out = subprocess.run(argv, check=True, capture_output=True, text=True).stdout
+    return json.loads(out)
+
+
+@pytest.fixture(scope="module")
+def cpython_docstrings() -> Dict[str, str]:
+    import shutil
+
+    if sys.version_info[:2] == DOCSTRING_ORACLE:
+        python = sys.executable
+    else:
+        python = shutil.which("python%d.%d" % DOCSTRING_ORACLE) or ""
+    if not python:
+        pytest.skip(
+            "the docstring oracle is CPython %d.%d's Lib (.python-version); "
+            "python%d.%d is not on PATH" % (DOCSTRING_ORACLE * 2)
+        )
+    result = _run_index(python)
+    assert tuple(result["version"][:2]) == DOCSTRING_ORACLE, result["version"]
+    return result["index"]
+
+
+def test_docstring_matcher_sees_the_known_summaries(cpython_docstrings):
+    # Positive control: an empty result elsewhere means "none", not "looked nowhere".
+    assert cpython_docstrings.get(
+        "push item onto heap, maintaining the heap invariant"
+    ) == ("heapq.py")
+    found = docstring_matches(REPO, cpython_docstrings)
+    assert {
+        "src/Sharpy.Stdlib/spy/heapq.spy",
+        "src/Sharpy.Stdlib/Pathlib/Path.cs",
+    } <= set(found), sorted(found)
+
+
+def test_docstring_notice_lists_exactly_the_files_holding_cpython_docstrings(
+    cpython_docstrings,
+):
+    notices = NOTICES.read_text(encoding="utf-8")
+    listed = listed_files(notices, DOCSTRING_LABEL)
+    found = docstring_matches(REPO, cpython_docstrings)
+    problems = docstring_problems(listed, found)
+    assert not problems, "\n".join(problems)
+
+
+def test_docstring_index_reads_first_paragraphs_over_the_minimum(tmp_path: Path):
+    # The index rule, run by this interpreter over a stand-in Lib (no oracle needed).
+    long = "Return the frobnicated value of the given widget."
+    (tmp_path / "frob.py").write_text(
+        f'"""Frobnication helpers for widgets and gadgets.\n\nMore text."""\n'
+        f'def frob(x):\n    """{long}\n\n    Details."""\n'
+        'def short(x):\n    """Return x unchanged here."""\n',
+        encoding="utf-8",
+    )
+    (tmp_path / "test").mkdir()
+    (tmp_path / "test" / "test_frob.py").write_text(
+        '"""A test module docstring that is long enough."""\n', encoding="utf-8"
+    )
+    index = _run_index(sys.executable, str(tmp_path))["index"]
+    assert index == {
+        "frobnication helpers for widgets and gadgets": "frob.py",
+        long.rstrip(".").lower(): "frob.py",
+    }
+
+
+_FAKE_INDEX = {"return the frobnicated value of the given widget": "frob.py"}
+
+
+def _source(tmp_path: Path, rel: str, text: str) -> None:
+    path = tmp_path / rel
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(text, encoding="utf-8")
+
+
+@pytest.mark.parametrize(
+    "rel, text",
+    [
+        (
+            "src/Sharpy.Stdlib/spy/frob.spy",
+            'def frob(x: int) -> int:\n    """Return the frobnicated value of the\n'
+            '    given widget.\n\n    Sharpy details."""\n',
+        ),
+        (
+            "src/Sharpy.Stdlib/Frob/Frob.cs",
+            "/// <summary>\n/// Return the <c>frobnicated</c> value of the given widget.\n/// </summary>\n",
+        ),
+        (
+            "src/Sharpy.Core/Frob.cs",
+            "/// <summary>Return the frobnicated value of the given widget. Sharpy adds more."
+            "</summary>\n",
+        ),
+    ],
+)
+def test_docstring_check_refuses_an_unlisted_copy(tmp_path: Path, rel: str, text: str):
+    _source(tmp_path, rel, text)
+    found = docstring_matches(tmp_path, _FAKE_INDEX)
+    assert set(found) == {rel}, found
+    problems = docstring_problems(set(), found)
+    assert len(problems) == 1 and "is not under" in problems[0], problems
+    assert docstring_problems({rel}, found) == []
+
+
+def test_docstring_check_refuses_a_stale_line_and_skips_generated_csharp(
+    tmp_path: Path,
+):
+    _source(
+        tmp_path,
+        "src/Sharpy.Stdlib/Frob/Frob.cs",
+        _GENERATED + " src/Sharpy.Stdlib/spy/frob.spy\n"
+        "/// <summary>Return the frobnicated value of the given widget.</summary>\n",
+    )
+    found = docstring_matches(tmp_path, _FAKE_INDEX)
+    assert found == {}
+    problems = docstring_problems({"src/Sharpy.Stdlib/Frob/Frob.cs"}, found)
+    assert len(problems) == 1 and "delete the line" in problems[0], problems
