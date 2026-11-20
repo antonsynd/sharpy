@@ -495,6 +495,9 @@ public partial class Parser
             }
         }
 
+        if (!IsComparisonOperator(Current.Type) || !CanContinueExpressionHere())
+            return left;
+
         // Check for comparison chain (a < b < c)
         var operators = new List<ComparisonOperator>();
         var operands = new List<Expression> { left };
@@ -529,9 +532,6 @@ public partial class Parser
             operatorPositions.Add((opLine, opCol));
             operands.Add(ParseCast());
         }
-
-        if (operators.Count == 0)
-            return left;
 
         // A type test with a dotted-name reading that heads a longer comparison (`c is Color.RED is d`,
         // `c is Color.RED == d`) is the chain's first link, not an operand of it (P93 D4): the chain is

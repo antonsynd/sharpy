@@ -268,87 +268,87 @@ public partial class Parser
         ImmutableArray<bool> TupleElementNamesEscaped)
         ParseTypeArgumentList(string name, Token startToken, int startLine, int startColumn)
     {
+        // Generic type arguments [T, U]
+        if (Current.Type != TokenType.LeftBracket || Peek().Type == TokenType.RightBracket)
+            return (ImmutableArray<TypeAnnotation>.Empty, ImmutableArray<string?>.Empty, ImmutableArray<bool>.Empty);
+
         var typeArgs = new List<TypeAnnotation>();
         var tupleElementNames = new List<string?>();
         var tupleElementNamesEscaped = new List<bool>();
 
-        // Generic type arguments [T, U]
-        if (Current.Type == TokenType.LeftBracket && Peek().Type != TokenType.RightBracket)
+        Advance();
+        _lastLoopPosition = -1;
+
+        // For tuple types, check for named elements: tuple[x: float, y: float]
+        bool isTuple = name == BuiltinNames.Tuple;
+        bool hasNamedElements = false;
+        bool hasUnnamedElements = false;
+        bool soleArgIsEmptyParens = false;
+
+        do
         {
-            Advance();
-            _lastLoopPosition = -1;
+            if (!CheckLoopProgress())
+                break;
 
-            // For tuple types, check for named elements: tuple[x: float, y: float]
-            bool isTuple = name == BuiltinNames.Tuple;
-            bool hasNamedElements = false;
-            bool hasUnnamedElements = false;
-            bool soleArgIsEmptyParens = false;
-
-            do
+            // Check for named tuple element: identifier ':' type
+            if (isTuple && Current.Type == TokenType.Identifier && Peek().Type == TokenType.Colon)
             {
-                if (!CheckLoopProgress())
-                    break;
-
-                // Check for named tuple element: identifier ':' type
-                if (isTuple && Current.Type == TokenType.Identifier && Peek().Type == TokenType.Colon)
-                {
-                    var elementName = Current.Value;
-                    tupleElementNamesEscaped.Add(Current.IsBacktickEscaped);
-                    Advance(); // consume identifier
-                    Advance(); // consume ':'
-                    tupleElementNames.Add(elementName);
-                    hasNamedElements = true;
-                    typeArgs.Add(ParseTypeAnnotation());
-                }
-                else
-                {
-                    if (isTuple)
-                    {
-                        tupleElementNames.Add(null);
-                        tupleElementNamesEscaped.Add(false);
-                        hasUnnamedElements = true;
-                    }
-                    var argStartPosition = _position;
-                    typeArgs.Add(ParseTypeAnnotation());
-                    soleArgIsEmptyParens = typeArgs.Count == 1
-                        && _position - argStartPosition == 2
-                        && _tokens[argStartPosition].Type == TokenType.LeftParen
-                        && _tokens[argStartPosition + 1].Type == TokenType.RightParen;
-                }
-
-                if (Current.Type == TokenType.Comma)
-                {
-                    Advance();
-                    soleArgIsEmptyParens = false;
-                }
-                else
-                    break;
-            } while (true);
-
-            // tuple[()] is the zero-arity tuple (type_annotation_shorthand.md: the parser normalizes
-            // shorthand to the canonical AST, and `()` alone already parses to the zero-arity
-            // `tuple`). The argument must be exactly the two tokens `()` — `()?`, `()[]` and
-            // `() -> T` are other types — and the sole argument (no comma consumed), so
-            // `tuple[tuple[()]]` and `tuple[tuple]` stay 1-tuples (#1967).
-            if (isTuple && soleArgIsEmptyParens && typeArgs.Count == 1)
+                var elementName = Current.Value;
+                tupleElementNamesEscaped.Add(Current.IsBacktickEscaped);
+                Advance(); // consume identifier
+                Advance(); // consume ':'
+                tupleElementNames.Add(elementName);
+                hasNamedElements = true;
+                typeArgs.Add(ParseTypeAnnotation());
+            }
+            else
             {
-                typeArgs.Clear();
-                tupleElementNames.Clear();
-                tupleElementNamesEscaped.Clear();
+                if (isTuple)
+                {
+                    tupleElementNames.Add(null);
+                    tupleElementNamesEscaped.Add(false);
+                    hasUnnamedElements = true;
+                }
+                var argStartPosition = _position;
+                typeArgs.Add(ParseTypeAnnotation());
+                soleArgIsEmptyParens = typeArgs.Count == 1
+                    && _position - argStartPosition == 2
+                    && _tokens[argStartPosition].Type == TokenType.LeftParen
+                    && _tokens[argStartPosition + 1].Type == TokenType.RightParen;
             }
 
-            // Validate: either all or none are named
-            if (isTuple && hasNamedElements && hasUnnamedElements)
+            if (Current.Type == TokenType.Comma)
             {
-                throw ReportError(
-                    "Named tuple elements must be either all named or all unnamed",
-                    startLine, startColumn,
-                    DiagnosticCodes.Parser.MixedNamedUnnamedTupleElements,
-                    span: GetSpanFromTokens(startToken, Current));
+                Advance();
+                soleArgIsEmptyParens = false;
             }
+            else
+                break;
+        } while (true);
 
-            Expect(TokenType.RightBracket);
+        // tuple[()] is the zero-arity tuple (type_annotation_shorthand.md: the parser normalizes
+        // shorthand to the canonical AST, and `()` alone already parses to the zero-arity
+        // `tuple`). The argument must be exactly the two tokens `()` — `()?`, `()[]` and
+        // `() -> T` are other types — and the sole argument (no comma consumed), so
+        // `tuple[tuple[()]]` and `tuple[tuple]` stay 1-tuples (#1967).
+        if (isTuple && soleArgIsEmptyParens && typeArgs.Count == 1)
+        {
+            typeArgs.Clear();
+            tupleElementNames.Clear();
+            tupleElementNamesEscaped.Clear();
         }
+
+        // Validate: either all or none are named
+        if (isTuple && hasNamedElements && hasUnnamedElements)
+        {
+            throw ReportError(
+                "Named tuple elements must be either all named or all unnamed",
+                startLine, startColumn,
+                DiagnosticCodes.Parser.MixedNamedUnnamedTupleElements,
+                span: GetSpanFromTokens(startToken, Current));
+        }
+
+        Expect(TokenType.RightBracket);
 
         // Only include element names if there are named elements
         var elementNames = tupleElementNames.Any(n => n != null)
