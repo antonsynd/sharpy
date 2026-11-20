@@ -2,6 +2,7 @@ using System.Reflection;
 using Sharpy.Compiler.Discovery;
 using Sharpy.Compiler.Discovery.Caching;
 using Sharpy.Compiler.Semantic;
+using Sharpy.Compiler.Semantic.Registry;
 using Sharpy.Compiler.Semantic.Validation;
 using Sharpy.Compiler.Shared;
 using Xunit;
@@ -30,9 +31,12 @@ namespace Sharpy.Compiler.Tests.Conformance;
 /// site that judges a <c>const</c> at every scope is refined by <c>ScopeKind</c> × <c>TypeKind</c></description></item>
 /// <item><term>constant-kind × member kind</term><description>what the compiler records for a member, per where the member
 /// lives: a referenced module's value (a census of discovery's <c>FieldSignature.IsConst</c> × <c>IsGuarded</c> over the
-/// Stdlib), a referenced type's member (the subclasses of <c>ClrMemberResolution</c>, a field refined by
-/// <c>FieldInfo.IsLiteral</c>), the program's own enum (<c>EnumMemberAccessKind</c>), and any other name of the program
-/// (<see cref="BindingKind"/>)</description></item>
+/// Stdlib), a referenced type's member (the subclasses of <c>ClrMemberResolution</c>, a field refined by what C# reads as a
+/// constant: <c>FieldInfo.IsLiteral</c>, or a <c>DecimalConstantAttribute</c>), the program's own enum
+/// (<c>EnumMemberAccessKind</c>), and any other name of the program (<see cref="BindingKind"/>)</description></item>
+/// <item><term>lambda-default × owner, × position</term><description><c>LambdaExpression.IsArrowSyntax</c> with the <c>def</c>
+/// control, and the positions at which the P77a pool runs a bare read of the member from its own type
+/// (<see cref="LambdaDefaultPositions"/>)</description></item>
 /// <item><term>alias-target × site</term><description><c>ScopeKind</c> × <c>TypeKind</c>: the scope an alias's binder declares into</description></item>
 /// <item><term>alias-target × shape</term><description>the public properties of the alias's three AST records
 /// (<c>TypeAlias</c>, <c>TypeAnnotation</c>, <c>FunctionType</c>): each place a target can hold a type's name</description></item>
@@ -87,6 +91,11 @@ public sealed partial class ScopeMeaningDifferentialTests
         [AliasedIntEnumRead(EnumMemberAccessKind.IntName)] = new(IntEnum + "\ntype A = E0\ndef main() -> None:\n    print(A.RED.name)\n", "SPY0908 CS1061", r => Refused(r, "SPY0908", "CS1061")),
         [InterfaceStaticIsRefused("field")] = new("interface H:\n    @static\n    x: int = 5\n    def m(self) -> int: ...\ndef main() -> None:\n    print(H.x)\n", "SPY0908 CS0120", r => Refused(r, "SPY0908", "CS0120")),
         [InterfaceStaticIsRefused("property")] = new("interface H:\n    @static\n    property x: int = 5\n    def m(self) -> int: ...\ndef main() -> None:\n    print(H.x)\n", "SPY0908 CS0120", r => Refused(r, "SPY0908", "CS0120")),
+        [CharNamesNoReceiver] = new("def main() -> None:\n    x: object = char.is_ascii_digit\n    print(1)\n", "SPY0200", r => Refused(r, "SPY0200")),
+        [AStoredLambdaLosesItsDefault] = new("class H:\n    @static\n    g: auto = lambda p1: int = 5: p1\ndef main() -> None:\n    print(H.g())\n", "SPY0908 CS7036", r => Refused(r, "SPY0908", "CS7036")),
+        [ALambdaDefaultInAPropertyDefault(false)] = new("class H:\n    property r: int = (lambda p1: int = 5: p1)()\ndef main() -> None:\n    print(H().r)\n", "SPY0908 CS0103", r => Refused(r, "SPY0908", "CS0103")),
+        [ALambdaDefaultInAPropertyDefault(true)] = new("class H:\n    @static\n    property r: int = (lambda p1: int = 5: p1)()\ndef main() -> None:\n    print(H.r)\n", "SPY0908 CS0103", r => Refused(r, "SPY0908", "CS0103")),
+        [ACallInAConstantOnlyPosition] = new("class H:\n    def r(self, p0: int = (lambda p1: int = 5: p1)()) -> int:\n        return p0\n" + TailMain, "SPY0401", r => Refused(r, "SPY0401")),
         [InterfaceStaticIsRefused("method, read uncalled", "#2111")] = new("interface H:\n    @static\n    def x() -> int:\n        return 5\n    def m(self) -> int: ...\ndef main() -> None:\n    f: () -> int = H.x\n    print(f())\n", "SPY0908 CS0120", r => Refused(r, "SPY0908", "CS0120")),
     };
 
@@ -356,6 +365,7 @@ public sealed partial class ScopeMeaningDifferentialTests
         ["init-overload"] = new Dictionary<Harness.Order, string> { [Harness.Order.Self] = ARecursion, [Harness.Order.Cycle] = ARecursion },
         ["alias-target"] = new Dictionary<Harness.Order, string>(),
         ["constant-kind"] = new Dictionary<Harness.Order, string> { [Harness.Order.Self] = AReadOfItself, [Harness.Order.Cycle] = AReadOfItself },
+        ["lambda-default"] = new Dictionary<Harness.Order, string> { [Harness.Order.Self] = AReadOfItself, [Harness.Order.Cycle] = AReadOfItself },
     };
 
     /// <summary>The target × use pairs with no cell, total over the two enums with the pairs a cell carries.</summary>
@@ -596,8 +606,12 @@ public sealed partial class ScopeMeaningDifferentialTests
 
     internal static readonly IReadOnlyDictionary<AdmissionTable, string> ExcludedAdmissionTables = new Dictionary<AdmissionTable, string>();
 
-    /// <summary>The one constant position no classifier call judges: an enum member's value. A table value added for it has no
-    /// reader here, which is red until this host moves under it.</summary>
+    /// <summary>A constant position no classifier call judges, and the one such position this set generates: an enum member's
+    /// value. A table value added for it has no reader here, which is red until this host moves under it. It is not the only
+    /// position without a classifier call (/verify-plan pass 4, finding 2): a <c>delegate</c>'s parameter default, a
+    /// signature-only interface method's default, a bracket attribute on anything but a class's method, and a union's attribute
+    /// arguments have none either. Those hosts are #2779's group, out of plan-777361 by the owner's decision (#2423 comment
+    /// 7050154806, item 22): no host is generated for them here, and the census of call sites cannot see them.</summary>
     internal static readonly ConstantHost EnumMemberHost = new("enum-member", $"enum H:\n    RED = {{e}}\n{Main}    print(H.RED.value)", "SPY0401", ReadPosition.EnumMemberValue, IntOnly: true,
         NoInside: EnumBodyHoldsCases);
 
@@ -691,7 +705,9 @@ public sealed partial class ScopeMeaningDifferentialTests
 
     /// <summary>The members of referenced types a constant position is handed, one or two per kind (a hand choice: each is
     /// checked against what the checker's resolver answers for it); every one is read under every
-    /// <see cref="ImportSpellings"/> entry of its type, through an alias of the type, and by the type's builtin name where it has one.</summary>
+    /// <see cref="ImportSpellings"/> entry of its type, through an alias of the type, and by the type's builtin name where it has one:
+    /// a type of the compiler's <c>PrimitiveCatalog</c>, read by one of the names the catalog gives it, or
+    /// <see cref="ExcludedBuiltinReceivers"/> says why the name is no receiver (<see cref="AxisProblems"/> holds the three together).</summary>
     internal static readonly IReadOnlyDictionary<ScopeConstantKind, TypeMemberBase[]> TypeMembers = new Dictionary<ScopeConstantKind, TypeMemberBase[]>
     {
         [ScopeConstantKind.ClrTypeLiteralField] = new[]
@@ -699,8 +715,13 @@ public sealed partial class ScopeMeaningDifferentialTests
             new TypeMemberBase("system", "Int32", typeof(int), "max_value", "int", "2147483647", BuiltinName: "int"),
             new TypeMemberBase("system", "Math", typeof(Math), "PI", "float", "3.141592653589793"),
         },
+        [ScopeConstantKind.ClrTypeDecimalConstant] = new[] { new TypeMemberBase("system", "Decimal", typeof(decimal), "one", "decimal", "1", BuiltinName: "decimal") },
         [ScopeConstantKind.ClrTypeEnumMember] = new[] { new TypeMemberBase("system", "DayOfWeek", typeof(DayOfWeek), "Monday", "{R}", "DayOfWeek.Monday") },
-        [ScopeConstantKind.ClrTypeStaticField] = new[] { new TypeMemberBase("system", "BitConverter", typeof(BitConverter), "is_little_endian", "bool", "True") },
+        [ScopeConstantKind.ClrTypeStaticField] = new[]
+        {
+            new TypeMemberBase("system", "BitConverter", typeof(BitConverter), "is_little_endian", "bool", "True"),
+            new TypeMemberBase("system", "String", typeof(string), "empty", "str", "True", "{0} == \"\"", BuiltinName: "str"),
+        },
         [ScopeConstantKind.ClrTypeStaticProperty] = new[] { new TypeMemberBase("system", "Array", typeof(Array), "max_length", "int", "2147483591") },
         [ScopeConstantKind.ClrTypeMethod] = new[] { new TypeMemberBase("system", "Math", typeof(Math), "sqrt", "(float) -> float", "5.0", "{0}(25.0)", Form: Harness.Form.Value) },
         [ScopeConstantKind.ClrTypeDeclinedMethod] = new[] { new TypeMemberBase("system", "Char", typeof(char), "is_ascii_digit", "object", "True", "{0} is not None", Form: Harness.Form.Value) },
@@ -708,6 +729,14 @@ public sealed partial class ScopeMeaningDifferentialTests
         {
             new TypeMemberBase("system", "Math", typeof(Math), "abs", "(int) -> int", "5", "{0}(-5)", new[] { "SPY0336" }, Harness.Form.Value),
         },
+    };
+
+    private const string CharNamesNoReceiver = "`char` names a type in an annotation and nothing in an expression: `char.is_ascii_digit` is SPY0200, so a member of `Char` is read through the type's own name alone";
+
+    /// <summary>The primitive types whose builtin name is no receiver of a member read, each with its probe.</summary>
+    internal static readonly IReadOnlyDictionary<Type, string> ExcludedBuiltinReceivers = new Dictionary<Type, string>
+    {
+        [typeof(char)] = CharNamesNoReceiver,
     };
 
     /// <summary>The enum reads, total over <c>EnumMemberAccessKind</c> (which half of which enum shape a <c>.name</c> / <c>.value</c>
@@ -872,17 +901,21 @@ public sealed partial class ScopeMeaningDifferentialTests
 
     private const string LiteralFieldShape = "Field/literal";
     private const string EnumFieldShape = "Field/enum";
+    private const string DecimalConstantShape = "Field/decimal-constant";
     private const string StaticFieldShape = "Field/static";
 
     /// <summary>
     /// What the checker's resolver of a referenced type's member (<c>ClrMemberTypeResolver</c>) answers for a member read through
     /// the type, and the kind that is its image: the subclasses of <c>ClrMemberResolution</c>, by name, with a field refined by
-    /// the two facts reflection has and discovery does not (<c>FieldInfo.IsLiteral</c>; a literal of an enum type is the enum's
-    /// member). Total over those subclasses with <see cref="ExcludedClrTypeMemberShapes"/>.
+    /// the facts reflection has and discovery does not: what C# reads as a constant from metadata (<c>FieldInfo.IsLiteral</c>,
+    /// or a <c>DecimalConstantAttribute</c> on a <c>static readonly</c> field, which is how a <c>const decimal</c> is compiled:
+    /// <see cref="IsDecimalConstant"/>; the owner's ruling 17), and a literal of an enum type is the enum's member. Total over
+    /// those subclasses with <see cref="ExcludedClrTypeMemberShapes"/>.
     /// </summary>
     internal static readonly IReadOnlyDictionary<string, ScopeConstantKind> ClrTypeMemberShapes = new Dictionary<string, ScopeConstantKind>(StringComparer.Ordinal)
     {
         [LiteralFieldShape] = ScopeConstantKind.ClrTypeLiteralField,
+        [DecimalConstantShape] = ScopeConstantKind.ClrTypeDecimalConstant,
         [EnumFieldShape] = ScopeConstantKind.ClrTypeEnumMember,
         [StaticFieldShape] = ScopeConstantKind.ClrTypeStaticField,
         [nameof(ClrMemberResolution.Property)] = ScopeConstantKind.ClrTypeStaticProperty,
@@ -902,7 +935,7 @@ public sealed partial class ScopeMeaningDifferentialTests
     /// <summary>The refinements of the two answers, which <see cref="AxisProblems"/> partitions the resolver's subclasses with.</summary>
     internal static readonly IReadOnlyDictionary<string, string[]> RefinedClrTypeMemberShapes = new Dictionary<string, string[]>(StringComparer.Ordinal)
     {
-        [nameof(ClrMemberResolution.Field)] = new[] { LiteralFieldShape, EnumFieldShape, StaticFieldShape },
+        [nameof(ClrMemberResolution.Field)] = new[] { LiteralFieldShape, DecimalConstantShape, EnumFieldShape, StaticFieldShape },
         [nameof(ClrMemberResolution.InconclusiveResult)] = new[] { DeclinedMethodShape, DeclinedValueShape, OppositeHalfShape },
         [nameof(ClrMemberResolution.AbsentResult)] = new[] { GenericMethodShape, NoMemberShape },
     };
@@ -948,8 +981,16 @@ public sealed partial class ScopeMeaningDifferentialTests
         if (resolution is not ClrMemberResolution.Field field)
             return resolution.GetType().Name;
         var info = owner.GetField(field.ClrName, BindingFlags.Public | BindingFlags.Static | BindingFlags.FlattenHierarchy);
-        return info is not { IsLiteral: true } ? StaticFieldShape : owner.IsEnum ? EnumFieldShape : LiteralFieldShape;
+        return info is { IsLiteral: true } ? owner.IsEnum ? EnumFieldShape : LiteralFieldShape
+            : info != null && IsDecimalConstant(info) ? DecimalConstantShape
+            : StaticFieldShape;
     }
+
+    /// <summary>Whether C# reads a field that is no metadata literal as a constant: a <c>const decimal</c> is compiled to a
+    /// <c>static readonly</c> field carrying <c>DecimalConstantAttribute</c>, and the C# compiler reads it back as the constant.</summary>
+    internal static bool IsDecimalConstant(FieldInfo field)
+        => field is { IsStatic: true, IsInitOnly: true } && field.FieldType == typeof(decimal)
+            && field.CustomAttributes.Any(a => a.AttributeType == typeof(System.Runtime.CompilerServices.DecimalConstantAttribute));
 
     /// <summary>The kinds that are no member: closed by call 45 (a chain is admitted when each link is).</summary>
     internal static readonly IReadOnlySet<ScopeConstantKind> ChainKinds = new HashSet<ScopeConstantKind> { ScopeConstantKind.ComparisonChain, ScopeConstantKind.ChainWithNonConstantLink };
@@ -1147,6 +1188,75 @@ public sealed partial class ScopeMeaningDifferentialTests
             }
         }
         yield return new OwnRead(BindingKind.Builtin, null, Harness.Spelling.Bare, null, null, BindingKind.None, Harness.Form.Value, null, null, null, "abs", "(int) -> int", "{0}(-5)", "5", null, null);
+    }
+
+    // ------------------------------------------------------------------------------------------- //
+    // lambda-default: owner × kind × annotation × position × order × outer
+    // ------------------------------------------------------------------------------------------- //
+
+    /// <summary>An owner of a parameter default: whether it is a lambda and which spelling (<c>LambdaExpression.IsArrowSyntax</c>;
+    /// null for the <c>def</c>), and the expression that stands at the position, <c>{d}</c> the default. A <c>def</c> IS its
+    /// position (<see cref="ReadPosition.ParameterDefault"/>), so its text is the default alone.</summary>
+    internal sealed record DefaultOwner(bool? Arrow, string Text);
+
+    /// <summary>The owners, total over <see cref="ScopeDefaultOwner"/>; the lambdas are total over <c>IsArrowSyntax</c>, and
+    /// <see cref="AxisProblems"/> reads the flag back from each cell's parsed source.</summary>
+    internal static readonly IReadOnlyDictionary<ScopeDefaultOwner, DefaultOwner> DefaultOwners = new Dictionary<ScopeDefaultOwner, DefaultOwner>
+    {
+        [ScopeDefaultOwner.Def] = new(null, "{d}"),
+        [ScopeDefaultOwner.Lambda] = new(false, "(lambda p1: int = {d}: p1)()"),
+        [ScopeDefaultOwner.ArrowLambda] = new(true, "((p1: int = {d}) -> p1)()"),
+    };
+
+    private const string AStoredLambdaLosesItsDefault = "stored in a field and called later (`g: auto = lambda p1: int = 5: p1`, then `H.g()`), a lambda has lost its default: the field's type is a function type, which carries none, and the call is SPY0908 CS7036 with a LITERAL default, so no cell could show what the default read";
+
+    /// <summary>How the lambda of a cell is used, closed: called where it stands, or stored and called later. The cell prints the
+    /// default's value, which only the first shows today.</summary>
+    internal static readonly IReadOnlyDictionary<string, string> ExcludedLambdaUses = new Dictionary<string, string>(StringComparer.Ordinal)
+    {
+        ["stored"] = AStoredLambdaLosesItsDefault,
+    };
+
+    /// <summary>The kinds a default reads by a bare name from its own class: READ from the typed-read set's readers, as the kinds
+    /// the P77a pool runs from a <c>def</c>'s default there. A lambda's default is a constant position like a <c>def</c>'s, so a
+    /// kind that is no constant has no cell that must run (its verdict there is the constant-kind set's).</summary>
+    internal static IReadOnlyList<BindingKind> LambdaDefaultKinds
+        => TypedReaders.Where(r => r is { Spelling: Harness.Spelling.Bare, Inside: true, Position: ReadPosition.ParameterDefault }).Select(r => r.Kind).Distinct().ToList();
+
+    private const string ACallInAConstantOnlyPosition = "takes a compile-time constant, and a lambda called where it stands is a call: refused by its shape (SPY0401) before any name in it is read";
+
+    private static string ALambdaDefaultInAPropertyDefault(bool isStatic)
+        => $"in {(isStatic ? "a `@static`" : "an instance")} property's default, a lambda that gives a parameter a default is SPY0908 CS0103 with a LITERAL default (the emitted `__lambda_0` is declared nowhere): no cell there could run, whatever its default reads, and the defect is no name's verdict";
+
+    /// <summary>The positions of <see cref="LambdaDefaultPositions"/>'s source that hold no lambda, each reason with its probe.</summary>
+    internal static readonly IReadOnlyDictionary<ReadPosition, string> ExcludedLambdaDefaultPositions = new Dictionary<ReadPosition, string>
+    {
+        [ReadPosition.ParameterDefault] = ACallInAConstantOnlyPosition,
+        [ReadPosition.DataclassFieldInitializer] = ACallInAConstantOnlyPosition,
+        [ReadPosition.StructFieldInitializer] = ACallInAConstantOnlyPosition,
+        [ReadPosition.StaticPropertyDefault] = ALambdaDefaultInAPropertyDefault(true),
+        [ReadPosition.InstancePropertyDefault] = ALambdaDefaultInAPropertyDefault(false),
+    };
+
+    /// <summary>The mark of a control cell: the owner's slot at a position with a literal default.</summary>
+    internal const string LiteralDefault = "literal-default";
+
+    /// <summary>The positions of a kind's bare read from its own type with nothing between the read and the type body, as the
+    /// P77a pool has them (<see cref="TypedReaders"/>): the class-level positions, since a bare read of a member runs nowhere else (N1).</summary>
+    internal static IEnumerable<ReadPosition> BareReadPositions(BindingKind kind)
+        => TypedReaders.Where(r => r.Kind == kind && r is { Spelling: Harness.Spelling.Bare, Inside: true, Nesting: Harness.Nesting.Direct }).Select(r => r.Position).Distinct().OrderBy(p => p);
+
+    /// <summary>Where a lambda whose default reads a member of the kind stands: every class-level initializer the kind is read
+    /// from bare, so the axis is the image of <see cref="ReadPosition"/> under the pool's own rosters.</summary>
+    internal static IEnumerable<ReadPosition> LambdaDefaultPositions(BindingKind kind)
+        => BareReadPositions(kind).Where(p => !ExcludedLambdaDefaultPositions.ContainsKey(p));
+
+    /// <summary>The lambdas of a source that give a parameter a default, by the compiler's own parser: each one's <c>IsArrowSyntax</c>.</summary>
+    internal static List<bool> LambdasWithADefault(string source)
+    {
+        static IEnumerable<Sharpy.Compiler.Parser.Ast.Node> Descendants(Sharpy.Compiler.Parser.Ast.Node node) => node.GetChildNodes().SelectMany(Descendants).Prepend(node);
+        var module = new Sharpy.Compiler.Parser.Parser(new Sharpy.Compiler.Lexer.Lexer(source).TokenizeAll()).ParseModule();
+        return Descendants(module).OfType<Sharpy.Compiler.Parser.Ast.LambdaExpression>().Where(l => l.Parameters.Any(p => p.DefaultValue != null)).Select(l => l.IsArrowSyntax).ToList();
     }
 
     // ------------------------------------------------------------------------------------------- //
@@ -1415,11 +1525,19 @@ public sealed partial class ScopeMeaningDifferentialTests
                     problems.Add($"constant-kind × enum spelling: {kind} under {spelling} is generated and excluded");
             }
         }
+        // A type the primitive catalog names is read by that name too: per member, the spelling or the reason the name is no receiver.
+        bool ReadByItsBuiltinName(Type? owner) => owner != null && PrimitiveCatalog.GetByClrType(owner) != null && !ExcludedBuiltinReceivers.ContainsKey(owner);
+        var typeMembers = TypeMembers.Values.SelectMany(v => v).ToList();
+        Partition("constant-kind × builtin name", typeMembers.Where(m => PrimitiveCatalog.GetByClrType(m.Owner) != null).Select(m => $"{m.TypeName}.{m.Member}"),
+            typeMembers.Where(m => m.BuiltinName != null).Select(m => $"{m.TypeName}.{m.Member}"), typeMembers.Where(m => ExcludedBuiltinReceivers.ContainsKey(m.Owner)).Select(m => $"{m.TypeName}.{m.Member}"));
+        foreach (var m in typeMembers.Where(m => m.BuiltinName != null && PrimitiveCatalog.GetByName(m.BuiltinName)?.ClrType != m.Owner))
+            problems.Add($"constant-kind × builtin name: `{m.BuiltinName}` is no name the primitive catalog gives {m.Owner.Name}, which {m.TypeName}.{m.Member} is read through");
         foreach (var (kind, expressions) in ConstantExpressions)
         {
             foreach (var member in expressions.GroupBy(e => e.Label, StringComparer.Ordinal))
             {
-                foreach (var spelling in Owed(kind).Where(o => !constantCells.Any(c => c.Cell.Key!.Part<ScopeConstantKind>() == kind && Marks(c).Contains(member.Key) && Marks(c).Contains(o))))
+                var owed = ReadByItsBuiltinName(member.First().Owner) ? Owed(kind).Append(BuiltinNameSpelling) : Owed(kind);
+                foreach (var spelling in owed.Where(o => !constantCells.Any(c => c.Cell.Key!.Part<ScopeConstantKind>() == kind && Marks(c).Contains(member.Key) && Marks(c).Contains(o))))
                     problems.Add($"constant-kind × spelling: no cell reads {kind} {member.Key} under {spelling}");
             }
         }
@@ -1460,8 +1578,14 @@ public sealed partial class ScopeMeaningDifferentialTests
             }
         }
         // The census's own control: it sees the static values the generated kinds are the image of, so its 0 is a count.
-        foreach (var unseen in new[] { LiteralFieldShape, EnumFieldShape, StaticFieldShape, nameof(ClrMemberResolution.Property) }.Where(v => !censused.Contains(v)))
+        foreach (var unseen in new[] { LiteralFieldShape, DecimalConstantShape, EnumFieldShape, StaticFieldShape, nameof(ClrMemberResolution.Property) }.Where(v => !censused.Contains(v)))
             problems.Add($"constant-kind × type member: the census of `System` sees no static value of shape {unseen}, so it says nothing of the shape it holds at 0");
+        // A referenced MODULE's field is a constant by discovery's `IsConst`, which is `FieldInfo.IsLiteral` alone: a `const decimal`
+        // there would be C#'s constant and discovery's static. No module declares one today (the census above is this scan's control:
+        // it finds `Decimal`'s); when one does, the shape is owed its kind (ruling 17).
+        foreach (var field in new[] { SharpyStdlibReference.Assembly, Sharpy.TestInfrastructure.SharpyCoreReference.Assembly }.SelectMany(a => a.GetExportedTypes())
+            .SelectMany(t => t.GetFields(BindingFlags.Public | BindingFlags.Static | BindingFlags.DeclaredOnly)).Where(IsDecimalConstant))
+            problems.Add($"constant-kind × module member: `{field.DeclaringType!.Name}.{field.Name}` is a `const decimal` of a referenced assembly's own type, which discovery records as no constant: the shape is owed its kind");
         foreach (var (kind, expressions) in ConstantExpressions)
         {
             foreach (var e in expressions)
@@ -1501,6 +1625,46 @@ public sealed partial class ScopeMeaningDifferentialTests
         // init-overload
         Carried("init-overload", Enum.GetValues<ScopeOverloadCaller>(), Part<ScopeOverloadCaller>);
 
+        // lambda-default
+        var lambdaDefaults = Route("lambda-default").ToList();
+        Carried("lambda-default", Enum.GetValues<ScopeDefaultOwner>(), Part<ScopeDefaultOwner>);
+        Partition("lambda-default × owner", Enum.GetValues<ScopeDefaultOwner>(), DefaultOwners.Keys, Array.Empty<ScopeDefaultOwner>());
+        Partition("lambda-default × lambda spelling", new[] { false, true }, DefaultOwners.Values.Where(o => o.Arrow != null).Select(o => o.Arrow!.Value), Array.Empty<bool>());
+        if (LambdaDefaultKinds.Count == 0)
+            problems.Add("lambda-default × kind: the 8951 pool runs no bare read of a member from a `def`'s default in its own class, so the set has no kind and no control");
+        Carried("lambda-default", LambdaDefaultKinds, c => new[] { c.Cell.Target });
+        Carried("lambda-default", Enum.GetValues<ScopeAnnotation>(), Part<ScopeAnnotation>);
+        foreach (var kind in LambdaDefaultKinds)
+        {
+            Partition($"lambda-default × position of {kind}", BareReadPositions(kind),
+                lambdaDefaults.Where(c => c.Cell.Target == kind && c.Cell.Key!.Part<ScopeDefaultOwner>() != ScopeDefaultOwner.Def).Select(c => c.Cell.Position!.Value), ExcludedLambdaDefaultPositions.Keys);
+        }
+        foreach (var c in lambdaDefaults)
+        {
+            // What the cell's program holds, by the parser: a `def`'s cell no lambda, a lambda's cell the one lambda of its spelling.
+            var owner = c.Cell.Key!.Part<ScopeDefaultOwner>()!.Value;
+            var lambdas = LambdasWithADefault(c.Cell.Source);
+            var owed = DefaultOwners[owner].Arrow is { } arrow ? new[] { arrow } : Array.Empty<bool>();
+            if (!lambdas.SequenceEqual(owed))
+                problems.Add($"lambda-default × owner: {c.Cell.Id} is {owner}'s, and the parser finds [{string.Join(", ", lambdas.Select(a => a ? "an arrow lambda" : "a `lambda`"))}] with a parameter default in its program");
+        }
+        // A read's cell stands beside its control: the same owner at the same position with a literal default.
+        foreach (var slot in lambdaDefaults.Where(c => !Marks(c).Contains(LiteralDefault)).Select(c => (Owner: c.Cell.Key!.Part<ScopeDefaultOwner>()!.Value, Position: c.Cell.Position!.Value)).Distinct())
+        {
+            if (!lambdaDefaults.Any(c => Marks(c).Contains(LiteralDefault) && c.Cell.Key!.Part<ScopeDefaultOwner>() == slot.Owner && c.Cell.Position == slot.Position))
+                problems.Add($"lambda-default × control: {slot.Owner} at {slot.Position} has no cell with a literal default, which is what says the slot itself runs");
+        }
+        // The class-body rule's two axes, as a bare sibling read has them: both orders, with and without a module binding of the name.
+        foreach (var sibling in lambdaDefaults.Where(c => !Marks(c).Contains(LiteralDefault)).GroupBy(c => string.Join("/", c.Cell.Key!.Parts.Where(p => p is not Harness.Order && !(p is string text && text.StartsWith("outer=", StringComparison.Ordinal))))))
+        {
+            var seen = sibling.Select(c => (c.Cell.Key!.Part<Harness.Order>(), c.Cell.Outer != BindingKind.None)).ToHashSet();
+            foreach (var order in new Harness.Order?[] { Harness.Order.Earlier, Harness.Order.Later })
+            {
+                foreach (var bound in new[] { false, true }.Where(b => !seen.Contains((order, b))))
+                    problems.Add($"lambda-default × sibling: {sibling.Key} has no cell at {order} {(bound ? "under" : "without")} a module binding of the name");
+            }
+        }
+
         // alias-target
         Partition("alias-target × site", Enum.GetValues<ScopeKind>(), AliasSites.Keys, ExcludedAliasScopes.Keys);
         Partition("alias-target × type body", Enum.GetValues<TypeKind>(), AliasTypeHosts.Keys, ExcludedAliasTypeHosts.Keys);
@@ -1525,6 +1689,7 @@ public sealed partial class ScopeMeaningDifferentialTests
             .Concat(ExcludedTypedSpellings.Values).Concat(ExcludedTypedPositions.Values).Concat(ExcludedCalleeBinders.Values).Concat(ExcludedCalleeOuters.Values)
             .Concat(ExcludedAdmissionTables.Values).Concat(ExcludedModuleMemberShapes.Values).Concat(ExcludedModuleCollections.Values).Concat(ExcludedAliasScopes.Values).Concat(ExcludedAliasTypeHosts.Values)
             .Concat(ExcludedOwnSpellings.Values).Concat(ExcludedOwnPlacements.Values).Concat(ExcludedEnumSpellings.Values).Concat(ExcludedImportKinds.Values)
+            .Concat(ExcludedBuiltinReceivers.Values).Concat(ExcludedLambdaUses.Values).Concat(ExcludedLambdaDefaultPositions.Values)
             .Concat(AllConstantHosts().SelectMany(h => Enum.GetValues<Harness.Spelling>().Select(sp => OwnSpellingSkips(h.Host, sp, inside: true))).Where(r => r != null).Select(r => r!))
             .Concat(ExcludedAliasShapeProperties.Values).Concat(ExcludedOrders.Values.SelectMany(o => o.Values))
             .Concat(ExcludedConstScopes.Values).Concat(ExcludedConstTypeHosts.Values).Concat(ExcludedConstantReaders.Values).Concat(ExcludedClrTypeMemberShapes.Values)

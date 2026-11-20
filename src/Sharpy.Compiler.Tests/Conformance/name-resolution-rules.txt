@@ -226,10 +226,13 @@ MustRun N1 family=Read route=no-initializer initializer=Present,AccessorBodies
 MustRefuse N1-typed-read family=Read route=typed-read
 MustRun N1-innermost family=Local route=callee
 MustRun N4 family=Read route=constant-kind constantKind=ClrLiteralField,ClrTypeLiteralField,ClrTypeEnumMember,IntEnumMember,IntEnumValue,ComparisonChain
+# A `const decimal` of a referenced type (the owner's ruling 17): what C# reads as a constant wherever a decimal can be one,
+# which an attribute argument is not.
+MustRun N4 family=Read route=constant-kind admission!=DecoratorArgument constantKind=ClrTypeDecimalConstant
 MustRun N4 family=Read route=constant-kind admission=ConstInitializer constantKind=StdlibModuleVariable,ClrStaticMember,ModuleFunction,ModuleFunctionGroup,ClrTypeStaticField,ClrTypeStaticProperty,ClrTypeMethod,ClrTypeDeclinedMethod,IntEnumName,StringEnumMember,StringEnumValue,StringEnumName,ChainWithNonConstantLink
 MustRun #1938 family=Read route=constant-kind mark=struct-auto-property constantKind=StdlibModuleVariable,ClrStaticMember,ModuleFunction,ModuleFunctionGroup,ClrTypeStaticField,ClrTypeStaticProperty,ClrTypeMethod,ClrTypeDeclinedMethod,IntEnumName,StringEnumMember,StringEnumValue,StringEnumName,ChainWithNonConstantLink
 MustRefuse SPY0401 family=Read route=constant-kind admission=ParameterDefault,LambdaParameterDefault,PerInstanceFieldDefault,- mark=def,lambda,dataclass,struct,enum-member constantKind=StdlibModuleVariable,ClrStaticMember,ModuleFunction,ModuleFunctionGroup,ClrTypeStaticField,ClrTypeStaticProperty,ClrTypeMethod,ClrTypeDeclinedMethod,IntEnumName,StringEnumMember,StringEnumValue,StringEnumName,ChainWithNonConstantLink
-MustRefuse SPY0425 family=Read route=constant-kind admission=DecoratorArgument constantKind=StdlibModuleVariable,ClrStaticMember,ModuleFunction,ModuleFunctionGroup,ClrTypeStaticField,ClrTypeStaticProperty,ClrTypeMethod,ClrTypeDeclinedMethod,IntEnumName,StringEnumMember,StringEnumValue,StringEnumName,ChainWithNonConstantLink
+MustRefuse SPY0425 family=Read route=constant-kind admission=DecoratorArgument constantKind=StdlibModuleVariable,ClrStaticMember,ModuleFunction,ModuleFunctionGroup,ClrTypeDecimalConstant,ClrTypeStaticField,ClrTypeStaticProperty,ClrTypeMethod,ClrTypeDeclinedMethod,IntEnumName,StringEnumMember,StringEnumValue,StringEnumName,ChainWithNonConstantLink
 MustRefuse kind:SPY0336 family=Read route=constant-kind constantKind=ClrTypeMethodGroup
 # A name of the program's own, under every spelling and from every placement but a bare sibling read: one answer (N7).
 MustRun N4 family=Read route=constant-kind constantKind=OwnMember target=ModuleLiteralConst,ClassLiteralConst mark!=bare-sibling
@@ -257,6 +260,12 @@ MustRun #1938 family=Read route=constant-kind mark=struct-auto-property constant
 MustRefuse SPY0401 family=Read route=constant-kind admission=ParameterDefault,LambdaParameterDefault,PerInstanceFieldDefault,- mark=def,lambda,dataclass,struct,enum-member constantKind=OwnMember target=ModuleVar,ModuleComputedConst,ModuleProperty,ModuleDef,StaticField,StaticProperty,StaticMethod,ClassComputedConst,Builtin mark=bare-sibling mark!=in-method order=Later outer=None
 MustRefuse SPY0425 family=Read route=constant-kind admission=DecoratorArgument constantKind=OwnMember target=ModuleVar,ModuleComputedConst,ModuleProperty,ModuleDef,StaticField,StaticProperty,StaticMethod,ClassComputedConst,Builtin mark=bare-sibling mark!=in-method order=Later outer=None
 MustRun N1 family=Read route=init-overload
+# A parameter default at a type body's level is evaluated in the type body, a lambda's as a `def`'s (D4; the owner's ruling 19):
+# a bare name in it is a sibling read, which the class-body rule decides (D3). `order=-` is a slot's control, a literal default.
+MustRun N4 family=Read route=lambda-default order=-
+MustRun N1 family=Read route=lambda-default order=Earlier
+MustRun N1+N3 family=Read route=lambda-default order=Later outer=None
+MustRefuse N2 family=Read route=lambda-default order=Later outer!=None
 MustRefuse N1-alias-target family=Read route=alias-target aliasTarget=Missing
 MustRun N1 family=Read route=alias-target aliasTarget=Declared
 MustRun #2769 family=Read route=alias-target aliasTarget=Itself

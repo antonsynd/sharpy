@@ -35,8 +35,9 @@ internal enum ScopeAnnotation
 /// <item>a member of a referenced MODULE: the collection of discovery's <c>ModuleOverloads</c> that holds it, a field refined
 /// by <c>FieldSignature.IsConst</c> × <c>IsGuarded</c> and a function by its overload count
 /// (<see cref="ScopeMeaningDifferentialTests.ModuleMemberShapes"/>; ruling 13, comment 7046304965);</item>
-/// <item>a member of a referenced TYPE: the subclasses of <c>ClrMemberResolution</c>, a field refined by
-/// <c>FieldInfo.IsLiteral</c> and whether its type is an enum (<see cref="ScopeMeaningDifferentialTests.ClrTypeMemberShapes"/>);</item>
+/// <item>a member of a referenced TYPE: the subclasses of <c>ClrMemberResolution</c>, a field refined by what C# reads as a
+/// constant from metadata (<c>FieldInfo.IsLiteral</c>, or a <c>DecimalConstantAttribute</c>: the owner's ruling 17, #2423
+/// comment 7049561049) and whether its type is an enum (<see cref="ScopeMeaningDifferentialTests.ClrTypeMemberShapes"/>);</item>
 /// <item>a member of an enum the program declares: <c>EnumMemberAccessKind</c> and the member itself, per enum shape
 /// (<see cref="ScopeMeaningDifferentialTests.EnumReadKinds"/>);</item>
 /// <item>any other name the program declares: <see cref="OwnMember"/>, refined by <see cref="BindingKind"/>
@@ -65,6 +66,11 @@ internal enum ScopeConstantKind
 
     /// <summary>A literal field of a referenced type (<c>int.max_value</c>, <c>Math.PI</c>): a C# constant.</summary>
     ClrTypeLiteralField,
+
+    /// <summary>A <c>const decimal</c> of a referenced type (<c>decimal.one</c>): in metadata a <c>static readonly</c> field
+    /// carrying <c>DecimalConstantAttribute</c>, which C# reads back as a constant wherever a <c>decimal</c> can be one: a
+    /// default and a <c>const</c>, never an attribute argument (ruling 17).</summary>
+    ClrTypeDecimalConstant,
 
     /// <summary>A member of a referenced enum (<c>DayOfWeek.Monday</c>): a C# constant.</summary>
     ClrTypeEnumMember,
@@ -140,14 +146,26 @@ internal enum ScopeOverloadCaller
     ModuleFunction,
 }
 
+/// <summary>Whose parameter default reads a member of the class its declaration stands in: a method's (the control: a
+/// <c>def</c>'s default is evaluated in the class body, and reads the member today), a <c>lambda</c>'s, an arrow lambda's. The
+/// two lambdas are the image of <c>LambdaExpression.IsArrowSyntax</c>; a default has no fourth owner in a class body that
+/// plan-777361 holds (a <c>delegate</c>'s and a signature-only method's are #2779's).</summary>
+internal enum ScopeDefaultOwner
+{
+    Def,
+    Lambda,
+    ArrowLambda,
+}
+
 /// <summary>
 /// Stage 0 of plan-777361 (P78; verification contract §11), the owner's rulings of 2026-11-20 (#2423 comments
-/// 7030074628 item 1, 7039834146 item 5, 7042723494 items 7 to 9 and 7046304965 items 12 and 13): the cells of rules N1, N2, N4 and N7 that the P77a pool
+/// 7030074628 item 1, 7039834146 item 5, 7042723494 items 7 to 9, 7046304965 items 12 and 13, 7049561049 items 17, 19 and 20,
+/// and 7050154806 item 22): the cells of rules N1, N2, N4 and N7 that the P77a pool
 /// (<see cref="NameResolutionDifferentialTests"/>) has no program for, as a generated test type of their own. A cell is
 /// a <see cref="NameCell"/>, and its tag and rule are READ from the rule table (<c>name-resolution-rules.txt</c>, #2487):
 /// the generator writes the program, what it prints when it runs and the codes a refusal may carry, and never a verdict.
 ///
-/// Six cell sets. Every axis is the image of a compiler enumeration read by reflection, a census of the compiler's own
+/// Seven cell sets. Every axis is the image of a compiler enumeration read by reflection, a census of the compiler's own
 /// output, the P77a pool, or a set named closed; every value is generated or excluded with its reason
 /// (<see cref="Axes_EveryValueIsGeneratedOrExcluded"/>), and an exclusion that rests on what the compiler does today
 /// has a probe that goes red when it stops (<see cref="Exclusions_RestingOnTheCompiler_GoRedWhenItChanges"/>). The
@@ -160,10 +178,14 @@ internal enum ScopeOverloadCaller
 /// <item><c>callee</c>: a binder's name called under an outer binding of the name, binder (<see cref="LocalTarget"/> and
 /// the parameter) × outer (<see cref="BindingKind"/>);</item>
 /// <item><c>constant-kind</c> (#2432): host (the call sites of <c>ConstantDefaultClassifier.IsAdmitted</c>, each with its
-/// <c>AdmissionTable</c>, and the enum member's value) × <see cref="ScopeConstantKind"/> × the read's spelling and the
+/// <c>AdmissionTable</c>, and the enum member's value; the constant slots no classifier call judges besides are #2779's, by
+/// the owner's decision: <see cref="EnumMemberHost"/>) × <see cref="ScopeConstantKind"/> × the read's spelling and the
 /// reader's placement (an import's forms, a type's alias, and for the program's own names <c>Spelling</c> × inside or outside
 /// the member's type, as the typed-read set's readers have them);</item>
 /// <item><c>init-overload</c>: <see cref="ScopeOverloadCaller"/> × order;</item>
+/// <item><c>lambda-default</c> (D4; ruling 19): <see cref="ScopeDefaultOwner"/> × the class-level initializer that holds the
+/// lambda (the positions at which the P77a pool runs a bare read of the member from its own type) × order × a module
+/// binding of the name;</item>
 /// <item><c>alias-target</c>: declaration site (<c>ScopeKind</c> × <c>TypeKind</c>) × target shape (the properties of the
 /// alias's AST records) × <see cref="ScopeAliasTarget"/> × <see cref="ScopeAliasUse"/> × order. An alias that reaches
 /// itself has its unused cells, which must run, and no used one (#2769).</item>
@@ -540,6 +562,71 @@ public sealed partial class ScopeMeaningDifferentialTests : IntegrationTestBase
     }
 
     // ------------------------------------------------------------------------------------------- //
+    // lambda-default: a lambda's parameter default at a type body's level is evaluated in the type body (D4; ruling 19)
+    // ------------------------------------------------------------------------------------------- //
+
+    /// <summary>
+    /// A parameter default that reads a member of its own class by its bare name, per owner of the default
+    /// (<see cref="DefaultOwners"/>). The owner's ruling 19 (#2423 comment 7049561049; unchanged by item 22 of 7050154806): a
+    /// lambda's default in a class-level initializer "reads the member", as a <c>def</c>'s does, and the planning session reads
+    /// that as one rule for both lambda spellings. So the class-body rule decides the read (D3): the member where it stands
+    /// above the initializer or no module binding holds the name, N2's refusal at-or-after under one (SPY0619, which lands
+    /// with plan-777361's T8). The member's value is 5 and a module binding's 12, so a default that reads the wrong one prints
+    /// it. The lambda is called where it stands (<see cref="ExcludedLambdaUses"/>), at each position
+    /// <see cref="LambdaDefaultPositions"/> derives; each owner and position has its control, the same slot with a LITERAL
+    /// default, which runs today, so a red cell beside it is red for what its default reads.
+    /// </summary>
+    private static IEnumerable<Case> LambdaDefaultCases()
+    {
+        foreach (var (owner, o) in DefaultOwners.OrderBy(e => e.Key))
+        {
+            foreach (var position in o.Arrow == null ? new[] { ReadPosition.ParameterDefault } : LambdaDefaultKinds.SelectMany(LambdaDefaultPositions).Distinct().OrderBy(p => p).ToArray())
+            {
+                var placed = Harness.PlaceInClass(position, Harness.Nesting.Direct, o.Text.Replace("{d}", "5", StringComparison.Ordinal));
+                var lines = new[] { Harness.HostHeader(position) }.Concat(placed.Members.Select(l => "    " + l));
+                yield return Draft(Key("read", "lambda-default", owner, position, LiteralDefault), Family.Read, Lines(lines) + Harness.MainPrinting(placed.Access, placed.Setup), "5",
+                    Array.Empty<string>(), twin: Harness.HostHeader(position) == "class H:", position: position);
+            }
+        }
+        foreach (var kind in LambdaDefaultKinds.OrderBy(k => k))
+        {
+            var t = TypedReads[kind];
+            foreach (var (owner, o) in DefaultOwners.OrderBy(e => e.Key))
+            {
+                foreach (var position in o.Arrow == null ? new[] { ReadPosition.ParameterDefault } : LambdaDefaultPositions(kind).ToArray())
+                {
+                    foreach (var annotation in Enum.GetValues<ScopeAnnotation>())
+                    {
+                        var declaration = annotation == ScopeAnnotation.Annotated ? t.Annotated : t.Inferred;
+                        if (declaration == null)
+                            continue;
+                        foreach (var order in new[] { Harness.Order.Earlier, Harness.Order.Later })
+                        {
+                            foreach (var outer in new[] { BindingKind.None, SiblingOuter(callable: false) })
+                            {
+                                var placed = Harness.PlaceInClass(position, Harness.Nesting.Direct, o.Text.Replace("{d}", t.Member, StringComparison.Ordinal));
+                                var member = declaration.Split('\n');
+                                var lines = new List<string>();
+                                if (outer != BindingKind.None)
+                                    lines.Add("const x: int = 12");
+                                lines.Add(Harness.HostHeader(position));
+                                lines.AddRange((order == Harness.Order.Earlier ? member.Concat(placed.Members) : placed.Members.Concat(member)).Select(l => "    " + l));
+                                bool refused = order == Harness.Order.Later && outer != BindingKind.None;
+                                // Python evaluates a default where its `def` or `lambda` stands, top to bottom: it is the same program
+                                // where the member stands above, in a plain class.
+                                bool twin = order == Harness.Order.Earlier && Harness.HostHeader(position) == "class H:";
+                                yield return Draft(Key("read", "lambda-default", owner, kind, annotation, position, order, outer == BindingKind.None ? null : $"outer={outer}"),
+                                    Family.Read, Lines(lines) + Harness.MainPrinting(placed.Access, placed.Setup), "5", refused ? new[] { "SPY0619" } : Array.Empty<string>(), twin,
+                                    target: kind, outer: outer, position: position, relation: DeclaringRelation.Self);
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    // ------------------------------------------------------------------------------------------- //
     // alias-target: an alias names a type that exists, used or not, wherever it is declared and whatever its shape
     // ------------------------------------------------------------------------------------------- //
 
@@ -612,7 +699,8 @@ public sealed partial class ScopeMeaningDifferentialTests : IntegrationTestBase
     // ------------------------------------------------------------------------------------------- //
 
     private static readonly Lazy<IReadOnlyList<Case>> Drafts = new(() =>
-        NoInitializerCases().Concat(TypedReadCases()).Concat(CalleeCases()).Concat(ConstantKindCases()).Concat(InitOverloadCases()).Concat(AliasTargetCases()).ToList());
+        NoInitializerCases().Concat(TypedReadCases()).Concat(CalleeCases()).Concat(ConstantKindCases()).Concat(InitOverloadCases()).Concat(LambdaDefaultCases())
+            .Concat(AliasTargetCases()).ToList());
 
     /// <summary>The cells as generated, before the table is read: what <see cref="Harness.RuleTablePools"/> counts a row's cells over.</summary>
     internal static IReadOnlyList<NameCell> DraftCells() => Drafts.Value.Select(c => c.Cell).ToList();
@@ -665,7 +753,7 @@ public sealed partial class ScopeMeaningDifferentialTests : IntegrationTestBase
     // ------------------------------------------------------------------------------------------- //
 
     /// <summary>The issue whose fix turns a red cell of a route green: #2432 for a constant position's verdict, #2423 for the rest
-    /// (R-QI's cells, the untyped forward read, the callee lookup, the alias refusal: charter §3.20l). A typed read that is
+    /// (R-QI's cells, the untyped forward read, the callee lookup, a lambda's default, the alias refusal: charter §3.20l). A typed read that is
     /// red at the EARLIER order is no order defect, and it and its later twin are #2417's; an alias that reaches itself is
     /// #2769's; in a constant position, N2's cells are #2423's, as is a bare sibling read red at the later order alone, and a
     /// member that dies of an instance receiver is #2147's (<see cref="ProposedCite"/>).</summary>
@@ -676,6 +764,7 @@ public sealed partial class ScopeMeaningDifferentialTests : IntegrationTestBase
         ["callee"] = "#2423",
         ["constant-kind"] = "#2432",
         ["init-overload"] = "#2423",
+        ["lambda-default"] = "#2423",
         ["alias-target"] = "#2423",
     };
 
@@ -953,6 +1042,12 @@ public sealed partial class ScopeMeaningDifferentialTests : IntegrationTestBase
         var refusedItself = new[] { Of(itself, Refused("SPY0202")) };
         Assert.Empty(RatchetFailures(refusedItself, Rows((itself, VerdictClass.FalseRefusal, "#2769 false-refusal"))));
         Assert.Contains("the route says '#2769", Assert.Single(RatchetFailures(refusedItself, Rows((itself, VerdictClass.FalseRefusal, "#2423 false-refusal")))));
+
+        // A lambda's default that does not read the member is the class-body rule's cell (#2423), never a constant position's.
+        var lambdaDefault = pool.First(c => c.Cell.Key!.Route == "lambda-default" && c.Cell.Key.Part<ScopeDefaultOwner>() == ScopeDefaultOwner.Lambda && c.Cell.Key.Part<Harness.Order>() == Harness.Order.Earlier);
+        Assert.Equal(SharpyTag.MustRun, lambdaDefault.Cell.Tag);
+        Assert.Empty(RatchetFailures(new[] { Of(lambdaDefault, Refused("SPY0200")) }, Rows((lambdaDefault, VerdictClass.FalseRefusal, "#2423 false-refusal"))));
+        Assert.Contains("the route says '#2423", Assert.Single(RatchetFailures(new[] { Of(lambdaDefault, Refused("SPY0200")) }, Rows((lambdaDefault, VerdictClass.FalseRefusal, "#2432 false-refusal")))));
 
         // A constant position's cell is #2432's, with three classes that are another tracker's whatever the position.
         static Harness.SharpyRun Ice(string cs) => new(false, null, false, false, "", "", new[] { "SPY0908" }, new[] { "SPY0908" }, cs);
