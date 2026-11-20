@@ -107,12 +107,20 @@ internal static class CompilationUnitFactory
         }
 
         unit.Ast = ast;
+        ExtractImports(unit, ast);
+        unit.Phase = CompilationPhase.Parsed;
+        return true;
+    }
 
-        // Extract import statements from AST
+    /// <summary>
+    /// Sets <paramref name="unit"/>'s <c>Imports</c>/<c>FromImports</c> from the top-level statements of <paramref name="module"/>.
+    /// </summary>
+    internal static void ExtractImports(CompilationUnit unit, Module module)
+    {
         var imports = new List<ImportStatement>();
         var fromImports = new List<FromImportStatement>();
 
-        foreach (var statement in ast.Body)
+        foreach (var statement in module.Body)
         {
             // Unwrap suppress-decorated imports (#1124) so dependency extraction sees them.
             var scanned = statement.UnwrapDecorated();
@@ -128,8 +136,6 @@ internal static class CompilationUnitFactory
 
         unit.Imports = imports;
         unit.FromImports = fromImports;
-        unit.Phase = CompilationPhase.Parsed;
-        return true;
     }
 
     /// <summary>

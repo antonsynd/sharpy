@@ -77,6 +77,34 @@ internal static class SymbolSerializer
 
     #region Serialization Methods
 
+    /// <summary>The Symbol-level fields every kind's <see cref="CachedSymbol"/> carries; the per-kind serializers extend it with <c>with</c>.</summary>
+    private static CachedSymbol SerializeSymbolCommon(Symbol s, string id, string kind, string path, SemanticBinding? binding)
+    {
+        return new CachedSymbol
+        {
+            Id = id,
+            Kind = kind,
+            Name = s.Name,
+            IsNameBacktickEscaped = s.IsNameBacktickEscaped,
+            FilePath = PathNormalizer.Normalize(path),
+            AccessLevel = s.AccessLevel.ToString(),
+            DeclarationLine = s.DeclarationLine,
+            DeclarationColumn = s.DeclarationColumn,
+            NameDeclarationLine = s.NameDeclarationLine,
+            NameDeclarationColumn = s.NameDeclarationColumn,
+            NameDeclarationColumnEnd = s.NameDeclarationColumnEnd,
+            DeclarationSpanStart = s.DeclarationSpan?.Start,
+            DeclarationSpanLength = s.DeclarationSpan?.Length,
+            IsReExport = s.IsReExport,
+            OriginalModule = s.OriginalModule,
+            CodeGenInfo = SerializeCodeGenInfo(binding?.GetCodeGenInfo(s)),
+            Documentation = s.Documentation,
+            // #1444 — Symbol-level facts, carried on every kind
+            DeprecationMessage = s.DeprecationMessage,
+            ExplicitAccessLevel = s.ExplicitAccessLevel?.ToString()
+        };
+    }
+
     private static CachedSymbol SerializeTypeSymbol(TypeSymbol ts, string id, string filePath, SemanticBinding? binding)
     {
         // Serialize fields as nested CachedSymbols
@@ -129,21 +157,8 @@ internal static class SymbolSerializer
             nestedTypeAliases = ts.NestedTypeAliases.Select(SerializeNestedAlias).ToList();
         }
 
-        return new CachedSymbol
+        return SerializeSymbolCommon(ts, id, "Type", filePath, binding) with
         {
-            Id = id,
-            Kind = "Type",
-            Name = ts.Name,
-            IsNameBacktickEscaped = ts.IsNameBacktickEscaped,
-            FilePath = PathNormalizer.Normalize(filePath),
-            AccessLevel = ts.AccessLevel.ToString(),
-            DeclarationLine = ts.DeclarationLine,
-            DeclarationColumn = ts.DeclarationColumn,
-            NameDeclarationLine = ts.NameDeclarationLine,
-            NameDeclarationColumn = ts.NameDeclarationColumn,
-            NameDeclarationColumnEnd = ts.NameDeclarationColumnEnd,
-            DeclarationSpanStart = ts.DeclarationSpan?.Start,
-            DeclarationSpanLength = ts.DeclarationSpan?.Length,
             TypeKind = ts.TypeKind.ToString(),
             IsAbstract = ts.IsAbstract,
             IsStringEnum = ts.IsStringEnum,
@@ -184,14 +199,8 @@ internal static class SymbolSerializer
             NestedTypes = nestedTypes,
             UnionCases = unionCases,
             NestedTypeAliases = nestedTypeAliases,
-            IsReExport = ts.IsReExport,
-            OriginalModule = ts.OriginalModule,
-            CodeGenInfo = SerializeCodeGenInfo(binding?.GetCodeGenInfo(ts)),
-            Documentation = ts.Documentation,
             TypeParameters = SerializeTypeParameters(ts.TypeParameters),
             // #1444
-            DeprecationMessage = ts.DeprecationMessage,
-            ExplicitAccessLevel = ts.ExplicitAccessLevel?.ToString(),
             IsMustUse = ts.IsMustUse,
             IsDataclass = ts.IsDataclass,
             TypeProperties = ts.Properties.Count > 0
@@ -248,21 +257,8 @@ internal static class SymbolSerializer
 
     private static CachedSymbol SerializeFunctionSymbol(FunctionSymbol fs, string id, string filePath, SemanticBinding? binding)
     {
-        return new CachedSymbol
+        return SerializeSymbolCommon(fs, id, "Function", filePath, binding) with
         {
-            Id = id,
-            Kind = "Function",
-            Name = fs.Name,
-            IsNameBacktickEscaped = fs.IsNameBacktickEscaped,
-            FilePath = PathNormalizer.Normalize(filePath),
-            AccessLevel = fs.AccessLevel.ToString(),
-            DeclarationLine = fs.DeclarationLine,
-            DeclarationColumn = fs.DeclarationColumn,
-            NameDeclarationLine = fs.NameDeclarationLine,
-            NameDeclarationColumn = fs.NameDeclarationColumn,
-            NameDeclarationColumnEnd = fs.NameDeclarationColumnEnd,
-            DeclarationSpanStart = fs.DeclarationSpan?.Start,
-            DeclarationSpanLength = fs.DeclarationSpan?.Length,
             Parameters = fs.Parameters.Select(SerializeParameter).ToList(),
             ReturnTypeId = SerializeType(fs.ReturnType),
             IsStatic = fs.IsStatic,
@@ -270,14 +266,8 @@ internal static class SymbolSerializer
             IsVirtual = fs.IsVirtual,
             IsOverride = fs.IsOverride,
             IsGenerator = fs.IsGenerator,
-            IsReExport = fs.IsReExport,
-            OriginalModule = fs.OriginalModule,
-            CodeGenInfo = SerializeCodeGenInfo(binding?.GetCodeGenInfo(fs)),
-            Documentation = fs.Documentation,
             TypeParameters = SerializeTypeParameters(fs.TypeParameters),
             // #1444
-            DeprecationMessage = fs.DeprecationMessage,
-            ExplicitAccessLevel = fs.ExplicitAccessLevel?.ToString(),
             IsMustUse = fs.IsMustUse,
             SignatureKey = fs.SignatureKey
         };
@@ -285,32 +275,12 @@ internal static class SymbolSerializer
 
     private static CachedSymbol SerializeVariableSymbol(VariableSymbol vs, string id, string filePath, SemanticBinding? binding)
     {
-        return new CachedSymbol
+        return SerializeSymbolCommon(vs, id, "Variable", filePath, binding) with
         {
-            Id = id,
-            Kind = "Variable",
-            Name = vs.Name,
-            IsNameBacktickEscaped = vs.IsNameBacktickEscaped,
-            FilePath = PathNormalizer.Normalize(filePath),
-            AccessLevel = vs.AccessLevel.ToString(),
-            DeclarationLine = vs.DeclarationLine,
-            DeclarationColumn = vs.DeclarationColumn,
-            NameDeclarationLine = vs.NameDeclarationLine,
-            NameDeclarationColumn = vs.NameDeclarationColumn,
-            NameDeclarationColumnEnd = vs.NameDeclarationColumnEnd,
-            DeclarationSpanStart = vs.DeclarationSpan?.Start,
-            DeclarationSpanLength = vs.DeclarationSpan?.Length,
             TypeId = SerializeType(vs.Type),
-            IsReExport = vs.IsReExport,
-            OriginalModule = vs.OriginalModule,
-            CodeGenInfo = SerializeCodeGenInfo(binding?.GetCodeGenInfo(vs)),
             ConstantValue = vs.ConstantValue?.ToString(System.Globalization.CultureInfo.InvariantCulture),
             IsCompileTimeConstant =
                 vs.IsCompileTimeConstant || (binding != null && binding.GetCompileTimeConstant(vs)),
-            Documentation = vs.Documentation,
-            // #1444
-            DeprecationMessage = vs.DeprecationMessage,
-            ExplicitAccessLevel = vs.ExplicitAccessLevel?.ToString(),
             Properties = BuildVariableProperties(vs)
         };
     }
@@ -340,21 +310,8 @@ internal static class SymbolSerializer
 
     private static CachedSymbol SerializeModuleSymbol(ModuleSymbol ms, string id, string filePath, SemanticBinding? binding)
     {
-        return new CachedSymbol
+        return SerializeSymbolCommon(ms, id, "Module", ms.FilePath, binding) with
         {
-            Id = id,
-            Kind = "Module",
-            Name = ms.Name,
-            IsNameBacktickEscaped = ms.IsNameBacktickEscaped,
-            FilePath = PathNormalizer.Normalize(ms.FilePath),
-            AccessLevel = ms.AccessLevel.ToString(),
-            DeclarationLine = ms.DeclarationLine,
-            DeclarationColumn = ms.DeclarationColumn,
-            NameDeclarationLine = ms.NameDeclarationLine,
-            NameDeclarationColumn = ms.NameDeclarationColumn,
-            NameDeclarationColumnEnd = ms.NameDeclarationColumnEnd,
-            DeclarationSpanStart = ms.DeclarationSpan?.Start,
-            DeclarationSpanLength = ms.DeclarationSpan?.Length,
             CanonicalModuleName = ms.CanonicalModuleName,
             ExportIds = ms.Exports.ToDictionary(
                 kvp => kvp.Key,
@@ -363,43 +320,14 @@ internal static class SymbolSerializer
                 kvp => kvp.Key,
                 kvp => ComputeSymbolId(kvp.Value, ms.FilePath)),
             IsNetModule = ms.IsNetModule,
-            NetNamespaceName = ms.NetNamespaceName,
-            IsReExport = ms.IsReExport,
-            OriginalModule = ms.OriginalModule,
-            CodeGenInfo = SerializeCodeGenInfo(binding?.GetCodeGenInfo(ms)),
-            Documentation = ms.Documentation,
-            // #1444 — Symbol-level facts, carried on every kind
-            DeprecationMessage = ms.DeprecationMessage,
-            ExplicitAccessLevel = ms.ExplicitAccessLevel?.ToString()
+            NetNamespaceName = ms.NetNamespaceName
         };
     }
 
     private static CachedSymbol SerializeTypeAliasSymbol(TypeAliasSymbol tas, string id, string filePath, SemanticBinding? binding)
     {
-        return new CachedSymbol
-        {
-            Id = id,
-            Kind = "TypeAlias",
-            Name = tas.Name,
-            IsNameBacktickEscaped = tas.IsNameBacktickEscaped,
-            FilePath = PathNormalizer.Normalize(filePath),
-            AccessLevel = tas.AccessLevel.ToString(),
-            DeclarationLine = tas.DeclarationLine,
-            DeclarationColumn = tas.DeclarationColumn,
-            NameDeclarationLine = tas.NameDeclarationLine,
-            NameDeclarationColumn = tas.NameDeclarationColumn,
-            NameDeclarationColumnEnd = tas.NameDeclarationColumnEnd,
-            DeclarationSpanStart = tas.DeclarationSpan?.Start,
-            DeclarationSpanLength = tas.DeclarationSpan?.Length,
-            // TypeAnnotation is AST-based, we don't serialize it (reconstructed from source on reparse)
-            IsReExport = tas.IsReExport,
-            OriginalModule = tas.OriginalModule,
-            CodeGenInfo = SerializeCodeGenInfo(binding?.GetCodeGenInfo(tas)),
-            Documentation = tas.Documentation,
-            // #1444 — Symbol-level facts, carried on every kind
-            DeprecationMessage = tas.DeprecationMessage,
-            ExplicitAccessLevel = tas.ExplicitAccessLevel?.ToString()
-        };
+        // TypeAnnotation is AST-based, we don't serialize it (reconstructed from source on reparse)
+        return SerializeSymbolCommon(tas, id, "TypeAlias", filePath, binding);
     }
 
     /// <summary>
@@ -434,29 +362,9 @@ internal static class SymbolSerializer
 
     private static CachedSymbol SerializeTypeParameterSymbol(TypeParameterSymbol tps, string id, string filePath, SemanticBinding? binding)
     {
-        return new CachedSymbol
+        return SerializeSymbolCommon(tps, id, "TypeParameter", filePath, binding) with
         {
-            Id = id,
-            Kind = "TypeParameter",
-            Name = tps.Name,
-            IsNameBacktickEscaped = tps.IsNameBacktickEscaped,
-            FilePath = PathNormalizer.Normalize(filePath),
-            AccessLevel = tps.AccessLevel.ToString(),
-            DeclarationLine = tps.DeclarationLine,
-            DeclarationColumn = tps.DeclarationColumn,
-            NameDeclarationLine = tps.NameDeclarationLine,
-            NameDeclarationColumn = tps.NameDeclarationColumn,
-            NameDeclarationColumnEnd = tps.NameDeclarationColumnEnd,
-            DeclarationSpanStart = tps.DeclarationSpan?.Start,
-            DeclarationSpanLength = tps.DeclarationSpan?.Length,
-            Variance = tps.Variance != TypeParameterVariance.None ? tps.Variance.ToString() : null,
-            IsReExport = tps.IsReExport,
-            OriginalModule = tps.OriginalModule,
-            CodeGenInfo = SerializeCodeGenInfo(binding?.GetCodeGenInfo(tps)),
-            Documentation = tps.Documentation,
-            // #1444 — Symbol-level facts, carried on every kind
-            DeprecationMessage = tps.DeprecationMessage,
-            ExplicitAccessLevel = tps.ExplicitAccessLevel?.ToString()
+            Variance = tps.Variance != TypeParameterVariance.None ? tps.Variance.ToString() : null
         };
     }
 

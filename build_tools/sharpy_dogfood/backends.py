@@ -6,7 +6,7 @@ Supports GitHub Copilot CLI and Claude Code with rate limiting and failover.
 This module has been refactored to use shared backends from build_tools.shared.backends:
 - ClaudeCodeBackend: Claude Code CLI with heartbeat logging
 - CopilotBackend: GitHub Copilot CLI with heartbeat logging
-- BackendManager: Automatic failover and rate limiting
+- BackendManager (defined in this module): Automatic failover and rate limiting
 - ExecutionLogger: JSONL-based execution logging
 
 The shared backends provide:

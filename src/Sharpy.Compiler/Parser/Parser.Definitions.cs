@@ -31,20 +31,7 @@ public partial class Parser
         Expression expr;
         if (Current.Type == TokenType.Star)
         {
-            var starLine = Current.Line;
-            var starColumn = Current.Column;
-            var starToken = Current;
-            Advance();
-            var operand = ParsePrimary();
-            expr = new StarExpression
-            {
-                Operand = operand,
-                LineStart = starLine,
-                ColumnStart = starColumn,
-                LineEnd = operand.LineEnd,
-                ColumnEnd = operand.ColumnEnd,
-                Span = CombineSpans(GetSpanFromToken(starToken), operand.Span)
-            };
+            expr = ParseStarTarget();
         }
         else
         {
@@ -68,20 +55,7 @@ public partial class Parser
                 Advance();
                 if (Current.Type == TokenType.Star)
                 {
-                    var starLine = Current.Line;
-                    var starColumn = Current.Column;
-                    var starToken = Current;
-                    Advance();
-                    var operand = ParsePrimary();
-                    elements.Add(new StarExpression
-                    {
-                        Operand = operand,
-                        LineStart = starLine,
-                        ColumnStart = starColumn,
-                        LineEnd = operand.LineEnd,
-                        ColumnEnd = operand.ColumnEnd,
-                        Span = CombineSpans(GetSpanFromToken(starToken), operand.Span)
-                    });
+                    elements.Add(ParseStarTarget());
                 }
                 else
                 {
@@ -253,6 +227,25 @@ public partial class Parser
             LineEnd = expr.LineEnd,
             ColumnEnd = expr.ColumnEnd,
             Span = expr.Span
+        };
+    }
+
+    /// <summary>
+    /// Parses a <c>*target</c> in a statement's target position; <see cref="Current"/> is the star.
+    /// </summary>
+    private StarExpression ParseStarTarget()
+    {
+        var starToken = Current;
+        Advance();
+        var operand = ParsePrimary();
+        return new StarExpression
+        {
+            Operand = operand,
+            LineStart = starToken.Line,
+            ColumnStart = starToken.Column,
+            LineEnd = operand.LineEnd,
+            ColumnEnd = operand.ColumnEnd,
+            Span = CombineSpans(GetSpanFromToken(starToken), operand.Span)
         };
     }
 
@@ -591,25 +584,9 @@ public partial class Parser
         // For interface methods, the colon and body are optional.
         // If we're parsing an interface and we see a newline instead of a colon,
         // synthesize an ellipsis body to represent the abstract method signature.
-        if (_parsingInterface && Current.Type != TokenType.Colon)
-        {
-            return CreateBodylessFunctionDef(
-                name,
-                nameToken.Line,
-                nameToken.Column,
-                nameToken.Column + nameToken.Length,
-                nameToken.IsBacktickEscaped,
-                typeParams.ToImmutableArray(),
-                parameters.ToImmutableArray(),
-                returnType,
-                startLine,
-                startColumn,
-                startToken);
-        }
-
-        // For @abstract methods in classes, the colon and body are optional.
+        // For @abstract methods in classes, the colon and body are optional too.
         // e.g., @abstract\ndef foo(self) -> int
-        if (Current.Type != TokenType.Colon && HasAbstractDecorator())
+        if (Current.Type != TokenType.Colon && (_parsingInterface || HasAbstractDecorator()))
         {
             return CreateBodylessFunctionDef(
                 name,
@@ -752,25 +729,7 @@ public partial class Parser
 
         // Base classes (ParentClass, Interface1, Interface2)
         if (Current.Type == TokenType.LeftParen)
-        {
-            Advance();
-            if (Current.Type != TokenType.RightParen)
-            {
-                _lastLoopPosition = -1;
-                do
-                {
-                    if (!CheckLoopProgress())
-                        break;
-
-                    baseClasses.Add(ParseTypeAnnotation());
-                    if (Current.Type == TokenType.Comma)
-                        Advance();
-                    else
-                        break;
-                } while (true);
-            }
-            Expect(TokenType.RightParen);
-        }
+            baseClasses = ParseParenthesizedTypeList();
 
         ExpectHeaderColon();
         ExpectNewline();
@@ -819,25 +778,7 @@ public partial class Parser
 
         // Base interfaces (structs can only implement interfaces, no inheritance)
         if (Current.Type == TokenType.LeftParen)
-        {
-            Advance();
-            if (Current.Type != TokenType.RightParen)
-            {
-                _lastLoopPosition = -1;
-                do
-                {
-                    if (!CheckLoopProgress())
-                        break;
-
-                    baseInterfaces.Add(ParseTypeAnnotation());
-                    if (Current.Type == TokenType.Comma)
-                        Advance();
-                    else
-                        break;
-                } while (true);
-            }
-            Expect(TokenType.RightParen);
-        }
+            baseInterfaces = ParseParenthesizedTypeList();
 
         ExpectHeaderColon();
         ExpectNewline();
@@ -886,25 +827,7 @@ public partial class Parser
 
         // Base interfaces
         if (Current.Type == TokenType.LeftParen)
-        {
-            Advance();
-            if (Current.Type != TokenType.RightParen)
-            {
-                _lastLoopPosition = -1;
-                do
-                {
-                    if (!CheckLoopProgress())
-                        break;
-
-                    baseInterfaces.Add(ParseTypeAnnotation());
-                    if (Current.Type == TokenType.Comma)
-                        Advance();
-                    else
-                        break;
-                } while (true);
-            }
-            Expect(TokenType.RightParen);
-        }
+            baseInterfaces = ParseParenthesizedTypeList();
 
         ExpectHeaderColon();
 
@@ -942,6 +865,30 @@ public partial class Parser
             Span = CombineSpans(GetSpanFromToken(startToken), bodySuite.EndSpan)
                 ?? GetSpanFromToken(startToken)
         };
+    }
+
+    /// <summary>Parses <c>(T1, T2, ...)</c> with Current on '(' and consumes through the closing ')'.</summary>
+    private List<TypeAnnotation> ParseParenthesizedTypeList()
+    {
+        var types = new List<TypeAnnotation>();
+        Advance(); // consume '('
+        if (Current.Type != TokenType.RightParen)
+        {
+            _lastLoopPosition = -1;
+            do
+            {
+                if (!CheckLoopProgress())
+                    break;
+
+                types.Add(ParseTypeAnnotation());
+                if (Current.Type == TokenType.Comma)
+                    Advance();
+                else
+                    break;
+            } while (true);
+        }
+        Expect(TokenType.RightParen);
+        return types;
     }
 
     private List<TypeParameterDef> ParseTypeParameterList()
@@ -1455,28 +1402,7 @@ public partial class Parser
         if (Current.Type == TokenType.LeftParen)
         {
             // Parse function type: (int, str) -> bool
-            Advance(); // consume '('
-            var paramTypes = new List<TypeAnnotation>();
-
-            // Parse parameter types
-            if (Current.Type != TokenType.RightParen)
-            {
-                _lastLoopPosition = -1;
-                do
-                {
-                    if (!CheckLoopProgress())
-                        break;
-
-                    paramTypes.Add(ParseTypeAnnotation());
-
-                    if (Current.Type == TokenType.Comma)
-                        Advance();
-                    else
-                        break;
-                } while (true);
-            }
-
-            Expect(TokenType.RightParen);
+            var paramTypes = ParseParenthesizedTypeList();
             Expect(TokenType.Arrow);
             var returnType = ParseTypeAnnotation();
 

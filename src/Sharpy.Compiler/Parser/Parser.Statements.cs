@@ -331,17 +331,7 @@ public partial class Parser
         Expect(TokenType.LeftParen);
 
         var elements = new List<Expression> { ParseForTargetElement() };
-        bool trailingComma = false;
-        while (Current.Type == TokenType.Comma)
-        {
-            Advance();
-            if (Current.Type == TokenType.RightParen)
-            {
-                trailingComma = true;
-                break;  // trailing comma
-            }
-            elements.Add(ParseForTargetElement());
-        }
+        bool trailingComma = ParseCommaTail(elements, TokenType.RightParen, static p => p.ParseForTargetElement());
 
         Expect(TokenType.RightParen);
 
@@ -1603,9 +1593,9 @@ public partial class Parser
                 Current.Line, Current.Column,
                 DiagnosticCodes.Parser.ExpectedCase, span: CurrentSpan);
 
-        var lastCase = cases.Count > 0 ? cases[^1] : (MatchCase?)null;
+        var lastCase = cases[^1];
         var (endLine, endColumn, endSpan) = CloseSuite(
-            lastCase?.LineEnd ?? -1, lastCase?.ColumnEnd ?? 0, lastCase?.Span);
+            lastCase.LineEnd, lastCase.ColumnEnd, lastCase.Span);
 
         return new MatchStatement
         {
@@ -1661,9 +1651,9 @@ public partial class Parser
                 Current.Line, Current.Column,
                 DiagnosticCodes.Parser.ExpectedCase, span: CurrentSpan);
 
-        var lastArm = arms.Count > 0 ? arms[^1] : (MatchArm?)null;
+        var lastArm = arms[^1];
         var (endLine, endColumn, endSpan) = CloseSuite(
-            lastArm?.LineEnd ?? -1, lastArm?.ColumnEnd ?? 0, lastArm?.Span);
+            lastArm.LineEnd, lastArm.ColumnEnd, lastArm.Span);
 
         return new MatchExpression
         {
@@ -1912,19 +1902,7 @@ public partial class Parser
         var nameToken = Current;
         Advance();
 
-        var name = new Ast.Identifier
-        {
-            Name = nameToken.Value,
-            // The one capture site that did not copy the escape: the BindingPattern and star
-            // captures do, and Decision 4 is that the parser copies Token.IsBacktickEscaped at every
-            // name site (#2157).
-            IsNameBacktickEscaped = nameToken.IsBacktickEscaped,
-            LineStart = nameToken.Line,
-            ColumnStart = nameToken.Column,
-            LineEnd = nameToken.Line,
-            ColumnEnd = nameToken.Column + nameToken.Length,
-            Span = GetSpanFromToken(nameToken)
-        };
+        var name = IdentifierFromToken(nameToken);
         RefuseAlternativeAfterAsBinding();
 
         Text.TextSpan? span = null;
@@ -2018,15 +1996,29 @@ public partial class Parser
     {
         var token = Current;
         Advance();
-        return new WildcardPattern
-        {
-            LineStart = token.Line,
-            ColumnStart = token.Column,
-            LineEnd = token.Line,
-            ColumnEnd = token.Column + token.Length,
-            Span = GetSpanFromToken(token)
-        };
+        return WildcardFromToken(token);
     }
+
+    /// <summary>A wildcard pattern spanning exactly <paramref name="token"/>.</summary>
+    private static WildcardPattern WildcardFromToken(Token token) => new WildcardPattern
+    {
+        LineStart = token.Line,
+        ColumnStart = token.Column,
+        LineEnd = token.Line,
+        ColumnEnd = token.Column + token.Length,
+        Span = GetSpanFromToken(token)
+    };
+
+    /// <summary>A capture pattern binding the name <paramref name="token"/> spells, spanning exactly it.</summary>
+    private static BindingPattern BindingFromToken(Token token) => new BindingPattern
+    {
+        Name = IdentifierFromToken(token),
+        LineStart = token.Line,
+        ColumnStart = token.Column,
+        LineEnd = token.Line,
+        ColumnEnd = token.Column + token.Length,
+        Span = GetSpanFromToken(token)
+    };
 
     private Pattern ParseIdentifierOrMemberAccessPattern()
     {
@@ -2094,24 +2086,7 @@ public partial class Parser
             };
         }
 
-        return new BindingPattern
-        {
-            Name = new Identifier
-            {
-                Name = token.Value,
-                IsNameBacktickEscaped = token.IsBacktickEscaped,
-                LineStart = token.Line,
-                ColumnStart = token.Column,
-                LineEnd = token.Line,
-                ColumnEnd = token.Column + token.Length,
-                Span = GetSpanFromToken(token)
-            },
-            LineStart = token.Line,
-            ColumnStart = token.Column,
-            LineEnd = token.Line,
-            ColumnEnd = token.Column + token.Length,
-            Span = GetSpanFromToken(token)
-        };
+        return BindingFromToken(token);
     }
 
 
@@ -2357,13 +2332,7 @@ public partial class Parser
         if (Current.Type != TokenType.RightBracket)
         {
             elements.Add(ParseListElementPattern(ref sawStar));
-            while (Current.Type == TokenType.Comma)
-            {
-                Advance();
-                if (Current.Type == TokenType.RightBracket)
-                    break;
-                elements.Add(ParseListElementPattern(ref sawStar));
-            }
+            ParseCommaTail(elements, TokenType.RightBracket, p => p.ParseListElementPattern(ref sawStar));
         }
 
         var endToken = Current;
@@ -2408,35 +2377,11 @@ public partial class Parser
                 endToken = nameToken;
                 if (IsContextualKeyword(nameToken, ContextualKeywords.Placeholder))
                 {
-                    capture = new WildcardPattern
-                    {
-                        LineStart = nameToken.Line,
-                        ColumnStart = nameToken.Column,
-                        LineEnd = nameToken.Line,
-                        ColumnEnd = nameToken.Column + nameToken.Length,
-                        Span = GetSpanFromToken(nameToken)
-                    };
+                    capture = WildcardFromToken(nameToken);
                 }
                 else
                 {
-                    capture = new BindingPattern
-                    {
-                        Name = new Identifier
-                        {
-                            Name = nameToken.Value,
-                            IsNameBacktickEscaped = nameToken.IsBacktickEscaped,
-                            LineStart = nameToken.Line,
-                            ColumnStart = nameToken.Column,
-                            LineEnd = nameToken.Line,
-                            ColumnEnd = nameToken.Column + nameToken.Length,
-                            Span = GetSpanFromToken(nameToken)
-                        },
-                        LineStart = nameToken.Line,
-                        ColumnStart = nameToken.Column,
-                        LineEnd = nameToken.Line,
-                        ColumnEnd = nameToken.Column + nameToken.Length,
-                        Span = GetSpanFromToken(nameToken)
-                    };
+                    capture = BindingFromToken(nameToken);
                 }
             }
 

@@ -348,6 +348,24 @@ public partial class Parser
         return expr;
     }
 
+    /// <summary>Builds a BinaryOp spanning <paramref name="left"/> to <paramref name="right"/>, with the operator token's position.</summary>
+    private static BinaryOp MakeBinary(BinaryOperator op, Expression left, Expression right, int opLine, int opCol)
+    {
+        return new BinaryOp
+        {
+            Operator = op,
+            Left = left,
+            Right = right,
+            OperatorLine = opLine,
+            OperatorColumn = opCol,
+            LineStart = left.LineStart,
+            ColumnStart = left.ColumnStart,
+            LineEnd = right.LineEnd,
+            ColumnEnd = right.ColumnEnd,
+            Span = CombineSpans(left.Span, right.Span)
+        };
+    }
+
     private Expression ParseNullCoalesce()
     {
         var left = ParseLogicalOr();
@@ -363,19 +381,7 @@ public partial class Parser
             Advance(); // second ?
             var right = ParseLogicalOr();
 
-            left = new BinaryOp
-            {
-                Operator = BinaryOperator.NullCoalesce,
-                Left = left,
-                Right = right,
-                OperatorLine = opLine,
-                OperatorColumn = opCol,
-                LineStart = left.LineStart,
-                ColumnStart = left.ColumnStart,
-                LineEnd = right.LineEnd,
-                ColumnEnd = right.ColumnEnd,
-                Span = CombineSpans(left.Span, right.Span)
-            };
+            left = MakeBinary(BinaryOperator.NullCoalesce, left, right, opLine, opCol);
         }
 
         return left;
@@ -395,19 +401,7 @@ public partial class Parser
             Advance();
             var right = ParseLogicalAnd();
 
-            left = new BinaryOp
-            {
-                Operator = BinaryOperator.Or,
-                Left = left,
-                Right = right,
-                OperatorLine = opLine,
-                OperatorColumn = opCol,
-                LineStart = left.LineStart,
-                ColumnStart = left.ColumnStart,
-                LineEnd = right.LineEnd,
-                ColumnEnd = right.ColumnEnd,
-                Span = CombineSpans(left.Span, right.Span)
-            };
+            left = MakeBinary(BinaryOperator.Or, left, right, opLine, opCol);
         }
 
         return left;
@@ -427,19 +421,7 @@ public partial class Parser
             Advance();
             var right = ParseLogicalNot();
 
-            left = new BinaryOp
-            {
-                Operator = BinaryOperator.And,
-                Left = left,
-                Right = right,
-                OperatorLine = opLine,
-                OperatorColumn = opCol,
-                LineStart = left.LineStart,
-                ColumnStart = left.ColumnStart,
-                LineEnd = right.LineEnd,
-                ColumnEnd = right.ColumnEnd,
-                Span = CombineSpans(left.Span, right.Span)
-            };
+            left = MakeBinary(BinaryOperator.And, left, right, opLine, opCol);
         }
 
         return left;
@@ -513,6 +495,9 @@ public partial class Parser
             }
         }
 
+        if (!IsComparisonOperator(Current.Type) || !CanContinueExpressionHere())
+            return left;
+
         // Check for comparison chain (a < b < c)
         var operators = new List<ComparisonOperator>();
         var operands = new List<Expression> { left };
@@ -548,9 +533,6 @@ public partial class Parser
             operands.Add(ParseCast());
         }
 
-        if (operators.Count == 0)
-            return left;
-
         // A type test with a dotted-name reading that heads a longer comparison (`c is Color.RED is d`,
         // `c is Color.RED == d`) is the chain's first link, not an operand of it (P93 D4): the chain is
         // built over [Value, IdentityOperand, …] with `is` first, and the head's type spelling is kept
@@ -570,19 +552,7 @@ public partial class Parser
         if (operators.Count == 1)
         {
             // Single comparison - use BinaryOp
-            return new BinaryOp
-            {
-                Operator = ComparisonOperatorToBinary(operators[0]),
-                Left = operands[0],
-                Right = operands[1],
-                OperatorLine = operatorPositions[0].Line,
-                OperatorColumn = operatorPositions[0].Column,
-                LineStart = operands[0].LineStart,
-                ColumnStart = operands[0].ColumnStart,
-                LineEnd = operands[1].LineEnd,
-                ColumnEnd = operands[1].ColumnEnd,
-                Span = CombineSpans(operands[0].Span, operands[1].Span)
-            };
+            return MakeBinary(ComparisonOperatorToBinary(operators[0]), operands[0], operands[1], operatorPositions[0].Line, operatorPositions[0].Column);
         }
 
         // Comparison chain
@@ -706,19 +676,7 @@ public partial class Parser
             Advance();
             var right = ParseBitwiseOr();
 
-            left = new BinaryOp
-            {
-                Operator = BinaryOperator.PipeForward,
-                Left = left,
-                Right = right,
-                OperatorLine = opLine,
-                OperatorColumn = opCol,
-                LineStart = left.LineStart,
-                ColumnStart = left.ColumnStart,
-                LineEnd = right.LineEnd,
-                ColumnEnd = right.ColumnEnd,
-                Span = CombineSpans(left.Span, right.Span)
-            };
+            left = MakeBinary(BinaryOperator.PipeForward, left, right, opLine, opCol);
         }
 
         return left;
@@ -832,19 +790,7 @@ public partial class Parser
             Advance();
             var right = ParseBitwiseXor();
 
-            left = new BinaryOp
-            {
-                Operator = BinaryOperator.BitwiseOr,
-                Left = left,
-                Right = right,
-                OperatorLine = opLine,
-                OperatorColumn = opCol,
-                LineStart = left.LineStart,
-                ColumnStart = left.ColumnStart,
-                LineEnd = right.LineEnd,
-                ColumnEnd = right.ColumnEnd,
-                Span = CombineSpans(left.Span, right.Span)
-            };
+            left = MakeBinary(BinaryOperator.BitwiseOr, left, right, opLine, opCol);
         }
 
         return left;
@@ -864,19 +810,7 @@ public partial class Parser
             Advance();
             var right = ParseBitwiseAnd();
 
-            left = new BinaryOp
-            {
-                Operator = BinaryOperator.BitwiseXor,
-                Left = left,
-                Right = right,
-                OperatorLine = opLine,
-                OperatorColumn = opCol,
-                LineStart = left.LineStart,
-                ColumnStart = left.ColumnStart,
-                LineEnd = right.LineEnd,
-                ColumnEnd = right.ColumnEnd,
-                Span = CombineSpans(left.Span, right.Span)
-            };
+            left = MakeBinary(BinaryOperator.BitwiseXor, left, right, opLine, opCol);
         }
 
         return left;
@@ -896,19 +830,7 @@ public partial class Parser
             Advance();
             var right = ParseShift();
 
-            left = new BinaryOp
-            {
-                Operator = BinaryOperator.BitwiseAnd,
-                Left = left,
-                Right = right,
-                OperatorLine = opLine,
-                OperatorColumn = opCol,
-                LineStart = left.LineStart,
-                ColumnStart = left.ColumnStart,
-                LineEnd = right.LineEnd,
-                ColumnEnd = right.ColumnEnd,
-                Span = CombineSpans(left.Span, right.Span)
-            };
+            left = MakeBinary(BinaryOperator.BitwiseAnd, left, right, opLine, opCol);
         }
 
         return left;
@@ -929,19 +851,7 @@ public partial class Parser
             Advance();
             var right = ParseAdditive();
 
-            left = new BinaryOp
-            {
-                Operator = op,
-                Left = left,
-                Right = right,
-                OperatorLine = opLine,
-                OperatorColumn = opCol,
-                LineStart = left.LineStart,
-                ColumnStart = left.ColumnStart,
-                LineEnd = right.LineEnd,
-                ColumnEnd = right.ColumnEnd,
-                Span = CombineSpans(left.Span, right.Span)
-            };
+            left = MakeBinary(op, left, right, opLine, opCol);
         }
 
         return left;
@@ -962,19 +872,7 @@ public partial class Parser
             Advance();
             var right = ParseMultiplicative();
 
-            left = new BinaryOp
-            {
-                Operator = op,
-                Left = left,
-                Right = right,
-                OperatorLine = opLine,
-                OperatorColumn = opCol,
-                LineStart = left.LineStart,
-                ColumnStart = left.ColumnStart,
-                LineEnd = right.LineEnd,
-                ColumnEnd = right.ColumnEnd,
-                Span = CombineSpans(left.Span, right.Span)
-            };
+            left = MakeBinary(op, left, right, opLine, opCol);
         }
 
         return left;
@@ -1009,19 +907,7 @@ public partial class Parser
             Advance();
             var right = ParseUnary();
 
-            left = new BinaryOp
-            {
-                Operator = op,
-                Left = left,
-                Right = right,
-                OperatorLine = opLine,
-                OperatorColumn = opCol,
-                LineStart = left.LineStart,
-                ColumnStart = left.ColumnStart,
-                LineEnd = right.LineEnd,
-                ColumnEnd = right.ColumnEnd,
-                Span = CombineSpans(left.Span, right.Span)
-            };
+            left = MakeBinary(op, left, right, opLine, opCol);
         }
 
         return left;
@@ -1093,19 +979,7 @@ public partial class Parser
             Advance();
             var right = ParseUnary();  // Right-associative
 
-            return new BinaryOp
-            {
-                Operator = BinaryOperator.Power,
-                Left = left,
-                Right = right,
-                OperatorLine = opLine,
-                OperatorColumn = opCol,
-                LineStart = left.LineStart,
-                ColumnStart = left.ColumnStart,
-                LineEnd = right.LineEnd,
-                ColumnEnd = right.ColumnEnd,
-                Span = CombineSpans(left.Span, right.Span)
-            };
+            return MakeBinary(BinaryOperator.Power, left, right, opLine, opCol);
         }
 
         return left;
@@ -1348,48 +1222,11 @@ public partial class Parser
 
         if (Current.Type == TokenType.Comma)
         {
-            if (firstDim.IsSlice)
-            {
-                // Any slice dimension → MultiAxisAccess
-                var dims = new List<SubscriptDimension> { firstDim };
-                while (Current.Type == TokenType.Comma)
-                {
-                    Advance();
-                    if (Current.Type == TokenType.RightBracket)
-                        break;
-                    dims.Add(ParseSubscriptElement());
-                }
-
-                return new MultiAxisAccess
-                {
-                    Object = null!,
-                    Dimensions = dims.ToImmutableArray(),
-                    LineStart = Current.Line,
-                    ColumnStart = Current.Column,
-                    LineEnd = Current.Line,
-                    ColumnEnd = Current.Column
-                };
-            }
-
-            // First element is a plain index — parse remaining elements
-            var elements = new List<Expression> { firstDim.Index! };
-            var hasSlice = false;
             var allDims = new List<SubscriptDimension> { firstDim };
+            ParseCommaTail(allDims, TokenType.RightBracket, static p => p.ParseSubscriptElement());
 
-            while (Current.Type == TokenType.Comma)
-            {
-                Advance();
-                if (Current.Type == TokenType.RightBracket)
-                    break;
-                var nextDim = ParseSubscriptElement();
-                allDims.Add(nextDim);
-                if (nextDim.IsSlice)
-                    hasSlice = true;
-                else
-                    elements.Add(nextDim.Index!);
-            }
-
-            if (hasSlice)
+            // Any slice dimension → MultiAxisAccess
+            if (allDims.Exists(static d => d.IsSlice))
             {
                 return new MultiAxisAccess
                 {
@@ -1403,6 +1240,7 @@ public partial class Parser
             }
 
             // All plain indices — keep TupleLiteral behavior (generic args, dict tuple keys)
+            var elements = allDims.ConvertAll(static d => d.Index!);
             var tuple = new TupleLiteral
             {
                 Elements = elements.ToImmutableArray(),
@@ -1599,31 +1437,7 @@ public partial class Parser
         {
             if (arg is Identifier placeholder && IsPlaceholder(placeholder))
             {
-                var paramName = $"__placeholder_{placeholderIndex}";
-                parameters.Add(new Parameter
-                {
-                    Name = paramName,
-                    Type = null,
-                    DefaultValue = null,
-                    Kind = ParameterKind.Normal,
-                    // Name*: deliberately left at 0. This parameter is SYNTHESIZED — its name
-                    // (`__placeholder_N`) appears nowhere in source, so it has no name token and
-                    // no name extent. Columns are 1-based, so 0 reads as "unrecorded" (#1454).
-                    LineStart = placeholder.LineStart,
-                    ColumnStart = placeholder.ColumnStart,
-                    LineEnd = placeholder.LineEnd,
-                    ColumnEnd = placeholder.ColumnEnd,
-                    Span = placeholder.Span
-                });
-                modifiedArgs.Add(new Identifier
-                {
-                    Name = paramName,
-                    LineStart = placeholder.LineStart,
-                    ColumnStart = placeholder.ColumnStart,
-                    LineEnd = placeholder.LineEnd,
-                    ColumnEnd = placeholder.ColumnEnd,
-                    Span = placeholder.Span
-                });
+                modifiedArgs.Add(AddPlaceholderParameter($"__placeholder_{placeholderIndex}", placeholder, parameters));
                 placeholderIndex++;
             }
             else
@@ -1638,33 +1452,11 @@ public partial class Parser
         {
             if (kwarg.Value is Identifier kwPlaceholder && IsPlaceholder(kwPlaceholder))
             {
-                var paramName = kwarg.Name;
-                parameters.Add(new Parameter
-                {
-                    Name = paramName,
-                    Type = null,
-                    DefaultValue = null,
-                    Kind = ParameterKind.Normal,
-                    // Name*: deliberately left at 0 — see the positional-placeholder arm above.
-                    // The parameter borrows the KEYWORD's spelling but the positions here are the
-                    // `_` value's; there is no name token for `paramName` to point at (#1454).
-                    LineStart = kwPlaceholder.LineStart,
-                    ColumnStart = kwPlaceholder.ColumnStart,
-                    LineEnd = kwPlaceholder.LineEnd,
-                    ColumnEnd = kwPlaceholder.ColumnEnd,
-                    Span = kwPlaceholder.Span
-                });
+                // The parameter borrows the KEYWORD's spelling but the positions are the `_`
+                // value's; there is no name token for the keyword name to point at (#1454).
                 modifiedKwargs.Add(kwarg with
                 {
-                    Value = new Identifier
-                    {
-                        Name = paramName,
-                        LineStart = kwPlaceholder.LineStart,
-                        ColumnStart = kwPlaceholder.ColumnStart,
-                        LineEnd = kwPlaceholder.LineEnd,
-                        ColumnEnd = kwPlaceholder.ColumnEnd,
-                        Span = kwPlaceholder.Span
-                    }
+                    Value = AddPlaceholderParameter(kwarg.Name, kwPlaceholder, parameters)
                 });
             }
             else
@@ -1688,6 +1480,35 @@ public partial class Parser
             LineEnd = call.LineEnd,
             ColumnEnd = call.ColumnEnd,
             Span = call.Span
+        };
+    }
+
+    /// <summary>Adds a synthesized parameter named <paramref name="name"/> at the `_` placeholder's position and returns the identifier that refers to it.</summary>
+    private static Identifier AddPlaceholderParameter(string name, Identifier placeholder, List<Parameter> parameters)
+    {
+        parameters.Add(new Parameter
+        {
+            Name = name,
+            Type = null,
+            DefaultValue = null,
+            Kind = ParameterKind.Normal,
+            // Name*: deliberately left at 0. This parameter is SYNTHESIZED — its name appears
+            // nowhere in source as a parameter, so it has no name token and no name extent.
+            // Columns are 1-based, so 0 reads as "unrecorded" (#1454).
+            LineStart = placeholder.LineStart,
+            ColumnStart = placeholder.ColumnStart,
+            LineEnd = placeholder.LineEnd,
+            ColumnEnd = placeholder.ColumnEnd,
+            Span = placeholder.Span
+        });
+        return new Identifier
+        {
+            Name = name,
+            LineStart = placeholder.LineStart,
+            ColumnStart = placeholder.ColumnStart,
+            LineEnd = placeholder.LineEnd,
+            ColumnEnd = placeholder.ColumnEnd,
+            Span = placeholder.Span
         };
     }
 

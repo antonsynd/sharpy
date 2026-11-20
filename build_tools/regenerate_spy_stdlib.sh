@@ -131,11 +131,6 @@ for entry in "${MODULES[@]}"; do
     IFS=':' read -r emitted_name python_name cs_rel <<< "$entry"
 
     emitted_file="$EMIT_DIR/${emitted_name}.cs"
-    if [[ ! -f "$emitted_file" ]]; then
-        echo "ERROR: Expected emitted file not found: ${emitted_name}.cs"
-        errors=1
-        continue
-    fi
 
     # Build the header comment
     header_cmd="sharpyc emit csharp src/Sharpy.Stdlib/spy/${emitted_name}.spy -t library -n Sharpy"

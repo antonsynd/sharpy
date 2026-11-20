@@ -176,7 +176,7 @@ internal static class ProjectCommand
 
             if (clean)
             {
-                CleanProject(projectConfig);
+                CliHelpers.CleanProject(projectConfig);
             }
 
             if (!RestorePackages(projectConfig, logger))
@@ -239,7 +239,7 @@ internal static class ProjectCommand
 
             if (!noDeps)
             {
-                DeployOutput(result, defaultReferences, userReferences);
+                CliHelpers.DeployOutput(result, defaultReferences, userReferences);
             }
 
             Console.WriteLine("Build succeeded.");
@@ -249,17 +249,7 @@ internal static class ProjectCommand
             CliHelpers.OutputProjectMetrics(result.Metrics, metricsFormat, metricsOutput);
             return 0;
         }
-        catch (FileNotFoundException ex)
-        {
-            Console.Error.WriteLine($"Error: {ex.Message}");
-            return 1;
-        }
-        catch (InvalidDataException ex)
-        {
-            Console.Error.WriteLine($"Error: {ex.Message}");
-            return 1;
-        }
-        catch (InvalidOperationException ex)
+        catch (Exception ex) when (ex is FileNotFoundException or InvalidDataException or InvalidOperationException)
         {
             Console.Error.WriteLine($"Error: {ex.Message}");
             return 1;
@@ -340,7 +330,7 @@ internal static class ProjectCommand
 
             // The server's `project` request deploys exactly as the in-process command does (#2313
             // cell 0b, R-HF): the request carries no --no-deps, and the output runs in place.
-            DeployOutput(result, defaultReferences, userReferences);
+            CliHelpers.DeployOutput(result, defaultReferences, userReferences);
 
             Console.WriteLine("Build succeeded.");
             Console.WriteLine($"Output: {result.OutputAssemblyPath}");
@@ -350,57 +340,6 @@ internal static class ProjectCommand
         {
             Console.Error.WriteLine($"Unexpected error: {ex.Message}");
             return CliHelpers.ExitInternalError;
-        }
-    }
-
-    /// <summary>
-    /// `project` deploys like `compile app.spyproj` (#2313 cell 0, R-HF c): the output runs in
-    /// place, as `dotnet build`'s does. The project result does not expose per-module used
-    /// assemblies, so — as there — every default reference seeds the closure, plus every user
-    /// reference. The one deployment step of both routes, the command and the compile server's
-    /// `project` request (cell 0b).
-    /// </summary>
-    static void DeployOutput(ProjectCompilationResult result, IReadOnlyCollection<string> defaultReferences, IReadOnlyList<string> userReferences)
-    {
-        if (result.OutputAssemblyPath == null)
-            return;
-
-        var outputDir = Path.GetDirectoryName(result.OutputAssemblyPath) ?? Directory.GetCurrentDirectory();
-        RuntimeDependencyHelper.CopyRuntimeDependencies(
-            outputDir, new HashSet<string>(defaultReferences, StringComparer.OrdinalIgnoreCase), userReferences);
-    }
-
-    static void CleanProject(ProjectConfig projectConfig)
-    {
-        try
-        {
-            var projectDir = Path.GetDirectoryName(projectConfig.ProjectFilePath);
-            if (projectDir == null)
-            {
-                Console.Error.WriteLine("Warning: Could not determine project directory");
-                return;
-            }
-
-            var binDir = Path.Combine(projectDir, "bin");
-            if (Directory.Exists(binDir))
-            {
-                Console.WriteLine($"Deleting: {binDir}");
-                Directory.Delete(binDir, recursive: true);
-            }
-
-            var objDir = Path.Combine(projectDir, "obj");
-            if (Directory.Exists(objDir))
-            {
-                Console.WriteLine($"Deleting: {objDir}");
-                Directory.Delete(objDir, recursive: true);
-            }
-
-            Console.WriteLine("Clean completed.");
-            Console.WriteLine();
-        }
-        catch (Exception ex)
-        {
-            Console.Error.WriteLine($"Warning: Clean failed: {ex.Message}");
         }
     }
 

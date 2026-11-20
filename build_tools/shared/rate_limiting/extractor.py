@@ -10,6 +10,16 @@ import re
 from datetime import datetime, timedelta
 from typing import Optional
 
+_UNIT_SECONDS = {"second": 1, "minute": 60, "hour": 3600}
+
+
+def _match_unit_wait(prefix: str, combined: str) -> Optional[int]:
+    """Seconds for "<prefix> N second(s)/minute(s)/hour(s)" in combined, or None."""
+    match = re.search(prefix + r" (\d+)\s*(second|minute|hour)s?", combined)
+    if match:
+        return int(match.group(1)) * _UNIT_SECONDS[match.group(2)]
+    return None
+
 
 def extract_rate_limit_wait_time(output: str, stderr: str = "") -> Optional[int]:
     """
@@ -35,29 +45,11 @@ def extract_rate_limit_wait_time(output: str, stderr: str = "") -> Optional[int]
     # Combine output and stderr for searching
     combined = f"{output}\n{stderr}".lower()
 
-    # Pattern: "try again in X minutes/hours/seconds"
-    match = re.search(r"try again in (\d+)\s*(second|minute|hour)s?", combined)
-    if match:
-        value = int(match.group(1))
-        unit = match.group(2)
-        if unit == "hour":
-            return value * 3600
-        elif unit == "minute":
-            return value * 60
-        else:
-            return value
-
-    # Pattern: "wait X seconds/minutes/hours"
-    match = re.search(r"wait (\d+)\s*(second|minute|hour)s?", combined)
-    if match:
-        value = int(match.group(1))
-        unit = match.group(2)
-        if unit == "hour":
-            return value * 3600
-        elif unit == "minute":
-            return value * 60
-        else:
-            return value
+    # Patterns: "try again in X minutes/hours/seconds", "wait X seconds/minutes/hours"
+    for prefix in ("try again in", "wait"):
+        seconds = _match_unit_wait(prefix, combined)
+        if seconds is not None:
+            return seconds
 
     # Pattern: "retry after X seconds"
     match = re.search(r"retry after (\d+)", combined)
@@ -87,23 +79,14 @@ def extract_rate_limit_wait_time(output: str, stderr: str = "") -> Optional[int]
         return max(wait_seconds, 60)  # At least 60 seconds
 
     # Pattern: "quota resets in X minutes/hours"
-    match = re.search(r"quota resets in (\d+)\s*(second|minute|hour)s?", combined)
-    if match:
-        value = int(match.group(1))
-        unit = match.group(2)
-        if unit == "hour":
-            return value * 3600
-        elif unit == "minute":
-            return value * 60
-        else:
-            return value
+    seconds = _match_unit_wait("quota resets in", combined)
+    if seconds is not None:
+        return seconds
 
     # Pattern: "X-minute window" / "X-hour window"
     match = re.search(r"(\d+)[- ](minute|hour)\s*window", combined)
     if match:
-        value = int(match.group(1))
-        unit = match.group(2)
-        return value * 3600 if unit == "hour" else value * 60
+        return int(match.group(1)) * _UNIT_SECONDS[match.group(2)]
 
     # No recognizable pattern found
     return None

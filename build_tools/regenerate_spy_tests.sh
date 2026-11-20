@@ -187,8 +187,7 @@ for i in "${!stems[@]}"; do
             errors=1
             continue
         fi
-        if ! diff -u "$cs_target" "$final_file" --label "committed: generated/${stem}.cs" --label "generated: generated/${stem}.cs" > /dev/null 2>&1; then
-            diff -u "$cs_target" "$final_file" --label "committed: generated/${stem}.cs" --label "generated: generated/${stem}.cs" || true
+        if ! diff -u "$cs_target" "$final_file" --label "committed: generated/${stem}.cs" --label "generated: generated/${stem}.cs"; then
             echo "STALE: generated/${stem}.cs does not match generated output"
             errors=1
         else

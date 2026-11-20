@@ -719,6 +719,22 @@ public partial class Parser
     }
 
     /// <summary>
+    /// Parses the <c>, elem</c> tail of a comma list into <paramref name="into"/>, stopping before
+    /// <paramref name="closer"/> (not consumed); returns true when the list ended in a trailing comma.
+    /// </summary>
+    private bool ParseCommaTail<T>(List<T> into, TokenType closer, Func<Parser, T> parse)
+    {
+        while (Current.Type == TokenType.Comma)
+        {
+            Advance();
+            if (Current.Type == closer)
+                return true;
+            into.Add(parse(this));
+        }
+        return false;
+    }
+
+    /// <summary>
     /// Checks if _pendingDecorators contains a decorator named "abstract".
     /// Avoids LINQ to prevent ImmutableArray boxing allocation.
     /// </summary>
@@ -840,16 +856,7 @@ public partial class Parser
         }
 
         Advance(); // consume the name
-        var name = new Ast.Identifier
-        {
-            Name = nameToken.Value,
-            IsNameBacktickEscaped = nameToken.IsBacktickEscaped,
-            LineStart = nameToken.Line,
-            ColumnStart = nameToken.Column,
-            LineEnd = nameToken.Line,
-            ColumnEnd = nameToken.Column + nameToken.Length,
-            Span = GetSpanFromToken(nameToken)
-        };
+        var name = IdentifierFromToken(nameToken);
 
         TypeAnnotation? inlineType = null;
         if (Current.Type == TokenType.Colon)
@@ -1178,29 +1185,8 @@ public partial class Parser
                 if (Current.Type != TokenType.Identifier)
                     throw ReportError("Expected attribute name after '@['", Current.Line, Current.Column, DiagnosticCodes.Parser.ExpectedDecoratorName, span: CurrentSpan);
 
-                var qualifiedParts = new List<string> { Current.Value };
-                var backtickParts = new List<bool> { Current.IsBacktickEscaped };
-                Advance();
-
-                while (Current.Type == TokenType.Dot)
-                {
-                    Advance();  // Skip .
-                    if (Current.Type != TokenType.Identifier)
-                        throw ReportError("Expected identifier after '.' in attribute name", Current.Line, Current.Column, DiagnosticCodes.Parser.ExpectedDecoratorName, span: CurrentSpan);
-                    qualifiedParts.Add(Current.Value);
-                    backtickParts.Add(Current.IsBacktickEscaped);
-                    Advance();
-                }
-
-                var arguments = ImmutableArray<Expression>.Empty;
-                var keywordArguments = ImmutableArray<KeywordArgument>.Empty;
-                if (Current.Type == TokenType.LeftParen)
-                {
-                    Advance();  // Skip (
-                    var (args, kwargs) = ParseCallArguments();
-                    arguments = args.ToImmutableArray();
-                    keywordArguments = kwargs.ToImmutableArray();
-                }
+                var (qualifiedParts, backtickParts) = ParseDecoratorNameParts("attribute");
+                var (arguments, keywordArguments) = ParseOptionalDecoratorArgs();
 
                 if (Current.Type != TokenType.RightBracket)
                     throw ReportError("Expected ']' to close bracket attribute", Current.Line, Current.Column, DiagnosticCodes.Parser.ExpectedToken, span: CurrentSpan);
@@ -1235,20 +1221,8 @@ public partial class Parser
             if (Current.Type != TokenType.Identifier)
                 throw ReportError("Expected decorator name", Current.Line, Current.Column, DiagnosticCodes.Parser.ExpectedDecoratorName, span: CurrentSpan);
 
-            var regularParts = new List<string> { Current.Value };
-            var regularBacktickParts = new List<bool> { Current.IsBacktickEscaped };
-            Advance();
-
             // Parse dotted names: @system.serializable, @system.runtime.interop_services.dll_import
-            while (Current.Type == TokenType.Dot)
-            {
-                Advance();  // Skip .
-                if (Current.Type != TokenType.Identifier)
-                    throw ReportError("Expected identifier after '.' in decorator name", Current.Line, Current.Column, DiagnosticCodes.Parser.ExpectedDecoratorName, span: CurrentSpan);
-                regularParts.Add(Current.Value);
-                regularBacktickParts.Add(Current.IsBacktickEscaped);
-                Advance();
-            }
+            var (regularParts, regularBacktickParts) = ParseDecoratorNameParts("decorator");
 
             // A two-part decorator whose suffix is a Python accessor name (@x.setter and friends).
             // The suffix NEVER reaches the message verbatim: it selects a shape, and the shape
@@ -1262,15 +1236,7 @@ public partial class Parser
 
             {
                 // Parse optional argument list: @decorator(args)
-                var arguments = ImmutableArray<Expression>.Empty;
-                var keywordArguments = ImmutableArray<KeywordArgument>.Empty;
-                if (Current.Type == TokenType.LeftParen)
-                {
-                    Advance();  // Skip (
-                    var (args, kwargs) = ParseCallArguments();
-                    arguments = args.ToImmutableArray();
-                    keywordArguments = kwargs.ToImmutableArray();
-                }
+                var (arguments, keywordArguments) = ParseOptionalDecoratorArgs();
 
                 var decoratorEndToken = Previous;
                 var decoratorEndLine = decoratorEndToken.Line;
@@ -1384,6 +1350,37 @@ public partial class Parser
             Assignment => throw ReportError("Decorators cannot be applied to assignments — only functions, classes, structs, interfaces, enums, properties, events, or field declarations", stmt.LineStart, stmt.ColumnStart, DiagnosticCodes.Parser.InvalidDecoratorTarget, span: stmt.Span),
             _ => throw ReportError("Decorators can only be applied to functions, classes, structs, interfaces, enums, properties, events, or field declarations", stmt.LineStart, stmt.ColumnStart, DiagnosticCodes.Parser.InvalidDecoratorTarget, span: stmt.Span)
         };
+    }
+
+    /// <summary>Parses a dotted decorator/attribute name starting at the current Identifier; <paramref name="noun"/> names it in the dot-error message.</summary>
+    private (List<string> Parts, List<bool> BacktickParts) ParseDecoratorNameParts(string noun)
+    {
+        var parts = new List<string> { Current.Value };
+        var backtickParts = new List<bool> { Current.IsBacktickEscaped };
+        Advance();
+
+        while (Current.Type == TokenType.Dot)
+        {
+            Advance();  // Skip .
+            if (Current.Type != TokenType.Identifier)
+                throw ReportError($"Expected identifier after '.' in {noun} name", Current.Line, Current.Column, DiagnosticCodes.Parser.ExpectedDecoratorName, span: CurrentSpan);
+            parts.Add(Current.Value);
+            backtickParts.Add(Current.IsBacktickEscaped);
+            Advance();
+        }
+
+        return (parts, backtickParts);
+    }
+
+    /// <summary>Parses an optional decorator argument list <c>(args)</c>; both arrays are empty when no '(' follows.</summary>
+    private (ImmutableArray<Expression> Arguments, ImmutableArray<KeywordArgument> KeywordArguments) ParseOptionalDecoratorArgs()
+    {
+        if (Current.Type != TokenType.LeftParen)
+            return (ImmutableArray<Expression>.Empty, ImmutableArray<KeywordArgument>.Empty);
+
+        Advance();  // Skip (
+        var (args, kwargs) = ParseCallArguments();
+        return (args.ToImmutableArray(), kwargs.ToImmutableArray());
     }
 
     /// <summary>
@@ -1737,26 +1734,17 @@ public partial class Parser
     {
         Expect(TokenType.Indent);
         var body = ParseBlock();
-        if (body.Count > 0)
-        {
-            var last = body[^1];
-            var result = new SuiteResult(body, last.LineEnd, last.ColumnEnd, last.Span);
-            Expect(TokenType.Dedent);
-            return result;
-        }
-        var endLine = Previous.Line;
-        var endColumn = Previous.Column + Previous.Length;
-        var endSpan = GetSpanFromToken(Previous);
-        Expect(TokenType.Dedent);
+        var last = body.Count > 0 ? body[^1] : null;
+        var (endLine, endColumn, endSpan) = CloseSuite(
+            last?.LineEnd ?? -1, last?.ColumnEnd ?? 0, last?.Span);
         return new SuiteResult(body, endLine, endColumn, endSpan);
     }
 
     /// <summary>
-    /// Closes an indented suite whose body was parsed by a custom loop (not
-    /// <see cref="ParseBlock"/>). Records the suite's end position from the supplied last-body
+    /// Closes an indented suite: records the suite's end position from the supplied last-body
     /// values (or <see cref="Previous"/> if the body is empty, indicated by passing negative
-    /// <paramref name="lastEndLine"/>) and consumes the Dedent. Use
-    /// <see cref="ParseIndentedSuite()"/> for the common case of a statement block.
+    /// <paramref name="lastEndLine"/>) and consumes the Dedent. <see cref="ParseIndentedSuite()"/>
+    /// and the custom-loop sites (not <see cref="ParseBlock"/>) all close through it.
     /// </summary>
     private (int EndLine, int EndColumn, Text.TextSpan? EndSpan) CloseSuite(
         int lastEndLine, int lastEndColumn, Text.TextSpan? lastEndSpan)

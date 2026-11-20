@@ -47,6 +47,7 @@ internal partial class ProjectCompiler
         var generatedCSharp = new Dictionary<string, string>();
         var generatedTrees = new Dictionary<string, SyntaxTree>();
         var builtinRegistry = SymbolTable.BuiltinRegistry;
+        var sourceRoot = ComputeSourceRootPath(config);
 
         foreach (var (_, unit) in _projectModel!.Units)
         {
@@ -95,7 +96,7 @@ internal partial class ProjectCompiler
                     SourceFilePath = sourceFile,
                     TargetsTestHost = config.TestHost,
                     ProjectNamespace = config.RootNamespace,
-                    ProjectRootPath = ComputeSourceRootPath(config),
+                    ProjectRootPath = sourceRoot,
                     IsEntryPoint = isEntryPoint,
                     IsPackageInit = isPackageInit,
                     Logger = _logger,

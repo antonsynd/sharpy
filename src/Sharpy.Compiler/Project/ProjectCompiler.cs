@@ -65,13 +65,11 @@ internal partial class ProjectCompiler
     /// (#2345, R-HD): the explicit N, else semantic analysis's documented default of 100. The
     /// parser keeps its own per-file default of 25 (<c>ProjectCompiler.Parsing</c>).
     /// </summary>
-    private int SinkErrorCap => SinkErrorCapOf(_maxErrors);
-
     private static int SinkErrorCapOf(int maxErrors) => maxErrors > 0 ? maxErrors : 100;
 
     /// <summary>
     /// The project's diagnostic sink: the one bag that applies the build's policy — warnings-as-errors,
-    /// suppressed warnings and the <c>--max-errors</c> cap (<see cref="SinkErrorCap"/>). Shared by a
+    /// suppressed warnings and the <c>--max-errors</c> cap (<see cref="SinkErrorCapOf"/>). Shared by a
     /// compile and the whole-build up-to-date replay, so a replayed report meets the same policy (#2468).
     /// </summary>
     private static DiagnosticBag ProjectSinkOf(bool warningsAsErrors, HashSet<string> suppressedWarnings, int maxErrors)
@@ -379,16 +377,7 @@ internal partial class ProjectCompiler
         {
             _logger.LogInfo("Project compilation cancelled");
             _diagnostics.AddError("Compilation cancelled", code: DiagnosticCodes.Infrastructure.CompilationCancelled);
-            return new ProjectCompilationResult
-            {
-                Success = false,
-                Diagnostics = _diagnostics,
-                Metrics = _projectMetricsBacking,
-                DependencyGraph = _dependencyGraph,
-                ProjectModel = _projectModel,
-                EffectiveFeatures = _features,
-                ImportResolver = _importResolverBacking
-            };
+            return CreateFailureResult();
         }
         catch (Exception ex)
         {
@@ -396,16 +385,7 @@ internal partial class ProjectCompiler
             _logger.LogError($"Project compilation failed with {ex.GetType().Name}: {ex}", 0, 0);
 
             ReportInternalCompilerError(ex, config);
-            return new ProjectCompilationResult
-            {
-                Success = false,
-                Diagnostics = _diagnostics,
-                Metrics = _projectMetricsBacking,
-                DependencyGraph = _dependencyGraph,
-                ProjectModel = _projectModel,
-                EffectiveFeatures = _features,
-                ImportResolver = _importResolverBacking
-            };
+            return CreateFailureResult();
         }
     }
 

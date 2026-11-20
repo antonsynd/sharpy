@@ -32,7 +32,7 @@ internal partial class ProjectCompiler
 
         using (MetricsStage.Begin(stageMetrics, AnalysisStageNames.ProjectSetup))
         {
-            _diagnostics = new DiagnosticBag(_warningsAsErrors, _suppressedWarnings) { ErrorCap = SinkErrorCap };
+            _diagnostics = ProjectSinkOf(_warningsAsErrors, _suppressedWarnings, _maxErrors);
             _projectMetricsBacking = new ProjectCompilationMetrics(config.RootNamespace, config.Configuration);
             _projectModel = new ProjectModel(config);
         }

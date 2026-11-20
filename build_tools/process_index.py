@@ -40,6 +40,7 @@ from __future__ import annotations
 import argparse
 import re
 import sys
+from collections.abc import Iterator
 from dataclasses import dataclass, field
 from pathlib import Path
 
@@ -131,6 +132,20 @@ def split_row(line: str) -> list[str]:
 
 def is_separator(line: str) -> bool:
     return bool(re.fullmatch(r"\|?(\s*:?-{3,}:?\s*\|)+\s*:?-*:?\s*\|?", line.strip()))
+
+
+def table_rows(
+    lines: list[str], lo: int, hi: int, header: str
+) -> Iterator[tuple[int, str, list[str]]]:
+    """(index, line, cells) of each table row in [lo, hi), skipping separators and the header."""
+    for i in range(lo, hi):
+        ln = lines[i]
+        if not ln.startswith("|") or is_separator(ln):
+            continue
+        cells = split_row(ln)
+        if cells and cells[0] == header:
+            continue
+        yield i, ln, cells
 
 
 def cell(text: str) -> str:
@@ -352,8 +367,6 @@ def parse_group_cell(text: str) -> tuple[list[str], str, str, str, str]:
     else:
         left, name = name_src, name_src
     pids = PID_RE.findall(left) if " — " in name_src else []
-    if not pids and " — " not in name_src:
-        name = name_src
     return pids, name.strip(), sref, predecessor, current
 
 
@@ -365,13 +378,7 @@ def parse_order(
     sec3: dict,
     ledger2: list[tuple[int, str, str]],
 ) -> None:
-    for i in range(lo, hi):
-        ln = lines[i]
-        if not ln.startswith("|") or is_separator(ln):
-            continue
-        cells = split_row(ln)
-        if cells and cells[0] == "#":
-            continue  # header
+    for i, ln, cells in table_rows(lines, lo, hi, "#"):
         if len(cells) != 5:
             idx.unparsed.append(
                 Unparsed(i + 1, "§1", f"{len(cells)} cells, expected 5", excerpt(ln))
@@ -454,12 +461,8 @@ def parse_order(
 
 def parse_ledger(lines: list[str], lo: int, hi: int) -> list[tuple[int, str, str]]:
     out = []
-    for i in range(lo, hi):
-        ln = lines[i]
-        if not ln.startswith("|") or is_separator(ln):
-            continue
-        cells = split_row(ln)
-        if len(cells) >= 2 and cells[0] != "Round":
+    for i, _ln, cells in table_rows(lines, lo, hi, "Round"):
+        if len(cells) >= 2:
             out.append((i + 1, cells[0], cells[1]))
     return out
 
@@ -499,13 +502,7 @@ def _add_edge(idx: Index, old: str, new: str, qualifier: str, line: int) -> None
 
 def parse_rulings(idx: Index, lines: list[str], lo: int, hi: int) -> None:
     rows: list[tuple[int, list[str]]] = []
-    for i in range(lo, hi):
-        ln = lines[i]
-        if not ln.startswith("|") or is_separator(ln):
-            continue
-        cells = split_row(ln)
-        if cells and cells[0] == "Ruling":
-            continue
+    for i, ln, cells in table_rows(lines, lo, hi, "Ruling"):
         ids = rulings_in(cells[0]) if cells else []
         if (
             len(cells) < 3
@@ -597,13 +594,7 @@ def _fwd_window(text: str, start: int) -> str:
 
 def parse_history(idx: Index, lines: list[str], lo: int, hi: int) -> None:
     newest = None
-    for i in range(lo, hi):
-        ln = lines[i]
-        if not ln.startswith("|") or is_separator(ln):
-            continue
-        cells = split_row(ln)
-        if cells and cells[0] == "Date":
-            continue
+    for i, ln, cells in table_rows(lines, lo, hi, "Date"):
         if len(cells) != 4:
             idx.unparsed.append(
                 Unparsed(i + 1, "§7", f"{len(cells)} cells, expected 4", excerpt(ln))

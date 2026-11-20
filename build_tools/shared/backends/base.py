@@ -45,10 +45,9 @@ class BackendConfig:
         timeout_seconds: Maximum execution time before termination
         allowed_tools: Set of tool permissions granted for this request
         model: Specific model to use (if backend supports selection).
-               If None and task_type is provided, model will be auto-selected.
         max_retries: Maximum number of retry attempts on transient failures
-        task_type: Optional task type for automatic model selection
-        task_complexity: Optional complexity level for automatic model selection
+        task_type: Optional task type of the request
+        task_complexity: Optional complexity level of the request
     """
 
     timeout_seconds: int = 300

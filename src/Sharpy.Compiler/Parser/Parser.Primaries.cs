@@ -358,32 +358,7 @@ public partial class Parser
                     // Tuple literal starting with spread: (*a, ...)
                     if (Current.Type == TokenType.Star)
                     {
-                        var spreadFirst = ParseTupleElement();
-                        var spreadElements = new List<Expression> { spreadFirst };
-                        bool spreadTrailingComma = false;
-
-                        while (Current.Type == TokenType.Comma)
-                        {
-                            Advance();
-                            if (Current.Type == TokenType.RightParen)
-                            {
-                                spreadTrailingComma = true;
-                                break;
-                            }
-                            spreadElements.Add(ParseTupleElement());
-                        }
-
-                        Expect(TokenType.RightParen);
-                        return new TupleLiteral
-                        {
-                            Elements = spreadElements.ToImmutableArray(),
-                            HasTrailingComma = spreadTrailingComma,
-                            LineStart = startLine,
-                            ColumnStart = startColumn,
-                            LineEnd = Previous.Line,
-                            ColumnEnd = Previous.Column + Previous.Length,
-                            Span = GetSpanFromTokens(startToken, Previous)
-                        };
+                        return ParseParenTupleRest(ParseStarredElement(), startLine, startColumn, startToken);
                     }
 
                     var expr = ParseExpression();
@@ -408,31 +383,7 @@ public partial class Parser
                     // Tuple (expr,) or (expr, expr2, ...)
                     if (Current.Type == TokenType.Comma)
                     {
-                        var elements = new List<Expression> { expr };
-                        bool tupleTrailingComma = false;
-
-                        while (Current.Type == TokenType.Comma)
-                        {
-                            Advance();
-                            if (Current.Type == TokenType.RightParen)
-                            {
-                                tupleTrailingComma = true;
-                                break;
-                            }
-                            elements.Add(ParseTupleElement());
-                        }
-
-                        Expect(TokenType.RightParen);
-                        return new TupleLiteral
-                        {
-                            Elements = elements.ToImmutableArray(),
-                            HasTrailingComma = tupleTrailingComma,
-                            LineStart = startLine,
-                            ColumnStart = startColumn,
-                            LineEnd = Previous.Line,
-                            ColumnEnd = Previous.Column + Previous.Length,
-                            Span = GetSpanFromTokens(startToken, Previous)
-                        };
+                        return ParseParenTupleRest(expr, startLine, startColumn, startToken);
                     }
 
                     // An augmented assignment inside a parenthesized expression — `(name ??= "x")`
@@ -479,7 +430,7 @@ public partial class Parser
                         };
                     }
 
-                    var firstExpr = ParseListElement();
+                    var firstExpr = ParseStarredElement();
 
                     // Check for list comprehension: [expr for x in iterable]
                     // PEP 798: spread elements are allowed as comprehension elements: [*it for it in its]
@@ -501,15 +452,8 @@ public partial class Parser
 
                     // Regular list literal [elem1, elem2, ...]
                     var elements = new List<Expression> { firstExpr };
-
-                    while (Current.Type == TokenType.Comma)
-                    {
-                        Advance();
-                        // Allow trailing comma: [1, 2, 3,]
-                        if (Current.Type == TokenType.RightBracket)
-                            break;
-                        elements.Add(ParseListElement());
-                    }
+                    // Allow trailing comma: [1, 2, 3,]
+                    ParseCommaTail(elements, TokenType.RightBracket, static p => p.ParseStarredElement());
 
                     Expect(TokenType.RightBracket);
                     return new ListLiteral
@@ -584,13 +528,7 @@ public partial class Parser
 
                         // Regular dict spread literal: {**d1, **d2, ...}
                         var entries = new List<DictEntry> { new DictEntry { Key = null, Value = spreadValue } };
-                        while (Current.Type == TokenType.Comma)
-                        {
-                            Advance();
-                            if (Current.Type == TokenType.RightBrace)
-                                break;
-                            entries.Add(ParseDictEntry());
-                        }
+                        ParseCommaTail(entries, TokenType.RightBrace, static p => p.ParseDictEntry());
 
                         Expect(TokenType.RightBrace);
                         return new DictLiteral
@@ -606,7 +544,7 @@ public partial class Parser
 
                     // Set spread: {*a, ...} — first token is *
                     // Parse first element (may be spread)
-                    var firstExpr = ParseSetElement();
+                    var firstExpr = ParseStarredElement();
 
                     // Dict {key: value, ...} or dict comprehension {key: value for x in iterable}
                     if (firstExpr is not SpreadElement && Current.Type == TokenType.Colon)
@@ -634,14 +572,7 @@ public partial class Parser
 
                         // Regular dict literal (may contain ** spread entries)
                         var entries = new List<DictEntry> { new DictEntry { Key = firstExpr, Value = firstValue } };
-
-                        while (Current.Type == TokenType.Comma)
-                        {
-                            Advance();
-                            if (Current.Type == TokenType.RightBrace)
-                                break;
-                            entries.Add(ParseDictEntry());
-                        }
+                        ParseCommaTail(entries, TokenType.RightBrace, static p => p.ParseDictEntry());
 
                         Expect(TokenType.RightBrace);
                         return new DictLiteral
@@ -677,14 +608,7 @@ public partial class Parser
 
                         // Regular set literal (may contain * spread elements)
                         var elements = new List<Expression> { firstExpr };
-
-                        while (Current.Type == TokenType.Comma)
-                        {
-                            Advance();
-                            if (Current.Type == TokenType.RightBrace)
-                                break;
-                            elements.Add(ParseSetElement());
-                        }
+                        ParseCommaTail(elements, TokenType.RightBrace, static p => p.ParseStarredElement());
 
                         Expect(TokenType.RightBrace);
                         return new SetLiteral
@@ -930,10 +854,7 @@ public partial class Parser
         var body = ParseExpression();
 
         // Combine lambda token span with body span
-        var lambdaSpan = GetSpanFromToken(lambdaToken);
-        var combinedSpan = lambdaSpan != null && body.Span != null
-            ? lambdaSpan.Value.Union(body.Span.Value)
-            : (Text.TextSpan?)null;
+        var combinedSpan = CombineSpans(GetSpanFromToken(lambdaToken), body.Span);
 
         return new LambdaExpression
         {
@@ -944,6 +865,27 @@ public partial class Parser
             LineEnd = body.LineEnd,
             ColumnEnd = body.ColumnEnd,
             Span = combinedSpan
+        };
+    }
+
+    /// <summary>
+    /// Parses the rest of a parenthesized tuple after its first element, through the closing ')'.
+    /// </summary>
+    private TupleLiteral ParseParenTupleRest(Expression first, int startLine, int startColumn, Token startToken)
+    {
+        var elements = new List<Expression> { first };
+        bool trailingComma = ParseCommaTail(elements, TokenType.RightParen, static p => p.ParseStarredElement());
+
+        Expect(TokenType.RightParen);
+        return new TupleLiteral
+        {
+            Elements = elements.ToImmutableArray(),
+            HasTrailingComma = trailingComma,
+            LineStart = startLine,
+            ColumnStart = startColumn,
+            LineEnd = Previous.Line,
+            ColumnEnd = Previous.Column + Previous.Length,
+            Span = GetSpanFromTokens(startToken, Previous)
         };
     }
 
@@ -1008,57 +950,9 @@ public partial class Parser
     }
 
     /// <summary>
-    /// Parses a list element, handling *spread syntax.
+    /// Parses a list, tuple or set element, handling *spread syntax.
     /// </summary>
-    private Expression ParseListElement()
-    {
-        if (Current.Type == TokenType.Star)
-        {
-            var starToken = Current;
-            Advance();
-            var operand = ParseExpression();
-            return new SpreadElement
-            {
-                Value = operand,
-                LineStart = starToken.Line,
-                ColumnStart = starToken.Column,
-                LineEnd = operand.LineEnd,
-                ColumnEnd = operand.ColumnEnd,
-                Span = operand.Span
-            };
-        }
-
-        return ParseExpression();
-    }
-
-    /// <summary>
-    /// Parses a tuple element, handling *spread syntax.
-    /// </summary>
-    private Expression ParseTupleElement()
-    {
-        if (Current.Type == TokenType.Star)
-        {
-            var starToken = Current;
-            Advance();
-            var operand = ParseExpression();
-            return new SpreadElement
-            {
-                Value = operand,
-                LineStart = starToken.Line,
-                ColumnStart = starToken.Column,
-                LineEnd = operand.LineEnd,
-                ColumnEnd = operand.ColumnEnd,
-                Span = operand.Span
-            };
-        }
-
-        return ParseExpression();
-    }
-
-    /// <summary>
-    /// Parses a set element, handling *spread syntax.
-    /// </summary>
-    private Expression ParseSetElement()
+    private Expression ParseStarredElement()
     {
         if (Current.Type == TokenType.Star)
         {
@@ -1142,32 +1036,9 @@ public partial class Parser
         switch (expr)
         {
             case Identifier placeholder when IsPlaceholder(placeholder):
-                var paramName = $"__placeholder_{index}";
-                parameters.Add(new Parameter
-                {
-                    Name = paramName,
-                    Type = null,
-                    DefaultValue = null,
-                    Kind = ParameterKind.Normal,
-                    // Name*: deliberately left at 0. Operator-section placeholders are
-                    // SYNTHESIZED parameters — `__placeholder_N` has no name token in source,
-                    // so there is no name extent to record. Columns are 1-based (#1454).
-                    LineStart = placeholder.LineStart,
-                    ColumnStart = placeholder.ColumnStart,
-                    LineEnd = placeholder.LineEnd,
-                    ColumnEnd = placeholder.ColumnEnd,
-                    Span = placeholder.Span
-                });
+                var replacement = AddPlaceholderParameter($"__placeholder_{index}", placeholder, parameters);
                 index++;
-                return new Identifier
-                {
-                    Name = paramName,
-                    LineStart = placeholder.LineStart,
-                    ColumnStart = placeholder.ColumnStart,
-                    LineEnd = placeholder.LineEnd,
-                    ColumnEnd = placeholder.ColumnEnd,
-                    Span = placeholder.Span
-                };
+                return replacement;
 
             case BinaryOp bin:
                 return bin with
@@ -1276,9 +1147,7 @@ public partial class Parser
 
         var body = ParseExpression();
 
-        var combinedSpan = startToken != null && body.Span != null
-            ? GetSpanFromToken(startToken)?.Union(body.Span.Value)
-            : (Text.TextSpan?)null;
+        var combinedSpan = CombineSpans(GetSpanFromToken(startToken), body.Span);
 
         return new LambdaExpression
         {

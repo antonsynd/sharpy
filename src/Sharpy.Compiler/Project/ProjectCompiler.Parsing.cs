@@ -331,19 +331,7 @@ internal partial class ProjectCompiler
                 AstValidator.ValidateTree(module!);
 
                 // Extract imports from AST
-                var imports = new List<ImportStatement>();
-                var fromImports = new List<FromImportStatement>();
-                foreach (var stmt in module!.Body)
-                {
-                    // Unwrap suppress-decorated imports (#1124) so dependency extraction sees them.
-                    var scanned = stmt.UnwrapDecorated();
-                    if (scanned is ImportStatement import)
-                        imports.Add(import);
-                    else if (scanned is FromImportStatement fromImport)
-                        fromImports.Add(fromImport);
-                }
-                compilationUnit.Imports = imports;
-                compilationUnit.FromImports = fromImports;
+                CompilationUnitFactory.ExtractImports(compilationUnit, module!);
 
                 // Store metrics in CompilationUnit
                 compilationUnit.Metrics = fileMetrics;
@@ -430,19 +418,7 @@ internal partial class ProjectCompiler
         AstValidator.ValidateTree(preParsed.Ast);
 
         // Recompute import lists from the cached AST (identical extraction to the parse path).
-        var imports = new List<ImportStatement>();
-        var fromImports = new List<FromImportStatement>();
-        foreach (var stmt in preParsed.Ast.Body)
-        {
-            // Unwrap suppress-decorated imports (#1124) so dependency extraction sees them.
-            var scanned = stmt.UnwrapDecorated();
-            if (scanned is ImportStatement import)
-                imports.Add(import);
-            else if (scanned is FromImportStatement fromImport)
-                fromImports.Add(fromImport);
-        }
-        compilationUnit.Imports = imports;
-        compilationUnit.FromImports = fromImports;
+        CompilationUnitFactory.ExtractImports(compilationUnit, preParsed.Ast);
 
         compilationUnit.Metrics = fileMetrics;
 

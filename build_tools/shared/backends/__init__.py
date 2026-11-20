@@ -2,8 +2,7 @@
 Backend abstraction layer for AI model interactions.
 
 Provides a unified interface for executing prompts across different
-AI backends (Claude Code CLI, GitHub Copilot, etc.) with automatic
-failover and rate limit handling.
+AI backends (Claude Code CLI, GitHub Copilot, etc.).
 """
 
 from .base import (
@@ -15,7 +14,6 @@ from .base import (
 )
 from .claude import ClaudeCodeBackend
 from .copilot import CopilotBackend
-from .manager import BackendManager, BackendManagerConfig
 
 __all__ = [
     "Backend",
@@ -25,6 +23,4 @@ __all__ = [
     "ToolPermission",
     "ClaudeCodeBackend",
     "CopilotBackend",
-    "BackendManager",
-    "BackendManagerConfig",
 ]
