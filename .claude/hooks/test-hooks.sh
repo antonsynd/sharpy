@@ -664,6 +664,20 @@ allowed '. .venv/sharpy-env.sh && grep -rn "dotnet build" docs/'
 blocked 'echo "dotnet test" > .claude/tmp/old.sh; bash .claude/tmp/old.sh'
 blocked 'source <(echo dotnet test)'
 popd >/dev/null || exit 1
+# Hook C reads paths against the input's cwd, not its own process directory (Claude Code runs
+# hooks from the session's directory; a subagent's input cwd may be a linked worktree).
+# cdir PROCESS_CWD INPUT_CWD RC COMMAND
+cdir() {
+  pushd "$1" >/dev/null || exit 1
+  run enforce-dotnet-serialized.sh "$(gjson "$4" "$2")"
+  popd >/dev/null || exit 1
+  local name="${4//$'\n'/\\n} (input cwd ${2#"$G"/}, hook run from ${1#"$G"/})"
+  if [ "$RC" -eq "$3" ]; then ok "rc $3: $name"; else bad "rc $3: $name" "rc=$RC err=$ERR"; fi
+}
+cdir "$G/other" "$MAIN" 0 '. .venv/sharpy-env.sh && echo "dotnet test"'
+cdir "$MAIN" "$G/other" 2 '. .venv/sharpy-env.sh && echo "dotnet test"'
+cdir "$MAIN" "$G/other" 2 'echo "dotnet test" > r.sh; bash r.sh'
+cdir "$G/other" "$MAIN" 2 'cd src && echo "dotnet test" > ../.claude/tmp/old.sh && bash ../.claude/tmp/old.sh'
 # 1i. Review round 7.
 # B1: in a bundle each o / O takes the next argument, as bash reads it.
 gdeny "bash -euo pipefail -c 'git reset --hard'" "$MAIN" agent-1

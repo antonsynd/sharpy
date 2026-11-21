@@ -41,7 +41,9 @@
 # only an argument (`echo dotnet test`, `grep "dotnet build"`, a commit message) and the
 # out-of-scope launchers and subprocesses above.
 #
-# Hook input is JSON on stdin; the command is tool_input.command.
+# Hook input is JSON on stdin; the command is tool_input.command, run in the input's cwd (the
+# hook process's own directory only when the input has none; a cwd that does not exist is
+# unknown).
 # Falsified by .claude/hooks/test-hooks.sh.
 read -r -d '' PROG <<'PY'
 import json, os, re, sys
@@ -67,8 +69,13 @@ def by_pattern(why):
         block(m.group(5), why)
 
 try:
-    cmd = json.loads(sys.stdin.buffer.read())["tool_input"]["command"]
-    assert isinstance(cmd, str)
+    data = json.loads(sys.stdin.buffer.read())
+    cmd = data["tool_input"]["command"]
+    # The command runs in the input's cwd, not the hook process's: relative script paths and
+    # `cd` are read against it. A cwd that does not exist is unknown (relative paths unresolved).
+    cwd = data.get("cwd") or os.getcwd()
+    assert isinstance(cmd, str) and isinstance(cwd, str)
+    cwd = cwd if os.path.isdir(cwd) else None
 except Exception as e:
     sys.stderr.write("BLOCKED by .claude/hooks/enforce-dotnet-serialized.sh: cannot read the hook "
                      "input (%s: %s); the hook fails closed.\n" % (type(e).__name__, e))
@@ -85,7 +92,7 @@ try:
     sys.path.insert(0, os.environ["HOOKS_DIR"])
     import shell_commands as sc
     try:
-        sc.walk(cmd, os.getcwd(), visit,
+        sc.walk(cmd, cwd, visit,
                 opaque=lambda cwd, what: by_pattern("a script the hook cannot read (%s): " % what))
     except sc.ParseError:
         if sc.bash_accepts(cmd):
