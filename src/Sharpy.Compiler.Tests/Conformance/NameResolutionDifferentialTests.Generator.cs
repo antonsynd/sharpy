@@ -457,8 +457,11 @@ public partial class NameResolutionDifferentialTests
         }
     }
 
-    private static string CellId(params object?[] parts)
-        => string.Join("/", parts.Where(p => p != null).Select(p => Convert.ToString(p, CultureInfo.InvariantCulture)!.Replace(' ', '_')));
+    private static CellKey CellId(params object?[] parts)
+    {
+        var kept = parts.Where(p => p != null).Select(p => p!).ToArray();
+        return new CellKey(string.Join("/", kept.Select(p => Convert.ToString(p, CultureInfo.InvariantCulture)!.Replace(' ', '_'))), kept);
+    }
 
     internal static string MainPrinting(string access, string[]? setup)
         => MainBlock((setup ?? Array.Empty<string>()).Append($"print({access})").ToArray());
