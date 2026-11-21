@@ -161,7 +161,7 @@ The plan must follow this structure. `## Defect Class` and `## Adversarial Revie
 - **Alone:** <yes — changes printed output / emitted layout | no>
 - **Gates:** 1
 - **Filing:** cells outside the contract go to the findings ledger; the lead files by class (contract §10); trackers named at the end of this plan
-- **Override (scope):** <none | owner YYYY-MM-DD "<words>" — <comment URL>>
+- **Override (scope):** <none | owner YYYY-MM-DD "override: <reason>" — <comment URL>>
 
 ## Defect Class
 

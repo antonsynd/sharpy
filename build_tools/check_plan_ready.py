@@ -9,7 +9,8 @@ its override records, and prints one verdict:
   REFUSE      stop; the message is step 2's. Also: a malformed stamp, a red `check_plan_refs.py`
               report on a light plan, or an override record that does not verify.
   ASK         a word is needed; the printed question is the one to ask, once. Most are the owner's;
-              the pre-2026-09-27 Scope derivation and "which issues are the inputs?" are the lead's.
+              the pre-2026-09-27 Scope derivation and "which issues are the inputs?" are the lead's
+              (the lead records the inputs in the Implementation Summary).
   UNVERIFIED  a fact the verdict needs lives on GitHub and could not be read (no `gh`, no network):
               an override's comment, or an input issue's labels. Never READY. Under `CI=true` (or
               `1`, any case) it is reported as REFUSE: on CI an unverifiable override fails.
@@ -24,8 +25,8 @@ The decision, in step 2's order (every branch has a test in build_tools/tests/te
 * light: the stamp must be `Verified by /verify-plan --adequacy (Adequacy-only …)` (a full
   nine-dimension stamp is accepted: it grades Dimensions 6 and 7 too). No stamp, or the DRAFT marker,
   → REFUSE "This light plan has no adequacy pass. …". NEEDS REVISION → REFUSE (also beside a DRAFT
-  marker, at both tiers). Any result but PASS or CONVERGED (PASS WITH CORRECTIONS) → REFUSE as a
-  malformed stamp. Then
+  marker, at both tiers). An Adequacy-only stamp with any result but PASS or CONVERGED (PASS WITH
+  CORRECTIONS) → REFUSE as a malformed stamp. Then
   `check_plan_refs.py <plan> --issues` runs in-process; a red report (its exit 1: a missing path, a
   line past end of file, an R-LW cap) → REFUSE. Lookup errors are a NOTE: they never made that
   report red.
@@ -55,24 +56,31 @@ no issue number → no bug input.
 
 Override records. An override answers a gate only when it cites where the owner said it:
 
-    - Override (cell): owner 2026-11-06 "override" — https://github.com/antonsynd/sharpy/issues/2433#issuecomment-1234567890
-    - **Override (scope):** owner 2026-09-28 "<the owner's words>" — #2423 comment 7050154806
+    - Override (cell): owner 2026-11-06 "override: the class is P77b's next group" — https://github.com/antonsynd/sharpy/issues/2433#issuecomment-1234567890
+    - **Override (scope):** owner 2026-09-28 "override, both groups share the one seam" — #2423 comment 7050154806
 
-one line, outside fenced code and HTML comments, anywhere in the plan (`## Scope` › Override, `## Revision log`, the
+one line, outside fenced code and HTML comments (a `<!--` inside an inline code span opens none; a
+comment left open at the end of the file → REFUSE), anywhere in the plan (`## Scope` › Override, `## Revision log`, the
 `## Implementation Checklist`). The citation is an issue or pull request comment URL
 (`#issuecomment-<id>`), a review comment URL (`#discussion_r<id>`), a review URL
 (`#pullrequestreview-<id>`), or `#<issue> comment <id>`; the repository is REPO. The checker reads
 the comment with `gh api -X GET` (or REST with GH_TOKEN / GITHUB_TOKEN) and accepts it only when
-all of these hold: the quoted words are at least MIN_WORDS words and MIN_CHARS characters once
-normalised (else the record is malformed); the comment belongs to the cited issue or pull request;
+all of these hold: the quoted words hold the whole word `override` and are at least MIN_WORDS words
+and MIN_CHARS characters once normalised (else the record is malformed), so the comment, which must
+hold the words, holds `override` too; the comment belongs to the cited issue or pull request;
 its `author_association` is `OWNER`; the words appear in its body (compared case-folded, with
 blockquote markers, emphasis marks, curly quotes and runs of whitespace normalised); its
-`created_at` (a review's `submitted_at`) is the record's date ± 1 day, UTC; and the cited issue or
+`created_at` (a review's `submitted_at`) is the record's date ± 1 day, UTC (the creation date only:
+words added by a later edit verify); and the cited issue or
 pull request is one of the plan's inputs, or the comment names the plan id (`plan-xxxxxx`), or the
-pull request's files include the plan file. A record that fails any test → REFUSE (correct or
-delete it). The test is textual: a comment saying "do not implement it knowingly" holds "implement
+pull request's files include the plan file (a pull request with more files than PR_FILES_PAGES
+pages of 100 is UNVERIFIED). A record that fails any test → REFUSE (correct or delete it).
+This is evidence, not authentication. Any session holding the owner's token can post a matching
+comment (D1, ruled 2026-11-21: relayed comments are accepted and labelled), and meaning (e.g.
+'do not override') is not judged. The test is textual: a comment saying "do not implement it knowingly" holds "implement
 it knowingly"; the checker does not judge meaning. The comment's `performed_via_github_app` is
-printed ("relayed via app claude" or "no app") in the NOTE and the header line, never judged. Override text without a citation is listed as a
+printed ("relayed via app claude", or "no app (web or a local gh/API client; who typed it cannot
+be told)") in the NOTE and briefly in the header line, never judged. Override text without a citation is listed as a
 legacy record and answers nothing. Only the gates the plan hits are verified.
 
 What this does NOT judge: whether an `OWNER` comment was typed by the owner or posted by an agent
@@ -153,24 +161,24 @@ MSG_LIGHT_ABSENT = (
 )
 MSG_CELL = (
     "This plan patches a cell, not its class (see the plan's Adequacy verdict). Add a Defect Class "
-    "section — contract, matrix, standard cure — and re-run `/verify-plan`, or say `override` to "
-    "implement it as a cell fix knowingly."
+    "section — contract, matrix, standard cure — and re-run `/verify-plan`, or, to implement it as a "
+    "cell fix knowingly, have the owner post `override` and a one-line reason on the plan's PR or an input issue."
 )
 MSG_CONVERGED_CELL = (
-    "converged with CELL — say `override` to implement, or revise. Show the owner the "
+    "converged with CELL — to implement, have the owner post `override` and a one-line reason on the plan's PR or an input issue; or revise. Show the owner the "
     "`### Deferred findings` rows:"
 )
 MSG_SCOPE = (
-    "This plan bundles more than one group (or skips its generator). Split it per the charter, or "
-    "say `override` to implement it knowingly."
+    "This plan bundles more than one group (or skips its generator). Split it per the charter, or, "
+    "to implement it knowingly, have the owner post `override` and a one-line reason on the plan's PR or an input issue."
 )
 MSG_REFS_RED = (
     "`check_plan_refs.py {path} --issues` is red; fix the references until it is clean (the light "
     "pass corrects nothing inline, so references may have drifted since)."
 )
 MSG_RECORD = (
-    '\n    Record the answer as `Override ({gate}): owner YYYY-MM-DD "<words>" — <comment URL>` once the '
-    "owner has said it on GitHub (the checker verifies the comment)."
+    '\n    Record the answer as `Override ({gate}): owner YYYY-MM-DD "override: <reason>" — <comment URL>` '
+    "once the owner has posted it (the checker verifies the comment)."
 )
 
 STAMP_RE = re.compile(r"^<!-- Verified by /verify-plan\b(?P<adequacy> --adequacy\b)?")
@@ -190,7 +198,8 @@ TIER_RE = re.compile(
     r"\btier\b[*_]*\s*(?::|[—–-])[*_]*\s*[*_`]*\s*(?:tier:\s*)?(light|full|band)(?![A-Za-z0-9])",
     re.IGNORECASE,
 )
-TIER_WORD_RE = re.compile(r"\btier\b", re.IGNORECASE)
+# A label-shaped mention (`Tier:`, `**Tier:**`, `Tier —`), not prose ("two-tier", "the tier-1 seam").
+TIER_WORD_RE = re.compile(r"\btier\b[*_]*(?:\s*:|\s+[—–-])", re.IGNORECASE)
 ISSUE_RE = re.compile(r"(?<![\w&/])#(\d{2,6})\b")
 LIST_ITEM_RE = re.compile(r"^\s{0,3}(?:[-*+]|\d+[.)])\s+")
 GROUP_ID_RE = re.compile(r"\bP\d+[a-z]*\b")
@@ -226,6 +235,7 @@ LEGACY_OVERRIDE_RE = re.compile(r"\boverride\b", re.IGNORECASE)
 # An override's quoted words must be a sentence, not a token any comment holds ("**", "ok").
 MIN_WORDS, MIN_CHARS = 3, 12
 WORD_RE = re.compile(r"\w[\w'-]*")
+OVERRIDE_WORD_RE = re.compile(r"(?<![\w-])override(?![\w-])")  # on normalised (case-folded) text
 PLAN_ID_RE = re.compile(r"^(plan-[\w-]+)\.md$")
 PR_FILES_PAGES = 3  # the pull request that holds the plan file: at most 300 files are read
 NO_OVERRIDE_RE = re.compile(r"\boverride:[*_]*\s*none\b", re.IGNORECASE)
@@ -327,10 +337,16 @@ class Plan:
     overrides: List[Override]
     legacy_overrides: List[Tuple[int, str]]
     title: str
+    open_comment: Optional[int] = None  # the line of an HTML comment that never closes
+
+
+CODE_SPAN_RE = re.compile(r"(`+)(.+?)\1")
 
 
 def _strip_comments(line: str, in_comment: bool) -> Tuple[str, bool]:
-    """The line without its `<!-- … -->` spans, and whether a comment is still open after it."""
+    """The line without its `<!-- … -->` spans, and whether a comment is still open after it.
+    A `<!--` inside an inline code span is text: spans are blanked before the search."""
+    masked = CODE_SPAN_RE.sub(lambda m: " " * len(m.group(0)), line)
     kept, pos = [], 0
     while pos <= len(line):
         if in_comment:
@@ -339,7 +355,7 @@ def _strip_comments(line: str, in_comment: bool) -> Tuple[str, bool]:
                 return "".join(kept), True
             pos, in_comment = end + 3, False
         else:
-            start = line.find("<!--", pos)
+            start = masked.find("<!--", pos)
             if start < 0:
                 kept.append(line[pos:])
                 break
@@ -352,14 +368,26 @@ def _outside_fences(text: str) -> List[Tuple[int, str]]:
     """(1-based line number, line) for each line outside fenced code, with HTML comment spans
     (`<!-- … -->`, one line or several) removed: a record inside a comment is not rendered, so it
     is not read. The stamp lines are HTML comments too; parse_stamp reads them from the header."""
-    out, fence, in_comment = [], None, False
+    return _scan(text)[0]
+
+
+def unclosed_comment(text: str) -> Optional[int]:
+    """The line where an HTML comment opens and never closes, or None."""
+    return _scan(text)[1]
+
+
+def _scan(text: str) -> Tuple[List[Tuple[int, str]], Optional[int]]:
+    out, fence, in_comment, opened = [], None, False, None
     for i, line in enumerate(text.split("\n"), 1):
         m = cpr.FENCE_LINE_RE.match(line)
         if fence is None:
             if not in_comment and m and not (m.group(1)[0] == "`" and "`" in m.group(2)):
                 fence = (m.group(1)[0], len(m.group(1)))
                 continue
+            was_open = in_comment
             visible, in_comment = _strip_comments(line, in_comment)
+            if in_comment and not was_open:
+                opened = i
             if visible.strip() or not line.strip():
                 out.append((i, visible))
         elif (
@@ -369,7 +397,7 @@ def _outside_fences(text: str) -> List[Tuple[int, str]]:
             and not m.group(2).strip()
         ):
             fence = None
-    return out
+    return out, (opened if in_comment else None)
 
 
 def _section(text: str, name: str) -> Optional[str]:
@@ -536,6 +564,7 @@ def parse_plan(path: str, text: str) -> Plan:
         overrides=overrides,
         legacy_overrides=legacy,
         title=title,
+        open_comment=unclosed_comment(text),
     )
 
 
@@ -608,6 +637,8 @@ def linked_to_plan(
             return True, f"#{number} is the pull request that holds {plan.path}"
         if len(files) < 100:
             break
+    else:
+        return None, f"#{number} has more than {PR_FILES_PAGES * 100} files: cannot tell"
     return False, ""
 
 
@@ -626,6 +657,13 @@ def verify_override(
             REFUSE,
             f'{where}: malformed record: the quoted words "{o.words}" are under {MIN_WORDS} words or '
             f"{MIN_CHARS} characters; quote the owner's sentence",
+            "",
+        )
+    if not OVERRIDE_WORD_RE.search(words):
+        return (
+            REFUSE,
+            f'{where}: malformed record: the quoted words "{o.words}" do not say `override`; quote '
+            "the owner's override and its reason",
             "",
         )
     if o.cite is None:
@@ -688,7 +726,8 @@ def verify_override(
         how = "no plan to link"
     app = (c.get("performed_via_github_app") or {}).get("slug")
     via = f"relayed via app {app}" if app else "no app"
-    return READY, f'{where}: owner comment {cid} ({via}; {how}) holds "{o.words}"', via
+    told = via if app else "no app (web or a local gh/API client; who typed it cannot be told)"
+    return READY, f'{where}: owner comment {cid} ({told}; {how}) holds "{o.words}"', via
 
 
 def check_gate(
@@ -725,7 +764,8 @@ def is_bug_fix(plan: Plan, fetch: Callable) -> Tuple[Optional[bool], str, str]:
     if plan.inputs is None:
         return (
             None,
-            "no `## Issues to Close` section: which issues are this plan's inputs?",
+            "no `## Issues to Close` section: which issues are this plan's inputs? (the lead "
+            "answers, listing them in the Implementation Summary)",
             ASK,
         )
     if not plan.inputs:
@@ -821,6 +861,13 @@ def decide(
     report = Report(plan=plan.path, tier=plan.tier, stamp=describe(st, plan.draft))
     tier_src = f"`{plan.tier_text[:100]}`" if plan.tier_text else "no Tier line"
     report.header["Tier"] = plan.tier
+    if plan.open_comment is not None:
+        report.add(
+            REFUSE,
+            f"an HTML comment opened at line {plan.open_comment} never closes: everything after it is "
+            "hidden; close it with `-->`",
+        )
+        return _finish(report, ci)
     if plan.tier == "unreadable":
         report.add(
             REFUSE,
@@ -867,7 +914,7 @@ def decide(
                 "/verify-plan",
             )
             return _finish(report, ci)
-    if plan.tier == "light" and st.result not in ("PASS", "CONVERGED"):
+    if plan.tier == "light" and st.adequacy_only and st.result not in ("PASS", "CONVERGED"):
         report.add(
             REFUSE,
             f"a light plan's stamp must read PASS or CONVERGED (`/verify-plan --adequacy` writes only "
