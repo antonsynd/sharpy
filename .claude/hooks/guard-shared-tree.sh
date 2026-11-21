@@ -57,20 +57,24 @@
 # not guarded. Commands are found by .claude/hooks/shell_commands.py (its docstring lists what it
 # follows).
 #
-# Out of scope (not followed, and not pattern-checked): a script run by its own path (`./x.sh`),
-# a function or alias, a python/node subprocess, `xargs rm` input, `git rm`, `unlink`/`mv`, an
-# rm target the text cannot resolve, a `git` alias, launchers outside shell_commands.PREFIXES
-# (ssh, su -c, script -c, docker exec, make, npm run).
+# Out of scope (not followed, and not pattern-checked): an existing script the text does not
+# write (`. .venv/sharpy-env.sh`, `bash build_tools/setup_env.sh`), a script run by its own path
+# (`./x.sh`), a function or alias, a python/node subprocess, `xargs rm` input, `git rm`,
+# `unlink`/`mv`, an rm target the text cannot resolve, a `git` alias, launchers outside
+# shell_commands.PREFIXES (ssh, su -c, script -c, docker exec, make, npm run), a program named
+# by ANSI-C escapes (`$'\x67it' reset --hard`).
 # PATTERN-CHECKED instead of walked: unparseable text (or substitutions nested more than 8
 # deep), allowed when `bash -n` refuses it too (bash will not run it); and a script the text
 # runs but does not show: `eval "$X"`, `bash -c "$X"`, `$X args`, `... | bash`, `sh -s`, `bash
-# < file`, `bash <(...)`, and a script file (`bash x.sh`, `source x.sh`; perhaps written
-# earlier in the same text). A literal `bash -c '...'`, here-string or here-document body is
+# < file`, `bash <(...)`, and a script file (`bash x.sh`, `source x.sh`) the text writes (a
+# `>`/`>>`/`tee` target, a `cp`/`mv`/`install` destination) or that does not exist when the
+# hook runs. A literal `bash -c '...'`, here-string or here-document body is
 # walked. The whole text is then searched for rules 1-2's verbs (where the opaque script runs in
 # the main worktree, or anywhere unknown) and rules 3-4's (add -A/./-u, commit -a, a forced push
 # without both lease flags or to dev/mainline; in every worktree of this repository).
 # Known false deny: a guarded verb anywhere in such a text, e.g. `cat x.sh | bash; git stash
-# list` in the main worktree; run the two commands separately.
+# list` in the main worktree; run the two commands separately. And `[[ $b =~ ($X|y) ]]`: the
+# `(`, `|`, `)` split it, so `$X` reads as a program named by a variable (pattern-checked).
 #
 # FAILS CLOSED when it cannot read the input or run: unreadable input (not JSON, no string
 # command) is denied; an internal error pattern-checks the whole text for every rule, in any

@@ -25,8 +25,9 @@ command, in order, with:
   --show-toplevel)`` the cwd's toplevel.
 
 A script it cannot see (``eval "$X"``, ``bash -c "$X"``, ``$X args``, ``... | bash``, ``sh -s``,
-``bash < file``, ``bash <(...)``, a script file: ``bash x.sh``, ``source x.sh``) goes to
-``opaque(cwd, what)``, else raises ParseError.
+``bash < file``, ``bash <(...)``, and ``bash x.sh`` / ``source x.sh`` of a script the text writes
+or that does not exist yet) goes to ``opaque(cwd, what)``, else raises ParseError. An existing
+script the text does not write is a program like any other.
 It does not evaluate the shell: a variable not set in the text resolves from the hook's own
 environment, else it is unknown; globs stay unexpanded; functions, aliases and scripts run by
 their own path (``./x.sh``) are not followed; ``[[ ... ]]`` is split like any other words; control keywords (``if``/``then``/``do``/``{``...)
@@ -874,8 +875,12 @@ def unwrap(argv):
 # ---------------------------------------------------------------------------------------------
 # The walk.
 
+_WRITES = {">", ">>", ">|", "&>", "&>>", "<>", ">&"}
+
+
 def _split(toks):
-    """Group tokens into ('cmd', [words], io), ('open',), ('close',), ('subs', [sources]).
+    """Group tokens into ('cmd', [words], io), ('open',), ('close',), ('subs', [sources]),
+    ('write', word) for a redirection that writes a file.
     ``io`` says where the command's stdin comes from: ``piped`` (after ``|``), ``file`` (a ``<``
     redirect), ``procsub`` (a ``<(...)`` operand), ``herestring`` (the ``<<<`` word's text)."""
     out, cur, io, redir, piped = [], [], {}, None, False
@@ -889,6 +894,8 @@ def _split(toks):
                     io["herestring"] = t[1]
                 elif redir in ("<", "<>"):
                     io["file"] = True
+                if redir in _WRITES and not (redir == ">&" and (t[1].isdigit() or t[1] == "-")):
+                    out.append(("write", t[1]))
                 redir = None
                 out.append(("subs", t[2]))
                 continue
@@ -933,7 +940,7 @@ def walk(src, cwd, visit, env=None, opaque=None, _depth=0):
         raise ParseError("runs a script the text does not show: " + what)
 
     try:
-        _walk(src, _State(cwd, env), (visit, opaque or no_opaque), _depth)
+        _walk(src, _State(cwd, env), (visit, opaque or no_opaque, set()), _depth)
     except RecursionError:
         raise ParseError("nested too deeply")
 
@@ -954,6 +961,9 @@ def _walk(src, st, cb, depth):
             for s in item[1]:
                 _walk(s, st.copy(), cb, depth + 1)
             continue
+        if item[0] == "write":
+            cb[2].add(resolve(item[1], st.cwd, st.env))
+            continue
         words = item[1]
         for w in words:
             for s in w[2]:
@@ -971,7 +981,7 @@ def _opaque_name(word):
 
 
 def _command(raw, st, cb, depth, io=None):
-    visit, opaque = cb
+    visit, opaque, written = cb[:3]
     io = io or {}
     if raw and raw[0] in ("for", "select") and len(raw) > 1:
         st.env[raw[1]] = None
@@ -1027,13 +1037,56 @@ def _command(raw, st, cb, depth, io=None):
                     _walk(io["herestring"], cst.copy(), cb, depth + 1)
                 elif io.get("piped") or io.get("file") or io.get("procsub"):
                     opaque(cst.cwd, name + " reading its script from stdin")
-            else:  # a script file, perhaps written earlier in this same text
-                opaque(cst.cwd, name + " running a script file")
+            elif _unseen_script(argv[k], cst, written):
+                opaque(cst.cwd, name + " running a script file the text writes")
         elif name in ("source", "."):
-            opaque(cst.cwd, name + " of a script file")
+            ops = [a for a in argv[1:] if a != "--"]
+            if io.get("procsub") or (ops and _unseen_script(ops[0], cst, written)):
+                opaque(cst.cwd, name + " of a script file the text writes")
+        _note_writes(argv, cst, written)
         visit(argv, cst.cwd, cst.env, assigns)
     for e in extras:
         _command(e, cst.copy(), cb, depth + 1)
+
+
+def _unseen_script(word, st, written):
+    """A script file whose text this command line may have made: one it writes (a redirection,
+    tee, a cp/mv/install destination), one that does not exist when the hook runs, or a path it
+    cannot resolve. An existing script the text does not write (.venv/sharpy-env.sh,
+    build_tools/*.sh) is out of scope, like any program."""
+    path = resolve(word, st.cwd, st.env)
+    return path is None or path in written or not os.path.exists(path)
+
+
+def _note_writes(argv, st, written):
+    """Record the files ``tee`` and ``cp``/``mv``/``install`` write."""
+    base = os.path.basename(argv[0])
+    if base == "tee":
+        written.update(resolve(a, st.cwd, st.env) for a in argv[1:] if not a.startswith("-"))
+    elif base in ("cp", "mv", "install"):
+        ops, target, k = [], None, 1
+        while k < len(argv):
+            a = argv[k]
+            if a == "--":
+                ops += argv[k + 1:]
+                break
+            if a in ("-t", "--target-directory") and k + 1 < len(argv):
+                target, k = argv[k + 1], k + 2
+                continue
+            if a.startswith("--target-directory="):
+                target = a.split("=", 1)[1]
+            elif not a.startswith("-"):
+                ops.append(a)
+            k += 1
+        if target is None and len(ops) >= 2:
+            target, ops = ops[-1], ops[:-1]
+            dest = resolve(target, st.cwd, st.env)
+            if dest is not None and not os.path.isdir(dest):
+                written.add(dest)
+                return
+        dest = resolve(target, st.cwd, st.env) if target is not None else None
+        if dest is not None:
+            written.update(os.path.join(dest, os.path.basename(o.rstrip("/"))) for o in ops)
 
 
 def _chdir(name, argv, st):

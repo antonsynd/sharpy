@@ -25,11 +25,13 @@
 # unparseable text, unless `bash -n` refuses it too (bash will not run it); and a script the text
 # runs but does not show: `eval "$X"`, `bash -c "$X"`, `$(which dotnet) build`, `... | bash`,
 # `sh -s`, `bash < file`, `bash <(...)`, and a script file (`bash x.sh`, `sh x.sh`, `source x.sh`)
-# — so a script written and run in the same text is blocked, and `bash
-# build_tools/regenerate_spy_stdlib.sh` (whose text names no dotnet verb) passes; those scripts
-# take SHARPYC=<built sharpyc> to stay off the lock. Out of scope: a script run by its own path
-# (`./x.sh`), an alias or function, a python/node subprocess, a launcher outside PREFIXES (ssh,
-# su -c, script -c, docker exec, make, npm run).
+# the text writes (a `>`/`>>`/`tee` target, a `cp`/`mv`/`install` destination) or that does not
+# exist when the hook runs, so a script written and run in the same text is blocked. Out of
+# scope: an existing script the text does not write (`. .venv/sharpy-env.sh`, `bash
+# build_tools/regenerate_spy_stdlib.sh`; those scripts take SHARPYC=<built sharpyc> to stay off
+# the lock), a script run by its own path (`./x.sh`), an alias or function, a python/node
+# subprocess, a launcher outside PREFIXES (ssh, su -c, script -c, docker exec, make, npm run), a
+# program named by ANSI-C escapes (`$'\x64otnet' test`).
 #
 # FAILS CLOSED when it cannot read the input or run: unreadable input (not JSON, no string
 # command) is blocked; an internal error applies the whole-string pattern (a superset of the old

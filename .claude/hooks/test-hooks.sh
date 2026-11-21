@@ -268,6 +268,11 @@ ln -s "$MAIN" "$G/link"                        # a symlink to the main worktree
 git -C "$MAIN" worktree add -q "$WT" -b claude/x
 git -C "$MAIN" worktree add -q "$SWT" -b claude/y
 mkdir -p "$WT/obj"
+# Existing scripts the session runs (untracked here): a script the text does not write is a program.
+mkdir -p "$MAIN/.venv" "$MAIN/.claude/hooks"
+for f in .venv/sharpy-env.sh build_tools/setup_env.sh build_tools/regenerate_spy_stdlib.sh .claude/hooks/test-hooks.sh .claude/tmp/old.sh; do
+  echo ':' > "$MAIN/$f"
+done
 git -C "$MAIN" update-ref refs/remotes/origin/dev HEAD
 git -C "$MAIN" update-ref refs/remotes/origin/claude/remote-only HEAD
 # gjson COMMAND CWD [AGENT_ID]: a non-empty AGENT_ID is the input a subagent's tool call carries.
@@ -634,6 +639,31 @@ gdeny "$(nest 'git push --force-with-lease --force-if-includes origin dev' 9)" "
 gallow "$(nest 'git push --force-with-lease --force-if-includes origin claude/x' 9)" "$WT"
 gdeny "$(nest 'git commit -am x' 9)" "$WT"
 gdeny "$(nest 'git commit -a -m x' 9)" "$WT"
+# 1j. Review round 8: a script file is opaque only when the text writes it (>, >>, tee, a
+# cp/mv/install destination) or it does not exist yet; an existing script the text does not write
+# is a program like any other (CLAUDE.md's own `. .venv/sharpy-env.sh &&` prefix).
+B4_ALLOW=('. .venv/sharpy-env.sh && git stash list'
+          '. .venv/sharpy-env.sh && git switch -c claude/x origin/dev'
+          'bash build_tools/setup_env.sh && git stash list'
+          'source .venv/sharpy-env.sh && git switch dev'
+          'bash build_tools/regenerate_spy_stdlib.sh && git switch -c claude/z'
+          'bash .claude/hooks/test-hooks.sh && git switch -c claude/h'
+          '. .venv/sharpy-env.sh && rm -rf .claude/tmp/probe')
+for c in "${B4_ALLOW[@]}"; do gallow "$c" "$MAIN"; done
+gdeny 'echo "git reset --hard" > .claude/tmp/old.sh; bash .claude/tmp/old.sh' "$MAIN" agent-1
+gdeny 'echo "git stash" | tee .claude/tmp/old.sh; sh .claude/tmp/old.sh' "$MAIN" agent-1
+gdeny "printf 'git stash\\n' > .claude/tmp/a.sh; cp .claude/tmp/a.sh .claude/tmp/old.sh && bash .claude/tmp/old.sh" "$MAIN" agent-1
+gdeny "printf 'git stash\\n' > .claude/tmp/a.sh && mv .claude/tmp/a.sh .claude/tmp/old.sh && source .claude/tmp/old.sh" "$MAIN" agent-1
+gdeny "printf 'git stash\\n' > .claude/tmp/n/old.sh && install -m 755 -t .claude/tmp/ .claude/tmp/n/old.sh && . .claude/tmp/old.sh" "$MAIN" agent-1
+gallow "printf 'git stash\\n' > .claude/tmp/a.sh && cp .claude/tmp/a.sh .claude/tmp/b.sh && . .claude/tmp/old.sh" "$MAIN" agent-1
+gdeny '. <(echo git stash)' "$MAIN" agent-1
+gdeny "python3 -c 'open(\".claude/tmp/o.sh\", \"w\").write(\"git reset --hard\")'; bash .claude/tmp/o.sh" "$MAIN" agent-1
+pushd "$MAIN" >/dev/null || exit 1
+allowed '. .venv/sharpy-env.sh && git commit -m "fix: dotnet test flake" -- src/a.cs'
+allowed '. .venv/sharpy-env.sh && grep -rn "dotnet build" docs/'
+blocked 'echo "dotnet test" > .claude/tmp/old.sh; bash .claude/tmp/old.sh'
+blocked 'source <(echo dotnet test)'
+popd >/dev/null || exit 1
 # 1i. Review round 7.
 # B1: in a bundle each o / O takes the next argument, as bash reads it.
 gdeny "bash -euo pipefail -c 'git reset --hard'" "$MAIN" agent-1
