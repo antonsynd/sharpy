@@ -1,0 +1,1271 @@
+[
+ {
+  "name": "reversible-door",
+  "statement": "Among open options pick the one from which the others stay additive: refuse a form not yet admitted rather than admit it, and keep admitting a form already admitted rather than restrict it.",
+  "scope": "language",
+  "members": [
+   "R-H",
+   "R-AM",
+   "R-EQ",
+   "R-FA",
+   "R-JZ",
+   "R-IZ",
+   "R-PK",
+   "R-PI",
+   "R-QM",
+   "R-DR",
+   "R-LR",
+   "R-AO",
+   "R-BF",
+   "R-CS",
+   "R-LE",
+   "R-KT",
+   "R-HW",
+   "R-AW",
+   "R-HH",
+   "R-EW",
+   "R-DW",
+   "R-CW",
+   "R-CX",
+   "R-FM",
+   "R-FC",
+   "R-DJ",
+   "R-BR",
+   "R-ML",
+   "R-JG",
+   "R-KW",
+   "R-HJ",
+   "R-DH",
+   "R-GD",
+   "R-DL",
+   "R-FH",
+   "R-IA",
+   "R-OA",
+   "R-NU",
+   "R-HT",
+   "R-DZ",
+   "R-AX",
+   "R-FW",
+   "R-OW"
+  ],
+  "checked": [
+   "R-H",
+   "R-AM",
+   "R-EQ",
+   "R-FA",
+   "R-JZ",
+   "R-IZ",
+   "R-PK",
+   "R-PI",
+   "R-QM",
+   "R-DR",
+   "R-LR",
+   "R-AO",
+   "R-BF",
+   "R-CS",
+   "R-LE",
+   "R-KT",
+   "R-HW",
+   "R-AW",
+   "R-HH",
+   "R-EW",
+   "R-DW",
+   "R-CW",
+   "R-CX",
+   "R-FM",
+   "R-FC",
+   "R-DJ",
+   "R-BR",
+   "R-ML",
+   "R-JG",
+   "R-KW",
+   "R-HJ",
+   "R-DH",
+   "R-GD",
+   "R-DL",
+   "R-FH",
+   "R-IA",
+   "R-OA",
+   "R-NU",
+   "R-HT",
+   "R-DZ",
+   "R-AX",
+   "R-FW",
+   "R-OW"
+  ],
+  "counter_examples": [
+   {
+    "id": "R-OY",
+    "why": "Refuses comparison chains that ran, the one-way tightening of an admitted form, because their verdict differed from the binary twin."
+   },
+   {
+    "id": "R-QA",
+    "why": "Makes programs that print correct values today raise NameError, restricting admitted behaviour to remove an order-dependent value (T1)."
+   },
+   {
+    "id": "R-EU",
+    "why": "Picks (a), stated as one-way in practice, over (b) from which (a) was additive, to keep one narrowing rule."
+   },
+   {
+    "id": "R-QL",
+    "why": "Chooses a one-way output change (Python's evaluation order) over the reversible deviation row."
+   },
+   {
+    "id": "R-PL",
+    "why": "Promotes identity-before-__eq__ in containers, one-way for output, over recording a deviation."
+   },
+   {
+    "id": "R-OB",
+    "why": "Adopts Python truthiness for T | None, one-way for output, over refusing or the spec's null check."
+   },
+   {
+    "id": "R-ND",
+    "why": "Ships a new public Core type for every open mode (stated one-way) rather than the deviation subset."
+   },
+   {
+    "id": "R-MT",
+    "why": "Implements dataclass copy(), one-way once called, rather than rewriting the docs that promise it."
+   },
+   {
+    "id": "R-AI",
+    "why": "Emulates Python's run-time UnboundLocalError instead of the compile-time refusal the applied default had."
+   },
+   {
+    "id": "R-HU",
+    "why": "Refuses 1e400 (Python's inf) although python3 runs it; the door argument is used against the Python value, not for admission."
+   }
+  ],
+  "boundary": "Yields when the reversible option leaves a silent difference from Python on a COMPARED surface, a silently wrong or order-dependent value (T1), or withdraws a documented surface; then the one-way fix is taken and recorded by direction.",
+  "nearest_written_law": null,
+  "gap": "No written law says which door to prefer; FS only says the fidelity aperture opens by ruling. The 'a refusal can be relaxed later' reasoning appears in about 70 rows but in no law.",
+  "would_have_decided": 32,
+  "confidence": "high"
+ },
+ {
+  "name": "uniform-verdict-across-forms",
+  "statement": "A desugared form, an alternative spelling, another host, or another member of an operator or declaration family gets exactly its primitive's verdict, value and diagnostic code; no form-specific refusal or exemption.",
+  "scope": "language",
+  "members": [
+   "R-OY",
+   "R-PD",
+   "R-PE",
+   "R-PF",
+   "R-IA",
+   "R-OH",
+   "R-PI",
+   "R-MI",
+   "R-LS",
+   "R-CW",
+   "R-BU",
+   "R-MW",
+   "R-EI",
+   "R-ER",
+   "R-LH",
+   "R-KY",
+   "R-PT",
+   "R-R",
+   "R-II",
+   "R-AA",
+   "R-EE",
+   "R-CR",
+   "R-DP",
+   "R-IP",
+   "R-HH"
+  ],
+  "checked": [
+   "R-OY",
+   "R-IA",
+   "R-OH",
+   "R-MI",
+   "R-CW",
+   "R-BU",
+   "R-MW",
+   "R-ER",
+   "R-EU",
+   "R-NU",
+   "R-NW",
+   "R-DZ",
+   "R-PI",
+   "R-CR",
+   "R-IP"
+  ],
+  "counter_examples": [
+   {
+    "id": "R-EU",
+    "why": "After R-ER made the two match-guard positions alike for truthiness, R-EU makes them differ for narrowing; uniformity is by mechanism (what gates the whole arm), not by syntactic position."
+   },
+   {
+    "id": "R-DZ",
+    "why": "Accepts two spellings (caps and verbatim) for one CLR enum member, to keep running programs."
+   },
+   {
+    "id": "R-NU",
+    "why": "A bool needle is refused for bytes while R-NW admits an int needle, though Python's bool is an int; the family is drawn by Sharpy's conversion rules, not Python's."
+   },
+   {
+    "id": "R-ON",
+    "why": "Int-backed enums follow plain Enum for == but IntEnum for ordering (R-OW): one type, two flavours across one operator family."
+   }
+  ],
+  "boundary": "Uniformity is judged by Sharpy's own type and conversion rules and by the mechanism (what gates, what converts), not by Python's family lines; a second spelling may survive to keep a correct program running (T3).",
+  "nearest_written_law": "N7",
+  "gap": "N7 covers reads of one name by spelling and T4 covers module/class/generic hosts; neither extends to desugared forms (chains, augmented operators, pipes), builtin versus user types, or declaration kinds sharing a convention.",
+  "would_have_decided": 20,
+  "confidence": "high"
+ },
+ {
+  "name": "one-authority-per-fact",
+  "statement": "Each fact or behaviour has one implementation every consumer calls: a compile-time check calls the runtime's pure function, an operator and its library function share one engine, and one authority spells each name or identity.",
+  "scope": "language",
+  "members": [
+   "R-BX",
+   "R-CG",
+   "R-IP",
+   "R-AN",
+   "R-CF",
+   "R-DE",
+   "R-NG",
+   "R-LP",
+   "R-CO",
+   "R-HD",
+   "R-IB",
+   "R-IL",
+   "R-DH",
+   "R-CW",
+   "R-DD",
+   "R-JC",
+   "R-R",
+   "R-AQ"
+  ],
+  "checked": [
+   "R-BX",
+   "R-IP",
+   "R-AN",
+   "R-NG",
+   "R-CO",
+   "R-DH"
+  ],
+  "counter_examples": [],
+  "boundary": null,
+  "nearest_written_law": "CR2",
+  "gap": "CR2 and VC11 make the emitter pure and facts materialized once, but say nothing about runtime/compile-time twins or shared engines; mirrors were twice built and retired (R-BX, R-CG).",
+  "would_have_decided": 15,
+  "confidence": "high"
+ },
+ {
+  "name": "csharp-limit-named-refusal",
+  "statement": "When C# cannot express a construct, refuse it before Roslyn with a named Sharpy code and the steer a C# programmer would write; do not emulate it with a lowering users could depend on.",
+  "scope": "language",
+  "members": [
+   "R-N",
+   "R-JG",
+   "R-KT",
+   "R-ML",
+   "R-IW",
+   "R-CS",
+   "R-QK",
+   "R-PT",
+   "R-HJ",
+   "R-LE",
+   "R-KW",
+   "R-HW",
+   "R-FO",
+   "R-JL",
+   "R-AW",
+   "R-HU",
+   "R-FW"
+  ],
+  "checked": [
+   "R-N",
+   "R-JG",
+   "R-KT",
+   "R-ML",
+   "R-IW",
+   "R-CS",
+   "R-QK",
+   "R-HJ",
+   "R-LE",
+   "R-KW",
+   "R-HW",
+   "R-HU",
+   "R-FW"
+  ],
+  "counter_examples": [
+   {
+    "id": "R-QL",
+    "why": "Emulates CPython's value-before-target evaluation order with a hoist instead of inheriting C#'s order."
+   },
+   {
+    "id": "R-AI",
+    "why": "Emulates Python's UnboundLocalError with a compiler-emitted assigned flag instead of refusing."
+   },
+   {
+    "id": "R-AV",
+    "why": "Emulates a mutable dataclass default through a nullable constructor parameter plus ??, a sentinel C# consumers see."
+   }
+  ],
+  "boundary": "Emulation is taken when the lowering is unobservable from Sharpy (R-AV) or when refusing would leave ordinary Python programs either refused en masse or printing a different value (R-QL, R-AI).",
+  "nearest_written_law": "RR",
+  "gap": "A1, T2 and RR imply refusal over a raw C# error, but none requires a named code with a C#-idiomatic steer, and RR's 'zero-cost bridge' does not say that a costly or depended-on emulation is the one-way door to avoid.",
+  "would_have_decided": 14,
+  "confidence": "high"
+ },
+ {
+  "name": "no-invented-type-or-conversion",
+  "statement": "The compiler never invents a type or conversion: a common type is the slot's or an operand's own; anything beyond value-preserving widening is spelled by the user; disagreeing candidates are refused, asking for an annotation.",
+  "scope": "language",
+  "members": [
+   "R-G",
+   "R-W",
+   "R-AB",
+   "R-AE",
+   "R-BH",
+   "R-BO",
+   "R-PJ",
+   "R-JP",
+   "R-FN",
+   "R-KW",
+   "R-F",
+   "R-U",
+   "R-IC",
+   "R-AJ"
+  ],
+  "checked": [
+   "R-G",
+   "R-W",
+   "R-B",
+   "R-BH",
+   "R-PJ",
+   "R-JP",
+   "R-T",
+   "R-U",
+   "R-KW",
+   "R-FN"
+  ],
+  "counter_examples": [
+   {
+    "id": "R-T",
+    "why": "Inside a narrowing a store of the payload type is implicitly re-wrapped into T?, though R-G says T? converts implicitly in no direction."
+   },
+   {
+    "id": "R-EH",
+    "why": "A nullability-oblivious CLR reference is used directly as T with an inserted boundary check, an implicit conversion by design (platform types)."
+   },
+   {
+    "id": "R-OP",
+    "why": "A loose T | None flows into a plain T with a compiler-inserted check and a warning rather than a required spelled conversion."
+   }
+  ],
+  "boundary": "Compile-time constants that fit the target, stores into a narrowed Optional, and nullability-oblivious foreign values convert implicitly; everything else is spelled.",
+  "nearest_written_law": "A3",
+  "gap": "A3 and AP ('no magic') say types are static and None is opted into, but not that inference may only pick a stated type or that narrowing conversions must be spelled.",
+  "would_have_decided": 11,
+  "confidence": "high"
+ },
+ {
+  "name": "diagnostic-code-per-cure",
+  "statement": "A diagnostic code means one failure with one cure: reuse it, naming the kind in the message, for the same mistake; mint a new code when the cure differs; never filter a code by route.",
+  "scope": "diagnostics",
+  "members": [
+   "R-BL",
+   "R-IK",
+   "R-GL",
+   "R-OV",
+   "R-OX",
+   "R-HI",
+   "R-JI",
+   "R-LI",
+   "R-AT",
+   "R-AZ",
+   "R-JO",
+   "R-ED",
+   "R-FN"
+  ],
+  "checked": [
+   "R-BL",
+   "R-IK",
+   "R-GL",
+   "R-OV",
+   "R-AZ"
+  ],
+  "counter_examples": [],
+  "boundary": null,
+  "nearest_written_law": "CR10",
+  "gap": "CR10 requires an explanation for every code but does not say when to mint versus reuse a code, nor 'one mistake, one diagnostic'.",
+  "would_have_decided": 11,
+  "confidence": "high"
+ },
+ {
+  "name": "silent-wrong-first",
+  "statement": "A group that removes a silently wrong value is queued ahead of groups fixing refusals, crashes or tooling; tooling and tests-only residues wait behind user-facing silent-wrong work, regressions excepted.",
+  "scope": "process",
+  "members": [
+   "R-JU",
+   "R-KI",
+   "R-CN",
+   "R-GF",
+   "R-GO",
+   "R-GU",
+   "R-HC",
+   "R-HQ",
+   "R-IX",
+   "R-JF",
+   "R-HY",
+   "R-IJ",
+   "R-JA"
+  ],
+  "checked": [
+   "R-JU",
+   "R-KI",
+   "R-HQ",
+   "R-GF"
+  ],
+  "counter_examples": [
+   {
+    "id": "R-PM",
+    "why": "The owner moved user-facing language features ahead of deeper correctness work, saying recent plans were not user facing."
+   },
+   {
+    "id": "R-GX",
+    "why": "A user-facing feature group was pulled forward ('we should not hold it off') over the preferred order."
+   },
+   {
+    "id": "R-NB",
+    "why": "Three silent-wrong rows were left allowlisted to wait for their class fix."
+   }
+  ],
+  "boundary": "Order applies within a band; across arcs the owner weighs user-facing value, and a silent-wrong cell waits when its class fix is already scheduled.",
+  "nearest_written_law": "batch-issues SKILL step 3 (not a listed law)",
+  "gap": "The skill gives the band order but not the residue cap (R-GF) nor when user-facing features outrank it (R-PM).",
+  "would_have_decided": 10,
+  "confidence": "medium"
+ },
+ {
+  "name": "group-by-class-and-seam",
+  "statement": "Cells join the open tracker and group whose contract owns their class; defects on one seam form one group with one generator, built by the group that consumes it.",
+  "scope": "process",
+  "members": [
+   "R-GZ",
+   "R-HB",
+   "R-KL",
+   "R-JW",
+   "R-JB",
+   "R-GR",
+   "R-JY",
+   "R-LO",
+   "R-KV",
+   "R-MF",
+   "R-LR",
+   "R-JQ"
+  ],
+  "checked": [
+   "R-KL",
+   "R-GZ",
+   "R-JW",
+   "R-JY"
+  ],
+  "counter_examples": [
+   {
+    "id": "R-JY",
+    "why": "Forms a new residue group instead of distributing to trackers, unlike R-JW."
+   }
+  ],
+  "boundary": "A new group is formed when the cure reuses facts a just-landed group built (R-JY); otherwise cells go to existing trackers (R-JW).",
+  "nearest_written_law": "VC10",
+  "gap": "VC1, VC10, VC11 and CR13 nearly state it; missing is the new-group-versus-existing-tracker test.",
+  "would_have_decided": 10,
+  "confidence": "high"
+ },
+ {
+  "name": "collision-is-error",
+  "statement": "When two declarations, imports or source files claim one name in one scope, refuse and name both; neither order, kind nor star-ness picks a silent winner, and no deterministic rename is applied.",
+  "scope": "language",
+  "members": [
+   "R-IZ",
+   "R-JZ",
+   "R-DH",
+   "R-AX",
+   "R-HJ",
+   "R-LD",
+   "R-CY",
+   "R-II",
+   "R-JO",
+   "R-AW",
+   "R-JI"
+  ],
+  "checked": [
+   "R-IZ",
+   "R-JZ",
+   "R-DH",
+   "R-AX",
+   "R-HJ",
+   "R-BA",
+   "R-CV"
+  ],
+  "counter_examples": [
+   {
+    "id": "R-BA",
+    "why": "A user module shadows a same-named CLR namespace with a warning, not an error."
+   },
+   {
+    "id": "R-CV",
+    "why": "A local module shadows stdlib, referenced libraries and CLR namespaces with a warning, as Python's sys.path order."
+   }
+  ],
+  "boundary": "When the other party is an open-ended external set (CLR namespaces, references), whose growth would newly refuse existing code, the local name wins with a default-on warning naming the escape.",
+  "nearest_written_law": "N2",
+  "gap": "N2 refuses a read whose meaning differs by reading order; it does not cover declaration, import or file collisions, nor the open-external-set exception.",
+  "would_have_decided": 9,
+  "confidence": "high"
+ },
+ {
+  "name": "tooling-keeps-user-bytes",
+  "statement": "An editor, formatter or refactoring route keeps the user's written spelling and bytes unless it can prove the change legal and meaning-preserving; it re-spells only when forced, and otherwise is not offered.",
+  "scope": "diagnostics",
+  "members": [
+   "R-DL",
+   "R-GD",
+   "R-GQ",
+   "R-GS",
+   "R-FK",
+   "R-FU",
+   "R-FQ",
+   "R-FR",
+   "R-FV",
+   "R-FP",
+   "R-ET"
+  ],
+  "checked": [
+   "R-DL",
+   "R-GD",
+   "R-GQ",
+   "R-GS",
+   "R-ET",
+   "R-FK"
+  ],
+  "counter_examples": [
+   {
+    "id": "R-ET",
+    "why": "The formatter collapses runs of blank lines to one rather than preserving the layout as written."
+   }
+  ],
+  "boundary": "A formatter run the user asked for may canonicalize within a stated bound (R-ET); repair routes acting on an unparseable document may not.",
+  "nearest_written_law": null,
+  "gap": "No written law covers tooling output; this is new.",
+  "would_have_decided": 8,
+  "confidence": "medium"
+ },
+ {
+  "name": "promote-fidelity-where-exact",
+  "statement": "Promote a Python surface to COMPARED by whole type or message family, covering what .NET reproduces exactly or Core alone can cure; the remainder becomes one family deviation row.",
+  "scope": "library",
+  "members": [
+   "R-CJ",
+   "R-NR",
+   "R-KS",
+   "R-NF",
+   "R-CK",
+   "R-IQ",
+   "R-IM",
+   "R-PL",
+   "R-FL",
+   "R-NS"
+  ],
+  "checked": [
+   "R-CJ",
+   "R-NR",
+   "R-KS",
+   "R-NF",
+   "R-CK",
+   "R-FL",
+   "R-NS"
+  ],
+  "counter_examples": [
+   {
+    "id": "R-BN",
+    "why": "The defaultdict factory keeps a fixed placeholder as a deviation, while R-CJ later compares every Stdlib repr with Python."
+   }
+  ],
+  "boundary": "Where an exact reproduction would rewrite genuine values (R-NS, R-FL's 128+N), the inexact part stays a deviation even inside a promoted family.",
+  "nearest_written_law": "FS",
+  "gap": "FS says promotion is by owner ruling naming a family, but gives no criterion; the rows apply 'exact on .NET or Core-only cure' every time.",
+  "would_have_decided": 7,
+  "confidence": "medium"
+ },
+ {
+  "name": "measure-before-mechanism",
+  "statement": "Add a mechanism, optimisation, CI leg or runtime-target move only after a measurement shows the need; record an unmeasured hazard. Performance is reported for the owner to judge, not gated automatically.",
+  "scope": "process",
+  "members": [
+   "R-AS",
+   "R-KR",
+   "R-KN",
+   "R-KA",
+   "R-NI",
+   "R-GH",
+   "R-HA",
+   "R-PU",
+   "R-LW",
+   "R-MY"
+  ],
+  "checked": [
+   "R-AS",
+   "R-KN",
+   "R-NI",
+   "R-GH",
+   "R-PU"
+  ],
+  "counter_examples": [
+   {
+    "id": "R-GM",
+    "why": "Adds a per-OS CI leg without a measured failure, because one platform is not a control for another."
+   }
+  ],
+  "boundary": "Correctness checks on every platform the product ships for are not optional.",
+  "nearest_written_law": "VC5",
+  "gap": "VC5 makes measurements carry a sha; no law says to measure before building a mechanism.",
+  "would_have_decided": 8,
+  "confidence": "medium"
+ },
+ {
+  "name": "documented-surface-implemented",
+  "statement": "A documented feature that can be typed and lowered is implemented rather than documented away; the spec is rewritten only where the feature has no CLR carrier or admitting it would be the one-way door.",
+  "scope": "language",
+  "members": [
+   "R-MT",
+   "R-DJ",
+   "R-ND",
+   "R-JS",
+   "R-MR",
+   "R-MV",
+   "R-AC",
+   "R-MW",
+   "R-AG"
+  ],
+  "checked": [
+   "R-MT",
+   "R-DJ",
+   "R-ND",
+   "R-BR",
+   "R-OB",
+   "R-MW",
+   "R-AG"
+  ],
+  "counter_examples": [
+   {
+    "id": "R-BR",
+    "why": "Deletes the spec section on named parameters in function types instead of implementing it."
+   },
+   {
+    "id": "R-OB",
+    "why": "Replaces the spec's null-check truthiness rule with Python's, rewriting the spec to the ruling."
+   },
+   {
+    "id": "R-MD",
+    "why": "Rejects the spec's per-class .NET exception bridge and rewrites the spec."
+   }
+  ],
+  "boundary": "The spec yields when it promises something with no CLR carrier (R-BR) or when a later principle (Python fidelity, R-OB) supersedes its text by ruling.",
+  "nearest_written_law": "CR7",
+  "gap": "CR7 says change the implementation, never the spec, with no exception; the owner amends the spec by ruling in several rows, so CR7 needs its exception path stated.",
+  "would_have_decided": 7,
+  "confidence": "medium"
+ },
+ {
+  "name": "loose-none-fails-like-python",
+  "statement": "A possibly-None `T | None` operand in an operation Python accepts stays legal, warns, and fails as CPython does; a literal None where the type cannot hold None is a compile error.",
+  "scope": "language",
+  "members": [
+   "R-OP",
+   "R-OC",
+   "R-NV",
+   "R-OS",
+   "R-OU",
+   "R-OB",
+   "R-Z",
+   "R-OV"
+  ],
+  "checked": [
+   "R-OP",
+   "R-OC",
+   "R-NV",
+   "R-OB"
+  ],
+  "counter_examples": [
+   {
+    "id": "R-OC",
+    "why": "Its first form refused ordering on T | None at compile time; the later principle allowed it with a warning, so the same case was decided both ways."
+   },
+   {
+    "id": "R-DX",
+    "why": "Refused == None on a CLR reference with an `is None` steer; lifted later by R-ES."
+   }
+  ],
+  "boundary": "Applies to the loose `T | None` spelling only; Sharpy's strict `T?` is refused until narrowed. It overrides T2 for that spelling.",
+  "nearest_written_law": "T2",
+  "gap": "T2 prefers a compile error over a run-time error with no carve-out; the loose-None rule chooses the run-time TypeError plus a warning, and T2 does not say so.",
+  "would_have_decided": 6,
+  "confidence": "high"
+ },
+ {
+  "name": "untypeable-api-is-deviation",
+  "statement": "A Python library surface that cannot be typed statically, or whose Python value occurs only in misuse, becomes one recorded deviation row with a steer, not dynamic invocation, generated factories or a widened nullable type.",
+  "scope": "library",
+  "members": [
+   "R-FC",
+   "R-FE",
+   "R-NH",
+   "R-NN",
+   "R-DC",
+   "R-DY",
+   "R-IE",
+   "R-FW"
+  ],
+  "checked": [
+   "R-FC",
+   "R-FE",
+   "R-NH",
+   "R-NN"
+  ],
+  "counter_examples": [
+   {
+    "id": "R-ND",
+    "why": "open accepts every Python mode with a new Core type rather than a deviation for the binary/update subset."
+   },
+   {
+    "id": "R-IR",
+    "why": "int byte/bit methods are added because a 'not provided' row is sound only with an alternative route."
+   }
+  ],
+  "boundary": "A typeable surface with no other route is implemented; only untypeable, misuse-only, or alternative-covered surfaces deviate.",
+  "nearest_written_law": "FS",
+  "gap": "FS says where a divergence is recorded, not which surfaces may diverge; AP forbids 'because Python has it' without the typeable/alternative test.",
+  "would_have_decided": 6,
+  "confidence": "medium"
+ },
+ {
+  "name": "land-semantics-before-instruments",
+  "statement": "Do not build an instrument, generator or stopgap on semantics a ruled change will flip; land the semantic change first, and move an existing structure intact before redesigning it.",
+  "scope": "process",
+  "members": [
+   "R-GV",
+   "R-LO",
+   "R-EC",
+   "R-HA",
+   "R-NP",
+   "R-FF",
+   "R-JN",
+   "R-MF"
+  ],
+  "checked": [
+   "R-GV",
+   "R-EC",
+   "R-HA",
+   "R-JN"
+  ],
+  "counter_examples": [
+   {
+    "id": "R-HQ",
+    "why": "An instrument blind spot is drained before the silent-wrong band it audits."
+   }
+  ],
+  "boundary": "An instrument that hides missing refusals goes first, since the band it audits depends on it.",
+  "nearest_written_law": "VC11",
+  "gap": "VC11 orders generators before hand matrices but not semantics before instruments.",
+  "would_have_decided": 6,
+  "confidence": "medium"
+ },
+ {
+  "name": "coverage-over-ci-capacity",
+  "statement": "Coverage a contract requires is kept and CI capacity raised to carry it; every known failure is a counted, cited row, and a missing precondition reports Skipped, never a vacuous pass.",
+  "scope": "process",
+  "members": [
+   "R-PC",
+   "R-QH",
+   "R-HZ",
+   "R-OZ",
+   "R-MC",
+   "R-ID",
+   "R-KK",
+   "R-JE"
+  ],
+  "checked": [
+   "R-PC",
+   "R-HZ",
+   "R-OZ",
+   "R-MC"
+  ],
+  "counter_examples": [],
+  "boundary": null,
+  "nearest_written_law": "VC2",
+  "gap": "VC2 and the gap-discovery contracts cover cited allowlist rows; the rule that CI capacity grows rather than coverage shrinks is unwritten.",
+  "would_have_decided": 7,
+  "confidence": "high"
+ },
+ {
+  "name": "clr-values-keep-clr-shape",
+  "statement": "A CLR value keeps its CLR identity and nullability-oblivious shape; Sharpy may add capabilities but never subtracts what the CLR shape shows, and converts it only explicitly or with a check at a declared boundary.",
+  "scope": "language",
+  "members": [
+   "R-BH",
+   "R-BO",
+   "R-AN",
+   "R-EH",
+   "R-DW",
+   "R-BT",
+   "R-EG"
+  ],
+  "checked": [
+   "R-BH",
+   "R-AN",
+   "R-EH",
+   "R-DW"
+  ],
+  "counter_examples": [
+   {
+    "id": "R-AP",
+    "why": "PascalCase CLR member spellings on a Sharpy builtin receiver are refused, subtracting a CLR capability."
+   },
+   {
+    "id": "R-BU",
+    "why": "str.upper(...) through the CLR-backed builtin type name is refused like a user class."
+   }
+  ],
+  "boundary": "Builtin types that are Sharpy types over a CLR backing follow Sharpy rules; the principle covers foreign values only.",
+  "nearest_written_law": "CV",
+  "gap": "CV ('wrap .NET, expose Python') governs Core/Stdlib APIs; it is silent on foreign CLR values flowing into Sharpy code.",
+  "would_have_decided": 5,
+  "confidence": "medium"
+ },
+ {
+  "name": "repr-is-construction-spelling",
+  "statement": "A value's str/repr is its source construction spelling with payload reprs; where the runtime lacks the source information, print a fixed documented placeholder, never CLR text or compiler-injected names.",
+  "scope": "library",
+  "members": [
+   "R-IM",
+   "R-CH",
+   "R-BN",
+   "R-DG",
+   "R-IF",
+   "R-CF",
+   "R-HO"
+  ],
+  "checked": [
+   "R-IM",
+   "R-BN",
+   "R-CJ",
+   "R-DG"
+  ],
+  "counter_examples": [
+   {
+    "id": "R-CJ",
+    "why": "Every Stdlib repr is COMPARED with Python, which a defaultdict placeholder (R-BN) does not meet."
+   }
+  ],
+  "boundary": "A placeholder is a deviation only until a cheap mechanism carries the information (R-DG); then the name is kept.",
+  "nearest_written_law": "FS",
+  "gap": "FS's str/repr row says 'COMPARED as ruled' and lists rulings, without the rule they share.",
+  "would_have_decided": 5,
+  "confidence": "medium"
+ },
+ {
+  "name": "one-mechanical-name-rule",
+  "statement": "Name mangling is one mechanical rule for every name; exceptions are spelled with the backtick escape and collisions it creates are refused, never handled by tables, per-name renames or silent fallbacks.",
+  "scope": "language",
+  "members": [
+   "R-CR",
+   "R-EB",
+   "R-AW",
+   "R-ED",
+   "R-CZ",
+   "R-DD",
+   "R-DP"
+  ],
+  "checked": [
+   "R-CR",
+   "R-EB",
+   "R-AW",
+   "R-AD",
+   "R-DZ"
+  ],
+  "counter_examples": [
+   {
+    "id": "R-AD",
+    "why": "The module-class merge special case (a class named like its file) is kept because it is a closed one-way door for C# consumers."
+   },
+   {
+    "id": "R-DZ",
+    "why": "CLR enum members resolve by caps and by verbatim spelling."
+   }
+  ],
+  "boundary": "A special case already visible to C# consumers is not reopened (R-AD).",
+  "nearest_written_law": "AP",
+  "gap": "AP's 'no magic' and the name_mangling spec do not state the escape-over-table rule or collision refusal.",
+  "would_have_decided": 5,
+  "confidence": "medium"
+ },
+ {
+  "name": "host-invariant-output",
+  "statement": "A program's verdict and output never depend on the machine: locale, filesystem case, or assemblies a process happened to load; an OS that cannot reproduce a behaviour gets its own deviation row.",
+  "scope": "library",
+  "members": [
+   "R-CL",
+   "R-HH",
+   "R-CV",
+   "R-DB",
+   "R-FL",
+   "R-GM"
+  ],
+  "checked": [
+   "R-CL",
+   "R-HH",
+   "R-CV",
+   "R-DB",
+   "R-GM",
+   "R-FL"
+  ],
+  "counter_examples": [
+   {
+    "id": "R-DB",
+    "why": "strftime %Z uses the libc name on Unix and the .NET display name on Windows, a per-OS split."
+   }
+  ],
+  "boundary": "Where an OS lacks the data (Windows time-zone names), the difference is confined to that OS and recorded.",
+  "nearest_written_law": "T4",
+  "gap": "T4's 'host' means module, class or generic class, not operating system or machine; FS covers culture only.",
+  "would_have_decided": 5,
+  "confidence": "medium"
+ },
+ {
+  "name": "sentinel-defaults-not-magic",
+  "statement": "A Python default or calling convention C# cannot express is modelled by overloads, a nullable parameter with a body coalesce, or a lambda steer; never an in-band magic value or dynamic invocation.",
+  "scope": "library",
+  "members": [
+   "R-EV",
+   "R-R",
+   "R-AV",
+   "R-A",
+   "R-FC",
+   "R-FW"
+  ],
+  "checked": [
+   "R-EV",
+   "R-R",
+   "R-AV",
+   "R-A",
+   "R-FC",
+   "R-FW"
+  ],
+  "counter_examples": [
+   {
+    "id": "R-R",
+    "why": "User def defaults that C# cannot hold are refused with a steer, while R-EV gives library functions overloads; forward overloads are recorded as future for user code."
+   }
+  ],
+  "boundary": "Overloads are synthesized only at rung 1 in library source; user-written defaults are refused with a steer.",
+  "nearest_written_law": "AP",
+  "gap": "AP forbids magic but does not name the replacement mechanisms or where each applies.",
+  "would_have_decided": 5,
+  "confidence": "medium"
+ },
+ {
+  "name": "identity-never-runs-user-code",
+  "statement": "`is` is identity only and never runs user code or a type test; `==` always runs the type's declared equality and is refused when none is declared; enum members count as identities.",
+  "scope": "language",
+  "members": [
+   "R-EJ",
+   "R-ES",
+   "R-OX",
+   "R-QG",
+   "R-OM",
+   "R-PI"
+  ],
+  "checked": [
+   "R-EJ",
+   "R-ES",
+   "R-OX",
+   "R-QG",
+   "R-OM",
+   "R-PI"
+  ],
+  "counter_examples": [
+   {
+    "id": "R-PL",
+    "why": "Containers check identity before __eq__ for reference elements, so `in` and container == can skip the declared equality."
+   }
+  ],
+  "boundary": "Container search follows CPython's documented identity-first semantics (R-PL); value-type operands of `is` answer False with a warning.",
+  "nearest_written_law": null,
+  "gap": "No written law; the rule lives in rulings and the spec.",
+  "would_have_decided": 4,
+  "confidence": "medium"
+ },
+ {
+  "name": "contained-fix-ships-now",
+  "statement": "A contained fix to a false refusal or crash on an ordinary program, with a closed matrix and no seam an in-flight group owns, ships now as a chore, not with its distant group.",
+  "scope": "process",
+  "members": [
+   "R-JD",
+   "R-JM",
+   "R-JX",
+   "R-KB",
+   "R-QN",
+   "R-GG"
+  ],
+  "checked": [
+   "R-JD",
+   "R-JM",
+   "R-QN",
+   "R-JN",
+   "R-EC",
+   "R-KL",
+   "R-NB"
+  ],
+  "counter_examples": [
+   {
+    "id": "R-JN",
+    "why": "A rare crash waits for its scheduled group because the ruled lowering there would rewrite any stopgap."
+   },
+   {
+    "id": "R-EC",
+    "why": "A refusal is not relaxed now because a scheduled change would re-tighten it."
+   },
+   {
+    "id": "R-KL",
+    "why": "Cells join their class group rather than carving seams out of its contract to land sooner."
+   }
+  ],
+  "boundary": "Not when a scheduled ruled fix would rewrite the interim change, or when the fix carves a seam out of another group's contract.",
+  "nearest_written_law": "CR13",
+  "gap": "CLAUDE.md allows no-plan PRs for contained band bugs and CR13 limits chores to seam-free work, but neither says when to pull a fix forward.",
+  "would_have_decided": 6,
+  "confidence": "medium"
+ },
+ {
+  "name": "pre-1.0-break-early",
+  "statement": "Before 1.0 there is no compatibility promise: breaking respellings land early, unconsumed public APIs that cannot be made correct are deleted, stale hand models are dropped, and ruled designs ship without a feature flag.",
+  "scope": "process",
+  "members": [
+   "R-GW",
+   "R-KM",
+   "R-BJ",
+   "R-FX",
+   "R-JC",
+   "R-DG"
+  ],
+  "checked": [
+   "R-GW",
+   "R-KM",
+   "R-DG",
+   "R-AD",
+   "R-EW"
+  ],
+  "counter_examples": [
+   {
+    "id": "R-AD",
+    "why": "A naming design visible to C# consumers is treated as a closed one-way door and not reopened."
+   },
+   {
+    "id": "R-EW",
+    "why": "A deviation is kept to avoid making the C# consumer surface ambiguous, treating it as a one-way change."
+   }
+  ],
+  "boundary": "Rows disagree on whether the C# consumer surface is protected before 1.0; R-GW and R-KM say no users exist, R-AD and R-EW protect it.",
+  "nearest_written_law": null,
+  "gap": "No written stability policy; the clash over the C# consumer surface needs a ruling.",
+  "would_have_decided": 4,
+  "confidence": "medium"
+ },
+ {
+  "name": "process-extensions-are-one-off",
+  "statement": "An extension of a process limit (an extra verify pass, a raised ratchet pin) is granted once on the owner's quoted word and is never precedent.",
+  "scope": "process",
+  "members": [
+   "R-QC",
+   "R-QF",
+   "R-OR",
+   "R-NY",
+   "R-OO"
+  ],
+  "checked": [
+   "R-QC",
+   "R-QF",
+   "R-OR"
+  ],
+  "counter_examples": [
+   {
+    "id": "R-OO",
+    "why": "A fifth verify pass is allowed on another plan; with R-NY, R-OR and R-QC, extensions recur, so the two-pass cap is routinely exceeded by request."
+   }
+  ],
+  "boundary": "None stated; recurrence suggests the cap itself needs a written extension clause.",
+  "nearest_written_law": "VC12",
+  "gap": "VC12's convergence rule and R-LW's two-pass cap have no extension clause, so every extension is asked.",
+  "would_have_decided": 0,
+  "confidence": "medium"
+ },
+ {
+  "name": "clr-limit-saturates-not-refuses",
+  "statement": "A run-time argument Python accepts but a CLR limit cannot hold saturates, or raises CPython's nearest exception, recorded as one family deviation row; the call is not refused.",
+  "scope": "library",
+  "members": [
+   "R-DA",
+   "R-FH",
+   "R-IR",
+   "R-IS"
+  ],
+  "checked": [
+   "R-DA",
+   "R-FH",
+   "R-IR",
+   "R-IS"
+  ],
+  "counter_examples": [
+   {
+    "id": "R-HU",
+    "why": "A numeric literal out of its type's range is refused at compile time, not saturated to inf as Python would give."
+   },
+   {
+    "id": "R-IA",
+    "why": "A non-zero decimal literal that underflows to zero is refused rather than saturating to zero."
+   }
+  ],
+  "boundary": "Values in source text, known at compile time, are refused (T2); only run-time values saturate. R-FH calls refusing Python-accepted calls the one-way option, R-HU calls admitting Python's value the one-way option: the door reading flips with compile-time knowability.",
+  "nearest_written_law": "A1",
+  "gap": "A1 inherits numeric width and FS routes divergences to the ledger, but neither says to saturate rather than raise or refuse.",
+  "would_have_decided": 4,
+  "confidence": "medium"
+ },
+ {
+  "name": "bug-dependent-program-not-correct",
+  "statement": "Under T3, a program whose current value comes from a defect, or whose verdict differs from its primitive twin's, is not a correct program; changing it needs a direction record, not a deviation row.",
+  "scope": "language",
+  "members": [
+   "R-LP",
+   "R-OY",
+   "R-JZ",
+   "R-QA"
+  ],
+  "checked": [
+   "R-LP",
+   "R-OY",
+   "R-JZ",
+   "R-QA"
+  ],
+  "counter_examples": [
+   {
+    "id": "R-OW",
+    "why": "Int-backed enum ordering keeps .NET order as the status quo, a recorded deviation, rather than refusing as Python's Enum."
+   }
+  ],
+  "boundary": "Status-quo behaviour that is consistent and documented (R-OW) is kept as a deviation, not treated as a bug.",
+  "nearest_written_law": "T3",
+  "gap": "T3 does not define 'correct'; rows treat bug-dependent and twin-divergent programs as not correct.",
+  "would_have_decided": 3,
+  "confidence": "medium"
+ },
+ {
+  "name": "tier-below-letters-at-charter",
+  "statement": "A group's tier may be set below its derived letter at charter time when full-tier dimensions have no subject (tests-only, mechanical respellings); once planning begins tiers only rise.",
+  "scope": "process",
+  "members": [
+   "R-JR",
+   "R-KE",
+   "R-KQ",
+   "R-QP"
+  ],
+  "checked": [
+   "R-JR",
+   "R-KE",
+   "R-QP"
+  ],
+  "counter_examples": [],
+  "boundary": null,
+  "nearest_written_law": "VC12",
+  "gap": "VC12 lists when a group is full and forbids lowering after implementation begins, but gives no criterion for overriding a derived full letter to light.",
+  "would_have_decided": 3,
+  "confidence": "high"
+ },
+ {
+  "name": "static-check-only-definite",
+  "statement": "A static check refuses only a definite mismatch; where the operand kind, format spec or target symbol is not statically known, it stays silent and the run-time check answers.",
+  "scope": "language",
+  "members": [
+   "R-U",
+   "R-CD",
+   "R-BW"
+  ],
+  "checked": [
+   "R-U",
+   "R-CD",
+   "R-BW",
+   "R-AT"
+  ],
+  "counter_examples": [
+   {
+    "id": "R-AT",
+    "why": "Deletes a lossy-CLR-mapping decline so every CLR overload refusal is explained; possibly the opposite of R-U's 'oblivious where the bridge cannot map' (not confirmed beyond the row text)."
+   }
+  ],
+  "boundary": "Holds where the missing fact is unknowable at compile time; T2 governs wherever the fact is known.",
+  "nearest_written_law": "T2",
+  "gap": "T2 prefers compile errors but does not say the checker must not guess when facts are missing.",
+  "would_have_decided": 3,
+  "confidence": "medium"
+ },
+ {
+  "name": "users-first-release",
+  "statement": "A defect that breaks the documented install on a supported host is fixed at once as its own chore and released as a patch, and a known workaround is posted on the issue immediately.",
+  "scope": "process",
+  "members": [
+   "R-GG",
+   "R-GI",
+   "R-GJ"
+  ],
+  "checked": [
+   "R-GG",
+   "R-GI",
+   "R-GJ"
+  ],
+  "counter_examples": [],
+  "boundary": null,
+  "nearest_written_law": null,
+  "gap": "New.",
+  "would_have_decided": 3,
+  "confidence": "high"
+ },
+ {
+  "name": "backed-enum-flavour",
+  "statement": "A backed enum behaves as the Python enum flavour of its backing (IntEnum, StrEnum) for every operator.",
+  "scope": "language",
+  "members": [
+   "R-OW",
+   "R-QG"
+  ],
+  "checked": [
+   "R-OW",
+   "R-QG",
+   "R-ON",
+   "R-PK"
+  ],
+  "counter_examples": [
+   {
+    "id": "R-ON",
+    "why": "Cross-type == on int-backed enums answers False (plain Enum), not by value as IntEnum would."
+   },
+   {
+    "id": "R-PK",
+    "why": "Ordering on a string-backed enum is refused (plain Enum), while R-QG compares string-backed == by value (StrEnum)."
+   }
+  ],
+  "boundary": "No consistent boundary: string-backed enums are StrEnum for == and Enum for ordering, int-backed the reverse. R-PK's reason ('no .NET order to keep') suggests 'keep .NET behaviour where it exists, else refuse', which R-ON does not fit.",
+  "nearest_written_law": null,
+  "gap": "No law picks an enum flavour; this is a clash for the owner to rule, not a principle ready to write.",
+  "would_have_decided": 0,
+  "confidence": "low"
+ },
+ {
+  "ungrouped_count": 107,
+  "notes": "Ungrouped rows are mostly one-off scheduling placements (group order, lane order) and single-case cli/process choices with no reusable principle. Scope has no tooling value; editor/formatter principles are filed as 'diagnostics'. Main clashes: reversible-door vs csharp-limit-named-refusal/loose-none on whether to refuse or emulate when Python runs the program (R-AI, R-QL, R-OP); clr-limit-saturates (R-FH: refusing is the one-way door) vs reversible-door (R-HU, R-IA: admitting is the one-way door), split by compile-time knowability; silent-wrong-first vs R-PM/R-GX user-facing-first; pre-1.0-break-early vs R-AD/R-EW protecting the C# surface; backed-enum-flavour has no consistent principle (R-ON, R-OW, R-PK, R-QG); documented-surface-implemented vs CR7's no-exception wording; R-HH vs R-HT treat a spec-silent 'runs vs refused' surface as COMPARED and DEVIATION respectively. R-U vs R-AT is flagged from row text only and is unconfirmed. Members are 'confirmed or plausible'; only ids in 'checked' were read in all-rows.md."
+ }
+]
