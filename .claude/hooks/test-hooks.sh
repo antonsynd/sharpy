@@ -223,6 +223,12 @@ blocked 'echo "dotnet build" | bash'
 blocked 'D=dotnet; $D test'
 blocked '$(which dotnet) build'
 blocked 'eval "$(echo dotnet test)"'
+# Review round 7: a bundle's o / O takes the next argument; a script file written and run in the
+# same text is pattern-checked (the grep hook this replaced blocked both).
+blocked 'bash -eo pipefail -c "dotnet build"'
+blocked $'cat > run.sh <<\'EOF\'\ndotnet test\nEOF\nbash run.sh'
+blocked 'echo "dotnet test --no-build" > .claude/tmp/r.sh; sh .claude/tmp/r.sh'
+blocked "printf 'dotnet test\\n' > .claude/tmp/t.sh && . .claude/tmp/t.sh"
 allowed 'eval "$X"'
 allowed 'echo "dotnet --info" | bash'
 allowed $'cat <<EOF > .claude/tmp/n.md\nrun dotnet test\nEOF'
@@ -508,7 +514,7 @@ gdeny 'popd; git reset --hard' "$MAIN" agent-1
 gdeny 'pushd +3; git reset --hard' "$MAIN" agent-1
 gdeny "( pushd $WT ); popd; git reset --hard" "$MAIN" agent-1
 gallow 'pushd /tmp; popd -n; git reset --hard' "$MAIN" agent-1
-gdeny "pushd -n $WT; pushd +1; git reset --hard" "$MAIN" agent-1  # round 6: after -n, unknown
+gallow "pushd -n $WT; pushd +1; git reset --hard" "$MAIN" agent-1
 # An unknown directory is judged as the main worktree (header: known false deny) unless git is
 # pointed at a known path.
 gdeny 'cd "$X" && git reset --hard' "$WT"
@@ -615,6 +621,8 @@ gallow 'G=git; $G status' "$MAIN" agent-1
 gallow 'echo "git reset --hard" | bash' "$WT" agent-1
 gallow $'bash <<EOF\ngit reset --hard\nEOF' "$WT" agent-1
 gallow 'bash build_tools/x.sh' "$MAIN" agent-1
+gdeny $'cat > .claude/tmp/x.sh <<\'EOF\'\ngit reset --hard\nEOF\nbash .claude/tmp/x.sh' "$MAIN" agent-1
+gdeny 'echo "git stash" > .claude/tmp/x.sh; source .claude/tmp/x.sh' "$MAIN" agent-1
 # pushd/popd: OLDPWD moves only when bash changes directory (pushd +0 does), and after any -n the
 # stack below the top is unknown. Each case ends where real bash ends (main, main, main, wt1).
 gdeny "pushd -n $SWT; popd -n +1; pushd -n $WT; { pushd $G/other; }; pushd $SWT; pushd -1; git reset --hard" "$MAIN" agent-1
@@ -626,6 +634,31 @@ gdeny "$(nest 'git push --force-with-lease --force-if-includes origin dev' 9)" "
 gallow "$(nest 'git push --force-with-lease --force-if-includes origin claude/x' 9)" "$WT"
 gdeny "$(nest 'git commit -am x' 9)" "$WT"
 gdeny "$(nest 'git commit -a -m x' 9)" "$WT"
+# 1i. Review round 7.
+# B1: in a bundle each o / O takes the next argument, as bash reads it.
+gdeny "bash -euo pipefail -c 'git reset --hard'" "$MAIN" agent-1
+gdeny $'bash -eo pipefail <<\'EOF\'\ngit reset --hard\nEOF' "$MAIN" agent-1
+gdeny "bash -euxo pipefail -c 'git stash'" "$MAIN" agent-1
+gdeny "bash -co pipefail 'git reset --hard'" "$MAIN" agent-1
+gdeny "bash -Oc extglob 'git reset --hard'" "$MAIN" agent-1
+gdeny "bash -euo pipefail -c 'cd $MAIN && git reset --hard'" "$WT" agent-1  # walked only
+# R8: with -s, stdin is the script and the operands are its arguments (walked: the cd to main is
+# out of the pattern check's reach from a linked worktree).
+gdeny $'bash -s -- a b <<EOF\ncd '"$MAIN"$' && git reset --hard\nEOF' "$WT" agent-1
+gallow $'bash -s -- a b <<EOF\ngit reset --hard\nEOF' "$WT" agent-1
+# B3: a bare or trailing $ is literal, not a program named by an expansion ([[ =~ ]] alternation).
+gallow 'if [[ "$(git branch --show-current)" =~ ^(dev|mainline)$ ]]; then git switch -c claude/x origin/dev; fi' "$MAIN"
+gallow '[[ $f =~ \.(orig|rej)$ ]] && rm -f .claude/tmp/x.orig' "$MAIN"
+# R3: pushd -n DIR and a bare popd -n are modelled exactly; only -n with +N/-N loses the stack.
+gdeny "pushd -n $WT; popd -n; pushd +1; git reset --hard" "$MAIN" agent-1
+gdeny "pushd -n $WT; pushd -n +1; pushd +1; git reset --hard" "$MAIN" agent-1
+# R1: the pattern check is linear on a long line (nested quantifiers took 158 s here; a hook
+# timeout does not block). 2,000 x `git add x` and an opaque forced push, run under timeout 20.
+LONG=$(python3 -c 'print("git add x " * 2000 + "; echo \"git push --force origin dev\" | bash")')
+t0=$(date +%s%N)
+gjson "$LONG" "$WT" | CLAUDE_PROJECT_DIR="$MAIN" timeout 20 "$HOOKS/guard-shared-tree.sh" >/dev/null 2>&1; RC=$?
+ms=$(( ($(date +%s%N) - t0) / 1000000 ))
+if [ "$RC" -eq 2 ] && [ "$ms" -lt 5000 ]; then ok "deny under 5 s: 2,000 x git add x on one line + an opaque forced push (${ms} ms)"; else bad "deny under 5 s: 2,000 x git add x + an opaque forced push" "rc=$RC ${ms} ms"; fi
 # $(mktemp ...) is a fresh path in $TMPDIR, $(git rev-parse --show-toplevel) the cwd's toplevel,
 # and a directory git init/clone creates (absent or empty) is a new repository.
 gallow 'D=$(mktemp -d); cd "$D"; git init -q; echo x > f; git add -A; git commit -qm init' "$MAIN" agent-1

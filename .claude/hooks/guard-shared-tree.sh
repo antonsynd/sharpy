@@ -32,13 +32,15 @@
 #      Known false deny: `find src -name bin -type d -exec rm -rf {} +` (find's `{}` is read as
 #      `src/{}`); name the output directory instead: `find src/X/bin -name '*.dll' -delete`.
 #   An UNKNOWN directory fails closed: when the text loses the cwd (`cd "$X"`, a `cd` into a
-#   substitution, a pop after `pushd -n`), or names a -C, GIT_DIR/--git-dir or GIT_WORK_TREE/
-#   --work-tree it cannot resolve, the git command is judged as if run in the main worktree.
+#   substitution, a rotation or pop after `pushd -n +N`), or names a -C, GIT_DIR/--git-dir or
+#   GIT_WORK_TREE/--work-tree it cannot resolve, the git command is judged as in the main worktree.
 #   Known false deny: `cd "$X" && git reset --hard` from a linked worktree; name the directory
 #   instead: `git -C <path> reset --hard`, or `cd <literal path>`. `$(mktemp [-d])` is a fresh
 #   path in $TMPDIR, `$(git rev-parse --show-toplevel)` the cwd's toplevel, and a directory that
 #   `git init <dir>` / `git clone <url> <dir>` creates earlier in the text (one that does not
-#   exist yet, or is empty) is a new repository, not this one.
+#   exist yet, or is empty) is a new repository, not this one, even if that step fails at run
+#   time. A symlink the same text makes (`ln -s <main> x && git -C x reset --hard`) does not
+#   exist yet when the hook runs, so the command is judged in the directory holding the link.
 #   3. Staging without per-file pathspecs, in any worktree of this repository: `git add -A|--all|
 #      -u|--update|.|./|:/` and `git commit -a|--all`. -u and commit -a are the same hazard as -A:
 #      they stage every tracked file's changes, a peer's uncommitted hunks included.
@@ -50,29 +52,33 @@
 #
 # The worktree is resolved from the command itself: `git -C <dir>` (cumulative), `--work-tree`,
 # `--git-dir`, `GIT_DIR=`/`GIT_WORK_TREE=` (prefixed or set earlier in the text), `env -C`/`sudo
-# -D`, a preceding `cd`/`cd -`/`pushd`/`popd`, else the hook input's `cwd`. "This repository" is the one whose common
-# dir matches that of $CLAUDE_PROJECT_DIR (else `cwd`), so a scratch repo is not guarded. Commands
-# are found by .claude/hooks/shell_commands.py (its docstring lists what it follows).
+# -D`, a preceding `cd`/`cd -`/`pushd`/`popd`, else the hook input's `cwd`. "This repository" is
+# the one whose common dir matches that of $CLAUDE_PROJECT_DIR (else `cwd`), so a scratch repo is
+# not guarded. Commands are found by .claude/hooks/shell_commands.py (its docstring lists what it
+# follows).
 #
-# Out of scope (not followed, and not pattern-checked): a script file run by path (`bash x.sh`,
-# `./x.sh`), `source`/`.`, a function or alias, a python/node subprocess, `xargs rm` input, `git
-# rm`, `unlink`/`mv`, an rm target the text cannot resolve, a `git` alias, launchers outside
-# shell_commands.PREFIXES (ssh, su -c, script -c, docker exec, make, npm run).
+# Out of scope (not followed, and not pattern-checked): a script run by its own path (`./x.sh`),
+# a function or alias, a python/node subprocess, `xargs rm` input, `git rm`, `unlink`/`mv`, an
+# rm target the text cannot resolve, a `git` alias, launchers outside shell_commands.PREFIXES
+# (ssh, su -c, script -c, docker exec, make, npm run).
 # PATTERN-CHECKED instead of walked: unparseable text (or substitutions nested more than 8
 # deep), allowed when `bash -n` refuses it too (bash will not run it); and a script the text
-# runs but does not show — `eval "$X"`, `bash -c "$X"`, `$X args`, `... | bash`, `sh -s`, `bash
-# < file`, `bash <(...)` (a literal `bash -c '...'`, here-string or here-document body is
-# walked). The whole text is then searched for rules 1-2's verbs (where the opaque script runs
-# in the main worktree, or anywhere unknown) and rules 3-4's (add -A/./-u, commit -a, a forced
-# push without both lease flags or to dev/mainline; in every worktree of this repository).
+# runs but does not show: `eval "$X"`, `bash -c "$X"`, `$X args`, `... | bash`, `sh -s`, `bash
+# < file`, `bash <(...)`, and a script file (`bash x.sh`, `source x.sh`; perhaps written
+# earlier in the same text). A literal `bash -c '...'`, here-string or here-document body is
+# walked. The whole text is then searched for rules 1-2's verbs (where the opaque script runs in
+# the main worktree, or anywhere unknown) and rules 3-4's (add -A/./-u, commit -a, a forced push
+# without both lease flags or to dev/mainline; in every worktree of this repository).
 # Known false deny: a guarded verb anywhere in such a text, e.g. `cat x.sh | bash; git stash
 # list` in the main worktree; run the two commands separately.
 #
-# FAILS CLOSED: whenever the hook cannot judge, it denies. Unreadable input (not JSON, no string
+# FAILS CLOSED when it cannot read the input or run: unreadable input (not JSON, no string
 # command) is denied; an internal error pattern-checks the whole text for every rule, in any
-# worktree; a python3 that fails to start or dies is denied by the shell wrapper. The input is
-# read from stdin by python (no size limit). A hook timeout (settings.json, 5 s) is Claude Code's
-# to handle; a 200 KB command takes well under one second.
+# worktree; a python3 that fails to start or dies is denied by the shell wrapper (so with no
+# python3 every Bash command is denied). Text it cannot follow is pattern-checked as above, not
+# denied: `eval "$X"` with nothing guarded visible in the text is allowed. The input is read
+# from stdin by python (no size limit). A hook timeout (settings.json, 5 s) is Claude Code's to
+# handle; a 200 KB command, or 2,000 `git add x` on one line, takes well under one second.
 #
 # Hook input is JSON on stdin (tool_input.command, cwd, agent_id). Falsified by
 # .claude/hooks/test-hooks.sh.
@@ -95,26 +101,45 @@ except Exception as e:
 if not cmd:
     sys.exit(0)
 
-# Whole-string patterns for text the walk cannot follow: rules 1 and 2 in the main worktree,
-# rules 3 and 4 in every worktree of this repository.
-FALLBACK_MAIN = [r"\bgit\b[^\n;&|]*\b(checkout|restore|clean|stash|reset|switch)\b",
-                 r"(^|[\s;&|(`])rm\s"]
-FALLBACK_ANY = [r"\bgit\b[^\n;&|]*\badd\b[^\n;&|]*\s(-A|--all|-u|--update|\.)(?=[\s;&|)]|$)",
-                r"\bgit\b[^\n;&|]*\bcommit\b[^\n;&|]*\s(-[A-Za-z]*a[A-Za-z]*|--all)(?=[\s;&|)]|$)"]
+# Whole-text patterns for text the walk cannot follow: rules 1 and 2 in the main worktree,
+# rules 3 and 4 in every worktree of this repository. The text is split at newlines and ; & |
+# first, and each segment is searched in steps from its first `git` (a verb after it, then a
+# flag after the verb): no nested unbounded quantifiers, so a long line stays linear.
+SEGMENT = re.compile(r"[\n;&|]")
+GIT = re.compile(r"\bgit\b")
+RM = re.compile(r"(^|[\s(`])rm\s")
+MAIN_VERB = re.compile(r"\b(checkout|restore|clean|stash|reset|switch)\b")
+STAGE_ALL = ((re.compile(r"\badd\b"), re.compile(r"\s(-A|--all|-u|--update|\.)(?=[\s)]|$)")),
+             (re.compile(r"\bcommit\b"),
+              re.compile(r"\s(-[A-Za-z]*a[A-Za-z]*|--all)(?=[\s)]|$)")))
+PUSH = re.compile(r"\bpush\b")
+FORCE = re.compile(r"\s(--force(?![-\w])|-[A-Za-z]*f[A-Za-z]*|--mirror|\+\S)")
+DEV = re.compile(r"\b(dev|mainline)\b")
 
-def forced_push_text(text):
-    for m in re.finditer(r"\bgit\b[^\n;&|]*\bpush\b[^\n;&|]*", text):
-        seg = m.group(0)
-        if re.search(r"\s(--force(?![-\w])|-[A-Za-z]*f[A-Za-z]*|--mirror|\+\S)", seg):
-            return True
-        if "--force-with-lease" in seg and ("--force-if-includes" not in seg
-                                            or re.search(r"\b(dev|mainline)\b", seg)):
-            return True
-    return False
+def forced_push_text(push):
+    """`push`: a segment from its `git`, holding `push` after it."""
+    if FORCE.search(push):
+        return True
+    return "--force-with-lease" in push and ("--force-if-includes" not in push
+                                             or bool(DEV.search(push)))
 
 def matches(text, main, any_tree):
-    return (main and any(re.search(p, text) for p in FALLBACK_MAIN)) or (any_tree and (
-        any(re.search(p, text) for p in FALLBACK_ANY) or forced_push_text(text)))
+    for seg in SEGMENT.split(text):
+        if main and RM.search(seg):
+            return True
+        g = GIT.search(seg) if "git" in seg else None
+        if not g:
+            continue
+        if main and MAIN_VERB.search(seg, g.end()):
+            return True
+        if any_tree:
+            for verb, flag in STAGE_ALL:
+                v = verb.search(seg, g.end())
+                if v and flag.search(seg, v.end()):
+                    return True
+            if PUSH.search(seg, g.end()) and forced_push_text(seg[g.start():]):
+                return True
+    return False
 
 def failed(e):
     """An internal error: every pattern, in any worktree."""

@@ -24,15 +24,20 @@
 # PATTERN-CHECKED instead of walked (a whole-string pattern for a raw dotnet verb blocks it):
 # unparseable text, unless `bash -n` refuses it too (bash will not run it); and a script the text
 # runs but does not show: `eval "$X"`, `bash -c "$X"`, `$(which dotnet) build`, `... | bash`,
-# `sh -s`, `bash < file`, `bash <(...)`. Out of scope: a script file run by path (`bash
-# build_tools/regenerate_spy_stdlib.sh`; those scripts take SHARPYC=<built sharpyc> to stay off
-# the lock), `source`, an alias or function, a python/node subprocess, a launcher outside
-# PREFIXES (ssh, su -c, script -c, docker exec, make, npm run).
+# `sh -s`, `bash < file`, `bash <(...)`, and a script file (`bash x.sh`, `sh x.sh`, `source x.sh`)
+# — so a script written and run in the same text is blocked, and `bash
+# build_tools/regenerate_spy_stdlib.sh` (whose text names no dotnet verb) passes; those scripts
+# take SHARPYC=<built sharpyc> to stay off the lock. Out of scope: a script run by its own path
+# (`./x.sh`), an alias or function, a python/node subprocess, a launcher outside PREFIXES (ssh,
+# su -c, script -c, docker exec, make, npm run).
 #
-# FAILS CLOSED, never weaker than the grep hook it replaced: unreadable input (not JSON, no
-# string command) is blocked; an internal error applies the whole-string pattern (a superset of
-# the old grep's); a python3 that fails to start or dies is blocked by the shell wrapper. The
-# input is read from stdin by python (no size limit).
+# FAILS CLOSED when it cannot read the input or run: unreadable input (not JSON, no string
+# command) is blocked; an internal error applies the whole-string pattern (a superset of the old
+# grep's); a python3 that fails to start or dies is blocked by the shell wrapper (so with no
+# python3 every Bash command is blocked). The input is read from stdin by python (no size
+# limit). It blocks everything the grep hook it replaced blocked, except a dotnet verb that is
+# only an argument (`echo dotnet test`, `grep "dotnet build"`, a commit message) and the
+# out-of-scope launchers and subprocesses above.
 #
 # Hook input is JSON on stdin; the command is tool_input.command.
 # Falsified by .claude/hooks/test-hooks.sh.

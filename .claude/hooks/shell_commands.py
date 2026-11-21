@@ -21,14 +21,15 @@ command, in order, with:
 - ``cd`` / ``cd -`` / ``pushd`` / ``popd`` and plain assignments (``X=v``, ``export X=v``)
   tracked: ``cwd`` is the directory the command runs in and ``env`` the variables the command text
   set, as far as the text says. ``None`` means unknown (``cd "$X"``, a loop variable, a pop
-  after ``pushd -n``). ``$(mktemp [-d])`` is a fresh path in $TMPDIR and ``$(git rev-parse
+  after ``pushd -n +N``). ``$(mktemp [-d])`` is a fresh path in $TMPDIR and ``$(git rev-parse
   --show-toplevel)`` the cwd's toplevel.
 
 A script it cannot see (``eval "$X"``, ``bash -c "$X"``, ``$X args``, ``... | bash``, ``sh -s``,
-``bash < file``, ``bash <(...)``) goes to ``opaque(cwd, what)``, else raises ParseError.
+``bash < file``, ``bash <(...)``, a script file: ``bash x.sh``, ``source x.sh``) goes to
+``opaque(cwd, what)``, else raises ParseError.
 It does not evaluate the shell: a variable not set in the text resolves from the hook's own
-environment, else it is unknown; globs stay unexpanded; functions, aliases, ``source`` and
-script files run by path are not followed; control keywords (``if``/``then``/``do``/``{``...)
+environment, else it is unknown; globs stay unexpanded; functions, aliases and scripts run by
+their own path (``./x.sh``) are not followed; ``[[ ... ]]`` is split like any other words; control keywords (``if``/``then``/``do``/``{``...)
 are skipped as argv[0], not parsed. Launchers not in PREFIXES (ssh, su -c, script -c, docker
 exec, chroot, make, npm run ...) hide their command. An unterminated quote or substitution
 raises ParseError; ``bash_accepts`` tells whether bash itself would refuse the text.
@@ -629,6 +630,7 @@ _VAR = re.compile(r"\$(?:\{([A-Za-z_][A-Za-z0-9_]*)\}|([A-Za-z_][A-Za-z0-9_]*))"
 
 _SUB_HEAD = re.compile(r"^\$\(([^()`$'\"]*)\)")
 _mktemps = [0]
+_toplevels = {}
 
 
 def _known_sub(inner, env, cwd):
@@ -639,12 +641,14 @@ def _known_sub(inner, env, cwd):
     if words == ["git", "rev-parse", "--show-toplevel"]:
         if cwd is None:
             return None
-        try:
-            r = subprocess.run(["git", "-C", cwd, "rev-parse", "--show-toplevel"],
-                               capture_output=True, text=True, timeout=3)
-        except Exception:
-            return None
-        return r.stdout.strip() or None if r.returncode == 0 else None
+        if cwd not in _toplevels:  # once per directory: a long text may repeat it
+            try:
+                r = subprocess.run(["git", "-C", cwd, "rev-parse", "--show-toplevel"],
+                                   capture_output=True, text=True, timeout=3)
+                _toplevels[cwd] = r.stdout.strip() or None if r.returncode == 0 else None
+            except Exception:
+                _toplevels[cwd] = None
+        return _toplevels[cwd]
     if not words or words[0] != "mktemp":
         return None
     in_tmp, template = False, None
@@ -754,17 +758,18 @@ def shell_args(argv):
     flags, k = set(), 1
     while k < len(argv):
         a = argv[k]
-        if a in ("-o", "+o", "-O", "+O", "--rcfile", "--init-file"):
-            k += 2
-            continue
         if a in ("--", "-"):
             k += a == "--"
             break
         if a[:1] not in ("-", "+") or a == "+":
             break
-        if not a.startswith("--"):
-            flags.update(a[1:])
-        k += 1
+        if a.startswith("--"):
+            k += 2 if a in ("--rcfile", "--init-file") else 1
+            continue
+        # a bundle, as bash reads it: each o / O takes the next argument (-euo pipefail,
+        # -co pipefail 'cmd', -Oc extglob 'cmd')
+        flags.update(a[1:])
+        k += 1 + sum(ch in "oO" for ch in a[1:])
     return flags, k
 
 
@@ -956,8 +961,13 @@ def _walk(src, st, cb, depth):
         _command([w[1] for w in words], st, cb, depth, item[2])
 
 
+_EXPANSION = re.compile(r"\$[A-Za-z_{(0-9@*#?!$-]|`")
+
+
 def _opaque_name(word):
-    return "$" in word or "`" in word
+    """A word naming its program by an expansion; a bare or trailing ``$`` is literal (the
+    ``$`` of ``[[ $b =~ ^(dev|mainline)$ ]]``, which the tokenizer splits at ``(`` ``|`` ``)``)."""
+    return bool(_EXPANSION.search(word))
 
 
 def _command(raw, st, cb, depth, io=None):
@@ -1017,8 +1027,10 @@ def _command(raw, st, cb, depth, io=None):
                     _walk(io["herestring"], cst.copy(), cb, depth + 1)
                 elif io.get("piped") or io.get("file") or io.get("procsub"):
                     opaque(cst.cwd, name + " reading its script from stdin")
-            elif io.get("procsub"):
-                opaque(cst.cwd, name + " <(...)")
+            else:  # a script file, perhaps written earlier in this same text
+                opaque(cst.cwd, name + " running a script file")
+        elif name in ("source", "."):
+            opaque(cst.cwd, name + " of a script file")
         visit(argv, cst.cwd, cst.env, assigns)
     for e in extras:
         _command(e, cst.copy(), cb, depth + 1)
@@ -1037,9 +1049,21 @@ def _chdir(name, argv, st):
         else:
             st.cwd = resolve(args[0], st.cwd, st.env)
     elif "-n" in argv[1:]:
-        # -n edits the stack without a cd; bash's -n rotations and pops index it in ways this
-        # does not model, so from here the stack below the top is unknown
-        st.dirs, moved = None, False
+        # -n edits the stack without a cd: `pushd -n DIR` puts DIR below the top, a bare
+        # `popd -n` drops the entry below the top (refused on a one-entry stack). With +N/-N
+        # (or a bare pushd -n) bash indexes the stack in ways this does not model: from there
+        # the stack below the top is unknown.
+        args = [a for a in argv[1:] if a != "-n"]
+        moved = False
+        if st.dirs is None:
+            pass
+        elif name == "pushd" and args and not re.match(r"^[+-][0-9]+$", args[0]):
+            st.dirs.append(resolve(args[0], st.cwd, st.env))  # dirs[-1] is index 1
+        elif name == "popd" and not args:
+            if st.dirs:
+                st.dirs.pop()
+        else:
+            st.dirs = None
     else:
         # bash's directory stack: index 0 is the cwd, then the most recently pushed. A refused
         # pushd/popd (empty stack, N out of range) changes nothing, as in bash.
