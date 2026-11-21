@@ -57,7 +57,7 @@ Then:
 Each of these has happened here. Check for the class, not the instance.
 
 **Merges and gates**
-- A code PR merged without a current `Independent review @ <sha>` line, or with a stale one (`/implement-plan` › Cleanup and Report step 4). The `review-line` check is required on `dev`, but it judges only what the line says against history: that the review was independent and its fixes read are still the reviewer's to check.
+- A code PR merged without a current `Independent review @ <sha>` line, or with a stale one (`/implement-plan` › Cleanup and Report step 4). The `review-line` check is required on `dev`, but it judges only what the line says against history: that the review was independent and its fixes read are still yours to check, as is any PR that edits `review-line.yml` or `check_review_line.py` (it runs its own copy).
 - A red explained away. A run cancelled by a newer push reports its gate as failed: that is noise. Any other red is root-caused; README item 6 says when one re-run may decide.
 - A red "fixed" without its log. The fix names the failing test as the CI log prints it; a local reproduction of some other failure is a guess.
 - A path only `mainline` runs. Coverage-on tests run on `mainline` pushes and `coverage: true` dispatches, never on a PR: a change to a test that reads IL or enumerates an instrumented assembly's types is proven by a coverage-on run (`gh api -X POST repos/antonsynd/sharpy/actions/workflows/dotnet10.yml/dispatches -f ref=<branch> -F 'inputs[coverage]=true'`; `/ci-gate` is coverage-off), not by its PR gate.

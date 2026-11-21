@@ -12,7 +12,7 @@ a `dev` merge landed after it. A second (third, ...) review's `@ <sha>: <verdict
 same line; the last one written is the one that counts. Nothing enforced this before: PRs #2615
 (src/) and #2612 (build_tools/) merged on 2026-11-11 with no line. This script makes a missing or
 malformed line visible; its check `review-line` is required on `dev` (the owner's ruleset change,
-2026-11-20).
+reported done on 2026-11-20).
 
 Which lines count. A line counts when, after at most three spaces, an optional list marker, bold or
 a backtick, it starts with `Independent review @`. Recognised and never read, because they quote the
