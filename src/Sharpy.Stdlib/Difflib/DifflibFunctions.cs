@@ -1,3 +1,11 @@
+// Portions of this file are a C# port of CPython's Lib/difflib.py (CPython 3.15): unified_diff,
+// context_diff, get_close_matches, ndiff, restore, IS_LINE_JUNK (its regular expression),
+// IS_CHARACTER_JUNK, _format_range_unified and _format_range_context.
+// Copyright (c) 2001 Python Software Foundation; All Rights Reserved
+// Licensed under the PSF License Version 2; see THIRD-PARTY-NOTICES.txt at the repository root.
+// Changes: translated from Python to C# iterators over IList<string>; get_close_matches sorts its
+// (score, word) pairs instead of using heapq.nlargest, and errors are Sharpy's ValueError.
+
 using System;
 using System.Collections.Generic;
 using System.Linq;

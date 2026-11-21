@@ -1,3 +1,6 @@
+// YamlScalarStyleAuthority.Choose is ported from PyYAML 6.0.3's Emitter.analyze_scalar and
+// Emitter.choose_scalar_style (lib/yaml/emitter.py), Copyright (c) 2017-2021 Ingy döt Net and
+// Copyright (c) 2006-2016 Kirill Simonov, used under the MIT License; see THIRD-PARTY-NOTICES.txt.
 namespace Sharpy
 {
     /// <summary>

@@ -1,3 +1,11 @@
+// Portions of this file are a C# port of CPython's Lib/difflib.py (CPython 3.15): SequenceMatcher's
+// __chain_b, find_longest_match, get_matching_blocks, get_opcodes, get_grouped_opcodes, ratio,
+// quick_ratio and real_quick_ratio.
+// Copyright (c) 2001 Python Software Foundation; All Rights Reserved
+// Licensed under the PSF License Version 2; see THIRD-PARTY-NOTICES.txt at the repository root.
+// Changes: translated from Python to C# as a generic class over IList<T>; the junk and popular sets
+// are HashSets, the work queue is a list used as a stack, and opcodes are value tuples.
+
 using System;
 using System.Collections.Generic;
 using System.Linq;

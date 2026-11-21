@@ -18,6 +18,11 @@
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
     <NoWarn>CS1574;CS1580;CS1591</NoWarn>
     <NoWarn Condition="'$(TargetFramework)' == 'net10.0'">$(NoWarn);CA1305;CA1307</NoWarn>
+    <!-- Tree-shaking assemblies (#696), never NuGet packages: they compile CPython ports
+         (Fnmatch, Itertools, Os, Shutil, Difflib, ...) but would pack without the notices or the
+         Python-2.0 term that Sharpy.Stdlib's package carries (#2602). Guarded by
+         build_tools/tests/test_package_licenses.py. -->
+    <IsPackable>false</IsPackable>
   </PropertyGroup>
 
   <ItemGroup>

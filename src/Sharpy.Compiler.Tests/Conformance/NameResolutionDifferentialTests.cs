@@ -80,7 +80,18 @@ internal enum VerdictClass
 /// <summary>One generated cell: one Sharpy program, its twin (rendered from the source) and both predictions.</summary>
 internal sealed record NameCell
 {
-    public required string Id { get; init; }
+    private readonly string? _id;
+
+    /// <summary>The cell's id. A generated cell's is its <see cref="Key"/>'s text; a fact's literal cell sets it alone.</summary>
+    public string Id
+    {
+        get => _id ?? Key?.Text ?? throw new InvalidOperationException("a cell carries an id or a key");
+        init => _id = value;
+    }
+
+    /// <summary>The values the generator built the id from, each with its type: what the rule table's key axes read
+    /// (<c>NameResolutionDifferentialTests.RuleTableAxes</c>), so no axis is read back from the id's text.</summary>
+    public CellKey? Key { get; init; }
     public required Family Family { get; init; }
     public required string Source { get; init; }
     public required SharpyTag Tag { get; init; }
@@ -593,6 +604,10 @@ public partial class NameResolutionDifferentialTests
                 // A nested-scope `def` over a same-function `def` of the name is SPY0204: #1974's question, whose B-rules admit nested shadowing.
                 if (cell.Rule == "#1974")
                     return "#1974";
+                // `self.N()` / `A.N()` on a nested type is refused as no such member (SPY0203). R-LQ admits it, in P16: the cell is
+                // #2397's (the owner's ruling of 2026-11-20, #2423 comment 7030074628).
+                if (cell.Target == BindingKind.NestedType && cell.Rule == "N7")
+                    return "#2397";
                 // A read refused at a module initializer is refused because a later module VARIABLE is not visible yet (SPY0200): N1's
                 // order-free resolution is the cure, and values-ready (#2422) cannot make a name visible (owner, 2026-11-16, #2422
                 // comment 6920337855).

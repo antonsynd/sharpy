@@ -1,3 +1,10 @@
+// Portions of this file are taken from CPython's Lib/urllib/parse.py (CPython 3.15): the
+// uses_netloc and uses_params scheme lists.
+// Copyright (c) 2001 Python Software Foundation; All Rights Reserved
+// Licensed under the PSF License Version 2; see THIRD-PARTY-NOTICES.txt at the repository root.
+// Changes: the lists are case-insensitive HashSets (uses_netloc without 'itms-services'); the
+// parsing code around them is Sharpy's own.
+
 using System;
 using System.Collections.Generic;
 using System.Text;

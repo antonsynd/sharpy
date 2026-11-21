@@ -1,0 +1,289 @@
+# The binding and scoping rule table (#2487): what each generated cell of the name-resolution pools must do, and
+# under which rule of docs/design/name-resolution.md (N1…N7, S1…S3, the R-xx rulings and the kind refusals).
+#
+# A row is `<Tag|*> <rule> axis=value,… axis!=value,…`:
+#   - the tag is MustRun, MustRefuse, MustRefuseOrThrow, MayRefuse or Unruled; `*` (the seed row only) leaves it to
+#     the seed table;
+#   - constraints on one row all hold; the values of one constraint are alternatives; `-` is an axis the cell does
+#     not carry; `@Class` is a class of the axis (NameResolutionDifferentialTests.RuleTable.cs builds each from the
+#     roster or predicate the generator branches on); `mark` holds when the cell's key carries one of the labels.
+#   - the axes and where each is read from: RuleTableAxes in the same file.
+#
+# Totality (RuleTable_EveryCellHasOneRow_AndEveryRowACell, and each sweep): every generated cell matches exactly one
+# row, that row's tag and rule are the cell's, and every row has a cell in a pool that reads the table. A verdict
+# changes here and in the generator together, or the test is red.
+#
+# The rows of the P77a pool were transcribed from the generator's Expect functions at the stage-0 commit of
+# plan-777361 (P78) by splitting the pool on its axes until each part carries one tag and rule, then merging parts
+# that differ on one axis. They are edited by hand from here on.
+
+# --- Read: 126 rows, 6271 cells ---
+MustRun A3 family=Read route=- relation=Base target!=@CallForm,InstanceField,InstanceProperty outer=@Module,@TypeLevelMember,@Named position!=@ConstantOnly order!=Earlier
+MustRun N1 family=Read route=- relation!=- spelling=Bare target=@TypeLevel outer=None position=StaticInitializer,InstanceFieldInitializer,DataclassInitFieldInitializer,StructInitFieldInitializer,ConstInitializer,StaticPropertyDefault,InstancePropertyDefault order=Earlier nesting=-
+MustRun N1 family=Read route=- relation!=- spelling=Bare target=@TypeLevel outer=None position=StaticInitializer,InstanceFieldInitializer,DataclassInitFieldInitializer,StructInitFieldInitializer,ConstInitializer,StaticPropertyDefault,InstancePropertyDefault order=Earlier nesting=ComprehensionIterable
+MustRun N1 family=Read route=- relation!=- spelling=Bare target=ClassLiteralConst outer=None position=@ConstantOnly order=Earlier
+MustRun N1 family=Read route=- relation!=Self,Base readForm!=Call target!=@CallForm,@CtorForm,ModuleEnum,InstanceField,InstanceProperty outer=@Module,@TypeLevelMember,@Named position!=@ConstantOnly,ModuleInitializer order!=Earlier
+MustRun N1 family=Read route=- relation!=Self,Base readForm=Call target=@NonWritableByMeaning outer=@Module,@TypeLevelMember,@Named position!=@Initializer,ModuleInitializer order!=Earlier
+MustRun N1 family=Read route=- relation=- readForm!=Call target!=@ValueForm,InstanceMethod outer=@Module,@TypeLevelMember,@Named position!=@ConstantOnly,ModuleInitializer order!=Earlier mark=arity-match mark!=int
+MustRun N1 family=Read route=- relation=- spelling!=Bare target=@NonWritableByMeaning,ModuleVar,ModuleLiteralConst,ModuleComputedConst,ModuleProperty outer=None position=@Initializer order=Earlier
+MustRun N1 family=Read route=- relation=- spelling!=Bare target=@NonWritableByMeaning,ModuleVar,ModuleLiteralConst,ModuleComputedConst,ModuleProperty outer=None position=ModuleInitializer order=Earlier
+MustRun N1 family=Read route=- relation=- spelling=Bare target!=ModuleLet outer=None position!=@ConstantOnly,ComprehensionElement nesting=Lambda
+MustRun N1 family=Read route=- relation=- spelling=Bare target!=ModuleLet outer=None position!=@ConstantOnly,ComprehensionElement,EnumMemberValue order=Earlier nesting=-
+MustRun N1 family=Read route=- relation=- spelling=Bare target!=ModuleLet outer=None position!=@Initializer,ComprehensionElement,ModuleInitializer,ModulePropertyInitializer,EnumMemberValue order!=Earlier nesting=-
+MustRun N1 family=Read route=- relation=- spelling=Bare target=ModuleLiteralConst,ModuleEnum outer=None position=@ConstantOnly order=Earlier
+MustRun N1 family=Read route=- relation=- spelling=Bare target=ModuleLiteralConst,ModuleEnum outer=None position=EnumMemberValue order=Earlier nesting=-
+MustRun N1 family=Read route=- relation=- target!=ModuleLet outer=None position=ComprehensionElement
+MustRun N1 family=Read route=- spelling!=Qualified readForm!=- target=@NonWritableByMeaning outer=@Module,@TypeLevelMember,@Named position!=@Initializer order=Earlier mark!=arity-mismatch
+MustRun N1 family=Read route=- spelling!=Qualified readForm=- target=@NonWritableByMeaning outer=@Module,@TypeLevelMember,@Named position!=@Initializer order=Earlier mark!=arity-mismatch,int
+MustRun N1 family=Read route=- spelling!=Qualified readForm=-,Call target!=@TypeLevelMember,@NonWritableByMeaning outer=@Module,@TypeLevelMember,@Named position!=@Initializer order=Earlier mark=PrintedValue
+MustRun N1 family=Read route=- spelling!=Qualified readForm=Value target!=@TypeLevelMember,@NonWritableByMeaning outer=@Module,@TypeLevelMember,@Named position!=@Initializer order=Earlier
+MustRun N1 family=Read route=- spelling!=Qualified target!=@Instance outer=ModuleVar,ModuleLiteralConst,ModuleComputedConst,ModuleProperty,ModuleUnion,ModuleInterface position=StaticInitializer,InstanceFieldInitializer,DataclassInitFieldInitializer,StructInitFieldInitializer,ConstInitializer,StaticPropertyDefault,InstancePropertyDefault order=Earlier nesting=-,ComprehensionIterable
+MustRun N1 family=Read route=- spelling!=Qualified target!=@ValueForm,InstanceMethod outer=@CallForm position=StaticInitializer,InstanceFieldInitializer,DataclassInitFieldInitializer,StructInitFieldInitializer,ConstInitializer,StaticPropertyDefault,InstancePropertyDefault order=Earlier nesting=-,ComprehensionIterable
+MustRun N1 family=Read route=- spelling!=Qualified target=@CtorForm,ModuleDef,ModuleEnum,LocalDef,LambdaTypedLocal outer=@CtorForm position=StaticInitializer,InstanceFieldInitializer,DataclassInitFieldInitializer,StructInitFieldInitializer,ConstInitializer,StaticPropertyDefault,InstancePropertyDefault order=Earlier
+MustRun N1 family=Read route=- spelling=Bare target=ClassLiteralConst outer=ModuleVar,ModuleLiteralConst,ModuleComputedConst,ModuleProperty,ModuleUnion,ModuleInterface position=@ConstantOnly order=Earlier
+MustRun N1 family=Read route=-,comprehension,result-form,type-position relation=- resultForm=-,Err spelling!=Bare target=@NonWritableByMeaning,ModuleVar,ModuleLiteralConst,ModuleComputedConst,ModuleProperty outer=None position!=@Initializer,ComprehensionElement,ModuleInitializer
+MustRun N1 family=Read route=order-observation relation=- spelling!=Bare target!=@Module,@TypeLevel outer=None position!=ComprehensionElement
+MustRun N1+N3 family=Read route=- relation!=- spelling=Bare target=@TypeLevel outer=None position=StaticInitializer,InstanceFieldInitializer,DataclassInitFieldInitializer,StructInitFieldInitializer,ConstInitializer,StaticPropertyDefault,InstancePropertyDefault order=Later nesting=-
+MustRun N1+N3 family=Read route=- relation!=- spelling=Bare target=@TypeLevel outer=None position=StaticInitializer,InstanceFieldInitializer,DataclassInitFieldInitializer,StructInitFieldInitializer,ConstInitializer,StaticPropertyDefault,InstancePropertyDefault order=Later nesting=ComprehensionIterable
+MustRun N1+N3 family=Read route=- relation!=- spelling=Bare target=ClassLiteralConst outer=None position=@ConstantOnly order!=-,Earlier
+MustRun N1+N3 family=Read route=- relation=Other spelling!=Bare target=@TypeLevel outer=None position!=@ConstantOnly
+MustRefuse N1-arity family=Read route=- relation=- readForm!=Call target!=@ValueForm,InstanceMethod outer=@Module,@TypeLevelMember,@Named position!=@ConstantOnly,ModuleInitializer order!=Earlier mark!=arity-match,int
+MustRefuse N1-arity family=Read route=- spelling!=Qualified target=@NonWritableByMeaning outer=@Module,@TypeLevelMember,@Named position!=@Initializer order=Earlier mark=arity-mismatch mark!=int
+MustRun N1-innermost family=Read route=- relation!=Self target!=@Instance outer=@PositionLocal position!=@ConstantOnly order!=Earlier
+MustRun N1-innermost family=Read route=- relation=- spelling=Bare target=@Instance outer!=None position=@Initializer nesting=-
+MustRun N1-innermost family=Read route=- relation=- target=@Instance outer!=None position!=@Initializer
+MustRun N1-innermost family=Read route=- target!=@Instance,ModuleLet outer=@PositionLocal position!=@ConstantOnly order=Earlier
+MustRefuse N1-methods family=Read route=- relation!=- spelling=Bare target!=@TypeLevel outer=None position=@Initializer nesting=ComprehensionElement,Lambda
+MustRefuse N1-methods family=Read route=- relation!=- spelling=Bare target=@TypeLevel outer=None position=StaticInitializer,InstanceFieldInitializer,DataclassInitFieldInitializer,StructInitFieldInitializer,ConstInitializer,StaticPropertyDefault,InstancePropertyDefault order=Earlier,Later nesting=ComprehensionElement,Lambda
+MustRefuse N1-methods family=Read route=-,sibling,struct relation!=- spelling=Bare outer=None position!=@Initializer order!=-
+MustRefuse N1-methods family=Read route=sibling relation!=- spelling=Bare target=@TypeLevel outer=None position=StaticInitializer,InstanceFieldInitializer,DataclassInitFieldInitializer,StructInitFieldInitializer,ConstInitializer,StaticPropertyDefault,InstancePropertyDefault order=Earlier,Later nesting=-
+MustRun N1-nesting family=Read route=- relation=- spelling=Bare target!=ModuleLet outer=None position!=@ConstantOnly,ComprehensionElement nesting!=-,Lambda
+MustRun N1-nesting family=Read route=comprehension relation=- target!=ModuleLet outer=None position=ComprehensionElement
+MustRefuse N1-type-error family=Read route=- relation!=- target=InstanceMethod outer!=@CallForm,@CtorForm,ModuleEnum,None position!=@Initializer
+MustRefuse N1-type-error family=Read route=- relation!=-,Self,Base readForm!=Call target!=@ValueForm,InstanceMethod outer=@Module,@TypeLevelMember,@Named position!=@ConstantOnly,ModuleInitializer order!=Earlier
+MustRefuse N1-type-error family=Read route=- relation!=Self,Base readForm=Call target!=@NonWritableByMeaning,@Instance outer=@Module,@TypeLevelMember,@Named position!=@Initializer,ModuleInitializer order!=Earlier
+MustRefuse N1-type-error family=Read route=- relation=Base target=ModuleDef,StaticMethod,LocalDef,LambdaTypedLocal outer=@Module,@TypeLevelMember,@Named position!=@ConstantOnly order!=Earlier
+MustRefuse N1-type-error family=Read route=- relation=Self spelling=Bare target=@CtorForm,ModuleDef,ModuleEnum,LocalDef,LambdaTypedLocal outer!=None position=StaticInitializer,InstanceFieldInitializer,DataclassInitFieldInitializer,StructInitFieldInitializer,ConstInitializer,StaticPropertyDefault,InstancePropertyDefault order!=Earlier nesting=ComprehensionElement,Lambda
+MustRefuse N1-type-error family=Read route=- relation=Self spelling=Bare target=StaticMethod outer!=@NonWritableByMeaning,None position=StaticInitializer,InstanceFieldInitializer,DataclassInitFieldInitializer,StructInitFieldInitializer,ConstInitializer,StaticPropertyDefault,InstancePropertyDefault order!=Earlier nesting=ComprehensionElement,Lambda
+MustRefuse N1-type-error family=Read route=- relation=Self target!=@ValueForm,InstanceMethod outer=ModuleVar,ModuleLiteralConst,ModuleComputedConst,ModuleProperty,ModuleUnion,ModuleInterface position!=@Initializer order!=Earlier
+MustRefuse N1-type-error family=Read route=- relation=Self target=@CtorForm,ModuleDef,ModuleEnum,LocalDef,LambdaTypedLocal outer=ModuleDef position!=@Initializer order!=Earlier
+MustRefuse N1-type-error family=Read route=- spelling!=Qualified readForm=-,Call target!=@TypeLevelMember,@NonWritableByMeaning outer=@TypeLevelMember,@Named,ModuleVar,ModuleLiteralConst,ModuleComputedConst,ModuleProperty,ModuleDef position!=@Initializer order=Earlier mark!=PrintedValue
+MustRefuse N1-type-error family=Read route=- spelling!=Qualified target!=@CallForm,@CtorForm,ModuleEnum,InstanceField,InstanceProperty outer!=@ValueForm position=StaticInitializer,InstanceFieldInitializer,DataclassInitFieldInitializer,StructInitFieldInitializer,ConstInitializer,StaticPropertyDefault,InstancePropertyDefault order=Earlier nesting=-,ComprehensionIterable
+MustRefuse N1-type-error family=Read route=- spelling!=Qualified target!=@Instance outer!=@Module,@PositionLocal,StaticMethod,InstanceMethod,Builtin,None position=StaticInitializer,InstanceFieldInitializer,DataclassInitFieldInitializer,StructInitFieldInitializer,ConstInitializer,StaticPropertyDefault,InstancePropertyDefault order=Earlier
+MustRefuse N1-type-error family=Read route=- spelling!=Qualified target!=@ValueForm,InstanceMethod outer=ModuleVar,ModuleLiteralConst,ModuleComputedConst,ModuleProperty,ModuleUnion,ModuleInterface position=StaticInitializer,InstanceFieldInitializer,DataclassInitFieldInitializer,StructInitFieldInitializer,ConstInitializer,StaticPropertyDefault,InstancePropertyDefault order=Earlier nesting=ComprehensionElement,Lambda
+MustRefuse N1-type-error family=Read route=- spelling!=Qualified target=@CtorForm,ModuleDef,ModuleEnum,LocalDef,LambdaTypedLocal outer=@CallForm position=StaticInitializer,InstanceFieldInitializer,DataclassInitFieldInitializer,StructInitFieldInitializer,ConstInitializer,StaticPropertyDefault,InstancePropertyDefault order=Earlier nesting=ComprehensionElement,Lambda
+MustRefuse N1-type-error family=Read route=- spelling!=Qualified target=@CtorForm,ModuleDef,ModuleEnum,LocalDef,LambdaTypedLocal outer=ModuleEnum position=StaticInitializer,InstanceFieldInitializer,DataclassInitFieldInitializer,StructInitFieldInitializer,ConstInitializer,StaticPropertyDefault,InstancePropertyDefault order=Earlier
+MustRefuse N1-type-error family=Read route=- spelling!=Qualified target=StaticMethod outer=@CtorForm,ModuleEnum position=StaticInitializer,InstanceFieldInitializer,DataclassInitFieldInitializer,StructInitFieldInitializer,ConstInitializer,StaticPropertyDefault,InstancePropertyDefault order=Earlier
+MustRefuse N1-type-error family=Read route=- spelling!=Qualified target=StaticMethod outer=ModuleVar,ModuleLiteralConst,ModuleComputedConst,ModuleProperty,ModuleUnion,ModuleInterface position!=@Initializer order=Earlier
+MustRefuse N1-type-error family=Read route=- spelling=Bare target=ClassLiteralConst outer!=@Module,StaticMethod,InstanceMethod,Builtin,None position=@ConstantOnly order=Earlier
+MustRefuse N1-type-error family=Read route=- spelling=Bare target=InstanceMethod outer!=@NonWritableByMeaning,None position=@Initializer nesting=ComprehensionElement,Lambda
+MustRefuse N1-type-error family=Read route=- target=ClassLiteralConst outer!=@ValueForm position=@ConstantOnly order=Earlier
+MustRefuse N2 family=Read route=- relation!=Base spelling=Bare target=ClassLiteralConst outer!=None position=@ConstantOnly order!=Earlier
+MustRefuse N2 family=Read route=- relation=Self spelling=Bare target!=@Instance outer!=None position=StaticInitializer,InstanceFieldInitializer,DataclassInitFieldInitializer,StructInitFieldInitializer,ConstInitializer,StaticPropertyDefault,InstancePropertyDefault order!=Earlier nesting=-,ComprehensionIterable
+MustRefuse N2-module family=Read route=- relation!=Self,Base readForm=Call target!=@Instance outer=@Module,@TypeLevelMember,@Named position=StaticInitializer,InstanceFieldInitializer,DataclassInitFieldInitializer,StructInitFieldInitializer,ConstInitializer,StaticPropertyDefault,InstancePropertyDefault order!=Earlier
+MustRefuse N2-module family=Read route=- relation!=Self,Base target!=@Instance outer=@Module,@TypeLevelMember,@Named position=ModuleInitializer order!=Earlier
+MustRun N3 family=Read route=- relation=- spelling!=Bare target=@NonWritableByMeaning,ModuleVar,ModuleLiteralConst,ModuleComputedConst,ModuleProperty outer=None position=@Initializer order!=Earlier
+MustRun N3 family=Read route=- relation=- spelling=Bare target!=ModuleLet outer=None position=ModuleInitializer order=Later nesting=-
+MustRun N3 family=Read route=- relation=- spelling=Bare target!=ModuleLet outer=None position=StaticInitializer,InstanceFieldInitializer,DataclassInitFieldInitializer,StructInitFieldInitializer,ConstInitializer,StaticPropertyDefault,InstancePropertyDefault,ModulePropertyInitializer order!=Earlier nesting=-
+MustRun N3 family=Read route=- relation=- spelling=Bare target=ModuleLiteralConst,ModuleEnum outer=None position=@ConstantOnly order!=Earlier
+MustRun N3 family=Read route=- relation=- spelling=Bare target=ModuleLiteralConst,ModuleEnum outer=None position=EnumMemberValue order!=Earlier nesting=-
+MustRun N3 family=Read route=-,str relation=- spelling!=Bare target=@NonWritableByMeaning,ModuleVar,ModuleLiteralConst,ModuleComputedConst,ModuleProperty outer=None position=ModuleInitializer order!=Earlier
+MustRun N3 family=Read route=order-observation relation=- spelling!=Bare target=@NonWritableByMeaning,ModuleVar,ModuleLiteralConst,ModuleComputedConst,ModuleProperty outer=None position!=ComprehensionElement,ModuleInitializer
+MustRun N3 family=Read route=order-observation relation=- spelling!=Bare target=@TypeLevel outer=None position!=ComprehensionElement
+MustRefuseOrThrow N3-cycle family=Read route=- relation!=- spelling=Bare target=@TypeLevel outer=None position=StaticInitializer,InstanceFieldInitializer,DataclassInitFieldInitializer,StructInitFieldInitializer,ConstInitializer,StaticPropertyDefault,InstancePropertyDefault order=Self,Cycle
+MustRefuseOrThrow N3-cycle family=Read route=- relation!=-,Other spelling!=Bare target=@TypeLevel outer=None position!=@ConstantOnly order=Self,Cycle
+MustRefuseOrThrow N3-cycle family=Read route=- relation=- spelling=Bare target!=ModuleLet outer=None position=ModuleInitializer order=-,Self,Cycle nesting=-
+MustRefuseOrThrow N3-cycle family=Read route=- relation=- target=ModuleLet outer=None order=Self,Cycle
+MustRefuseOrThrow N3-cycle family=Read route=cycle relation=- outer=None
+MustRefuseOrThrow N3-cycle family=Read route=str relation=- spelling!=Bare target=@TypeLevel outer=None position!=ComprehensionElement mark=self
+MustRun N7 family=Read route=- relation!=- spelling!=Bare target=ClassLiteralConst outer=None position=@ConstantOnly
+MustRun N7 family=Read route=- relation!=- spelling=SelfDot target!=@TypeLevel outer=None
+MustRun N7 family=Read route=- relation=Self spelling!=Bare target!=@Instance outer!=None position=StaticInitializer,InstanceFieldInitializer,DataclassInitFieldInitializer,StructInitFieldInitializer,ConstInitializer,StaticPropertyDefault,InstancePropertyDefault order!=Earlier
+MustRun N7 family=Read route=- spelling!=Bare target=ClassLiteralConst outer!=@CallForm,@CtorForm,ModuleEnum,None position=@ConstantOnly order=Earlier
+MustRun N7 family=Read route=- spelling!=Bare target=ClassLiteralConst outer!=None position=@ConstantOnly order!=Earlier
+MustRun N7 family=Read route=- spelling=Qualified target!=@Instance outer=@Module,@TypeLevelMember,@Named position!=@ConstantOnly order=Earlier
+MustRun N7 family=Read route=-,sibling,struct relation!=-,Other spelling!=Bare target=@TypeLevel outer=None position!=@ConstantOnly order=-,Earlier,Later
+MustRun N7 family=Read route=-,str relation=- spelling!=Bare target=@TypeLevel outer=None position!=ComprehensionElement mark!=self
+MustRun N7 family=Read route=struct relation!=- spelling=SelfDot target!=@TypeLevel outer=None position!=@StructClosureBody nesting=-
+MustRun N7 family=Read route=type-position-alias relation=- spelling!=Bare target!=ModuleLet outer=None position!=ComprehensionElement
+MustRefuse R-KG family=Read route=- relation!=-,Base spelling=Bare outer=None position!=@Initializer order=-
+MustRefuse R-KG family=Read route=- relation!=-,Base spelling=Bare target=@TypeLevel outer=None position=@Initializer order=-
+MustRefuse R-KT family=Read route=struct relation!=- spelling=SelfDot target!=@TypeLevel outer=None position!=@StructClosureBody nesting!=-
+MustRefuse R-KT family=Read route=struct relation!=- spelling=SelfDot target!=@TypeLevel outer=None position=@StructClosureBody
+MustRun R-Y family=Read route=- relation!=- target=InstanceField,InstanceProperty outer!=None position!=@Initializer
+MustRun R-Y family=Read route=- relation!=- target=InstanceMethod outer!=@ValueForm position!=@Initializer
+MustRun R-Y family=Read route=- relation=Self spelling=Bare target!=@CallForm,@CtorForm,ModuleEnum,InstanceField,InstanceProperty outer!=None position=StaticInitializer,InstanceFieldInitializer,DataclassInitFieldInitializer,StructInitFieldInitializer,ConstInitializer,StaticPropertyDefault,InstancePropertyDefault order!=Earlier nesting=ComprehensionElement,Lambda
+MustRun R-Y family=Read route=- relation=Self spelling=Bare target=StaticMethod outer=@NonWritableByMeaning position=StaticInitializer,InstanceFieldInitializer,DataclassInitFieldInitializer,StructInitFieldInitializer,ConstInitializer,StaticPropertyDefault,InstancePropertyDefault order!=Earlier nesting=ComprehensionElement,Lambda
+MustRun R-Y family=Read route=- relation=Self target!=@CallForm,@CtorForm,ModuleEnum,InstanceField,InstanceProperty outer!=None position!=@Initializer order!=Earlier
+MustRun R-Y family=Read route=- relation=Self target!=@ValueForm,InstanceMethod outer=@PositionLocal,@TypeLevelMember,@CtorForm,@Named,ModuleEnum position!=@Initializer order!=Earlier
+MustRun R-Y family=Read route=- relation=Self target=StaticMethod outer=ModuleDef position!=@Initializer order!=Earlier
+MustRun R-Y family=Read route=- spelling!=Qualified readForm=-,Call target!=@TypeLevelMember,@NonWritableByMeaning outer=@CtorForm,ModuleEnum,ModuleUnion,ModuleInterface position!=@Initializer order=Earlier mark!=PrintedValue
+MustRun R-Y family=Read route=- spelling!=Qualified target!=@CallForm,@CtorForm,ModuleEnum,InstanceField,InstanceProperty outer=@Module,StaticMethod,InstanceMethod,Builtin position=StaticInitializer,InstanceFieldInitializer,DataclassInitFieldInitializer,StructInitFieldInitializer,ConstInitializer,StaticPropertyDefault,InstancePropertyDefault order=Earlier nesting=ComprehensionElement,Lambda
+MustRun R-Y family=Read route=- spelling!=Qualified target=StaticField,StaticProperty,ClassLiteralConst,ClassComputedConst outer=@Module,@TypeLevelMember,@Named position!=@Initializer order=Earlier
+MustRun R-Y family=Read route=- spelling!=Qualified target=StaticMethod outer=@CallForm position=StaticInitializer,InstanceFieldInitializer,DataclassInitFieldInitializer,StructInitFieldInitializer,ConstInitializer,StaticPropertyDefault,InstancePropertyDefault order=Earlier nesting=ComprehensionElement,Lambda
+MustRun R-Y family=Read route=- spelling!=Qualified target=StaticMethod outer=@TypeLevelMember,@CtorForm,@Named,ModuleDef,ModuleEnum position!=@Initializer order=Earlier
+MustRun R-Y family=Read route=- spelling=Bare target=InstanceField,InstanceProperty outer!=None position=@Initializer nesting=ComprehensionElement,Lambda
+MustRun R-Y family=Read route=- spelling=Bare target=InstanceMethod outer=@NonWritableByMeaning position=@Initializer nesting=ComprehensionElement,Lambda
+MustRefuse R1(b) family=Read route=- relation=Base spelling=Bare outer=None position!=@Initializer order=-
+MustRefuse R1(b) family=Read route=- relation=Base spelling=Bare target=@TypeLevel outer=None position=@Initializer order=-
+MustRefuse SPY0401 family=Read route=- relation!=- spelling!=Bare target=StaticField,StaticProperty,StaticMethod,ClassComputedConst,NestedType outer=None position=@ConstantOnly
+MustRefuse SPY0401 family=Read route=- relation!=- spelling=Bare target=StaticField,StaticProperty,StaticMethod,ClassComputedConst,NestedType outer=None position=@ConstantOnly order!=-
+MustRefuse SPY0401 family=Read route=- relation=- spelling=Bare target!=ModuleLet,ModuleLiteralConst,ModuleEnum outer=None position=@ConstantOnly
+MustRefuse SPY0401 family=Read route=- relation=Base spelling=Bare target=ClassLiteralConst outer!=None position=@ConstantOnly order!=Earlier
+# Among the cells of the next row is a bare sibling read at-or-after its reader under an outer binding, in a constant-only
+# position: N2's program. This pool answers it with SPY0401 today. N2's own code, SPY0619, is the one plan-777361 (P78)
+# introduces (D3, D9), and the ScopeMeaning rows below already expect it for the same program: the two readings meet at the
+# commit that makes the compiler say SPY0619, where this row's N2 cells are retagged (D9, T8).
+MustRefuse SPY0401 family=Read route=- target!=@Instance,ClassLiteralConst outer!=None position=@ConstantOnly
+MustRefuse kind:SPY0212 family=Read route=- relation=- readForm!=Call target!=@ValueForm,InstanceMethod outer=@Module,@TypeLevelMember,@Named position!=@ConstantOnly,ModuleInitializer order!=Earlier mark=int
+MustRefuse kind:SPY0212 family=Read route=- spelling!=Qualified readForm=- target=@NonWritableByMeaning outer=@Module,@TypeLevelMember,@Named position!=@Initializer order=Earlier mark=int mark!=arity-mismatch
+MustRefuse kind:SPY0212 family=Read route=- spelling!=Qualified target=@NonWritableByMeaning outer=@Module,@TypeLevelMember,@Named position!=@Initializer order=Earlier mark=arity-mismatch mark=int
+MustRefuse kind:SPY0290 family=Read route=- relation=- spelling!=Bare target!=@Module,@TypeLevel outer=None position!=ComprehensionElement
+MustRefuse kind:SPY0290 family=Read route=- spelling!=Bare target=@Instance outer!=None position=@Initializer
+MustRefuse kind:SPY0290 family=Read route=-,struct relation!=- spelling!=Bare,SelfDot target!=@TypeLevel outer=None
+MayRefuse kind:SPY0340 family=Read route=- relation=- target=ModuleLet outer=None order=-,Earlier,Later
+MayRefuse kind:SPY0340 family=Read route=- target=ModuleLet outer=@PositionLocal position!=@ConstantOnly order=Earlier
+MustRefuse kind:enum-member-constant family=Read route=- relation=- spelling=Bare target!=ModuleLet,ModuleLiteralConst,ModuleEnum outer=None position=EnumMemberValue nesting=-
+MustRefuse kind:instance-at-initializer family=Read route=- relation!=- spelling=Bare target!=@TypeLevel outer=None position=@Initializer nesting=-,ComprehensionIterable
+MustRefuse kind:instance-at-initializer family=Read route=- relation!=- spelling=Bare target=@Instance outer!=None position=@Initializer nesting=-
+MustRefuse kind:instance-at-initializer family=Read route=- spelling=Bare target=@Instance outer!=None position=@Initializer nesting=ComprehensionIterable
+MustRefuse kind:result-wrap family=Read route=result-form relation=- resultForm!=-,Err spelling!=Bare target=@NonWritableByMeaning,ModuleVar,ModuleLiteralConst,ModuleComputedConst,ModuleProperty outer=None position!=@Initializer,ComprehensionElement,ModuleInitializer
+
+# --- Store: 37 rows, 716 cells ---
+MustRun #1974 family=Store route=- form=LetOrVar
+MustRefuse N5 family=Store route=- form=Augmented target!=@TypeLevelMember,@NonWritableByMeaning outer=None
+MustRefuse N5 family=Store route=builtin form!=LetOrVar target!=@TypeLevelMember,@NonWritableByMeaning outer=@Named mark=walrus/call mark!=assign/no-binding,no-decl
+MustRefuse N5 family=Store route=builtin form=LetOrVar
+MustRefuse N5 family=Store route=walrus-in-comprehension form=-,Assign,Augmented,Walrus target!=@TypeLevelMember,@NonWritableByMeaning outer=None
+MustRun N5 family=Store route=- form=-,Assign,Walrus target!=@TypeLevelMember,@NonWritableByMeaning outer=None
+MustRun N5 family=Store route=builtin form!=LetOrVar target!=@TypeLevelMember,@NonWritableByMeaning outer=@Named mark=assign/no-binding mark!=no-decl
+MustRefuse N6 family=Store route=- form=-,Assign,Augmented,Walrus target=@PositionLocal,ModuleVar,ModuleProperty,NestedType,ImportedName,None outer!=None mark=no-decl
+MustRefuse N6 family=Store route=-,builtin form=-,Assign,Augmented,Walrus target!=@TypeLevelMember,@NonWritableByMeaning outer=@Named mark!=Assign/global,Augmented/global,Walrus/global,assign/no-binding,no-decl,walrus/call
+MustRefuse N6 family=Store route=lambda-walrus form!=LetOrVar target!=@TypeLevelMember,@NonWritableByMeaning outer!=@Named,None mark!=no-decl
+MustRun N6 family=Store route=- form!=LetOrVar target!=@TypeLevelMember,@NonWritableByMeaning,ModuleLiteralConst,ModuleComputedConst,LocalVar outer!=@Named,None mark!=no-decl
+MustRun N6 family=Store route=builtin form=-,Assign,Augmented,Walrus target!=@TypeLevelMember,@NonWritableByMeaning outer=@Named mark=Assign/global mark!=assign/no-binding,no-decl,walrus/call
+MustRun N6 family=Store route=builtin form=-,Assign,Augmented,Walrus target!=@TypeLevelMember,@NonWritableByMeaning outer=@Named mark=Augmented/global mark!=Assign/global,assign/no-binding,no-decl,walrus/call
+MustRun N6 family=Store route=builtin form=-,Assign,Augmented,Walrus target!=@TypeLevelMember,@NonWritableByMeaning outer=@Named mark=Walrus/global mark!=Assign/global,Augmented/global,assign/no-binding,no-decl,walrus/call
+MustRefuse N6-declaration family=Store route=declaration form!=LetOrVar declaration!=GlobalCreatesBinding target!=@TypeLevelMember,@NonWritableByMeaning outer=None
+MustRefuse N6-declaration family=Store route=declaration form!=LetOrVar target!=@TypeLevelMember,@NonWritableByMeaning outer!=@Named,None mark!=no-decl
+MustRefuse N6-declaration family=Store route=declaration form=LetOrVar
+MustRun N6-same-function family=Store route=- form!=LetOrVar target=LocalVar outer!=@Named,None mark!=no-decl
+MustRefuse N6-type-kind family=Store route=- form=-,Assign,Augmented,Walrus target=@NonWritableByMeaning
+MustRun N7 family=Store route=attribute form!=LetOrVar receiver=-,SelfDot,InstanceLocal target=InstanceField,InstanceProperty shape!=MemberAccess,TupleLiteral
+MustRun N7 family=Store route=attribute form!=LetOrVar receiver=TypeName,Alias target=StaticField,StaticProperty shape!=MemberAccess
+MustRun N7 family=Store route=attribute form!=LetOrVar target=StaticField,StaticProperty,ClassLiteralConst,ClassComputedConst,InstanceField,InstanceProperty shape=MemberAccess
+MustRun R-BM family=Store route=- form=OutLet target!=@TypeLevelMember,@NonWritableByMeaning outer!=None mark=no-decl
+MustRun R-BM family=Store route=- form=OutLet target!=@TypeLevelMember,@NonWritableByMeaning outer=@Named mark!=assign/no-binding,no-decl,walrus/call
+MustRun R-BM family=Store route=- form=OutLet target!=@TypeLevelMember,@NonWritableByMeaning outer=None
+MustRun R-BM family=Store route=- form=OutLet target=@NonWritableByMeaning
+MustRun R-BM family=Store route=- form=OutLet target=@TypeLevelMember
+MustRefuse R-KU family=Store route=attribute form!=LetOrVar receiver!=TypeName,Alias target=StaticField,StaticProperty shape!=MemberAccess
+MustRefuse S2-walrus family=Store route=walrus-in-comprehension form!=LetOrVar target!=@TypeLevelMember,@NonWritableByMeaning outer!=None mark!=no-decl
+MustRefuse SPY0606 family=Store route=- form=-,Assign,Augmented,Walrus target=@TypeLevelMember
+MustRefuse kind:SPY0225 family=Store route=- form!=LetOrVar target=ModuleLiteralConst,ModuleComputedConst outer!=@Named,None mark!=no-decl
+MustRefuse kind:SPY0225 family=Store route=- form=-,Assign,Augmented,Walrus target=ModuleLet,ModuleLiteralConst,ModuleComputedConst outer!=None mark=no-decl
+MustRefuse kind:SPY0225 family=Store route=attribute form!=LetOrVar target=ClassLiteralConst,ClassComputedConst shape!=MemberAccess
+MustRefuse kind:SPY0225 family=Store route=attribute form!=LetOrVar target=InstanceField,InstanceProperty shape=TupleLiteral
+MustRefuse kind:SPY0290 family=Store route=attribute form!=LetOrVar receiver=TypeName,Alias,DerivedType target=InstanceField,InstanceProperty shape!=MemberAccess,TupleLiteral
+MustRefuse kind:SPY0606 family=Store route=attribute form!=LetOrVar target=StaticMethod,InstanceMethod
+Unruled unruled:global-creates-binding family=Store route=declaration form!=LetOrVar declaration=GlobalCreatesBinding target!=@TypeLevelMember,@NonWritableByMeaning outer=None
+
+# --- Local: 21 rows, 1346 cells ---
+MustRun #1974 family=Local route=let-in construct=- outer=LocalVar deviation!=-
+MustRun N1 family=Local route=-,comprehension-target,lambda-comprehension,timing construct=Comprehension outer!=None
+MustRun N1 family=Local route=lambda-comprehension construct=Comprehension outer=None
+MustRun N1-innermost family=Local route=- construct=- deviation=- mark!=above,self
+MustRefuse N5 family=Local route=- construct=- target!=@CallForm outer=@TypeLevel,None deviation=- mark=above
+MustRefuse N5 family=Local route=-,comprehension-target,timing construct=Comprehension outer=None
+MustRefuse N5 family=Local route=-,timing construct!=-,Comprehension,OutLet outer=None mark!=inside
+MustRefuse N5 family=Local route=let-in construct=- outer=None deviation!=-
+MustRefuse N5 family=Local route=timing construct=OutLet outer=None mark!=inside
+MustRun N5 family=Local route=- construct!=-,Comprehension mark=inside
+MustRun N5 family=Local route=- construct=- target!=LambdaTypedLocal deviation=- mark=self mark!=above
+MustRun N5 family=Local route=closure-in-comprehension,closure-in-loop,closure-in-loop-body construct=- outer=None deviation!=-
+MustRun N5-block-scope family=Local route=let-in construct=- outer!=LocalVar,None deviation!=-
+MustRefuse N5-declared-later family=Local route=- construct=- target!=LocalDef outer!=@TypeLevel,None deviation=- mark=above
+MustRefuse N5-declared-later family=Local route=- construct=- target=ModuleDef,StaticMethod,InstanceMethod,LambdaTypedLocal outer=@TypeLevel,None deviation=- mark=above
+MustRefuse N5-declared-later family=Local route=L28,timing construct=- deviation=- mark!=above
+MustRefuse N5-self family=Local route=- construct=- target=LambdaTypedLocal deviation=- mark=self mark!=above
+MustRun R-BM family=Local route=- construct=OutLet mark!=inside
+MustRefuse S2 family=Local route=-,timing construct!=-,Comprehension,OutLet outer!=None mark!=inside
+MustRefuse S2 family=Local route=timing construct=OutLet outer!=None mark!=inside
+MustRefuse S3 family=Local route=- construct=- target=LocalDef deviation=- mark=above
+
+# --- TypeMember: 1 rows, 450 cells ---
+MustRun P52 family=TypeMember route=class,dataclass,enum,interface,struct,union
+
+# --- Seed: 1 rows, 168 cells ---
+* seed family=Seed route=-
+
+# --- ScopeMeaningDifferentialTests: the cells the P77a pool has no program for (hand-written; the test reads its
+# --- verdicts from these rows and carries none). A constant position's verdict is its reader's: the table the reader
+# --- passes (`admission`, the validator's AdmissionTable; `-` is the enum member's value, which has no table), and the
+# --- host (`mark`) where one table has two readers. Handed a constant, every position runs. Handed a non-constant: a
+# --- `const` initializer is then a computed constant (N4), a struct's auto-property keeps its initializer (#1938), an
+# --- attribute argument refuses under its own code, and every other position refuses under SPY0401. A name that is no
+# --- value there refuses under its kind's own code. An alias that reaches itself is unruled (#2769): unused, it runs. ---
+# R-QI's refusal carries SPY0620, a code plan-777361 (P78) introduces (D7, D9): no compiler says it today, so these cells name
+# it and wait on it; a refusal under any other code is another rule's.
+MustRefuse R-QI family=Read route=no-initializer initializer=Absent target=ModuleVar,ModuleProperty,StaticField,StaticProperty
+MustRun N1 family=Read route=no-initializer initializer=Absent target=InstanceField,InstanceProperty,LocalVar
+MustRun N1 family=Read route=no-initializer initializer=Present,AccessorBodies
+MustRefuse N1-typed-read family=Read route=typed-read
+MustRun N1-innermost family=Local route=callee
+MustRun N4 family=Read route=constant-kind constantKind=ClrLiteralField,ClrTypeLiteralField,ClrTypeEnumMember,IntEnumMember,IntEnumValue,ComparisonChain
+# A `const decimal` of a referenced type (the owner's ruling 17): what C# reads as a constant wherever a decimal can be one,
+# which an attribute argument is not.
+MustRun N4 family=Read route=constant-kind admission!=DecoratorArgument constantKind=ClrTypeDecimalConstant
+# An overloaded method group of a referenced type (`Math.abs`) is in the rows below by the owner's ruling 29 (#2423 comment
+# 7052893050): a function target type selects a CLR overload, so where the slot has one the read is a function value like any
+# other. It must run at a `const` and a struct's auto-property (refused today under SPY0336: known-red, #2277) and is no
+# constant at a default (SPY0401, or today's SPY0336). An attribute argument has no function type at its slot: the last row.
+MustRun N4 family=Read route=constant-kind admission=ConstInitializer constantKind=StdlibModuleVariable,ClrStaticMember,ModuleFunction,ModuleFunctionGroup,ClrTypeStaticField,ClrTypeStaticProperty,ClrTypeMethod,ClrTypeDeclinedMethod,ClrTypeMethodGroup,IntEnumName,StringEnumMember,StringEnumValue,StringEnumName,ChainWithNonConstantLink
+MustRun #1938 family=Read route=constant-kind mark=struct-auto-property constantKind=StdlibModuleVariable,ClrStaticMember,ModuleFunction,ModuleFunctionGroup,ClrTypeStaticField,ClrTypeStaticProperty,ClrTypeMethod,ClrTypeDeclinedMethod,ClrTypeMethodGroup,IntEnumName,StringEnumMember,StringEnumValue,StringEnumName,ChainWithNonConstantLink
+# A string enum's member, its `.value` and any enum's `.name` are refused at a default by the owner's ruling 10 (#2423 comment
+# 7045166298), kept as an INTERIM by item 28 (comment 7052893050): it contradicts
+# docs/language_specification/function_default_parameters.md, whose allowed defaults list `HttpMethod.GET` (a string enum's
+# member), until #2772 makes the default run as the spec says. The spec's text is not changed.
+MustRefuse SPY0401 family=Read route=constant-kind admission=ParameterDefault,LambdaParameterDefault,PerInstanceFieldDefault,- mark=def,lambda,dataclass,struct,enum-member constantKind=StdlibModuleVariable,ClrStaticMember,ModuleFunction,ModuleFunctionGroup,ClrTypeStaticField,ClrTypeStaticProperty,ClrTypeMethod,ClrTypeDeclinedMethod,ClrTypeMethodGroup,IntEnumName,StringEnumMember,StringEnumValue,StringEnumName,ChainWithNonConstantLink
+MustRefuse SPY0425 family=Read route=constant-kind admission=DecoratorArgument constantKind=StdlibModuleVariable,ClrStaticMember,ModuleFunction,ModuleFunctionGroup,ClrTypeDecimalConstant,ClrTypeStaticField,ClrTypeStaticProperty,ClrTypeMethod,ClrTypeDeclinedMethod,IntEnumName,StringEnumMember,StringEnumValue,StringEnumName,ChainWithNonConstantLink
+MustRefuse kind:SPY0336 family=Read route=constant-kind admission=DecoratorArgument constantKind=ClrTypeMethodGroup
+# A name of the program's own, under every spelling and from every placement but a bare sibling read: one answer (N7).
+MustRun N4 family=Read route=constant-kind constantKind=OwnMember target=ModuleLiteralConst,ClassLiteralConst mark!=bare-sibling
+MustRun N4 family=Read route=constant-kind admission=ConstInitializer constantKind=OwnMember target=ModuleVar,ModuleComputedConst,ModuleProperty,ModuleDef,StaticField,StaticProperty,StaticMethod,ClassComputedConst,Builtin mark!=bare-sibling
+MustRun #1938 family=Read route=constant-kind mark=struct-auto-property constantKind=OwnMember target=ModuleVar,ModuleComputedConst,ModuleProperty,ModuleDef,StaticField,StaticProperty,StaticMethod,ClassComputedConst,Builtin mark!=bare-sibling
+MustRefuse SPY0401 family=Read route=constant-kind admission=ParameterDefault,LambdaParameterDefault,PerInstanceFieldDefault,- mark=def,lambda,dataclass,struct,enum-member constantKind=OwnMember target=ModuleVar,ModuleComputedConst,ModuleProperty,ModuleDef,StaticField,StaticProperty,StaticMethod,ClassComputedConst,Builtin mark!=bare-sibling
+MustRefuse SPY0425 family=Read route=constant-kind admission=DecoratorArgument constantKind=OwnMember target=ModuleVar,ModuleComputedConst,ModuleProperty,ModuleDef,StaticField,StaticProperty,StaticMethod,ClassComputedConst,Builtin mark!=bare-sibling
+MustRefuse kind:SPY0290 family=Read route=constant-kind constantKind=OwnMember target=InstanceField,InstanceProperty,InstanceMethod spelling!=SelfDot
+MustRun N4 family=Read route=constant-kind admission=ConstInitializer constantKind=OwnMember target=InstanceField,InstanceProperty,InstanceMethod spelling=SelfDot
+MustRefuse SPY0401 family=Read route=constant-kind admission=LambdaParameterDefault constantKind=OwnMember target=InstanceField,InstanceProperty,InstanceMethod spelling=SelfDot
+# A bare read of a sibling in the member's own type is the class-body rule's first (D3): in a method's body the member is not
+# visible (N1) and the read is the module's binding (R-Y); at the type body's level it is the member, earlier or with no module
+# binding of the name, and N2's refusal at-or-after under one. Where it is the member, the constant position then answers.
+MustRefuse N1-methods family=Read route=constant-kind constantKind=OwnMember mark=bare-sibling mark=in-method outer=None
+MustRun R-Y family=Read route=constant-kind constantKind=OwnMember mark=bare-sibling mark=in-method outer!=None
+# N2's refusal is SPY0619, the code plan-777361 (P78) introduces (D3, D9): no compiler says it today, so the next row's cells
+# name it and wait on it by design. The P77a pool's row for the same program (above, `MustRefuse SPY0401 … position=@ConstantOnly`)
+# is green on SPY0401 until then.
+MustRefuse N2 family=Read route=constant-kind constantKind=OwnMember mark=bare-sibling mark!=in-method order=Later outer!=None
+MustRun N1 family=Read route=constant-kind constantKind=OwnMember target=ModuleLiteralConst,ClassLiteralConst mark=bare-sibling mark!=in-method order=Earlier
+MustRun N4 family=Read route=constant-kind admission=ConstInitializer constantKind=OwnMember target=ModuleVar,ModuleComputedConst,ModuleProperty,ModuleDef,StaticField,StaticProperty,StaticMethod,ClassComputedConst,Builtin mark=bare-sibling mark!=in-method order=Earlier
+MustRun #1938 family=Read route=constant-kind mark=struct-auto-property constantKind=OwnMember target=ModuleVar,ModuleComputedConst,ModuleProperty,ModuleDef,StaticField,StaticProperty,StaticMethod,ClassComputedConst,Builtin mark=bare-sibling mark!=in-method order=Earlier
+MustRefuse SPY0401 family=Read route=constant-kind admission=ParameterDefault,LambdaParameterDefault,PerInstanceFieldDefault,- mark=def,lambda,dataclass,struct,enum-member constantKind=OwnMember target=ModuleVar,ModuleComputedConst,ModuleProperty,ModuleDef,StaticField,StaticProperty,StaticMethod,ClassComputedConst,Builtin mark=bare-sibling mark!=in-method order=Earlier
+MustRefuse SPY0425 family=Read route=constant-kind admission=DecoratorArgument constantKind=OwnMember target=ModuleVar,ModuleComputedConst,ModuleProperty,ModuleDef,StaticField,StaticProperty,StaticMethod,ClassComputedConst,Builtin mark=bare-sibling mark!=in-method order=Earlier
+MustRun N1+N3 family=Read route=constant-kind constantKind=OwnMember target=ModuleLiteralConst,ClassLiteralConst mark=bare-sibling mark!=in-method order=Later outer=None
+MustRun N4 family=Read route=constant-kind admission=ConstInitializer constantKind=OwnMember target=ModuleVar,ModuleComputedConst,ModuleProperty,ModuleDef,StaticField,StaticProperty,StaticMethod,ClassComputedConst,Builtin mark=bare-sibling mark!=in-method order=Later outer=None
+MustRun #1938 family=Read route=constant-kind mark=struct-auto-property constantKind=OwnMember target=ModuleVar,ModuleComputedConst,ModuleProperty,ModuleDef,StaticField,StaticProperty,StaticMethod,ClassComputedConst,Builtin mark=bare-sibling mark!=in-method order=Later outer=None
+MustRefuse SPY0401 family=Read route=constant-kind admission=ParameterDefault,LambdaParameterDefault,PerInstanceFieldDefault,- mark=def,lambda,dataclass,struct,enum-member constantKind=OwnMember target=ModuleVar,ModuleComputedConst,ModuleProperty,ModuleDef,StaticField,StaticProperty,StaticMethod,ClassComputedConst,Builtin mark=bare-sibling mark!=in-method order=Later outer=None
+MustRefuse SPY0425 family=Read route=constant-kind admission=DecoratorArgument constantKind=OwnMember target=ModuleVar,ModuleComputedConst,ModuleProperty,ModuleDef,StaticField,StaticProperty,StaticMethod,ClassComputedConst,Builtin mark=bare-sibling mark!=in-method order=Later outer=None
+MustRun N1 family=Read route=init-overload
+# A parameter default at a type body's level is evaluated in the type body, a lambda's as a `def`'s (D4; the owner's ruling 19):
+# a bare name in it is a sibling read, which the class-body rule decides (D3). `order=-` is a slot's control, a literal default.
+MustRun N4 family=Read route=lambda-default order=-
+MustRun N1 family=Read route=lambda-default order=Earlier
+MustRun N1+N3 family=Read route=lambda-default order=Later outer=None
+# SPY0619 here too: the code lands with plan-777361 (D9).
+MustRefuse N2 family=Read route=lambda-default order=Later outer!=None
+MustRefuse N1-alias-target family=Read route=alias-target aliasTarget=Missing
+MustRun N1 family=Read route=alias-target aliasTarget=Declared
+MustRun #2769 family=Read route=alias-target aliasTarget=Itself

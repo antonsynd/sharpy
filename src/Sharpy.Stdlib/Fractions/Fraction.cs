@@ -1,3 +1,10 @@
+// Portions of this file are a C# port of CPython's Lib/fractions.py (CPython 3.15): the
+// method Fraction.limit_denominator (LimitDenominator).
+// Copyright (c) 2001 Python Software Foundation; All Rights Reserved
+// Licensed under the PSF License Version 2; see THIRD-PARTY-NOTICES.txt at the repository root.
+// Changes: translated from Python to C# over System.Numerics.BigInteger; Python's floored // is
+// FloorDivRem, and results are built by the normalizing constructor instead of _from_coprime_ints.
+
 using System;
 using System.Globalization;
 using System.Numerics;
@@ -191,48 +198,46 @@ namespace Sharpy
             return LimitDenominator(new BigInteger(maxDenominator));
         }
 
+        /// <summary>
+        /// The closest Fraction to this one whose denominator is at most <c>max_denominator</c>, as CPython's
+        /// <c>fractions.Fraction.limit_denominator</c>. On a tie the candidate with the smaller denominator is
+        /// returned; with <c>max_denominator</c> 1 and a value midway between two integers, that is the floor.
+        /// Raises <c>ValueError</c> when <c>max_denominator</c> is less than 1.
+        /// </summary>
         public Fraction LimitDenominator(BigInteger maxDenominator)
         {
             if (maxDenominator < BigInteger.One)
                 throw new ValueError("max_denominator should be at least 1");
-
             if (Denominator <= maxDenominator)
-                return this;
+                return new Fraction(this);
 
-            BigInteger p0 = BigInteger.Zero, q0 = BigInteger.One;
-            BigInteger p1 = BigInteger.One, q1 = BigInteger.Zero;
+            BigInteger p0 = BigInteger.Zero, q0 = BigInteger.One, p1 = BigInteger.One, q1 = BigInteger.Zero;
             BigInteger n = Numerator, d = Denominator;
-
             while (true)
             {
-                BigInteger a = BigInteger.DivRem(n, d, out BigInteger rem);
+                // a = n//d, floored as Python's //: n is negative on the first step for a negative Fraction, where
+                // truncation picks the wrong partial quotient. d > 0 throughout, so the remainder n-a*d is in [0, d).
+                BigInteger a = FloorDivRem(n, d, out BigInteger rem);
                 BigInteger q2 = q0 + a * q1;
-
                 if (q2 > maxDenominator)
                     break;
-
-                BigInteger tempP = p0;
+                BigInteger nextP1 = p0 + a * p1;
                 p0 = p1;
-                p1 = tempP + a * p1;
-
-                BigInteger tempQ = q0;
                 q0 = q1;
+                p1 = nextP1;
                 q1 = q2;
-
                 n = d;
                 d = rem;
             }
+            // k = (maxDenominator-q0)//q1. Here q0 <= maxDenominator and q1 >= 1 (the loop always runs once), so
+            // floored and truncating division agree; FloorDivRem only keeps the port's spelling of //.
+            BigInteger k = FloorDivRem(maxDenominator - q0, q1, out _);
 
-            BigInteger k = (maxDenominator - q0) / q1;
-            var bound1 = new Fraction(p0 + k * p1, q0 + k * q1);
-            var bound2 = new Fraction(p1, q1);
-
-            var diff1 = BigInteger.Abs(Numerator * bound1.Denominator - bound1.Numerator * Denominator) * bound2.Denominator;
-            var diff2 = BigInteger.Abs(Numerator * bound2.Denominator - bound2.Numerator * Denominator) * bound1.Denominator;
-
-            if (diff1 <= diff2)
-                return bound1;
-            return bound2;
+            // The distance between the candidates (p0+k*p1)/(q0+k*q1) and p1/q1 is 1/(q1*(q0+k*q1)), and the
+            // distance from p1/q1 to this is d/(q1*Denominator): compare 2*(q0+k*q1) with Denominator/d.
+            if (2 * d * (q0 + k * q1) <= Denominator)
+                return new Fraction(p1, q1);
+            return new Fraction(p0 + k * p1, q0 + k * q1);
         }
 
         // Arithmetic operators
