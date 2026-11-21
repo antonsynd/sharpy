@@ -413,15 +413,17 @@ def test_light_plan_with_full_stamp_is_accepted_with_a_note():
     )
 
 
-def test_full_plan_with_adequacy_only_stamp_notes_it_unless_promoted():
-    r = run(plan_text(stamp=ADEQ))
-    assert r.verdict == cpr.READY and any("Adequacy-only stamp" in n for n in r.notes)
-    r = run(
-        plan_text(
-            stamp=ADEQ, tier="full (a, promoted at /implement-plan: D9), from light"
-        )
-    )
-    assert not any("Adequacy-only stamp" in n for n in r.notes)
+def test_full_plan_with_adequacy_only_stamp_refuses_unless_promoted():
+    # owner, 2026-11-21 (D2): a full plan needs a full pass
+    for tier in (None, "full (c: the seam is under `Semantic/`)"):
+        r = run(plan_text(stamp=ADEQ, tier=tier))
+        assert verdicts(r) == [cpr.REFUSE]
+        assert "a full plan needs a full /verify-plan pass" in r.findings[0].message
+    # the 3eba57 shape: promoted in flight, CONVERGED, its Adequacy-only stamp still stands
+    promoted = "full (a, promoted at /implement-plan: D9), from light"
+    r = run(plan_text(stamp=ADEQ, tier=promoted, result="CONVERGED"))
+    assert r.verdict == cpr.READY, r.findings
+    assert r.header["Adequacy"] == "CLASS (converged)"
 
 
 # ── overrides ────────────────────────────────────────────────────────────────────────────────────

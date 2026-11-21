@@ -29,8 +29,10 @@ The decision, in step 2's order (every branch has a test in build_tools/tests/te
   `check_plan_refs.py <plan> --issues` runs in-process; a red report (its exit 1: a missing path, a
   line past end of file, an R-LW cap) → REFUSE. Lookup errors are a NOTE: they never made that
   report red.
-* full: no stamp, or the DRAFT marker → ASK "This plan has not been verified. …" (proceed or stop).
-  NEEDS REVISION → REFUSE.
+* full: no stamp, or the DRAFT marker → ASK "This plan has not been verified. …" (proceed or stop;
+  answered in chat, no plan record: owner, 2026-11-21). NEEDS REVISION → REFUSE. An Adequacy-only
+  stamp → REFUSE as malformed (a full plan needs a full pass), unless the Tier line says
+  `promoted at /implement-plan` (owner, 2026-11-21).
 * Adequacy (both tiers): CLASS or N/A proceed. CELL proceeds unless a plan input is a bug, ICE or
   regression issue; then PASS / PASS WITH CORRECTIONS asks step 2's cell question and CONVERGED asks
   "converged with CELL …" with the `### Deferred findings` rows. A cited `Override (cell)` record
@@ -46,7 +48,8 @@ The decision, in step 2's order (every branch has a test in build_tools/tests/te
 
 Which inputs make a bug-fix plan: the issue numbers on the `## Issues to Close` list items, except
 an item that says "stay open". An input is a bug, ICE or regression issue when GitHub gives it the
-`bug` label or any `lane:*` label (contract §10: every lane names a defect), or its title says `ICE`
+`bug` label or any `lane:*` label (contract §10: every lane names a defect; `lane:tooling` and
+`lane:message` count, owner 2026-11-21), or its title says `ICE`
 or "regression". No `## Issues to Close` section → ASK (which issues are the inputs?); a section with
 no issue number → no bug input.
 
@@ -73,7 +76,8 @@ printed ("relayed via app claude" or "no app") in the NOTE and the header line, 
 legacy record and answers nothing. Only the gates the plan hits are verified.
 
 What this does NOT judge: whether an `OWNER` comment was typed by the owner or posted by an agent
-with the owner's token (both read `OWNER`; the app is printed, not judged); a tier override or the charter row behind a Tier line; a light plan whose group should have
+with the owner's token (both read `OWNER`; relayed comments are accepted and labelled, owner
+2026-11-21: the app is printed, not judged); a tier override or the charter row behind a Tier line; a light plan whose group should have
 been full; an output or layout change sharing a gate beyond what the stamp's Scope line (Dimension 9)
 records; promotion in flight; the Implementation Summary header itself.
 
@@ -854,11 +858,15 @@ def decide(
         report.add(REFUSE, MSG_NEEDS_REVISION)
         return _finish(report, ci)
     if plan.tier == "full" and st.adequacy_only:
+        # owner, 2026-11-21 (D2): only a promotion in flight keeps a light pass on a full plan
         if not (plan.tier_text and "promoted at /implement-plan" in plan.tier_text):
-            report.notes.append(
-                "a full plan carries an Adequacy-only stamp without a promotion in flight on its Tier line; "
-                "step 2 accepts any `/verify-plan` stamp at the full tier"
+            report.add(
+                REFUSE,
+                "a malformed stamp: a full plan needs a full /verify-plan pass, and this one carries an "
+                "Adequacy-only stamp with no `promoted at /implement-plan` on its Tier line; re-run "
+                "/verify-plan",
             )
+            return _finish(report, ci)
     if plan.tier == "light" and st.result not in ("PASS", "CONVERGED"):
         report.add(
             REFUSE,
