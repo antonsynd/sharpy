@@ -742,3 +742,37 @@ def test_corpus_parses_and_known_rows_hold():
         assert (
             got["plan-3eba57.md"] == cpr.UNVERIFIED
         )  # CONVERGED + CELL: the inputs' labels are on GitHub
+
+
+def test_script_runs_the_sibling_check_plan_refs(tmp_path):
+    # `build_tools` is a namespace package: with another checkout on PYTHONPATH, an import by
+    # package name would run that checkout's check_plan_refs. A decoy proves which one runs.
+    import os
+    import subprocess
+    import sys
+
+    decoy = tmp_path / "decoy" / "build_tools"
+    decoy.mkdir(parents=True)
+    (decoy / "check_plan_refs.py").write_text(
+        'raise SystemExit("decoy check_plan_refs")\n'
+    )
+    plan = tmp_path / "plan-x.md"
+    plan.write_text(plan_text(stamp=ADEQ, tier="light"))
+    env = dict(os.environ, PYTHONPATH=str(tmp_path / "decoy"))
+    env.pop("CI", None)
+    proc = subprocess.run(
+        [
+            sys.executable,
+            str(REPO_ROOT / "build_tools/check_plan_ready.py"),
+            str(plan),
+            "--repo",
+            str(tmp_path),
+            "--offline",
+        ],
+        capture_output=True,
+        text=True,
+        env=env,
+    )
+    assert "decoy" not in proc.stdout + proc.stderr
+    assert "check_plan_refs:" in proc.stdout  # the sibling ran and printed its report
+    assert proc.returncode in (0, 1), proc.stdout + proc.stderr

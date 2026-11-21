@@ -82,6 +82,7 @@ from __future__ import annotations
 
 import argparse
 import contextlib
+import importlib.util
 import io
 import json
 import os
@@ -95,10 +96,19 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Callable, Dict, List, Optional, Sequence, Set, Tuple
 
-try:  # imported as build_tools.check_plan_ready (tests) or run as a script
-    from build_tools import check_plan_refs as cpr
-except ImportError:  # pragma: no cover - script mode
-    import check_plan_refs as cpr  # type: ignore
+
+def _load_sibling(name: str):
+    """The module file beside this one, by path: `build_tools` is a namespace package, so
+    `from build_tools import x` can resolve to another checkout on PYTHONPATH."""
+    spec = importlib.util.spec_from_file_location(
+        f"_check_plan_ready_{name}", Path(__file__).with_name(f"{name}.py")
+    )
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)  # type: ignore[union-attr]
+    return module
+
+
+cpr = _load_sibling("check_plan_refs")
 
 REPO = "antonsynd/sharpy"
 REPO_ROOT = Path(__file__).resolve().parent.parent
@@ -598,7 +608,11 @@ def is_bug_fix(plan: Plan, fetch: Callable) -> Tuple[Optional[bool], str, str]:
         except FetchError as e:
             return None, f"could not read #{n}'s labels ({e})", UNVERIFIED
         if d is None:
-            return None, f"#{n} does not exist: which issues are this plan's inputs?", ASK
+            return (
+                None,
+                f"#{n} does not exist: which issues are this plan's inputs?",
+                ASK,
+            )
         labels = [l.get("name", "") for l in d.get("labels", [])]
         hit = [l for l in labels if l == "bug" or l.startswith("lane:")]
         if hit or DEFECT_TITLE_RE.search(d.get("title") or ""):
