@@ -13,7 +13,7 @@ Extracts every concrete reference a plan makes and checks it against the checkou
 * ``SPYnnnn`` diagnostic codes — checked against ``DiagnosticCodes.cs`` (warning: a plan may propose one);
 * PascalCase **symbols** in backticks, prose only (fenced code is skipped) — checked against the
   identifier set of ``src/**/*.cs`` (warning: a plan may introduce one);
-* ``#NNNN`` **issue** numbers — with ``--issues``, ``gh issue view`` reports state (needs the network).
+* ``#NNNN`` **issue** numbers — with ``--issues``, ``gh api -X GET repos/…/issues/N`` reports state (needs the network).
 
 Usage::
 
@@ -57,6 +57,7 @@ SYMBOL_RE = re.compile(
     r"^[A-Z][a-z0-9]+(?:[A-Z][a-z0-9]*)+$"
 )  # ≥2 humps: TypeChecker, MergeFrom
 FENCE_RE = re.compile(r"```.*?```", re.S)
+GH_REPO = "antonsynd/sharpy"
 SKIP_DIRS = {".git", "bin", "obj", "node_modules", "__pycache__", ".claude"}
 
 
@@ -183,23 +184,17 @@ def check(plan_text: str, repo: Path, *, with_issues: bool = False) -> dict:
     if with_issues:
         for n in numbers:
             try:
+                # REST, not `gh issue view`: that is GraphQL, which cloud sessions refuse (HTTP 403)
                 out = subprocess.run(
-                    [
-                        "gh",
-                        "issue",
-                        "view",
-                        str(n),
-                        "--json",
-                        "state,title,stateReason",
-                    ],
+                    ["gh", "api", "-X", "GET", f"repos/{GH_REPO}/issues/{n}"],
                     capture_output=True,
                     text=True,
                     check=True,
                 ).stdout
                 d = json.loads(out)
                 result["issues"][str(n)] = {
-                    "state": d.get("state"),
-                    "reason": d.get("stateReason"),
+                    "state": (d.get("state") or "").upper() or None,
+                    "reason": (d.get("state_reason") or "").upper() or None,
                     "title": d.get("title"),
                 }
             except (OSError, subprocess.CalledProcessError, json.JSONDecodeError) as e:
