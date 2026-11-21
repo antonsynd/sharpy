@@ -20,7 +20,7 @@ def plan_text(
     stamp=FULL,
     *,
     date="2026-11-01",
-    result="PASS WITH CORRECTIONS",
+    result=None,
     adequacy="CLASS",
     scope="ONE-GROUP · Generator: existing",
     tier=None,
@@ -30,9 +30,11 @@ def plan_text(
     pre="",
 ):
     head = [pre] if pre else []
+    if result is None:  # the result each stamp kind writes by default
+        result = "PASS" if stamp == ADEQ else "PASS WITH CORRECTIONS"
     if stamp:
         head.append(stamp.format(date=date))
-        if result is not None:
+        if result != "-":  # "-": no result line
             head.append(f"<!-- Verification result: {result} -->")
         if adequacy is not None:
             head.append(f"<!-- Adequacy: {adequacy} -->")
@@ -158,7 +160,7 @@ def test_needs_revision_refuses(stamp, tier):
 def test_unreadable_result_refuses():
     r = run(plan_text(result="MAYBE"))
     assert r.verdict == cpr.REFUSE and "Verification result" in r.findings[0].message
-    assert run(plan_text(result=None)).verdict == cpr.REFUSE
+    assert run(plan_text(result="-")).verdict == cpr.REFUSE
 
 
 # ── PASS / PASS WITH CORRECTIONS × Adequacy ──────────────────────────────────────────────────────
@@ -405,7 +407,7 @@ def test_light_cell_and_scope_rules_are_the_full_tiers():
 
 
 def test_light_plan_with_full_stamp_is_accepted_with_a_note():
-    r = run(plan_text(tier="light"))
+    r = run(plan_text(tier="light", result="PASS"))
     assert r.verdict == cpr.READY and any(
         "full /verify-plan stamp" in n for n in r.notes
     )
@@ -424,16 +426,20 @@ def test_full_plan_with_adequacy_only_stamp_notes_it_unless_promoted():
 
 # ── overrides ────────────────────────────────────────────────────────────────────────────────────
 
-CITE = "https://github.com/antonsynd/sharpy/issues/2423#issuecomment-7050154806"
+CITE = "https://github.com/antonsynd/sharpy/issues/100#issuecomment-7050154806"
 COMMENT_PATH = "repos/antonsynd/sharpy/issues/comments/7050154806"
 
 
-def owner_comment(body, assoc="OWNER", issue=2423):
+def owner_comment(
+    body, assoc="OWNER", issue=100, created="2026-11-06T15:00:00Z", app=None
+):
     return {
         "author_association": assoc,
         "body": body,
         "user": {"login": "someone"},
         "issue_url": f"https://api.github.com/repos/antonsynd/sharpy/issues/{issue}",
+        "created_at": created,
+        "performed_via_github_app": {"slug": app} if app else None,
     }
 
 
@@ -498,7 +504,7 @@ def test_override_comment_on_another_issue_refuses():
         cell_plan(GOOD),
         fetch=fetch_with(owner_comment("implement it as a cell fix", issue=9)),
     )
-    assert verdicts(r) == [cpr.REFUSE] and "is not on #2423" in r.findings[0].message
+    assert verdicts(r) == [cpr.REFUSE] and "is not on #100" in r.findings[0].message
 
 
 def test_override_comment_missing_refuses():
@@ -507,7 +513,7 @@ def test_override_comment_missing_refuses():
 
 
 def test_override_in_another_repo_refuses():
-    rec = '- Override (cell): owner 2026-11-06 "x" — https://github.com/evil/sharpy/issues/1#issuecomment-5'
+    rec = '- Override (cell): owner 2026-11-06 "implement it knowingly" — https://github.com/evil/sharpy/issues/1#issuecomment-5'
     r = run(cell_plan(rec), fetch=BUG)
     assert (
         verdicts(r) == [cpr.REFUSE] and "not antonsynd/sharpy" in r.findings[0].message
@@ -515,7 +521,9 @@ def test_override_in_another_repo_refuses():
 
 
 def test_override_without_citation_refuses():
-    r = run(cell_plan('- Override (cell): owner 2026-11-06 "override"'), fetch=BUG)
+    r = run(
+        cell_plan('- Override (cell): owner 2026-11-06 "implement it knowingly"'), fetch=BUG
+    )
     assert (
         verdicts(r) == [cpr.REFUSE]
         and "cites no owner comment" in r.findings[0].message
@@ -551,9 +559,10 @@ def test_override_for_the_other_gate_does_not_answer():
 
 
 def test_scope_override_answers_multi_group():
-    rec = f'- **Override (scope):** owner 2026-09-28 "go ahead with both groups" — #2423 comment 7050154806'
+    rec = f'- **Override (scope):** owner 2026-09-28 "go ahead with both groups" — #100 comment 7050154806'
     text = plan_text(scope="MULTI-GROUP (override) · Generator: existing", extra=rec)
-    r = run(text, fetch=fetch_with(owner_comment("ok — go ahead with both groups")))
+    comment = owner_comment("ok — go ahead with both groups", created="2026-09-28T23:59:00Z")
+    r = run(text, fetch=fetch_with(comment))
     assert r.verdict == cpr.READY, r.findings
 
 
@@ -611,16 +620,22 @@ def test_comment_paths():
 
 
 def test_review_comment_parent_is_checked():
-    rec = '- Override (cell): owner 2026-11-06 "yes" — https://github.com/antonsynd/sharpy/pull/12#discussion_r34'
+    rec = '- Override (cell): owner 2026-11-06 "yes, implement it knowingly" — https://github.com/antonsynd/sharpy/pull/12#discussion_r34'
     c = {
         "author_association": "OWNER",
-        "body": "yes",
+        "body": "yes, implement it knowingly",
+        "created_at": "2026-11-06T10:00:00Z",
         "pull_request_url": "https://api.github.com/repos/antonsynd/sharpy/pulls/12",
     }
     fetch = Fetch(
         {
             "repos/antonsynd/sharpy/issues/100": issue(["bug"]),
             "repos/antonsynd/sharpy/pulls/comments/34": c,
+            # #12 is the pull request that holds the plan file (not an input, not named in the body)
+            "repos/antonsynd/sharpy/pulls/12/files?per_page=100&page=1": [
+                {"filename": "src/x.cs"},
+                {"filename": "docs/process/plans/plan-x.md"},
+            ],
         }
     )
     assert run(cell_plan(rec), fetch=fetch).verdict == cpr.READY
@@ -776,3 +791,176 @@ def test_script_runs_the_sibling_check_plan_refs(tmp_path):
     assert "decoy" not in proc.stdout + proc.stderr
     assert "check_plan_refs:" in proc.stdout  # the sibling ran and printed its report
     assert proc.returncode in (0, 1), proc.stdout + proc.stderr
+
+
+# ── fix round 1: trivial words, date, link, app, malformed light stamp, comments, tiers ─────────
+
+
+@pytest.mark.parametrize("words", ["**", "`", " ", "o", "ok", "override", "go ahead", "a b c"])
+def test_trivial_override_words_are_a_malformed_record(words):
+    fetch = fetch_with(owner_comment(f"{words} anything at all, a long comment"))
+    rec = f'- Override (cell): owner 2026-11-06 "{words}" — {CITE}'
+    r = run(cell_plan(rec), fetch=fetch)
+    assert verdicts(r) == [cpr.REFUSE] and "malformed record" in r.findings[0].message
+    assert COMMENT_PATH not in fetch.calls  # refused before any read
+
+
+def test_single_negated_word_fails_and_a_negated_phrase_is_not_judged():
+    # "override" inside "do not override" fails on length alone
+    rec = f'- Override (cell): owner 2026-11-06 "override" — {CITE}'
+    r = run(cell_plan(rec), fetch=fetch_with(owner_comment("do not override")))
+    assert r.verdict == cpr.REFUSE
+    # a 3-word phrase inside its negation verifies: the checker does not judge meaning (documented)
+    rec = f'- Override (cell): owner 2026-11-06 "implement it knowingly" — {CITE}'
+    r = run(cell_plan(rec), fetch=fetch_with(owner_comment("do not implement it knowingly")))
+    assert r.verdict == cpr.READY
+    assert "does not judge meaning" in cpr.verify_override.__doc__
+    assert "does not judge meaning" in cpr.__doc__
+
+
+@pytest.mark.parametrize(
+    "created, want",
+    [
+        ("2026-11-05T00:00:01Z", cpr.READY),
+        ("2026-11-06T23:59:59Z", cpr.READY),
+        ("2026-11-07T23:59:59Z", cpr.READY),
+        ("2026-11-04T23:59:59Z", cpr.REFUSE),
+        ("2026-11-08T00:00:00Z", cpr.REFUSE),
+        ("", cpr.REFUSE),
+    ],
+)
+def test_override_comment_date_is_the_record_date_within_a_day(created, want):
+    comment = owner_comment("implement it as a cell fix", created=created)
+    r = run(cell_plan(GOOD), fetch=fetch_with(comment))
+    assert r.verdict == want, r.findings
+
+
+def _unlinked(body, files):
+    rec = '- Override (cell): owner 2026-11-06 "implement it as a cell fix" — #2487 comment 7055038414'
+    comment = owner_comment(body, issue=2487)
+    table = {
+        "repos/antonsynd/sharpy/issues/100": issue(["bug"]),
+        "repos/antonsynd/sharpy/issues/comments/7055038414": comment,
+        "repos/antonsynd/sharpy/pulls/2487/files?per_page=100&page=1": files,
+    }
+    return run(cell_plan(rec), fetch=Fetch(table))
+
+
+def test_override_on_an_issue_unrelated_to_the_plan_refuses():
+    r = _unlinked("implement it as a cell fix", None)  # #2487: no input, no plan id, no PR
+    assert verdicts(r) == [cpr.REFUSE] and "not one of the plan's inputs" in r.findings[0].message
+
+
+def test_override_comment_naming_the_plan_id_is_linked():
+    r = _unlinked("plan-x: implement it as a cell fix", None)
+    assert r.verdict == cpr.READY, r.findings
+    assert _unlinked("plan-xy: implement it as a cell fix", None).verdict == cpr.REFUSE
+
+
+def test_override_on_the_pull_request_holding_the_plan_is_linked():
+    r = _unlinked("implement it as a cell fix", [{"filename": "docs/process/plans/plan-x.md"}])
+    assert r.verdict == cpr.READY, r.findings
+    r = _unlinked("implement it as a cell fix", [{"filename": "docs/process/plans/plan-y.md"}])
+    assert r.verdict == cpr.REFUSE
+
+
+def test_override_link_unreadable_is_unverified():
+    r = _unlinked("implement it as a cell fix", cpr.FetchError("offline"))
+    assert r.verdict == cpr.UNVERIFIED
+
+
+def test_reviewer_repro_drift_guard_note_no_longer_verifies():
+    # the review's live repro: Adequacy CELL, input #2765, `"**"` citing an unrelated note on #2487
+    text = plan_text(adequacy="CELL", issues="- #2765 — the input")
+    text += '\n## Revision log\n\n- Override (cell): owner 2026-11-21 "**" — #2487 comment 7055038414\n'
+    fetch = Fetch(
+        {
+            "repos/antonsynd/sharpy/issues/2765": issue(["bug"]),
+            "repos/antonsynd/sharpy/issues/comments/7055038414": owner_comment(
+                "**Drift guard** note", issue=2487, created="2026-11-21T09:00:00Z"
+            ),
+        }
+    )
+    assert run(text, fetch=fetch).verdict == cpr.REFUSE
+
+
+@pytest.mark.parametrize("app, want", [("claude", "relayed via app claude"), (None, "no app")])
+def test_override_app_is_printed_not_judged(app, want):
+    r = run(cell_plan(GOOD), fetch=fetch_with(owner_comment("implement it as a cell fix", app=app)))
+    assert r.verdict == cpr.READY
+    assert any(want in n for n in r.notes)
+    assert want in r.header["Override"]
+    assert want in cpr.render(r)
+
+
+@pytest.mark.parametrize("stamp, tier", [(ADEQ, "light"), (FULL, "light")])
+def test_light_plan_stamped_pass_with_corrections_is_malformed(stamp, tier):
+    r = run(plan_text(stamp=stamp, tier=tier, result="PASS WITH CORRECTIONS"))
+    assert verdicts(r) == [cpr.REFUSE] and "must read PASS or CONVERGED" in r.findings[0].message
+
+
+def test_full_plan_stamped_pass_with_corrections_is_ready():
+    assert run(plan_text(result="PASS WITH CORRECTIONS")).verdict == cpr.READY
+
+
+def test_scope_derivation_is_addressed_to_the_lead():
+    r = run(plan_text(date="2026-09-20", scope=None))
+    assert verdicts(r) == [cpr.ASK]
+    msg = r.findings[0].message
+    assert "the LEAD answers this" in msg and "One non-chore group → proceed" in msg
+
+
+def test_override_inside_an_html_comment_is_not_a_record():
+    text = cell_plan(f"<!-- a note\n{GOOD}\n-->")
+    assert cpr.parse_plan("p", text).overrides == []
+    one_line = cell_plan(f"<!-- {GOOD} -->")
+    assert cpr.parse_plan("p", one_line).overrides == []
+    # positive control: the same record outside the comment is read, and the stamps still are
+    plan = cpr.parse_plan("p", cell_plan(f"<!-- a note -->\n{GOOD}"))
+    assert [o.line for o in plan.overrides] and plan.stamp is not None
+    assert plan.stamp.adequacy == {"CELL"} and plan.stamp.result == "PASS WITH CORRECTIONS"
+
+
+def test_tier_after_an_open_comment_is_not_read():
+    text = plan_text(tier="full (c)").replace("- **Tier:** full (c)", "<!--\n- **Tier:** light\n-->\n- **Tier:** full (c)")
+    assert cpr.parse_plan("p", text).tier == "full"
+
+
+@pytest.mark.parametrize(
+    "line, want",
+    [
+        ("- **Tier:** **light** — from charter §3.8", "light"),
+        ("- Tier — light", "light"),
+        ("- Tier: _light_", "light"),
+        ("- **Tier:** `light`", "light"),
+        ("- **Tier**: light", "light"),
+    ],
+)
+def test_tier_spellings(line, want):
+    text = plan_text().replace("- **Override:** none", line + "\n- **Override:** none")
+    assert cpr.parse_plan("p", text).tier == want
+
+
+def test_scope_mentioning_an_unparsed_tier_refuses():
+    text = plan_text().replace("- **Override:** none", "- **Tier:** lite\n- **Override:** none")
+    assert cpr.parse_plan("p", text).tier == "unreadable"
+    r = run(text)
+    assert verdicts(r) == [cpr.REFUSE] and "mentions a tier" in r.findings[0].message
+    assert cpr.parse_plan("p", plan_text()).tier == "full"  # control: no mention, no Tier → full
+
+
+def test_draft_marker_with_needs_revision_refuses():
+    for tier in (None, "light"):
+        r = run(plan_text(pre=DRAFT, tier=tier, result="NEEDS REVISION"))
+        assert verdicts(r) == [cpr.REFUSE] and r.findings[0].message == cpr.MSG_NEEDS_REVISION
+
+
+def test_json_includes_the_refs_output(tmp_path, monkeypatch, capsys):
+    import json
+
+    monkeypatch.delenv("CI", raising=False)
+    p = tmp_path / "plan-x.md"
+    p.write_text(plan_text(stamp=ADEQ, tier="light"))
+    cpr.main([str(p), "--repo", str(tmp_path), "--offline", "--json"])
+    out = json.loads(capsys.readouterr().out)
+    assert "RESULT:" in out["refs_output"]
