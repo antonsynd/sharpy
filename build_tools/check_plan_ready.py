@@ -200,6 +200,8 @@ TIER_RE = re.compile(
 )
 # A label-shaped mention (`Tier:`, `**Tier:**`, `Tier —`), not prose ("two-tier", "the tier-1 seam").
 TIER_WORD_RE = re.compile(r"\btier\b[*_]*(?:\s*:|\s+[—–-])", re.IGNORECASE)
+# A list item that starts with the label (`- Tier = light`, `- **Tier (contract §12):** light`).
+TIER_ITEM_RE = re.compile(r"^\s{0,3}[-*+]\s+[*_]*tier(?![\w-])", re.IGNORECASE | re.MULTILINE)
 ISSUE_RE = re.compile(r"(?<![\w&/])#(\d{2,6})\b")
 LIST_ITEM_RE = re.compile(r"^\s{0,3}(?:[-*+]|\d+[.)])\s+")
 GROUP_ID_RE = re.compile(r"\bP\d+[a-z]*\b")
@@ -546,7 +548,7 @@ def parse_plan(path: str, text: str) -> Plan:
                 tier, tier_text = m.group(1).lower(), line.strip()
                 break
         else:
-            mention = next((l for _, l in scope_lines if TIER_WORD_RE.search(l)), None)
+            mention = next((l for _, l in scope_lines if TIER_WORD_RE.search(l) or TIER_ITEM_RE.search(l)), None)
             if mention is not None:  # a Tier the parser cannot read is never taken as `full`
                 tier, tier_text = "unreadable", mention.strip()
     title = next((l[2:].strip() for l in lines if l.startswith("# ")), "")

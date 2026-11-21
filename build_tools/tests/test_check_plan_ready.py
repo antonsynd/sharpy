@@ -1066,3 +1066,33 @@ def test_inputs_question_is_the_leads():
     r = run(plan_text(date="2026-08-24", adequacy=None, issues=None), fetch=Fetch())
     assert "the lead answers" in r.findings[0].message and "Implementation Summary" in r.findings[0].message
     assert "the lead records the inputs in the Implementation Summary" in cpr.__doc__
+
+
+# ── narrow check of 8652b0fd9: list items that start with the Tier label ────────────────────────
+
+
+@pytest.mark.parametrize(
+    "line",
+    ["- Tier = light", "- **Tier (contract §12):** light", "- Tier is light", "- **Tier** light — charter"],
+)
+def test_tier_list_item_the_parser_cannot_read_refuses(line):
+    text = plan_text().replace("- **Override:** none", line + "\n- **Override:** none")
+    plan = cpr.parse_plan("p", text)
+    assert plan.tier == "unreadable" and plan.tier_text == line
+    # the reviewer's case: a full stamp and a red refs report must not read READY
+    r = run(text, refs=lambda p: (1, "RESULT: FAIL\n"))
+    assert verdicts(r) == [cpr.REFUSE]
+
+
+@pytest.mark.parametrize(
+    "line", ["- Two-tier rollout", "- the tier-1 seam stays", "- tier-1 seams stay", "The tier is the owner's call."]
+)
+def test_tier_prose_list_items_still_read_full(line):
+    text = plan_text().replace("- **Override:** none", line + "\n- **Override:** none")
+    assert cpr.parse_plan("p", text).tier == "full"
+
+
+@pytest.mark.parametrize("line", ["- **Tier:** light", "- Tier — light", "* Tier: light (no seam)"])
+def test_tier_list_item_with_a_readable_value_reads_it(line):
+    text = plan_text().replace("- **Override:** none", line + "\n- **Override:** none")
+    assert cpr.parse_plan("p", text).tier == "light"
