@@ -7,14 +7,17 @@
 # "no code path changed" (a base other than `dev`; a Dependabot PR that changes only package versions in manifests), and what it does not judge (that the review was
 # independent, that the fixes were read, the counts, an empty-diff history rewrite).
 #
-# ADVISORY as shipped: the check `review-line` is not in the `dev` ruleset's required set; making it
-# required is the owner's ruleset change. A draft PR's review line is judged but never failed (a
-# warning), so work in progress stays green; marking it ready re-runs the check. The sharpy-issues
-# step (build_tools/issue_block.py) fails a malformed block on drafts too.
+# REQUIRED: the owner added the check `review-line` to the `dev` ruleset's required set (ruleset
+# 26819943; the owner's "done", 2026-11-20 19:34Z, matching its updated_at). A body edit re-runs it:
+# merge only once that run has completed (in the seconds before it is queued, the previous run still
+# stands). Being required, a malformed sharpy-issues block also blocks the merge. A draft PR's
+# review line is judged but never failed (a warning), so work in progress stays green; marking it
+# ready re-runs the check. The sharpy-issues step (build_tools/issue_block.py) fails a malformed
+# block on drafts too.
 #
 # Evidence, not a control: a pull_request run uses the PR's OWN copy of this workflow and of the
-# script, so a PR can change the check it is judged by. Even if made required, it would only show
-# what the line says against history; a reviewer of the PR still has to read changes to these two
+# script, so a PR can change the check it is judged by. Though required, it only shows what the
+# line says against history; a reviewer of the PR still has to read changes to these two
 # files.
 #
 # Its own workflow, not a job in commit-subjects.yml: the body changes without a push, so this runs on
