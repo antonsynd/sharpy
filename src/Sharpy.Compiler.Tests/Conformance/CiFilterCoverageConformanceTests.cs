@@ -107,7 +107,7 @@ public partial class CiFilterCoverageConformanceTests
     /// a required oracle on the runner image's python is a verdict at an unpinned minor. Two judged sets, one rule:
     /// <list type="bullet">
     /// <item>a Compiler.Tests step is judged when its filter selects a class reaching the oracle
-    /// (<see cref="ScanPythonOracleClasses"/>, this assembly's call graph). The three sweep classes are pinned, so a scan
+    /// (<see cref="ScanPythonOracleClasses"/>, this assembly's call graph). The four sweep classes are pinned, so a scan
     /// that misses a direct caller is red, and so are two classes it must not name: one reads a repo file through
     /// <see cref="PythonInterpreter"/> and one calls the other gate, <c>TestPreconditions.RequireOrSkip</c>;</item>
     /// <item>another test project's assembly is not loaded here, so it is judged per project: when its sources call a
@@ -127,6 +127,7 @@ public partial class CiFilterCoverageConformanceTests
         Assert.Contains("Sharpy.Compiler.Tests.Properties.Differential.DifferentialExecutionTests", oracleClasses);
         Assert.Contains("Sharpy.Compiler.Tests.Properties.Differential.FormatSpecDifferentialTests", oracleClasses);
         Assert.Contains("Sharpy.Compiler.Tests.Conformance.NameResolutionDifferentialTests", oracleClasses);
+        Assert.Contains("Sharpy.Compiler.Tests.Conformance.ScopeMeaningDifferentialTests", oracleClasses);
         Assert.DoesNotContain("Sharpy.Compiler.Tests.Conformance.PythonOracleSkipCensusTests", oracleClasses);
         Assert.DoesNotContain("Sharpy.Compiler.Tests.RuntimeClosureResolverTests", oracleClasses);
 
@@ -353,9 +354,10 @@ public partial class CiFilterCoverageConformanceTests
         return (steps, ReflectTests());
     }
 
-    /// <summary>The seven sweeps <c>COMPILER_MAIN_FILTER</c> excludes today (measured). A literal, so that a shrinking
-    /// universe is red rather than a smaller check.</summary>
-    private const int MinimumSweeps = 7;
+    /// <summary>The eight sweeps <c>COMPILER_MAIN_FILTER</c> excludes today (measured; the eighth is the scope-meaning
+    /// differential, whose one silent test must not run under a shard's hang limit: #2423 comment 7052893050, item 27). A
+    /// literal, so that a shrinking universe is red rather than a smaller check.</summary>
+    private const int MinimumSweeps = 8;
 
     /// <summary>Just below the 84 test methods measured when this fact was written, exemptions aside. A literal, so that
     /// sweep names matching nothing are red.</summary>
@@ -368,9 +370,9 @@ public partial class CiFilterCoverageConformanceTests
     /// written. A literal, so that a step list this fact stopped judging is red.</summary>
     private const int MinimumJudgedSteps = 10;
 
-    /// <summary>The five steps of <c>sweeps-quick</c> carry a step-level <c>if:</c> today (measured). A literal, so that a
+    /// <summary>The six steps of <c>sweeps-quick</c> carry a step-level <c>if:</c> today (measured). A literal, so that a
     /// parser reading no <c>if:</c> is red.</summary>
-    private const int MinimumConditionedSteps = 5;
+    private const int MinimumConditionedSteps = 6;
 
     /// <summary>The closed set of <c>if:</c> a judged step or job may carry: the one spelling on them today. It runs the
     /// step whenever the job is not cancelled and its build output unpacked, so an earlier sweep's red does not skip it.

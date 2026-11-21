@@ -10,7 +10,8 @@
 #                      ├─ lsp (matrix 1..N)  LSP tests, sharded by namespace and sweep twin
 #                      ├─ compiler (1..9)    the pre-#2178 "Test Compiler" step, sharded by namespace/class
 #                      ├─ sweep (matrix 2)   one job per long GapDiscovery sweep
-#                      ├─ sweeps-quick       the five short GapDiscovery sweeps, one step each
+#                      ├─ sweeps-quick       four short GapDiscovery sweeps and the two name-resolution
+#                      │                     differentials (P77a, P78's stage 0), one step each
 #                      ├─ stdlib-spy-gates   .spy native compile + generated-C# staleness gates
 #                      └─ shard-partition    proves each suite's shards partition its main filter
 #
@@ -42,13 +43,19 @@
 # over the 20 mainline push runs before it (42372810738 back to 40623113848; for `compiler`, 2x
 # the ~11 min projected for the class-split shard 6 at first, and since #2690 the 40 given at the
 # end of this paragraph), never under 5, in place of the 6-hour
-# default; every test run but one (below) has `--blame-hang-timeout 10m`, so a test silent for 10 min aborts the
+# default; every test run but two (below) has `--blame-hang-timeout 10m`, so a test silent for 10 min aborts the
 # run red ("The active test run was aborted") long before the job limit. The longest single test,
 # NameResolutionDifferential_Sweep, took 372 s in 42372810738; with P77 (#2742) it took 10 m 06 s
 # and 10 m 29 s (runs 44347230877, 44370550669; dev 6 m 25 s to 8 m 13 s, its last three runs),
 # so its step alone has `--blame-hang-timeout 22m` and `sweeps-quick` 40, 2x, by the owner's
 # ruling of 2026-11-18 ("raise then shard after to claw back"; sharding it is #2458's). No dump is taken
 # (`--blame-hang-dump-type none`): a full one is ~700 MB and nothing uploads it.
+# The second such test is ScopeMeaning_Sweep (P78's stage 0, PR #2767): one silent test of 8 m 24 s
+# in Compiler shard 1 under the 10 m limit (run 44825279604, where that shard's job took 22 m 48 s
+# against its 40). By the owner's ruling of 2026-11-20 (#2423 comment 7052893050, item 27) it runs
+# in `sweeps-quick` with `--blame-hang-timeout 18m` (2x is 16 m 48 s), and that job's limit is 60:
+# 2x its slowest run with P77 (19 m 40 s) plus this step, taken as 9 m 15 s (the sweep and the
+# class's other facts; not yet measured as a step, so the first run with it re-measures both).
 # Coverage-on runs (COVERAGE_ON below) carry their own limit, 2x their coverage-on duration: the
 # covered jobs' `timeout-minutes` read the same predicate (`test-fast` 20/15, `lsp` 30/20), set
 # from local measurement (#2512: Compiler shard 3 +102%); the first coverage-on push re-measures
@@ -146,7 +153,10 @@ env:
   # repetition) and its controls, which must keep running in the shards — a bare
   # `FullyQualifiedName!~InProcessIsolation` would leave them selected by no step
   # (CiFilterCoverageConformanceTests).
-  COMPILER_MAIN_FILTER: "Category!=Benchmark&FullyQualifiedName!~InteropConformance&FullyQualifiedName!~MetamorphicCorpus&FullyQualifiedName!~DifferentialExecution&FullyQualifiedName!~FormatSpecDifferential&FullyQualifiedName!~FormatterEmitInvariance&FullyQualifiedName!~NameResolutionDifferential&(Category!=GapDiscovery|FullyQualifiedName!~InProcessIsolation)"
+  # The scope-meaning differential (P78's stage 0) is excluded with its sibling, the name-resolution
+  # differential: its sweep is one test that stays silent for most of a shard's 10 m hang limit
+  # (see "Hang limits" above), so it has a step and a limit of its own in `sweeps-quick`.
+  COMPILER_MAIN_FILTER: "Category!=Benchmark&FullyQualifiedName!~InteropConformance&FullyQualifiedName!~MetamorphicCorpus&FullyQualifiedName!~DifferentialExecution&FullyQualifiedName!~FormatSpecDifferential&FullyQualifiedName!~FormatterEmitInvariance&FullyQualifiedName!~NameResolutionDifferential&FullyQualifiedName!~ScopeMeaningDifferential&(Category!=GapDiscovery|FullyQualifiedName!~InProcessIsolation)"
   # Compiler shard buckets (#2178). Shard n runs COMPILER_MAIN_FILTER&COMPILER_SHARD_<n>.
   # PARTITION INVARIANT: shards 1–6, 8 and 9 are positive namespace or class buckets (shard 5
   # excludes the buckets of shards 4, 6 and 8 by negation); shard 7 is "everything else"
@@ -627,7 +637,7 @@ jobs:
         if-no-files-found: warn
 
   sweep:
-    # The two long GapDiscovery sweeps (~5 min each), one job apiece; the five others share
+    # The two long GapDiscovery sweeps (~5 min each), one job apiece; the six others share
     # `sweeps-quick`. Every sweep is excluded from the Compiler shards by name (COMPILER_MAIN_FILTER).
     name: Sweep (${{ matrix.name }})
     needs: build
@@ -703,11 +713,14 @@ jobs:
     # on CI this job took 12 m 16 s, of which that step 7 m 00 s, @ 8c0602b35, run 42332177803,
     # measured), one step each in one job. Each still writes its own sweep-<name>.trx, and each
     # reports even if an earlier one failed. With P77 (#2742) the job took 19 m 40 s and 17 m 17 s
-    # (runs 44347230877, 44370550669), so its limit is 40, 2x (#2458; owner, 2026-11-18).
+    # (runs 44347230877, 44370550669), so its limit was 40, 2x (#2458; owner, 2026-11-18). With the
+    # scope-meaning differential's step (P78's stage 0; owner, 2026-11-20, #2423 comment 7052893050
+    # item 27) the limit is 60: 2x of 19 m 40 s plus that step, taken as 9 m 15 s from the 8 m 24 s
+    # its sweep took in Compiler shard 1 (run 44825279604). The job's name is unchanged.
     name: Sweeps (interop, differential-execution, format-spec, formatter-emit, name-resolution)
     needs: build
     runs-on: ubuntu-latest
-    timeout-minutes: 40
+    timeout-minutes: 60
     env:
       # The python oracles below FAIL instead of skipping when no Python 3.12+ interpreter is found:
       # a skipped sweep guards nothing and the job's other facts would keep it green. Job level, so
@@ -801,6 +814,19 @@ jobs:
       # ci-summary's zero-test check green.
       if: ${{ !cancelled() && steps.unpack.outcome == 'success' }}
       run: dotnet test src/Sharpy.Compiler.Tests --no-build --verbosity normal --filter "Category=GapDiscovery&FullyQualifiedName~NameResolutionDifferential" --logger "trx;LogFileName=sweep-name-resolution-differential.trx" --results-directory TestResults --blame-hang-timeout 22m --blame-hang-dump-type none
+    - name: Sweep scope-meaning-differential
+      # Scope-meaning differential sweep (P78's stage 0, plan-777361; #2423, #2432). The cells of
+      # rules N1, N2, N4 and N7 the name-resolution pool has no program for, their verdicts read
+      # from the same rule table (Conformance/name-resolution-rules.txt): Sharpy `run` against the
+      # table and, where python3 runs the same program, against python3. Writes
+      # .claude/tmp/scope-meaning-differential-cells.jsonl and ratchets the reviewed allowlist
+      # (src/Sharpy.Compiler.Tests/Conformance/scope-meaning-differential-allowlist.txt). The step
+      # runs the class's facts with its sweep, as the step above does. Excluded from the Compiler
+      # shards by name (COMPILER_MAIN_FILTER) so it runs exactly once. Its sweep is one test that
+      # prints nothing for 8 m 24 s on CI (run 44825279604, in Compiler shard 1), so the hang limit
+      # is 18m, 2x (see "Hang limits" at the top). It FAILS without a suitable python3.
+      if: ${{ !cancelled() && steps.unpack.outcome == 'success' }}
+      run: dotnet test src/Sharpy.Compiler.Tests --no-build --verbosity normal --filter "Category=GapDiscovery&FullyQualifiedName~ScopeMeaningDifferential" --logger "trx;LogFileName=sweep-scope-meaning-differential.trx" --results-directory TestResults --blame-hang-timeout 18m --blame-hang-dump-type none
     - name: Sweep formatter-emit-invariance
       # Formatter emit-invariance sweep (#2062, #2068). Every executing single-file fixture
       # P: the Roslyn-normalised C# of Format(P) equals P's with every #line directive line
@@ -1082,7 +1108,7 @@ jobs:
             return sorted(int(k[len(prefix):]) for k in os.environ if k.startswith(prefix))
         sweeps = ["interop-conformance", "metamorphic-corpus", "differential-execution",
                   "format-spec-differential", "formatter-emit-invariance", "in-process-isolation",
-                  "name-resolution-differential"]
+                  "name-resolution-differential", "scope-meaning-differential"]
         expected = (["cli", "core", "stdlib", "windows"] + [f"lsp-shard-{n}" for n in shards("LSP_SHARD_")]
                     + [f"compiler-shard-{n}" for n in shards("COMPILER_SHARD_")] + [f"sweep-{s}" for s in sweeps])
         if os.environ.get("CODE") == "false":

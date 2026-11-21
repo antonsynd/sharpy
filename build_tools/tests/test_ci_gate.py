@@ -553,6 +553,7 @@ class TestCiSummaryContract:
         "formatter-emit-invariance",
         "in-process-isolation",
         "name-resolution-differential",
+        "scope-meaning-differential",
     ]
 
     def summarize(
@@ -598,20 +599,20 @@ class TestCiSummaryContract:
     def test_counts_every_trx_once_and_leave_out_windows(self, tmp_path: Path) -> None:
         output = self.summarize(tmp_path)
         assert output.returncode == 0, output.stderr
-        # 9+20+30+40+50 passed, plus 7 sweeps. Windows' 14 re-run tests the shards already count,
+        # 9+20+30+40+50 passed, plus 8 sweeps. Windows' 14 re-run tests the shards already count,
         # and the two per-suite "sum of shards" rows must not count anything a second time.
-        assert "GATE-COUNTS passed=156 failed=0 skipped=1" in output.stdout
+        assert "GATE-COUNTS passed=157 failed=0 skipped=1" in output.stdout
 
     def test_failed_names_are_printed(self, tmp_path: Path) -> None:
         output = self.summarize(tmp_path, failed=["Ns.Class.Method"])
-        assert "GATE-COUNTS passed=155 failed=1 skipped=1" in output.stdout
+        assert "GATE-COUNTS passed=156 failed=1 skipped=1" in output.stdout
         assert "GATE-FAILED Ns.Class.Method" in output.stdout
 
     def test_a_windows_failure_is_labelled_because_the_total_omits_it(
         self, tmp_path: Path
     ) -> None:
         output = self.summarize(tmp_path, windows_failed=["Win.Class.Method"])
-        assert "GATE-COUNTS passed=156 failed=0 skipped=1" in output.stdout
+        assert "GATE-COUNTS passed=157 failed=0 skipped=1" in output.stdout
         assert "GATE-FAILED [windows] Win.Class.Method" in output.stdout
 
     def test_only_a_readme_only_run_states_its_scope(self, tmp_path: Path) -> None:
@@ -660,7 +661,7 @@ class TestCiSummaryContract:
         )
         result = rig.gate()
         assert result.returncode == 1
-        assert f"CI GATE RED: 155/1/1 @ {SHA[:9]}" in result.stdout
+        assert f"CI GATE RED: 156/1/1 @ {SHA[:9]}" in result.stdout
         failed = [
             line for line in result.stdout.splitlines() if line.startswith("FAILED ")
         ]
