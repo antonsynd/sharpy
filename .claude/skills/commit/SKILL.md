@@ -23,8 +23,7 @@ Run these in parallel:
 ### 2. Stage files
 
 If there are unstaged or untracked changes:
-- Stage specific files by explicit per-file pathspec — **never** use `git add -A` or `git add .`
-- The working tree may be shared with other agents: `git add <file>` also stages a peer's uncommitted hunks in that file. Check `git diff --cached --stat` before committing; if a file mixes your work with a peer's, ask before staging it. Never `git checkout`/`restore`/`stash`/`reset`/`clean` to tidy the tree.
+- Stage per-file pathspecs (`.claude/hooks/guard-shared-tree.sh` denies `-A`, `.`, `-u`). `git add <file>` also stages a peer's uncommitted hunks in that file: check `git diff --cached --stat` before committing; if a file mixes your work with a peer's, ask before staging it. Never tidy the tree (contract §9).
 - Do **not** stage files that likely contain secrets (`.env`, `credentials.json`, etc.) — warn the user if such files are present
 - If only some files are relevant (e.g., mix of unrelated changes), ask the user which to include
 

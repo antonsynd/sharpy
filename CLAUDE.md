@@ -31,8 +31,8 @@ src/Sharpy.Cli/bin/Debug/net10.0/sharpyc project x.spyproj
 
 ## Operational Contracts
 
-- **Serialized dotnet:** never call `dotnet build`/`test`/`run` directly; use `.claude/scripts/dotnet-serialized` (same args, output, exit code), enforced by a PreToolUse hook.
-- **Parallel agents share one working tree.** Tell agents *never run `git checkout` / `restore` / `clean` / `stash` / `reset` / `rm` on repo paths*. Commit in small slices; re-check `git diff --stat` after each wave.
+- **Serialized dotnet:** `dotnet` only via `.claude/scripts/dotnet-serialized` (same args, output, exit code; hook-enforced).
+- **Parallel agents share one working tree:** contract §9; its block goes in every brief (hook-enforced, as are its git/`rm` bans in the main worktree). Commit in small slices; re-check `git diff --stat` after each wave.
 - **Test logs:** each wrapper call tees to its own `.claude/tmp/dotnet-serialized-*.log` and first prints `dotnet-serialized: log -> <path>`. Grep your own printed path (`-latest.path` may be a peer's) instead of re-running.
 
 ## Critical Rules
@@ -102,4 +102,4 @@ Report `passed/failed/skipped @ sha (measured)`; a red needs a control run at th
 
 ## Git & Release
 
-Work on `claude/<lane>` cut from `origin/dev`; land it by PR into `dev`, merged on green by its opening session (never over a red, nor before a required independent review: Process item 6). Plan stages: `docs/process/plans/<id>.md` commits and a `full` generator's stage 0 (§11); `full`: one plan PR, `light`: the implementation PR. A ruled `band` bug (or no charter row, no §12 letter) with a contained fix needs no plan: a PR with a generated or differential test and its mutation record. Implementation and no-plan PRs list issues closed and filed. `mainline` takes only the owner's merge of `dev`, after the bump lane. Force-push only with `--force-with-lease --force-if-includes`, and only a `claude/*` branch this session created, to rewrite its own unmerged commits (an over-long subject); never `dev`, `mainline` or a branch holding another session's commits. Say so on the PR; its review line stays current only if `git diff <old> <new>` is empty. [Process](docs/process/README.md).
+Work on `claude/<lane>` cut from `origin/dev`; land it by PR into `dev`, merged on green by its opening session (never over a red, nor before a required independent review: Process item 6). Plan stages: `docs/process/plans/<id>.md` commits and a `full` generator's stage 0 (§11); `full`: one plan PR, `light`: the implementation PR. A ruled `band` bug (or no charter row, no §12 letter) with a contained fix needs no plan: a PR with a generated or differential test and its mutation record. Implementation and no-plan PRs list issues closed and filed. `mainline` takes only the owner's merge of `dev`, after the bump lane. Force-push (flags, `claude/*` only: hook-enforced) only a branch this session created, to rewrite its own unmerged commits (an over-long subject), never one holding another session's commits. Say so on the PR; its review line stays current only if `git diff <old> <new>` is empty. [Process](docs/process/README.md).

@@ -139,7 +139,7 @@ Example:
 ```
 Task tool:
   subagent_type: test-expert
-  prompt: Create a file-based integration test for [feature]. The .spy source is: ... The expected error is: ...
+  prompt: Create a file-based integration test for [feature]. The .spy source is: ... The expected error is: ... + the contract §9 block verbatim (hook-enforced)
 ```
 
 ## Writing Temporary Files

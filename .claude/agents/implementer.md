@@ -47,7 +47,7 @@ All `dotnet` commands go through `.claude/scripts/dotnet-serialized` (requires `
 .claude/scripts/dotnet-serialized build sharpy.sln                                      # Build all
 .claude/scripts/dotnet-serialized test --filter "Category!=Benchmark" --logger "console;verbosity=normal"  # LOCAL whole-solution gate, the fallback to /ci-gate (the logger keeps the stall watchdog fed, #2257)
 .claude/scripts/dotnet-serialized test --filter "FullyQualifiedName~Parser" --no-build  # Edit loop
-dotnet format whitespace                 # Format code (auto-formatted on save by Claude hook)
+.claude/scripts/dotnet-serialized format whitespace  # Format code, or /format (the save hook is best-effort)
 python3 -c "..."                         # Verify Python behavior
 .claude/scripts/dotnet-serialized run --project src/Sharpy.Cli -- emit csharp file.spy  # Debug codegen
 .claude/scripts/dotnet-serialized run --project src/Sharpy.Cli -- emit ast file.spy     # Debug parser

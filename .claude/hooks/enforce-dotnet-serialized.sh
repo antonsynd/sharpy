@@ -4,21 +4,108 @@
 # CLAUDE.md "Serialized dotnet"). Every such invocation must go through
 # .claude/scripts/dotnet-serialized (exclusive flock lock).
 #
-# Verbs covered: build, test, run (builds the project first — /spy-run, /spy-emit, /quick-check,
-# /lsp-hover, /benchmark), format (loads the whole solution workspace), pack, publish, msbuild,
-# clean (deletes bin/obj under a concurrent build), stryker (builds + tests repeatedly).
-# Not covered: `dotnet watch` (/playground, long-lived by design), `dotnet --version`, `dotnet tool`.
-# A script that calls dotnet internally (`bash build_tools/regenerate_spy_stdlib.sh`) is not seen
-# by this hook — those scripts take SHARPYC=<built sharpyc> to stay off the lock.
+# Verbs covered: build, test, vstest, run (builds the project first — /spy-run, /spy-emit,
+# /quick-check, /lsp-hover, /benchmark), format (loads the whole solution workspace), pack,
+# publish, msbuild, clean (deletes bin/obj under a concurrent build), stryker (builds + tests
+# repeatedly). Not covered: `dotnet watch` (/playground, long-lived by design), `dotnet --version`,
+# `dotnet tool`, `dotnet <app>.dll`.
 #
-# Hook input is JSON on stdin; the command is tool_input.command.
+# Each simple command is judged on its own (.claude/hooks/shell_commands.py splits lists, pipes,
+# subshells, `$(...)`, `bash -c '...'`, a shell's here-string or here-document script, `eval`,
+# VAR=v, `$X` naming the program (`D=dotnet; $D test`), the launchers in its PREFIXES — env,
+# sudo, time, timeout, nice, ionice, taskset, chrt, flock, strace, watch, parallel, xargs, setsid,
+# nohup, stdbuf — and `find -exec`): it is
+# blocked when the program it runs is `dotnet` by any path (`/root/.dotnet/dotnet build`) and its
+# first non-option argument is a covered verb. The wrapper is a different program, so it passes,
+# and a raw call beside it in the same command (`echo dotnet-serialized; dotnet test`) is blocked.
+# `dotnet build` as an argument (`grep "dotnet build" docs/`, `echo dotnet test`) or in a
+# here-document fed to a non-shell (`cat > notes.md <<EOF`) is not a call.
+#
+# PATTERN-CHECKED instead of walked (a whole-string pattern for a raw dotnet verb blocks it):
+# unparseable text, unless `bash -n` refuses it too (bash will not run it); and a script the text
+# runs but does not show: `eval "$X"`, `bash -c "$X"`, `$(which dotnet) build`, `... | bash`,
+# `sh -s`, `bash < file`, `bash <(...)`, and a script file (`bash x.sh`, `sh x.sh`, `source x.sh`)
+# the text writes (a `>`/`>>`/`tee` target, a `cp`/`mv`/`install` destination) or that does not
+# exist when the hook runs, so a script written and run in the same text is blocked. Out of
+# scope: an existing script the text does not write (`. .venv/sharpy-env.sh`, `bash
+# build_tools/regenerate_spy_stdlib.sh`; those scripts take SHARPYC=<built sharpyc> to stay off
+# the lock), a script run by its own path (`./x.sh`), an alias or function, a python/node
+# subprocess, a launcher outside PREFIXES (ssh, su -c, script -c, docker exec, make, npm run), a
+# program named by ANSI-C escapes (`$'\x64otnet' test`).
+#
+# FAILS CLOSED when it cannot read the input or run: unreadable input (not JSON, no string
+# command) is blocked; an internal error applies the whole-string pattern (a superset of the old
+# grep's); a python3 that fails to start or dies is blocked by the shell wrapper (so with no
+# python3 every Bash command is blocked). The input is read from stdin by python (no size
+# limit). It blocks everything the grep hook it replaced blocked, except a dotnet verb that is
+# only an argument (`echo dotnet test`, `grep "dotnet build"`, a commit message) and the
+# out-of-scope launchers and subprocesses above.
+#
+# Hook input is JSON on stdin; the command is tool_input.command, run in the input's cwd (the
+# hook process's own directory only when the input has none; a cwd that does not exist is
+# unknown).
 # Falsified by .claude/hooks/test-hooks.sh.
-input=$(cat)
-cmd=$(printf '%s' "$input" | python3 -c "import json,sys; print(json.load(sys.stdin).get('tool_input',{}).get('command',''))" 2>/dev/null)
+read -r -d '' PROG <<'PY'
+import json, os, re, sys
+sys.dont_write_bytecode = True
 
-if printf '%s' "$cmd" | grep -qE '(^|[;&|[:space:]("])dotnet[[:space:]]+(build|test|run|format|pack|publish|msbuild|clean|stryker)([[:space:]]|$|")' \
-   && ! printf '%s' "$cmd" | grep -q 'dotnet-serialized'; then
-  echo 'BLOCKED: raw `dotnet build|test|run|format|pack|publish|msbuild|clean|stryker` is forbidden (parallel runs OOM the machine). Use the drop-in wrapper instead — same args, same output, same exit code: .claude/scripts/dotnet-serialized test --filter "FullyQualifiedName~Lexer" --no-build   (lock-free alternative for probes: src/Sharpy.Cli/bin/Debug/net10.0/sharpyc run file.spy)' >&2
-  exit 2
-fi
-exit 0
+VERBS = {"build", "test", "vstest", "run", "format", "pack", "publish", "msbuild", "clean", "stryker"}
+RAW = re.compile(r"(^|[\s;&|(\"'`])(\S*/)?dotnet(\.exe)?[\"')`]*\s+(-\S+\s+)*(" + "|".join(VERBS)
+                 + r")\b")
+
+def block(verb, why=""):
+    sys.stderr.write(
+        "BLOCKED by .claude/hooks/enforce-dotnet-serialized.sh: " + why + "raw `dotnet " + verb
+        + "` (any of build|test|vstest|run|format|pack|publish|msbuild|clean|stryker) is "
+        "forbidden: parallel runs OOM the machine. Use the drop-in wrapper instead, same args, "
+        "same output, same exit code: .claude/scripts/dotnet-serialized test --filter "
+        "\"FullyQualifiedName~Lexer\" --no-build   (lock-free alternative for probes: "
+        "src/Sharpy.Cli/bin/Debug/net10.0/sharpyc run file.spy)\n")
+    sys.exit(2)
+
+def by_pattern(why):
+    m = RAW.search(cmd)
+    if m:
+        block(m.group(5), why)
+
+try:
+    data = json.loads(sys.stdin.buffer.read())
+    cmd = data["tool_input"]["command"]
+    # The command runs in the input's cwd, not the hook process's: relative script paths and
+    # `cd` are read against it. A cwd that does not exist is unknown (relative paths unresolved).
+    cwd = data.get("cwd") or os.getcwd()
+    assert isinstance(cmd, str) and isinstance(cwd, str)
+    cwd = cwd if os.path.isdir(cwd) else None
+except Exception as e:
+    sys.stderr.write("BLOCKED by .claude/hooks/enforce-dotnet-serialized.sh: cannot read the hook "
+                     "input (%s: %s); the hook fails closed.\n" % (type(e).__name__, e))
+    sys.exit(2)
+
+def visit(argv, *_):
+    if os.path.basename(argv[0]) not in ("dotnet", "dotnet.exe"):
+        return
+    verb = next((a for a in argv[1:] if not a.startswith("-")), "")
+    if verb in VERBS:
+        block(verb)
+
+try:
+    sys.path.insert(0, os.environ["HOOKS_DIR"])
+    import shell_commands as sc
+    try:
+        sc.walk(cmd, cwd, visit,
+                opaque=lambda cwd, what: by_pattern("a script the hook cannot read (%s): " % what))
+    except sc.ParseError:
+        if sc.bash_accepts(cmd):
+            by_pattern("an unparseable command: ")
+except Exception as e:
+    by_pattern("the hook failed (%s: %s): " % (type(e).__name__, e))
+sys.exit(0)
+PY
+HOOKS_DIR="$(cd "$(dirname "$0")" && pwd)" python3 -c "$PROG"
+rc=$?
+case $rc in
+  0 | 2) exit "$rc" ;;
+esac
+echo "BLOCKED by .claude/hooks/enforce-dotnet-serialized.sh: the hook could not judge this" \
+  "command (python3 exit $rc); it fails closed." >&2
+exit 2
