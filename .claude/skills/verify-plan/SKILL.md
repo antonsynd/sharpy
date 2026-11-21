@@ -148,7 +148,7 @@ Flag as warning: any missing item; add it as a Missing Step.
 
 `verification-contract.md` §10–§11:
 
-- **One group** — the plan's `## Scope` block names one non-chore group; chores riding along touch no seam the group touches (grep the chores' files against the group's). A second group, or an output/layout-changing phase sharing a gate with anything, is an error unless `override: <owner's words>` is recorded.
+- **One group** — the plan's `## Scope` block names one non-chore group; chores riding along touch no seam the group touches (grep the chores' files against the group's). A second group, or an output/layout-changing phase sharing a gate with anything, is an error without an `Override (scope)` record.
 - **Generator first** — if the Defect Class matrix has ≥2 axes × ≥3 values, or the group is a residue (second suffix), stage 0 holds the generator (or the first task does, with the product hook it needs; contract §11), and the hand matrix covers only the axis the generator cannot reach (the plan says which). Missing = error.
 - **Filing rule** — the plan names the class trackers it posts cells to and instructs no implementer to `gh issue create`; cells go to the findings ledger and the lead files by class. A Phase 0 that says "file the siblings" one per cell is a warning; correct it inline.
 - **Fidelity scope** — every Python-parity cell names its row in `python-fidelity-scope.md`; a DEVIATION-by-default surface without a promotion ruling is an error (the plan is fixing a non-bug).
@@ -166,7 +166,7 @@ After verification, edit the plan file directly.
 <!-- Verified by /verify-plan on YYYY-MM-DD @ <sha> -->
 <!-- Verification result: [PASS / PASS WITH CORRECTIONS / NEEDS REVISION / CONVERGED] -->
 <!-- Adequacy: [CLASS / CELL / N/A] -->
-<!-- Scope: [ONE-GROUP / MULTI-GROUP (override) / N/A] · Generator: [existing / built-first / not-required / MISSING] -->
+<!-- Scope: [ONE-GROUP / MULTI-GROUP (`Override (scope)`) / N/A] · Generator: [existing / built-first / not-required / MISSING] -->
 ```
 
 In `--adequacy` mode all four stamp lines are written: the first reads `<!-- Verified by /verify-plan --adequacy (Adequacy-only: Dimensions 4-design, 6, 7; check_plan_refs clean) on YYYY-MM-DD @ <sha> -->`; the result is `PASS`, `NEEDS REVISION` or `CONVERGED`; `Adequacy:` is Dimension 6's verdict; `Scope:` is copied from the plan's `## Scope` block and `Generator:` row without grading Dimension 9 (a light plan that reads `MULTI-GROUP` or needs a generator is `NEEDS REVISION: promote to full`, §12). The Verification Summary carries only `### Paraphrase`, `### Adequacy`, `### Falsifiability`, `### Design decisions checked` and `### Unchecked Claims`, plus `### Deferred findings` on `CONVERGED`; downstream skills read the stamp as a full one.
