@@ -9,6 +9,7 @@ using Sharpy.TestInfrastructure.Oracles;
 using Xunit;
 using Xunit.Abstractions;
 using Harness = Sharpy.Compiler.Tests.Conformance.NameResolutionDifferentialTests;
+using TypeKind = Sharpy.Compiler.Semantic.TypeKind;
 
 namespace Sharpy.Compiler.Tests.Conformance;
 
@@ -88,7 +89,9 @@ internal enum ScopeConstantKind
     /// parameter: <c>Char.is_ascii_digit</c>), read uncalled: the checker types it <c>object</c>, and the value is no constant.</summary>
     ClrTypeDeclinedMethod,
 
-    /// <summary>A static method group of a referenced type, read uncalled: no value at all (SPY0336).</summary>
+    /// <summary>A static method group of a referenced type, read uncalled. Where the slot has a function type, that type
+    /// selects the overload and the read is a function value, no constant (the owner's ruling 29, #2423 comment 7052893050;
+    /// SPY0336 today: #2277). Where it has none (an attribute argument) the group is no value at all (SPY0336).</summary>
     ClrTypeMethodGroup,
 
     /// <summary>A member of an int enum of the program: a C# constant.</summary>
@@ -247,11 +250,14 @@ public sealed partial class ScopeMeaningDifferentialTests : IntegrationTestBase
     // no-initializer (R-QI)
     // ------------------------------------------------------------------------------------------- //
 
+    /// <summary>The code R-QI's refusal carries: plan-777361's D7 and D9 introduce it with the refusal itself.</summary>
+    internal const string NoInitializerRefusal = "SPY0620";
+
     private static IEnumerable<Case> NoInitializerCases()
     {
         foreach (var (kind, d) in Declarations.OrderBy(e => e.Key))
         {
-            foreach (var host in d.InType ? DeclarationHosts.Values.SelectMany(h => h).ToArray() : new string?[] { null })
+            foreach (var host in d.InType ? DeclarationHosts.OrderBy(h => h.Key).SelectMany(h => h.Value).ToArray() : new DeclarationHost?[] { null })
             {
                 foreach (var type in ValueTypes.OrderBy(e => e.Key.Name, StringComparer.Ordinal).SelectMany(e => e.Value))
                 {
@@ -261,7 +267,7 @@ public sealed partial class ScopeMeaningDifferentialTests : IntegrationTestBase
                             continue;
                         // A struct's instance field initializer is a constant position (the 8951 pool's StructFieldInitializer):
                         // a declared type whose value is no constant has no initializer to write there.
-                        if (initializer == ScopeInitializer.Present && kind == BindingKind.InstanceField && host == "struct" && !type.Constant)
+                        if (initializer == ScopeInitializer.Present && kind == BindingKind.InstanceField && host?.Kind == TypeKind.Struct && !type.Constant)
                             continue;
                         string F(string text) => text.Replace("{T}", type.Spelling, StringComparison.Ordinal).Replace("{L}", type.Literal, StringComparison.Ordinal);
                         string decl = initializer switch
@@ -287,7 +293,7 @@ public sealed partial class ScopeMeaningDifferentialTests : IntegrationTestBase
                         {
                             if (d.InType)
                             {
-                                lines.Add($"{host} H:");
+                                lines.Add($"{host!.Keyword} H:");
                                 lines.Add(Indent(decl));
                                 if (initializer == ScopeInitializer.Absent && d.Stored != null)
                                     lines.AddRange(d.Stored.Select(s => Indent(F(s))));
@@ -298,10 +304,12 @@ public sealed partial class ScopeMeaningDifferentialTests : IntegrationTestBase
                             lines.Add(print);
                         }
                         // Read where R-QI refuses; the kinds it leaves alone store first, so every cell that runs prints the stored value.
-                        bool twin = d.Twin && type.Twin && host is null or "class"
+                        bool twin = d.Twin && type.Twin && host is null or { Kind: TypeKind.Class }
                             && (initializer == ScopeInitializer.Present || (initializer == ScopeInitializer.Absent && d.Stored != null));
+                        // R-QI's refusal is SPY0620, the code plan-777361 introduces for it (D7, D9): no compiler says it yet, so a
+                        // cell that must be refused is red until then, and a refusal under any other code is another rule's.
                         yield return Draft(Key("read", "no-initializer", kind, initializer, host, type.Label), Family.Read, Lines(lines), "5",
-                            Array.Empty<string>(), twin, target: kind);
+                            new[] { NoInitializerRefusal }, twin, target: kind);
                     }
                 }
             }
@@ -734,6 +742,10 @@ public sealed partial class ScopeMeaningDifferentialTests : IntegrationTestBase
                 failures.Add($"{c.Cell.Id}: its row says must-run and the generator gives it nothing to print");
             if (c.Twin && c.Cell.Tag != SharpyTag.MustRun)
                 failures.Add($"{c.Cell.Id}: a twin is python running the same program, and the cell does not run");
+            // A must-refuse cell that admits no code can only ever be judged a false refusal: no refusal could turn it green,
+            // and nothing would say which refusal is the rule's (the review of PR #2767, F6).
+            if (c.Cell.Tag == SharpyTag.MustRefuse && c.Cell.SeedRefusalCodes is not { Count: > 0 })
+                failures.Add($"{c.Cell.Id}: its row says must-refuse under {c.Cell.Rule}, and the generator names no code its refusal may carry");
             if (c.Cell.Id.Any(char.IsWhiteSpace))
                 failures.Add($"'{c.Cell.Id}': an id is one word, since an allowlist row is `<id> <class> # <cite>`");
         }
@@ -755,8 +767,9 @@ public sealed partial class ScopeMeaningDifferentialTests : IntegrationTestBase
     /// <summary>The issue whose fix turns a red cell of a route green: #2432 for a constant position's verdict, #2423 for the rest
     /// (R-QI's cells, the untyped forward read, the callee lookup, a lambda's default, the alias refusal: charter §3.20l). A typed read that is
     /// red at the EARLIER order is no order defect, and it and its later twin are #2417's; an alias that reaches itself is
-    /// #2769's; in a constant position, N2's cells are #2423's, as is a bare sibling read red at the later order alone, and a
-    /// member that dies of an instance receiver is #2147's (<see cref="ProposedCite"/>).</summary>
+    /// #2769's; in a constant position, N2's cells are #2423's, as is a bare sibling read red at the later order alone, a
+    /// member that dies of an instance receiver is #2147's, and a method group refused where its slot's function type selects
+    /// an overload is #2277's (<see cref="ProposedCite"/>).</summary>
     internal static readonly IReadOnlyDictionary<string, string> RouteIssues = new Dictionary<string, string>(StringComparer.Ordinal)
     {
         ["no-initializer"] = "#2423",
@@ -785,6 +798,14 @@ public sealed partial class ScopeMeaningDifferentialTests : IntegrationTestBase
 
     /// <summary>The C# error that is #2147's symptom.</summary>
     internal const string StaticThroughInstanceCs = "CS0176";
+
+    /// <summary>The class of an overloaded method group of a referenced type read where a function type stands at the slot
+    /// (#2277; the owner's ruling 29, #2423 comment 7052893050): the slot's type selects the overload and the read must run,
+    /// and today the checker refuses every read of the group. No constant position's fix cures it.</summary>
+    internal const string OverloadByTargetType = "#2277";
+
+    /// <summary>The refusal that is #2277's symptom there.</summary>
+    internal const string MethodGroupRefusal = "SPY0336";
 
     internal sealed record Result(Case Case, Harness.SharpyRun Run, SharpyKind Kind, VerdictClass Class, bool WrongCode, string? PythonFailure);
 
@@ -830,6 +851,9 @@ public sealed partial class ScopeMeaningDifferentialTests : IntegrationTestBase
             issue = ClassBodyRule;
         if (r.Case.Cell.Key.Route == "constant-kind" && r.Case.Cell.Key.Part<Harness.Spelling>() == Harness.Spelling.SelfDot && r.Run.CsCode == StaticThroughInstanceCs)
             issue = StaticThroughInstance;
+        // A method group that must run and is refused as a group: no overload was selected, whatever the position.
+        if (r.Case.Cell.Key.Part<ScopeConstantKind>() == ScopeConstantKind.ClrTypeMethodGroup && r.Case.Cell.Tag == SharpyTag.MustRun && r.Run.ErrorCodes.Contains(MethodGroupRefusal))
+            issue = OverloadByTargetType;
         string lane = r.WrongCode ? "wrong-code" : r.Class switch
         {
             VerdictClass.Ice => "ice",
@@ -896,7 +920,8 @@ public sealed partial class ScopeMeaningDifferentialTests : IntegrationTestBase
     [SkippableFact]
     public void ScopeMeaning_Sweep()
     {
-        var oracle = PythonBatchOracle.Over(PythonInterpreter.RequireOrSkip(minMinor: 12));
+        // The oracle is the pinned CPython (`.python-version`, 3.15): an older minor is no verdict, so it skips where it would answer.
+        var oracle = PythonBatchOracle.Over(PythonInterpreter.RequireOrSkip(minMinor: 15));
         var wall = Stopwatch.StartNew();
         var pool = GeneratedCases();
         var failures = TotalityFailures(pool);
@@ -1067,6 +1092,12 @@ public sealed partial class ScopeMeaningDifferentialTests : IntegrationTestBase
         Assert.Empty(RatchetFailures(new[] { Of(throughSelf, Ice(StaticThroughInstanceCs)) }, Rows((throughSelf, VerdictClass.Ice, "#2147 ice"))));
         Assert.Contains("the route says '#2147", Assert.Single(RatchetFailures(new[] { Of(throughSelf, Ice(StaticThroughInstanceCs)) }, Rows((throughSelf, VerdictClass.Ice, "#2432 ice")))));
         Assert.Contains("the route says '#2432", Assert.Single(RatchetFailures(new[] { Of(throughSelf, Ice("CS1736")) }, Rows((throughSelf, VerdictClass.Ice, "#2147 ice")))));
+        // A method group that must run (a function type stands at its slot) and is refused as a group is #2277's; red any other
+        // way it is the position's own.
+        var group = pool.First(c => Constant(c) && c.Cell.Tag == SharpyTag.MustRun && c.Cell.Key!.Part<ScopeConstantKind>() == ScopeConstantKind.ClrTypeMethodGroup);
+        Assert.Empty(RatchetFailures(new[] { Of(group, Refused(MethodGroupRefusal)) }, Rows((group, VerdictClass.FalseRefusal, "#2277 false-refusal"))));
+        Assert.Contains("the route says '#2277", Assert.Single(RatchetFailures(new[] { Of(group, Refused(MethodGroupRefusal)) }, Rows((group, VerdictClass.FalseRefusal, "#2432 false-refusal")))));
+        Assert.Contains("the route says '#2432", Assert.Single(RatchetFailures(new[] { Of(group, Ice("CS1736")) }, Rows((group, VerdictClass.Ice, "#2277 ice")))));
         // A bare sibling read red BELOW its member alone is the class-body rule's order (#2423); red above it too, no order
         // cures it and it is the position's own (#2432).
         var below = pool.First(c => Constant(c) && c.Cell.Tag == SharpyTag.MustRun && c.Cell.Rule != "N2" && SiblingAboveTwinId(c.Cell) != null);

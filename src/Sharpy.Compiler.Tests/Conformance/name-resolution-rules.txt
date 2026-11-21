@@ -130,6 +130,10 @@ MustRefuse SPY0401 family=Read route=- relation!=- spelling!=Bare target=StaticF
 MustRefuse SPY0401 family=Read route=- relation!=- spelling=Bare target=StaticField,StaticProperty,StaticMethod,ClassComputedConst,NestedType outer=None position=@ConstantOnly order!=-
 MustRefuse SPY0401 family=Read route=- relation=- spelling=Bare target!=ModuleLet,ModuleLiteralConst,ModuleEnum outer=None position=@ConstantOnly
 MustRefuse SPY0401 family=Read route=- relation=Base spelling=Bare target=ClassLiteralConst outer!=None position=@ConstantOnly order!=Earlier
+# Among the cells of the next row is a bare sibling read at-or-after its reader under an outer binding, in a constant-only
+# position: N2's program. This pool answers it with SPY0401 today. N2's own code, SPY0619, is the one plan-777361 (P78)
+# introduces (D3, D9), and the ScopeMeaning rows below already expect it for the same program: the two readings meet at the
+# commit that makes the compiler say SPY0619, where this row's N2 cells are retagged (D9, T8).
 MustRefuse SPY0401 family=Read route=- target!=@Instance,ClassLiteralConst outer!=None position=@ConstantOnly
 MustRefuse kind:SPY0212 family=Read route=- relation=- readForm!=Call target!=@ValueForm,InstanceMethod outer=@Module,@TypeLevelMember,@Named position!=@ConstantOnly,ModuleInitializer order!=Earlier mark=int
 MustRefuse kind:SPY0212 family=Read route=- spelling!=Qualified readForm=- target=@NonWritableByMeaning outer=@Module,@TypeLevelMember,@Named position!=@Initializer order=Earlier mark=int mark!=arity-mismatch
@@ -220,6 +224,8 @@ MustRun P52 family=TypeMember route=class,dataclass,enum,interface,struct,union
 # --- `const` initializer is then a computed constant (N4), a struct's auto-property keeps its initializer (#1938), an
 # --- attribute argument refuses under its own code, and every other position refuses under SPY0401. A name that is no
 # --- value there refuses under its kind's own code. An alias that reaches itself is unruled (#2769): unused, it runs. ---
+# R-QI's refusal carries SPY0620, a code plan-777361 (P78) introduces (D7, D9): no compiler says it today, so these cells name
+# it and wait on it; a refusal under any other code is another rule's.
 MustRefuse R-QI family=Read route=no-initializer initializer=Absent target=ModuleVar,ModuleProperty,StaticField,StaticProperty
 MustRun N1 family=Read route=no-initializer initializer=Absent target=InstanceField,InstanceProperty,LocalVar
 MustRun N1 family=Read route=no-initializer initializer=Present,AccessorBodies
@@ -229,11 +235,19 @@ MustRun N4 family=Read route=constant-kind constantKind=ClrLiteralField,ClrTypeL
 # A `const decimal` of a referenced type (the owner's ruling 17): what C# reads as a constant wherever a decimal can be one,
 # which an attribute argument is not.
 MustRun N4 family=Read route=constant-kind admission!=DecoratorArgument constantKind=ClrTypeDecimalConstant
-MustRun N4 family=Read route=constant-kind admission=ConstInitializer constantKind=StdlibModuleVariable,ClrStaticMember,ModuleFunction,ModuleFunctionGroup,ClrTypeStaticField,ClrTypeStaticProperty,ClrTypeMethod,ClrTypeDeclinedMethod,IntEnumName,StringEnumMember,StringEnumValue,StringEnumName,ChainWithNonConstantLink
-MustRun #1938 family=Read route=constant-kind mark=struct-auto-property constantKind=StdlibModuleVariable,ClrStaticMember,ModuleFunction,ModuleFunctionGroup,ClrTypeStaticField,ClrTypeStaticProperty,ClrTypeMethod,ClrTypeDeclinedMethod,IntEnumName,StringEnumMember,StringEnumValue,StringEnumName,ChainWithNonConstantLink
-MustRefuse SPY0401 family=Read route=constant-kind admission=ParameterDefault,LambdaParameterDefault,PerInstanceFieldDefault,- mark=def,lambda,dataclass,struct,enum-member constantKind=StdlibModuleVariable,ClrStaticMember,ModuleFunction,ModuleFunctionGroup,ClrTypeStaticField,ClrTypeStaticProperty,ClrTypeMethod,ClrTypeDeclinedMethod,IntEnumName,StringEnumMember,StringEnumValue,StringEnumName,ChainWithNonConstantLink
+# An overloaded method group of a referenced type (`Math.abs`) is in the rows below by the owner's ruling 29 (#2423 comment
+# 7052893050): a function target type selects a CLR overload, so where the slot has one the read is a function value like any
+# other. It must run at a `const` and a struct's auto-property (refused today under SPY0336: known-red, #2277) and is no
+# constant at a default (SPY0401, or today's SPY0336). An attribute argument has no function type at its slot: the last row.
+MustRun N4 family=Read route=constant-kind admission=ConstInitializer constantKind=StdlibModuleVariable,ClrStaticMember,ModuleFunction,ModuleFunctionGroup,ClrTypeStaticField,ClrTypeStaticProperty,ClrTypeMethod,ClrTypeDeclinedMethod,ClrTypeMethodGroup,IntEnumName,StringEnumMember,StringEnumValue,StringEnumName,ChainWithNonConstantLink
+MustRun #1938 family=Read route=constant-kind mark=struct-auto-property constantKind=StdlibModuleVariable,ClrStaticMember,ModuleFunction,ModuleFunctionGroup,ClrTypeStaticField,ClrTypeStaticProperty,ClrTypeMethod,ClrTypeDeclinedMethod,ClrTypeMethodGroup,IntEnumName,StringEnumMember,StringEnumValue,StringEnumName,ChainWithNonConstantLink
+# A string enum's member, its `.value` and any enum's `.name` are refused at a default by the owner's ruling 10 (#2423 comment
+# 7045166298), kept as an INTERIM by item 28 (comment 7052893050): it contradicts
+# docs/language_specification/function_default_parameters.md, whose allowed defaults list `HttpMethod.GET` (a string enum's
+# member), until #2772 makes the default run as the spec says. The spec's text is not changed.
+MustRefuse SPY0401 family=Read route=constant-kind admission=ParameterDefault,LambdaParameterDefault,PerInstanceFieldDefault,- mark=def,lambda,dataclass,struct,enum-member constantKind=StdlibModuleVariable,ClrStaticMember,ModuleFunction,ModuleFunctionGroup,ClrTypeStaticField,ClrTypeStaticProperty,ClrTypeMethod,ClrTypeDeclinedMethod,ClrTypeMethodGroup,IntEnumName,StringEnumMember,StringEnumValue,StringEnumName,ChainWithNonConstantLink
 MustRefuse SPY0425 family=Read route=constant-kind admission=DecoratorArgument constantKind=StdlibModuleVariable,ClrStaticMember,ModuleFunction,ModuleFunctionGroup,ClrTypeDecimalConstant,ClrTypeStaticField,ClrTypeStaticProperty,ClrTypeMethod,ClrTypeDeclinedMethod,IntEnumName,StringEnumMember,StringEnumValue,StringEnumName,ChainWithNonConstantLink
-MustRefuse kind:SPY0336 family=Read route=constant-kind constantKind=ClrTypeMethodGroup
+MustRefuse kind:SPY0336 family=Read route=constant-kind admission=DecoratorArgument constantKind=ClrTypeMethodGroup
 # A name of the program's own, under every spelling and from every placement but a bare sibling read: one answer (N7).
 MustRun N4 family=Read route=constant-kind constantKind=OwnMember target=ModuleLiteralConst,ClassLiteralConst mark!=bare-sibling
 MustRun N4 family=Read route=constant-kind admission=ConstInitializer constantKind=OwnMember target=ModuleVar,ModuleComputedConst,ModuleProperty,ModuleDef,StaticField,StaticProperty,StaticMethod,ClassComputedConst,Builtin mark!=bare-sibling
@@ -248,6 +262,9 @@ MustRefuse SPY0401 family=Read route=constant-kind admission=LambdaParameterDefa
 # binding of the name, and N2's refusal at-or-after under one. Where it is the member, the constant position then answers.
 MustRefuse N1-methods family=Read route=constant-kind constantKind=OwnMember mark=bare-sibling mark=in-method outer=None
 MustRun R-Y family=Read route=constant-kind constantKind=OwnMember mark=bare-sibling mark=in-method outer!=None
+# N2's refusal is SPY0619, the code plan-777361 (P78) introduces (D3, D9): no compiler says it today, so the next row's cells
+# name it and wait on it by design. The P77a pool's row for the same program (above, `MustRefuse SPY0401 … position=@ConstantOnly`)
+# is green on SPY0401 until then.
 MustRefuse N2 family=Read route=constant-kind constantKind=OwnMember mark=bare-sibling mark!=in-method order=Later outer!=None
 MustRun N1 family=Read route=constant-kind constantKind=OwnMember target=ModuleLiteralConst,ClassLiteralConst mark=bare-sibling mark!=in-method order=Earlier
 MustRun N4 family=Read route=constant-kind admission=ConstInitializer constantKind=OwnMember target=ModuleVar,ModuleComputedConst,ModuleProperty,ModuleDef,StaticField,StaticProperty,StaticMethod,ClassComputedConst,Builtin mark=bare-sibling mark!=in-method order=Earlier
@@ -265,6 +282,7 @@ MustRun N1 family=Read route=init-overload
 MustRun N4 family=Read route=lambda-default order=-
 MustRun N1 family=Read route=lambda-default order=Earlier
 MustRun N1+N3 family=Read route=lambda-default order=Later outer=None
+# SPY0619 here too: the code lands with plan-777361 (D9).
 MustRefuse N2 family=Read route=lambda-default order=Later outer!=None
 MustRefuse N1-alias-target family=Read route=alias-target aliasTarget=Missing
 MustRun N1 family=Read route=alias-target aliasTarget=Declared

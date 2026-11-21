@@ -1,4 +1,5 @@
 using System.Reflection;
+using System.Text.RegularExpressions;
 using Sharpy.Compiler.Discovery;
 using Sharpy.Compiler.Discovery.Caching;
 using Sharpy.Compiler.Semantic;
@@ -49,34 +50,73 @@ public sealed partial class ScopeMeaningDifferentialTests
     // ------------------------------------------------------------------------------------------- //
 
     /// <summary>A program and what the compiler does with it today. An exclusion whose reason is one of these keys is true
-    /// only while the probe holds: when the behaviour changes the probe is red, and the value is generated or re-reasoned.</summary>
-    internal sealed record BehaviourProbe(string Source, string Expected, Func<Harness.SharpyRun, bool> Holds, bool Stdlib = false);
+    /// only while the probe holds: when the behaviour changes the probe is red, and the value is generated or re-reasoned.
+    /// A reason that says more than one thing of the compiler names the others in <paramref name="Also"/>, each held the same way.</summary>
+    internal sealed record BehaviourProbe(string Source, string Expected, Func<Harness.SharpyRun, bool> Holds, bool Stdlib = false, BehaviourProbe[]? Also = null)
+    {
+        /// <summary>This probe and every other program its reason rests on.</summary>
+        public IEnumerable<BehaviourProbe> All => (Also ?? Array.Empty<BehaviourProbe>()).Prepend(this);
+    }
 
     private static bool Refused(Harness.SharpyRun run, string code, string? cs = null)
         => run.ErrorCodes.Contains(code) && (cs == null || run.CsCode == cs);
 
+    /// <summary>The program compiled, ran and printed <paramref name="stdout"/>.</summary>
+    private static bool Printed(Harness.SharpyRun run, string stdout)
+        => run is { Success: true, ExitCode: 0, TimedOut: false } && run.ErrorCodes.Count == 0 && Harness.Normalize(run.Stdout) == stdout;
+
+    private static BehaviourProbe Prints(string source, string stdout, BehaviourProbe[]? Also = null) => new(source, $"a run that prints '{stdout}'", r => Printed(r, stdout), Also: Also);
+
+    /// <summary>What the review of PR #2767's test code found excluded under a false reason, and the owner then ruled on (#2423
+    /// comment 7052893050, item 26): the reason is corrected and probed, and no cell is generated.</summary>
+    private const string ByItem26 = "not generated, by the owner's decision (#2423 comment 7052893050, item 26: the fix round after the independent review adds no cell)";
+
     private const string TailMain = "def main() -> None:\n    print(1)\n";
 
     private const string ModuleLetRefused = "a module `let` is refused at every order (SPY0340, P21b)";
-    private const string MatchSubjectIsNoValue = "`match one:` / `case x:` over a function value is SPY0908 CS8119 with no outer binding of the name: no callee verdict to compare";
-    private const string InterfaceStaticIsNoStatic = "an interface's `@static` value member is SPY0908 CS0120 WITH its initializer (#2383's class): the host has no running control";
+    private const string InAnInterfaceEachKindIsOut = "in an interface each declaration kind is out for its own reason. A `@static` value member is SPY0908 CS0120 with its initializer and without (#2383's class), so it has no running control there. An instance field declares no member a read finds: `h.x` through the interface is SPY0203 with its initializer and without (#2383's class too). An instance `property x: T` is a signature an implementing class fills, and it runs (`class C(H): property x: int = 5` prints `5`): that control, of a kind R-QI leaves alone, is " + ByItem26 + ", and no tracker holds it, since it is green";
     private const string EnumBodyHoldsCases = "an enum body holds `NAME = value` cases and nothing else (SPY0101 / SPY0103)";
     private const string UnionBodyHoldsCases = "a union body holds cases and methods and nothing else (SPY0104)";
 
     internal static readonly IReadOnlyDictionary<string, BehaviourProbe> BehaviourProbes = new Dictionary<string, BehaviourProbe>(StringComparer.Ordinal)
     {
         [ModuleLetRefused] = new("let x = 5\n" + TailMain, "SPY0340", r => Refused(r, "SPY0340")),
-        [MatchSubjectIsNoValue] = new("def one() -> int:\n    return 1\ndef main() -> None:\n    match one:\n        case x:\n            print(x())\n",
-            "SPY0908 CS8119", r => Refused(r, "SPY0908", "CS8119")),
-        [InterfaceStaticIsNoStatic] = new("interface H:\n    @static\n    x: int = 5\ndef main() -> None:\n    print(H.x)\n", "SPY0908 CS0120", r => Refused(r, "SPY0908", "CS0120")),
+        [InAnInterfaceEachKindIsOut] = new("interface H:\n    @static\n    x: int = 5\ndef main() -> None:\n    print(H.x)\n", "SPY0908 CS0120", r => Refused(r, "SPY0908", "CS0120"), Also: new BehaviourProbe[]
+        {
+            new("interface H:\n    @static\n    x: int\n    def m(self) -> int: ...\ndef main() -> None:\n    print(H.x)\n", "SPY0908 CS0120", r => Refused(r, "SPY0908", "CS0120")),
+            new("interface H:\n    @static\n    property x: int = 5\n    def m(self) -> int: ...\ndef main() -> None:\n    print(H.x)\n", "SPY0908 CS0120", r => Refused(r, "SPY0908", "CS0120")),
+            new("interface H:\n    @static\n    property x: int\n    def m(self) -> int: ...\ndef main() -> None:\n    print(H.x)\n", "SPY0908 CS0120", r => Refused(r, "SPY0908", "CS0120")),
+            new(InterfaceMember("x: int = 5", "x: int = 5"), "SPY0203", r => Refused(r, "SPY0203")),
+            new(InterfaceMember("x: int", "x: int = 5"), "SPY0203", r => Refused(r, "SPY0203")),
+            Prints(InterfaceMember("property x: int", "property x: int = 5"), "5"),
+        }),
+        [ACalleeBinderIsOut(LocalTarget.MatchCapture)] = CalleeBinderProbe("f: () -> int = one\n    match f:\n        case x:\n            print(x())"),
+        [ACalleeBinderIsOut(LocalTarget.AsPatternCapture)] = CalleeBinderProbe("f: () -> int = one\n    match f:\n        case _ as x:\n            print(x())"),
+        [ACalleeBinderIsOut(LocalTarget.OutLet)] = CalleeBinderProbe("give(out let x)\n    print(x())", "type F = () -> int\ndef give(f: out F) -> None:\n    f = one\n"),
+        [AnExceptionIsCalled] = Prints("x: int = 12\n" + CallableException, "1", Also: new[] { Prints(CallableException, "1") }),
+        [AThirdPlacement(DeclaringRelation.Base)] = ThirdPlacementProbe("class B:\n    @static\n    x: int = 5\n", "class H(B):\n    @static\n    r: int = nb(B.x)\n"),
+        [AThirdPlacement(DeclaringRelation.Other)] = ThirdPlacementProbe("class B:\n    @static\n    x: int = 5\n", "class H:\n    @static\n    r: int = nb(B.x)\n"),
+        [AGenericReceiver] = ThirdPlacementProbe("class G[T]:\n    @static\n    x: int = 5\n", "def r() -> int:\n    return nb(G[int].x)\n"),
+        [AThirdPlacement(DeclaringRelation.Enclosing)] = new(NestedReader(memberAbove: false, "x: int = 5"), "SPY0220", r => Refused(r, "SPY0220"), Also: new BehaviourProbe[]
+        {
+            new(NestedReader(memberAbove: true, "x: int = 5"), "SPY0220", r => Refused(r, "SPY0220")),
+            new(NestedReader(memberAbove: false, "x: auto = 5"), "SPY0908 CS1503", r => Refused(r, "SPY0908", "CS1503")),
+            new(NestedReader(memberAbove: true, "x: auto = 5"), "SPY0908 CS1503", r => Refused(r, "SPY0908", "CS1503")),
+        }),
         [EnumBodyHoldsCases] = new("enum H:\n    type K0 = int\n    RED = 1\n" + TailMain, "SPY0103", r => Refused(r, "SPY0103") || Refused(r, "SPY0101")),
         [UnionBodyHoldsCases] = new("union H:\n    type K0 = int\n    case A()\n" + TailMain, "SPY0104", r => Refused(r, "SPY0104")),
         [NeedsItsValue] = new("const x: int\ndef main() -> None:\n    let y: int\n    print(1)\n", "SPY0104", r => r.ErrorCodes.Count(c => c == "SPY0104") == 2),
         [DelegateHasNoBody] = new("delegate D(x: int) -> int:\n    type K0 = int\n" + TailMain, "SPY0100", r => Refused(r, "SPY0100")),
         [EnumBodyHoldsNoConst] = new("enum H:\n    const K: int = 1\n    RED = 1\n" + TailMain, "SPY0101", r => Refused(r, "SPY0101")),
         [UnionBodyHoldsNoConst] = new("union H:\n    const K: int = 1\n    case A()\n" + TailMain, "SPY0104", r => Refused(r, "SPY0104")),
-        [LambdaTakesNoCallableSlot] = new("def five() -> int:\n    return 5\ndef main() -> None:\n    f = lambda p: () -> int = five: p\n    print(1)\n", "SPY0103", r => Refused(r, "SPY0103")),
+        [LambdaTakesNoCallableSlot] = new("def five() -> int:\n    return 5\ndef main() -> None:\n    f = lambda p: () -> int = five: p\n    print(1)\n", "SPY0103", r => Refused(r, "SPY0103"), Also: new BehaviourProbe[]
+        {
+            new("def five() -> int:\n    return 5\ndef main() -> None:\n    f = (p: () -> int = five) -> p\n    print(1)\n", "SPY0401", r => Refused(r, "SPY0401")),
+            new("import math\ndef main() -> None:\n    f = (p: (float) -> float = math.sqrt) -> p\n    print(1)\n", "SPY0908 CS1736", r => Refused(r, "SPY0908", "CS1736"), Stdlib: true),
+        }),
         [AnIntEnum] = new("enum H:\n    RED = 1.5\n" + TailMain, "SPY0253", r => Refused(r, "SPY0253")),
+        [AnEscapedNameIsMissingAsItsPlainOne] = new("type K0 = `nosuch`\ndef f(k: K0) -> int:\n    return 1\n" + TailMain, "SPY0202", r => Refused(r, "SPY0202"),
+            Also: new BehaviourProbe[] { new("type K0 = nosuch\ndef f(k: K0) -> int:\n    return 1\n" + TailMain, "SPY0202", r => Refused(r, "SPY0202")) }),
         [NamesAType] = new("class G:\n    class x:\n        v: int = 5\ndef f(p: int = G.x) -> int:\n    return p\n" + TailMain, "SPY0220", r => Refused(r, "SPY0220")),
         [NoSuchMember] = new("def f(p: int = int.nosuch) -> int:\n    return p\n" + TailMain, "SPY0203", r => Refused(r, "SPY0203")),
         [ACallByShape] = new("def five() -> int:\n    return 5\ndef f(p: int = five()) -> int:\n    return p\n" + TailMain, "SPY0401", r => Refused(r, "SPY0401")),
@@ -86,7 +126,10 @@ public sealed partial class ScopeMeaningDifferentialTests
         [ASiblingCaseIsNoName] = new("enum H:\n    RED = 5\n    BLUE = RED\ndef main() -> None:\n    print(H.BLUE.value)\n", "SPY0200", r => Refused(r, "SPY0200")),
         [NoSelfAtATypeBody] = new("class H:\n    const x: int = 5\n    const K: int = self.x\ndef main() -> None:\n    print(H.K)\n", "SPY0200", r => Refused(r, "SPY0200")),
         [AGenericMethodThroughItsType] = new("from system import Array\ndef main() -> None:\n    x: object = Array.resize\n    print(1)\n", "SPY0908 CS8917", r => Refused(r, "SPY0908", "CS8917")),
-        [LambdaTakesOneNameForAType] = new("import system\ndef main() -> None:\n    f = lambda p: system.DayOfWeek: p\n    print(1)\n", "SPY0103", r => Refused(r, "SPY0103")),
+        [LambdaTakesOneNameForAType] = new("import system\ndef main() -> None:\n    f = lambda p: system.DayOfWeek: p\n    print(1)\n", "SPY0103", r => Refused(r, "SPY0103"), Also: new[]
+        {
+            Prints("import system\ndef main() -> None:\n    f = (p: system.DayOfWeek = system.DayOfWeek.Monday) -> p\n    print(f())\n", "DayOfWeek.Monday"),
+        }),
         [AliasedIntEnumRead(EnumMemberAccessKind.IntValue)] = new(IntEnum + "\ntype A = E0\ndef main() -> None:\n    print(A.RED.value)\n", "SPY0908 CS1061", r => Refused(r, "SPY0908", "CS1061")),
         [AliasedIntEnumRead(EnumMemberAccessKind.IntName)] = new(IntEnum + "\ntype A = E0\ndef main() -> None:\n    print(A.RED.name)\n", "SPY0908 CS1061", r => Refused(r, "SPY0908", "CS1061")),
         [InterfaceStaticIsRefused("field")] = new("interface H:\n    @static\n    x: int = 5\n    def m(self) -> int: ...\ndef main() -> None:\n    print(H.x)\n", "SPY0908 CS0120", r => Refused(r, "SPY0908", "CS0120")),
@@ -166,21 +209,37 @@ public sealed partial class ScopeMeaningDifferentialTests
         [BindingKind.None] = "no binding",
     };
 
-    /// <summary>The hosts of a member declaration, total over <c>TypeKind</c> with <see cref="ExcludedDeclarationHosts"/>: the
-    /// keyword that opens the host's body.</summary>
-    internal static readonly IReadOnlyDictionary<TypeKind, string[]> DeclarationHosts = new Dictionary<TypeKind, string[]>
+    /// <summary>A host of a member declaration as a TYPED part of a cell's key: its kind and the keyword that opens its body,
+    /// which is how the id spells it. Typed, because the keywords <c>class</c> and <c>struct</c> are also the labels of two
+    /// declared types (<see cref="ValueTypes"/>): as text, a cell of either carried both, and the coverage check below could not
+    /// tell a host from a type (the review of PR #2767, F7).</summary>
+    internal sealed record DeclarationHost(TypeKind Kind, string Keyword)
     {
-        [TypeKind.Class] = new[] { "class" },
-        [TypeKind.Struct] = new[] { "struct" },
+        public override string ToString() => Keyword;
+    }
+
+    /// <summary>The hosts of a member declaration, total over <c>TypeKind</c> with <see cref="ExcludedDeclarationHosts"/>.</summary>
+    internal static readonly IReadOnlyDictionary<TypeKind, DeclarationHost[]> DeclarationHosts = new Dictionary<TypeKind, DeclarationHost[]>
+    {
+        [TypeKind.Class] = new[] { new DeclarationHost(TypeKind.Class, "class") },
+        [TypeKind.Struct] = new[] { new DeclarationHost(TypeKind.Struct, "struct") },
     };
+
+    /// <summary>The host of a no-initializer cell, or null for a declaration outside every type.</summary>
+    internal static DeclarationHost? HostOf(NameCell cell) => cell.Key!.Parts.OfType<DeclarationHost>().FirstOrDefault();
 
     internal static readonly IReadOnlyDictionary<TypeKind, string> ExcludedDeclarationHosts = new Dictionary<TypeKind, string>
     {
-        [TypeKind.Interface] = InterfaceStaticIsNoStatic,
+        [TypeKind.Interface] = InAnInterfaceEachKindIsOut,
         [TypeKind.Enum] = EnumBodyHoldsCases,
         [TypeKind.Union] = UnionBodyHoldsCases,
         [TypeKind.Delegate] = DelegateHasNoBody,
     };
+
+    /// <summary>An interface that declares <paramref name="declared"/>, a class that implements it with
+    /// <paramref name="implemented"/>, and a read of the member through the interface.</summary>
+    private static string InterfaceMember(string declared, string implemented)
+        => $"interface H:\n    {declared}\n    def m(self) -> int: ...\nclass C(H):\n    {implemented}\n    def m(self) -> int:\n        return 1\ndef main() -> None:\n    h: H = C()\n    print(h.x)\n";
 
     /// <summary>A declared type: its label in a cell's id, its spelling, a value of it, how <c>main</c> shows that value as
     /// <c>5</c> (<c>{0}</c> the read), the declarations it needs, and whether the value is one a constant position admits
@@ -297,6 +356,59 @@ public sealed partial class ScopeMeaningDifferentialTests
         [ReadPosition.BaseList] = "holds a type's name: no value is read there",
     };
 
+    /// <summary>
+    /// The reason a reader in a THIRD type has no typed-read cell (the review of PR #2767, F2: 137 must-run reads of the 8951
+    /// pool stood in such a type and were dropped unseen, by a filter that asked for a spelling and an order before it asked
+    /// where the reader stood). The reads run in that pool; whether they are TYPED is what no cell here holds, and each
+    /// placement's probes are the programs that say what they are today. A switch and no table, as <see cref="ACalleeBinderIsOut"/>.
+    /// </summary>
+    private const string TheOrdersClass = ": D2's class, which the generated placements hold red (#2423, which holds the program as a cell)";
+
+    private static string AThirdPlacement(DeclaringRelation placement)
+    {
+        const string BelowIsUntyped = "Handed to a `bool` slot, an annotated member's read is SPY0220 where the member stands above, and SPY0908 CS1503 where ";
+        (string where, string today) = placement switch
+        {
+            DeclaringRelation.Base => ("in a subclass of the member's type (`class H(B)` reads `B.x`, `H.x` or `self.x`)", BelowIsUntyped + "the base stands below its subclass" + TheOrdersClass),
+            DeclaringRelation.Other => ("in a type unrelated to the member's (`class H` reads `B.x`)", BelowIsUntyped + "the member's type stands below the reader's" + TheOrdersClass),
+            DeclaringRelation.Enclosing => ("in a type nested in the member's (`class I` in `H` reads `H.x`)",
+                "Handed to a `bool` slot, an annotated member's read is SPY0220 above and below the nested type, and an inferred one's (`x: auto = 5`) is SPY0908 CS1503 at both, as it is from every generated placement (#2417's class, which the generated rows hold)"),
+            _ => throw new ArgumentOutOfRangeException(nameof(placement), placement, "the member's own type, or a placement the 8951 pool does not spell"),
+        };
+        return $"the reader stands {where}: the 8951 pool runs the read from there, and this set places the reader of a type's member in that type or outside every type. {today}. The placement is {ByItem26}";
+    }
+
+    /// <summary>The probe of a read this set has no reader for: the reader above the member's type (untyped today) and below it (typed).</summary>
+    private static BehaviourProbe ThirdPlacementProbe(string member, string reader)
+        => new($"{Probe}\n{reader}{member}{TailMain}", "SPY0908 CS1503", r => Refused(r, "SPY0908", "CS1503"),
+            Also: new BehaviourProbe[] { new($"{Probe}\n{member}{reader}{TailMain}", "SPY0220", r => Refused(r, "SPY0220")) });
+
+    private static string NestedReader(bool memberAbove, string member)
+    {
+        string declared = $"    @static\n    {member}\n";
+        const string Nested = "    class I:\n        @static\n        r: int = nb(H.x)\n";
+        return $"{Probe}\nclass H:\n{(memberAbove ? declared + Nested : Nested + declared)}{TailMain}";
+    }
+
+    /// <summary>The placements of a reader against the member's type with no typed-read cell: each one the 8951 pool spells a
+    /// must-run read from (<see cref="TypedThirdPlacements"/>), and no other.</summary>
+    internal static readonly IReadOnlyDictionary<DeclaringRelation, string> ExcludedTypedPlacements = new Dictionary<DeclaringRelation, string>
+    {
+        [DeclaringRelation.Base] = AThirdPlacement(DeclaringRelation.Base),
+        [DeclaringRelation.Other] = AThirdPlacement(DeclaringRelation.Other),
+        [DeclaringRelation.Enclosing] = AThirdPlacement(DeclaringRelation.Enclosing),
+    };
+
+    private const string AGenericReceiver = "the member is read through its generic type's constructed name (`G[int].x`), which the 8951 pool spells by a label of its own and no `Spelling`; a typed-read kind is declared in a type with no type parameter. Handed to a `bool` slot, an annotated member's read is SPY0220 where the type stands above its reader, and SPY0908 CS1503 where it stands below" + TheOrdersClass + ". The receiver is " + ByItem26;
+
+    /// <summary>The reads the 8951 pool spells by a label of its own, with no <c>Spelling</c>, and no typed-read cell: keyed by
+    /// the label, each one the pool spells a must-run read under (<see cref="TypedLabelledReads"/>), and no other. Found by
+    /// re-measuring the review's F2: six reads, dropped by the same filter as the third placements.</summary>
+    internal static readonly IReadOnlyDictionary<string, string> ExcludedTypedReceivers = new Dictionary<string, string>(StringComparer.Ordinal)
+    {
+        ["GenericReceiver"] = AGenericReceiver,
+    };
+
     /// <summary>A reader of a kind: under which spelling, from which position and nesting, and whether it sits INSIDE the member's own type.</summary>
     internal sealed record TypedReader(BindingKind Kind, Harness.Spelling Spelling, ReadPosition Position, Harness.Nesting Nesting, bool Inside);
 
@@ -319,26 +431,49 @@ public sealed partial class ScopeMeaningDifferentialTests
     /// when that pool spells a read of it that must run, declared before its reader, with no outer binding, in a class or at
     /// module level (its sub-generators' routes are that pool's own axes). So the two axes are the images of <c>Spelling</c> and
     /// <see cref="ReadPosition"/> under the pool's own rosters, and a position, nesting or spelling the pool gains for a kind is a
-    /// typed-read cell with no edit here. The pool places such a reader in the member's own type or outside every type; a third
-    /// placement has no host here and is <see cref="UnplacedTypedReaders"/>, which the axes fact holds empty. One reader the pool
-    /// does not spell is added: an instance member read through its type's name is read off a constructed instance
+    /// typed-read cell with no edit here. A reader stands in the member's own type or outside every type. The pool also reads from
+    /// a third type (a subclass, an unrelated type, a nested one), under labels of its own that carry no <c>Spelling</c> and no
+    /// order, so WHERE the reader stands is asked first: such a read is counted per placement
+    /// (<see cref="TypedThirdPlacements"/>), each placement is excluded with its reason (<see cref="ExcludedTypedPlacements"/>),
+    /// and a read from a placement with none is <see cref="UnplacedTypedReaders"/>, which the axes fact holds empty. A read from
+    /// the two placements this set has that carries no <c>Spelling</c> is held the same way, by its label
+    /// (<see cref="ExcludedTypedReceivers"/>). One reader
+    /// the pool does not spell is added: an instance member read through its type's name is read off a constructed instance
     /// (<c>H().x</c>, <c>A().x</c>), from wherever the pool reads a <c>@static</c> field through that name from outside its type.
     /// </summary>
-    private static readonly Lazy<(IReadOnlyList<TypedReader> Readers, IReadOnlyList<string> Unplaced)> DerivedTypedReaders = new(() =>
+    private static readonly Lazy<(IReadOnlyList<TypedReader> Readers, IReadOnlyList<string> Unplaced, IReadOnlyDictionary<DeclaringRelation, int> Third, IReadOnlyDictionary<string, int> Labelled)> DerivedTypedReaders = new(() =>
     {
         var readers = new HashSet<TypedReader>();
         var unplaced = new List<string>();
+        var third = new SortedDictionary<DeclaringRelation, int>();
+        var labelled = new SortedDictionary<string, int>(StringComparer.Ordinal);
         foreach (var c in Harness.GeneratedCells())
         {
+            // A read of a typed-read kind that must run, with no outer binding, at a position this set reads from, among the
+            // pool's unrouted cells.
             if (c.Family != Family.Read || c.Tag != SharpyTag.MustRun || c.Outer != BindingKind.None || c.Position is not { } position
-                || c.Key is not { Route: null } key || key.Part<Harness.Spelling>() is not { } spelling
-                || key.Part<Harness.Order>() != Harness.Order.Earlier || !TypedReads.ContainsKey(c.Target)
-                || ExcludedTypedSpellings.ContainsKey(spelling) || ExcludedTypedPositions.ContainsKey(position))
+                || c.Key is not { Route: null } key || !TypedReads.ContainsKey(c.Target) || ExcludedTypedPositions.ContainsKey(position))
                 continue;
-            if (c.Relation is not (null or DeclaringRelation.Self))
-                unplaced.Add($"{c.Id} (relation {c.Relation})");
-            else
-                readers.Add(new TypedReader(c.Target, spelling, position, key.Part<Harness.Nesting>() ?? Harness.Nesting.Direct, c.Relation == DeclaringRelation.Self));
+            if (c.Relation is { } placement && placement != DeclaringRelation.Self)
+            {
+                third[placement] = third.GetValueOrDefault(placement) + 1;
+                if (!ExcludedTypedPlacements.ContainsKey(placement))
+                    unplaced.Add($"{c.Id} (relation {placement})");
+                continue;
+            }
+            if (key.Part<Harness.Spelling>() is not { } spelling)
+            {
+                // Spelled by a label of the pool's own: counted and owed its reason, as a third placement is.
+                string label = string.Join("+", key.Marks);
+                labelled[label] = labelled.GetValueOrDefault(label) + 1;
+                if (!ExcludedTypedReceivers.ContainsKey(label))
+                    unplaced.Add($"{c.Id} (spelled by the label '{label}', which is no Spelling)");
+                continue;
+            }
+            // The order is this set's own axis: a reader the pool runs above its member is generated at both orders.
+            if (key.Part<Harness.Order>() != Harness.Order.Earlier || ExcludedTypedSpellings.ContainsKey(spelling))
+                continue;
+            readers.Add(new TypedReader(c.Target, spelling, position, key.Part<Harness.Nesting>() ?? Harness.Nesting.Direct, c.Relation == DeclaringRelation.Self));
         }
         var instances = TypedReads.Where(t => t.Value.Level == MemberLevel.Instance).Select(t => t.Key).ToList();
         foreach (var r in readers.Where(r => r is { Kind: BindingKind.StaticField, Inside: false, Spelling: Harness.Spelling.Qualified or Harness.Spelling.Alias }).ToList())
@@ -346,13 +481,21 @@ public sealed partial class ScopeMeaningDifferentialTests
             foreach (var instance in instances)
                 readers.Add(r with { Kind = instance });
         }
-        return (readers.OrderBy(r => r.Kind).ThenBy(r => r.Spelling).ThenBy(r => r.Position).ThenBy(r => r.Nesting).ThenBy(r => r.Inside).ToList(), unplaced);
+        return (readers.OrderBy(r => r.Kind).ThenBy(r => r.Spelling).ThenBy(r => r.Position).ThenBy(r => r.Nesting).ThenBy(r => r.Inside).ToList(), unplaced, third, labelled);
     });
 
     internal static IReadOnlyList<TypedReader> TypedReaders => DerivedTypedReaders.Value.Readers;
 
-    /// <summary>The pool's spelled reads whose reader sits neither in the member's type nor outside every type.</summary>
+    /// <summary>The pool's must-run reads this set has no reader for and no reason against: the reader stands in a third type
+    /// under a placement with no exclusion, or the read is spelled by a label with none.</summary>
     internal static IReadOnlyList<string> UnplacedTypedReaders => DerivedTypedReaders.Value.Unplaced;
+
+    /// <summary>How many must-run reads the pool spells from each third placement: what an exclusion of one rests on.</summary>
+    internal static IReadOnlyDictionary<DeclaringRelation, int> TypedThirdPlacements => DerivedTypedReaders.Value.Third;
+
+    /// <summary>How many must-run reads the pool spells under each label that is no <c>Spelling</c>, from the member's own type
+    /// or outside every type.</summary>
+    internal static IReadOnlyDictionary<string, int> TypedLabelledReads => DerivedTypedReaders.Value.Labelled;
 
     private const string AReadOfItself = "a declaration that reads itself, directly or through a ring, is N3-cycle's: refused or thrown whatever its slot's type (the 8951 pool's Self and Cycle cells)";
     private const string ARecursion = "a constructor that calls itself is a recursion, not an order of two declarations";
@@ -392,12 +535,39 @@ public sealed partial class ScopeMeaningDifferentialTests
         [LocalTarget.WithAs] = new[] { "with CM() as {n}:", "    print({n}())" },
     };
 
+    /// <summary>The reason of a binder that could carry a callee cell and has none (the review of PR #2767, F1: the earlier
+    /// reasons said these bind nothing a call calls, which a typed subject refutes). Each rests on two programs. A switch and no
+    /// table: the probes' keys are built from it before any later field of this file is.</summary>
+    private static string ACalleeBinderIsOut(LocalTarget binder)
+    {
+        string binds = binder switch
+        {
+            LocalTarget.MatchCapture => "`case x:` over a function-typed local (`f: () -> int = one`, `match f:`)",
+            LocalTarget.AsPatternCapture => "`case _ as x:` over a function-typed local (`f: () -> int = one`, `match f:`)",
+            LocalTarget.OutLet => "`give(out let x)`, its parameter typed through an alias (`type F = () -> int`, `def give(f: out F)`)",
+            _ => throw new ArgumentOutOfRangeException(nameof(binder), binder, "a generated binder, or one with a reason of its own"),
+        };
+        return $"{binds} binds a function value: called, the name prints `1` with no outer binding, and under a module `x: int = 12` the call is SPY0908 CS1955, the callee lookup's class the generated binders hold red (#2423, which holds the program as a cell). The binder is {ByItem26}";
+    }
+
+    private const string AnExceptionIsCalled = "`except E as x:` binds an exception, and one whose class declares `__call__` is called: `x()` prints `1` with and without a module `x: int = 12`. The binder is " + ByItem26 + ", and no tracker holds the program, since it is green";
+
+    private const string CallableException = "class E(Exception):\n    def __call__(self) -> int:\n        return 1\ndef main() -> None:\n    try:\n        raise E()\n    except E as x:\n        print(x())\n";
+
+    /// <summary>The probe of <see cref="ACalleeBinderIsOut"/>: the binder's statements in <c>main</c> under a module
+    /// <c>x: int = 12</c> (the red program), and the same with no outer binding (its control, which runs).</summary>
+    private static BehaviourProbe CalleeBinderProbe(string statements, string declarations = "")
+    {
+        string program = $"{One}\n{declarations}{Main}    {statements}\n";
+        return new("x: int = 12\n" + program, "SPY0908 CS1955", r => Refused(r, "SPY0908", "CS1955"), Also: new[] { Prints(program, "1") });
+    }
+
     internal static readonly IReadOnlyDictionary<LocalTarget, string> ExcludedCalleeBinders = new Dictionary<LocalTarget, string>
     {
-        [LocalTarget.ExceptAs] = "binds an exception, which no call calls",
-        [LocalTarget.MatchCapture] = MatchSubjectIsNoValue,
-        [LocalTarget.AsPatternCapture] = MatchSubjectIsNoValue,
-        [LocalTarget.OutLet] = "binds an out argument: a function-typed out parameter is #2154's class",
+        [LocalTarget.ExceptAs] = AnExceptionIsCalled,
+        [LocalTarget.MatchCapture] = ACalleeBinderIsOut(LocalTarget.MatchCapture),
+        [LocalTarget.AsPatternCapture] = ACalleeBinderIsOut(LocalTarget.AsPatternCapture),
+        [LocalTarget.OutLet] = ACalleeBinderIsOut(LocalTarget.OutLet),
     };
 
     /// <summary>Where an outer binding of the name sits against the binder: at module level (or nowhere, or the global scope),
@@ -625,8 +795,10 @@ public sealed partial class ScopeMeaningDifferentialTests
             .Append((Table: null, Host: EnumMemberHost));
     }
 
-    private const string LambdaTakesNoCallableSlot = "a lambda parameter's annotation cannot be a function type and take a default: `lambda p: () -> int = five: p` is SPY0103";
-    private const string LambdaTakesOneNameForAType = "a lambda parameter's annotation is one name: a type spelled through its module (`lambda p: system.DayOfWeek: p`) is SPY0103 with no default at all, so the slot cannot be declared there and the parse error is no constant position's verdict; the same type under a from-import is generated";
+    // The lambda host is the `lambda` spelling (`ConstantReaders`), and both reasons are true of that spelling alone (the review
+    // of PR #2767, F10): the arrow spelling takes both slots, and the constant-kind set has no arrow-lambda host.
+    private const string LambdaTakesNoCallableSlot = "the host's lambda is the `lambda` spelling, whose parameter annotation cannot be a function type and take a default: `lambda p: () -> int = five: p` is SPY0103. The arrow spelling takes one: `(p: () -> int = five) -> p` is SPY0401, the refusal the position owes, and `(p: (float) -> float = math.sqrt) -> p` is SPY0908 CS1736, the defect the `def` host's cell holds red for the same member (#2432, which holds the program as a cell). An arrow-lambda host is " + ByItem26;
+    private const string LambdaTakesOneNameForAType = "the host's lambda is the `lambda` spelling, whose parameter annotation is one name: a type spelled through its module (`lambda p: system.DayOfWeek: p`) is SPY0103 with no default at all, so the slot cannot be declared there and the parse error is no constant position's verdict; the same type under a from-import is generated. The arrow spelling takes the dotted type and runs (`(p: system.DayOfWeek = system.DayOfWeek.Monday) -> p` prints `DayOfWeek.Monday`): an arrow-lambda host is " + ByItem26 + ", and no tracker holds that program, since it is green";
     private const string AnIntEnum = "the host is an int enum, whose member's value is an int: a `str` value declares a string enum, another host, and any other type is SPY0253";
 
     /// <summary>Why a host has no cell for a slot of <paramref name="type"/>, or null when it has one.</summary>
@@ -725,6 +897,9 @@ public sealed partial class ScopeMeaningDifferentialTests
         [ScopeConstantKind.ClrTypeStaticProperty] = new[] { new TypeMemberBase("system", "Array", typeof(Array), "max_length", "int", "2147483591") },
         [ScopeConstantKind.ClrTypeMethod] = new[] { new TypeMemberBase("system", "Math", typeof(Math), "sqrt", "(float) -> float", "5.0", "{0}(25.0)", Form: Harness.Form.Value) },
         [ScopeConstantKind.ClrTypeDeclinedMethod] = new[] { new TypeMemberBase("system", "Char", typeof(char), "is_ascii_digit", "object", "True", "{0} is not None", Form: Harness.Form.Value) },
+        // The slot's function type selects the overload (the owner's ruling 29, #2423 comment 7052893050), so the read is a
+        // function value like `Math.sqrt`. SPY0336 is what every read of the group answers today (#2277), and it stays the
+        // answer where no function type stands at the slot: an attribute argument.
         [ScopeConstantKind.ClrTypeMethodGroup] = new[]
         {
             new TypeMemberBase("system", "Math", typeof(Math), "abs", "(int) -> int", "5", "{0}(-5)", new[] { "SPY0336" }, Harness.Form.Value),
@@ -1331,6 +1506,7 @@ public sealed partial class ScopeMeaningDifferentialTests
     };
 
     private const string TheAliasItself = "the alias's own name and where it stands: not its target";
+    private const string AnEscapedNameIsMissingAsItsPlainOne = "the escape picks the namespace a spelling is looked up in (a type of the program over a builtin of the same spelling): a missing name is missing in both, so an escaped target has its plain one's verdict (named by an annotation, ``type K0 = `nosuch` `` is SPY0202 as `type K0 = nosuch` is)";
     private const string SourceLocation = "a source location";
     private const string UnparserFact = "a syntax fact for the unparser and the structural comparer (the record's own remark): resolution does not read it";
 
@@ -1342,7 +1518,7 @@ public sealed partial class ScopeMeaningDifferentialTests
         [$"TypeAlias.{nameof(AstTypeAlias.NameColumnEnd)}"] = TheAliasItself,
         [$"TypeAlias.{nameof(AstTypeAlias.IsNameBacktickEscaped)}"] = TheAliasItself,
         [$"TypeAlias.{nameof(AstTypeAlias.FunctionType)}"] = "refined by FunctionType's own properties",
-        [$"TypeAnnotation.{nameof(AstTypeAnnotation.IsNameBacktickEscaped)}"] = "the escape picks the namespace a spelling is looked up in: a missing name is missing in both, and the escaped lookup is #1325's",
+        [$"TypeAnnotation.{nameof(AstTypeAnnotation.IsNameBacktickEscaped)}"] = AnEscapedNameIsMissingAsItsPlainOne,
         [$"TypeAnnotation.{nameof(AstTypeAnnotation.BacktickEscapedParts)}"] = UnparserFact,
         [$"TypeAnnotation.{nameof(AstTypeAnnotation.IsResult)}"] = "computed from ErrorType, which is a shape",
         [$"TypeAnnotation.{nameof(AstTypeAnnotation.TupleElementNamesBacktickEscaped)}"] = UnparserFact,
@@ -1399,7 +1575,22 @@ public sealed partial class ScopeMeaningDifferentialTests
             ValueTypes.Keys, ExcludedValueTypes.Keys);
         Carried("no-initializer", Declarations.Keys, c => new[] { c.Cell.Target });
         Carried("no-initializer", Enum.GetValues<ScopeInitializer>(), Part<ScopeInitializer>);
-        Carried("no-initializer", DeclarationHosts.Values.SelectMany(h => h).Concat(ValueTypes.Values.SelectMany(v => v).Select(v => v.Label)), Marks);
+        // The host is read from its typed part and the declared type from its label: two axes, so a pool that loses every cell of
+        // one host, or of one declared type, is red. Then the product: every kind a type declares, in every host, with every type.
+        Carried("no-initializer", DeclarationHosts.Values.SelectMany(h => h), c => HostOf(c.Cell) is { } host ? new[] { host } : Array.Empty<DeclarationHost>());
+        var typeLabels = ValueTypes.Values.SelectMany(v => v).Select(v => v.Label).ToList();
+        Carried("no-initializer", typeLabels, Marks);
+        foreach (var misplaced in DeclarationHosts.Where(h => h.Value.Any(host => host.Kind != h.Key)).Select(h => h.Key))
+            problems.Add($"no-initializer × host: a host listed under {misplaced} carries another kind");
+        var declared = Route("no-initializer").Select(c => (c.Cell.Target, Host: HostOf(c.Cell), Marks: Marks(c).ToHashSet(StringComparer.Ordinal))).ToList();
+        foreach (var kind in Declarations.Where(d => d.Value.InType).Select(d => d.Key))
+        {
+            foreach (var host in DeclarationHosts.Values.SelectMany(h => h))
+            {
+                foreach (var label in typeLabels.Where(l => !declared.Any(d => d.Target == kind && d.Host == host && d.Marks.Contains(l))))
+                    problems.Add($"no-initializer: no cell declares {kind} of type {label} in a {host}");
+            }
+        }
 
         // typed-read
         Partition("typed-read × kind", Enum.GetValues<BindingKind>(), TypedReads.Keys, ExcludedTypedReads.Keys);
@@ -1409,6 +1600,15 @@ public sealed partial class ScopeMeaningDifferentialTests
         Carried("typed-read", Enum.GetValues<ScopeAnnotation>(), Part<ScopeAnnotation>);
         foreach (var unplaced in UnplacedTypedReaders.Take(10))
             problems.Add($"typed-read: the 8951 pool spells a read this set has no reader host for: {unplaced}");
+        foreach (var placement in TypedThirdPlacements.Keys.Where(p => !ExcludedTypedPlacements.ContainsKey(p)))
+            problems.Add($"typed-read × reader placement: {placement} is neither generated nor excluded, and the 8951 pool spells {TypedThirdPlacements[placement]} must-run reads from it");
+        // The other direction: an exclusion says the pool reads from the placement, so one the pool no longer spells holds nothing.
+        foreach (var stale in ExcludedTypedPlacements.Keys.Where(p => !TypedThirdPlacements.ContainsKey(p)))
+            problems.Add($"typed-read × reader placement: {stale} is excluded as a placement the 8951 pool reads from, and that pool spells no must-run read from it");
+        foreach (var label in TypedLabelledReads.Keys.Where(l => !ExcludedTypedReceivers.ContainsKey(l)))
+            problems.Add($"typed-read × receiver: the label '{label}' is neither generated nor excluded, and the 8951 pool spells {TypedLabelledReads[label]} must-run reads under it");
+        foreach (var stale in ExcludedTypedReceivers.Keys.Where(l => !TypedLabelledReads.ContainsKey(l)))
+            problems.Add($"typed-read × receiver: the label '{stale}' is excluded as one the 8951 pool reads under, and that pool spells no must-run read under it");
         foreach (var (route, excluded) in ExcludedOrders)
             Partition($"{route} × order", Enum.GetValues<Harness.Order>(), Route(route).SelectMany(Part<Harness.Order>), excluded.Keys);
         foreach (var later in Route("typed-read").Where(c => c.Cell.Key!.Part<Harness.Order>() == Harness.Order.Later))
@@ -1684,9 +1884,10 @@ public sealed partial class ScopeMeaningDifferentialTests
         if (!binders.SequenceEqual(AliasBinderSites.OrderBy(k => k, StringComparer.Ordinal)))
             problems.Add($"alias-target × site: the binder census holds [{string.Join("; ", binders)}], and the sites were placed for [{string.Join("; ", AliasBinderSites)}]");
 
-        // An exclusion that rests on the compiler names its probe, and a probe has its exclusion.
+        // A probe has its exclusion, and an exclusion that rests on the compiler has its probe. What rests on the compiler is read
+        // from the reason's own text: one that names a diagnostic code or cites an issue says what a program does today.
         var reasons = ExcludedDeclarations.Values.Concat(ExcludedDeclarationHosts.Values).Concat(ExcludedValueTypes.Values).Concat(ExcludedTypedReads.Values)
-            .Concat(ExcludedTypedSpellings.Values).Concat(ExcludedTypedPositions.Values).Concat(ExcludedCalleeBinders.Values).Concat(ExcludedCalleeOuters.Values)
+            .Concat(ExcludedTypedSpellings.Values).Concat(ExcludedTypedPositions.Values).Concat(ExcludedTypedPlacements.Values).Concat(ExcludedTypedReceivers.Values).Concat(ExcludedCalleeBinders.Values).Concat(ExcludedCalleeOuters.Values)
             .Concat(ExcludedAdmissionTables.Values).Concat(ExcludedModuleMemberShapes.Values).Concat(ExcludedModuleCollections.Values).Concat(ExcludedAliasScopes.Values).Concat(ExcludedAliasTypeHosts.Values)
             .Concat(ExcludedOwnSpellings.Values).Concat(ExcludedOwnPlacements.Values).Concat(ExcludedEnumSpellings.Values).Concat(ExcludedImportKinds.Values)
             .Concat(ExcludedBuiltinReceivers.Values).Concat(ExcludedLambdaUses.Values).Concat(ExcludedLambdaDefaultPositions.Values)
@@ -1700,12 +1901,17 @@ public sealed partial class ScopeMeaningDifferentialTests
             .ToHashSet(StringComparer.Ordinal);
         foreach (var orphan in BehaviourProbes.Keys.Concat(CrashProbes.Keys).Where(k => !reasons.Contains(k)))
             problems.Add($"a probe guards the reason '{orphan}', and no exclusion gives it");
+        foreach (var unprobed in reasons.Where(r => NamesWhatTheCompilerDoes.IsMatch(r) && !BehaviourProbes.ContainsKey(r) && !CrashProbes.ContainsKey(r)).OrderBy(r => r, StringComparer.Ordinal))
+            problems.Add($"the exclusion '{unprobed}' names a diagnostic code or an issue, so it rests on what the compiler does today, and no probe holds it");
         foreach (var twice in BehaviourProbes.Keys.Where(CrashProbes.ContainsKey))
             problems.Add($"the reason '{twice}' has a probe in this process and one in a child process: it rests on one behaviour");
         foreach (var blank in reasons.Where(string.IsNullOrWhiteSpace))
             problems.Add($"an exclusion gives no reason: '{blank}'");
         return problems;
     }
+
+    /// <summary>What marks a reason as resting on the compiler: a diagnostic code (Sharpy's or C#'s) or an issue's number.</summary>
+    private static readonly Regex NamesWhatTheCompilerDoes = new(@"\b(?:SPY|CS)\d{4}\b|#\d{3,}");
 
     /// <summary>The binder sites the alias sites were placed for (<see cref="AliasSites"/>'s summary).</summary>
     internal static readonly string[] AliasBinderSites =
@@ -1747,13 +1953,16 @@ public sealed partial class ScopeMeaningDifferentialTests
     public void Exclusions_RestingOnTheCompiler_GoRedWhenItChanges()
     {
         var problems = new List<string>();
-        foreach (var (reason, probe) in BehaviourProbes.OrderBy(e => e.Key, StringComparer.Ordinal))
+        foreach (var (reason, probes) in BehaviourProbes.OrderBy(e => e.Key, StringComparer.Ordinal))
         {
-            var run = RunSharpy(probe.Source, probe.Stdlib, SharpyExecTimeoutMs);
-            if (!probe.Holds(run))
+            foreach (var probe in probes.All)
             {
-                problems.Add($"'{reason}' rests on {probe.Expected}, and the probe now gives [{string.Join(",", run.ErrorCodes.Distinct())}{(run.CsCode != null ? " " + run.CsCode : "")}]"
-                    + $"{(run.ErrorCodes.Count == 0 ? $" stdout '{Harness.Normalize(run.Stdout)}'" : "")}: generate the value, or give the exclusion its new reason");
+                var run = RunSharpy(probe.Source, probe.Stdlib, SharpyExecTimeoutMs);
+                if (!probe.Holds(run))
+                {
+                    problems.Add($"'{reason}' rests on {probe.Expected}, and the probe now gives [{string.Join(",", run.ErrorCodes.Distinct())}{(run.CsCode != null ? " " + run.CsCode : "")}]"
+                        + $"{(run.ErrorCodes.Count == 0 ? $" stdout '{Harness.Normalize(run.Stdout)}'" : "")}: generate the value, or give the exclusion its new reason");
+                }
             }
         }
         Assert.True(problems.Count == 0, string.Join("\n", problems));
