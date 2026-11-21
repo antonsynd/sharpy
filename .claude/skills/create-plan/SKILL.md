@@ -47,7 +47,7 @@ A revision is plan-author work on an existing file of record. It runs in a **fre
 
 ## Scope check (before any research)
 
-A plan implements **one non-chore group** of the round charter and lands on **one gate** (contract §11). If the issue list spans more than one group, or bundles a group that changes printed output or emitted layout with anything else, **stop and ask** which group to plan — never bundle. Chores ride along only when they touch no seam the group touches. Record the answer in the plan's `## Scope` block; a deliberate exception is written there as `override: <owner's words>`.
+A plan implements **one non-chore group** of the round charter and lands on **one gate** (contract §11). If the issue list spans more than one group, or bundles a group that changes printed output or emitted layout with anything else, **stop and ask** which group to plan — never bundle. Chores ride along only when they touch no seam the group touches. Record the answer in the plan's `## Scope` block; a deliberate exception is an `Override (scope)` record there.
 
 ## Tier check (contract §12, before any research)
 
@@ -161,7 +161,7 @@ The plan must follow this structure. `## Defect Class` and `## Adversarial Revie
 - **Alone:** <yes — changes printed output / emitted layout | no>
 - **Gates:** 1
 - **Filing:** cells outside the contract go to the findings ledger; the lead files by class (contract §10); trackers named at the end of this plan
-- **Override:** <none | the owner's words>
+- **Override (scope):** <none | owner YYYY-MM-DD "override: <reason>" — <comment URL>>
 
 ## Defect Class
 

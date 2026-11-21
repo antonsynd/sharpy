@@ -73,3 +73,27 @@ def test_mutation_control(tmp_path):
     (repo / "src/missing.cs").write_text("x\n")
     r = cpr.check(PLAN, repo)
     assert r["paths"]["missing"] == []
+
+
+def test_issue_lookup_uses_rest(tmp_path, monkeypatch):
+    # `gh issue view` is GraphQL, which cloud sessions refuse with HTTP 403: the lookup is REST
+    import json
+    import subprocess
+
+    calls = []
+
+    def fake_run(argv, **kw):
+        calls.append(argv)
+        if argv[0] != "gh":  # list_files: fall back to the directory walk
+            raise subprocess.CalledProcessError(1, argv)
+        body = {"state": "closed", "state_reason": "completed", "title": "t"}
+        return subprocess.CompletedProcess(argv, 0, stdout=json.dumps(body), stderr="")
+
+    monkeypatch.setattr(cpr.subprocess, "run", fake_run)
+    r = cpr.check("Issue #1234.", _repo(tmp_path), with_issues=True)
+    assert r["issues"] == {
+        "1234": {"state": "CLOSED", "reason": "COMPLETED", "title": "t"}
+    }
+    assert ["gh", "api", "-X", "GET", "repos/antonsynd/sharpy/issues/1234"] in calls
+    text, _ = cpr.render(r, strict=False)
+    assert "#1234 CLOSED (COMPLETED)" in text
