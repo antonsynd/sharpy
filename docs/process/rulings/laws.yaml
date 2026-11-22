@@ -1,0 +1,498 @@
+# The law table. Checked by build_tools/check_rulings.py; see README.md here.
+#
+# status: written   the law's text is in `source`, at `anchor` (the check fails if the text is gone).
+#                   `statement` is a one-line reminder, never the authority.
+# status: draft     a principle the 2026-11-21 audit found recurring in the rulings and written in no
+#                   law (its Appendix A). The wording and boundary are the audit agent's and are not the
+#                   owner's. A draft becomes a law when the owner adopts it and writes it into a source.
+#
+# cases:       what the law's text gives for a case, so a ruling that says otherwise is seen.
+# invariants:  the law says the answer must not change along these axes of a family.
+laws:
+- id: A1
+  status: written
+  source: docs/language_specification/introduction.md
+  anchor: '**Axiom 1 — .NET Runtime:**'
+  statement: Sharpy compiles to C# and runs on the CLR; it inherits the run-time behaviour .NET or C# defines.
+- id: A2
+  status: written
+  source: docs/language_specification/introduction.md
+  anchor: '**Axiom 2 — Python Surface:**'
+  statement: Sharpy uses Python 3 syntax and idioms; Python is evidence for behaviour only where a twin program
+    exists.
+- id: A3
+  status: written
+  source: docs/language_specification/introduction.md
+  anchor: '**Axiom 3 — Static & Null-Safe:**'
+  statement: Every type is known at compile time; None needs T?; a CLR default never stands in for an initializer
+    that has not run.
+- id: RR
+  status: written
+  source: docs/language_specification/introduction.md
+  anchor: '**Resolution Rule:**'
+  statement: When Axiom 1 and Axiom 2 conflict, Axiom 1 wins unless the compiler can reconcile them at zero cost.
+- id: T1
+  status: written
+  source: docs/language_specification/introduction.md
+  anchor: 1. **No silently wrong value.**
+  statement: Never a silently wrong value.
+- id: T2
+  status: written
+  source: docs/language_specification/introduction.md
+  anchor: 2. **A compile-time error over a run-time error.**
+  statement: A compile-time error over a run-time error.
+- id: T3
+  status: written
+  source: docs/language_specification/introduction.md
+  anchor: 3. **A correct program keeps its value.**
+  statement: A correct program keeps its value unless a recorded decision changes it.
+- id: T4
+  status: written
+  source: docs/language_specification/introduction.md
+  anchor: 4. **One rule for every host**
+  statement: One rule for every host (module, class, generic class) over a special case.
+- id: N1
+  status: written
+  source: docs/design/name-resolution.md
+  anchor: '### N1. Scope decides meaning, not order'
+  statement: A module-level or class-level declaration is visible throughout its scope.
+- id: N2
+  status: written
+  source: docs/design/name-resolution.md
+  anchor: '### N2. Ambiguity is an error'
+  statement: A read whose meaning would depend on reading order is an error.
+- id: N3
+  status: written
+  source: docs/design/name-resolution.md
+  anchor: '### N3. Values are ready before use'
+  statement: A value's initializer has run before the value is read, or the read is an error.
+- id: N4
+  status: written
+  source: docs/design/name-resolution.md
+  anchor: '### N4. Constants are not special'
+  statement: Constants follow the same rules as other declarations.
+- id: N5
+  status: written
+  source: docs/design/name-resolution.md
+  anchor: '### N5. Locals are ordered'
+  statement: A local is visible from its declaration to the end of its block; loop, with, except and comprehension
+    targets are fresh bindings.
+  cases:
+  - family: walrus-target
+    coords:
+      position: comprehension-element
+      target: existing-local
+    verdict: refuse
+- id: N6
+  status: written
+  source: docs/design/name-resolution.md
+  anchor: '### N6. Writing across a function boundary needs a declaration'
+  statement: A store assigns a binding of the same function; writing an outer binding needs global or nonlocal.
+- id: N7
+  status: written
+  source: docs/design/name-resolution.md
+  anchor: '### N7. Spelling never changes the verdict'
+  statement: How a name is spelled never changes what the compiler decides about it.
+- id: FS
+  status: written
+  source: docs/design/python-fidelity-scope.md
+  anchor: '## The table'
+  statement: Which surfaces are compared with python3 and which deviate by default; an unlisted surface is a deviation
+    until promoted.
+- id: CR2
+  status: written
+  source: CLAUDE.md
+  anchor: '**RoslynEmitter is a pure translator**'
+  statement: The emitter translates; semantic analysis decides.
+- id: CR7
+  status: written
+  source: CLAUDE.md
+  anchor: '**The spec is authoritative**'
+  statement: Read the spec first; change the implementation, never the spec.
+- id: AP
+  status: written
+  source: CLAUDE.md
+  anchor: '## Design Anti-Patterns'
+  statement: No feature because Python has it, no runtime type checks, no wrapper types, one way to do a thing,
+    no magic.
+- id: CV
+  status: written
+  source: CLAUDE.md
+  anchor: '**Wrap .NET, expose Python**'
+  statement: Core and Stdlib wrap .NET and expose Python names; absence is T?, expected failure is Result, bugs
+    throw.
+- id: P-reversible-door
+  status: draft
+  source: docs/audits/ruling-audit-2026-11-21.md
+  anchor: '`reversible-door`'
+  scope: language
+  statement: 'Among open options pick the one from which the others stay additive: refuse a form not yet admitted
+    rather than admit it, and keep admitting a form already admitted rather than restrict it.'
+  boundary: Yields when the reversible option leaves a silent difference from Python on a COMPARED surface, a
+    silently wrong or order-dependent value (T1), or withdraws a documented surface; then the one-way fix is taken
+    and recorded by direction.
+  rulings: [R-H, R-AM, R-EQ, R-FA, R-JZ, R-IZ, R-PK, R-PI, R-QM, R-DR, R-LR, R-AO, R-BF, R-CS, R-LE, R-KT, R-HW,
+    R-AW, R-HH, R-EW, R-DW, R-CW, R-CX, R-FM, R-FC, R-DJ, R-BR, R-ML, R-JG, R-KW, R-HJ, R-DH, R-GD, R-DL, R-FH,
+    R-IA, R-OA, R-NU, R-HT, R-DZ, R-AX, R-FW, R-OW]
+  against: [R-OY, R-QA, R-EU, R-QL, R-PL, R-OB, R-ND, R-MT, R-AI, R-HU]
+- id: P-uniform-verdict-across-forms
+  status: draft
+  source: docs/audits/ruling-audit-2026-11-21.md
+  anchor: '`uniform-verdict-across-forms`'
+  scope: language
+  statement: A desugared form, an alternative spelling, another host, or another member of an operator or declaration
+    family gets exactly its primitive's verdict, value and diagnostic code; no form-specific refusal or exemption.
+  boundary: Uniformity is judged by Sharpy's own type and conversion rules and by the mechanism (what gates, what
+    converts), not by Python's family lines; a second spelling may survive to keep a correct program running (T3).
+  nearest_written_law: N7
+  rulings: [R-OY, R-PD, R-PE, R-PF, R-IA, R-OH, R-PI, R-MI, R-LS, R-CW, R-BU, R-MW, R-EI, R-ER, R-LH, R-KY, R-PT,
+    R-R, R-II, R-AA, R-EE, R-CR, R-DP, R-IP, R-HH]
+  against: [R-EU, R-DZ, R-NU, R-ON]
+  invariants:
+  - family: equality-without-eq
+    along: [site]
+  - family: wrapper-str
+    along: [wrapper]
+- id: P-one-authority-per-fact
+  status: draft
+  source: docs/audits/ruling-audit-2026-11-21.md
+  anchor: '`one-authority-per-fact`'
+  scope: language
+  statement: 'Each fact or behaviour has one implementation every consumer calls: a compile-time check calls the
+    runtime''s pure function, an operator and its library function share one engine, and one authority spells
+    each name or identity.'
+  nearest_written_law: CR2
+  rulings: [R-BX, R-CG, R-IP, R-AN, R-CF, R-DE, R-NG, R-LP, R-CO, R-HD, R-IB, R-IL, R-DH, R-CW, R-DD, R-JC, R-R,
+    R-AQ]
+- id: P-csharp-limit-named-refusal
+  status: draft
+  source: docs/audits/ruling-audit-2026-11-21.md
+  anchor: '`csharp-limit-named-refusal`'
+  scope: language
+  statement: When C# cannot express a construct, refuse it before Roslyn with a named Sharpy code and the steer
+    a C# programmer would write; do not emulate it with a lowering users could depend on.
+  boundary: Emulation is taken when the lowering is unobservable from Sharpy (R-AV) or when refusing would leave
+    ordinary Python programs either refused en masse or printing a different value (R-QL, R-AI).
+  nearest_written_law: RR
+  rulings: [R-N, R-JG, R-KT, R-ML, R-IW, R-CS, R-QK, R-PT, R-HJ, R-LE, R-KW, R-HW, R-FO, R-JL, R-AW, R-HU, R-FW]
+  against: [R-QL, R-AI, R-AV]
+- id: P-no-invented-type-or-conversion
+  status: draft
+  source: docs/audits/ruling-audit-2026-11-21.md
+  anchor: '`no-invented-type-or-conversion`'
+  scope: language
+  statement: 'The compiler never invents a type or conversion: a common type is the slot''s or an operand''s own;
+    anything beyond value-preserving widening is spelled by the user; disagreeing candidates are refused, asking
+    for an annotation.'
+  boundary: Compile-time constants that fit the target, stores into a narrowed Optional, and nullability-oblivious
+    foreign values convert implicitly; everything else is spelled.
+  nearest_written_law: A3
+  rulings: [R-G, R-W, R-AB, R-AE, R-BH, R-BO, R-PJ, R-JP, R-FN, R-KW, R-F, R-U, R-IC, R-AJ]
+  against: [R-T, R-EH, R-OP]
+- id: P-diagnostic-code-per-cure
+  status: draft
+  source: docs/audits/ruling-audit-2026-11-21.md
+  anchor: '`diagnostic-code-per-cure`'
+  scope: diagnostics
+  statement: 'A diagnostic code means one failure with one cure: reuse it, naming the kind in the message, for
+    the same mistake; mint a new code when the cure differs; never filter a code by route.'
+  nearest_written_law: CR10
+  rulings: [R-BL, R-IK, R-GL, R-OV, R-OX, R-HI, R-JI, R-LI, R-AT, R-AZ, R-JO, R-ED, R-FN]
+- id: P-silent-wrong-first
+  status: draft
+  source: docs/audits/ruling-audit-2026-11-21.md
+  anchor: '`silent-wrong-first`'
+  scope: process
+  statement: A group that removes a silently wrong value is queued ahead of groups fixing refusals, crashes or
+    tooling; tooling and tests-only residues wait behind user-facing silent-wrong work, regressions excepted.
+  boundary: Order applies within a band; across arcs the owner weighs user-facing value, and a silent-wrong cell
+    waits when its class fix is already scheduled.
+  nearest_written_law: batch-issues SKILL step 3 (not a listed law)
+  rulings: [R-JU, R-KI, R-CN, R-GF, R-GO, R-GU, R-HC, R-HQ, R-IX, R-JF, R-HY, R-IJ, R-JA]
+  against: [R-PM, R-GX, R-NB]
+- id: P-group-by-class-and-seam
+  status: draft
+  source: docs/audits/ruling-audit-2026-11-21.md
+  anchor: '`group-by-class-and-seam`'
+  scope: process
+  statement: Cells join the open tracker and group whose contract owns their class; defects on one seam form one
+    group with one generator, built by the group that consumes it.
+  boundary: A new group is formed when the cure reuses facts a just-landed group built (R-JY); otherwise cells
+    go to existing trackers (R-JW).
+  nearest_written_law: VC10
+  rulings: [R-GZ, R-HB, R-KL, R-JW, R-JB, R-GR, R-JY, R-LO, R-KV, R-MF, R-LR, R-JQ]
+  against: [R-JY]
+- id: P-collision-is-error
+  status: draft
+  source: docs/audits/ruling-audit-2026-11-21.md
+  anchor: '`collision-is-error`'
+  scope: language
+  statement: When two declarations, imports or source files claim one name in one scope, refuse and name both;
+    neither order, kind nor star-ness picks a silent winner, and no deterministic rename is applied.
+  boundary: When the other party is an open-ended external set (CLR namespaces, references), whose growth would
+    newly refuse existing code, the local name wins with a default-on warning naming the escape.
+  nearest_written_law: N2
+  rulings: [R-IZ, R-JZ, R-DH, R-AX, R-HJ, R-LD, R-CY, R-II, R-JO, R-AW, R-JI]
+  against: [R-BA, R-CV]
+- id: P-tooling-keeps-user-bytes
+  status: draft
+  source: docs/audits/ruling-audit-2026-11-21.md
+  anchor: '`tooling-keeps-user-bytes`'
+  scope: diagnostics
+  statement: An editor, formatter or refactoring route keeps the user's written spelling and bytes unless it can
+    prove the change legal and meaning-preserving; it re-spells only when forced, and otherwise is not offered.
+  boundary: A formatter run the user asked for may canonicalize within a stated bound (R-ET); repair routes acting
+    on an unparseable document may not.
+  rulings: [R-DL, R-GD, R-GQ, R-GS, R-FK, R-FU, R-FQ, R-FR, R-FV, R-FP, R-ET]
+  against: [R-ET]
+- id: P-promote-fidelity-where-exact
+  status: draft
+  source: docs/audits/ruling-audit-2026-11-21.md
+  anchor: '`promote-fidelity-where-exact`'
+  scope: library
+  statement: Promote a Python surface to COMPARED by whole type or message family, covering what .NET reproduces
+    exactly or Core alone can cure; the remainder becomes one family deviation row.
+  boundary: Where an exact reproduction would rewrite genuine values (R-NS, R-FL's 128+N), the inexact part stays
+    a deviation even inside a promoted family.
+  nearest_written_law: FS
+  rulings: [R-CJ, R-NR, R-KS, R-NF, R-CK, R-IQ, R-IM, R-PL, R-FL, R-NS]
+  against: [R-BN]
+- id: P-measure-before-mechanism
+  status: draft
+  source: docs/audits/ruling-audit-2026-11-21.md
+  anchor: '`measure-before-mechanism`'
+  scope: process
+  statement: Add a mechanism, optimisation, CI leg or runtime-target move only after a measurement shows the need;
+    record an unmeasured hazard. Performance is reported for the owner to judge, not gated automatically.
+  boundary: Correctness checks on every platform the product ships for are not optional.
+  nearest_written_law: VC5
+  rulings: [R-AS, R-KR, R-KN, R-KA, R-NI, R-GH, R-HA, R-PU, R-LW, R-MY]
+  against: [R-GM]
+- id: P-documented-surface-implemented
+  status: draft
+  source: docs/audits/ruling-audit-2026-11-21.md
+  anchor: '`documented-surface-implemented`'
+  scope: language
+  statement: A documented feature that can be typed and lowered is implemented rather than documented away; the
+    spec is rewritten only where the feature has no CLR carrier or admitting it would be the one-way door.
+  boundary: The spec yields when it promises something with no CLR carrier (R-BR) or when a later principle (Python
+    fidelity, R-OB) supersedes its text by ruling.
+  nearest_written_law: CR7
+  rulings: [R-MT, R-DJ, R-ND, R-JS, R-MR, R-MV, R-AC, R-MW, R-AG]
+  against: [R-BR, R-OB, R-MD]
+- id: P-loose-none-fails-like-python
+  status: draft
+  source: docs/audits/ruling-audit-2026-11-21.md
+  anchor: '`loose-none-fails-like-python`'
+  scope: language
+  statement: A possibly-None `T | None` operand in an operation Python accepts stays legal, warns, and fails as
+    CPython does; a literal None where the type cannot hold None is a compile error.
+  boundary: Applies to the loose `T | None` spelling only; Sharpy's strict `T?` is refused until narrowed. It
+    overrides T2 for that spelling.
+  nearest_written_law: T2
+  rulings: [R-OP, R-OC, R-NV, R-OS, R-OU, R-OB, R-Z, R-OV]
+  against: [R-OC, R-DX]
+- id: P-untypeable-api-is-deviation
+  status: draft
+  source: docs/audits/ruling-audit-2026-11-21.md
+  anchor: '`untypeable-api-is-deviation`'
+  scope: library
+  statement: A Python library surface that cannot be typed statically, or whose Python value occurs only in misuse,
+    becomes one recorded deviation row with a steer, not dynamic invocation, generated factories or a widened
+    nullable type.
+  boundary: A typeable surface with no other route is implemented; only untypeable, misuse-only, or alternative-covered
+    surfaces deviate.
+  nearest_written_law: FS
+  rulings: [R-FC, R-FE, R-NH, R-NN, R-DC, R-DY, R-IE, R-FW]
+  against: [R-ND, R-IR]
+- id: P-land-semantics-before-instruments
+  status: draft
+  source: docs/audits/ruling-audit-2026-11-21.md
+  anchor: '`land-semantics-before-instruments`'
+  scope: process
+  statement: Do not build an instrument, generator or stopgap on semantics a ruled change will flip; land the
+    semantic change first, and move an existing structure intact before redesigning it.
+  boundary: An instrument that hides missing refusals goes first, since the band it audits depends on it.
+  nearest_written_law: VC11
+  rulings: [R-GV, R-LO, R-EC, R-HA, R-NP, R-FF, R-JN, R-MF]
+  against: [R-HQ]
+- id: P-coverage-over-ci-capacity
+  status: draft
+  source: docs/audits/ruling-audit-2026-11-21.md
+  anchor: '`coverage-over-ci-capacity`'
+  scope: process
+  statement: Coverage a contract requires is kept and CI capacity raised to carry it; every known failure is a
+    counted, cited row, and a missing precondition reports Skipped, never a vacuous pass.
+  nearest_written_law: VC2
+  rulings: [R-PC, R-QH, R-HZ, R-OZ, R-MC, R-ID, R-KK, R-JE]
+- id: P-clr-values-keep-clr-shape
+  status: draft
+  source: docs/audits/ruling-audit-2026-11-21.md
+  anchor: '`clr-values-keep-clr-shape`'
+  scope: language
+  statement: A CLR value keeps its CLR identity and nullability-oblivious shape; Sharpy may add capabilities but
+    never subtracts what the CLR shape shows, and converts it only explicitly or with a check at a declared boundary.
+  boundary: Builtin types that are Sharpy types over a CLR backing follow Sharpy rules; the principle covers foreign
+    values only.
+  nearest_written_law: CV
+  rulings: [R-BH, R-BO, R-AN, R-EH, R-DW, R-BT, R-EG]
+  against: [R-AP, R-BU]
+- id: P-repr-is-construction-spelling
+  status: draft
+  source: docs/audits/ruling-audit-2026-11-21.md
+  anchor: '`repr-is-construction-spelling`'
+  scope: library
+  statement: A value's str/repr is its source construction spelling with payload reprs; where the runtime lacks
+    the source information, print a fixed documented placeholder, never CLR text or compiler-injected names.
+  boundary: A placeholder is a deviation only until a cheap mechanism carries the information (R-DG); then the
+    name is kept.
+  nearest_written_law: FS
+  rulings: [R-IM, R-CH, R-BN, R-DG, R-IF, R-CF, R-HO]
+  against: [R-CJ]
+- id: P-one-mechanical-name-rule
+  status: draft
+  source: docs/audits/ruling-audit-2026-11-21.md
+  anchor: '`one-mechanical-name-rule`'
+  scope: language
+  statement: Name mangling is one mechanical rule for every name; exceptions are spelled with the backtick escape
+    and collisions it creates are refused, never handled by tables, per-name renames or silent fallbacks.
+  boundary: A special case already visible to C# consumers is not reopened (R-AD).
+  nearest_written_law: AP
+  rulings: [R-CR, R-EB, R-AW, R-ED, R-CZ, R-DD, R-DP]
+  against: [R-AD, R-DZ]
+- id: P-host-invariant-output
+  status: draft
+  source: docs/audits/ruling-audit-2026-11-21.md
+  anchor: '`host-invariant-output`'
+  scope: library
+  statement: 'A program''s verdict and output never depend on the machine: locale, filesystem case, or assemblies
+    a process happened to load; an OS that cannot reproduce a behaviour gets its own deviation row.'
+  boundary: Where an OS lacks the data (Windows time-zone names), the difference is confined to that OS and recorded.
+  nearest_written_law: T4
+  rulings: [R-CL, R-HH, R-CV, R-DB, R-FL, R-GM]
+  against: [R-DB]
+- id: P-sentinel-defaults-not-magic
+  status: draft
+  source: docs/audits/ruling-audit-2026-11-21.md
+  anchor: '`sentinel-defaults-not-magic`'
+  scope: library
+  statement: A Python default or calling convention C# cannot express is modelled by overloads, a nullable parameter
+    with a body coalesce, or a lambda steer; never an in-band magic value or dynamic invocation.
+  boundary: Overloads are synthesized only at rung 1 in library source; user-written defaults are refused with
+    a steer.
+  nearest_written_law: AP
+  rulings: [R-EV, R-R, R-AV, R-A, R-FC, R-FW]
+  against: [R-R]
+- id: P-identity-never-runs-user-code
+  status: draft
+  source: docs/audits/ruling-audit-2026-11-21.md
+  anchor: '`identity-never-runs-user-code`'
+  scope: language
+  statement: '`is` is identity only and never runs user code or a type test; `==` always runs the type''s declared
+    equality and is refused when none is declared; enum members count as identities.'
+  boundary: Container search follows CPython's documented identity-first semantics (R-PL); value-type operands
+    of `is` answer False with a warning.
+  rulings: [R-EJ, R-ES, R-OX, R-QG, R-OM, R-PI]
+  against: [R-PL]
+- id: P-contained-fix-ships-now
+  status: draft
+  source: docs/audits/ruling-audit-2026-11-21.md
+  anchor: '`contained-fix-ships-now`'
+  scope: process
+  statement: A contained fix to a false refusal or crash on an ordinary program, with a closed matrix and no seam
+    an in-flight group owns, ships now as a chore, not with its distant group.
+  boundary: Not when a scheduled ruled fix would rewrite the interim change, or when the fix carves a seam out
+    of another group's contract.
+  nearest_written_law: CR13
+  rulings: [R-JD, R-JM, R-JX, R-KB, R-QN, R-GG]
+  against: [R-JN, R-EC, R-KL]
+- id: P-pre-1.0-break-early
+  status: draft
+  source: docs/audits/ruling-audit-2026-11-21.md
+  anchor: '`pre-1.0-break-early`'
+  scope: process
+  statement: 'Before 1.0 there is no compatibility promise: breaking respellings land early, unconsumed public
+    APIs that cannot be made correct are deleted, stale hand models are dropped, and ruled designs ship without
+    a feature flag.'
+  boundary: Rows disagree on whether the C# consumer surface is protected before 1.0; R-GW and R-KM say no users
+    exist, R-AD and R-EW protect it.
+  rulings: [R-GW, R-KM, R-BJ, R-FX, R-JC, R-DG]
+  against: [R-AD, R-EW]
+- id: P-process-extensions-are-one-off
+  status: draft
+  source: docs/audits/ruling-audit-2026-11-21.md
+  anchor: '`process-extensions-are-one-off`'
+  scope: process
+  statement: An extension of a process limit (an extra verify pass, a raised ratchet pin) is granted once on the
+    owner's quoted word and is never precedent.
+  boundary: None stated; recurrence suggests the cap itself needs a written extension clause.
+  nearest_written_law: VC12
+  rulings: [R-QC, R-QF, R-OR, R-NY, R-OO]
+  against: [R-OO]
+- id: P-clr-limit-saturates-not-refuses
+  status: draft
+  source: docs/audits/ruling-audit-2026-11-21.md
+  anchor: '`clr-limit-saturates-not-refuses`'
+  scope: library
+  statement: A run-time argument Python accepts but a CLR limit cannot hold saturates, or raises CPython's nearest
+    exception, recorded as one family deviation row; the call is not refused.
+  boundary: 'Values in source text, known at compile time, are refused (T2); only run-time values saturate. R-FH
+    calls refusing Python-accepted calls the one-way option, R-HU calls admitting Python''s value the one-way
+    option: the door reading flips with compile-time knowability.'
+  nearest_written_law: A1
+  rulings: [R-DA, R-FH, R-IR, R-IS]
+  against: [R-HU, R-IA]
+- id: P-bug-dependent-program-not-correct
+  status: draft
+  source: docs/audits/ruling-audit-2026-11-21.md
+  anchor: '`bug-dependent-program-not-correct`'
+  scope: language
+  statement: Under T3, a program whose current value comes from a defect, or whose verdict differs from its primitive
+    twin's, is not a correct program; changing it needs a direction record, not a deviation row.
+  boundary: Status-quo behaviour that is consistent and documented (R-OW) is kept as a deviation, not treated
+    as a bug.
+  nearest_written_law: T3
+  rulings: [R-LP, R-OY, R-JZ, R-QA]
+  against: [R-OW]
+- id: P-tier-below-letters-at-charter
+  status: draft
+  source: docs/audits/ruling-audit-2026-11-21.md
+  anchor: '`tier-below-letters-at-charter`'
+  scope: process
+  statement: A group's tier may be set below its derived letter at charter time when full-tier dimensions have
+    no subject (tests-only, mechanical respellings); once planning begins tiers only rise.
+  nearest_written_law: VC12
+  rulings: [R-JR, R-KE, R-KQ, R-QP]
+- id: P-static-check-only-definite
+  status: draft
+  source: docs/audits/ruling-audit-2026-11-21.md
+  anchor: '`static-check-only-definite`'
+  scope: language
+  statement: A static check refuses only a definite mismatch; where the operand kind, format spec or target symbol
+    is not statically known, it stays silent and the run-time check answers.
+  boundary: Holds where the missing fact is unknowable at compile time; T2 governs wherever the fact is known.
+  nearest_written_law: T2
+  rulings: [R-U, R-CD, R-BW]
+  against: [R-AT]
+- id: P-users-first-release
+  status: draft
+  source: docs/audits/ruling-audit-2026-11-21.md
+  anchor: '`users-first-release`'
+  scope: process
+  statement: A defect that breaks the documented install on a supported host is fixed at once as its own chore
+    and released as a patch, and a known workaround is posted on the issue immediately.
+  rulings: [R-GG, R-GI, R-GJ]
+- id: P-backed-enum-flavour
+  status: draft
+  source: docs/audits/ruling-audit-2026-11-21.md
+  anchor: '`backed-enum-flavour`'
+  scope: language
+  statement: A backed enum behaves as the Python enum flavour of its backing (IntEnum, StrEnum) for every operator.
+  boundary: 'No consistent boundary: string-backed enums are StrEnum for == and Enum for ordering, int-backed
+    the reverse. R-PK''s reason (''no .NET order to keep'') suggests ''keep .NET behaviour where it exists, else
+    refuse'', which R-ON does not fit.'
+  rulings: [R-OW, R-QG]
+  against: [R-ON, R-PK]
+  invariants:
+  - family: enum-operator
+    along: [operator, operands]

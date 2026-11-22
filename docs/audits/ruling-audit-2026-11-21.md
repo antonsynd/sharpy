@@ -390,6 +390,11 @@ ruling naming its case from a fixed list of language features, which is the work
 describe. A script can prove a step was done and recorded consistently. It cannot prove the
 judgement inside the record was right.
 
+**Built on 2026-11-22.** The records, the law table and the checks are in
+[`docs/process/rulings/`](../process/rulings/README.md), checked by `build_tools/check_rulings.py`
+and `build_tools/ruling_evidence.py`. The checks reproduce this audit's verified conflicts from the
+data alone; those wait in `known-findings.yaml` for the rulings of section 6.
+
 ## Appendix A. The 32 principles
 
 "Rulings" counts the rows the grouping agent judged to turn on the principle; it read at least
