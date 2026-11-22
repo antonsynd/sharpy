@@ -6311,7 +6311,7 @@ rulings:
   kind: cli-lsp
   units: [license, packaging]
   rule: Packages carrying CPython-derived code (Core, Stdlib, Cli) declare the SPDX licence Python-2.0, the full
-    CPython licence stack the notices reproduce, not PSF-2.0.
+    CPython licence stack the notices reproduce, not the narrower id used before.
   door_stated: two-way
   audit:
     basis: choice
