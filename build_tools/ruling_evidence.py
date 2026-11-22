@@ -19,9 +19,14 @@ Three uses:
 
 An *observation* is one of:
     runs:<stdout>       the program compiled and exited 0; <stdout> is its exact standard output
-    refused:<code>      it did not compile; <code> is the first SPYnnnn in the diagnostics
-                        (for python: `refused:SyntaxError`, raised before any statement ran)
-    raises:<type>       it compiled and ended on an uncaught exception of that type
+    refused:<code>      it did not compile; <code> is the first SPYnnnn error in the diagnostics
+                        (for python: `refused:SyntaxError`, from compiling the file, before any
+                        statement ran; a SyntaxError raised while running is a `raises:`)
+    crashes:<code>      (Sharpy only) the compiler reported an internal error, a code in the Infra
+                        range SPY0900-0999, such as SPY0908 "generated C# failed to compile". It is
+                        a defect and never a ruled refusal, so a ruling cannot decide it (`after`).
+    raises:<type>       it compiled and ended on an uncaught exception of that type; whatever it
+                        printed first follows on the next line (`raises:IndexError\nbefore\n`)
     no-twin             (python only) python3 has no program that means the same thing
 
 The door (derive_door). Two facts are computed, and neither is asked of the author:
@@ -53,30 +58,76 @@ from typing import Dict, List, Optional, Tuple
 REPO = Path(__file__).resolve().parents[1]
 DEFAULT_SHARPYC = REPO / "src" / "Sharpy.Cli" / "bin" / "Debug" / "net10.0" / "sharpyc"
 OBSERVATION_RE = re.compile(
-    r"^(runs:.*|refused:[A-Za-z0-9_.]+|raises:[A-Za-z0-9_.]+|no-twin)$", re.S
+    r"^(runs:.*|refused:[A-Za-z0-9_.]+|crashes:SPY\d{4}|raises:[A-Za-z0-9_.]+(\n.*)?|no-twin)$",
+    re.S,
 )
+# Which kinds each field of an evidence block may hold. `after` is what a ruling decides.
+SHARPY_KINDS = ("runs", "refused", "crashes", "raises")
+PYTHON_KINDS = ("runs", "refused", "raises", "no-twin")
+DECIDED_KINDS = ("runs", "refused", "raises")
 # `sharpyc run` prints the compile banner, a blank line, this line, a blank line, then the program's output.
 RUN_BANNER = "=== Running Program ===\n"
 SPY_ERROR_RE = re.compile(r"error\[(SPY\d{4})\]")
-# The last frame line of a python traceback, or of a .NET unhandled-exception report.
-PY_EXCEPTION_RE = re.compile(
-    r"^([A-Za-z_][\w.]*(?:Error|Exception|Exit|Interrupt|Warning|StopIteration))\b",
-    re.M,
-)
 NET_EXCEPTION_RE = re.compile(r"Unhandled exception\.\s+([\w.]+)")
 TIMEOUT_S = 120
+
+# Runs the python twin and reports how it ended through a side file, never through stderr text:
+# a message, a note or a line printed to stderr can spell any exception name. `compile` first, so
+# only a SyntaxError of the file itself is a refusal; one raised while running (eval, an import)
+# is an exception like any other.
+PY_RUNNER = r"""
+import sys
+
+path, result = sys.argv[1], sys.argv[2]
+sys.argv = [path]
+
+
+def done(text):
+    sys.stdout.flush()
+    with open(result, "w", encoding="utf-8") as handle:
+        handle.write(text)
+
+
+with open(path, encoding="utf-8") as handle:
+    source = handle.read()
+try:
+    code = compile(source, path, "exec")
+except SyntaxError as exc:
+    done("refused:" + type(exc).__name__)
+    raise SystemExit(0)
+try:
+    exec(code, {"__name__": "__main__", "__file__": path})
+except SystemExit as exc:
+    done("runs" if exc.code in (None, 0) else "raises:SystemExit")
+except BaseException as exc:
+    done("raises:" + type(exc).__name__)
+else:
+    done("runs")
+"""
 
 
 class EvidenceError(Exception):
     """A program could not be measured at all (no compiler, a timeout, unreadable output)."""
 
 
-def is_observation(text: object) -> bool:
-    return isinstance(text, str) and OBSERVATION_RE.match(text) is not None
+def is_observation(text: object, kinds: Optional[Tuple[str, ...]] = None) -> bool:
+    """True when `text` is an observation, of one of `kinds` when given."""
+    if not isinstance(text, str) or OBSERVATION_RE.match(text) is None:
+        return False
+    return kinds is None or kind_of(text) in kinds
 
 
 def kind_of(observation: str) -> str:
     return observation.split(":", 1)[0]
+
+
+def is_internal(code: str) -> bool:
+    """A diagnostic code in the Infra range: the compiler failed, it did not refuse the program."""
+    return 900 <= int(code[3:]) <= 999
+
+
+def _raised(name: str, printed: str) -> str:
+    return "raises:" + name + ("\n" + printed if printed else "")
 
 
 def sharpyc_path() -> Path:
@@ -106,50 +157,57 @@ def measure_sharpy(program: str, sharpyc: Optional[Path] = None) -> str:
         source.write_text(program, encoding="utf-8")
         code, out, err = _run([str(sharpyc), "run", str(source)], Path(tmp))
     if RUN_BANNER not in out:
-        refusal = SPY_ERROR_RE.search(out + "\n" + err)
-        if refusal:
-            return "refused:" + refusal.group(1)
-        raise EvidenceError(f"sharpyc exited {code} with neither a run banner nor an error code:\n{(out + err).strip()[:800]}")
+        error = SPY_ERROR_RE.search(out + "\n" + err)
+        if error:
+            return ("crashes:" if is_internal(error.group(1)) else "refused:") + error.group(1)
+        raise EvidenceError(
+            f"sharpyc exited {code} with neither a run banner nor an error code:\n{(out + err).strip()[:800]}"
+        )
     printed = out.split(RUN_BANNER, 1)[1]
     printed = printed[1:] if printed.startswith("\n") else printed
     if code == 0:
         return "runs:" + printed
-    net = NET_EXCEPTION_RE.search(err + "\n" + out)
+    net = NET_EXCEPTION_RE.search(err)
     if net:
-        return "raises:" + net.group(1).rsplit(".", 1)[-1]
-    raise EvidenceError(f"the program exited {code} without an unhandled-exception report:\n{err.strip()[:800]}")
+        return _raised(net.group(1).rsplit(".", 1)[-1], printed)
+    raise EvidenceError(
+        f"the program exited {code} without an unhandled-exception report:\n{err.strip()[:800]}"
+    )
 
 
 def measure_python(program: str, python: Optional[str] = None) -> str:
     """Run `program` under the python oracle in isolated mode; return its observation."""
     python = python or sys.executable
     with tempfile.TemporaryDirectory(prefix="ruling-evidence-") as tmp:
-        source = Path(tmp) / "main.py"
+        source, runner, result = (Path(tmp) / n for n in ("main.py", "runner.py", "result.txt"))
         source.write_text(program, encoding="utf-8")
-        code, out, err = _run([python, "-I", str(source)], Path(tmp))
-    if code == 0:
-        return "runs:" + out
-    names = PY_EXCEPTION_RE.findall(err)
-    if not names:
+        runner.write_text(PY_RUNNER, encoding="utf-8")
+        code, out, err = _run([python, "-I", str(runner), str(source), str(result)], Path(tmp))
+        ended = result.read_text(encoding="utf-8") if result.is_file() else None
+    if ended is None:
         raise EvidenceError(
-            f"python exited {code} with no exception line:\n{err.strip()[:800]}"
+            f"python exited {code} without reporting how the program ended:\n{err.strip()[:800]}"
         )
-    name = names[-1].rsplit(".", 1)[-1]
-    # A SyntaxError is raised before any statement runs: python's compile-time refusal.
-    return (
-        "refused:"
-        if name in ("SyntaxError", "IndentationError", "TabError")
-        else "raises:"
-    ) + name
+    if ended == "runs":
+        return "runs:" + out
+    if ended.startswith("refused:"):
+        return ended
+    return _raised(ended.split(":", 1)[1], out)
 
 
 def derive_door(before: str, after: str, python: str = "no-twin") -> Dict[str, object]:
     """The door a decision is, from what the program did before, does after, and does in python."""
-    for name, value in (("before", before), ("after", after), ("python", python)):
-        if not is_observation(value):
-            raise ValueError(f"{name}: not an observation: {value!r}")
-    ran_before = kind_of(before) != "refused"
-    runs_after = kind_of(after) != "refused"
+    for name, value, kinds in (
+        ("before", before, SHARPY_KINDS),
+        ("after", after, DECIDED_KINDS),
+        ("python", python, PYTHON_KINDS),
+    ):
+        if not is_observation(value, kinds):
+            raise ValueError(
+                f"{name}: not an observation of kind {', '.join(kinds)}: {value!r}"
+            )
+    ran_before = kind_of(before) in ("runs", "raises")
+    runs_after = kind_of(after) in ("runs", "raises")
     changed = before != after
     breaks_running = ran_before and changed
     if not runs_after:
@@ -157,7 +215,7 @@ def derive_door(before: str, after: str, python: str = "no-twin") -> Dict[str, o
     elif not ran_before:
         undo_breaks, why = (
             True,
-            "it lets a program run that was refused; programs will be written that need it",
+            "it lets a program run that did not compile; programs will be written that need it",
         )
     elif changed:
         undo_breaks, why = True, "it changes what a running program prints or raises"

@@ -7195,7 +7195,7 @@ rulings:
 
         def main() -> None:
             print(Verb.GET < Verb.POST)
-      sharpy: refused:SPY0908
+      sharpy: crashes:SPY0908
       python: no-twin
 - id: R-PL
   seed: audit-2026-11-21

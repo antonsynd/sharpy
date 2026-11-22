@@ -20,6 +20,7 @@ import yaml
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
 import check_rulings as mod
+import ruling_evidence
 
 REPO = Path(__file__).resolve().parents[2]
 
@@ -166,7 +167,7 @@ def names(found: List[mod.Finding]) -> Set[str]:
 
 
 def keys(found: List[mod.Finding]) -> Set[Tuple[str, Tuple[str, ...]]]:
-    return {f.key for f in found}
+    return {f.key[:2] for f in found}
 
 
 def rulings(data: Dict[str, object]) -> List[dict]:
@@ -316,7 +317,7 @@ def test_unknown_family_axis_value_and_law_are_reference_findings(tmp_path):
     def edit(data):
         rulings(data).append(
             seed(
-                "R-C2",
+                "R-E",
                 cases=[{"family": "nope", "coords": {"a": "b"}, "verdict": "run"}],
             )
         )
@@ -654,37 +655,82 @@ def judged(tmp_path: Path, edit: Callable[[Dict[str, object]], None]):
     return mod.judge(mod.read_inputs(write(tmp_path, data)))
 
 
+def collide(data):
+    """R-C gives the operator site a second verdict, with no relation to R-A recorded."""
+    rulings(data)[2]["cases"] = [case("operator", "run")]
+    del rulings(data)[2]["amends"], rulings(data)[0]["amended_by"]
+    data["charter"] = CHARTER.replace("first; amended by R-C", "first")
+
+
+WHERE = "eq operand=ref,site=operator"
+
+
 def test_a_listed_finding_is_known_and_an_unlisted_one_is_new(tmp_path):
     def edit(data):
-        data["charter"] += "| R-Z | #4 | unrecorded |\n| R-Y | #5 | unrecorded |\n"
-        data["known"].append(
-            {"check": "charter-totality", "subjects": ["R-Z"], "ref": "audit 6.5"}
-        )
+        collide(data)
+        data["charter"] += "| R-Z | #4 | unrecorded |\n"
+        data["known"].append({"check": "collision", "subjects": ["R-A", "R-C"], "where": WHERE, "ref": "audit 6.1"})
 
     new, known, stale = judged(tmp_path, edit)
-    assert [f.key for f in new] == [("charter-totality", ("R-Y",))]
-    assert [f.key for f in known] == [("charter-totality", ("R-Z",))]
+    assert [f.key for f in new] == [("charter-totality", ("R-Z",), "")]
+    assert [f.key for f in known] == [("collision", ("R-A", "R-C"), WHERE)]
     assert stale == []
 
 
 def test_a_row_whose_finding_is_gone_is_stale(tmp_path):
     def edit(data):
-        data["known"].append(
-            {"check": "collision", "subjects": ["R-A", "R-C"], "ref": "audit 6.1"}
-        )
+        data["known"].append({"check": "collision", "subjects": ["R-A", "R-C"], "where": WHERE, "ref": "audit 6.1"})
 
     new, known, stale = judged(tmp_path, edit)
     assert new == [] and known == [] and len(stale) == 1
 
 
-def test_a_known_row_for_a_check_that_does_not_exist_is_refused(tmp_path):
+def test_a_row_covers_one_case_and_not_another_between_the_same_rulings(tmp_path):
+    # Two collisions between R-A and R-C, one row: the second collision is new, not hidden.
     def edit(data):
-        data["known"].append({"check": "vibes", "subjects": ["R-A"], "ref": "x"})
+        collide(data)
+        rulings(data)[0]["cases"].append(case("search", "refuse"))
+        rulings(data)[2]["cases"].append(case("search", "run"))
+        data["known"].append({"check": "collision", "subjects": ["R-A", "R-C"], "where": WHERE, "ref": "audit 6.1"})
+
+    new, known, stale = judged(tmp_path, edit)
+    assert [f.key for f in new] == [("collision", ("R-A", "R-C"), "eq operand=ref,site=search")]
+    assert len(known) == 1 and stale == []
+
+
+def test_a_row_without_the_case_does_not_cover_a_collision(tmp_path):
+    def edit(data):
+        collide(data)
+        data["known"].append({"check": "collision", "subjects": ["R-A", "R-C"], "ref": "audit 6.1"})
+
+    new, known, stale = judged(tmp_path, edit)
+    assert [f.check for f in new] == ["collision"] and known == [] and len(stale) == 1
+
+
+@pytest.mark.parametrize("check", ["schema", "reference", "door", "considered", "owner-required", "charter-totality", "vibes"])
+def test_only_findings_that_wait_for_the_owner_can_be_listed(tmp_path, check):
+    # A malformed record is fixed, not parked: a `schema: [R-D]` row would hide every later schema
+    # finding about R-D behind one key.
+    def edit(data):
+        record = strict()
+        del record["issue"], record["basis"]
+        rulings(data).append(record)
+        data["known"].append({"check": check, "subjects": ["R-D"], "ref": "x"})
+
+    new, known, _ = judged(tmp_path, edit)
+    assert known == []
+    assert any(f.check == "schema" and "cannot wait in known-findings.yaml" in f.message for f in new)
+    assert sum(1 for f in new if f.check == "schema" and f.subjects == ("R-D",)) >= 2
+
+
+def test_two_identical_known_rows_are_refused(tmp_path):
+    def edit(data):
+        collide(data)
+        row = {"check": "collision", "subjects": ["R-A", "R-C"], "where": WHERE, "ref": "audit 6.1"}
+        data["known"] += [row, dict(row, subjects=["R-C", "R-A"])]
 
     new, _, _ = judged(tmp_path, edit)
-    assert any(
-        f.check == "reference" and "no check is named 'vibes'" in f.message for f in new
-    )
+    assert any(f.check == "schema" and "two rows for collision" in f.message for f in new)
 
 
 def test_main_exit_codes(tmp_path, capsys):
@@ -697,6 +743,137 @@ def test_main_exit_codes(tmp_path, capsys):
     assert "NEW   charter-totality: R-Z" in capsys.readouterr().out
     (tmp_path / mod.RULINGS_DIR / "rulings.yaml").unlink()
     assert mod.main(["--root", str(tmp_path)]) == 2
+
+
+# --- findings of the independent review @ 993681ab3 --------------------------------------------
+
+
+def test_an_exception_named_only_under_another_laws_heading_fails(tmp_path):
+    # The source names R-C, but in L2's section; L1's own text does not.
+    def edit(data):
+        rulings(data)[2]["cases"] = [case("search", "run", exception_to="L1", differs_because="python documents it")]
+        data["law_text"] = "# Laws\n\n### L1. Sites agree\n\nOne verdict.\n\n### L2. Other\n\nException: R-C.\n"
+
+    assert ("exception-in-law", ("L1", "R-C")) in keys(findings(tmp_path, edit))
+
+
+def test_law_section_stops_at_the_next_law():
+    text = "intro R-A\n\n### L1. One\n\nbody R-B\n\n#### detail\n\nR-C\n\n### L2. Two\n\nR-D\n\n## Higher\n"
+    section = mod.law_section(text, "### L1. One")
+    assert "R-B" in section and "R-C" in section and "R-A" not in section and "R-D" not in section
+    items = "1. **First.** R-A\n2. **Second.** R-B\n\n**Bold:** R-C\nstill R-D\n\nnext R-E\n"
+    assert mod.law_section(items, "1. **First.**") == "1. **First.** R-A\n"
+    assert mod.law_section(items, "**Bold:**") == "**Bold:** R-C\nstill R-D\n"
+    assert mod.law_section(items, "absent") is None
+
+
+def test_an_exception_to_a_draft_law_must_be_in_its_against_list(tmp_path):
+    def edit(listed):
+        def apply(data):
+            draft = {"id": "P-x", "status": "draft", "source": "docs/laws.md", "anchor": "x", "statement": "s"}
+            if listed:
+                draft["against"] = ["R-C"]
+            data["laws"].append(draft)
+            # docs/laws.md names R-C, as the audit document names nearly every ruling: not enough.
+            rulings(data)[2]["cases"] = [case("search", "run", exception_to="P-x", differs_because="why")]
+
+        return apply
+
+    assert ("exception-in-law", ("P-x", "R-C")) in keys(findings(tmp_path, edit(False)))
+    assert "exception-in-law" not in names(findings(tmp_path, edit(True)))
+
+
+@pytest.mark.parametrize(
+    "bad",
+    [
+        "a string where a record belongs",
+        {"id": ["R-Q"], "seed": "x", "kind": "language", "rule": "r"},
+        {"id": 7, "seed": "x", "kind": "language", "rule": "r"},
+        {"id": "R-Q", "seed": "x", "kind": "language", "rule": "r", "cases": "none"},
+        {"id": "R-Q", "seed": "x", "kind": "language", "rule": "r", "cases": ["text", {"family": "eq", "coords": "x", "verdict": "run"}]},
+        {"id": "R-Q", "seed": "x", "kind": "language", "rule": "r", "superseded_by": "R-C"},
+    ],
+)
+def test_a_malformed_record_is_a_schema_finding_and_never_a_traceback(tmp_path, bad):
+    def edit(data):
+        rulings(data).append(bad)
+        data["charter"] += "| R-Q | #7 | q |\n"
+
+    found = findings(tmp_path, edit)
+    assert "schema" in names(found)
+
+
+def test_malformed_laws_families_and_known_rows_do_not_crash(tmp_path, capsys):
+    def edit(data):
+        data["laws"] += ["a string", {"id": "L3", "status": "written", "source": "docs/laws.md", "anchor": "# Laws", "statement": "s", "cases": "x", "invariants": "y"}]
+        data["families"]["broken"] = {"axes": "not a mapping"}
+        data["families"]["text"] = "not a mapping"
+        data["known"].append("a string")
+
+    data = base()
+    edit(data)
+    write(tmp_path, data)
+    assert mod.main(["--root", str(tmp_path)]) == 1
+    out = capsys.readouterr().out
+    assert "Traceback" not in out and out.count("NEW   schema") >= 4
+
+
+def test_one_ruling_giving_one_case_two_verdicts_collides_with_itself(tmp_path):
+    def edit(data):
+        rulings(data)[0]["cases"] = [case("search", "run"), case("search", "refuse")]
+
+    assert ("collision", ("R-A", "R-A")) in keys(findings(tmp_path, edit))
+
+
+def test_every_case_is_judged_against_the_policy_not_only_the_widest(tmp_path):
+    # Two cases that tie on both facts: nothing changes, and a refusal with another code. With
+    # refusals reserved, the ruling is reserved whichever case comes first.
+    for order in (0, 1):
+        cases = [case("slice", "refuse", evidence=evidence(REFUSED, REFUSED)), case("search", "refuse", evidence=evidence(REFUSED, "refused:SPY0611"))]
+
+        def edit(data, cases=cases[::-1] if order else cases):
+            data["policy"]["reversible_refusal"] = False
+            rulings(data).append(strict(cases=cases))
+
+        found = findings(tmp_path / str(order), edit)
+        assert keys(found) == {("owner-required", ("R-D",))}, order
+        assert "`reversible_refusal`" in found[0].message
+
+
+def test_the_same_refusal_is_no_change_and_another_code_is_a_reversible_refusal():
+    same = ruling_evidence.derive_door(REFUSED, REFUSED)
+    other = ruling_evidence.derive_door(REFUSED, "refused:SPY0611")
+    assert mod.policy_class(REFUSED, REFUSED, same) == "no_change"
+    assert mod.policy_class(REFUSED, "refused:SPY0611", other) == "reversible_refusal"
+    assert mod.policy_class(RAN, REFUSED, ruling_evidence.derive_door(RAN, REFUSED)) == "breaking_refusal"
+
+
+def test_only_section_4_rows_are_rulings_and_a_second_row_for_one_id_fails(tmp_path):
+    def outside(data):
+        data["charter"] = "## 1. Order\n\n| R-Z | not a ruling row |\n\n" + CHARTER + "\n## 5. Notes\n\n| R-Y | #9 | nor this |\n"
+
+    assert findings(tmp_path / "a", outside) == []
+
+    def twice(data):
+        data["charter"] += "| R-A | #1 | first, again; amended by R-C |\n"
+
+    found = findings(tmp_path / "b", twice)
+    assert any(f.check == "schema" and f.subjects == ("R-A",) and "more than one section-4 row" in f.message for f in found)
+
+
+def test_an_internal_compiler_error_is_evidence_but_never_a_decision(tmp_path):
+    crash = "crashes:SPY0908"
+
+    def measured(data):
+        rulings(data).append(strict(cases=[case("slice", "refuse", evidence=evidence(crash, REFUSED))]))
+
+    # The program does not compile today and is ruled refused: nothing running breaks.
+    assert findings(tmp_path / "a", measured) == []
+
+    def decided(data):
+        rulings(data).append(strict(cases=[case("slice", "refuse", evidence=evidence(REFUSED, crash))]))
+
+    assert any("needs `after`" in f.message for f in findings(tmp_path / "b", decided))
 
 
 # --- the real tree --------------------------------------------------------------------------------
@@ -784,4 +961,4 @@ def test_the_readme_template_passes_the_checks_it_documents(real):
     next(r for r in rulings_ if r["id"] == "R-LR")["amended_by"] = [template["id"]]
     new, _, _ = mod.judge(real._replace(rulings=rulings_ + [template]))
     # The one thing the template cannot have is a charter row naming it on R-LR.
-    assert [f.key for f in new] == [("charter-mark", ("R-LR", template["id"]))]
+    assert [f.key[:2] for f in new] == [("charter-mark", ("R-LR", template["id"]))]

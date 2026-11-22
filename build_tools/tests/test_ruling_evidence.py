@@ -65,7 +65,7 @@ def test_derive_door(before, after, python, door, breaks_running, undo_breaks):
 
 
 def test_derive_door_refuses_what_is_not_an_observation():
-    with pytest.raises(ValueError, match="before: not an observation"):
+    with pytest.raises(ValueError, match="before: not an observation of kind"):
         mod.derive_door("it prints 1", RAN)
 
 
@@ -76,11 +76,15 @@ def test_derive_door_refuses_what_is_not_an_observation():
         ("runs:a\nb\n", True),
         ("refused:SPY0402", True),
         ("refused:SyntaxError", True),
+        ("crashes:SPY0908", True),
         ("raises:IndexError", True),
+        ("raises:IndexError\nprinted first\n", True),
         ("no-twin", True),
         ("refused:", False),
+        ("crashes:TypeError", False),
         ("prints 1", False),
         ("refused:SPY0402 and more", False),
+        ("raises:IndexError and more", False),
         (None, False),
     ],
 )
@@ -88,53 +92,144 @@ def test_is_observation(text, ok):
     assert mod.is_observation(text) is ok
 
 
+def test_is_observation_can_be_limited_to_the_kinds_a_field_may_hold():
+    assert mod.is_observation("crashes:SPY0908", mod.SHARPY_KINDS)
+    assert not mod.is_observation("crashes:SPY0908", mod.DECIDED_KINDS)
+    assert not mod.is_observation("crashes:SPY0908", mod.PYTHON_KINDS)
+    assert not mod.is_observation("no-twin", mod.SHARPY_KINDS)
+
+
+def test_a_ruling_cannot_decide_a_crash_and_python_cannot_crash():
+    with pytest.raises(ValueError, match="after: not an observation of kind"):
+        mod.derive_door(REFUSED, "crashes:SPY0908")
+    with pytest.raises(ValueError, match="python: not an observation of kind"):
+        mod.derive_door(REFUSED, RAN, "crashes:SPY0908")
+
+
+def test_a_program_that_crashes_the_compiler_today_does_not_run_today():
+    # Ruling it refused breaks nothing; ruling that it runs is an admission.
+    refused = mod.derive_door("crashes:SPY0908", REFUSED)
+    assert (refused["door"], refused["breaks_running"]) == ("two-way", False)
+    admitted = mod.derive_door("crashes:SPY0908", RAN)
+    assert (admitted["door"], admitted["breaks_running"]) == ("one-way", False)
+
+
+def test_what_a_program_printed_before_it_raised_is_part_of_the_observation():
+    # Printing `a` then raising, and printing `b` then raising, are two results.
+    got = mod.derive_door("raises:TypeError\na\n", "raises:TypeError\nb\n")
+    assert (got["breaks_running"], got["undo_breaks"]) == (True, True)
+
+
 # --- python ---------------------------------------------------------------------------------------
 
 
 def test_python_runs():
     assert mod.measure_python("print(1)\nprint('x')\n") == "runs:1\nx\n"
+    assert mod.measure_python("import sys\nprint('x')\nsys.exit(0)\n") == "runs:x\n"
 
 
-def test_python_syntax_error_is_a_refusal():
+def test_python_syntax_error_of_the_file_is_a_refusal():
     # CPython refuses the whole file before any statement runs: nothing is printed.
     assert mod.measure_python("print('before')\nprint(01)\n") == "refused:SyntaxError"
+    assert mod.measure_python("if True:\nprint(1)\n") == "refused:IndentationError"
 
 
-def test_python_uncaught_exception_is_raises_with_the_type():
-    assert (
-        mod.measure_python("print('before')\nprint(1 // 0)\n")
-        == "raises:ZeroDivisionError"
-    )
+@pytest.mark.parametrize(
+    "program",
+    [
+        "print('ran')\neval('1 +')\n",
+        "print('ran')\nraise SyntaxError('x')\n",
+        "print('ran')\nexec('print(01)')\n",
+    ],
+)
+def test_a_syntax_error_raised_while_running_is_not_a_refusal(program):
+    # The program ran and printed; python did not refuse it. (Independent review @ 993681ab3.)
+    assert mod.measure_python(program) == "raises:SyntaxError\nran\n"
+
+
+def test_python_uncaught_exception_is_raises_with_the_type_and_what_came_first():
+    assert mod.measure_python("print('before')\nprint(1 // 0)\n") == "raises:ZeroDivisionError\nbefore\n"
     assert mod.measure_python("class P:\n    pass\nP() < P()\n") == "raises:TypeError"
+
+
+@pytest.mark.parametrize(
+    "program, name",
+    [
+        # Text on stderr can spell any exception name; the type is read from the exception.
+        ("raise ValueError('a\\nTypeError: b')\n", "ValueError"),
+        ("e = KeyError('k')\ne.add_note('TypeError: hint')\nraise e\n", "KeyError"),
+        ("import sys\nprint('KeyError: lookup', file=sys.stderr)\nclass Boom(Exception):\n    pass\nraise Boom()\n", "Boom"),
+        ("raise ExceptionGroup('g', [ValueError()])\n", "ExceptionGroup"),
+        ("import sys\nsys.exit('ValueError: bad')\n", "SystemExit"),
+        ("import sys\nsys.exit(3)\n", "SystemExit"),
+        ("raise KeyboardInterrupt()\n", "KeyboardInterrupt"),
+    ],
+)
+def test_the_python_exception_type_is_not_parsed_from_stderr(program, name):
+    assert mod.measure_python(program) == "raises:" + name
+
+
+def test_a_twin_that_kills_the_interpreter_is_an_error_not_a_verdict():
+    with pytest.raises(mod.EvidenceError, match="without reporting how the program ended"):
+        mod.measure_python("import os\nos._exit(3)\n")
 
 
 # --- the compiler ---------------------------------------------------------------------------------
 
 
+def fake_sharpyc(tmp_path: Path, stdout: str, stderr: str = "", code: int = 1) -> Path:
+    """A stand-in compiler that prints fixed text: for the outputs a real program cannot be relied on to give."""
+    path = tmp_path / "sharpyc"
+    path.write_text(
+        "#!/bin/sh\ncat <<'OUT'\n" + stdout + "\nOUT\ncat >&2 <<'ERR'\n" + stderr + "\nERR\nexit " + str(code) + "\n",
+        encoding="utf-8",
+    )
+    path.chmod(0o755)
+    return path
+
+
+def test_an_internal_compiler_error_is_a_crash_not_a_refusal(tmp_path):
+    # SPY0908 is "generated C# failed to compile": a compiler defect. Recording it as `refused:`
+    # made a leak look like a ruled refusal (independent review @ 993681ab3, R-PK's evidence).
+    text = "Compilation failed:\n\nerror[SPY0908]: internal error: generated C# failed to compile (CS0019)"
+    assert mod.measure_sharpy("x", fake_sharpyc(tmp_path, text)) == "crashes:SPY0908"
+
+
+@pytest.mark.parametrize("code, kind", [("SPY0222", "refused"), ("SPY0523", "refused"), ("SPY0899", "refused"), ("SPY0900", "crashes"), ("SPY0913", "crashes"), ("SPY0999", "crashes"), ("SPY1000", "refused")])
+def test_only_the_infra_range_is_a_crash(tmp_path, code, kind):
+    assert mod.measure_sharpy("x", fake_sharpyc(tmp_path, f"Compilation failed:\n\nerror[{code}]: something")) == f"{kind}:{code}"
+
+
+def test_the_first_error_decides_and_a_warning_does_not(tmp_path):
+    text = "warning[SPY0908]: not an error\nerror[SPY0222]: first\nerror[SPY0908]: second"
+    assert mod.measure_sharpy("x", fake_sharpyc(tmp_path, text)) == "refused:SPY0222"
+
+
+def test_compiler_output_with_no_banner_and_no_error_is_an_error_not_a_verdict(tmp_path):
+    with pytest.raises(mod.EvidenceError, match="neither a run banner nor an error code"):
+        mod.measure_sharpy("x", fake_sharpyc(tmp_path, "something unexpected"))
+
+
+def test_a_program_that_exits_non_zero_without_an_exception_is_an_error_not_a_verdict(tmp_path):
+    ran = "Successfully compiled to: x.exe\n\n=== Running Program ===\n\nUnhandled exception. Sharpy.KeyError: printed by the program"
+    with pytest.raises(mod.EvidenceError, match="without an unhandled-exception report"):
+        mod.measure_sharpy("x", fake_sharpyc(tmp_path, ran, code=3))
+
+
 @needs_compiler
 def test_sharpy_runs_and_the_banner_is_not_output():
-    assert (
-        mod.measure_sharpy("def main() -> None:\n    print(1)\n    print('x')\n")
-        == "runs:1\nx\n"
-    )
+    assert mod.measure_sharpy("def main() -> None:\n    print(1)\n    print('x')\n") == "runs:1\nx\n"
 
 
 @needs_compiler
 def test_sharpy_refusal_carries_the_first_error_code():
-    assert (
-        mod.measure_sharpy('def main() -> None:\n    x: int = 1\n    print(x + "a")\n')
-        == "refused:SPY0222"
-    )
+    assert mod.measure_sharpy('def main() -> None:\n    x: int = 1\n    print(x + "a")\n') == "refused:SPY0222"
 
 
 @needs_compiler
-def test_sharpy_uncaught_exception_is_raises_with_the_type():
-    assert (
-        mod.measure_sharpy(
-            "def main() -> None:\n    xs: list[int] = [1]\n    print(xs[5])\n"
-        )
-        == "raises:IndexError"
-    )
+def test_sharpy_uncaught_exception_is_raises_with_the_type_and_what_came_first():
+    program = "def main() -> None:\n    xs: list[int] = [1]\n    print('before')\n    print(xs[5])\n"
+    assert mod.measure_sharpy(program) == "raises:IndexError\nbefore\n"
 
 
 def test_a_missing_compiler_is_an_error_not_a_verdict(tmp_path, monkeypatch):

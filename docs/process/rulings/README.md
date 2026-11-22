@@ -74,6 +74,11 @@ A record without `seed:` must provide all of this, and the check fails if it doe
         after: refused:SPY0611    # what the ruling decides it will do
 ```
 
+An observation is `runs:<stdout>`, `refused:<code>`, `raises:<type>` (followed by whatever was
+printed first) or, for python only, `no-twin`. The compiler can also give `crashes:<code>`: an
+internal error such as SPY0908. That is a defect to report. It is valid as `sharpy`, and a ruling
+can never decide it as `after`.
+
 Three fields are computed, not chosen. `ruling_evidence.py door --before ... --after ...` prints
 them, and the `door` check compares:
 
@@ -94,15 +99,18 @@ An agent may record a ruling itself (`decided_by: agent`) only for the decision 
 | `reference` | An id, family, axis or value that does not exist | Fix it, or add the value to `axes.yaml` |
 | `supersession` | Only one of two rulings records that one replaced the other | Add the other side |
 | `charter-mark` | A replaced ruling's charter row does not say so | Strike the row, or name the later ruling on it |
-| `exception-in-law` | A ruling departs from a law whose text does not name it | Name the ruling in the law's text |
+| `exception-in-law` | A ruling departs from a law that does not name it: the law's own section of its source, or a draft's `against` list | Name the ruling there |
 | `collision` | Two live rulings give one case two verdicts | Rule; then supersede or amend one |
 | `invariance` | A law says an axis does not matter and two cases differ along it | Rule; then change a case, or record `differs_because` with `exception_to` |
 | `door` | The stated door is not what the evidence gives | Use the computed values |
 | `considered` | A related ruling was not answered | Say why it does not decide this one |
 | `owner-required` | An agent took a decision `policy.yaml` reserves | The owner decides |
 
-A finding that needs the owner goes in `known-findings.yaml` with a reference. When it is ruled,
-change the records and delete the row; a row whose finding no longer fires fails the check.
+A finding that needs the owner goes in `known-findings.yaml` with a reference. Only `charter-mark`,
+`exception-in-law`, `collision` and `invariance` findings can wait there; anything else is a
+malformed record and is fixed. A collision or invariance row also carries `where`, the case, copied
+from the check's output, so one row covers exactly one finding. When it is ruled, change the
+records and delete the row; a row whose finding no longer fires fails the check.
 
 ## What this does not check
 

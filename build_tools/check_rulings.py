@@ -33,7 +33,9 @@ Checks (the name is what a finding and a known-findings row carry):
   charter-mark        a wholly superseded ruling whose charter row is not struck (or a struck row
                       whose record names no successor), or an amended ruling whose charter row
                       does not name the ruling that amended it.
-  exception-in-law    a ruling with `exception_to: L` that the source text of L does not name.
+  exception-in-law    a ruling with `exception_to: L` that L does not name: for a written law, the
+                      law's own section of its source (from its anchor to the next law), not the
+                      whole file; for a draft, the `against` list of its entry.
   collision           two live cases with the same family and coordinates and different outcomes,
                       where neither owner supersedes, amends or declares an exception to the other.
   invariance          a law says an axis does not matter, and two live cases that differ only
@@ -47,7 +49,10 @@ Checks (the name is what a finding and a known-findings row carry):
                       not one policy.yaml lets an agent take alone.
 
 The ratchet: every finding must be absent or listed in known-findings.yaml, and every row there
-must still fire. A new finding fails; so does a row whose finding is gone (delete the row).
+must still fire. A new finding fails; so does a row whose finding is gone (delete the row). Only
+the findings that wait for the owner or for a text can be listed (PARKABLE); a row names its
+finding exactly (check, subjects and, for a collision or an invariance, the case in `where`), so
+one row never covers two findings. A malformed record is fixed, never listed.
 
 What this cannot see: whether a label is *right*. A `basis: follows` naming a law that does not
 decide the case passes. The case coordinates are the narrow part that is checked for truth: the
@@ -92,16 +97,21 @@ BASES = ("follows", "precedent", "exception", "new-law", "choice")
 VERDICTS = ("run", "refuse", "open")
 LAW_STATUS = ("written", "draft")
 LINKS = (("supersedes", "superseded_by"), ("amends", "amended_by"))
+# The checks whose findings may wait in known-findings.yaml: they need the owner, or a text brought
+# into line. Each of their findings has a key no other finding shares, so a row covers exactly one.
+# Everything else is a defect in a record and is fixed, not parked.
+PARKABLE = ("charter-mark", "exception-in-law", "collision", "invariance")
 
 
 class Finding(NamedTuple):
     check: str
     subjects: Tuple[str, ...]
     message: str
+    where: str = ""  # tells two findings of one check about the same subjects apart
 
     @property
-    def key(self) -> Tuple[str, Tuple[str, ...]]:
-        return self.check, tuple(sorted(self.subjects))
+    def key(self) -> Tuple[str, Tuple[str, ...], str]:
+        return self.check, tuple(sorted(self.subjects)), self.where
 
 
 class Case(NamedTuple):
@@ -121,6 +131,7 @@ class Inputs(NamedTuple):
     known: List[dict]
     charter: Dict[str, Tuple[bool, str]]  # id -> (struck, row text)
     root: Path
+    charter_duplicates: Tuple[str, ...] = ()
 
 
 class InputError(Exception):
@@ -141,30 +152,82 @@ def _load(path: Path, key: str, kind: type, required: bool = True) -> object:
     return data.get(key, kind())
 
 
-def read_charter(root: Path) -> Dict[str, Tuple[bool, str]]:
+def read_charter(root: Path) -> Tuple[Dict[str, Tuple[bool, str]], Tuple[str, ...]]:
+    """The ruling rows of every charter's section 4, and the ids that have more than one row."""
     rows: Dict[str, Tuple[bool, str]] = {}
+    duplicates: List[str] = []
     for path in sorted((root / ROUNDS_DIR).glob("*-batching.md")):
+        in_rulings = False
         for line in path.read_text(encoding="utf-8").splitlines():
-            match = ROW_RE.match(line)
+            if line.startswith("## "):
+                in_rulings = line.startswith("## 4.")
+                continue
+            match = ROW_RE.match(line) if in_rulings else None
             if match:
-                rows[match.group(2)] = (
-                    bool(match.group(1) and match.group(3)),
-                    match.group(4),
-                )
-    return rows
+                if match.group(2) in rows:
+                    duplicates.append(match.group(2))
+                rows[match.group(2)] = (bool(match.group(1) and match.group(3)), match.group(4))
+    return rows, tuple(duplicates)
 
 
 def read_inputs(root: Path) -> Inputs:
     base = root / RULINGS_DIR
+    charter, duplicates = read_charter(root)
     return Inputs(
         rulings=_load(base / "rulings.yaml", "rulings", list),  # type: ignore[arg-type]
         laws=_load(base / "laws.yaml", "laws", list),  # type: ignore[arg-type]
         families=_load(base / "axes.yaml", "families", dict),  # type: ignore[arg-type]
         policy=_load(base / "policy.yaml", "agent_may_decide", dict, required=False),  # type: ignore[arg-type]
         known=_load(base / "known-findings.yaml", "findings", list, required=False),  # type: ignore[arg-type]
-        charter=read_charter(root),
+        charter=charter,
         root=root,
+        charter_duplicates=duplicates,
     )
+
+
+def sanitized(inputs: Inputs) -> Inputs:
+    """The inputs without the entries `schema` has already reported as not even the right shape.
+
+    Every other check reads through this, so a string where a record belongs is one schema finding
+    and never a traceback (which would exit 1 and read as findings).
+    """
+    seen: Set[str] = set()
+    rulings: List[dict] = []
+    for record in inputs.rulings:
+        if not (isinstance(record, dict) and isinstance(record.get("id"), str) and ID_RE.match(record["id"])):
+            continue
+        if record["id"] in seen:
+            continue
+        seen.add(record["id"])
+        rulings.append(dict(record, cases=_well_formed_cases(record.get("cases"))))
+    laws: List[dict] = []
+    for law in inputs.laws:
+        if isinstance(law, dict) and isinstance(law.get("id"), str) and law["id"] not in {x["id"] for x in laws}:
+            invariants = [
+                i
+                for i in (law.get("invariants") if isinstance(law.get("invariants"), list) else [])
+                if isinstance(i, dict) and isinstance(i.get("family"), str)
+            ]
+            laws.append(dict(law, cases=_well_formed_cases(law.get("cases")), invariants=invariants))
+    families = {
+        name: family
+        for name, family in inputs.families.items()
+        if isinstance(family, dict)
+        and isinstance(family.get("axes"), dict)
+        and all(isinstance(values, list) for values in family["axes"].values())
+    }
+    known = [row for row in inputs.known if isinstance(row, dict)]
+    return inputs._replace(rulings=rulings, laws=laws, families=families, known=known)
+
+
+def _well_formed_cases(cases: object) -> List[dict]:
+    if not isinstance(cases, list):
+        return []
+    return [
+        case
+        for case in cases
+        if isinstance(case, dict) and isinstance(case.get("coords"), dict) and isinstance(case.get("family"), str)
+    ]
 
 
 def _ids(value: object) -> List[str]:
@@ -201,13 +264,13 @@ def _case_problems(owner: str, index: int, case: object, strict: bool) -> Iterab
     if not isinstance(evidence, dict) or not isinstance(evidence.get("program"), str):
         yield f"{where}: evidence needs a `program`"
         return
-    for field in ("sharpy", "python"):
-        if not ruling_evidence.is_observation(evidence.get(field)):
-            yield f"{where}: evidence `{field}` is not an observation: {evidence.get(field)!r}"
+    for field, kinds in (("sharpy", ruling_evidence.SHARPY_KINDS), ("python", ruling_evidence.PYTHON_KINDS)):
+        if not ruling_evidence.is_observation(evidence.get(field), kinds):
+            yield f"{where}: evidence `{field}` is not an observation of kind {', '.join(kinds)}: {evidence.get(field)!r}"
     if ("twin" in evidence) == (evidence.get("python") == "no-twin"):
         yield f"{where}: evidence has a `twin` exactly when `python` is not `no-twin`"
-    if strict and not ruling_evidence.is_observation(evidence.get("after")):
-        yield f"{where}: a new ruling's evidence needs `after`, the observation the ruling decides"
+    if strict and not ruling_evidence.is_observation(evidence.get("after"), ruling_evidence.DECIDED_KINDS):
+        yield f"{where}: a new ruling's evidence needs `after`, the observation the ruling decides ({', '.join(ruling_evidence.DECIDED_KINDS)})"
 
 
 def _ruling_problems(record: dict) -> Iterable[str]:
@@ -310,18 +373,27 @@ def check_schema(inputs: Inputs) -> Iterable[Finding]:
                 (str(combo),),
                 f"policy keys are {', '.join(POLICY_KEYS)}, each true or false",
             )
+    for rid in inputs.charter_duplicates:
+        yield Finding("schema", (rid,), "the charters hold more than one section-4 row for this ruling")
+    rows_seen: Set[Tuple[str, Tuple[str, ...], str]] = set()
     for row in inputs.known:
-        if not (
-            isinstance(row, dict)
-            and isinstance(row.get("check"), str)
-            and _ids(row.get("subjects"))
-            and row.get("ref")
-        ):
+        if not (isinstance(row, dict) and isinstance(row.get("check"), str) and _ids(row.get("subjects")) and row.get("ref")):
+            yield Finding("schema", ("known-findings",), f"a row needs `check`, `subjects` and `ref`: {row!r}")
+            continue
+        if row["check"] not in PARKABLE:
             yield Finding(
                 "schema",
                 ("known-findings",),
-                f"a row needs `check`, `subjects` and `ref`: {row!r}",
+                f"a `{row['check']}` finding cannot wait in known-findings.yaml (only {', '.join(PARKABLE)} can); fix it",
             )
+        key = known_key(row)
+        if key in rows_seen:
+            yield Finding("schema", ("known-findings",), f"two rows for {row['check']}: {' '.join(_ids(row['subjects']))}")
+        rows_seen.add(key)
+
+
+def known_key(row: dict) -> Tuple[str, Tuple[str, ...], str]:
+    return str(row.get("check")), tuple(sorted(_ids(row.get("subjects")))), str(row.get("where") or "")
 
 
 # --- cross-reference ------------------------------------------------------------------------------
@@ -456,14 +528,6 @@ def check_reference(inputs: Inputs) -> Iterable[Finding]:
                         (str(law.get("id")),),
                         f"invariant axis `{axis}` is not in family {invariant['family']}",
                     )
-    known_checks = set(CHECKS)
-    for row in inputs.known:
-        if isinstance(row, dict) and row.get("check") not in known_checks:
-            yield Finding(
-                "reference",
-                ("known-findings",),
-                f"no check is named {row.get('check')!r}",
-            )
 
 
 def check_supersession(inputs: Inputs) -> Iterable[Finding]:
@@ -529,20 +593,42 @@ def _exceptions(inputs: Inputs) -> Iterable[Tuple[str, str]]:
                 yield record["id"], case["exception_to"]
 
 
+def law_section(text: str, anchor: str) -> Optional[str]:
+    """The part of a law's source that is that law: from its anchor to where the next one starts.
+
+    A heading anchor runs to the next heading of its level or above; any other anchor (a bold
+    paragraph, a list item) to the next blank line or list item.
+    """
+    start = text.find(anchor)
+    if start < 0:
+        return None
+    line_start = text.rfind("\n", 0, start) + 1
+    heading = re.match(r"(#{1,6}) ", text[line_start:])
+    if heading:
+        stop = re.compile(rf"^#{{1,{len(heading.group(1))}}} ", re.M)
+    else:
+        stop = re.compile(r"^(?:[ \t]*$|[ \t]*(?:[-*]|\d+\.) )", re.M)
+    end = stop.search(text, start + len(anchor))
+    return text[line_start : end.start() if end else len(text)]
+
+
 def check_exception_in_law(inputs: Inputs) -> Iterable[Finding]:
-    laws = {law["id"]: law for law in inputs.laws if isinstance(law.get("id"), str)}
+    laws = {law["id"]: law for law in inputs.laws}
     for rid, lid in sorted(set(_exceptions(inputs))):
         law = laws.get(lid)
-        if law is None or not isinstance(law.get("source"), str):
+        if law is None:
             continue
-        path = inputs.root / law["source"]
-        text = path.read_text(encoding="utf-8") if path.is_file() else ""
-        if not re.search(rf"(?<![\w-]){re.escape(rid)}(?![A-Za-z])", text):
-            yield Finding(
-                "exception-in-law",
-                (rid, lid),
-                f"{rid} is an exception to {lid}, but {law['source']} does not name {rid}",
-            )
+        if law.get("status") == "draft":
+            # A draft has no law text to amend; its own entry lists the rulings that go against it.
+            if rid not in _ids(law.get("against")):
+                yield Finding("exception-in-law", (rid, lid), f"{rid} is an exception to the draft {lid}, which does not list it under `against`")
+            continue
+        path = inputs.root / str(law.get("source"))
+        section = law_section(path.read_text(encoding="utf-8"), str(law.get("anchor"))) if path.is_file() else None
+        if section is None:
+            continue  # `law-anchor` reports a missing source or anchor
+        if not re.search(rf"(?<![\w-]){re.escape(rid)}(?![A-Za-z])", section):
+            yield Finding("exception-in-law", (rid, lid), f"{rid} is an exception to {lid}, but the text of {lid} in {law['source']} does not name {rid}")
 
 
 # --- cases ----------------------------------------------------------------------------------------
@@ -594,22 +680,25 @@ def _related(inputs: Inputs) -> Dict[str, Set[str]]:
     return related
 
 
+def _where(family: str, coords: Iterable[Tuple[str, str]]) -> str:
+    return (family + " " + ",".join(f"{axis}={value}" for axis, value in coords)).strip()
+
+
 def check_collision(inputs: Inputs) -> Iterable[Finding]:
     related = _related(inputs)
     cases = live_cases(inputs)
     for a, b in itertools.combinations(cases, 2):
-        if (
-            a.owner == b.owner
-            or (a.family, a.coords) != (b.family, b.coords)
-            or a.outcome == b.outcome
-        ):
+        if (a.family, a.coords) != (b.family, b.coords) or a.outcome == b.outcome:
             continue
-        if b.owner in related.get(a.owner, ()) or a.owner in related.get(b.owner, ()):
+        # One owner giving one case two verdicts is a collision too; only a recorded relation
+        # between two owners (supersedes, amends, a declared exception) explains a difference.
+        if a.owner != b.owner and (b.owner in related.get(a.owner, ()) or a.owner in related.get(b.owner, ())):
             continue
         yield Finding(
             "collision",
             (a.owner, b.owner),
             f"{a.family} {dict(a.coords)}: {a.owner} says {_show(a)}, {b.owner} says {_show(b)}",
+            _where(a.family, a.coords),
         )
 
 
@@ -653,6 +742,7 @@ def check_invariance(inputs: Inputs) -> Iterable[Finding]:
                         "invariance",
                         owners + (law["id"],),
                         f"{law['id']} says {', '.join(sorted(along))} must not matter in {invariant['family']} {dict(fixed)}: {detail}",
+                        _where(str(invariant["family"]), fixed),
                     )
 
 
@@ -667,33 +757,41 @@ POLICY_KEYS = (
 )
 
 
-def door_of(record: dict) -> Optional[Dict[str, object]]:
-    """The widest door over a ruling's cases, or None when no case has complete evidence."""
-    widest: Optional[Dict[str, object]] = None
+def doors_of(record: dict) -> List[Dict[str, object]]:
+    """The derived door of each case that has complete evidence."""
+    doors: List[Dict[str, object]] = []
     for case in record.get("cases") or []:
         evidence = case.get("evidence") if isinstance(case, dict) else None
         if not isinstance(evidence, dict) or not all(
-            ruling_evidence.is_observation(evidence.get(k))
-            for k in ("sharpy", "after", "python")
+            ruling_evidence.is_observation(evidence.get(field), kinds)
+            for field, kinds in (
+                ("sharpy", ruling_evidence.SHARPY_KINDS),
+                ("after", ruling_evidence.DECIDED_KINDS),
+                ("python", ruling_evidence.PYTHON_KINDS),
+            )
         ):
             continue
-        door = ruling_evidence.derive_door(
-            evidence["sharpy"], evidence["after"], evidence["python"]
-        )
+        door = ruling_evidence.derive_door(evidence["sharpy"], evidence["after"], evidence["python"])
         door["class"] = policy_class(evidence["sharpy"], evidence["after"], door)
-        if widest is None or (door["undo_breaks"], door["breaks_running"]) > (
-            widest["undo_breaks"],
-            widest["breaks_running"],
-        ):
-            widest = door
-    return widest
+        doors.append(door)
+    return doors
+
+
+def door_of(record: dict) -> Optional[Dict[str, object]]:
+    """The widest door over a ruling's cases, or None when no case has complete evidence.
+
+    Cases that tie agree on both facts, so which one is returned does not change `door`,
+    `breaks_running` or `undo_breaks`; the policy class is judged per case (check_owner_required).
+    """
+    doors = doors_of(record)
+    return max(doors, key=lambda d: (d["undo_breaks"], d["breaks_running"])) if doors else None
 
 
 def policy_class(before: str, after: str, door: Dict[str, object]) -> str:
-    if ruling_evidence.kind_of(after) == "refused":
-        return "breaking_refusal" if door["breaks_running"] else "reversible_refusal"
     if before == after:
         return "kept_divergence" if door["undo_breaks"] else "no_change"
+    if ruling_evidence.kind_of(after) == "refused":
+        return "breaking_refusal" if door["breaks_running"] else "reversible_refusal"
     return "admission_or_value_change"
 
 
@@ -715,26 +813,18 @@ def check_door(inputs: Inputs) -> Iterable[Finding]:
 
 def check_owner_required(inputs: Inputs) -> Iterable[Finding]:
     for record in inputs.rulings:
-        if (
-            "seed" in record
-            or record.get("decided_by") != "agent"
-            or not isinstance(record.get("id"), str)
-        ):
+        if "seed" in record or record.get("decided_by") != "agent":
             continue
-        door = door_of(record)
-        if door is None:
+        doors = doors_of(record)
+        if not doors:
             if record.get("kind") in SEMANTIC_KINDS:
-                yield Finding(
-                    "owner-required",
-                    (record["id"],),
-                    "an agent decided it and no case has measured evidence to derive the door from",
-                )
-        elif inputs.policy.get(door["class"]) is not True:
-            yield Finding(
-                "owner-required",
-                (record["id"],),
-                f"an agent decided a `{door['class']}` decision; policy.yaml reserves it for the owner ({door['why']})",
-            )
+                yield Finding("owner-required", (record["id"],), "an agent decided it and no case has measured evidence to derive the door from")
+            continue
+        # Every case is judged: one reserved case reserves the ruling, whichever case is "widest".
+        reserved = sorted({str(d["class"]) for d in doors if inputs.policy.get(d["class"]) is not True})
+        if reserved:
+            why = "; ".join(sorted({str(d["why"]) for d in doors if d["class"] in reserved}))
+            yield Finding("owner-required", (record["id"],), f"an agent decided a `{', '.join(reserved)}` decision; policy.yaml reserves it for the owner ({why})")
 
 
 def check_considered(inputs: Inputs) -> Iterable[Finding]:
@@ -781,25 +871,27 @@ CHECKS = {
 
 
 def run_checks(inputs: Inputs) -> List[Finding]:
-    findings: List[Finding] = []
-    for check in CHECKS.values():
-        findings.extend(check(inputs))
+    findings: List[Finding] = list(check_schema(inputs))
+    clean = sanitized(inputs)
+    for name, check in CHECKS.items():
+        if name != "schema":
+            findings.extend(check(clean))
     return findings
 
 
 def judge(inputs: Inputs) -> Tuple[List[Finding], List[Finding], List[dict]]:
     """Split the findings into (new, known) and list the known-findings rows that no longer fire."""
     findings = run_checks(inputs)
-    known_keys = {
-        (str(r.get("check")), tuple(sorted(_ids(r.get("subjects"))))): r
-        for r in inputs.known
-        if isinstance(r, dict)
-    }
+    rows = {known_key(row): row for row in inputs.known if isinstance(row, dict) and row.get("check") in PARKABLE}
     fired = {f.key for f in findings}
-    new = [f for f in findings if f.key not in known_keys]
-    known = [f for f in findings if f.key in known_keys]
-    stale = [row for key, row in known_keys.items() if key not in fired]
+    new = [f for f in findings if f.key not in rows]
+    known = [f for f in findings if f.key in rows]
+    stale = [row for key, row in rows.items() if key not in fired]
     return new, known, stale
+
+
+def _at(finding: Finding) -> str:
+    return f" [where: {finding.where}]" if finding.where else ""
 
 
 def main(argv: Optional[List[str]] = None) -> int:
@@ -818,7 +910,7 @@ def main(argv: Optional[List[str]] = None) -> int:
         return 2
     new, known, stale = judge(inputs)
     for finding in new:
-        print(f"NEW   {finding.check}: {' '.join(finding.subjects)}: {finding.message}")
+        print(f"NEW   {finding.check}: {' '.join(finding.subjects)}{_at(finding)}: {finding.message}")
     for row in stale:
         print(
             f"STALE {row.get('check')}: {' '.join(_ids(row.get('subjects')))}: listed in known-findings.yaml and no longer fires; delete the row"
@@ -829,7 +921,7 @@ def main(argv: Optional[List[str]] = None) -> int:
                 f"known {finding.check}: {' '.join(finding.subjects)}: {finding.message}"
             )
     print(
-        f"check_rulings: {len(inputs.rulings)} rulings, {len(inputs.laws)} laws, {len(live_cases(inputs))} live cases; {len(new)} new, {len(stale)} stale, {len(known)} known findings"
+        f"check_rulings: {len(inputs.rulings)} rulings, {len(inputs.laws)} laws, {len(live_cases(sanitized(inputs)))} live cases; {len(new)} new, {len(stale)} stale, {len(known)} known findings"
     )
     return 1 if new or stale else 0
 
