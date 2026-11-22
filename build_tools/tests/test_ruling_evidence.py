@@ -196,6 +196,10 @@ print(len(fields(C)))
         ("import pickle\nclass P:\n    pass\nprint(type(pickle.loads(pickle.dumps(P()))).__name__)\n", "P\n"),
         ("from __future__ import annotations\nimport typing\nclass N:\n    nxt: N\nprint(typing.get_type_hints(N)['nxt'].__name__)\n", "N\n"),
         ("import sys\nprint(__name__, sys.argv[0] == __file__, sys.modules['__main__'].__name__)\n", "__main__ True __main__\n"),
+        ("print(type(__builtins__).__name__, __spec__, __package__, __doc__)\n", "module None None None\n"),
+        # A twin may close stdout or replace open; how it ended is still reported.
+        ("import sys\nprint('a')\nsys.stdout.close()\n", "a\n"),
+        ("import builtins\nprint('a')\nbuiltins.open = None\n", "a\n"),
     ],
 )
 def test_the_twin_runs_as_the_real_main_module(program, printed):
@@ -269,9 +273,14 @@ def test_an_unclassified_codegen_code_is_an_error_not_a_guess(tmp_path):
 
 def test_every_active_codegen_code_is_classified_exactly_once():
     # The roster is DiagnosticCodes.cs: a CodeGen code made Active there must be put in one of the
-    # two sets here, or this fails (and measuring a program that hits it raises).
+    # two sets here, or this fails (and measuring a program that hits it raises). Every SPY05nn
+    # constant counts unless its line says Retired or Reserved, so a new code is seen however its
+    # comment is written (third review @ 7e9f191e6).
     source = (REPO / "src/Sharpy.Compiler/Diagnostics/DiagnosticCodes.cs").read_text(encoding="utf-8")
-    active = set(re.findall(r'public const string \w+ = "(SPY05\d\d)";\s*// Active', source))
+    constants = re.findall(r'^.*const string \w+\s*=\s*"(SPY05\d\d)".*$', source, re.M)
+    lines = {code: line for line in source.splitlines() for code in re.findall(r'"(SPY05\d\d)"', line) if "const string" in line}
+    assert len(constants) == len(lines) == 26, sorted(lines)  # no code declared twice
+    active = {code for code, line in lines.items() if not re.search(r"//\s*(Retired|Reserved)", line)}
     assert len(active) == 18, sorted(active)  # the count the file's own header states
     assert not (mod.CODEGEN_INTERNAL & mod.CODEGEN_REFUSAL)
     assert mod.CODEGEN_INTERNAL | mod.CODEGEN_REFUSAL == active

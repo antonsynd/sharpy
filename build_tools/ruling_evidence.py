@@ -110,20 +110,25 @@ TIMEOUT_S = 120
 # `sys.modules`, as `python main.py` would run it: dataclasses, typing, pickle and
 # `import __main__` all look the running module up there.
 PY_RUNNER = r"""
+import builtins
 import sys
 import types
 
 path, result = sys.argv[1], sys.argv[2]
 sys.argv = [path]
+_open = open  # the twin may replace builtins.open
 
 
 def done(text):
-    sys.stdout.flush()
-    with open(result, "w", encoding="utf-8") as handle:
+    try:
+        sys.stdout.flush()
+    except Exception:
+        pass  # the twin closed or replaced stdout; what it wrote before is already out
+    with _open(result, "w", encoding="utf-8") as handle:
         handle.write(text)
 
 
-with open(path, encoding="utf-8") as handle:
+with _open(path, encoding="utf-8") as handle:
     source = handle.read()
 try:
     code = compile(source, path, "exec")
@@ -132,6 +137,7 @@ except SyntaxError as exc:
     raise SystemExit(0)
 main = types.ModuleType("__main__")
 main.__file__ = path
+main.__builtins__ = builtins  # a module, as in a script; exec would insert the dict
 sys.modules["__main__"] = main
 try:
     exec(code, main.__dict__)
