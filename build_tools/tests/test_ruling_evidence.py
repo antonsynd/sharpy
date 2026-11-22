@@ -8,6 +8,7 @@ does is faked. `recheck` is then run over every evidence program recorded in the
 from __future__ import annotations
 
 import os
+import re
 import sys
 from pathlib import Path
 
@@ -169,6 +170,47 @@ def test_the_python_exception_type_is_not_parsed_from_stderr(program, name):
     assert mod.measure_python(program) == "raises:" + name
 
 
+CLASSVAR = """from __future__ import annotations
+from dataclasses import dataclass, fields
+from typing import ClassVar
+
+
+@dataclass
+class C:
+    a: int
+    b: ClassVar[int] = 0
+
+
+print(len(fields(C)))
+"""
+
+
+@pytest.mark.parametrize(
+    "program, printed",
+    [
+        # dataclasses resolves the string annotation `ClassVar[int]` through sys.modules: under a
+        # runner that is not `__main__` it counted `b` as a field and printed 2, silently
+        # (second review @ 87da77896).
+        (CLASSVAR, "1\n"),
+        ("x = 5\nimport __main__\nprint(getattr(__main__, 'x', 'missing'))\n", "5\n"),
+        ("import pickle\nclass P:\n    pass\nprint(type(pickle.loads(pickle.dumps(P()))).__name__)\n", "P\n"),
+        ("from __future__ import annotations\nimport typing\nclass N:\n    nxt: N\nprint(typing.get_type_hints(N)['nxt'].__name__)\n", "N\n"),
+        ("import sys\nprint(__name__, sys.argv[0] == __file__, sys.modules['__main__'].__name__)\n", "__main__ True __main__\n"),
+    ],
+)
+def test_the_twin_runs_as_the_real_main_module(program, printed):
+    assert mod.measure_python(program) == "runs:" + printed
+    # The control: the same file under the interpreter directly.
+    import subprocess
+    import tempfile
+
+    with tempfile.TemporaryDirectory() as tmp:
+        path = Path(tmp) / "main.py"
+        path.write_text(program, encoding="utf-8")
+        plain = subprocess.run([sys.executable, "-I", str(path)], capture_output=True, text=True, cwd=tmp)
+    assert plain.returncode == 0 and plain.stdout == printed
+
+
 def test_a_twin_that_kills_the_interpreter_is_an_error_not_a_verdict():
     with pytest.raises(mod.EvidenceError, match="without reporting how the program ended"):
         mod.measure_python("import os\nos._exit(3)\n")
@@ -195,9 +237,44 @@ def test_an_internal_compiler_error_is_a_crash_not_a_refusal(tmp_path):
     assert mod.measure_sharpy("x", fake_sharpyc(tmp_path, text)) == "crashes:SPY0908"
 
 
-@pytest.mark.parametrize("code, kind", [("SPY0222", "refused"), ("SPY0523", "refused"), ("SPY0899", "refused"), ("SPY0900", "crashes"), ("SPY0913", "crashes"), ("SPY0999", "crashes"), ("SPY1000", "refused")])
-def test_only_the_infra_range_is_a_crash(tmp_path, code, kind):
-    assert mod.measure_sharpy("x", fake_sharpyc(tmp_path, f"Compilation failed:\n\nerror[{code}]: something")) == f"{kind}:{code}"
+@pytest.mark.parametrize(
+    "code, kind",
+    [
+        ("SPY0222", "refused"),
+        ("SPY0899", "refused"),
+        ("SPY0900", "crashes"),
+        ("SPY0913", "crashes"),
+        ("SPY0999", "crashes"),
+        ("SPY1000", "refused"),
+        # The CodeGen range holds both: a name collision is a ruled refusal (R-AW), an emit
+        # failure is the emitter's own (second review @ 87da77896).
+        ("SPY0523", "refused"),
+        ("SPY0526", "refused"),
+        ("SPY0550", "refused"),
+        ("SPY0500", "crashes"),
+        ("SPY0519", "crashes"),
+        ("SPY0599", "crashes"),
+    ],
+)
+def test_which_codes_are_a_crash(tmp_path, code, kind):
+    text = f"Compilation failed:\n\nerror[{code}]: something"
+    assert mod.measure_sharpy("x", fake_sharpyc(tmp_path, text)) == f"{kind}:{code}"
+
+
+def test_an_unclassified_codegen_code_is_an_error_not_a_guess(tmp_path):
+    text = "Compilation failed:\n\nerror[SPY0530]: a code reserved today"
+    with pytest.raises(mod.EvidenceError, match="SPY0530 is a CodeGen code that ruling_evidence.py has not classified"):
+        mod.measure_sharpy("x", fake_sharpyc(tmp_path, text))
+
+
+def test_every_active_codegen_code_is_classified_exactly_once():
+    # The roster is DiagnosticCodes.cs: a CodeGen code made Active there must be put in one of the
+    # two sets here, or this fails (and measuring a program that hits it raises).
+    source = (REPO / "src/Sharpy.Compiler/Diagnostics/DiagnosticCodes.cs").read_text(encoding="utf-8")
+    active = set(re.findall(r'public const string \w+ = "(SPY05\d\d)";\s*// Active', source))
+    assert len(active) == 18, sorted(active)  # the count the file's own header states
+    assert not (mod.CODEGEN_INTERNAL & mod.CODEGEN_REFUSAL)
+    assert mod.CODEGEN_INTERNAL | mod.CODEGEN_REFUSAL == active
 
 
 def test_the_first_error_decides_and_a_warning_does_not(tmp_path):

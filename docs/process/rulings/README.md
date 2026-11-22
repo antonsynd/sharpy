@@ -76,7 +76,7 @@ A record without `seed:` must provide all of this, and the check fails if it doe
 
 An observation is `runs:<stdout>`, `refused:<code>`, `raises:<type>` (followed by whatever was
 printed first) or, for python only, `no-twin`. The compiler can also give `crashes:<code>`: an
-internal error such as SPY0908. That is a defect to report. It is valid as `sharpy`, and a ruling
+internal error such as SPY0908, or one of the emitter's own failures in the SPY05xx range. That is a defect to report. It is valid as `sharpy`, and a ruling
 can never decide it as `after`.
 
 Three fields are computed, not chosen. `ruling_evidence.py door --before ... --after ...` prints

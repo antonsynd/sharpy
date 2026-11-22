@@ -26,7 +26,8 @@ Checks (the name is what a finding and a known-findings row carry):
                       basis, and laws unless the basis is `choice`; a `language` or `library` one
                       also needs at least one case with measured evidence.
   charter-totality    a charter row has no record, or a seed record has no charter row.
-  law-anchor          a written law's `anchor` text is not in its `source` file.
+  law-anchor          a written law's `anchor` text is not in its `source` file, or is there more
+                      than once.
   reference           a law id, ruling id, family, axis or value that does not exist.
   supersession        `supersedes`/`amends` on one record without `superseded_by`/`amended_by`
                       on the other, or the reverse.
@@ -421,17 +422,15 @@ def check_law_anchor(inputs: Inputs) -> Iterable[Finding]:
             continue
         path = inputs.root / law["source"]
         if not path.is_file():
-            yield Finding(
-                "law-anchor",
-                (law["id"],),
-                f"source file {law['source']} does not exist",
-            )
-        elif str(law.get("anchor")) not in path.read_text(encoding="utf-8"):
-            yield Finding(
-                "law-anchor",
-                (law["id"],),
-                f"anchor text not found in {law['source']}: {law.get('anchor')!r}",
-            )
+            yield Finding("law-anchor", (law["id"],), f"source file {law['source']} does not exist")
+            continue
+        count = path.read_text(encoding="utf-8").count(str(law.get("anchor")))
+        if count == 0:
+            yield Finding("law-anchor", (law["id"],), f"anchor text not found in {law['source']}: {law.get('anchor')!r}")
+        elif count > 1:
+            # The law's section is read from the anchor (exception-in-law); a second occurrence
+            # would let an earlier mention of the law stand for its text.
+            yield Finding("law-anchor", (law["id"],), f"anchor text occurs {count} times in {law['source']}; it must pick out one place: {law.get('anchor')!r}")
 
 
 def _case_refs(
@@ -596,8 +595,10 @@ def _exceptions(inputs: Inputs) -> Iterable[Tuple[str, str]]:
 def law_section(text: str, anchor: str) -> Optional[str]:
     """The part of a law's source that is that law: from its anchor to where the next one starts.
 
-    A heading anchor runs to the next heading of its level or above; any other anchor (a bold
-    paragraph, a list item) to the next blank line or list item.
+    A heading anchor runs to the next heading of its level or above. Any other anchor (a bold
+    paragraph, a list item, a table row) is its own line and the indented lines that continue it:
+    the first line that is blank or not indented ends it, so a neighbouring paragraph, list item
+    or table row is never read as part of the law.
     """
     start = text.find(anchor)
     if start < 0:
@@ -605,11 +606,15 @@ def law_section(text: str, anchor: str) -> Optional[str]:
     line_start = text.rfind("\n", 0, start) + 1
     heading = re.match(r"(#{1,6}) ", text[line_start:])
     if heading:
-        stop = re.compile(rf"^#{{1,{len(heading.group(1))}}} ", re.M)
-    else:
-        stop = re.compile(r"^(?:[ \t]*$|[ \t]*(?:[-*]|\d+\.) )", re.M)
-    end = stop.search(text, start + len(anchor))
-    return text[line_start : end.start() if end else len(text)]
+        end = re.compile(rf"^#{{1,{len(heading.group(1))}}} ", re.M).search(text, start + len(anchor))
+        return text[line_start : end.start() if end else len(text)]
+    lines = text[line_start:].split("\n")
+    kept = [lines[0]]
+    for line in lines[1:]:
+        if not line.strip() or not line[0].isspace():
+            break
+        kept.append(line)
+    return "\n".join(kept) + "\n"
 
 
 def check_exception_in_law(inputs: Inputs) -> Iterable[Finding]:

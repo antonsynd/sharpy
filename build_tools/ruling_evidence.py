@@ -22,9 +22,11 @@ An *observation* is one of:
     refused:<code>      it did not compile; <code> is the first SPYnnnn error in the diagnostics
                         (for python: `refused:SyntaxError`, from compiling the file, before any
                         statement ran; a SyntaxError raised while running is a `raises:`)
-    crashes:<code>      (Sharpy only) the compiler reported an internal error, a code in the Infra
-                        range SPY0900-0999, such as SPY0908 "generated C# failed to compile". It is
-                        a defect and never a ruled refusal, so a ruling cannot decide it (`after`).
+    crashes:<code>      (Sharpy only) the compiler reported an internal error: a code in the Infra
+                        range SPY0900-0999, such as SPY0908 "generated C# failed to compile", or
+                        one of the emitter's own failures in the CodeGen range (CODEGEN_INTERNAL).
+                        It is a defect and never a ruled refusal, so a ruling cannot decide it
+                        (`after`).
     raises:<type>       it compiled and ended on an uncaught exception of that type; whatever it
                         printed first follows on the next line (`raises:IndexError\nbefore\n`)
     no-twin             (python only) python3 has no program that means the same thing
@@ -69,14 +71,47 @@ DECIDED_KINDS = ("runs", "refused", "raises")
 RUN_BANNER = "=== Running Program ===\n"
 SPY_ERROR_RE = re.compile(r"error\[(SPY\d{4})\]")
 NET_EXCEPTION_RE = re.compile(r"Unhandled exception\.\s+([\w.]+)")
+# The CodeGen range (SPY0500-0599) mixes ruled refusals with the emitter's own failures, so it is
+# classified code by code from src/Sharpy.Compiler/Diagnostics/DiagnosticCodes.cs and its
+# explanations. A code in neither set is an error, never a guess; test_ruling_evidence.py holds
+# the two sets to the Active CodeGen codes of that file.
+CODEGEN_INTERNAL = frozenset(
+    {
+        "SPY0500",  # EmitError: "typically an internal compiler error"
+        "SPY0501",  # UnsupportedFeature: valid Sharpy the generator cannot compile yet
+        "SPY0508",  # PositionalPatternFallback: "an internal compiler warning"
+        "SPY0510",  # UnrecognizedStatementType
+        "SPY0518",  # UnsupportedExpressionType
+        "SPY0519",  # UnsupportedOperator
+        "SPY0524",  # EmittedTreePrecedenceInversion
+        "SPY0599",  # InternalGeneratedCSharpParseError
+    }
+)
+CODEGEN_REFUSAL = frozenset(
+    {
+        "SPY0522",  # MemberNameCollision
+        "SPY0523",  # FunctionModuleClassCollision
+        "SPY0525",  # MemberEnclosingTypeCollision
+        "SPY0526",  # PackageModuleNameCollision
+        "SPY0550",  # GeneratorExecutionError: the user's source generator failed
+        "SPY0551",  # GeneratorTimeout
+        "SPY0552",  # GeneratorInvalidSource
+        "SPY0553",  # GeneratorCycleDetected
+        "SPY0554",  # GeneratorEmptyOutput
+        "SPY0555",  # GeneratorUnsupportedShape
+    }
+)
 TIMEOUT_S = 120
 
 # Runs the python twin and reports how it ended through a side file, never through stderr text:
 # a message, a note or a line printed to stderr can spell any exception name. `compile` first, so
 # only a SyntaxError of the file itself is a refusal; one raised while running (eval, an import)
-# is an exception like any other.
+# is an exception like any other. The twin runs as the real `__main__` module, in
+# `sys.modules`, as `python main.py` would run it: dataclasses, typing, pickle and
+# `import __main__` all look the running module up there.
 PY_RUNNER = r"""
 import sys
+import types
 
 path, result = sys.argv[1], sys.argv[2]
 sys.argv = [path]
@@ -95,8 +130,11 @@ try:
 except SyntaxError as exc:
     done("refused:" + type(exc).__name__)
     raise SystemExit(0)
+main = types.ModuleType("__main__")
+main.__file__ = path
+sys.modules["__main__"] = main
 try:
-    exec(code, {"__name__": "__main__", "__file__": path})
+    exec(code, main.__dict__)
 except SystemExit as exc:
     done("runs" if exc.code in (None, 0) else "raises:SystemExit")
 except BaseException as exc:
@@ -122,8 +160,20 @@ def kind_of(observation: str) -> str:
 
 
 def is_internal(code: str) -> bool:
-    """A diagnostic code in the Infra range: the compiler failed, it did not refuse the program."""
-    return 900 <= int(code[3:]) <= 999
+    """True when the code means the compiler failed, not that it refused the program."""
+    number = int(code[3:])
+    if 900 <= number <= 999:
+        return True
+    if 500 <= number <= 599:
+        if code in CODEGEN_INTERNAL:
+            return True
+        if code in CODEGEN_REFUSAL:
+            return False
+        raise EvidenceError(
+            f"{code} is a CodeGen code that ruling_evidence.py has not classified; "
+            "add it to CODEGEN_INTERNAL or CODEGEN_REFUSAL"
+        )
+    return False
 
 
 def _raised(name: str, printed: str) -> str:

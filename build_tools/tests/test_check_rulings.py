@@ -761,10 +761,29 @@ def test_law_section_stops_at_the_next_law():
     text = "intro R-A\n\n### L1. One\n\nbody R-B\n\n#### detail\n\nR-C\n\n### L2. Two\n\nR-D\n\n## Higher\n"
     section = mod.law_section(text, "### L1. One")
     assert "R-B" in section and "R-C" in section and "R-A" not in section and "R-D" not in section
-    items = "1. **First.** R-A\n2. **Second.** R-B\n\n**Bold:** R-C\nstill R-D\n\nnext R-E\n"
-    assert mod.law_section(items, "1. **First.**") == "1. **First.** R-A\n"
-    assert mod.law_section(items, "**Bold:**") == "**Bold:** R-C\nstill R-D\n"
-    assert mod.law_section(items, "absent") is None
+    assert mod.law_section(text, "absent") is None
+
+
+def test_a_law_that_is_not_a_heading_is_its_line_and_the_indented_lines_after_it():
+    # A neighbour is never read as part of the law: the next list item, an adjacent bold
+    # paragraph with no blank line between, the next table row (second review @ 87da77896).
+    items = "1. **First.** R-A\n   wrapped R-B\n2. **Second.** R-C\n"
+    assert mod.law_section(items, "1. **First.**") == "1. **First.** R-A\n   wrapped R-B\n"
+    bold = "**L1:** R-A\n**L2:** R-B\n"
+    assert mod.law_section(bold, "**L1:**") == "**L1:** R-A\n"
+    table = "| L1 | text R-A |\n| L2 | text R-B |\n"
+    assert mod.law_section(table, "| L1 |") == "| L1 | text R-A |\n"
+    bullets = "- **Wrap** R-A\n\n  not this R-B\n"
+    assert mod.law_section(bullets, "**Wrap**") == "- **Wrap** R-A\n"
+
+
+def test_an_anchor_that_occurs_twice_fails(tmp_path):
+    # exception-in-law reads the law from its anchor; an earlier mention must not stand for it.
+    def edit(data):
+        data["law_text"] = "See ### L1. Sites agree, and R-C.\n\n" + LAW_TEXT
+
+    found = [f for f in findings(tmp_path, edit) if f.check == "law-anchor"]
+    assert len(found) == 1 and "occurs 2 times" in found[0].message
 
 
 def test_an_exception_to_a_draft_law_must_be_in_its_against_list(tmp_path):
