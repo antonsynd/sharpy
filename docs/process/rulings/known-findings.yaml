@@ -1,0 +1,112 @@
+# Findings of build_tools/check_rulings.py that wait for the owner or for a text to be brought into line.
+# A ratchet: a finding not listed here fails the check, and so does a row whose finding no longer fires.
+# Only charter-mark, exception-in-law, collision and invariance findings may wait here; a collision or
+# invariance row also carries `where` (the case), as the check prints it.
+# When a question is ruled, change the records (or the law, or the charter row) and delete the row.
+findings:
+  - check: charter-mark
+    subjects: [R-Z, R-OV]
+    ref: docs/audits/ruling-audit-2026-11-21.md section 6.5
+    note: >-
+      An earlier ruling was narrowed by a later one and its charter row does not say so. Cure: name the later ruling on the earlier row.
+  - check: charter-mark
+    subjects: [R-BI, R-CN]
+    ref: docs/audits/ruling-audit-2026-11-21.md section 6.5
+    note: >-
+      An earlier ruling was narrowed by a later one and its charter row does not say so. Cure: name the later ruling on the earlier row.
+  - check: charter-mark
+    subjects: [R-BK, R-GV]
+    ref: docs/audits/ruling-audit-2026-11-21.md section 6.5
+    note: >-
+      An earlier ruling was narrowed by a later one and its charter row does not say so. Cure: name the later ruling on the earlier row.
+  - check: charter-mark
+    subjects: [R-BL, R-GV]
+    ref: docs/audits/ruling-audit-2026-11-21.md section 6.5
+    note: >-
+      An earlier ruling was narrowed by a later one and its charter row does not say so. Cure: name the later ruling on the earlier row.
+  - check: charter-mark
+    subjects: [R-CN, R-GV]
+    ref: docs/audits/ruling-audit-2026-11-21.md section 6.5
+    note: >-
+      An earlier ruling was narrowed by a later one and its charter row does not say so. Cure: name the later ruling on the earlier row.
+  - check: charter-mark
+    subjects: [R-DW, R-EH]
+    ref: docs/audits/ruling-audit-2026-11-21.md section 6.5
+    note: >-
+      An earlier ruling was narrowed by a later one and its charter row does not say so. Cure: name the later ruling on the earlier row.
+  - check: charter-mark
+    subjects: [R-DX, R-ES]
+    ref: docs/audits/ruling-audit-2026-11-21.md section 6.5
+    note: >-
+      An earlier ruling was narrowed by a later one and its charter row does not say so. Cure: name the later ruling on the earlier row.
+  - check: charter-mark
+    subjects: [R-FR, R-FV]
+    ref: docs/audits/ruling-audit-2026-11-21.md section 6.5
+    note: >-
+      An earlier ruling was narrowed by a later one and its charter row does not say so. Cure: name the later ruling on the earlier row.
+  - check: charter-mark
+    subjects: [R-LK, R-LV]
+    ref: docs/audits/ruling-audit-2026-11-21.md section 6.5
+    note: >-
+      An earlier ruling was narrowed by a later one and its charter row does not say so. Cure: name the later ruling on the earlier row.
+  - check: charter-mark
+    subjects: [R-LK, R-MB]
+    ref: docs/audits/ruling-audit-2026-11-21.md section 6.5
+    note: >-
+      An earlier ruling was narrowed by a later one and its charter row does not say so. Cure: name the later ruling on the earlier row.
+  - check: charter-mark
+    subjects: [R-NY, R-OO]
+    ref: docs/audits/ruling-audit-2026-11-21.md section 6.5
+    note: >-
+      An earlier ruling was narrowed by a later one and its charter row does not say so. Cure: name the later ruling on the earlier row.
+  - check: charter-mark
+    subjects: [R-NY, R-OQ]
+    ref: docs/audits/ruling-audit-2026-11-21.md section 6.5
+    note: >-
+      An earlier ruling was narrowed by a later one and its charter row does not say so. Cure: name the later ruling on the earlier row.
+  - check: charter-mark
+    subjects: [R-PY, R-QA]
+    ref: docs/audits/ruling-audit-2026-11-21.md section 6.5
+    note: >-
+      An earlier ruling was narrowed by a later one and its charter row does not say so. Cure: name the later ruling on the earlier row.
+  - check: exception-in-law
+    subjects: [R-MH, N5]
+    ref: docs/audits/ruling-audit-2026-11-21.md section 6.3, L1
+    note: >-
+      R-MH overrode N5 for a comprehension walrus over a same-function local; N5, comprehensions.md and walrus_operator.md still say the program is refused. Cure: bring the three texts into line with R-MH, naming it.
+  - check: collision
+    subjects: [R-GV, R-LR]
+    where: walrus-target position=statement,target=let
+    ref: docs/audits/ruling-audit-2026-11-21.md section 6.1, C1
+    note: >-
+      Owner question: is `:=` onto an existing `let` an error (R-GV), still open (R-LR), or a rebind (R-BK, and what the compiler does today)?
+  - check: collision
+    subjects: [R-HH, R-HT]
+    where: spec-silent-acceptance python=refuses,sharpy-before=runs,spec=silent
+    ref: docs/audits/ruling-audit-2026-11-21.md section 6.1, C2
+    note: >-
+      Owner question: when the spec is silent on whether a program is legal, does python3 decide (R-HH) or does today's behaviour stand (R-HT)?
+  - check: invariance
+    subjects: [R-PI, R-PL, P-uniform-verdict-across-forms]
+    where: equality-without-eq operand=reference-type
+    ref: docs/audits/ruling-audit-2026-11-21.md section 6.2, U2
+    note: >-
+      Owner question: is a container search a site of R-PI's refusal of `==` on a type with no `__eq__`?
+  - check: invariance
+    subjects: [R-CH, R-IM, P-uniform-verdict-across-forms]
+    where: wrapper-str conversion=str
+    ref: docs/audits/ruling-audit-2026-11-21.md section 6.2, U3
+    note: >-
+      Owner question: one rule for `str` of Optional and of Result?
+  - check: invariance
+    subjects: [R-ON, R-OW, P-backed-enum-flavour]
+    where: enum-operator backing=int
+    ref: docs/audits/ruling-audit-2026-11-21.md section 6.2, U1
+    note: >-
+      Owner question: what python enum class is a backed enum, for every operator?
+  - check: invariance
+    subjects: [R-PK, R-QG, P-backed-enum-flavour]
+    where: enum-operator backing=string
+    ref: docs/audits/ruling-audit-2026-11-21.md section 6.2, U1
+    note: >-
+      Owner question: what python enum class is a backed enum, for every operator?

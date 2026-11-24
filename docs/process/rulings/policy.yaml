@@ -1,0 +1,14 @@
+# Which decisions an agent may take without the owner, by what the measured evidence shows
+# (build_tools/ruling_evidence.py derive_door). A DRAFT: every `true` here is the owner's to grant.
+#
+#   no_change                  nothing a program can observe changes
+#   reversible_refusal         a program that is refused today stays refused (a different code or wording)
+#   breaking_refusal           a program that runs today is refused
+#   admission_or_value_change  a refused program now runs, or a running one prints or raises something else
+#   kept_divergence            today's result is kept although python's twin gives another
+agent_may_decide:
+  no_change: true
+  reversible_refusal: true
+  breaking_refusal: false
+  admission_or_value_change: false
+  kept_divergence: false

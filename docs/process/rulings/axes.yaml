@@ -1,0 +1,42 @@
+# The closed lists a case is named from. A case is (family, one value per axis) -> verdict.
+# Two live cases with the same family and coordinates must agree (check `collision`); a law may say an
+# axis must not matter (check `invariance`). Add a value here before using it in a case.
+#
+# These five families are the ones the 2026-11-21 audit's verified conflicts needed, listed by hand.
+# Contract section 11 wants each axis to be the image of a compiler enumeration; #2486, #2487 and #2733
+# are where that is built, and these lists should be replaced by theirs as they land.
+families:
+  enum-operator:
+    doc: 'An operator applied to members of an enum that has values. `answer` is the python enum class the result
+      matches: a plain Enum (cross-type == is False, no ordering) or a valued one (IntEnum / StrEnum: compares
+      and orders by value).'
+    axes:
+      backing: [int, string]
+      operator: [eq, order]
+      operands: [one-type, two-types]
+    answers: [plain-enum, valued-enum]
+  walrus-target:
+    doc: What `name := value` does, by where it is written and what `name` already is.
+    axes:
+      position: [statement, comprehension-element]
+      target: [new-name, existing-local, let, module, enclosing]
+  equality-without-eq:
+    doc: An equality question about two values whose type declares no `__eq__`.
+    axes:
+      site: [operator, container-search]
+      operand: [reference-type, value-type]
+  wrapper-str:
+    doc: 'The text of a built-in wrapper value. `answer` is what is printed: the payload alone (`1`) or the constructor
+      spelling (`Ok(1)`).'
+    axes:
+      wrapper: [optional, result, union]
+      conversion: [str, repr]
+    answers: [payload, constructor]
+  spec-silent-acceptance:
+    doc: The spec does not say whether a program is legal, python3 and Sharpy disagree today, and a ruling picks
+      one. Two rulings here with the same coordinates are the same question; if they are not, the axis that separates
+      them is missing and adding it is the ruling.
+    axes:
+      spec: [silent]
+      python: [refuses, runs]
+      sharpy-before: [refused, runs]

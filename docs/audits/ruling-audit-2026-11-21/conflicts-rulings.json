@@ -1,0 +1,637 @@
+[
+ {
+  "ids": [
+   "R-ER",
+   "R-EU"
+  ],
+  "class": "explained-asymmetry",
+  "situation": "How the two match-guard positions (whole-arm guard and per-alternative guard) treat their condition.",
+  "a": "R-ER: \"A per-alternative guard uses truthiness, like the arm guard\".",
+  "b": "R-EU: \"An arm guard narrows the arm body; a per-alternative guard never narrows ... one rule: a guard that gates the WHOLE arm narrows (C#'s flow analysis honours `when x is not null` the same way)\".",
+  "why": "The positions agree on the condition's type (truthiness) and differ only on narrowing, and R-EU states why: only a guard that gates the whole arm establishes a fact for the arm body. Candidate law: a fact narrows exactly the code it gates.",
+  "missing_rule": null,
+  "confidence": "high"
+ },
+ {
+  "ids": [
+   "R-DX",
+   "R-EJ",
+   "R-ES"
+  ],
+  "class": "superseded-chain",
+  "situation": "Whether `== None` / `!= None` on a CLR reference type is refused.",
+  "a": "R-DX: \"Part 1: refuse `== None` / `!= None` on a CLR reference type with the `is None` steer\".",
+  "b": "R-EJ: \"R-DX part 1's refusal stands with a reworded steer\"; then R-ES: \"`== None` / `!= None` are allowed on every .NET reference type and run the type's `==` ... ~~R-DX part 1~~ is lifted for CLR types\".",
+  "why": "R-ES lifts R-DX part 1 (after R-EJ had kept it with a new steer), but the R-DX row itself is neither struck nor annotated; only R-ES records the supersession. Bookkeeping finding: R-DX needs a 'part 1 superseded by R-ES' mark (part 2 on truthiness stands).",
+  "missing_rule": null,
+  "confidence": "high"
+ },
+ {
+  "ids": [
+   "R-DW",
+   "R-EH"
+  ],
+  "class": "superseded-chain",
+  "situation": "How a nullable-oblivious CLR member or parameter is typed when read.",
+  "a": "R-DW: \"Oblivious CLR members and parameters accept `None` on write and read as `T`\".",
+  "b": "R-EH: \"An unannotated CLR reference has UNKNOWN nullability ... stored into a slot declared `T` it is null-checked at that line ... **Supersedes the READ half of R-DW** (write half unchanged)\".",
+  "why": "R-EH replaces the read half explicitly; the R-DW row carries no mark of it. Bookkeeping finding (R-EH is also recorded as UNPLACED, so the superseded half may still be what the compiler does).",
+  "missing_rule": null,
+  "confidence": "high"
+ },
+ {
+  "ids": [
+   "R-EH",
+   "R-ES"
+  ],
+  "class": "contradiction",
+  "situation": "A None test written as `x == None` on a CLR reference held in a slot declared non-null `T`.",
+  "a": "R-EH: \"a None test on a declared non-null reference `T` is refused\".",
+  "b": "R-ES: \"`== None` / `!= None` are allowed on every .NET reference type and run the type's `==` ... R-EH's wider point stays in #2230\".",
+  "why": "R-ES admits `== None` on every .NET reference type with no exception for a declared-non-null slot, and it defers R-EH's point without saying whether `== None` counts as the 'None test' R-EH refuses. R-EJ's 'is never runs user code; == runs __eq__' could make it an operator call, not a None test, but no row says so.",
+  "missing_rule": "On a declared non-null reference, say once whether `== None` is a refused None test or an admitted operator call.",
+  "confidence": "low"
+ },
+ {
+  "ids": [
+   "R-EW",
+   "R-ES"
+  ],
+  "class": "not-a-conflict",
+  "situation": "What `s == None` does on a Core type (frozenset) versus a foreign .NET reference type.",
+  "a": "R-EW: \"user programs lower `s == None` to `s is null` (#2238 @ 4fb77ebae)\".",
+  "b": "R-ES (#2238): \"`== None` / `!= None` are allowed on every .NET reference type and run the type's `==`\".",
+  "why": "Both cite #2238; read with R-EJ (\"the operator synthesized from `__eq__` is null-safe\") a Sharpy/Core type's `== None` is a null test and a foreign CLR type's runs its own operator, so they cover different receivers. Low confidence because R-ES says 'every .NET reference type' and Core's frozenset is one.",
+  "missing_rule": null,
+  "confidence": "low"
+ },
+ {
+  "ids": [
+   "R-FR",
+   "R-FV"
+  ],
+  "class": "superseded-chain",
+  "situation": "Which dropped span on the close line triggers the formatter's re-pair fact.",
+  "a": "R-FR: \"Arm (b) of the re-pair fact keys on a dropped span holding a quote character on the close line\".",
+  "b": "R-FV: \"Narrow R-FR (b): a quote in the given-up span counts only if a literal is still open at the line's END\".",
+  "why": "R-FV narrows R-FR's arm (b); the R-FR row is not struck or annotated. Bookkeeping finding (tooling, not language).",
+  "missing_rule": null,
+  "confidence": "high"
+ },
+ {
+  "ids": [
+   "R-FK",
+   "R-FP",
+   "R-FU"
+  ],
+  "class": "not-a-conflict",
+  "situation": "The formatter/indent-map recovery facts after a lexer error.",
+  "a": "R-FK: \"a lex that dropped a line holding a quote character ... marks the literal map unknown\"; R-FP: \"the lex that feeds the map continues past the error budget without reporting\".",
+  "b": "R-FU: \"no edits below the opener's line while the bracket is open; lines above keep their repairs\".",
+  "why": "Each later row builds on the earlier one and names the rejected direction of the earlier ruling ((c) of R-FP is 'the direction R-FK rejected'); they cover different lexer facts and do not pull against each other.",
+  "missing_rule": null,
+  "confidence": "medium"
+ },
+ {
+  "ids": [
+   "R-PK",
+   "R-QG"
+  ],
+  "class": "unexplained-asymmetry",
+  "situation": "Which Python enum model a string-backed enum follows, for ordering versus for `==`.",
+  "a": "R-PK: \"Ordering on ONE string-backed enum is refused in Semantic, as CPython's plain `Enum` does.\"",
+  "b": "R-QG: \"`==` between two different STRING-backed enum types compares by value, as `StrEnum` (`True` for equal values)\".",
+  "why": "The same string-backed enum is a plain Enum for `<` but a StrEnum for `==`; a StrEnum in CPython orders by value, a plain Enum compares by identity, so neither model gives both answers. Neither row says why the model changes with the operator.",
+  "missing_rule": "Each backing kind maps to ONE Python model (Enum, IntEnum or StrEnum) for every operator; a departure for one operator names its .NET reason.",
+  "confidence": "high"
+ },
+ {
+  "ids": [
+   "R-ON",
+   "R-QG"
+  ],
+  "class": "unexplained-asymmetry",
+  "situation": "`==` between members of two different enum types, int-backed versus string-backed.",
+  "a": "R-ON: \"`==` between two different int-backed enum types answers `False` ... Amended at call 46 by R-QG for string-backed enums (by value, as `StrEnum`); stands for int-backed enums.\"",
+  "b": "R-QG: \"`==` between two different STRING-backed enum types compares by value, as `StrEnum` ... Amends R-ON, which stands for int-backed enums\".",
+  "why": "The amendment is recorded on both rows, but no row says why int-backed enums follow plain Enum (`False`) while string-backed follow StrEnum (by value); CPython's IntEnum would also compare by value. The two backing kinds get opposite cross-type answers with no stated principle.",
+  "missing_rule": "Cross-type `==` on enums follows one model for both backing kinds (identity-False, or by-value for every backed enum).",
+  "confidence": "high"
+ },
+ {
+  "ids": [
+   "R-ON",
+   "R-OW"
+  ],
+  "class": "unexplained-asymmetry",
+  "situation": "Which Python model an int-backed enum follows, for `==` versus ordering.",
+  "a": "R-ON: \"`==` between two different int-backed enum types answers `False`\" (plain Enum behaviour; IntEnum would compare values).",
+  "b": "R-OW: \"Ordering on ONE int-backed enum type keeps .NET order, as `IntEnum` ... ordering across two enum types is refused in Semantic.\"",
+  "why": "Int-backed enums are IntEnum for `<` within a type but plain Enum for cross-type `==`. R-OW's reason (keep the status quo .NET order) covers ordering only; R-ON gives no reason for not following IntEnum. Mirror image of the R-PK/R-QG split for string-backed enums.",
+  "missing_rule": "Each backing kind maps to ONE Python model for every operator; a departure for one operator names its .NET reason.",
+  "confidence": "medium"
+ },
+ {
+  "ids": [
+   "R-OW",
+   "R-PK"
+  ],
+  "class": "explained-asymmetry",
+  "situation": "Ordering on members of one enum type, int-backed versus string-backed.",
+  "a": "R-OW: \"Ordering on ONE int-backed enum type keeps .NET order, as `IntEnum` ... (a) records the status quo.\"",
+  "b": "R-PK: \"Ordering on ONE string-backed enum is refused ... Rejected: (b) order by value as `StrEnum`, mirroring R-OW (one-way; there is no .NET order to keep). R-OW stands for int-backed enums.\"",
+  "why": "R-PK states the reason: an int-backed enum has a .NET order already in use, a string-backed one has none. Candidate law: keep an existing .NET behaviour where one exists; otherwise follow CPython's plain model.",
+  "missing_rule": null,
+  "confidence": "high"
+ },
+ {
+  "ids": [
+   "R-OM",
+   "R-OX"
+  ],
+  "class": "explained-asymmetry",
+  "situation": "Whether `is` on value-type operands can answer True.",
+  "a": "R-OM: \"`is` / `is not` with an operand statically typed as an enum compare by member, as CPython's singletons do\".",
+  "b": "R-OX: \"`is` / `is not` are identity only ... value types: each operand is boxed, so the answer is always `False`, with warning SPY0465; ... an enum operand compares by member (R-OM) — the one ruled exception, CONFIRMED by the owner ...: 'enum values are singletons basically'\".",
+  "why": "R-OX records the enum exception and the owner's reason (enum members are singletons). Explained.",
+  "missing_rule": null,
+  "confidence": "high"
+ },
+ {
+  "ids": [
+   "R-PI",
+   "R-PL"
+  ],
+  "class": "unexplained-asymmetry",
+  "situation": "Equality of two values of a type that declares no `__eq__`, asked by `==` versus by a container search or container equality.",
+  "a": "R-PI: \"`==` / `!=` on a type that declares no `__eq__` stays REFUSED, with one rule and one code for every spelling, wrapper and site\".",
+  "b": "R-PL: \"a container search or container equality checks identity before `__eq__` for reference-type elements ... value types keep `Equals`\".",
+  "why": "R-PI promises one rule for 'every spelling, wrapper and site', yet `x in [y]` or `[x] == [y]` over such a type answers by identity (reference types) or .NET `Equals` (structs) where `x == y` is refused; neither row mentions the other. Rejected option (b) of R-PI was exactly 'reference types compare identity'.",
+  "missing_rule": "An equality question about a type with no `__eq__` gets one verdict at every site: refused everywhere, or identity everywhere (with `in`/container `==` counted as sites).",
+  "confidence": "medium"
+ },
+ {
+  "ids": [
+   "R-OY",
+   "R-PI"
+  ],
+  "class": "not-a-conflict",
+  "situation": "A comparison chain over a class without `__eq__`.",
+  "a": "R-OY: \"A chain link is its binary twin in every outcome ... `a == c == a` over a class without `__eq__` is SPY0402 wherever `a == c` is\".",
+  "b": "R-PI: \"`==` / `!=` on a type that declares no `__eq__` stays REFUSED\".",
+  "why": "R-OY applies R-PI's refusal to chains; the two agree.",
+  "missing_rule": null,
+  "confidence": "high"
+ },
+ {
+  "ids": [
+   "R-PW",
+   "R-PY"
+  ],
+  "class": "explained-asymmetry",
+  "situation": "When module values and class `@static` values are initialized relative to each other.",
+  "a": "R-PW: \"Declaration order, never dropped: a store to a module or `@static` value before its initializer is kept ... the initializer still runs at its declared position ... Across classes R-PY decides.\"",
+  "b": "R-PY (owner: \"go with option 1, C# order\"): \"Every class ... sweeps as a unit ... the first time it is touched, or when the module's sweep reaches its position ... module-level values keep the declaration-order sweep\".",
+  "why": "R-PW defers the cross-class case to R-PY, and R-PY's stated basis is C#'s per-class type initialization (A1); module values have no such per-type unit. Explained, though by pointer rather than a written principle.",
+  "missing_rule": null,
+  "confidence": "medium"
+ },
+ {
+  "ids": [
+   "R-PY",
+   "R-QA"
+  ],
+  "class": "superseded-chain",
+  "situation": "Two classes whose static initializers read each other's values.",
+  "a": "R-PY: \"Across classes today's values hold (`5 5`; `out B.q`: `1 42`).\"",
+  "b": "R-QA: \"Two classes whose initializers read each other's values raise `NameError` whichever is touched first, including the touch order that prints correct values today. Named departure from C#\".",
+  "why": "R-QA carves the mutual-read case out of R-PY's C# order and names the departure (T1: no touch-order-dependent silent value). R-PY's row is not annotated with the narrowing.",
+  "missing_rule": null,
+  "confidence": "medium"
+ },
+ {
+  "ids": [
+   "R-PS",
+   "R-QA",
+   "R-QB"
+  ],
+  "class": "not-a-conflict",
+  "situation": "Whether an initialization cycle between values is a compile error or a run-time NameError.",
+  "a": "R-PS: \"SPY0278's 'visible cycle' is decided by a map ... Rejected: SPY0278 for const cycles only, every non-const cycle a run-time `NameError`.\"; R-QB: \"A ring of non-const values is a compile error unless a same-module store names one of its values\".",
+  "b": "R-QA: \"Two classes whose initializers read each other's values raise `NameError` whichever is touched first\".",
+  "why": "R-QA rules the run-time behaviour where the cycle reaches run time; R-PS/R-QB (and R-PZ: \"SPY0278 where the compiler can see it\") put the visible ones at compile time. Read together they are layered, though R-QA's row does not say its NameError is only for cycles the compiler cannot see.",
+  "missing_rule": null,
+  "confidence": "medium"
+ },
+ {
+  "ids": [
+   "R-HH",
+   "R-HT"
+  ],
+  "class": "contradiction",
+  "situation": "How a spec-silent surface where Sharpy runs a program and python3 refuses it is classified under the fidelity table.",
+  "a": "R-HH: \"the spec is silent on case ..., so the surface is COMPARED (programs run vs refused, spec deferring to Python)\" — Python's refusal adopted.",
+  "b": "R-HT: \"the spec has no grammar block and is silent (fidelity-scope D5: DEVIATION until promoted)\" — Sharpy keeps accepting `01`, recorded as a deviation.",
+  "why": "Both are 'which programs run vs are refused' with a silent spec, and the rows read spec silence in opposite ways (silence = defers to Python vs silence = unlisted, DEVIATION). R-HH also had a host-dependence reason (T4) that could have carried it alone, but the classification premise it states contradicts R-HT's.",
+  "missing_rule": "A silent spec on whether a program runs is either 'defers to python3' (COMPARED) or 'unlisted' (DEVIATION) — one reading for every such surface.",
+  "confidence": "medium"
+ },
+ {
+  "ids": [
+   "R-FA",
+   "R-HT"
+  ],
+  "class": "unexplained-asymmetry",
+  "situation": "Sharpy accepts something CPython refuses, and users may come to depend on the acceptance.",
+  "a": "R-FA: \"`hmac.new` without `digestmod` is refused ... (an implicit digest is the acceptance users come to depend on, and CPython removed it on purpose) ... a kept acceptance is the one-way direction.\"",
+  "b": "R-HT: \"(a) RECORD: a `docs/deviations.yaml` row (`leading-zero-decimal-integer` ...) ... (a) accepts a spelling users may come to depend on — a → b later breaks programs — so this is the one-way choice, taken knowingly\".",
+  "why": "R-FA's test refuses an acceptance users would depend on; R-HT keeps exactly such an acceptance (CPython also refuses `01` on purpose) and says it is knowingly one-way, without saying why R-FA's test does not apply. The surfaces differ (stdlib call vs literal syntax), but no row states that the distinction matters.",
+  "missing_rule": "When Sharpy accepts what CPython refuses: record a deviation only if no valid CPython program changes meaning and the acceptance is harmless; otherwise refuse — for syntax and library alike.",
+  "confidence": "medium"
+ },
+ {
+  "ids": [
+   "R-EV",
+   "R-FA"
+  ],
+  "class": "explained-asymmetry",
+  "situation": "A stdlib signature whose `None` default diverges from CPython.",
+  "a": "R-EV: \"A CPython sentinel default becomes an overload WITHOUT that parameter ... Rejected: (a) deviation row (a silent divergence on a COMPARED surface)\".",
+  "b": "R-FA: \"`endpos: int | None = None` stays as ONE `docs/deviations.yaml` row (the stdlib `T | None = None` convention; no valid CPython program changes meaning)\".",
+  "why": "Different verdicts, and the rows give the reason: R-EV's divergence changes what a valid CPython call means, R-FA's only accepts a call CPython refuses. Candidate law: a divergence that changes a valid program's meaning is fixed; a pure widening may be a deviation row.",
+  "missing_rule": null,
+  "confidence": "high"
+ },
+ {
+  "ids": [
+   "R-NZ",
+   "R-OA"
+  ],
+  "class": "explained-asymmetry",
+  "situation": "CPython's fallbacks for `in` on a class without `__contains__`.",
+  "a": "R-NZ: \"A user class with `__iter__` and no `__contains__` answers `in` / `not in` by iteration\".",
+  "b": "R-OA: \"A class with only `__len__` + `__getitem__` stays refused for `in` (SPY0320); a deviation row carries the owner's reason (the index need not be an integer; an integer index need not be dense).\"",
+  "why": "R-OA states why the second fallback differs: `__getitem__` does not imply an integer, dense sequence protocol, while `__iter__` is exactly iteration.",
+  "missing_rule": null,
+  "confidence": "high"
+ },
+ {
+  "ids": [
+   "R-NV",
+   "R-NX"
+  ],
+  "class": "explained-asymmetry",
+  "situation": "A `None` needle in a membership test: built-in containers versus some Stdlib types.",
+  "a": "R-NV: \"A `T | None` needle is accepted (`None` → `False`)\".",
+  "b": "R-NX: \"A `None`-valued needle in `IPv4Network`, `IPv6Network`, `EmailMessage` raises `AttributeError` (rejected: answer `False` with a deviation)\".",
+  "why": "Neither row states the reason, but R-OS later supplies it: \"only the equality scans answer `False`\", a receiver with its own `__contains__` raises. Explained by a later row, not by either of these.",
+  "missing_rule": null,
+  "confidence": "medium"
+ },
+ {
+  "ids": [
+   "R-NX",
+   "R-OS"
+  ],
+  "class": "unexplained-asymmetry",
+  "situation": "Which exception a `None` needle raises when the receiver's `__contains__` cannot take `None`.",
+  "a": "R-NX: \"A `None`-valued needle in `IPv4Network`, `IPv6Network`, `EmailMessage` raises `AttributeError`\".",
+  "b": "R-OS: \"a `None` needle into an opaque receiver whose `__contains__` / `Contains` parameter is a plain value type `T` is the principle's 'a `T | None` passed into a plain `T` raises `TypeError` at that point'\".",
+  "why": "R-NX follows CPython's AttributeError; R-OS (and R-OP: \"a `T | None` stored or passed into it ... raises `TypeError` there\") makes the boundary raise TypeError. R-OS says #2635 'lands as built', which keeps R-NX, but no row says when the Stdlib receiver's CPython exception beats the boundary TypeError.",
+  "missing_rule": "A None reaching a plain-T `__contains__` parameter raises one exception type: CPython's where the receiver is a COMPARED Stdlib type, TypeError otherwise — stated once.",
+  "confidence": "low"
+ },
+ {
+  "ids": [
+   "R-G",
+   "R-T"
+  ],
+  "class": "unexplained-asymmetry",
+  "situation": "Storing a plain `T` value into a name declared `T?`.",
+  "a": "R-G: \"implicit `T → T?` retired ... `Some(v)`/`None()` sole constructors ... `T?` converts implicitly in NO direction.\"",
+  "b": "R-T: \"inside a narrowing, a store to the narrowed `T?` name takes the PAYLOAD type as its slot and re-wraps\".",
+  "why": "Outside a narrowing `x = 5` into an `int?` needs `Some(5)`; inside one the same store is implicitly wrapped. R-T is a payload-slot rule and does not cite R-G; no row says why the narrowed position may convert when R-G says no position does.",
+  "missing_rule": "A narrowed `T?` name's slot type is its payload for reads and stores alike, stated as the one exception to strict construction.",
+  "confidence": "medium"
+ },
+ {
+  "ids": [
+   "R-A",
+   "R-R"
+  ],
+  "class": "unexplained-asymmetry",
+  "situation": "A non-constant (collection, tuple, Some) default value: dataclass field versus function/lambda parameter.",
+  "a": "R-A: \"Dataclass collection-literal field defaults lower to per-instance initialization; never a C# default-parameter value; SPY0400 stays for function params\".",
+  "b": "R-R: \"ONE emittable-constant-default predicate consumed by all three sites; `Some(...)` and tuple literals → SPY0401 with the `= None()` + `x ??= Some(v)` steer ... Option C (forward-overload synthesis) recorded future\".",
+  "why": "A field default C# cannot hold is lowered; a parameter default C# cannot hold is refused. Neither row gives the reason (plausibly: Python evaluates parameter defaults once and shares them, so per-call evaluation would change meaning), so the split is unstated.",
+  "missing_rule": "A default C# cannot emit as a constant is evaluated per use where Python also evaluates per use (fields), and refused where Python shares one evaluated value (parameters).",
+  "confidence": "medium"
+ },
+ {
+  "ids": [
+   "R-BN",
+   "R-CJ"
+  ],
+  "class": "contradiction",
+  "situation": "The str/repr of `defaultdict`.",
+  "a": "R-BN: \"`str`/`repr` renders `defaultdict(<factory>, {...})`, documented as a deviation in the collections spec.\"",
+  "b": "R-CJ: \"`str`/`repr` of EVERY Stdlib type is COMPARED, one tracker per type family: every Stdlib type with a constructor-spelled python repr implements `IRepr`\".",
+  "why": "R-CJ is later and says EVERY Stdlib type is compared, with no carve-out for R-BN's documented placeholder; R-BN is not marked superseded. R-BN's reason (python's `<class 'int'>` needs rung-4 name-keyed magic) still applies, so R-CJ probably means to keep it, but no row says so.",
+  "missing_rule": "Stdlib reprs are COMPARED except for a part naming a runtime value with no source spelling (a factory, a function), which prints a fixed placeholder.",
+  "confidence": "medium"
+ },
+ {
+  "ids": [
+   "R-CE",
+   "R-CI"
+  ],
+  "class": "not-a-conflict",
+  "situation": "Whether run-time exception message text must match CPython.",
+  "a": "R-CE: \"runtime keyword text becomes python's `KeyError: 'name'`\".",
+  "b": "R-CI: \"Exception message text beyond the type name is DEVIATION by default ... Rejected: match every message text (unbounded ...). Relaxable later.\"",
+  "why": "R-CI sets a default (not compared) and does not forbid matching; R-CE chose to match one text (and a KeyError's text is its key). They do not pull against each other.",
+  "missing_rule": null,
+  "confidence": "medium"
+ },
+ {
+  "ids": [
+   "R-LK",
+   "R-LV",
+   "R-MB"
+  ],
+  "class": "superseded-chain",
+  "situation": "The E2 emitter-port plan P82: its sequencing and the `MergeFrom` disjointness rule.",
+  "a": "R-LK: \"sequenced after P80 ... `MergeFrom` asserts disjointness\".",
+  "b": "R-LV: \"P82's first tranche ran ahead of its charter slot after P80 ... (R-LK's 'after P80' superseded)\"; R-MB: \"`MergeFrom` is equal-value tolerant ... the issue title's and row 0's 'disjoint' wording is REWORDED here.\"",
+  "why": "Two later rulings replace two parts of R-LK; the R-LK row carries neither mark. Bookkeeping finding (process).",
+  "missing_rule": null,
+  "confidence": "high"
+ },
+ {
+  "ids": [
+   "R-BI",
+   "R-CN",
+   "R-GV"
+  ],
+  "class": "superseded-chain",
+  "situation": "The ordering of the P21 (let/bindings) sub-plans.",
+  "a": "R-BI: \"P21 last, three sub-phases ... P21 follows P20\".",
+  "b": "R-CN: \"P21d → P21e → P21b → P21c NEXT, before P15 ... Supersedes R-BI's sequencing only\"; R-GV: \"R-CN's ordering is superseded (its premise is now internal to the bindings plan)\".",
+  "why": "A two-step chain; neither R-BI nor R-CN is struck or annotated, although R-BI is entirely about sequencing. Bookkeeping finding (process).",
+  "missing_rule": null,
+  "confidence": "high"
+ },
+ {
+  "ids": [
+   "R-BK",
+   "R-GV",
+   "R-LR"
+  ],
+  "class": "contradiction",
+  "situation": "A walrus `:=` whose target is an existing `let` binding.",
+  "a": "R-GV: \"B5 amends R-BK (`:=` on an existing `let` is an error, never a silent shadow) ... B1–B12 ... are recorded by pointer ... and never re-asked\".",
+  "b": "R-LR (later): \"a walrus over a `let` is decided in P21b's plan with `let`'s own semantics; until then the harness pins the cells `Unruled` and the docs keep the open-question sentence ... Rejected: ... (c) refuse now (restricts two shapes that run and agree with python)\".",
+  "why": "R-GV records the case as already decided (an error), and R-LR treats it as open and rejects refusing it now; R-LR does not cite R-GV/B5. R-BK (\"declare-if-new, rebind-if-existing\") is also not marked as amended by B5.",
+  "missing_rule": "Whether `:=` onto an existing `let` is an error, a write-through, or open must be stated once; R-GV's B5 and R-LR cannot both stand.",
+  "confidence": "medium"
+ },
+ {
+  "ids": [
+   "R-BL",
+   "R-GV",
+   "R-QI"
+  ],
+  "class": "superseded-chain",
+  "situation": "Whether a module-scope non-const binding (`x: T = e`, `let x`) is legal.",
+  "a": "R-BL: \"module-scope non-const bindings (`x: T = e` without keyword, `let x`) are SPY0340 with the steer 'module-scope bindings are `const`'\" (R-CY likewise reasons 'dies under const-only module scope').",
+  "b": "R-GV: \"ruling A (module `const`-only) and the 2026-09-21 'no mutability axis' are superseded\"; R-QI: \"A module-level or `@static` declaration with no initializer is REFUSED ..., with a steer to `x: int = 0`\" (a mutable module value, as R-PW's stores to module values also assume).",
+  "why": "Later rulings treat non-const module values as legal and R-GV says the const-only rule is superseded, but R-BL's refusal and steer are not marked, and R-CY's stated rationale rests on the dropped premise. Medium because R-GV names 'ruling A', not R-BL, and the link is inferred.",
+  "missing_rule": null,
+  "confidence": "medium"
+ },
+ {
+  "ids": [
+   "R-MH",
+   "R-MJ"
+  ],
+  "class": "superseded-chain",
+  "situation": "A comprehension's walrus over an outer name that is read afterwards.",
+  "a": "R-MJ: \"A comprehension's walrus over a visible outer name read after it is REFUSED ... narrowed by R-MH for same-function bindings.\"",
+  "b": "R-MH: \"a comprehension's walrus over a binding of the SAME function — a local or a parameter — writes through as python does ... this narrows plan-3eba57 D9 (R-MJ), which stays in force for a module or enclosing outer.\"",
+  "why": "Both rows record the narrowing. The remaining split (same-function writes through, module/enclosing refused) matches N6's same-function store rule, so it is explained by law, though the N5 text in name-resolution.md still says 'ruling open on #2427'.",
+  "missing_rule": null,
+  "confidence": "high"
+ },
+ {
+  "ids": [
+   "R-NU",
+   "R-NW"
+  ],
+  "class": "explained-asymmetry",
+  "situation": "Membership in `bytes` with an `int` needle versus a `bool` needle (an int in Python).",
+  "a": "R-NU: \"`bool` and `decimal` needles into `range` and `bytes` stay refused (SPY0222); the stated reason is the implicit-conversion rule\".",
+  "b": "R-NW: \"A `bytes` container takes a `bytes` needle (subsequence) and an `int` needle (one byte)\".",
+  "why": "R-NU gives the reason: Sharpy has no implicit `bool` → `int` conversion, so a bool needle does not fit the int slot.",
+  "missing_rule": null,
+  "confidence": "high"
+ },
+ {
+  "ids": [
+   "R-AU",
+   "R-OB"
+  ],
+  "class": "explained-asymmetry",
+  "situation": "Truth-testing a fixed-arity tuple versus a `tuple | None`.",
+  "a": "R-AU: \"A fixed-arity tuple is not truth-testable by the spec's own rule (no falsy case ...) ... `tuple | None` keeps the null test\".",
+  "b": "R-OB: \"The truth value of a `T | None` is python's — `None` or a falsy payload is false — in every truth-testing position\".",
+  "why": "R-AU's reason (a type with no falsy value is not truth-testable) explains why `tuple | None` (falsy when None) is testable and `tuple` is not; R-OB's rule gives the same answer for a non-empty fixed-arity payload. Candidate law: a type is truth-testable only if it has a falsy value.",
+  "missing_rule": null,
+  "confidence": "medium"
+ },
+ {
+  "ids": [
+   "R-Z",
+   "R-OV"
+  ],
+  "class": "superseded-chain",
+  "situation": "A warning on using a `T | None` without narrowing it.",
+  "a": "R-Z: \"Closed by design (loose family per spec + #882) ... opt-in unnarrowed-deref warning filed as parked #1793.\"",
+  "b": "R-OV: \"Two warning codes: one for an operation on a `T | None` that fails on `None` (member, index, iteration, `len`, arithmetic, ordering) ... default-on\".",
+  "why": "R-OV turns the parked opt-in warning of R-Z into a default-on one; R-Z (loose access accepted) otherwise stands under R-OP. R-Z's row is not annotated.",
+  "missing_rule": null,
+  "confidence": "medium"
+ },
+ {
+  "ids": [
+   "R-OC",
+   "R-OP"
+  ],
+  "class": "superseded-chain",
+  "situation": "Ordering on a `T | None` operand.",
+  "a": "R-OC: \"~~Ordering on a `T | None` is refused at compile time;~~ (the ordering half now reads as R-OP states: allowed with a warning, `TypeError` on `None`)\".",
+  "b": "R-OP: \"Supersedes the ordering half of R-OC\".",
+  "why": "Properly marked on both rows.",
+  "missing_rule": null,
+  "confidence": "high"
+ },
+ {
+  "ids": [
+   "R-B",
+   "R-L",
+   "R-W"
+  ],
+  "class": "superseded-chain",
+  "situation": "The type of a conditional or display whose branches/elements differ.",
+  "a": "R-B: \"~~Ternary with incompatible branches types as the nearest common ancestor~~ SUPERSEDED by R-W\"; R-L: \"Join half SUPERSEDED by R-W\".",
+  "b": "R-W: \"One element/branch type rule = C#'s best-common-type ... Supersedes R-B and R-L's join half ... the compiler never invents an ancestor.\"",
+  "why": "Marked on all three rows.",
+  "missing_rule": null,
+  "confidence": "high"
+ },
+ {
+  "ids": [
+   "R-JJ",
+   "R-JT",
+   "R-KD"
+  ],
+  "class": "superseded-chain",
+  "situation": "Bare class-body reads outside methods and forward static reads.",
+  "a": "R-JJ: \"C#'s rule PER POSITION ... SUPERSEDED as the governing rule 2026-11-01 by the name-resolution principle\"; R-JT: \"a FORWARD static read ... is refused ... SECOND HALF SUPERSEDED 2026-11-01 (N3 ...)\".",
+  "b": "R-KD places the N1–N7 plans that carry the replacing rules.",
+  "why": "Both earlier rows carry their supersession notes in-row. Properly marked.",
+  "missing_rule": null,
+  "confidence": "high"
+ },
+ {
+  "ids": [
+   "R-JV",
+   "R-KF",
+   "R-KG"
+  ],
+  "class": "superseded-chain",
+  "situation": "A bare class-body name read inside a lambda in a class-body initializer, and inside a nested type.",
+  "a": "R-JV: \"a lambda in an initializer reads what its ENCLOSING initializer may read ... SUPERSEDED 2026-11-01 (N1; R-KF, R-KG): a lambda is a body — class-body names stay invisible bare inside it\".",
+  "b": "R-KG: \"(a) REFUSED with a steer naming the position ... N1's list of bodies where class-body names are invisible bare gains 'nested type bodies' beside methods, nested functions, lambdas\".",
+  "why": "R-JV is struck and annotated; R-KG and R-KF are consistent with the replacing N1 rule.",
+  "missing_rule": null,
+  "confidence": "high"
+ },
+ {
+  "ids": [
+   "R-II",
+   "R-IZ"
+  ],
+  "class": "not-a-conflict",
+  "situation": "Collisions of an import binding with another module binding.",
+  "a": "R-II: \"An import alias is checked like every other module binding: a same-module class/def/alias collision is SPY0204\".",
+  "b": "R-IZ: \"an explicit import of a different source COLLIDES with a star-exported name in both orders — SPY0204 at the explicit import ... python3 is last-wins ... the spec rules (R-II's precedent).\"",
+  "why": "R-IZ extends R-II's collide-by-rule principle to star imports; they agree.",
+  "missing_rule": null,
+  "confidence": "high"
+ },
+ {
+  "ids": [
+   "R-NY",
+   "R-OO",
+   "R-OQ"
+  ],
+  "class": "superseded-chain",
+  "situation": "Where the value-ness work (enums and struct-like types as value types) is planned.",
+  "a": "R-NY: \"Enums are value types across the compiler ... a third `/verify-plan` pass on plan-4e2867 is allowed.\"",
+  "b": "R-OQ: \"Supersedes the placement of R-NY and of R-OO only; the work itself is not dropped — R-OU rules it.\"",
+  "why": "R-OO records the move in-row; R-NY does not. Bookkeeping finding (placement, not semantics).",
+  "missing_rule": null,
+  "confidence": "medium"
+ },
+ {
+  "ids": [
+   "R-HU",
+   "R-IA"
+  ],
+  "class": "explained-asymmetry",
+  "situation": "A numeric literal that its type cannot represent: overflow versus underflow, float versus decimal.",
+  "a": "R-HU: \"REFUSE every numeric literal outside the range of its own resolved type ... CPython: `1e400` is `inf`. Rejected: (b) float64 unsuffixed → `inf` ... `x: float = 1e400` then carries infinity into arithmetic silently\".",
+  "b": "R-IA: \"A non-zero `decimal` literal whose value becomes zero is REFUSED ...; float32 and float64 keep IEEE underflow to zero (C#'s and CPython's value) ... Rejected: (c) refuse non-zero→zero for every float type (refuses `print(1e-400)`, which CPython runs printing `0.0`)\".",
+  "why": "The rows give the reasons: float underflow keeps the value C# and CPython agree on; float overflow (C# refuses, CPython gives inf) and decimal underflow (C# silently 0m) are refused. Candidate law: an unrepresentable literal is refused unless C# and CPython give the same value.",
+  "missing_rule": null,
+  "confidence": "high"
+ },
+ {
+  "ids": [
+   "R-KU",
+   "R-LQ"
+  ],
+  "class": "explained-asymmetry",
+  "situation": "A class-level (static) member reached through `self`: store versus read.",
+  "a": "R-KU: \"(a) REFUSE with the steer 'write `H.x = …`' — python's meaning (an instance / subclass attribute: `2 5`) cannot be matched\".",
+  "b": "R-LQ: \"`self.N()` on a nested type is ADMITTED, lowered type-qualified `C.N()` — one rule for class attributes read through `self`\".",
+  "why": "R-KU says why the store differs: in Python a store through `self` creates an instance attribute, which Sharpy cannot match, while a read through `self` has the same meaning as the qualified read. Candidate law: admit a spelling only where its Python meaning is kept.",
+  "missing_rule": null,
+  "confidence": "high"
+ },
+ {
+  "ids": [
+   "R-CH",
+   "R-IM"
+  ],
+  "class": "unexplained-asymmetry",
+  "situation": "`str()` of a value of a built-in union type: Optional versus Result.",
+  "a": "R-CH: \"`str` transparent, `repr` = constructor spelling on both variants ...: `print/str/f\\\"{o}\\\"/format(o)` print `1`/`None` ... Rejected: (b) `Some(1)` for `str` (one-way output change on a common form).\"",
+  "b": "R-IM: \"`str` and `repr` of a user-declared `union` value are both the constructor spelling ... `Result` follows the same rule (`Ok(1)` / `Err('e')`)\".",
+  "why": "`str(Some(1))` prints `1` but `str(Ok(1))` prints `Ok(1)`; R-IM cites R-CH for `None()`'s shape but not for why Result's `str` is not transparent like Optional's. R-CH's reason (an output change on an already-common form) is about existing output, not a principle that separates the two types.",
+  "missing_rule": "`str` of a built-in wrapper either shows its payload (Optional and Result alike) or its constructor spelling; one rule for both.",
+  "confidence": "medium"
+ },
+ {
+  "ids": [
+   "R-DV",
+   "R-DZ"
+  ],
+  "class": "explained-asymmetry",
+  "situation": "A second spelling for a CLR name.",
+  "a": "R-DV: \"Refuse every dotted CLR name that no import binds ... Rejected: (b) accept the fully qualified spelling from referenced assemblies (a second way to name a type).\"",
+  "b": "R-DZ: \"CLR enum members and constants resolve by their caps spelling (`DayOfWeek.MONDAY`), the verbatim name keeps working ... Rejected: ... (c) caps only, verbatim needs backticks (breaks running programs and the interop spec's example).\"",
+  "why": "R-DZ keeps two spellings and gives the reason (the verbatim one already runs and is in the spec); R-DV refuses a second spelling that was not already relied on. Candidate law: a new second spelling is refused; an existing one is kept only to avoid breaking running programs.",
+  "missing_rule": null,
+  "confidence": "medium"
+ },
+ {
+  "ids": [
+   "R-AI",
+   "R-M"
+  ],
+  "class": "explained-asymmetry",
+  "situation": "Flow facts after a `with` whose manager may suppress exceptions: an unassigned local versus a missing return.",
+  "a": "R-AI: \"a bare-declared local assigned inside the body and read after is runtime-checked ... `UnboundLocalError` on an unset read (python3 verified both arms)\".",
+  "b": "R-M: \"successor reachable under a suppressing manager → SPY0266 by direction with a steer for non-None functions\".",
+  "why": "One case is a run-time error, the other a compile error. R-AI gives its reason (python3 raises the same error at run time; a static rule would refuse nearly every statement); R-M's case has no run-time twin (Python would return None into a non-None slot, a silently wrong value under T1). Low confidence because R-M's row is terse and states no reason itself.",
+  "missing_rule": null,
+  "confidence": "low"
+ },
+ {
+  "ids": [
+   "R-AM",
+   "R-BP"
+  ],
+  "class": "not-a-conflict",
+  "situation": "The steer for a bare `tuple` annotation versus the refusal of `tuple[T, ...]`.",
+  "a": "R-AM: \"`tuple[T, ...]` refused by name now ... support ... parked as #1870\".",
+  "b": "R-BP: \"Bare `tuple` annotation is refused ...: steer to `()`/`tuple[()]` for the empty tuple or `tuple[T, …]`; the any-arity tuple stays #1870 (parked).\"",
+  "why": "R-BP's `tuple[T, …]` (Unicode ellipsis) reads as a fixed-arity element list, not the refused `...` form, since it keeps #1870 parked. Medium because the steer text could be read as pointing at the refused spelling.",
+  "missing_rule": null,
+  "confidence": "medium"
+ },
+ {
+  "ids": [
+   "R-BF",
+   "R-FW"
+  ],
+  "class": "not-a-conflict",
+  "situation": "Using a function or method as a value.",
+  "a": "R-BF: \"a bound method / CLR-identity method group in value position is a TYPED delegate ...; no refusal.\"",
+  "b": "R-FW: \"A function with a `*args` tail is not a value without a lambda ... the same footing as R-BR (function types carry no names, defaults or tails).\"",
+  "why": "R-FW's refusal is limited to callables whose shape a function type cannot carry, and gives that reason; R-BF covers ordinary signatures. No pull.",
+  "missing_rule": null,
+  "confidence": "medium"
+ }
+]

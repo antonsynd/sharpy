@@ -1,0 +1,957 @@
+[
+ {
+  "id": "R-AI",
+  "law": "T2",
+  "class": "law-too-coarse",
+  "ruling_says": "Suppression-capable `with` DA = option C (python at runtime), reversing the applied default A: a bare-declared local assigned inside the body and read after is runtime-checked",
+  "law_says": "A compile-time error over a run-time error. Either is better than a silently wrong value.",
+  "why": "The rejected compile-time option refuses every program whose manager might suppress, including ones python3 runs correctly; T2 ranks error kinds for a failing program but does not say whether a conservative refusal of correct programs counts as 'a compile-time error'.",
+  "law_fix": "T2 applies where the compile-time check refuses only programs that would fail; a check that also refuses correct programs is weighed under T3 instead.",
+  "confidence": "medium"
+ },
+ {
+  "id": "R-BW",
+  "law": "T2",
+  "class": "law-written-later-and-contradicts",
+  "ruling_says": "Runtime-only; close as completed",
+  "law_says": "A compile-time error over a run-time error. Either is better than a silently wrong value.",
+  "why": "Option (a) (carry the origin symbol's facts) would add a compile error that refuses only bad specs, which T2 (written 2026-11-16) prefers; the row defers it as 'two-way, can land later' and is not marked superseded.",
+  "law_fix": null,
+  "confidence": "medium"
+ },
+ {
+  "id": "R-CD",
+  "law": "T2",
+  "class": "law-written-later-and-contradicts",
+  "ruling_says": "Stop the static walk at a nested-spec field and at a non-empty spec on an Unknown-kind operand (2026-09-24, D5 option a): the pinned `after_nested` cell demotes to the same field's runtime ValueError.",
+  "law_says": "A compile-time error over a run-time error. Either is better than a silently wrong value.",
+  "why": "A cell that was a compile error is demoted to a run-time ValueError although option (b) decides it statically without refusing correct programs; T2, written later, prefers the compile error and the row is not superseded.",
+  "law_fix": null,
+  "confidence": "medium"
+ },
+ {
+  "id": "R-EH",
+  "law": "T2",
+  "class": "law-too-coarse",
+  "ruling_says": "stored into a slot declared `T` it is null-checked at that line",
+  "law_says": "A compile-time error over a run-time error. Either is better than a silently wrong value.",
+  "why": "The rejected strict reading (b) gives compile errors but makes 'every hand-off to a Sharpy T slot need narrowing', refusing correct programs; T2 does not say whether that kind of compile error is still preferred.",
+  "law_fix": "T2 applies where the compile-time check refuses only programs that would fail; a check that also refuses correct programs is weighed under T3 instead.",
+  "confidence": "medium"
+ },
+ {
+  "id": "R-OC",
+  "law": "T2",
+  "class": "law-too-coarse",
+  "ruling_says": "container-side operations stay allowed and a `None` raises python's `TypeError`.",
+  "law_says": "A compile-time error over a run-time error. Either is better than a silently wrong value.",
+  "why": "Refusing container operations on a nullable operand (rejected option a) would refuse programs that never hold None; T2 does not separate a precise compile error from a conservative one.",
+  "law_fix": "T2 applies where the compile-time check refuses only programs that would fail; a check that also refuses correct programs is weighed under T3 instead.",
+  "confidence": "medium"
+ },
+ {
+  "id": "R-OP",
+  "law": "T2",
+  "class": "law-too-coarse",
+  "ruling_says": "T \\| None` is LOOSE: it behaves as `T`, with a warning wherever `None` would fail, and fails as CPython does",
+  "law_says": "A compile-time error over a run-time error. Either is better than a silently wrong value.",
+  "why": "The loose family chooses warning plus run-time TypeError over refusal because refusal would reject correct programs; T2 (written four days later) is silent on that distinction, so it neither forbids nor predicts the ruling.",
+  "law_fix": "T2 applies where the compile-time check refuses only programs that would fail; a check that also refuses correct programs is weighed under T3 instead.",
+  "confidence": "high"
+ },
+ {
+  "id": "R-OU",
+  "law": "T2",
+  "class": "law-too-coarse",
+  "ruling_says": "the checker stays LOOSE on those operands: the three programs that run today",
+  "law_says": "A compile-time error over a run-time error. Either is better than a silently wrong value.",
+  "why": "Rejects the plan's compile-time refusals so running programs keep running and raise TypeError on None; T2 gives no rule for when a compile error would also refuse correct programs (T3's ground).",
+  "law_fix": "T2 applies where the compile-time check refuses only programs that would fail; a check that also refuses correct programs is weighed under T3 instead.",
+  "confidence": "medium"
+ },
+ {
+  "id": "R-FH",
+  "law": "T1",
+  "class": "law-too-coarse",
+  "ruling_says": "A timeout between 24.8 days (`int.MaxValue` ms) and `TIMEOUT_MAX` saturates at 24.8 days and is ONE family row in `docs/deviations.yaml`",
+  "law_says": "No silently wrong value. Never a CLR default standing in for an initializer that has not run, an initializer that is skipped, or a value that depends on which initializer happened to run first.",
+  "why": "The program silently waits less than it asked, which T1's headline 'No silently wrong value' seems to forbid, but T1's body lists only initializer cases; the law does not say whether a ledgered library value counts.",
+  "law_fix": "T1 covers every run-time value, not only initializers; a ledger row does not make a silently different value acceptable unless the ruling names T1.",
+  "confidence": "low"
+ },
+ {
+  "id": "R-JP",
+  "law": "T3",
+  "class": "not-a-conflict",
+  "ruling_says": "`len(s.upper())` `3` → SPY0343 (the one running program refused; C#-legal)",
+  "law_says": "A correct program keeps its value. Where a program's result is right today, changing it is a recorded decision, not a consequence of another change.",
+  "why": "T3 allows changing a correct program's result as a recorded decision; the row records the one working-to-refused program by name.",
+  "law_fix": null,
+  "confidence": "high"
+ },
+ {
+  "id": "R-OY",
+  "law": "T3",
+  "class": "not-a-conflict",
+  "ruling_says": "`a == c == a` over a class without `__eq__` is SPY0402 wherever `a == c` is (working-to-refused, by direction)",
+  "law_says": "A correct program keeps its value. Where a program's result is right today, changing it is a recorded decision, not a consequence of another change.",
+  "why": "The change to running chains is recorded with its direction and door ('One-way direction for the chains that ran'), which is what T3 asks.",
+  "law_fix": null,
+  "confidence": "high"
+ },
+ {
+  "id": "R-PV",
+  "law": "T3",
+  "class": "not-a-conflict",
+  "ruling_says": "The four programs the temporary changes (a callee reading its own store by name; a callee that raises) are accepted residue, named in `parameter_modifiers.md`.",
+  "law_says": "A correct program keeps its value. Where a program's result is right today, changing it is a recorded decision, not a consequence of another change.",
+  "why": "T3 is met: the changed outputs are a recorded decision, named in the spec.",
+  "law_fix": null,
+  "confidence": "high"
+ },
+ {
+  "id": "R-QA",
+  "law": "T3",
+  "class": "not-a-conflict",
+  "ruling_says": "Two classes whose initializers read each other's values raise `NameError` whichever is touched first, including the touch order that prints correct values today.",
+  "law_says": "A correct program keeps its value. Where a program's result is right today, changing it is a recorded decision, not a consequence of another change.",
+  "why": "T1 ('a value that depends on which initializer happened to run first') outranks T3, and the row names the departure, so the ordered tie-breaks decide it.",
+  "law_fix": null,
+  "confidence": "high"
+ },
+ {
+  "id": "R-QB",
+  "law": "T3",
+  "class": "not-a-conflict",
+  "ruling_says": "a ring kept alive only by a store from another module is refused at compile time (a false refusal in a rare shape, recorded residue)",
+  "law_says": "A correct program keeps its value. Where a program's result is right today, changing it is a recorded decision, not a consequence of another change.",
+  "why": "The false refusal is recorded residue, a recorded decision under T3, and T2 favours the compile-time error for the rest of the class.",
+  "law_fix": null,
+  "confidence": "high"
+ },
+ {
+  "id": "R-CR",
+  "law": "T4",
+  "class": "not-a-conflict",
+  "ruling_says": "every function emits its mangled name (`main` → `Main`) in every module kind",
+  "law_says": "One rule for every host (module, class, generic class) over a special case.",
+  "why": "One emission rule for all functions; T4 is about module/class/generic hosts, and this ruling only fits its spirit.",
+  "law_fix": null,
+  "confidence": "high"
+ },
+ {
+  "id": "R-DB",
+  "law": "T4",
+  "class": "not-a-conflict",
+  "ruling_says": "`%Z` via libc `strftime`/`tzname` on Unix; display name + deviation row on Windows",
+  "law_says": "One rule for every host (module, class, generic class) over a special case.",
+  "why": "T4's 'host' is defined as module, class, generic class; an operating-system split is outside its text.",
+  "law_fix": null,
+  "confidence": "high"
+ },
+ {
+  "id": "R-PW",
+  "law": "T4",
+  "class": "not-a-conflict",
+  "ruling_says": "a store to a module or `@static` value before its initializer is kept and visible, and the initializer still runs at its declared position and replaces it",
+  "law_says": "One rule for every host (module, class, generic class) over a special case.",
+  "why": "The ruling gives one rule to module and @static values alike; the host split is R-PY's, not this row's.",
+  "law_fix": null,
+  "confidence": "high"
+ },
+ {
+  "id": "R-PY",
+  "law": "T4",
+  "class": "law-too-coarse",
+  "ruling_says": "Every class, generic or not, sweeps as a unit — all its `@static` values in declaration order — the first time it is touched, or when the module's sweep reaches its position, whichever comes first; module-level values keep the declaration-order sweep with on-demand forward reads.",
+  "law_says": "One rule for every host (module, class, generic class) over a special case.",
+  "why": "Classes and modules get different sweep rules, the special case T4's parenthesis names, but A1 says C#'s 'when a type initializes' is inherited; the texts do not say whether A1's run-time default outranks T4.",
+  "law_fix": "A1's run-time default outranks T4; T4 chooses only among options A1 and N3 leave open.",
+  "confidence": "medium"
+ },
+ {
+  "id": "R-PX",
+  "law": "T4",
+  "class": "not-a-conflict",
+  "ruling_says": "A closed generic type runs all its initializers in declaration order on its first use, wherever that use is.",
+  "law_says": "One rule for every host (module, class, generic class) over a special case.",
+  "why": "Each closed generic type is its own CLR host and N3's emission section ('Each closed generic type is its own host and sweeps on its first use') states this rule, so the special case is written law.",
+  "law_fix": null,
+  "confidence": "medium"
+ },
+ {
+  "id": "R-H",
+  "law": "A1",
+  "class": "law-too-coarse",
+  "ruling_says": "Refuse ALL same-generic-interface-at-two-distinct-instantiations in the supertype closure",
+  "law_says": "Memory model, type system, inheritance, and runtime semantics follow .NET. That includes run-time behaviour the CLR or C# already defines",
+  "why": "C# accepts the shape and the row gives no .NET reason; A1 says the type system follows .NET but not whether Sharpy may accept less than C# does.",
+  "law_fix": "A1 fixes the meaning of what compiles; it does not oblige Sharpy to accept every C#-legal shape, and a narrower acceptance names its reason.",
+  "confidence": "medium"
+ },
+ {
+  "id": "R-JP",
+  "law": "A1",
+  "class": "law-too-coarse",
+  "ruling_says": "Rejected: (a) C#'s per-candidate body binding with betterness (one-way once relied on; needs held-back trial diagnostics — the sentinel class)",
+  "law_says": "Memory model, type system, inheritance, and runtime semantics follow .NET. That includes run-time behaviour the CLR or C# already defines",
+  "why": "R-AF took overload resolution from C# under A1, here C#'s rule is declined for cost and refuses a C#-legal program; A1's text ('runtime semantics', 'run-time behaviour') does not say whether compile-time binding rules are inherited.",
+  "law_fix": "A1 covers compile-time binding (overload resolution, lookup) as well as run-time behaviour; a departure names its defect and cost.",
+  "confidence": "medium"
+ },
+ {
+  "id": "R-IA",
+  "law": "A1",
+  "class": "not-a-conflict",
+  "ruling_says": "A non-zero `decimal` literal whose value becomes zero is REFUSED on BOTH spellings",
+  "law_says": "Memory model, type system, inheritance, and runtime semantics follow .NET. That includes run-time behaviour the CLR or C# already defines",
+  "why": "C# silently gives 0m; refusing it is T1's no-silently-wrong-value and T2's compile-time error, and A1 does not require accepting every literal C# accepts.",
+  "law_fix": null,
+  "confidence": "medium"
+ },
+ {
+  "id": "R-IG",
+  "law": "A1",
+  "class": "not-a-conflict",
+  "ruling_says": "the target — and a subclass's `run` — executes under a wrapper that writes `Exception in thread <name>:`",
+  "law_says": "Memory model, type system, inheritance, and runtime semantics follow .NET. That includes run-time behaviour the CLR or C# already defines",
+  "why": "This is Stdlib library behaviour, where CV ('Wrap .NET, expose Python') and FS's exception/control-flow rows decide, and the row names the defect (exit 134) and the door.",
+  "law_fix": null,
+  "confidence": "medium"
+ },
+ {
+  "id": "R-MD",
+  "law": "A1",
+  "class": "not-a-conflict",
+  "ruling_says": "Re-root the OSError family on Core: one Core `OSError : System.IO.IOException`",
+  "law_says": "Memory model, type system, inheritance, and runtime semantics follow .NET. That includes run-time behaviour the CLR or C# already defines",
+  "why": "The exception hierarchy is a COMPARED surface in FS and Core exposes Python exceptions under CV; the row names the cost for .NET catch sites ('One-way for .NET catch sites').",
+  "law_fix": null,
+  "confidence": "medium"
+ },
+ {
+  "id": "R-OM",
+  "law": "A1",
+  "class": "not-a-conflict",
+  "ruling_says": "`is` / `is not` with an operand statically typed as an enum compare by member, as CPython's singletons do",
+  "law_says": "Memory model, type system, inheritance, and runtime semantics follow .NET. That includes run-time behaviour the CLR or C# already defines",
+  "why": "Comparing enum members by value is a zero-cost lowering that reconciles A1 and A2 under RR; boxed reference identity is not a semantics a program relies on.",
+  "law_fix": null,
+  "confidence": "medium"
+ },
+ {
+  "id": "R-EJ",
+  "law": "A1",
+  "class": "not-a-conflict",
+  "ruling_says": "`is None` / `is not None` are a reference null check for every reference type, and the operator synthesized from `__eq__` is null-safe",
+  "law_says": "Memory model, type system, inheritance, and runtime semantics follow .NET. That includes run-time behaviour the CLR or C# already defines",
+  "why": "C#'s own `x is null` never runs an overloaded `==`, so the ruling matches C#; it reverses only an earlier spec sentence.",
+  "law_fix": null,
+  "confidence": "high"
+ },
+ {
+  "id": "R-QL",
+  "law": "A1",
+  "class": "not-a-conflict",
+  "ruling_says": "A store evaluates its value before its target's subexpressions, as CPython; generated in P93b's stage 0; the value is hoisted only where the target has effects.",
+  "law_says": "Any other departure is a decision, never a side effect: it names the defect it removes and the cost it accepts.",
+  "why": "A departure from C#'s evaluation order made by ruling, naming its cost ('One-way for output where both sides have effects') and its defect only by implication ('as CPython'); RR's zero-cost hoist covers it.",
+  "law_fix": null,
+  "confidence": "medium"
+ },
+ {
+  "id": "R-BU",
+  "law": "A2",
+  "class": "law-too-coarse",
+  "ruling_says": "`str.format(...)`/`str.upper(...)` are refused as instance-via-type-name",
+  "law_says": "Python is evidence for what a construct does only where python3 runs the same program and the construct means the same thing there (its twin).",
+  "why": "python3 runs `str.upper('a')` with the same meaning, and the row's reasons are cost and consistency, not .NET; A2 says what a twin is evidence for, not whether a twin program must be admitted.",
+  "law_fix": "A twin forbids Sharpy giving a different value; whether it also obliges Sharpy to accept the program, or a ruling may refuse it with a steer, is stated.",
+  "confidence": "medium"
+ },
+ {
+  "id": "R-CW",
+  "law": "A2",
+  "class": "law-too-coarse",
+  "ruling_says": "SPY0283 on both `from lib import __w` and `lib.__w`",
+  "law_says": "Python is evidence for what a construct does only where python3 runs the same program and the construct means the same thing there (its twin).",
+  "why": "python3 runs `from lib import _w`; the ruling refuses for 'two rules for one convention', and A2 does not say whether a twin obliges admission.",
+  "law_fix": "A twin forbids Sharpy giving a different value; whether it also obliges Sharpy to accept the program, or a ruling may refuse it with a steer, is stated.",
+  "confidence": "medium"
+ },
+ {
+  "id": "R-EA",
+  "law": "A2",
+  "class": "law-too-coarse",
+  "ruling_says": "A bare `_` store target is a discard; only `` `_` `` is an identifier",
+  "law_says": "Python is evidence for what a construct does only where python3 runs the same program and the construct means the same thing there (its twin).",
+  "why": "In python3 `_` is an ordinary readable name; Sharpy refuses a later bare read instead of giving a different value, which A2 neither requires nor forbids.",
+  "law_fix": "A twin forbids Sharpy giving a different value; whether it also obliges Sharpy to accept the program, or a ruling may refuse it with a steer, is stated.",
+  "confidence": "low"
+ },
+ {
+  "id": "R-OA",
+  "law": "A2",
+  "class": "law-too-coarse",
+  "ruling_says": "A class with only `__len__` + `__getitem__` stays refused for `in` (SPY0320)",
+  "law_says": "Python is evidence for what a construct does only where python3 runs the same program and the construct means the same thing there (its twin).",
+  "why": "R-NZ admitted the sibling __iter__ fallback citing the python twin, while this refuses the __getitem__ fallback python also runs; A2 does not say which twins oblige admission.",
+  "law_fix": "A twin forbids Sharpy giving a different value; whether it also obliges Sharpy to accept the program, or a ruling may refuse it with a steer, is stated.",
+  "confidence": "high"
+ },
+ {
+  "id": "R-PI",
+  "law": "A2",
+  "class": "law-too-coarse",
+  "ruling_says": "`==` / `!=` on a type that declares no `__eq__` stays REFUSED, with one rule and one code for every spelling, wrapper and site",
+  "law_says": "Python is evidence for what a construct does only where python3 runs the same program and the construct means the same thing there (its twin).",
+  "why": "python3 compares such objects by identity and C# class `==` is reference equality too, so for reference types both A1 and A2 point to running; the refusal rests on one-rule-for-structs-and-classes, which no law ranks against a twin.",
+  "law_fix": "A twin forbids Sharpy giving a different value; whether it also obliges Sharpy to accept the program, or a ruling may refuse it with a steer, is stated.",
+  "confidence": "medium"
+ },
+ {
+  "id": "R-ON",
+  "law": "A2",
+  "class": "law-too-coarse",
+  "ruling_says": "`==` between two different int-backed enum types answers `False` and `!=` answers `True`",
+  "law_says": "Python is evidence for what a construct does only where python3 runs the same program and the construct means the same thing there (its twin).",
+  "why": "False is plain Enum's answer, yet R-OW orders the same enums as IntEnum; A2 does not say which python class is a backed Sharpy enum's twin, so each operator picked one.",
+  "law_fix": "Each Sharpy enum's python twin is named: int-backed is IntEnum or Enum, string-backed is StrEnum or Enum, for every operator.",
+  "confidence": "high"
+ },
+ {
+  "id": "R-OW",
+  "law": "A2",
+  "class": "law-too-coarse",
+  "ruling_says": "Ordering on ONE int-backed enum type keeps .NET order, as `IntEnum`",
+  "law_says": "Python is evidence for what a construct does only where python3 runs the same program and the construct means the same thing there (its twin).",
+  "why": "Python's plain Enum refuses ordering, IntEnum allows it; the ruling picks IntEnum for ordering while R-ON picks Enum for ==, and A2 has no twin definition to decide.",
+  "law_fix": "Each Sharpy enum's python twin is named: int-backed is IntEnum or Enum, string-backed is StrEnum or Enum, for every operator.",
+  "confidence": "high"
+ },
+ {
+  "id": "R-PK",
+  "law": "A2",
+  "class": "law-too-coarse",
+  "ruling_says": "Ordering on ONE string-backed enum is refused in Semantic, as CPython's plain `Enum` does.",
+  "law_says": "Python is evidence for what a construct does only where python3 runs the same program and the construct means the same thing there (its twin).",
+  "why": "Twin chosen as plain Enum for ordering, while R-QG chooses StrEnum for == on the same enums; A2 is silent on which python class is the twin.",
+  "law_fix": "Each Sharpy enum's python twin is named: int-backed is IntEnum or Enum, string-backed is StrEnum or Enum, for every operator.",
+  "confidence": "high"
+ },
+ {
+  "id": "R-QG",
+  "law": "A2",
+  "class": "law-too-coarse",
+  "ruling_says": "`==` between two different STRING-backed enum types compares by value, as `StrEnum`",
+  "law_says": "Python is evidence for what a construct does only where python3 runs the same program and the construct means the same thing there (its twin).",
+  "why": "Twin chosen as StrEnum for ==, contradicting R-PK's plain-Enum twin for ordering; the law gives no way to fix the twin once per type.",
+  "law_fix": "Each Sharpy enum's python twin is named: int-backed is IntEnum or Enum, string-backed is StrEnum or Enum, for every operator.",
+  "confidence": "high"
+ },
+ {
+  "id": "R-FM",
+  "law": "A2",
+  "class": "not-a-conflict",
+  "ruling_says": "`Never` draws SPY0202 with a \"use `NoReturn`\" steer",
+  "law_says": "Python is evidence for what a construct does only where python3 runs the same program and the construct means the same thing there (its twin).",
+  "why": "Both spellings are valid Python; keeping one is AP 'multiple ways to do the same thing', and the row rejects '(c) both names'.",
+  "law_fix": null,
+  "confidence": "high"
+ },
+ {
+  "id": "R-IZ",
+  "law": "A2",
+  "class": "not-a-conflict",
+  "ruling_says": "`import_statements.md:57` gains the sentence; python3 is last-wins in all three (verified at call 31) — the spec rules",
+  "law_says": "Python is evidence for what a construct does only where python3 runs the same program and the construct means the same thing there (its twin).",
+  "why": "FS puts which programs run vs. are refused under the spec, and the spec already contradicted last-wins.",
+  "law_fix": null,
+  "confidence": "medium"
+ },
+ {
+  "id": "R-D",
+  "law": "A2",
+  "class": "not-a-conflict",
+  "ruling_says": "bare sequence pattern on an open scrutinee refused with a steer to `case list[int]([1, 2])`",
+  "law_says": "Python is evidence for what a construct does only where python3 runs the same program and the construct means the same thing there (its twin).",
+  "why": "A refusal with an A1/A3 reason (erasure: the element type is not known statically); A2 yields under RR.",
+  "law_fix": null,
+  "confidence": "medium"
+ },
+ {
+  "id": "R-N",
+  "law": "A2",
+  "class": "not-a-conflict",
+  "ruling_says": "`yield` inside a suppressing `with` → refuse by name (validator)",
+  "law_says": "Python is evidence for what a construct does only where python3 runs the same program and the construct means the same thing there (its twin).",
+  "why": "C# cannot yield inside a try with a catch clause, an A1 constraint; under RR A1 wins with no zero-cost bridge.",
+  "law_fix": null,
+  "confidence": "medium"
+ },
+ {
+  "id": "R-W",
+  "law": "A2",
+  "class": "not-a-conflict",
+  "ruling_says": "One element/branch type rule = C#'s best-common-type",
+  "law_says": "Python is evidence for what a construct does only where python3 runs the same program and the construct means the same thing there (its twin).",
+  "why": "Typed displays are A1/A3; the row names C#'s rule and the user annotation as the steer.",
+  "law_fix": null,
+  "confidence": "high"
+ },
+ {
+  "id": "R-AL",
+  "law": "A2",
+  "class": "not-a-conflict",
+  "ruling_says": "`and`/`or` keep returning `bool` per `logical_operators.md` §Return Type",
+  "law_says": "Python is evidence for what a construct does only where python3 runs the same program and the construct means the same thing there (its twin).",
+  "why": "The spec states the answer and static typing (A3) motivates it; python's operand-returning behaviour is refused, not given a different value.",
+  "law_fix": null,
+  "confidence": "high"
+ },
+ {
+  "id": "R-AU",
+  "law": "A2",
+  "class": "not-a-conflict",
+  "ruling_says": "A fixed-arity tuple is not truth-testable by the spec's own rule",
+  "law_says": "Python is evidence for what a construct does only where python3 runs the same program and the construct means the same thing there (its twin).",
+  "why": "Decided by the spec's truth-testing rule; a refusal, not a different value.",
+  "law_fix": null,
+  "confidence": "high"
+ },
+ {
+  "id": "R-AR",
+  "law": "A2",
+  "class": "not-a-conflict",
+  "ruling_says": "`@property`/`@p.setter`/`@p.getter`/`@p.deleter` become a named parser refusal steering to `property get p(self) -> T:`",
+  "law_says": "Python is evidence for what a construct does only where python3 runs the same program and the construct means the same thing there (its twin).",
+  "why": "AP 'multiple ways to do the same thing' decides it.",
+  "law_fix": null,
+  "confidence": "high"
+ },
+ {
+  "id": "R-G",
+  "law": "A2",
+  "class": "not-a-conflict",
+  "ruling_says": "`Some(v)`/`None()` sole constructors; `maybe` the one bridge",
+  "law_says": "Python is evidence for what a construct does only where python3 runs the same program and the construct means the same thing there (its twin).",
+  "why": "A3 static null-safety and CV's Optional convention decide; bare None remains the loose T | None spelling, so python's absence still has a spelling.",
+  "law_fix": null,
+  "confidence": "high"
+ },
+ {
+  "id": "R-IE",
+  "law": "A2",
+  "class": "not-a-conflict",
+  "ruling_says": "Core collection types are sealed; extend by composition or implement the sequence/mapping protocols",
+  "law_says": "Python is evidence for what a construct does only where python3 runs the same program and the construct means the same thing there (its twin).",
+  "why": "A1: the Core types are sealed CLR classes, and unsealing has a public-API and devirtualization cost, so RR has no zero-cost bridge.",
+  "law_fix": null,
+  "confidence": "high"
+ },
+ {
+  "id": "R-IF",
+  "law": "A2",
+  "class": "not-a-conflict",
+  "ruling_says": "the MULTI-PASS half is RECORDED — ledger row `generator-multi-pass`",
+  "law_says": "Python is evidence for what a construct does only where python3 runs the same program and the construct means the same thing there (its twin).",
+  "why": "A value difference from python recorded as A1's IEnumerable consequence; the single-pass wrapper costs an allocation and an interop type change, so RR does not mandate it.",
+  "law_fix": null,
+  "confidence": "high"
+ },
+ {
+  "id": "R-IO",
+  "law": "A2",
+  "class": "not-a-conflict",
+  "ruling_says": "Basis: the anti-pattern table (\"multiple ways to do the same thing\")",
+  "law_says": "Python is evidence for what a construct does only where python3 runs the same program and the construct means the same thing there (its twin).",
+  "why": "The row cites AP as its reason; A2 does not require admitting a twin spelling AP excludes.",
+  "law_fix": null,
+  "confidence": "high"
+ },
+ {
+  "id": "R-OP",
+  "law": "A3",
+  "class": "law-too-coarse",
+  "ruling_says": "`T` never holds `None`",
+  "law_says": "None requires explicit opt-in via T?.",
+  "why": "A3 names only T? as the opt-in to None, but the ruling (and the spec's older loose family) has two opt-ins, strict T? and loose T | None; A3 was written before the split and does not cover the loose one.",
+  "law_fix": "None requires explicit opt-in, spelled T? (strict) or T | None (loose); a plain T never holds None.",
+  "confidence": "high"
+ },
+ {
+  "id": "R-DW",
+  "law": "A3",
+  "class": "law-too-coarse",
+  "ruling_says": "Oblivious CLR members and parameters accept `None` on write and read as `T`",
+  "law_says": "None requires explicit opt-in via T?.",
+  "why": "The read half is superseded by R-EH; the live write half lets None into a CLR slot whose nullability .NET does not declare, a case A3's 'every type is statically known' does not address.",
+  "law_fix": "A nullable-oblivious CLR type has unknown nullability: writes of None are allowed, reads into T are checked at the boundary.",
+  "confidence": "medium"
+ },
+ {
+  "id": "R-FE",
+  "law": "A3",
+  "class": "not-a-conflict",
+  "ruling_says": "`ident` before `start()` is a ledger row",
+  "law_says": "None requires explicit opt-in via T?.",
+  "why": "A3's default clause is about declared values whose initializer has not run; ident is a library property whose value the row marks NOT COMPARED, as FS does for CPython implementation details.",
+  "law_fix": null,
+  "confidence": "medium"
+ },
+ {
+  "id": "R-HU",
+  "law": "RR",
+  "class": "law-too-coarse",
+  "ruling_says": "REFUSE every numeric literal outside the range of its own resolved type at ONE semantic seam",
+  "law_says": "When Axiom 1 and Axiom 2 conflict, Axiom 1 wins, unless the compiler can reconcile them via zero-cost abstractions (naming transformations, thin wrappers, or polymorphic dispatch).",
+  "why": "double.PositiveInfinity bridges python's `inf` at no run-time cost, but the row rejects it as 'two rules for one surface' and a silent infinity, citing 'Type Safety > Python syntax'; RR does not say whether such costs stop a bridge counting as zero-cost.",
+  "law_fix": "Zero-cost means no run-time cost, no new public C# surface and no second rule for one surface; where such a bridge exists Sharpy takes Python's meaning.",
+  "confidence": "medium"
+ },
+ {
+  "id": "R-HJ",
+  "law": "RR",
+  "class": "law-too-coarse",
+  "ruling_says": "A second `def f` in the SAME block of a function scope is refused",
+  "law_says": "When Axiom 1 and Axiom 2 conflict, Axiom 1 wins, unless the compiler can reconcile them via zero-cost abstractions (naming transformations, thin wrappers, or polymorphic dispatch).",
+  "why": "Renaming each local def would reconcile C#'s CS0128 with python's rebinding; the row rejects it on the bindings rulings and a one-way spelling, and RR does not say whether the bridge is mandatory.",
+  "law_fix": "Zero-cost means no run-time cost, no new public C# surface and no second rule for one surface; where such a bridge exists Sharpy takes Python's meaning.",
+  "confidence": "medium"
+ },
+ {
+  "id": "R-HW",
+  "law": "RR",
+  "class": "law-too-coarse",
+  "ruling_says": "Rejected: (b) promote — accept and mangle to a C#-legal name (a new mangling is an interop surface C# consumers can depend on; one-way; a spelling nobody writes).",
+  "law_says": "When Axiom 1 and Axiom 2 conflict, Axiom 1 wins, unless the compiler can reconcile them via zero-cost abstractions (naming transformations, thin wrappers, or polymorphic dispatch).",
+  "why": "RR names naming transformations as zero-cost bridges, yet the row declines one for its interop surface; whether a new public spelling counts as a cost is not in RR.",
+  "law_fix": "Zero-cost means no run-time cost, no new public C# surface and no second rule for one surface; where such a bridge exists Sharpy takes Python's meaning.",
+  "confidence": "high"
+ },
+ {
+  "id": "R-IW",
+  "law": "RR",
+  "class": "law-broken-unacknowledged",
+  "ruling_says": "Rejected: (b) lower the void conditional to `if/else` at the `StatementLoweringKind` seam (fidelity for the ternary; a→b stacks later)",
+  "law_says": "When Axiom 1 and Axiom 2 conflict, Axiom 1 wins, unless the compiler can reconcile them via zero-cost abstractions (naming transformations, thin wrappers, or polymorphic dispatch).",
+  "why": "Lowering a None-typed conditional statement to if/else is a zero-cost, surface-free bridge, so under RR A1 should not win; the row ends 'Axiom 1 reason stands' without addressing the bridge.",
+  "law_fix": "Where a zero-cost lowering exists, a refusal keeping A1 names the cost that makes the bridge unacceptable.",
+  "confidence": "medium"
+ },
+ {
+  "id": "R-PI",
+  "law": "RR",
+  "class": "not-a-conflict",
+  "ruling_says": "Rejected: (b) reference types compare identity, as Python, with structs still refused",
+  "law_says": "When Axiom 1 and Axiom 2 conflict, Axiom 1 wins, unless the compiler can reconcile them via zero-cost abstractions (naming transformations, thin wrappers, or polymorphic dispatch).",
+  "why": "For reference types A1 (C# reference equality) and A2 agree, so RR is not engaged; the conflict is with A2's twin (see the A2 entry).",
+  "law_fix": null,
+  "confidence": "medium"
+ },
+ {
+  "id": "R-Y",
+  "law": "N6",
+  "class": "not-a-conflict",
+  "ruling_says": "a bare STORE (plain/augmented/walrus/tuple-element) to a name declared in the enclosing class/struct body is refused by name",
+  "law_says": "= (and every augmented, tuple, star and walrus store) assigns a binding of the same function. ... A bare store that would cross a function boundary is refused with the steer \"let x = … for a new local, or global x / nonlocal x to write the outer binding\".",
+  "why": "N6 does not make a bare store a fresh local: it assigns 'a binding of the same function' and steers to `let` for a new one, and class-body names are not function bindings, so a refusal follows.",
+  "law_fix": null,
+  "confidence": "high"
+ },
+ {
+  "id": "R-AA",
+  "law": "N6",
+  "class": "not-a-conflict",
+  "ruling_says": "a bare STORE to any name that resolves to a member of the enclosing class/struct — declared in its body OR inherited, field OR property — is refused by name (SPY0606",
+  "law_says": "= (and every augmented, tuple, star and walrus store) assigns a binding of the same function. ... A bare store that would cross a function boundary is refused with the steer \"let x = … for a new local, or global x / nonlocal x to write the outer binding\".",
+  "why": "Same as R-Y: N6 gives a bare store only a same-function binding and steers to `let` for a new local, so refusing a store to a member name agrees with it.",
+  "law_fix": null,
+  "confidence": "high"
+ },
+ {
+  "id": "R-BL",
+  "law": "N1",
+  "class": "law-written-later-and-contradicts",
+  "ruling_says": "module-scope non-const bindings (`x: T = e` without keyword, `let x`) are SPY0340 with the steer \"module-scope bindings are `const`\"",
+  "law_says": "Every module-level and class-level declaration — def, class, const, let, var, module variable, property, @static member — is visible throughout its scope, above and below its declaration.",
+  "why": "N1 (2026-11-01) lists let, var and module variables as module-level declarations and N6's example writes a mutable module `count` under `global`; R-BL is not struck, though the spec marks its refusal pending removal (B9, amended 2026-10-13).",
+  "law_fix": null,
+  "confidence": "high"
+ },
+ {
+  "id": "R-JJ",
+  "law": "N1",
+  "class": "resolved",
+  "ruling_says": "SUPERSEDED as the governing rule 2026-11-01 by the name-resolution principle (N1–N4",
+  "law_says": "Every module-level and class-level declaration — def, class, const, let, var, module variable, property, @static member — is visible throughout its scope, above and below its declaration.",
+  "why": "The row itself records that N1–N4 replace it; only SPY0401's const-only parameter-default restriction stands, as a separate class.",
+  "law_fix": null,
+  "confidence": "high"
+ },
+ {
+  "id": "R-JV",
+  "law": "N1",
+  "class": "resolved",
+  "ruling_says": "SUPERSEDED 2026-11-01 (N1; R-KF, R-KG): a lambda is a body — class-body names stay invisible bare inside it",
+  "law_says": "Every module-level and class-level declaration — def, class, const, let, var, module variable, property, @static member — is visible throughout its scope, above and below its declaration.",
+  "why": "Struck and replaced by N1's rule.",
+  "law_fix": null,
+  "confidence": "high"
+ },
+ {
+  "id": "R-JT",
+  "law": "N3",
+  "class": "resolved",
+  "ruling_says": "SECOND HALF SUPERSEDED 2026-11-01 (N3, #2422, P77 — R-KD): the forward static read is not refused, it RUNS with the initialized value",
+  "law_says": "A forward read initializes its target first, as in Swift.",
+  "why": "The refusing half is superseded; the surviving source-order emission is N3's sweep order.",
+  "law_fix": null,
+  "confidence": "high"
+ },
+ {
+  "id": "R-LB",
+  "law": "N5",
+  "class": "law-too-coarse",
+  "ruling_says": "deviation rows for the four bodies + an `N5-block-scope` must-run arm",
+  "law_says": "Designed deviations from Python (the closed list): 1. A loop variable is fresh per iteration ... 2. A for / except / with target does not overwrite an outer binding ... 3. Forward reads that Python rejects with NameError run",
+  "why": "N5's first bullet makes a local end with its block, but its 'closed list' of deviations from Python omits block scope, so the law both implies these rows and forbids new ones.",
+  "law_fix": "Block scope is a designed deviation: a binding made in a block body, loop bodies included per iteration, ends with the block; a later read reaching an outer binding is refused.",
+  "confidence": "medium"
+ },
+ {
+  "id": "R-LF",
+  "law": "N5",
+  "class": "law-too-coarse",
+  "ruling_says": "the block-scope deviation row widens to every binder {annotated, const, def, lambda-typed} × every block body {if, for, while, match, with}",
+  "law_says": "Designed deviations from Python (the closed list): 1. A loop variable is fresh per iteration ... 2. A for / except / with target does not overwrite an outer binding ... 3. Forward reads that Python rejects with NameError run",
+  "why": "Widens a deviation that follows from N5's block rule but is missing from N5's closed list; the same-block closure cells (13 vs python 2) show the list does not cover what the rule produces.",
+  "law_fix": "Block scope is a designed deviation: a binding made in a block body, loop bodies included per iteration, ends with the block; a later read reaching an outer binding is refused.",
+  "confidence": "medium"
+ },
+ {
+  "id": "R-LG",
+  "law": "N5",
+  "class": "law-too-coarse",
+  "ruling_says": "widen `loop-variable-fresh-per-iteration` to every binding made in a loop body",
+  "law_says": "Designed deviations from Python (the closed list): 1. A loop variable is fresh per iteration ... 2. A for / except / with target does not overwrite an outer binding ... 3. Forward reads that Python rejects with NameError run",
+  "why": "N5's closed list names only the loop variable as fresh per iteration; widening to every body binding follows from block scope but goes beyond the item's text.",
+  "law_fix": "Block scope is a designed deviation: a binding made in a block body, loop bodies included per iteration, ends with the block; a later read reaching an outer binding is refused.",
+  "confidence": "medium"
+ },
+ {
+  "id": "R-MH",
+  "law": "N5",
+  "class": "law-broken-acknowledged",
+  "ruling_says": "a comprehension's walrus over a binding of the SAME function — a local or a parameter — writes through as python does",
+  "law_says": "A walrus inside a comprehension is the same shape: its binding is local to the comprehension, so where a visible outer name is read after it, the program is refused (owner ruling 2026-11-06).",
+  "why": "N5 says a comprehension walrus binding is local to the comprehension and a later outer read is refused; R-MH (after N5) writes through instead and names the departure ('Rejected: (a) refuse as the sentence said (costs a working program that agrees with python)'), but N5's text was not updated.",
+  "law_fix": "Add to N5: a comprehension walrus over a same-function local or parameter writes through, as python; over a module or enclosing binding read later it is refused.",
+  "confidence": "high"
+ },
+ {
+  "id": "R-LE",
+  "law": "N5",
+  "class": "law-too-coarse",
+  "ruling_says": "keep the refusal, steer \"write a nested def\"; message only",
+  "law_says": "A local is visible from its let / var (or first assignment) to the end of its block.",
+  "why": "python3 runs a lambda-typed local that calls itself because the body runs after the binding; N5's 'visible from its let' does not say whether the binding's own initializer, or a lambda inside it, is in range.",
+  "law_fix": "A local is not visible inside its own initializer, lambda bodies included; a recursive local is a nested def.",
+  "confidence": "medium"
+ },
+ {
+  "id": "R-MI",
+  "law": "N6",
+  "class": "law-too-coarse",
+  "ruling_says": "refuse `for`, `with` and `except` targets under `global x`",
+  "law_says": "= (and every augmented, tuple, star and walrus store) assigns a binding of the same function. ... A bare store that would cross a function boundary is refused with the steer \"let x = … for a new local, or global x / nonlocal x to write the outer binding\".",
+  "why": "N6 says every store under `global x` writes the module binding (python's rule) while N5 makes construct targets fresh block bindings; the laws collide on this shape and neither decides it.",
+  "law_fix": "A for, with or except target naming a global- or nonlocal-declared name is refused, with a steer to assign inside the body.",
+  "confidence": "high"
+ },
+ {
+  "id": "R-LS",
+  "law": "N6",
+  "class": "law-too-coarse",
+  "ruling_says": "`nonlocal x` over a construct target gets the same refusal as `global` (R-MI)",
+  "law_says": "= (and every augmented, tuple, star and walrus store) assigns a binding of the same function. ... A bare store that would cross a function boundary is refused with the steer \"let x = … for a new local, or global x / nonlocal x to write the outer binding\".",
+  "why": "Same N5/N6 collision for `nonlocal`; python stores through for for/with targets, N6 calls itself python's rule, N5 makes the target fresh.",
+  "law_fix": "A for, with or except target naming a global- or nonlocal-declared name is refused, with a steer to assign inside the body.",
+  "confidence": "high"
+ },
+ {
+  "id": "R-NH",
+  "law": "FS",
+  "class": "resolved",
+  "ruling_says": "decimal `0m / 0m` raising `ZeroDivisionError` is a deviation row",
+  "law_says": "Demotion never happens silently: a COMPARED surface the team decides not to match is a ruling too, with the deviations.yaml entry it creates.",
+  "why": "Exception TYPE is COMPARED, but FS's own demotion clause lets a ruling decline to match a compared surface with a deviations.yaml entry, which this row does.",
+  "law_fix": null,
+  "confidence": "medium"
+ },
+ {
+  "id": "R-HT",
+  "law": "FS",
+  "class": "law-too-coarse",
+  "ruling_says": "the spec has no grammar block and is silent (fidelity-scope D5: DEVIATION until promoted)",
+  "law_says": "Which programs run vs. are refused | COMPARED against the spec; python3 is the oracle only where the spec defers to Python",
+  "why": "R-HT reads a spec silent on a run-vs-refuse question as an unlisted surface (keep Sharpy's acceptance), while R-HH reads the same silence as the spec deferring to python3 (COMPARED); FS's two rows support both readings.",
+  "law_fix": "A spec silent on whether a program compiles is [deferring to python3 / unlisted, DEVIATION until promoted]; FS states which.",
+  "confidence": "high"
+ },
+ {
+  "id": "R-HH",
+  "law": "FS",
+  "class": "law-too-coarse",
+  "ruling_says": "the spec is silent on case (grep-only @ 3f16f261e), so the surface is COMPARED (programs run vs refused, spec deferring to Python)",
+  "law_says": "Which programs run vs. are refused | COMPARED against the spec; python3 is the oracle only where the spec defers to Python",
+  "why": "Treats spec silence as deference to python3, the opposite of R-HT's reading of the same FS text; FS does not say whether silence defers or leaves the surface unlisted.",
+  "law_fix": "A spec silent on whether a program compiles is [deferring to python3 / unlisted, DEVIATION until promoted]; FS states which.",
+  "confidence": "high"
+ },
+ {
+  "id": "R-BN",
+  "law": "FS",
+  "class": "law-written-later-and-contradicts",
+  "ruling_says": "str`/`repr` renders `defaultdict(<factory>, {...})`, documented as a deviation in the collections spec",
+  "law_says": "str/repr of EVERY Stdlib type (Path, HTTPStatus, ipaddress, defaultdict, iterators, Timedelta, …) | COMPARED (D2 b) | ... python3 is the oracle",
+  "why": "FS (2026-09-27, after R-BN) lists defaultdict by name among Stdlib reprs COMPARED with python3 (`defaultdict(<class 'int'>, {})`), yet R-BN is not struck and FS's Core row still cites R-BN as a ruling that stands.",
+  "law_fix": null,
+  "confidence": "medium"
+ },
+ {
+  "id": "R-CE",
+  "law": "FS",
+  "class": "not-a-conflict",
+  "ruling_says": "runtime keyword text becomes python's `KeyError: 'name'`",
+  "law_says": "Exception MESSAGE text beyond the type name ... DEVIATION by default (D1 a)",
+  "why": "DEVIATION by default does not forbid matching a message, and R-CE predates FS.",
+  "law_fix": null,
+  "confidence": "high"
+ },
+ {
+  "id": "R-QL",
+  "law": "FS",
+  "class": "not-a-conflict",
+  "ruling_says": "Rejected: (b) a deviation row for C#'s order.",
+  "law_says": "a surface this table does not name is DEVIATION until promoted — the aperture opens only by a ruling",
+  "why": "Evaluation order is unlisted (DEVIATION until promoted), and an owner ruling is FS's promotion route; FS's table has not yet gained the row.",
+  "law_fix": null,
+  "confidence": "medium"
+ },
+ {
+  "id": "R-DI",
+  "law": "AP",
+  "class": "law-broken-acknowledged",
+  "ruling_says": "exempting `IEnumerable<T>`/`IComparable<T>`/`IEquatable<T>`/`IFormattable`/`IDisposable` by a commented list; phase 2 (#2172) removes the `IEnumerable<T>` exemption once a Sharpy `Iterable[T]` spelling exists",
+  "law_says": "Avoid ... raw .NET collections in public APIs",
+  "why": "A raw .NET interface stays in public APIs, which AP forbids; the row names the exemption and its reason (no Sharpy Iterable spelling yet; 223 signatures).",
+  "law_fix": "Until a Sharpy Iterable[T] exists, IEnumerable<T> is the allowed public iteration type.",
+  "confidence": "high"
+ },
+ {
+  "id": "R-DZ",
+  "law": "AP",
+  "class": "law-broken-acknowledged",
+  "ruling_says": "CLR enum members and constants resolve by their caps spelling (`DayOfWeek.MONDAY`), the verbatim name keeps working",
+  "law_says": "Avoid ... multiple ways to do the same thing",
+  "why": "Two accepted spellings for one member is what AP forbids; the row names the second spelling and keeps it because caps-only 'breaks running programs and the interop spec's example' (a T3 reason).",
+  "law_fix": "Where removing a spelling breaks running programs, AP yields to T3 until a ruled migration; the extra spelling is named as such.",
+  "confidence": "medium"
+ },
+ {
+  "id": "R-OP",
+  "law": "AP",
+  "class": "not-a-conflict",
+  "ruling_says": "`T?` is STRICT: built only with `Some(...)` / `None()`, no implicit conversion",
+  "law_says": "Avoid ... multiple ways to do the same thing",
+  "why": "Loose T | None and strict T? have different semantics, so they are two things, not two ways of doing one thing.",
+  "law_fix": null,
+  "confidence": "medium"
+ },
+ {
+  "id": "R-AG",
+  "law": "AP",
+  "class": "law-too-coarse",
+  "ruling_says": "Add the generator-expression construct",
+  "law_says": "Avoid \"add X because Python has it\"",
+  "why": "A2 lists comprehensions as Python surface Sharpy takes, while AP warns against adding X because Python has it; neither text says which additions pass, and the row gives no AP reason.",
+  "law_fix": "A Python surface is added when [stated test, e.g. corpus use, a twin with no .NET cost]; otherwise it is a 'not provided' ledger row.",
+  "confidence": "medium"
+ },
+ {
+  "id": "R-IR",
+  "law": "AP",
+  "class": "law-too-coarse",
+  "ruling_says": "The surface was unlisted — a feature add the owner approved (the anti-pattern check \"add X because Python has it\" was the question).",
+  "law_says": "Avoid \"add X because Python has it\"",
+  "why": "The row names the anti-pattern as the question but the law gives no test to answer it, so it went to the owner.",
+  "law_fix": "A Python surface is added when [stated test, e.g. corpus use, a twin with no .NET cost]; otherwise it is a 'not provided' ledger row.",
+  "confidence": "high"
+ },
+ {
+  "id": "R-ND",
+  "law": "AP",
+  "class": "law-too-coarse",
+  "ruling_says": "`open` and the archive openers accept every mode python accepts",
+  "law_says": "Avoid \"add X because Python has it\"",
+  "why": "Taking every python mode is the 'because Python has it' shape; AP gives no criterion for when a full Python surface is warranted, and the row gives none.",
+  "law_fix": "A Python surface is added when [stated test, e.g. corpus use, a twin with no .NET cost]; otherwise it is a 'not provided' ledger row.",
+  "confidence": "medium"
+ },
+ {
+  "id": "R-AG",
+  "law": "CR7",
+  "class": "law-too-coarse",
+  "ruling_says": "Option (B) (named refusal, keep the spec) rejected.",
+  "law_says": "The spec is authoritative: read docs/language_specification/ first; change the implementation, never the spec.",
+  "why": "The spec said the construct does not exist; the owner chose to rewrite it. CR7 does not distinguish an agent conforming the code from the owner amending the spec.",
+  "law_fix": "An owner ruling may amend the spec; agents never do, and the ruling row says 'spec edit by ruling (rule 7)'.",
+  "confidence": "medium"
+ },
+ {
+  "id": "R-BR",
+  "law": "CR7",
+  "class": "law-too-coarse",
+  "ruling_says": "Delete the spec section, keep SPY0104",
+  "law_says": "The spec is authoritative: read docs/language_specification/ first; change the implementation, never the spec.",
+  "why": "The implementation stays and the spec is deleted, the reverse of CR7's literal text; it was an owner ruling, which CR7 does not address.",
+  "law_fix": "An owner ruling may amend the spec; agents never do, and the ruling row says 'spec edit by ruling (rule 7)'.",
+  "confidence": "medium"
+ },
+ {
+  "id": "R-DQ",
+  "law": "CR7",
+  "class": "law-too-coarse",
+  "ruling_says": "Rejected: (b) every cycle is SPY0302 (the current normative text)",
+  "law_says": "The spec is authoritative: read docs/language_specification/ first; change the implementation, never the spec.",
+  "why": "The owner replaced normative spec text with the implemented rule; CR7 is silent on owner amendments.",
+  "law_fix": "An owner ruling may amend the spec; agents never do, and the ruling row says 'spec edit by ruling (rule 7)'.",
+  "confidence": "medium"
+ },
+ {
+  "id": "R-IW",
+  "law": "CR7",
+  "class": "law-too-coarse",
+  "ruling_says": "`statements.md` §Expression Statement states the rule and the code",
+  "law_says": "The spec is authoritative: read docs/language_specification/ first; change the implementation, never the spec.",
+  "why": "The spec's 'any expression can be a statement' is narrowed to fit the refusal by ruling; CR7 does not say rulings may do this.",
+  "law_fix": "An owner ruling may amend the spec; agents never do, and the ruling row says 'spec edit by ruling (rule 7)'.",
+  "confidence": "medium"
+ },
+ {
+  "id": "R-MW",
+  "law": "CR7",
+  "class": "law-too-coarse",
+  "ruling_says": "the `pipe_operator.md:163` Limitation goes",
+  "law_says": "The spec is authoritative: read docs/language_specification/ first; change the implementation, never the spec.",
+  "why": "A spec limitation removed by ruling to admit a construct; CR7's 'never the spec' does not distinguish owner rulings.",
+  "law_fix": "An owner ruling may amend the spec; agents never do, and the ruling row says 'spec edit by ruling (rule 7)'.",
+  "confidence": "medium"
+ },
+ {
+  "id": "R-NW",
+  "law": "CR7",
+  "class": "law-too-coarse",
+  "ruling_says": "the spec row is amended",
+  "law_says": "The spec is authoritative: read docs/language_specification/ first; change the implementation, never the spec.",
+  "why": "Spec amended by owner ruling; CR7 is silent on that route.",
+  "law_fix": "An owner ruling may amend the spec; agents never do, and the ruling row says 'spec edit by ruling (rule 7)'.",
+  "confidence": "medium"
+ },
+ {
+  "id": "R-OB",
+  "law": "CR7",
+  "class": "law-too-coarse",
+  "ruling_says": "Rejected: (b) the spec's null check",
+  "law_says": "The spec is authoritative: read docs/language_specification/ first; change the implementation, never the spec.",
+  "why": "The spec's null-check rule for truthiness is replaced by python's rule by ruling; CR7 does not provide for it.",
+  "law_fix": "An owner ruling may amend the spec; agents never do, and the ruling row says 'spec edit by ruling (rule 7)'.",
+  "confidence": "medium"
+ },
+ {
+  "id": "R-MD",
+  "law": "CR7",
+  "class": "law-too-coarse",
+  "ruling_says": "Rejected: keep the spec's per-class .NET bridge",
+  "law_says": "The spec is authoritative: read docs/language_specification/ first; change the implementation, never the spec.",
+  "why": "The spec's per-class bridge is dropped and the spec rewritten by ruling; CR7 is silent on owner amendments.",
+  "law_fix": "An owner ruling may amend the spec; agents never do, and the ruling row says 'spec edit by ruling (rule 7)'.",
+  "confidence": "medium"
+ },
+ {
+  "id": "R-QR",
+  "law": "CR7",
+  "class": "law-broken-acknowledged",
+  "ruling_says": "A spec edit by ruling (rule 7).",
+  "law_says": "The spec is authoritative: read docs/language_specification/ first; change the implementation, never the spec.",
+  "why": "The row names the departure from CR7 and its route (an owner ruling); the reason is R-PZ's principle ('as in a plain def').",
+  "law_fix": "An owner ruling may amend the spec; agents never do, and the ruling row says 'spec edit by ruling (rule 7)'.",
+  "confidence": "high"
+ },
+ {
+  "summary_by_law": {
+   "A1": {
+    "law-too-coarse": 2,
+    "not-a-conflict": 6
+   },
+   "A2": {
+    "law-too-coarse": 9,
+    "not-a-conflict": 12
+   },
+   "A3": {
+    "law-too-coarse": 2,
+    "not-a-conflict": 1
+   },
+   "AP": {
+    "law-broken-acknowledged": 2,
+    "not-a-conflict": 1,
+    "law-too-coarse": 3
+   },
+   "CR7": {
+    "law-too-coarse": 8,
+    "law-broken-acknowledged": 1
+   },
+   "FS": {
+    "resolved": 1,
+    "law-too-coarse": 2,
+    "law-written-later-and-contradicts": 1,
+    "not-a-conflict": 2
+   },
+   "N1": {
+    "law-written-later-and-contradicts": 1,
+    "resolved": 2
+   },
+   "N3": {
+    "resolved": 1
+   },
+   "N5": {
+    "law-too-coarse": 4,
+    "law-broken-acknowledged": 1
+   },
+   "N6": {
+    "not-a-conflict": 2,
+    "law-too-coarse": 2
+   },
+   "RR": {
+    "law-too-coarse": 3,
+    "law-broken-unacknowledged": 1,
+    "not-a-conflict": 1
+   },
+   "T1": {
+    "law-too-coarse": 1
+   },
+   "T2": {
+    "law-too-coarse": 5,
+    "law-written-later-and-contradicts": 2
+   },
+   "T3": {
+    "not-a-conflict": 5
+   },
+   "T4": {
+    "not-a-conflict": 4,
+    "law-too-coarse": 1
+   }
+  }
+ }
+]
