@@ -3437,6 +3437,7 @@ rulings:
     law_cited: false
     confidence: medium
   amends: [R-CN, R-BK, R-BL]
+  amended_by: [R-RM]
   cases:
   - family: walrus-target
     coords:
@@ -8952,8 +8953,9 @@ rulings:
   date: '2026-11-24'
   issue: '#2785'
   kind: language
-  rule: A local declaration has an initializer; one with none is a compile error, as R-QI already rules for module-level
-    and `@static` declarations. This retires R-AI's run-time unset check. Fields are not covered (B7).
+  rule: 'A local declaration has an initializer; one with none is a compile error, as R-QI already rules for module-level
+    and `@static` declarations. This retires R-AI''s run-time unset check. Fields are not covered: B7, as R-RM
+    amends it, is their rule.'
   options:
   - text: a local declaration needs an initializer
     chosen: true
@@ -9230,3 +9232,457 @@ rulings:
   note: 'The door that check_rulings computes from a case''s evidence (an admission is one-way, a refusal two-way)
     is a proxy for this: an admission is treated as foreclosing because programs come to depend on it. It is a
     default the owner can overrule in a ruling''s text.'
+- id: R-RM
+  date: '2026-11-24'
+  issue: '#1974'
+  kind: language
+  rule: 'A class field has an initializer at its declaration or is assigned on every path of every `__init__`,
+    whatever its type and whether it is `let` or `var`; a class with such a field and no `__init__` is a compile
+    error. B7''s exception for a `var` field whose type has a default (a value type, `T | None`, `T?`) is removed:
+    no class field is left to the CLR default.'
+  options:
+  - text: every field is given a value, like every local (R-RH)
+    chosen: true
+    recommended: true
+  - text: a `var` local may be left to its type's default too, like a `var` field under B7
+  - text: keep B7's exception for fields and R-RH for locals, as C# does
+  basis: follows
+  laws: [A3, T1]
+  considered:
+  - id: R-RH
+    why: the same rule for a local; a field differs only in that every `__init__` may stand in for the initializer
+  - id: R-QI
+    why: the same rule for module-level and `@static` declarations
+  decided_by: owner
+  door: two-way
+  breaks_running: true
+  undo_breaks: false
+  amends: [R-GV]
+  note: 'Not ruled: an auto-property (`properties.md` zero-initializes `property count: int`), and a struct''s
+    implicit parameterless constructor, which .NET always provides. A struct that declares `__init__` must already
+    assign every field (SPY0252).'
+  cases:
+  - family: field-assignment
+    coords:
+      type: value-type
+      assigned: in-no-init
+    verdict: refuse
+    evidence:
+      program: |
+        class P:
+            x: int
+
+            def __init__(self):
+                pass
+
+        def main() -> None:
+            p = P()
+            print(p.x)
+      twin: |
+        class P:
+            x: int
+
+            def __init__(self):
+                pass
+
+        def main() -> None:
+            p = P()
+            print(p.x)
+        main()
+      sharpy: |
+        runs:0
+      python: raises:AttributeError
+      after: refused:code_not_ruled
+  - family: field-assignment
+    coords:
+      type: nullable
+      assigned: in-no-init
+    verdict: refuse
+    evidence:
+      program: |
+        class P:
+            name: str | None
+
+            def __init__(self):
+                pass
+
+        def main() -> None:
+            p = P()
+            print(p.name)
+      twin: |
+        class P:
+            name: str | None
+
+            def __init__(self):
+                pass
+
+        def main() -> None:
+            p = P()
+            print(p.name)
+        main()
+      sharpy: |
+        runs:None
+      python: raises:AttributeError
+      after: refused:code_not_ruled
+  - family: field-assignment
+    coords:
+      type: reference-type
+      assigned: in-no-init
+    verdict: refuse
+    evidence:
+      program: |
+        class P:
+            name: str
+
+            def __init__(self):
+                pass
+
+        def main() -> None:
+            p = P()
+            print(p.name)
+      twin: |
+        class P:
+            name: str
+
+            def __init__(self):
+                pass
+
+        def main() -> None:
+            p = P()
+            print(p.name)
+        main()
+      sharpy: |
+        runs:None
+      python: raises:AttributeError
+      after: refused:code_not_ruled
+  - family: field-assignment
+    coords:
+      type: reference-type
+      assigned: on-one-branch
+    verdict: refuse
+    evidence:
+      program: |
+        class P:
+            name: str
+
+            def __init__(self, c: bool):
+                if c:
+                    self.name = "a"
+
+        def main() -> None:
+            p = P(False)
+            print(p.name)
+      twin: |
+        class P:
+            name: str
+
+            def __init__(self, c: bool):
+                if c:
+                    self.name = "a"
+
+        def main() -> None:
+            p = P(False)
+            print(p.name)
+        main()
+      sharpy: |
+        runs:None
+      python: raises:AttributeError
+      after: refused:code_not_ruled
+  - family: field-assignment
+    coords:
+      type: reference-type
+      assigned: in-one-of-two-inits
+    verdict: refuse
+    evidence:
+      program: |
+        class P:
+            x: int
+            name: str
+
+            def __init__(self):
+                self.x = 1
+                self.name = "a"
+
+            def __init__(self, n: int):
+                self.x = n
+
+        def main() -> None:
+            p = P(3)
+            print(p.name)
+      sharpy: |
+        runs:None
+      python: no-twin
+      after: refused:code_not_ruled
+  - family: field-assignment
+    coords:
+      type: value-type
+      assigned: class-has-no-init
+    verdict: refuse
+    evidence:
+      program: |
+        class P:
+            x: int
+
+        def main() -> None:
+            p = P()
+            print(p.x)
+      twin: |
+        class P:
+            x: int
+
+        def main() -> None:
+            p = P()
+            print(p.x)
+        main()
+      sharpy: |
+        runs:0
+      python: raises:AttributeError
+      after: refused:code_not_ruled
+  - family: field-assignment
+    coords:
+      type: reference-type
+      assigned: in-every-init
+    verdict: run
+    evidence:
+      program: |
+        class P:
+            name: str
+
+            def __init__(self):
+                self.name = "a"
+
+        def main() -> None:
+            p = P()
+            print(p.name)
+      twin: |
+        class P:
+            name: str
+
+            def __init__(self):
+                self.name = "a"
+
+        def main() -> None:
+            p = P()
+            print(p.name)
+        main()
+      sharpy: |
+        runs:a
+      python: |
+        runs:a
+      after: |
+        runs:a
+- id: R-RN
+  date: '2026-11-24'
+  issue: '#1974'
+  kind: language
+  rule: 'Inside `__init__`, until every field of the class has been assigned, `self` may be used only to assign
+    a field or to read one already assigned: reading a field not yet assigned, calling a method or reading a property
+    on `self`, and using `self` as a value (an argument, a stored or returned value, a capture in a lambda or
+    a nested function) are compile errors. Programs that would have run correctly are refused too, so that a field
+    of a non-nullable type is never observed as null.'
+  options:
+  - text: refuse every such use of `self` until all fields are assigned
+    chosen: true
+    recommended: true
+  - text: 'leave it as C# does: the read sees the zeroed field'
+  - text: check at run time and raise, as Python does
+  recommended_note: 'the agent made no recommendation: it named this rule as an example of what closing the gap
+    needs and said it rejects some correct programs. The flag sits on the chosen option.'
+  basis: follows
+  laws: [A3, T2]
+  considered:
+  - id: R-RM
+    why: R-RM says every field is assigned by the end of `__init__`; this ruling covers what happens before that
+      point
+  decided_by: owner
+  door: two-way
+  breaks_running: true
+  undo_breaks: false
+  note: 'A departure from the run-time default (C# lets a constructor call a method that reads a field the constructor
+    has not assigned yet); the defect it names is a non-nullable field read as null. Not ruled: a base class''s
+    `__init__` that calls a `@virtual` or `@abstract` method which a derived class overrides. `super().__init__()`
+    runs before the derived body, so the override reads the derived class''s fields before they are assigned (measured:
+    it prints `True` for `self.name is None`). This ruling''s text does not reach that case.'
+  cases:
+  - family: self-before-fields
+    coords:
+      use: unassigned-field-read
+    verdict: refuse
+    evidence:
+      program: |
+        class P:
+            name: str
+
+            def __init__(self):
+                print(self.name is None)
+                self.name = "a"
+
+        def main() -> None:
+            p = P()
+            print(p.name)
+      twin: |
+        class P:
+            name: str
+
+            def __init__(self):
+                print(self.name is None)
+                self.name = "a"
+
+        def main() -> None:
+            p = P()
+            print(p.name)
+        main()
+      sharpy: |
+        runs:True
+        a
+      python: raises:AttributeError
+      after: refused:code_not_ruled
+  - family: self-before-fields
+    coords:
+      use: method-call
+    verdict: refuse
+    evidence:
+      program: |
+        class P:
+            name: str
+
+            def __init__(self):
+                self.show()
+                self.name = "a"
+
+            def show(self) -> None:
+                print(self.name is None)
+
+        def main() -> None:
+            p = P()
+            print(p.name)
+      twin: |
+        class P:
+            name: str
+
+            def __init__(self):
+                self.show()
+                self.name = "a"
+
+            def show(self) -> None:
+                print(self.name is None)
+
+        def main() -> None:
+            p = P()
+            print(p.name)
+        main()
+      sharpy: |
+        runs:True
+        a
+      python: raises:AttributeError
+      after: refused:code_not_ruled
+  - family: self-before-fields
+    coords:
+      use: self-as-argument
+    verdict: refuse
+    evidence:
+      program: |
+        class P:
+            name: str
+
+            def __init__(self):
+                show(self)
+                self.name = "a"
+
+        def show(p: P) -> None:
+            print(p.name is None)
+
+        def main() -> None:
+            p = P()
+            print(p.name)
+      twin: |
+        class P:
+            name: str
+
+            def __init__(self):
+                show(self)
+                self.name = "a"
+
+        def show(p: P) -> None:
+            print(p.name is None)
+
+        def main() -> None:
+            p = P()
+            print(p.name)
+        main()
+      sharpy: |
+        runs:True
+        a
+      python: raises:AttributeError
+      after: refused:code_not_ruled
+  - family: self-before-fields
+    coords:
+      use: self-captured
+    verdict: refuse
+    evidence:
+      program: |
+        class P:
+            name: str
+
+            def __init__(self):
+                f = lambda: self.name is None
+                print(f())
+                self.name = "a"
+
+        def main() -> None:
+            p = P()
+            print(p.name)
+      twin: |
+        class P:
+            name: str
+
+            def __init__(self):
+                f = lambda: self.name is None
+                print(f())
+                self.name = "a"
+
+        def main() -> None:
+            p = P()
+            print(p.name)
+        main()
+      sharpy: |
+        runs:True
+        a
+      python: raises:AttributeError
+      after: refused:code_not_ruled
+  - family: self-before-fields
+    coords:
+      use: assigned-field-read
+    verdict: run
+    evidence:
+      program: |
+        class P:
+            x: int
+            y: int
+
+            def __init__(self):
+                self.x = 1
+                self.y = self.x + 1
+
+        def main() -> None:
+            p = P()
+            print(p.y)
+      twin: |
+        class P:
+            x: int
+            y: int
+
+            def __init__(self):
+                self.x = 1
+                self.y = self.x + 1
+
+        def main() -> None:
+            p = P()
+            print(p.y)
+        main()
+      sharpy: |
+        runs:2
+      python: |
+        runs:2
+      after: |
+        runs:2

@@ -3,7 +3,7 @@
 # axis must not matter (check `invariance`). Add a value here before using it in a case.
 #
 # The first five families are the ones the 2026-11-21 audit's verified conflicts needed; the rest were
-# added for the owner's rulings of 2026-11-24 (R-QS to R-RL). All are listed by hand.
+# added for the owner's rulings of 2026-11-24 (R-QS to R-RN). All are listed by hand.
 # Contract section 11 wants each axis to be the image of a compiler enumeration; #2486, #2487 and #2733
 # are where that is built, and these lists should be replaced by theirs as they land.
 families:
@@ -79,3 +79,14 @@ families:
       comes from.
     axes:
       other: [stdlib-module, referenced-library, clr-namespace]
+  field-assignment:
+    doc: A class field with no initializer at its declaration, by its type and by where the class's `__init__`
+      methods assign it.
+    axes:
+      type: [value-type, reference-type, nullable]
+      assigned: [in-every-init, in-no-init, on-one-branch, in-one-of-two-inits, class-has-no-init]
+  self-before-fields:
+    doc: A use of `self` inside `__init__` before every field of the class has been assigned. `overridden-method-called-by-base`
+      (a base `__init__` calls a method a derived class overrides) is listed and not ruled.
+    axes:
+      use: [unassigned-field-read, assigned-field-read, method-call, self-as-argument, self-captured, overridden-method-called-by-base]

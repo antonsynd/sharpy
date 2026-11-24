@@ -1057,10 +1057,24 @@ def test_the_enum_law_holds_both_backings_to_one_verdict(real):
 
 def test_every_ruling_of_2026_11_24_is_the_owners_and_has_a_charter_row(real):
     new = [r for r in real.rulings if "seed" not in r]
-    assert [r["id"] for r in new] == ["R-QS", "R-QT", "R-QU", "R-QV", "R-QW", "R-QX", "R-QY", "R-QZ", "R-RA", "R-RB", "R-RC", "R-RD", "R-RE", "R-RF", "R-RG", "R-RH", "R-RI", "R-RJ", "R-RK", "R-RL"]
+    assert [r["id"] for r in new] == ["R-QS", "R-QT", "R-QU", "R-QV", "R-QW", "R-QX", "R-QY", "R-QZ", "R-RA", "R-RB", "R-RC", "R-RD", "R-RE", "R-RF", "R-RG", "R-RH", "R-RI", "R-RJ", "R-RK", "R-RL", "R-RM", "R-RN"]
     for record in new:
         assert record["decided_by"] == "owner" and record["id"] in real.charter, record["id"]
         assert not real.charter[record["id"]][0], record["id"]  # not struck
+
+
+def test_the_field_rulings_amend_b7_and_refuse_every_unassigned_field(real):
+    # R-RM removes B7's exception: the type of a field no longer decides whether it may be left
+    # unassigned. Every cell but the control (assigned in every __init__) is a refusal.
+    records = {r["id"]: r for r in real.rulings}
+    assert records["R-GV"]["amended_by"] == ["R-RM"] and "R-GV" in records["R-RM"]["amends"]
+    assert ("charter-mark", ("R-GV", "R-RM")) not in keys(mod.run_checks(real))
+    verdicts = {(c["coords"]["type"], c["coords"]["assigned"]): c["verdict"] for c in records["R-RM"]["cases"]}
+    assert {t for t, _ in verdicts} == {"value-type", "reference-type", "nullable"}
+    assert [k for k, v in verdicts.items() if v == "run"] == [("reference-type", "in-every-init")]
+    # R-RN: before all fields are assigned, only a read of an assigned field runs.
+    uses = {c["coords"]["use"]: c["verdict"] for c in records["R-RN"]["cases"]}
+    assert [u for u, v in uses.items() if v == "run"] == ["assigned-field-read"] and len(uses) == 5
 
 
 def test_properly_marked_amendments_are_not_reported(real):

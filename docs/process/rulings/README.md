@@ -29,8 +29,8 @@ reading of each charter row and the owner has not reviewed them. The charter row
 authority for a seed ruling's text. Fifteen of their cases are filled in, all from conflicts the
 audit verified by reading the rows.
 
-The twenty records without `seed:` (R-QS to R-RL) are the owner's answers of 2026-11-24 to that
-audit. They meet the full schema below, and each case has a program that was run.
+The twenty-two records without `seed:` (R-QS to R-RN) are the owner's rulings of 2026-11-24: twenty
+answer that audit, and R-RM and R-RN followed from the owner's reading of R-RH. They meet the full schema below, and each case has a program that was run.
 
 The families in `axes.yaml` are hand-listed, one set per question ruled so far. Issues #2486, #2487 and #2733 are where the
 lists get derived from the compiler; replace these with theirs as they land.
