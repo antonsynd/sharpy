@@ -152,6 +152,10 @@ Implemented by #2423.
   (S3; Python raises at run time).
 - `for`, `except`, `with` and comprehension targets are **fresh bindings for their block**, and a
   loop variable is **fresh per iteration**. Rust, Swift and C# `foreach` agree.
+- A walrus (`:=`) is **assignment as an expression** and has no scope of its own (R-QS, 2026-11-24).
+  On a new name it declares a `let` in the block of the statement it sits in, so the name is visible
+  in both branches of an `if` and after it; on an existing `var` it writes; on a `let` or a parameter
+  it is an error; across a function boundary it is N6's store.
 
 **Designed deviations from Python (the closed list):**
 
@@ -171,15 +175,17 @@ def main() -> None:
 
    The refusal applies to any visible binding the target reuses — local, enclosing or module. Without
    a later read the program is legal and prints what Python prints. A walrus inside a comprehension is
-   the same shape: its binding is local to the comprehension, so where a visible outer name is read
-   after it, the program is refused (owner ruling 2026-11-06).
+   NOT a target of this kind: it is an assignment, so over a local of the same function it writes
+   through, as Python does (R-MH, R-QS; this replaces the owner ruling of 2026-11-06 that kept the
+   binding local to the comprehension). A walrus name that is new is usable inside the comprehension;
+   reading it after the comprehension is an error, since it has no value when the iterable is empty.
 3. Forward reads that Python rejects with `NameError` run (N1 + N3). This is an addition, not a
    divergence of output.
 
 *Today:* the target is a fresh binding and the later read silently sees the outer value. Census @
 d2d5cbcab: 4 refused sites (2 `for`, 2 `with`). Implemented by #2425. A comprehension's walrus today is
 SPY0600 over a module, parameter or enclosing outer read in its own body, runs over an outer in the same
-function (ruling open on #2427), and writes an outer with no read in that body (#2425).
+function (ruled: R-MH, R-QS), and writes an outer with no read in that body (#2425; N6 refuses it).
 
 ### N6. Writing across a function boundary needs a declaration
 
@@ -209,9 +215,8 @@ def make_counter() -> () -> int:
 - **Module properties are module bindings.** Assigning a module-level property from a function
   calls its setter only under `global`; spelling never changes the verdict (N7).
 - The declared name must resolve to a writable binding in the named scope; `global` or `nonlocal`
-  on a `let` or `const` is refused as any write to them is. Whether `global x` may *create* a module
-  binding (Python allows it) is decided in #2424's plan; the default is no — declarations are
-  explicit.
+  on a `let` or `const` is refused as any write to them is. `global x` never *creates* a module
+  binding (Python allows it; R-RK, 2026-11-24): declarations are explicit.
 - Python's own errors are kept: `nonlocal` with no enclosing binding, and a name used before its
   `global` / `nonlocal` declaration in the same function.
 

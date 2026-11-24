@@ -110,7 +110,7 @@ Since Sharpy has full static type information, the type of `get_value()` is know
 
 **Walrus Operator in Comprehensions:**
 
-Variables assigned with `:=` inside a comprehension are **local to the comprehension** and do not leak to the outer scope:
+A name that `:=` introduces inside a comprehension cannot be read after the comprehension:
 
 <!-- spec-sweep: error SPY0200 -->
 ```python
@@ -130,9 +130,9 @@ print(y)  # ERROR: 'y' does not exist in this scope
 print(x)  # ERROR: 'x' does not exist in this scope
 ```
 
-**Departure from Python:** In Python 3.8+, walrus assignments inside comprehensions leak to the containing scope. Sharpy deliberately differs here for cleaner semantics: the syntactic boundary (`[...]`, `{...}`) equals the semantic boundary. Everything inside the comprehension delimiters stays inside.
+**Departure from Python:** In Python 3.8+, a name a walrus introduces inside a comprehension leaks to the containing scope, and is unbound there when the iterable is empty. In Sharpy a NEW name is usable inside the comprehension and reading it afterwards is an error.
 
-**A name that already exists outside:** the comprehension's binding stays inside, so a later read of the same name would see the outer value where Python sees the walrus's. That program is refused rather than printing something different. A module, parameter or enclosing outer read in the comprehension's own body is refused today as a use before assignment, and the rule's own diagnostic lands with #2425. Two shapes do not hold this yet: an outer declared in the same function runs and prints Python's value (the ruling is open on #2427), and an outer with no read in that body is written by the walrus (#2425):
+**A name that already exists outside:** the walrus is an assignment, so it follows the rules of `=` (R-QS). Over a local of the same function it writes through, as Python does. Over a module variable or an enclosing function's local it is a store across a function boundary, refused without `global` / `nonlocal`; over a `let` or a parameter it is refused as any write to them is. A module, parameter or enclosing outer read in the comprehension's own body is refused today as a use before assignment, and the rule's own diagnostic lands with #2425. One shape does not hold this yet: an outer with no read in that body is written by the walrus (#2425):
 
 <!-- spec-sweep: error SPY0600 -->
 ```python

@@ -551,9 +551,6 @@ def test_a_ruling_answers_what_stood_when_it_was_made_not_what_came_after(tmp_pa
 # --- the door, and who may decide -----------------------------------------------------------------
 
 
-# --- the door, and who may decide -----------------------------------------------------------------
-
-
 def test_a_door_that_is_not_what_the_evidence_gives_fails(tmp_path):
     def edit(data):
         rulings(data).append(strict(door="one-way"))
@@ -958,9 +955,10 @@ def test_the_real_tree_has_no_new_and_no_stale_finding(real):
 
 
 def test_every_charter_ruling_has_a_record(real):
-    assert len(real.charter) >= 460 and set(real.charter) == {
-        r["id"] for r in real.rulings if "seed" in r
-    }
+    # Every charter row has a record, and every seed record a charter row. A new (strict) ruling
+    # may be recorded before its row is written, so the two sets need not be equal.
+    seeds = {r["id"] for r in real.rulings if "seed" in r}
+    assert len(seeds) >= 460 and seeds <= set(real.charter) <= {r["id"] for r in real.rulings}
 
 
 def test_the_written_laws_are_all_anchored_in_their_sources(real):
@@ -972,26 +970,20 @@ def test_the_written_laws_are_all_anchored_in_their_sources(real):
 # Positive controls: what the audit verified by reading the rows is what the checks report. If a
 # check stopped firing, the ratchet's stale row would say so; these name the expectation outright.
 AUDITED = [
-    ("collision", ("R-GV", "R-LR")),  # C1: `:=` onto a `let`: an error, or unruled
-    ("collision", ("R-HH", "R-HT")),  # C2: a silent spec read two ways
-    ("invariance", ("P-backed-enum-flavour", "R-ON", "R-OW")),  # U1: int-backed enums
-    (
-        "invariance",
-        ("P-backed-enum-flavour", "R-PK", "R-QG"),
-    ),  # U1: string-backed enums
-    (
-        "invariance",
-        ("P-uniform-verdict-across-forms", "R-PI", "R-PL"),
-    ),  # U2: `==` refused, `in` answers
-    (
-        "invariance",
-        ("P-uniform-verdict-across-forms", "R-CH", "R-IM"),
-    ),  # U3: str of Optional and of Result
-    (
-        "exception-in-law",
-        ("N5", "R-MH"),
-    ),  # L1: the ruling overrode N5 and N5 was not changed
-    ("charter-mark", ("R-BK", "R-GV")),  # 6.5: amended, the earlier row does not say so
+    ("charter-mark", ("R-CN", "R-GV")),  # 6.5: amended, the earlier row does not say so
+    ("charter-mark", ("R-DX", "R-ES")),
+    ("charter-mark", ("R-LK", "R-MB")),
+]
+
+# The audit's conflicts that the owner ruled on 2026-11-24 (R-QS ... R-RK). Each fired before those
+# records existed (they were the positive controls above); none may fire now.
+RULED = [
+    ("collision", ("R-GV", "R-LR")),  # C1 -> R-QS
+    ("collision", ("R-HH", "R-HT")),  # C2 -> R-QT
+    ("invariance", ("P-uniform-verdict-across-forms", "R-PI", "R-PL")),  # U2 -> R-QX
+    ("invariance", ("P-uniform-verdict-across-forms", "R-CH", "R-IM")),  # U3 -> R-QY
+    ("exception-in-law", ("N5", "R-MH")),  # L1 -> R-QS; N5's text is corrected
+    ("charter-mark", ("R-BK", "R-GV")),
     ("charter-mark", ("R-BL", "R-GV")),
 ]
 
@@ -999,6 +991,48 @@ AUDITED = [
 @pytest.mark.parametrize("key", AUDITED, ids=lambda k: f"{k[0]}:{'+'.join(k[1])}")
 def test_the_audited_conflicts_are_what_the_checks_report(real, key):
     assert key in keys(mod.run_checks(real))
+
+
+@pytest.mark.parametrize("key", RULED, ids=lambda k: f"{k[0]}:{'+'.join(k[1])}")
+def test_a_ruled_conflict_no_longer_fires(real, key):
+    assert key not in keys(mod.run_checks(real))
+
+
+def _without(real, rid):
+    """The real records as they would be had ruling `rid` not been recorded."""
+    rulings_ = [copy.deepcopy(r) for r in real.rulings if r["id"] != rid]
+    for record in rulings_:
+        for field in ("superseded_by", "amended_by"):
+            if rid in record.get(field, []):
+                record[field] = [x for x in record[field] if x != rid]
+                if not record[field]:
+                    del record[field]
+    return real._replace(rulings=rulings_)
+
+
+def test_the_walrus_ruling_is_what_settles_the_let_collision(real):
+    # Control for RULED: take R-QS away and R-LR is live again, so C1 fires as the audit found it.
+    assert ("collision", ("R-GV", "R-LR")) in keys(mod.run_checks(_without(real, "R-QS")))
+
+
+def test_the_enum_law_holds_both_backings_to_one_verdict(real):
+    # L-enum-own-type says the backing must not matter. Give the string backing another verdict
+    # for one cell and the law reports it, naming the int-backed ruling it now disagrees with.
+    assert not [f for f in mod.run_checks(real) if f.check == "invariance" and "L-enum-own-type" in f.subjects]
+    rulings_ = copy.deepcopy(real.rulings)
+    cell = {"backing": "string", "operator": "order", "operands": "one-type"}
+    (flipped,) = [c for c in next(r for r in rulings_ if r["id"] == "R-QW")["cases"] if c["coords"] == cell]
+    flipped["verdict"] = "refuse"
+    found = [f for f in mod.run_checks(real._replace(rulings=rulings_)) if f.check == "invariance"]
+    assert [f.subjects for f in found] == [("R-OW", "R-QW", "L-enum-own-type")]
+
+
+def test_every_ruling_of_2026_11_24_is_the_owners_and_has_a_charter_row(real):
+    new = [r for r in real.rulings if "seed" not in r]
+    assert [r["id"] for r in new] == ["R-QS", "R-QT", "R-QU", "R-QV", "R-QW", "R-QX", "R-QY", "R-QZ", "R-RA", "R-RB", "R-RC", "R-RD", "R-RE", "R-RF", "R-RG", "R-RH", "R-RI", "R-RJ", "R-RK"]
+    for record in new:
+        assert record["decided_by"] == "owner" and record["id"] in real.charter, record["id"]
+        assert not real.charter[record["id"]][0], record["id"]  # not struck
 
 
 def test_properly_marked_amendments_are_not_reported(real):
@@ -1018,14 +1052,14 @@ def test_every_known_row_points_at_a_file_that_exists(real):
 
 
 def test_the_readme_template_passes_the_checks_it_documents(real):
-    # The template in docs/process/rulings/README.md, added to the real records. R-LR gets the
+    # The template in docs/process/rulings/README.md, added to the real records. R-QS gets the
     # matching `amended_by`, as the template's `amends` requires; nothing else is adjusted.
     text = (REPO / mod.RULINGS_DIR / "README.md").read_text(encoding="utf-8")
     block = text.split("```yaml\n", 1)[1].split("```", 1)[0]
     (template,) = yaml.safe_load(block)
     assert "seed" not in template
     rulings_ = copy.deepcopy(real.rulings)
-    next(r for r in rulings_ if r["id"] == "R-LR")["amended_by"] = [template["id"]]
+    next(r for r in rulings_ if r["id"] == "R-QS")["amended_by"] = [template["id"]]
     new, _, _ = mod.judge(real._replace(rulings=rulings_ + [template]))
-    # The one thing the template cannot have is a charter row naming it on R-LR.
-    assert [f.key[:2] for f in new] == [("charter-mark", ("R-LR", template["id"]))]
+    # The one thing the template cannot have is a charter row naming it on R-QS.
+    assert [f.key[:2] for f in new] == [("charter-mark", ("R-QS", template["id"]))]

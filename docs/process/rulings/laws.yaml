@@ -76,13 +76,13 @@ laws:
   source: docs/design/name-resolution.md
   anchor: '### N5. Locals are ordered'
   statement: A local is visible from its declaration to the end of its block; loop, with, except and comprehension
-    targets are fresh bindings.
+    targets are fresh bindings; a walrus is assignment as an expression and has no scope of its own.
   cases:
   - family: walrus-target
     coords:
       position: comprehension-element
       target: existing-local
-    verdict: refuse
+    verdict: run
 - id: N6
   status: written
   source: docs/design/name-resolution.md
@@ -121,6 +121,43 @@ laws:
   anchor: '**Wrap .NET, expose Python**'
   statement: Core and Stdlib wrap .NET and expose Python names; absence is T?, expected failure is Result, bugs
     throw.
+- id: L-csharp-extends
+  status: written
+  source: docs/process/rounds/remediation-round-2026-09-20-batching.md
+  anchor: 'Law `L-csharp-extends`:'
+  statement: Where the spec is silent, Python is the guide; a form Python refuses is accepted with C#'s meaning
+    where C# defines it and nothing conflicts.
+  ruling: R-QT
+- id: L-enum-own-type
+  status: written
+  source: docs/process/rounds/remediation-round-2026-09-20-batching.md
+  anchor: 'Law `L-enum-own-type`:'
+  statement: A valued enum compares and orders only with its own type, by its backing value, whatever the backing.
+  ruling: R-QW
+  invariants:
+  - family: enum-operator
+    along: [backing]
+- id: L-zero-cost
+  status: written
+  source: docs/process/rounds/remediation-round-2026-09-20-batching.md
+  anchor: 'Law `L-zero-cost`:'
+  statement: Zero cost means no significant increase in memory or run time (0%, or under 1% at p99); interop complication
+    is weighed.
+  ruling: R-RD
+- id: L-same-result
+  status: written
+  source: docs/process/rounds/remediation-round-2026-09-20-batching.md
+  anchor: 'Law `L-same-result`:'
+  statement: Sharpy accepts a Python program where reasonable under static typing and .NET's limits and never
+    gives it a different result, the listed designed deviations excepted.
+  ruling: R-RE
+- id: L-footgun
+  status: written
+  source: docs/process/rounds/remediation-round-2026-09-20-batching.md
+  anchor: 'Law `L-footgun`:'
+  statement: 'A recognised Python footgun is never reproduced: refused with a steer where a natural alternative
+    spelling exists, fixed as a listed designed deviation where the natural spelling is the only one.'
+  ruling: R-RF
 - id: P-reversible-door
   status: draft
   source: docs/audits/ruling-audit-2026-11-21.md
@@ -147,7 +184,7 @@ laws:
   nearest_written_law: N7
   rulings: [R-OY, R-PD, R-PE, R-PF, R-IA, R-OH, R-PI, R-MI, R-LS, R-CW, R-BU, R-MW, R-EI, R-ER, R-LH, R-KY, R-PT,
     R-R, R-II, R-AA, R-EE, R-CR, R-DP, R-IP, R-HH]
-  against: [R-EU, R-DZ, R-NU, R-ON]
+  against: [R-EU, R-DZ, R-NU, R-ON, R-PL, R-QX]
   invariants:
   - family: equality-without-eq
     along: [site]
@@ -209,7 +246,7 @@ laws:
     waits when its class fix is already scheduled.
   nearest_written_law: batch-issues SKILL step 3 (not a listed law)
   rulings: [R-JU, R-KI, R-CN, R-GF, R-GO, R-GU, R-HC, R-HQ, R-IX, R-JF, R-HY, R-IJ, R-JA]
-  against: [R-PM, R-GX, R-NB]
+  against: [R-PM, R-GX, R-NB, R-RB]
 - id: P-group-by-class-and-seam
   status: draft
   source: docs/audits/ruling-audit-2026-11-21.md
@@ -482,17 +519,3 @@ laws:
   statement: A defect that breaks the documented install on a supported host is fixed at once as its own chore
     and released as a patch, and a known workaround is posted on the issue immediately.
   rulings: [R-GG, R-GI, R-GJ]
-- id: P-backed-enum-flavour
-  status: draft
-  source: docs/audits/ruling-audit-2026-11-21.md
-  anchor: '`backed-enum-flavour`'
-  scope: language
-  statement: A backed enum behaves as the Python enum flavour of its backing (IntEnum, StrEnum) for every operator.
-  boundary: 'No consistent boundary: string-backed enums are StrEnum for == and Enum for ordering, int-backed
-    the reverse. R-PK''s reason (''no .NET order to keep'') suggests ''keep .NET behaviour where it exists, else
-    refuse'', which R-ON does not fit.'
-  rulings: [R-OW, R-QG]
-  against: [R-ON, R-PK]
-  invariants:
-  - family: enum-operator
-    along: [operator, operands]

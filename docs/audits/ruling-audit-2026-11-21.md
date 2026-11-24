@@ -390,6 +390,11 @@ ruling naming its case from a fixed list of language features, which is the work
 describe. A script can prove a step was done and recorded consistently. It cannot prove the
 judgement inside the record was right.
 
+**Answered on 2026-11-24.** The owner ruled on the questions of sections 6 and 7; the answers are
+rulings R-QS to R-RK in the round charter and in `docs/process/rulings/rulings.yaml`. The text above
+is left as the audit found it. Still open: L4 and the "refuse, or imitate Python at run time" clash
+of 6.4 (a limit on tie-break T2), and the eleven unmarked rows of 6.5 that those rulings did not touch.
+
 **Built on 2026-11-22.** The records, the law table and the checks are in
 [`docs/process/rulings/`](../process/rulings/README.md), checked by `build_tools/check_rulings.py`
 and `build_tools/ruling_evidence.py`. The checks reproduce this audit's verified conflicts from the

@@ -2,24 +2,23 @@
 # Two live cases with the same family and coordinates must agree (check `collision`); a law may say an
 # axis must not matter (check `invariance`). Add a value here before using it in a case.
 #
-# These five families are the ones the 2026-11-21 audit's verified conflicts needed, listed by hand.
+# The first five families are the ones the 2026-11-21 audit's verified conflicts needed; the rest were
+# added for the owner's rulings of 2026-11-24 (R-QS to R-RK). All are listed by hand.
 # Contract section 11 wants each axis to be the image of a compiler enumeration; #2486, #2487 and #2733
 # are where that is built, and these lists should be replaced by theirs as they land.
 families:
   enum-operator:
-    doc: 'An operator applied to members of an enum that has values. `answer` is the python enum class the result
-      matches: a plain Enum (cross-type == is False, no ordering) or a valued one (IntEnum / StrEnum: compares
-      and orders by value).'
+    doc: 'An operator applied to members of an enum that has values, by backing, operator and what stands on the
+      other side. Ruled by R-QW: an enum compares and orders only with its own type.'
     axes:
       backing: [int, string]
       operator: [eq, order]
-      operands: [one-type, two-types]
-    answers: [plain-enum, valued-enum]
+      operands: [one-type, two-types, raw-value]
   walrus-target:
     doc: What `name := value` does, by where it is written and what `name` already is.
     axes:
       position: [statement, comprehension-element]
-      target: [new-name, existing-local, let, module, enclosing]
+      target: [new-name, existing-local, let, parameter, module, enclosing]
   equality-without-eq:
     doc: An equality question about two values whose type declares no `__eq__`.
     axes:
@@ -33,10 +32,45 @@ families:
       conversion: [str, repr]
     answers: [payload, constructor]
   spec-silent-acceptance:
-    doc: The spec does not say whether a program is legal, python3 and Sharpy disagree today, and a ruling picks
-      one. Two rulings here with the same coordinates are the same question; if they are not, the axis that separates
-      them is missing and adding it is the ruling.
+    doc: 'The spec does not say whether a program is legal, python3 and Sharpy disagree today, and a ruling picks
+      one. `csharp` says whether C# defines the form (R-QT): where it does and nothing conflicts, Sharpy may accept
+      what Python refuses.'
     axes:
       spec: [silent]
       python: [refuses, runs]
       sharpy-before: [refused, runs]
+      csharp: [defines, silent]
+  none-equality:
+    doc: '`== None` or `!= None` with the literal, by the type of the other operand.'
+    axes:
+      operand: [strict-optional, loose-nullable, user-class, clr-reference]
+  optional-store:
+    doc: A store of a plain payload value to a `T?` name, outside or inside a narrowing of that name.
+    axes:
+      site: [plain, narrowed]
+  parameter-default:
+    doc: A parameter default that C# cannot store as a constant, by what it is and how it is spelled.
+    axes:
+      default: [collection-literal, call, tuple, earlier-parameter]
+      spelling: [equals, fat-arrow]
+  declaration-initializer:
+    doc: A declaration with no initializer, by where it stands.
+    axes:
+      host: [module, static-member, local]
+  expression-statement:
+    doc: An expression that is not a call, standing alone as a statement, by its form.
+    axes:
+      form: [conditional, lambda, module-name]
+  outer-name-use:
+    doc: A function's use of a name that belongs to its module, other than a declared write.
+    axes:
+      use: [read, create-by-global]
+  repr-placeholder:
+    doc: A library type whose text keeps a fixed placeholder where Python prints something the runtime does not
+      carry.
+    axes:
+      type: [defaultdict]
+  none-needle:
+    doc: A `None` held in a loosely typed variable, tested for membership at run time, by the kind of container.
+    axes:
+      container: [library-type-with-twin, opaque-or-clr]

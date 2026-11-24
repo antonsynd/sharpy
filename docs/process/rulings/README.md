@@ -26,10 +26,13 @@ Both also run as tests under `build_tools/tests/`, so CI runs them.
 
 The 460 records marked `seed:` were written by the audit. Their labels are a language model's
 reading of each charter row and the owner has not reviewed them. The charter row stays the
-authority for a seed ruling's text. Fifteen cases are filled in, all from conflicts the audit
-verified by reading the rows, each with a program that was run.
+authority for a seed ruling's text. Fifteen of their cases are filled in, all from conflicts the
+audit verified by reading the rows.
 
-The five families in `axes.yaml` are hand-listed. Issues #2486, #2487 and #2733 are where the
+The nineteen records without `seed:` (R-QS to R-RK) are the owner's answers of 2026-11-24 to that
+audit. They meet the full schema below, and each case has a program that was run.
+
+The families in `axes.yaml` are hand-listed, one set per question ruled so far. Issues #2486, #2487 and #2733 are where the
 lists get derived from the compiler; replace these with theirs as they land.
 
 ## Adding a ruling
@@ -37,27 +40,26 @@ lists get derived from the compiler; replace these with theirs as they land.
 A record without `seed:` must provide all of this, and the check fails if it does not:
 
 ```yaml
-- id: R-QS
-  date: 2026-11-22
+- id: R-ZZ
+  date: 2026-11-25
   issue: "#2800"
   kind: language            # language | library | diagnostic | implementation | cli-lsp | test-instrument | process
-  rule: A walrus onto an existing let is a compile error.
+  rule: A walrus onto an existing let is refused with the code that names the `var` fix.
   options:                  # at least two; exactly one chosen, exactly one recommended
-    - {text: refuse, chosen: true, recommended: true}
-    - {text: rebind, as today}
+    - {text: "SPY0611, with the `var` steer", chosen: true, recommended: true}
+    - {text: "SPY0225, as any write to an immutable binding"}
   basis: follows            # follows | precedent | exception | new-law | choice
   laws: [R-GV]              # what it rests on: law ids or ruling ids (not needed for `choice`)
   considered:               # every other ruling or law with a case in the same family
     - {id: R-BK, why: "R-BK is an ordinary local; this target is a let"}
-    - {id: R-LR, why: "R-LR parked the question; this ruling answers it"}
     - {id: R-MH, why: "R-MH is the comprehension position"}
     - {id: N5, why: "N5's case is the comprehension position"}
   decided_by: owner         # owner | agent
-  door: two-way             # must equal what the evidence gives; see below
+  door: two-way             # computed over all the cases; see below
   breaks_running: true
   undo_breaks: false
   supersedes: []            # the other record must carry the matching superseded_by / amended_by
-  amends: [R-LR]
+  amends: [R-QS]
   cases:                    # required for language and library rulings
     - family: walrus-target
       coords: {position: statement, target: let}
@@ -75,7 +77,8 @@ A record without `seed:` must provide all of this, and the check fails if it doe
 ```
 
 An observation is `runs:<stdout>`, `refused:<code>`, `raises:<type>` (followed by whatever was
-printed first) or, for python only, `no-twin`. The compiler can also give `crashes:<code>`: an
+printed first) or, for python only, `no-twin`. Where a ruling decides a refusal and not its
+diagnostic code, `after` is `refused:code_not_ruled`. The compiler can also give `crashes:<code>`: an
 internal error such as SPY0908, or one of the emitter's own failures in the SPY05xx range. That is a defect to report. It is valid as `sharpy`, and a ruling
 can never decide it as `after`.
 

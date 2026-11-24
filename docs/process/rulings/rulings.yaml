@@ -25,6 +25,7 @@ rulings:
     laws: []
     law_cited: false
     confidence: medium
+  amended_by: [R-RG]
 - id: R-B
   seed: audit-2026-11-21
   round: '2026-08-30'
@@ -306,6 +307,7 @@ rulings:
     laws: []
     law_cited: false
     confidence: medium
+  amended_by: [R-RG]
 - id: R-S
   seed: audit-2026-11-21
   round: '2026-08-30'
@@ -587,6 +589,7 @@ rulings:
     laws: [T2]
     law_cited: false
     confidence: medium
+  superseded_by: [R-RH]
 - id: R-AJ
   seed: audit-2026-11-21
   round: '2026-08-30'
@@ -905,6 +908,7 @@ rulings:
     laws: []
     law_cited: false
     confidence: medium
+  superseded_by: [R-RA]
 - id: R-BB
   seed: audit-2026-11-21
   round: '2026-09-20'
@@ -1068,7 +1072,7 @@ rulings:
     laws: [A2, T3]
     law_cited: false
     confidence: high
-  amended_by: [R-GV]
+  amended_by: [R-GV, R-QS]
   cases:
   - family: walrus-target
     coords:
@@ -1497,6 +1501,7 @@ rulings:
     laws: [A1, T3]
     law_cited: false
     confidence: medium
+  superseded_by: [R-QY]
   cases:
   - family: wrapper-str
     coords:
@@ -1548,6 +1553,7 @@ rulings:
     laws: [FS]
     law_cited: false
     confidence: medium
+  amended_by: [R-QU]
 - id: R-CK
   seed: audit-2026-11-21
   round: '2026-09-20'
@@ -1758,6 +1764,7 @@ rulings:
     laws: [A2]
     law_cited: false
     confidence: medium
+  superseded_by: [R-RA]
 - id: R-CW
   seed: audit-2026-11-21
   round: '2026-09-20'
@@ -2588,6 +2595,7 @@ rulings:
     law_cited: true
     confidence: high
   amends: [R-DX]
+  superseded_by: [R-QV]
 - id: R-ET
   seed: audit-2026-11-21
   round: '2026-09-20'
@@ -3628,6 +3636,7 @@ rulings:
       spec: silent
       python: refuses
       sharpy-before: runs
+      csharp: silent
     verdict: refuse
 - id: R-HI
   seed: audit-2026-11-21
@@ -3828,6 +3837,7 @@ rulings:
       spec: silent
       python: refuses
       sharpy-before: runs
+      csharp: defines
     verdict: run
     evidence:
       program: |
@@ -4340,6 +4350,7 @@ rulings:
     laws: []
     law_cited: true
     confidence: medium
+  amended_by: [R-RJ]
 - id: R-IX
   seed: audit-2026-11-21
   round: '2026-09-20'
@@ -5518,6 +5529,7 @@ rulings:
     laws: []
     law_cited: false
     confidence: high
+  superseded_by: [R-QS]
   cases:
   - family: walrus-target
     coords:
@@ -5765,8 +5777,6 @@ rulings:
       position: comprehension-element
       target: existing-local
     verdict: run
-    exception_to: N5
-    differs_because: refusing costs a working program that agrees with python (the row's own words)
     evidence:
       program: |
         def main() -> None:
@@ -6716,6 +6726,7 @@ rulings:
     law_cited: false
     confidence: medium
   amended_by: [R-QG]
+  superseded_by: [R-QW]
   cases:
   - family: enum-operator
     coords:
@@ -6899,7 +6910,6 @@ rulings:
       operator: order
       operands: one-type
     verdict: run
-    answer: valued-enum
     evidence:
       program: |
         enum Color:
@@ -7108,6 +7118,7 @@ rulings:
     laws: []
     law_cited: false
     confidence: medium
+  amended_by: [R-QX]
   cases:
   - family: equality-without-eq
     coords:
@@ -7169,6 +7180,7 @@ rulings:
     laws: []
     law_cited: false
     confidence: medium
+  superseded_by: [R-QW]
   cases:
   - family: enum-operator
     coords:
@@ -7221,6 +7233,8 @@ rulings:
       site: container-search
       operand: reference-type
     verdict: run
+    exception_to: P-uniform-verdict-across-forms
+    differs_because: a container search is identity-first, as CPython documents, and never needs `__eq__` (R-QX)
     evidence:
       program: |
         class P:
@@ -7572,35 +7586,7 @@ rulings:
     law_cited: false
     confidence: medium
   amends: [R-ON]
-  cases:
-  - family: enum-operator
-    coords:
-      backing: string
-      operator: eq
-      operands: two-types
-    verdict: run
-    answer: valued-enum
-    evidence:
-      program: |
-        enum Color:
-            RED = 1
-            GREEN = 2
-
-        enum Level:
-            LOW = 1
-
-        enum Verb:
-            GET = "GET"
-            POST = "POST"
-
-        enum Word:
-            GET = "GET"
-
-        def main() -> None:
-            print(Verb.GET == Word.GET)
-      sharpy: |
-        runs:True
-      python: no-twin
+  amended_by: [R-QW]
 - id: R-QH
   seed: audit-2026-11-21
   round: '2026-09-20'
@@ -7780,3 +7766,1326 @@ rulings:
     laws: [A1]
     law_cited: false
     confidence: medium
+- id: R-QS
+  date: '2026-11-24'
+  issue: '#1974'
+  kind: language
+  rule: '`:=` is assignment as an expression with no scope of its own: on a new name it declares a `let` in the
+    block of the statement it sits in, on an existing `var` it writes, on a `let` or a parameter it is a compile
+    error, and across a function boundary it follows N6. A name slot in a statement header (`for`, `with ... as`,
+    `except ... as`, a `case` capture, a comprehension''s `for`) is always a new `let` for that construct''s body.
+    Where either would print something other than Python does, the program is a compile error.'
+  options:
+  - text: assignment as an expression; a new name is a `let` of the enclosing statement's block
+    chosen: true
+    recommended: true
+  - text: 'an inline binder is required: `if (let x := 5) > 0`'
+  - text: always a new symbol unless `nonlocal` / `global`
+  - text: the name is scoped to the `if` / `while` it is written in
+  basis: precedent
+  laws: [R-GV, R-MH, N5, N6]
+  decided_by: owner
+  door: two-way
+  breaks_running: true
+  undo_breaks: false
+  supersedes: [R-LR]
+  amends: [R-BK]
+  cases:
+  - family: walrus-target
+    coords:
+      position: statement
+      target: let
+    verdict: refuse
+    evidence:
+      program: |
+        def main() -> None:
+            let x = 1
+            if (x := 2) > 0:
+                print(x)
+            print(x)
+      sharpy: |
+        runs:2
+        2
+      python: no-twin
+      after: refused:SPY0225
+  - family: walrus-target
+    coords:
+      position: statement
+      target: parameter
+    verdict: refuse
+    evidence:
+      program: |
+        def f(x: int) -> int:
+            if (x := 2) > 0:
+                pass
+            return x
+
+        def main() -> None:
+            print(f(1))
+      twin: |
+        def f(x: int) -> int:
+            if (x := 2) > 0:
+                pass
+            return x
+
+        def main() -> None:
+            print(f(1))
+        main()
+      sharpy: |
+        runs:2
+      python: |
+        runs:2
+      after: refused:SPY0225
+  - family: walrus-target
+    coords:
+      position: statement
+      target: new-name
+    verdict: run
+    evidence:
+      program: |
+        def main() -> None:
+            if (y := 2) > 0:
+                print(y)
+            print(y)
+      twin: |
+        def main() -> None:
+            if (y := 2) > 0:
+                print(y)
+            print(y)
+        main()
+      sharpy: |
+        runs:2
+        2
+      python: |
+        runs:2
+        2
+      after: |
+        runs:2
+        2
+  - family: walrus-target
+    coords:
+      position: statement
+      target: existing-local
+    verdict: run
+    evidence:
+      program: |
+        def main() -> None:
+            x: int = 1
+            if (x := 2) > 0:
+                print(x)
+            print(x)
+      twin: |
+        def main() -> None:
+            x: int = 1
+            if (x := 2) > 0:
+                print(x)
+            print(x)
+        main()
+      sharpy: |
+        runs:2
+        2
+      python: |
+        runs:2
+        2
+      after: |
+        runs:2
+        2
+  - family: walrus-target
+    coords:
+      position: comprehension-element
+      target: existing-local
+    verdict: run
+    evidence:
+      program: |
+        def main() -> None:
+            xs: list[int] = [1, 2, 3]
+            last: int = 0
+            ys = [(last := x) for x in xs]
+            print(ys)
+            print(last)
+      twin: |
+        def main() -> None:
+            xs: list[int] = [1, 2, 3]
+            last: int = 0
+            ys = [(last := x) for x in xs]
+            print(ys)
+            print(last)
+        main()
+      sharpy: |
+        runs:[1, 2, 3]
+        3
+      python: |
+        runs:[1, 2, 3]
+        3
+      after: |
+        runs:[1, 2, 3]
+        3
+  - family: walrus-target
+    coords:
+      position: statement
+      target: module
+    verdict: refuse
+    evidence:
+      program: |
+        m: int = 1
+
+        def g() -> int:
+            if (m := 5) > 0:
+                pass
+            return m
+
+        def main() -> None:
+            print(g(), m)
+      twin: |
+        m: int = 1
+
+        def g() -> int:
+            if (m := 5) > 0:
+                pass
+            return m
+
+        def main() -> None:
+            print(g(), m)
+        main()
+      sharpy: |
+        runs:5 5
+      python: |
+        runs:5 1
+      after: refused:code_not_ruled
+  - family: walrus-target
+    coords:
+      position: statement
+      target: enclosing
+    verdict: refuse
+    evidence:
+      program: |
+        def main() -> None:
+            x: int = 1
+            def g() -> int:
+                if (x := 5) > 0:
+                    pass
+                return x
+            print(g(), x)
+      twin: |
+        def main() -> None:
+            x: int = 1
+            def g() -> int:
+                if (x := 5) > 0:
+                    pass
+                return x
+            print(g(), x)
+        main()
+      sharpy: |
+        runs:5 5
+      python: |
+        runs:5 1
+      after: refused:code_not_ruled
+  - family: walrus-target
+    coords:
+      position: comprehension-element
+      target: module
+    verdict: refuse
+    evidence:
+      program: |
+        m: int = 0
+
+        def g(xs: list[int]) -> list[int]:
+            return [(m := x) for x in xs]
+
+        def main() -> None:
+            print(g([1, 2, 3]), m)
+      twin: |
+        m: int = 0
+
+        def g(xs: list[int]) -> list[int]:
+            return [(m := x) for x in xs]
+
+        def main() -> None:
+            print(g([1, 2, 3]), m)
+        main()
+      sharpy: |
+        runs:[1, 2, 3] 3
+      python: |
+        runs:[1, 2, 3] 0
+      after: refused:code_not_ruled
+- id: R-QT
+  date: '2026-11-24'
+  issue: '#2785'
+  kind: language
+  rule: When the spec is silent on whether a program is legal, Python is the guide; a form Python refuses is accepted
+    with C#'s meaning where C# defines it and accepting it conflicts with nothing, and where C# defines nothing
+    Python's refusal stands.
+  options:
+  - text: Python guides; C# may add what Python refuses when nothing conflicts
+    chosen: true
+    recommended: true
+  - text: python3 always decides
+  - text: today's behaviour stands
+  recommended_note: the owner answered an open audit question; no recommendation was made first, so the flag sits
+    on the chosen option
+  basis: new-law
+  laws: [L-csharp-extends]
+  considered:
+  - id: R-HH
+    why: 'the import-name case: C# defines no module file names, so Python''s refusal stands; the new `csharp`
+      axis separates it from this case'
+  - id: R-HT
+    why: 'the leading-zero literal is this case: C# defines it and nothing conflicts'
+  decided_by: owner
+  door: one-way
+  breaks_running: false
+  undo_breaks: true
+  cases:
+  - family: spec-silent-acceptance
+    coords:
+      spec: silent
+      python: refuses
+      sharpy-before: runs
+      csharp: defines
+    verdict: run
+    evidence:
+      program: |
+        def main() -> None:
+            print(01)
+      twin: |
+        def main() -> None:
+            print(01)
+        main()
+      sharpy: |
+        runs:1
+      python: refused:SyntaxError
+      after: |
+        runs:1
+- id: R-QU
+  date: '2026-11-24'
+  issue: '#2785'
+  kind: library
+  rule: The `defaultdict` factory placeholder (R-BN) stays as a recorded difference from Python until matching
+    Python's text costs about nothing in memory and run time; R-CJ's comparison covers the rest of the type.
+  options:
+  - text: the placeholder stays until matching costs about nothing
+    chosen: true
+    recommended: true
+  - text: print Python's factory text now
+  recommended_note: the owner answered an open audit question; no recommendation was made first, so the flag sits
+    on the chosen option
+  basis: precedent
+  laws: [R-BN]
+  decided_by: owner
+  door: one-way
+  breaks_running: false
+  undo_breaks: true
+  amends: [R-CJ]
+  cases:
+  - family: repr-placeholder
+    coords:
+      type: defaultdict
+    verdict: run
+    evidence:
+      program: |
+        from collections import defaultdict
+
+        def main() -> None:
+            d: defaultdict[str, int] = defaultdict(int)
+            d["a"] += 1
+            print(d)
+      twin: |
+        from collections import defaultdict
+
+        def main() -> None:
+            d: defaultdict[str, int] = defaultdict(int)
+            d["a"] += 1
+            print(d)
+        main()
+      sharpy: |
+        runs:defaultdict(<factory>, {'a': 1})
+      python: |
+        runs:defaultdict(<class 'int'>, {'a': 1})
+      after: |
+        runs:defaultdict(<factory>, {'a': 1})
+- id: R-QV
+  date: '2026-11-24'
+  issue: '#2785'
+  kind: language
+  rule: '`== None` and `!= None` with the literal are a compile error on every operand type, with a steer to `is
+    None` / `is not None`.'
+  options:
+  - text: refuse the literal everywhere and steer to `is None`
+    chosen: true
+    recommended: true
+  - text: allow it as the type's own `==` (R-ES)
+  - text: lower it to a null test
+  recommended_note: the owner answered an open audit question; no recommendation was made first, so the flag sits
+    on the chosen option
+  basis: follows
+  laws: [L-footgun, R-OP]
+  decided_by: owner
+  door: two-way
+  breaks_running: true
+  undo_breaks: false
+  supersedes: [R-ES]
+  cases:
+  - family: none-equality
+    coords:
+      operand: user-class
+    verdict: refuse
+    evidence:
+      program: |
+        class P:
+            pass
+
+        def main() -> None:
+            p: P = P()
+            print(p == None)
+      twin: |
+        class P:
+            pass
+
+        def main() -> None:
+            p: P = P()
+            print(p == None)
+        main()
+      sharpy: |
+        runs:False
+      python: |
+        runs:False
+      after: refused:SPY0222
+  - family: none-equality
+    coords:
+      operand: clr-reference
+    verdict: refuse
+    evidence:
+      program: |
+        from System.Text import StringBuilder
+
+        def main() -> None:
+            sb = StringBuilder()
+            print(sb == None)
+      sharpy: |
+        runs:False
+      python: no-twin
+      after: refused:SPY0222
+  - family: none-equality
+    coords:
+      operand: strict-optional
+    verdict: refuse
+    evidence:
+      program: |
+        def main() -> None:
+            x: int? = Some(1)
+            print(x == None)
+      sharpy: refused:SPY0222
+      python: no-twin
+      after: refused:SPY0222
+  - family: none-equality
+    coords:
+      operand: loose-nullable
+    verdict: refuse
+    evidence:
+      program: |
+        def main() -> None:
+            x: int | None = 1
+            print(x == None)
+      twin: |
+        def main() -> None:
+            x: int | None = 1
+            print(x == None)
+        main()
+      sharpy: refused:SPY0222
+      python: |
+        runs:False
+      after: refused:SPY0222
+- id: R-QW
+  date: '2026-11-24'
+  issue: '#2680'
+  kind: language
+  rule: A valued enum compares and orders only with its own type, by its backing value, for int and string backings
+    alike; `==`, `!=` or an ordering between two enum types, or between an enum and a raw value of its backing
+    type, is a compile error.
+  options:
+  - text: own type only, by backing value, for both backings
+    chosen: true
+    recommended: true
+  - text: each backing behaves as its Python class (IntEnum, StrEnum) for every operator
+  - text: keep the .NET behaviour where one exists, otherwise plain Enum
+  recommended_note: the owner answered an open audit question; no recommendation was made first, so the flag sits
+    on the chosen option
+  basis: new-law
+  laws: [L-enum-own-type]
+  considered:
+  - id: R-OW
+    why: ordering within one int-backed type is this rule's int row and stands; its cross-type refusal is this
+      rule's too
+  decided_by: owner
+  door: one-way
+  breaks_running: true
+  undo_breaks: true
+  supersedes: [R-ON, R-PK]
+  amends: [R-QG]
+  cases:
+  - family: enum-operator
+    coords:
+      backing: int
+      operator: eq
+      operands: two-types
+    verdict: refuse
+    evidence:
+      program: |
+        enum Color:
+            RED = 1
+            BLUE = 2
+
+        enum Level:
+            LOW = 1
+
+        def main() -> None:
+            print(Color.RED == Level.LOW)
+      sharpy: |
+        runs:False
+      python: no-twin
+      after: refused:SPY0222
+  - family: enum-operator
+    coords:
+      backing: string
+      operator: eq
+      operands: two-types
+    verdict: refuse
+    evidence:
+      program: |
+        enum Verb:
+            GET = "GET"
+            POST = "POST"
+
+        enum Word:
+            GET = "GET"
+
+        def main() -> None:
+            print(Verb.GET == Word.GET)
+      sharpy: |
+        runs:True
+      python: no-twin
+      after: refused:SPY0222
+  - family: enum-operator
+    coords:
+      backing: int
+      operator: eq
+      operands: one-type
+    verdict: run
+    evidence:
+      program: |
+        enum Color:
+            RED = 1
+            BLUE = 2
+
+        enum Level:
+            LOW = 1
+
+        def main() -> None:
+            print(Color.RED == Color.RED)
+      sharpy: |
+        runs:True
+      python: no-twin
+      after: |
+        runs:True
+  - family: enum-operator
+    coords:
+      backing: string
+      operator: eq
+      operands: one-type
+    verdict: run
+    evidence:
+      program: |
+        enum Verb:
+            GET = "GET"
+            POST = "POST"
+
+        enum Word:
+            GET = "GET"
+
+        def main() -> None:
+            print(Verb.GET == Verb.GET)
+      sharpy: |
+        runs:True
+      python: no-twin
+      after: |
+        runs:True
+  - family: enum-operator
+    coords:
+      backing: string
+      operator: order
+      operands: one-type
+    verdict: run
+    evidence:
+      program: |
+        enum Verb:
+            GET = "GET"
+            POST = "POST"
+
+        enum Word:
+            GET = "GET"
+
+        def main() -> None:
+            print(Verb.GET < Verb.POST)
+      sharpy: crashes:SPY0908
+      python: no-twin
+      after: |
+        runs:True
+  - family: enum-operator
+    coords:
+      backing: int
+      operator: order
+      operands: two-types
+    verdict: refuse
+    evidence:
+      program: |
+        enum Color:
+            RED = 1
+            BLUE = 2
+
+        enum Level:
+            LOW = 1
+
+        def main() -> None:
+            print(Color.RED < Level.LOW)
+      sharpy: crashes:SPY0908
+      python: no-twin
+      after: refused:SPY0222
+  - family: enum-operator
+    coords:
+      backing: string
+      operator: order
+      operands: two-types
+    verdict: refuse
+    evidence:
+      program: |
+        enum Verb:
+            GET = "GET"
+            POST = "POST"
+
+        enum Word:
+            GET = "GET"
+
+        def main() -> None:
+            print(Verb.GET < Word.GET)
+      sharpy: crashes:SPY0908
+      python: no-twin
+      after: refused:SPY0222
+  - family: enum-operator
+    coords:
+      backing: int
+      operator: eq
+      operands: raw-value
+    verdict: refuse
+    evidence:
+      program: |
+        enum Color:
+            RED = 1
+            BLUE = 2
+
+        enum Level:
+            LOW = 1
+
+        def main() -> None:
+            print(Color.RED == 1)
+      sharpy: refused:SPY0222
+      python: no-twin
+      after: refused:SPY0222
+  - family: enum-operator
+    coords:
+      backing: string
+      operator: eq
+      operands: raw-value
+    verdict: refuse
+    evidence:
+      program: |
+        enum Verb:
+            GET = "GET"
+            POST = "POST"
+
+        enum Word:
+            GET = "GET"
+
+        def main() -> None:
+            print(Verb.GET == "GET")
+      sharpy: |
+        runs:True
+      python: no-twin
+      after: refused:SPY0222
+- id: R-QX
+  date: '2026-11-24'
+  issue: '#2785'
+  kind: language
+  rule: A container search (`in` and its siblings) compares by identity first and so answers for a type that declares
+    no `__eq__` (R-PL); R-PI's refusal covers the `==` and `!=` operators, not container search.
+  options:
+  - text: by identity, as today
+    chosen: true
+    recommended: true
+  - text: refuse container search on such a type too
+  recommended_note: the owner answered an open audit question; no recommendation was made first, so the flag sits
+    on the chosen option
+  basis: precedent
+  laws: [R-PL]
+  decided_by: owner
+  door: two-way
+  breaks_running: false
+  undo_breaks: false
+  amends: [R-PI]
+  cases:
+  - family: equality-without-eq
+    coords:
+      site: container-search
+      operand: reference-type
+    verdict: run
+    exception_to: P-uniform-verdict-across-forms
+    differs_because: a container search is identity-first, as CPython documents, and never needs `__eq__`; the
+      operator has nothing to run
+    evidence:
+      program: |
+        class P:
+            pass
+
+        def main() -> None:
+            a: P = P()
+            b: P = P()
+            print(a in [b])
+            print(a in [a])
+      twin: |
+        class P:
+            pass
+
+        def main() -> None:
+            a: P = P()
+            b: P = P()
+            print(a in [b])
+            print(a in [a])
+        main()
+      sharpy: |
+        runs:False
+        True
+      python: |
+        runs:False
+        True
+      after: |
+        runs:False
+        True
+- id: R-QY
+  date: '2026-11-24'
+  issue: '#2785'
+  kind: library
+  rule: '`str` of an Optional is its constructor spelling, `Some(1)` or `None()`, as its `repr` is and as Result
+    and unions already print; a wrapped value never prints as its bare payload.'
+  options:
+  - text: the constructor spelling for `str` too
+    chosen: true
+    recommended: true
+  - text: keep the transparent payload (R-CH)
+  recommended_note: the owner answered an open audit question; no recommendation was made first, so the flag sits
+    on the chosen option
+  basis: precedent
+  laws: [R-IM]
+  decided_by: owner
+  door: one-way
+  breaks_running: true
+  undo_breaks: true
+  supersedes: [R-CH]
+  cases:
+  - family: wrapper-str
+    coords:
+      wrapper: optional
+      conversion: str
+    verdict: run
+    answer: constructor
+    evidence:
+      program: |
+        def main() -> None:
+            x: int? = Some(1)
+            print(x)
+            y: int? = None()
+            print(y)
+      sharpy: |
+        runs:1
+        None
+      python: no-twin
+      after: |
+        runs:Some(1)
+        None()
+  - family: wrapper-str
+    coords:
+      wrapper: optional
+      conversion: repr
+    verdict: run
+    answer: constructor
+    evidence:
+      program: |
+        def main() -> None:
+            x: int? = Some(1)
+            print(repr(x))
+            y: int? = None()
+            print(repr(y))
+      sharpy: |
+        runs:Some(1)
+        None()
+      python: no-twin
+      after: |
+        runs:Some(1)
+        None()
+- id: R-QZ
+  date: '2026-11-24'
+  issue: '#2785'
+  kind: language
+  rule: Inside a narrowing, a store of the payload type to the narrowed `T?` name is allowed and re-wrapped (R-T);
+    it is the one named exception to R-G's rule that `T` never converts to `T?` implicitly.
+  options:
+  - text: keep R-T as the named exception
+    chosen: true
+    recommended: true
+  - text: refuse the narrowed store too
+  - text: add an `if var Some(x)` binding form
+  recommended_note: the owner answered an open audit question; no recommendation was made first, so the flag sits
+    on the chosen option
+  basis: precedent
+  laws: [R-T, R-G]
+  decided_by: owner
+  door: two-way
+  breaks_running: false
+  undo_breaks: false
+  cases:
+  - family: optional-store
+    coords:
+      site: plain
+    verdict: refuse
+    evidence:
+      program: |
+        def main() -> None:
+            x: int? = Some(1)
+            x = 5
+      sharpy: refused:SPY0604
+      python: no-twin
+      after: refused:SPY0604
+  - family: optional-store
+    coords:
+      site: narrowed
+    verdict: run
+    evidence:
+      program: |
+        def main() -> None:
+            x: int? = Some(1)
+            if x is not None:
+                x = 5
+                print(x + 1)
+      sharpy: |
+        runs:6
+      python: no-twin
+      after: |
+        runs:6
+- id: R-RA
+  date: '2026-11-24'
+  issue: '#2785'
+  kind: diagnostic
+  rule: A local module whose name collides with a stdlib module, a referenced library or a CLR namespace is a
+    compile error naming both, not a default-on warning with the local module winning.
+  options:
+  - text: a compile error
+    chosen: true
+    recommended: true
+  - text: the local module wins, with a warning (R-BA, R-CV)
+  recommended_note: the owner answered an open audit question; no recommendation was made first, so the flag sits
+    on the chosen option
+  basis: follows
+  laws: [P-collision-is-error]
+  decided_by: owner
+  supersedes: [R-BA, R-CV]
+  note: 'No measured case: the evidence tool runs one file and this needs two. The decision changes a diagnostic''s
+    severity, which is why the kind is `diagnostic`.'
+- id: R-RB
+  date: '2026-11-24'
+  issue: '#2785'
+  kind: process
+  rule: In the execution order, user-visible features are queued ahead of fixes for silently wrong values.
+  options:
+  - text: user-visible features first
+    chosen: true
+    recommended: true
+  - text: silently wrong values first (the written order)
+  recommended_note: the owner answered an open audit question; no recommendation was made first, so the flag sits
+    on the chosen option
+  basis: choice
+  decided_by: owner
+- id: R-RC
+  date: '2026-11-24'
+  issue: '#2785'
+  kind: process
+  rule: Before 1.0 the C# API may be broken freely, provided what remains makes sense and stays ergonomic for
+    a C# caller.
+  options:
+  - text: break freely, keep it sensible for C# callers
+    chosen: true
+    recommended: true
+  - text: protect the C# consumer surface before 1.0
+  recommended_note: the owner answered an open audit question; no recommendation was made first, so the flag sits
+    on the chosen option
+  basis: choice
+  decided_by: owner
+- id: R-RD
+  date: '2026-11-24'
+  issue: '#2785'
+  kind: process
+  rule: '"Zero cost" in the Resolution Rule means no significant increase in memory or run time (0%, or under
+    1% at p99); added complication for .NET interop is weighed as well.'
+  options:
+  - text: under 1% memory and run time at p99, interop weighed
+    chosen: true
+    recommended: true
+  - text: leave it undefined and judge case by case
+  recommended_note: the owner answered an open audit question; no recommendation was made first, so the flag sits
+    on the chosen option
+  basis: new-law
+  laws: [L-zero-cost]
+  decided_by: owner
+- id: R-RE
+  date: '2026-11-24'
+  issue: '#2785'
+  kind: process
+  rule: Sharpy accepts a Python program where that is reasonable under static typing and .NET's limits, and never
+    gives it a different result; the listed designed deviations are the only exceptions; where Python has no twin,
+    a C# near-twin counts as evidence.
+  options:
+  - text: accept where reasonable, never a different result
+    chosen: true
+    recommended: true
+  - text: every Python-valid program must be accepted
+  - text: only the result is constrained; acceptance is free
+  recommended_note: the owner answered an open audit question; no recommendation was made first, so the flag sits
+    on the chosen option
+  basis: new-law
+  laws: [L-same-result]
+  decided_by: owner
+- id: R-RF
+  date: '2026-11-24'
+  issue: '#2785'
+  kind: process
+  rule: 'A recognised Python footgun is never reproduced: it is refused with a steer where a natural alternative
+    spelling exists, and fixed as a listed designed deviation where the natural spelling is the only one.'
+  options:
+  - text: 'two branches: refuse with a steer, or fix as a listed deviation'
+    chosen: true
+    recommended: true
+  - text: always refuse with a steer
+  - text: reproduce Python and lint
+  basis: new-law
+  laws: [L-footgun]
+  decided_by: owner
+- id: R-RG
+  date: '2026-11-24'
+  issue: '#2785'
+  kind: language
+  rule: A parameter default that is not a compile-time constant is evaluated at each call, so `= []` gives a fresh
+    list per call; the `=>` spelling is retired and `=` may read earlier parameters.
+  options:
+  - text: evaluated at each call; `=>` retired
+    chosen: true
+  - text: keep `= []` an error and steer to `=>`
+    recommended: true
+  - text: reproduce Python's shared default and lint
+  basis: follows
+  laws: [L-footgun]
+  decided_by: owner
+  door: one-way
+  breaks_running: true
+  undo_breaks: true
+  amends: [R-R, R-A]
+  cases:
+  - family: parameter-default
+    coords:
+      default: collection-literal
+      spelling: equals
+    verdict: run
+    evidence:
+      program: |
+        def add(x: int, to: list[int] = []) -> list[int]:
+            to.append(x)
+            return to
+
+        def main() -> None:
+            add(1)
+            print(add(2))
+      twin: |
+        def add(x: int, to: list[int] = []) -> list[int]:
+            to.append(x)
+            return to
+
+        def main() -> None:
+            add(1)
+            print(add(2))
+        main()
+      sharpy: refused:SPY0400
+      python: |
+        runs:[1, 2]
+      after: |
+        runs:[2]
+  - family: parameter-default
+    coords:
+      default: call
+      spelling: equals
+    verdict: run
+    evidence:
+      program: |
+        def stamp() -> int:
+            print("called")
+            return 1
+
+        def f(n: int = stamp()) -> int:
+            return n
+
+        def main() -> None:
+            print(f())
+            print(f())
+      twin: |
+        def stamp() -> int:
+            print("called")
+            return 1
+
+        def f(n: int = stamp()) -> int:
+            return n
+
+        def main() -> None:
+            print(f())
+            print(f())
+        main()
+      sharpy: refused:SPY0401
+      python: |
+        runs:called
+        1
+        1
+      after: |
+        runs:called
+        1
+        called
+        1
+  - family: parameter-default
+    coords:
+      default: tuple
+      spelling: equals
+    verdict: run
+    evidence:
+      program: |
+        def f(t: tuple[int, int] = (1, 2)) -> int:
+            return t[0]
+
+        def main() -> None:
+            print(f())
+      twin: |
+        def f(t: tuple[int, int] = (1, 2)) -> int:
+            return t[0]
+
+        def main() -> None:
+            print(f())
+        main()
+      sharpy: refused:SPY0401
+      python: |
+        runs:1
+      after: |
+        runs:1
+  - family: parameter-default
+    coords:
+      default: earlier-parameter
+      spelling: equals
+    verdict: run
+    evidence:
+      program: |
+        def f(a: list[int], n: int = len(a)) -> int:
+            return n
+
+        def main() -> None:
+            print(f([1, 2, 3]))
+      twin: |
+        def f(a: list[int], n: int = len(a)) -> int:
+            return n
+
+        def main() -> None:
+            print(f([1, 2, 3]))
+        main()
+      sharpy: refused:SPY0200
+      python: raises:NameError
+      after: |
+        runs:3
+  - family: parameter-default
+    coords:
+      default: collection-literal
+      spelling: fat-arrow
+    verdict: refuse
+    evidence:
+      program: |
+        def add(x: int, to: list[int] => []) -> list[int]:
+            to.append(x)
+            return to
+
+        def main() -> None:
+            add(1)
+            print(add(2))
+      twin: |
+        def add(x: int, to: list[int] => []) -> list[int]:
+            to.append(x)
+            return to
+
+        def main() -> None:
+            add(1)
+            print(add(2))
+        main()
+      sharpy: |
+        runs:[2]
+      python: refused:SyntaxError
+      after: refused:code_not_ruled
+- id: R-RH
+  date: '2026-11-24'
+  issue: '#2785'
+  kind: language
+  rule: Every declaration has an initializer, locals included; a declaration with none is a compile error, which
+    retires R-AI's run-time unset check.
+  options:
+  - text: an initializer is required everywhere
+    chosen: true
+    recommended: true
+  - text: keep uninitialized locals; a `with` that can swallow an error counts as may-not-have-assigned at compile
+      time
+  - text: keep R-AI's run-time check
+  basis: precedent
+  laws: [R-QI]
+  decided_by: owner
+  door: two-way
+  breaks_running: true
+  undo_breaks: false
+  supersedes: [R-AI]
+  cases:
+  - family: declaration-initializer
+    coords:
+      host: local
+    verdict: refuse
+    evidence:
+      program: |
+        def main() -> None:
+            x: int
+            x = 1
+            print(x)
+      twin: |
+        def main() -> None:
+            x: int
+            x = 1
+            print(x)
+        main()
+      sharpy: |
+        runs:1
+      python: |
+        runs:1
+      after: refused:code_not_ruled
+- id: R-RI
+  date: '2026-11-24'
+  issue: '#2785'
+  kind: library
+  rule: 'A `None` needle in a container search raises what Python raises where the container is a library type
+    with a Python twin (R-NX: `AttributeError`) and `TypeError` where there is no twin (R-OS); the two rulings
+    do not conflict.'
+  options:
+  - text: the twin decides; `TypeError` where there is none
+    chosen: true
+    recommended: true
+  - text: '`TypeError` everywhere'
+  basis: precedent
+  laws: [R-NX, R-OS]
+  decided_by: owner
+  door: two-way
+  breaks_running: false
+  undo_breaks: false
+  cases:
+  - family: none-needle
+    coords:
+      container: library-type-with-twin
+    verdict: run
+    evidence:
+      program: |
+        import ipaddress
+
+        def main() -> None:
+            net = ipaddress.IPv4Network("10.0.0.0/8")
+            a: ipaddress.IPv4Address | None = None
+            print(a in net)
+      twin: |
+        import ipaddress
+
+        def main() -> None:
+            net = ipaddress.IPv4Network("10.0.0.0/8")
+            a: ipaddress.IPv4Address | None = None
+            print(a in net)
+        main()
+      sharpy: raises:AttributeError
+      python: raises:AttributeError
+      after: raises:AttributeError
+- id: R-RJ
+  date: '2026-11-24'
+  issue: '#2785'
+  kind: language
+  rule: A conditional expression may stand as a statement, judged by its form alone and with a lint that steers
+    to `if` / `else`; a bare lambda or a bare module name as a statement stays a compile error, since evaluating
+    it runs no code.
+  options:
+  - text: allow the conditional, with a lint
+    chosen: true
+    recommended: true
+  - text: keep SPY0603 for all three forms (R-IW)
+  - text: allow it only when a branch is a call
+  recommended_note: the owner answered an open audit question; no recommendation was made first, so the flag sits
+    on the chosen option
+  basis: follows
+  laws: [RR]
+  decided_by: owner
+  door: one-way
+  breaks_running: false
+  undo_breaks: true
+  amends: [R-IW]
+  cases:
+  - family: expression-statement
+    coords:
+      form: conditional
+    verdict: run
+    evidence:
+      program: |
+        def a() -> None:
+            print("a")
+
+        def b() -> None:
+            print("b")
+
+        def main() -> None:
+            c: bool = True
+            a() if c else b()
+      twin: |
+        def a() -> None:
+            print("a")
+
+        def b() -> None:
+            print("b")
+
+        def main() -> None:
+            c: bool = True
+            a() if c else b()
+        main()
+      sharpy: refused:SPY0603
+      python: |
+        runs:a
+      after: |
+        runs:a
+  - family: expression-statement
+    coords:
+      form: lambda
+    verdict: refuse
+    evidence:
+      program: |
+        def main() -> None:
+            lambda: 1
+            print("end")
+      twin: |
+        def main() -> None:
+            lambda: 1
+            print("end")
+        main()
+      sharpy: refused:SPY0603
+      python: |
+        runs:end
+      after: refused:SPY0603
+  - family: expression-statement
+    coords:
+      form: module-name
+    verdict: refuse
+    evidence:
+      program: |
+        import math
+
+        def main() -> None:
+            math
+            print("end")
+      twin: |
+        import math
+
+        def main() -> None:
+            math
+            print("end")
+        main()
+      sharpy: refused:SPY0603
+      python: |
+        runs:end
+      after: refused:SPY0603
+- id: R-RK
+  date: '2026-11-24'
+  issue: '#2424'
+  kind: language
+  rule: 'N6 stands as ruled: reading an outer name needs no declaration; `global x` never creates a module variable;
+    and within one function a name is `global`, `nonlocal` or neither for the whole function.'
+  options:
+  - text: N6 as ruled; reads are free
+    chosen: true
+    recommended: true
+  - text: reading a module `var` needs `global`
+  - text: every outer read needs a declaration
+  - text: a declaration takes effect from its line onward
+  basis: follows
+  laws: [N6]
+  decided_by: owner
+  door: two-way
+  breaks_running: false
+  undo_breaks: false
+  cases:
+  - family: outer-name-use
+    coords:
+      use: read
+    verdict: run
+    evidence:
+      program: |
+        counter: int = 0
+
+        def show() -> None:
+            print(counter)
+
+        def main() -> None:
+            show()
+      twin: |
+        counter: int = 0
+
+        def show() -> None:
+            print(counter)
+
+        def main() -> None:
+            show()
+        main()
+      sharpy: |
+        runs:0
+      python: |
+        runs:0
+      after: |
+        runs:0
+  - family: outer-name-use
+    coords:
+      use: create-by-global
+    verdict: refuse
+    evidence:
+      program: |
+        def setup() -> None:
+            global created
+            created = 1
+
+        def main() -> None:
+            setup()
+            print(created)
+      twin: |
+        def setup() -> None:
+            global created
+            created = 1
+
+        def main() -> None:
+            setup()
+            print(created)
+        main()
+      sharpy: refused:SPY0134
+      python: |
+        runs:1
+      after: refused:code_not_ruled
