@@ -84,9 +84,11 @@ families:
       methods assign it.
     axes:
       type: [value-type, reference-type, nullable]
-      assigned: [in-every-init, in-no-init, on-one-branch, in-one-of-two-inits, class-has-no-init]
+      assigned: [in-every-init, by-chained-init, by-synthesized-init, in-no-init, on-one-branch, in-one-of-two-inits,
+        class-has-no-init]
   self-before-fields:
     doc: A use of `self` inside `__init__` before every field of the class has been assigned. `overridden-method-called-by-base`
       (a base `__init__` calls a method a derived class overrides) is listed and not ruled.
     axes:
-      use: [unassigned-field-read, assigned-field-read, method-call, self-as-argument, self-captured, overridden-method-called-by-base]
+      use: [unassigned-field-read, assigned-field-read, chaining-call, method-call, self-as-argument, self-captured,
+        overridden-method-called-by-base]

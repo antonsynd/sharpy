@@ -1065,16 +1065,21 @@ def test_every_ruling_of_2026_11_24_is_the_owners_and_has_a_charter_row(real):
 
 def test_the_field_rulings_amend_b7_and_refuse_every_unassigned_field(real):
     # R-RM removes B7's exception: the type of a field no longer decides whether it may be left
-    # unassigned. Every cell but the control (assigned in every __init__) is a refusal.
+    # unassigned. A field runs only where some constructor assigns it: every __init__, the one an
+    # __init__ chains to, or the constructor the compiler writes for a dataclass.
     records = {r["id"]: r for r in real.rulings}
     assert records["R-GV"]["amended_by"] == ["R-RM"] and "R-GV" in records["R-RM"]["amends"]
     assert ("charter-mark", ("R-GV", "R-RM")) not in keys(mod.run_checks(real))
     verdicts = {(c["coords"]["type"], c["coords"]["assigned"]): c["verdict"] for c in records["R-RM"]["cases"]}
     assert {t for t, _ in verdicts} == {"value-type", "reference-type", "nullable"}
-    assert [k for k, v in verdicts.items() if v == "run"] == [("reference-type", "in-every-init")]
-    # R-RN: before all fields are assigned, only a read of an assigned field runs.
+    assert {a for (_, a), v in verdicts.items() if v == "run"} == {"in-every-init", "by-chained-init", "by-synthesized-init"}
+    assert {t for (t, a), v in verdicts.items() if a == "in-no-init"} == {"value-type", "reference-type", "nullable"}
+    assert all(v == "refuse" for (_, a), v in verdicts.items() if a == "in-no-init")
+    # R-RN: before all fields are assigned, `self` runs in two uses only. The chaining call is one:
+    # without it the rule would refuse every derived class.
     uses = {c["coords"]["use"]: c["verdict"] for c in records["R-RN"]["cases"]}
-    assert [u for u, v in uses.items() if v == "run"] == ["assigned-field-read"] and len(uses) == 5
+    assert {u for u, v in uses.items() if v == "run"} == {"assigned-field-read", "chaining-call"}
+    assert uses["method-call"] == "refuse"
 
 
 def test_properly_marked_amendments_are_not_reported(real):

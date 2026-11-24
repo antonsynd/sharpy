@@ -9237,9 +9237,8 @@ rulings:
   issue: '#1974'
   kind: language
   rule: 'A class field has an initializer at its declaration or is assigned on every path of every `__init__`,
-    whatever its type and whether it is `let` or `var`; a class with such a field and no `__init__` is a compile
-    error. B7''s exception for a `var` field whose type has a default (a value type, `T | None`, `T?`) is removed:
-    no class field is left to the CLR default.'
+    whatever its type and whether it is `let` or `var`. B7''s exception for a `var` field whose type has a default
+    (a value type, `T | None`, `T?`) is removed: no class field is left to the CLR default.'
   options:
   - text: every field is given a value, like every local (R-RH)
     chosen: true
@@ -9258,9 +9257,13 @@ rulings:
   breaks_running: true
   undo_breaks: false
   amends: [R-GV]
-  note: 'Not ruled: an auto-property (`properties.md` zero-initializes `property count: int`), and a struct''s
-    implicit parameterless constructor, which .NET always provides. A struct that declares `__init__` must already
-    assign every field (SPY0252).'
+  note: 'The recorder''s reading, not the owner''s words, of what "assigned in every `__init__`" means at three
+    edges: an `__init__` that chains to another with `self.__init__(...)` is assigned by the one it chains to;
+    a constructor the compiler writes (a `@dataclass`''s) assigns every field from its parameters; a class with
+    such a field and no constructor at all has nothing to assign it and is refused. Not ruled: an auto-property
+    (`properties.md` zero-initializes `property count: int`), and a struct''s implicit parameterless constructor,
+    which .NET always provides. A struct that declares `__init__` must already assign every field (SPY0252). Option
+    1 carries `recommended` because the agent called it the best of the three before the owner answered.'
   cases:
   - family: field-assignment
     coords:
@@ -9471,15 +9474,62 @@ rulings:
         runs:a
       after: |
         runs:a
+  - family: field-assignment
+    coords:
+      type: reference-type
+      assigned: by-chained-init
+    verdict: run
+    evidence:
+      program: |
+        class P:
+            x: int
+            name: str
+
+            def __init__(self, n: int):
+                self.x = n
+                self.name = "a"
+
+            def __init__(self):
+                self.__init__(1)
+
+        def main() -> None:
+            p = P()
+            print(p.name)
+      sharpy: |
+        runs:a
+      python: no-twin
+      after: |
+        runs:a
+  - family: field-assignment
+    coords:
+      type: reference-type
+      assigned: by-synthesized-init
+    verdict: run
+    evidence:
+      program: |
+        @dataclass
+        class P:
+            x: int
+            name: str
+
+        def main() -> None:
+            p = P(1, "a")
+            print(p.name)
+      sharpy: |
+        runs:a
+      python: no-twin
+      after: |
+        runs:a
 - id: R-RN
   date: '2026-11-24'
   issue: '#1974'
   kind: language
   rule: 'Inside `__init__`, until every field of the class has been assigned, `self` may be used only to assign
-    a field or to read one already assigned: reading a field not yet assigned, calling a method or reading a property
-    on `self`, and using `self` as a value (an argument, a stored or returned value, a capture in a lambda or
-    a nested function) are compile errors. Programs that would have run correctly are refused too, so that a field
-    of a non-nullable type is never observed as null.'
+    a field, to read one already assigned, or in the chaining call (`super().__init__(...)` or `self.__init__(...)`)
+    that the spec puts first: reading a field not yet assigned, calling a method or reading a property on `self`,
+    and using `self` as a value (an argument, a stored or returned value, a capture in a lambda or a nested function)
+    are compile errors. Programs that would have run correctly are refused too, so that a field of a non-nullable
+    type is never observed as null.'
   options:
   - text: refuse every such use of `self` until all fields are assigned
     chosen: true
@@ -9498,11 +9548,17 @@ rulings:
   door: two-way
   breaks_running: true
   undo_breaks: false
-  note: 'A departure from the run-time default (C# lets a constructor call a method that reads a field the constructor
-    has not assigned yet); the defect it names is a non-nullable field read as null. Not ruled: a base class''s
-    `__init__` that calls a `@virtual` or `@abstract` method which a derived class overrides. `super().__init__()`
-    runs before the derived body, so the override reads the derived class''s fields before they are assigned (measured:
-    it prints `True` for `self.name is None`). This ruling''s text does not reach that case.'
+  note: 'The owner''s words were on "refusing calls on `self` before all fields are assigned", the recorder''s
+    example, with the reason that a reference type `T` is never null. These parts are the recorder''s reading
+    of that and not the owner''s words: the direct read of an unassigned field; reading a property; `self` as
+    an argument, a stored value, a returned value or a capture (only the argument and the lambda capture are measured);
+    that the chaining call stays legal; and that the rule holds for a class whose unassigned fields are all value
+    types, where the read would see `0` and not null. A departure from the run-time default (C# lets a constructor
+    call a method that reads a field the constructor has not assigned yet); the defect it names is a non-nullable
+    field read as null. Not ruled: a base class''s `__init__` that calls a `@virtual` or `@abstract` method which
+    a derived class overrides. `super().__init__()` runs before the derived body, so the override reads the derived
+    class''s fields before they are assigned (measured: it prints `True` for `self.name is None`). This ruling''s
+    text does not reach that case.'
   cases:
   - family: self-before-fields
     coords:
@@ -9686,3 +9742,49 @@ rulings:
         runs:2
       after: |
         runs:2
+  - family: self-before-fields
+    coords:
+      use: chaining-call
+    verdict: run
+    evidence:
+      program: |
+        class Base:
+            n: int
+
+            def __init__(self):
+                self.n = 1
+
+        class Child(Base):
+            name: str
+
+            def __init__(self):
+                super().__init__()
+                self.name = "a"
+
+        def main() -> None:
+            c = Child()
+            print(c.name, c.n)
+      twin: |
+        class Base:
+            n: int
+
+            def __init__(self):
+                self.n = 1
+
+        class Child(Base):
+            name: str
+
+            def __init__(self):
+                super().__init__()
+                self.name = "a"
+
+        def main() -> None:
+            c = Child()
+            print(c.name, c.n)
+        main()
+      sharpy: |
+        runs:a 1
+      python: |
+        runs:a 1
+      after: |
+        runs:a 1
