@@ -86,6 +86,9 @@ them, and the `door` check compares:
 - `undo_breaks`: taking the decision back later would break programs written under it.
 - `door`: `one-way` when `undo_breaks`, else `two-way`.
 
+They are taken over all the cases: a ruling breaks running programs if any case does, and is
+one-way if any case is.
+
 An agent may record a ruling itself (`decided_by: agent`) only for the decision classes
 `policy.yaml` marks `true`. Anything else needs `decided_by: owner`.
 
@@ -103,7 +106,7 @@ An agent may record a ruling itself (`decided_by: agent`) only for the decision 
 | `collision` | Two live rulings give one case two verdicts | Rule; then supersede or amend one |
 | `invariance` | A law says an axis does not matter and two cases differ along it | Rule; then change a case, or record `differs_because` with `exception_to` |
 | `door` | The stated door is not what the evidence gives | Use the computed values |
-| `considered` | A related ruling was not answered | Say why it does not decide this one |
+| `considered` | A related ruling was not answered (one made on a later date need not be) | Say why it does not decide this one |
 | `owner-required` | An agent took a decision `policy.yaml` reserves | The owner decides |
 
 A finding that needs the owner goes in `known-findings.yaml` with a reference. Only `charter-mark`,

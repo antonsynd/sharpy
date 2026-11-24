@@ -527,6 +527,30 @@ def test_a_family_with_answers_is_compared_by_answer(tmp_path):
     assert ("invariance", ("L1", "R-A", "R-C")) in keys(findings(tmp_path, edit))
 
 
+def test_a_ruling_answers_what_stood_when_it_was_made_not_what_came_after(tmp_path):
+    # R-D (2026-11-22) and a later R-E share a family. R-E must answer R-D; R-D cannot answer R-E.
+    def later(considered):
+        return strict("R-E", date="2026-11-23", cases=[case("search", "refuse", evidence=evidence(REFUSED, REFUSED))], considered=considered)
+
+    def edit(data, considered):
+        rulings(data).extend([strict(), later(considered)])
+
+    both = [{"id": "R-A", "why": "the operator site"}, {"id": "R-D", "why": "R-D is the slice"}]
+    assert findings(tmp_path / "ok", lambda d: edit(d, both)) == []
+    # `subjects` is (the ruling that must answer, the one it did not); a finding's key sorts them.
+    assert [f.subjects for f in findings(tmp_path / "missing", lambda d: edit(d, both[:1]))] == [("R-E", "R-D")]
+
+    # Made on the same day, each must answer the other.
+    def same_day(data):
+        rulings(data).extend([strict(), later(both)])
+        rulings(data)[-1]["date"] = "2026-11-22"
+
+    assert [f.subjects for f in findings(tmp_path / "same", same_day)] == [("R-D", "R-E")]
+
+
+# --- the door, and who may decide -----------------------------------------------------------------
+
+
 # --- the door, and who may decide -----------------------------------------------------------------
 
 
@@ -536,6 +560,30 @@ def test_a_door_that_is_not_what_the_evidence_gives_fails(tmp_path):
 
     found = [f for f in findings(tmp_path, edit) if f.check == "door"]
     assert len(found) == 1 and "the evidence gives 'two-way'" in found[0].message
+
+
+def test_a_ruling_that_refuses_one_case_and_admits_another_does_both(tmp_path):
+    # One case refuses a running program (breaks it; relaxable), another admits a refused one
+    # (breaks nothing; cannot be taken back). The ruling breaks running programs AND is one-way.
+    both = dict(
+        decided_by="owner",
+        cases=[
+            case("slice", "refuse", evidence=evidence(RAN, REFUSED)),
+            case("search", "run", evidence=evidence(REFUSED, RAN)),
+        ],
+    )
+    for order in (0, 1):
+        cases = both["cases"][::-1] if order else both["cases"]
+
+        def edit(data, flags=None, cases=cases):
+            rulings(data).append(strict(**{**both, "cases": cases, **(flags or {})}))
+
+        truth = dict(door="one-way", breaks_running=True, undo_breaks=True)
+        assert findings(tmp_path / f"ok{order}", lambda d: edit(d, truth)) == [], order
+        # Either single case's own door is not the ruling's.
+        for n, wrong in enumerate((dict(door="one-way", breaks_running=False, undo_breaks=True), dict(door="two-way", breaks_running=True, undo_breaks=False))):
+            found = findings(tmp_path / f"bad{order}{n}", lambda d, w=wrong: edit(d, w))
+            assert found and {f.check for f in found} == {"door"}, (order, wrong)
 
 
 def test_an_admission_is_one_way_and_reserved_for_the_owner(tmp_path):
