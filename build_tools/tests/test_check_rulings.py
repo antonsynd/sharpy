@@ -563,6 +563,8 @@ def test_a_new_ruling_is_dated_as_a_calendar_date(tmp_path, date, ok):
         ({"files": {}}, False),
         ({"files": ["other.spy"]}, False),
         ({"files": {"other.spy": 1}}, False),
+        ({"files": {"../other.spy": "x = 1\n"}}, False),  # a name the measuring tool would refuse
+        ({"files": {"main.spy": "x = 1\n"}}, False),
         ({"twin_files": {"other.py": "x = 1\n"}}, False),  # nothing to put it beside: the case has no twin
     ],
 )

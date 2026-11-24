@@ -96,6 +96,10 @@ them, and the `door` check compares:
 They are taken over all the cases: a ruling breaks running programs if any case does, and is
 one-way if any case is.
 
+The computed door is a proxy. R-RL says what a one-way door is: a choice that narrows what can be
+done later, or makes users rewrite code later. The check treats an admission as one-way because
+programs come to depend on it, and a refusal as two-way because it can be relaxed.
+
 An agent may record a ruling itself (`decided_by: agent`) only for the decision classes
 `policy.yaml` marks `true`. Anything else needs `decided_by: owner`.
 

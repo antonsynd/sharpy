@@ -449,7 +449,7 @@ deviations:
     audience: python
     severity: error
     python_behavior: "Python 3.8+: walrus (`:=`) inside a comprehension binds in the *enclosing* scope and leaks out."
-    sharpy_behavior: "A name the walrus introduces inside a comprehension cannot be read after the comprehension (SPY0200, as in the example). A walrus over a name that already exists is an assignment to it (R-QS): over a local of the same function it writes through, as Python does; over a let, a parameter, or a module or enclosing-function name it is refused (SPY0600 today for the outer cases; the rule's own code lands with #2425)."
+    sharpy_behavior: "A name the walrus introduces inside a comprehension cannot be read after the comprehension (SPY0200, as in the example). A walrus over a name that already exists is an assignment to it (R-QS): over a local of the same function it writes through, as Python does. Ruled and not all built: over a let, a parameter, or a module or enclosing-function name it is refused (today a let target is written, and the parameter and outer cases are SPY0600 when the name is read in the comprehension; the rule's own code lands with #2425)."
     spec_ref: docs/language_specification/walrus_operator.md
     existing_diagnostic: SPY0200
     planned_diagnostic: null

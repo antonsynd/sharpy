@@ -380,12 +380,36 @@ def test_files_beside_the_program_are_written_where_the_compiler_finds_them(tmp_
     assert mod.measure_sharpy("x", beside_reader(tmp_path), {"beside.txt": "seen\n"}) == "runs:seen\n"
 
 
-@pytest.mark.parametrize("name", ["../up.spy", "sub/in.spy", "main.spy", ""])
+def test_a_twin_with_nothing_beside_it_stays_isolated():
+    # The runner sits in the twin's directory. In isolated mode that directory is off the path, so
+    # the twin cannot import it; only a case that has files beside it gets the directory.
+    assert mod.measure_python("import runner\n") == "raises:ModuleNotFoundError"
+
+
+@pytest.mark.parametrize("name", ["../up.spy", "sub/in.spy", "main.spy", "Main.spy", "..", ""])
 def test_a_file_beside_the_program_has_a_plain_name_of_its_own(tmp_path, name):
     with pytest.raises(mod.EvidenceError, match="plain name"):
         mod.measure_sharpy("x", beside_reader(tmp_path), {name: "y"})
     with pytest.raises(mod.EvidenceError, match="plain name"):
         mod.measure_python("pass\n", None, {name.replace(".spy", ".py"): "y"})
+
+
+def test_two_files_beside_a_program_differ_by_more_than_case(tmp_path):
+    with pytest.raises(mod.EvidenceError, match="plain name"):
+        mod.measure_sharpy("x", beside_reader(tmp_path), {"a.spy": "1", "A.spy": "2"})
+
+
+def test_the_measure_command_refuses_files_it_would_lose(tmp_path, capsys):
+    (tmp_path / "a").mkdir(); (tmp_path / "b").mkdir()
+    for path in (tmp_path / "prog.spy", tmp_path / "a" / "x.spy", tmp_path / "b" / "x.spy", tmp_path / "x.py"):
+        path.write_text("pass\n", encoding="utf-8")
+    compiler = ["--sharpyc", str(beside_reader(tmp_path))]
+    same_name = ["measure", str(tmp_path / "prog.spy"), "--with", str(tmp_path / "a" / "x.spy"), "--with", str(tmp_path / "b" / "x.spy")]
+    assert mod.main(same_name + compiler) == 2
+    assert "one name" in capsys.readouterr().err
+    no_twin = ["measure", str(tmp_path / "prog.spy"), "--python-with", str(tmp_path / "x.py")]
+    assert mod.main(no_twin + compiler) == 2
+    assert "--python-with needs --python" in capsys.readouterr().err
 
 
 def test_recheck_runs_a_record_with_the_files_it_was_measured_with(tmp_path):

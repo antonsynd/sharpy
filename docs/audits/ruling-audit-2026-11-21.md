@@ -400,7 +400,7 @@ The text above is left as the audit found it. Still open:
   row (a second spelling that existing programs already use).
 - Section 7's question of which Python enum class is a twin is moot under R-QW; whether a C#
   near-twin counts as evidence is not ruled (R-RE).
-- Ten unmarked rows of 6.5 that those rulings did not touch.
+- Eight unmarked rows of 6.5 (ten findings) that those rulings did not touch.
 
 **Built on 2026-11-22.** The records, the law table and the checks are in
 [`docs/process/rulings/`](../process/rulings/README.md), checked by `build_tools/check_rulings.py`

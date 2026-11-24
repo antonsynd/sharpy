@@ -211,11 +211,35 @@ def _run(argv: List[str], cwd: Path) -> Tuple[int, str, str]:
     return done.returncode, done.stdout, done.stderr
 
 
+BESIDE_PROGRAM = ("main.spy",)
+BESIDE_TWIN = ("main.py", "runner.py", "result.txt")
+
+
+def beside_problem(files: object, taken: Tuple[str, ...]) -> Optional[str]:
+    """Why `files` cannot be written beside a program, or None. Shared with the record schema.
+
+    Names are compared without case: on a case-insensitive filesystem `Main.spy` is `main.spy`.
+    """
+    if not isinstance(files, dict) or not files:
+        return "it maps a file name to its text"
+    seen = {t.lower() for t in taken}
+    for name, text in files.items():
+        if not isinstance(name, str) or not isinstance(text, str):
+            return "it maps a file name to its text"
+        if not name or name in (".", "..") or Path(name).name != name or name.lower() in seen:
+            return f"a file beside the program needs a plain name of its own, other than {', '.join(taken)}: {name!r}"
+        seen.add(name.lower())
+    return None
+
+
 def _write_beside(directory: Path, files: Optional[Dict[str, str]], taken: Tuple[str, ...]) -> None:
     """Write a case's other modules next to its main file."""
-    for name, text in (files or {}).items():
-        if not isinstance(name, str) or not isinstance(text, str) or not name or Path(name).name != name or name in taken:
-            raise EvidenceError(f"a file beside the program needs a plain name other than {', '.join(taken)}: {name!r}")
+    if not files:
+        return
+    problem = beside_problem(files, taken)
+    if problem:
+        raise EvidenceError(problem)
+    for name, text in files.items():
         (directory / name).write_text(text, encoding="utf-8")
 
 
@@ -228,7 +252,7 @@ def measure_sharpy(program: str, sharpyc: Optional[Path] = None, files: Optional
     with tempfile.TemporaryDirectory(prefix="ruling-evidence-") as tmp:
         source = Path(tmp) / "main.spy"
         source.write_text(program, encoding="utf-8")
-        _write_beside(Path(tmp), files, ("main.spy",))
+        _write_beside(Path(tmp), files, BESIDE_PROGRAM)
         code, out, err = _run([str(sharpyc), "run", str(source)], Path(tmp))
     if RUN_BANNER not in out:
         error = SPY_ERROR_RE.search(out + "\n" + err)
@@ -259,7 +283,7 @@ def measure_python(program: str, python: Optional[str] = None, files: Optional[D
         source, runner, result = (Path(tmp) / n for n in ("main.py", "runner.py", "result.txt"))
         source.write_text(program, encoding="utf-8")
         runner.write_text(PY_RUNNER, encoding="utf-8")
-        _write_beside(Path(tmp), files, ("main.py", "runner.py", "result.txt"))
+        _write_beside(Path(tmp), files, BESIDE_TWIN)
         command = [python, "-I", str(runner), str(source), str(result)] + (["beside"] if files else [])
         code, out, err = _run(command, Path(tmp))
         ended = result.read_text(encoding="utf-8") if result.is_file() else None
@@ -410,6 +434,12 @@ def main(argv: Optional[List[str]] = None) -> int:
             import yaml
 
             twin = args.twin.read_text(encoding="utf-8") if args.twin else None
+            if args.twin_beside and twin is None:
+                raise EvidenceError("--python-with needs --python: there is no twin to put the file beside")
+            for given in (args.beside, args.twin_beside):
+                names = [f.name.lower() for f in given]
+                if len(set(names)) != len(names):
+                    raise EvidenceError("two files given with one name; a file beside the program is written under its own name")
             block = evidence_block(
                 args.program.read_text(encoding="utf-8"),
                 twin,

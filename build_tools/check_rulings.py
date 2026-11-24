@@ -271,12 +271,10 @@ def _case_problems(owner: str, index: int, case: object, strict: bool) -> Iterab
             yield f"{where}: evidence `{field}` is not an observation of kind {', '.join(kinds)}: {evidence.get(field)!r}"
     if ("twin" in evidence) == (evidence.get("python") == "no-twin"):
         yield f"{where}: evidence has a `twin` exactly when `python` is not `no-twin`"
-    for field in ("files", "twin_files"):
-        beside = evidence.get(field)
-        if beside is not None and not (
-            isinstance(beside, dict) and beside and all(isinstance(k, str) and isinstance(v, str) for k, v in beside.items())
-        ):
-            yield f"{where}: evidence `{field}` maps a file name to its text"
+    for field, taken in (("files", ruling_evidence.BESIDE_PROGRAM), ("twin_files", ruling_evidence.BESIDE_TWIN)):
+        problem = ruling_evidence.beside_problem(evidence[field], taken) if field in evidence else None
+        if problem:
+            yield f"{where}: evidence `{field}`: {problem}"
     if "twin_files" in evidence and "twin" not in evidence:
         yield f"{where}: evidence has `twin_files` only beside a `twin`"
     if strict and not ruling_evidence.is_observation(evidence.get("after"), ruling_evidence.DECIDED_KINDS):

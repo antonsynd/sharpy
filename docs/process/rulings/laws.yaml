@@ -172,6 +172,8 @@ laws:
     R-AW, R-HH, R-EW, R-DW, R-CW, R-CX, R-FM, R-FC, R-DJ, R-BR, R-ML, R-JG, R-KW, R-HJ, R-DH, R-GD, R-DL, R-FH,
     R-IA, R-OA, R-NU, R-HT, R-DZ, R-AX, R-FW, R-OW]
   against: [R-OY, R-QA, R-EU, R-QL, R-PL, R-OB, R-ND, R-MT, R-AI, R-HU]
+  note: 'R-RL (2026-11-24): refusal versus admission is not the only test of a door; what a choice forecloses,
+    and what it makes users rewrite, decide it.'
 - id: P-uniform-verdict-across-forms
   status: draft
   source: docs/audits/ruling-audit-2026-11-21.md

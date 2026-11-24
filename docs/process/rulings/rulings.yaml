@@ -9204,16 +9204,29 @@ rulings:
   date: '2026-11-24'
   issue: '#2785'
   kind: process
-  rule: A choice is a one-way door when it narrows what can be done later, or locks users into a call shape that
-    needs code fixes later; not by whether it refuses or accepts a Python program. With no known consumers, breaking
-    API changes are acceptable.
+  rule: 'Whether a choice is a one-way door is not settled only by whether it refuses or accepts a Python program:
+    it depends on what narrows what can be done later, or locks users into a call shape that needs code fixes
+    later. With no known consumers, breaking API changes are acceptable.'
   options:
   - text: judge the door by what it forecloses and what it makes users rewrite
     chosen: true
     recommended: true
-  - text: refusing a program Python accepts is the one-way side
-  - text: accepting Python's value is the one-way side
+  - text: refusing a program Python accepts is always the one-way side
+  - text: accepting Python's value is always the one-way side
   recommended_note: the owner answered an open audit question; no recommendation was made first, so the flag sits
     on the chosen option
   basis: choice
+  considered:
+  - id: R-FH
+    why: it called refusing a call Python accepts the one-way option; its label stands as a judgement of that
+      case, not as a rule
+  - id: R-HU
+    why: it called admitting Python's value the one-way option; likewise a judgement of its case
+  - id: R-IA
+    why: as R-HU
+  - id: P-reversible-door
+    why: the draft principle (refuse before admitting) stays a default; this ruling says what makes its exceptions
   decided_by: owner
+  note: 'The door that check_rulings computes from a case''s evidence (an admission is one-way, a refusal two-way)
+    is a proxy for this: an admission is treated as foreclosing because programs come to depend on it. It is a
+    default the owner can overrule in a ruling''s text.'
