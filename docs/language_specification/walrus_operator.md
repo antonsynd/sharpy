@@ -132,7 +132,7 @@ print(x)  # ERROR: 'x' does not exist in this scope
 
 **Departure from Python:** In Python 3.8+, a name a walrus introduces inside a comprehension leaks to the containing scope, and is unbound there when the iterable is empty. In Sharpy a NEW name is usable inside the comprehension and reading it afterwards is an error.
 
-**A name that already exists outside:** the walrus is an assignment, so it follows the rules of `=` (R-QS). Over a local of the same function it writes through, as Python does. Over a module variable or an enclosing function's local it is a store across a function boundary, refused without `global` / `nonlocal`; over a `let` or a parameter it is refused as any write to them is. A module, parameter or enclosing outer read in the comprehension's own body is refused today as a use before assignment, and the rule's own diagnostic lands with #2425. One shape does not hold this yet: an outer with no read in that body is written by the walrus (#2425):
+**A name that already exists outside:** the walrus is an assignment, so it follows the rules of `=` (R-QS). Over a `var` local of the same function it writes through, as Python does. Over a module variable or an enclosing function's local it is a store across a function boundary, refused without `global` / `nonlocal`; over a `let` or a parameter it is refused as any write to them is. A module, parameter or enclosing outer read in the comprehension's own body is refused today as a use before assignment, and the rule's own diagnostic lands with #2425. One shape does not hold this yet: an outer with no read in that body is written by the walrus (#2425):
 
 <!-- spec-sweep: error SPY0600 -->
 ```python
@@ -140,7 +140,7 @@ x: int = 5
 
 def f() -> None:
     ys: list[int] = [(x := v * 2) for v in [3]]
-    print(x)  # ERROR: Python prints 6, and the module's x is 5
+    print(x)  # ERROR: the walrus is a store to the module's x from inside f (Python makes a local and prints 6)
 ```
 
 **If you need a value after the comprehension:**

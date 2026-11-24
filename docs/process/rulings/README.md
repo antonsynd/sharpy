@@ -29,7 +29,7 @@ reading of each charter row and the owner has not reviewed them. The charter row
 authority for a seed ruling's text. Fifteen of their cases are filled in, all from conflicts the
 audit verified by reading the rows.
 
-The nineteen records without `seed:` (R-QS to R-RK) are the owner's answers of 2026-11-24 to that
+The twenty records without `seed:` (R-QS to R-RL) are the owner's answers of 2026-11-24 to that
 audit. They meet the full schema below, and each case has a program that was run.
 
 The families in `axes.yaml` are hand-listed, one set per question ruled so far. Issues #2486, #2487 and #2733 are where the
@@ -41,7 +41,7 @@ A record without `seed:` must provide all of this, and the check fails if it doe
 
 ```yaml
 - id: R-ZZ
-  date: 2026-11-25
+  date: 2026-11-25          # YYYY-MM-DD; rulings are ordered by it
   issue: "#2800"
   kind: language            # language | library | diagnostic | implementation | cli-lsp | test-instrument | process
   rule: A walrus onto an existing let is refused with the code that names the `var` fix.
@@ -78,7 +78,11 @@ A record without `seed:` must provide all of this, and the check fails if it doe
 
 An observation is `runs:<stdout>`, `refused:<code>`, `raises:<type>` (followed by whatever was
 printed first) or, for python only, `no-twin`. Where a ruling decides a refusal and not its
-diagnostic code, `after` is `refused:code_not_ruled`. The compiler can also give `crashes:<code>`: an
+diagnostic code, `after` is `refused:code_not_ruled`.
+
+A case that needs more than one file adds `files:` (a map of file name to text, written beside the
+program) and, for the twin, `twin_files:`. On the command line: `measure prog.spy --with other.spy
+--python twin.py --python-with other.py`. The compiler can also give `crashes:<code>`: an
 internal error such as SPY0908, or one of the emitter's own failures in the SPY05xx range. That is a defect to report. It is valid as `sharpy`, and a ruling
 can never decide it as `after`.
 

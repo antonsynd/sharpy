@@ -25,11 +25,6 @@ findings:
     note: >-
       An earlier ruling was narrowed by a later one and its charter row does not say so. Cure: name the later ruling on the earlier row.
   - check: charter-mark
-    subjects: [R-DX, R-ES]
-    ref: docs/audits/ruling-audit-2026-11-21.md section 6.5
-    note: >-
-      An earlier ruling was narrowed by a later one and its charter row does not say so. Cure: name the later ruling on the earlier row.
-  - check: charter-mark
     subjects: [R-FR, R-FV]
     ref: docs/audits/ruling-audit-2026-11-21.md section 6.5
     note: >-

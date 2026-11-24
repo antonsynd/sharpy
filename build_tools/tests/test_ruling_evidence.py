@@ -355,6 +355,65 @@ def test_recheck_reports_a_record_that_no_longer_matches():
     ]
 
 
+# --- a case of more than one file -----------------------------------------------------------------
+
+LOCAL_JSON = 'def dumps(x: int) -> str:\n    return "local"\n'
+USES_JSON = "from json import dumps\n\nprint(dumps(1))\n"
+
+
+def test_a_module_beside_the_twin_is_what_the_twin_imports():
+    # Isolated mode leaves the script's directory off the path. With a module beside it, the twin
+    # must see it first, as `python main.py` would; without one, the stdlib's json answers.
+    assert mod.measure_python(USES_JSON) == "runs:1\n"
+    assert mod.measure_python(USES_JSON, None, {"json.py": LOCAL_JSON}) == "runs:local\n"
+
+
+def beside_reader(tmp_path: Path) -> Path:
+    """A stand-in compiler that "runs" a program by printing the file `beside.txt` next to it."""
+    path = tmp_path / "sharpyc"
+    path.write_text('#!/bin/sh\necho "=== Running Program ==="\ncat "$(dirname "$2")/beside.txt"\n', encoding="utf-8")
+    path.chmod(0o755)
+    return path
+
+
+def test_files_beside_the_program_are_written_where_the_compiler_finds_them(tmp_path):
+    assert mod.measure_sharpy("x", beside_reader(tmp_path), {"beside.txt": "seen\n"}) == "runs:seen\n"
+
+
+@pytest.mark.parametrize("name", ["../up.spy", "sub/in.spy", "main.spy", ""])
+def test_a_file_beside_the_program_has_a_plain_name_of_its_own(tmp_path, name):
+    with pytest.raises(mod.EvidenceError, match="plain name"):
+        mod.measure_sharpy("x", beside_reader(tmp_path), {name: "y"})
+    with pytest.raises(mod.EvidenceError, match="plain name"):
+        mod.measure_python("pass\n", None, {name.replace(".spy", ".py"): "y"})
+
+
+def test_recheck_runs_a_record_with_the_files_it_was_measured_with(tmp_path):
+    record = {
+        "program": "x",
+        "files": {"beside.txt": "seen\n"},
+        "sharpy": "runs:seen\n",
+        "twin": USES_JSON,
+        "twin_files": {"json.py": LOCAL_JSON},
+        "python": "runs:local\n",
+    }
+    assert mod.recheck([("R-X case 1", record)], beside_reader(tmp_path), None) == []
+
+
+def test_the_evidence_block_records_the_files_it_ran_with(tmp_path):
+    block = mod.evidence_block("x", USES_JSON, beside_reader(tmp_path), None, {"beside.txt": "seen\n"}, {"json.py": LOCAL_JSON})
+    assert list(block) == ["program", "files", "twin", "twin_files", "sharpy", "python"]
+    assert (block["sharpy"], block["python"]) == ("runs:seen\n", "runs:local\n")
+    plain = mod.evidence_block("x", None, beside_reader(tmp_path), None, {"beside.txt": "a\n"})
+    assert list(plain) == ["program", "files", "sharpy", "python"] and plain["python"] == "no-twin"
+
+
+@needs_compiler
+def test_the_compiler_sees_a_module_written_beside_the_program():
+    program = "from helper import seven\n\ndef main() -> None:\n    print(seven())\n"
+    assert mod.measure_sharpy(program, None, {"helper.spy": "def seven() -> int:\n    return 7\n"}) == "runs:7\n"
+
+
 def test_door_command_prints_the_derivation(capsys):
     assert mod.main(["door", "--before", REFUSED, "--after", RAN]) == 0
     assert "door: one-way" in capsys.readouterr().out

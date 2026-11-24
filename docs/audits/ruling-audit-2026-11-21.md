@@ -390,10 +390,17 @@ ruling naming its case from a fixed list of language features, which is the work
 describe. A script can prove a step was done and recorded consistently. It cannot prove the
 judgement inside the record was right.
 
-**Answered on 2026-11-24.** The owner ruled on the questions of sections 6 and 7; the answers are
-rulings R-QS to R-RK in the round charter and in `docs/process/rulings/rulings.yaml`. The text above
-is left as the audit found it. Still open: L4 and the "refuse, or imitate Python at run time" clash
-of 6.4 (a limit on tie-break T2), and the eleven unmarked rows of 6.5 that those rulings did not touch.
+**Answered on 2026-11-24.** The owner ruled on most of the questions of sections 6 and 7; the
+answers are rulings R-QS to R-RL in the round charter and in `docs/process/rulings/rulings.yaml`.
+The text above is left as the audit found it. Still open:
+
+- L4 and the "refuse, or imitate Python at run time" clash of 6.4: a limit on tie-break T2.
+- Three rows of section 7: Critical Rule 7 (may the owner amend the spec by ruling), N5's closed
+  list (the three missing block-scope cases, the loop target under `global`), and the anti-patterns
+  row (a second spelling that existing programs already use).
+- Section 7's question of which Python enum class is a twin is moot under R-QW; whether a C#
+  near-twin counts as evidence is not ruled (R-RE).
+- Ten unmarked rows of 6.5 that those rulings did not touch.
 
 **Built on 2026-11-22.** The records, the law table and the checks are in
 [`docs/process/rulings/`](../process/rulings/README.md), checked by `build_tools/check_rulings.py`

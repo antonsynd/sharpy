@@ -148,8 +148,8 @@ laws:
   status: written
   source: docs/process/rounds/remediation-round-2026-09-20-batching.md
   anchor: 'Law `L-same-result`:'
-  statement: Sharpy accepts a Python program where reasonable under static typing and .NET's limits and never
-    gives it a different result, the listed designed deviations excepted.
+  statement: Sharpy accepts a Python program where reasonable and fitting the language (static typing and .NET's
+    restrictions apply) and never gives it a different result, under the same qualifiers.
   ruling: R-RE
 - id: L-footgun
   status: written
@@ -271,6 +271,8 @@ laws:
   nearest_written_law: N2
   rulings: [R-IZ, R-JZ, R-DH, R-AX, R-HJ, R-LD, R-CY, R-II, R-JO, R-AW, R-JI]
   against: [R-BA, R-CV]
+  note: 'R-RA (2026-11-24) removes the boundary: a local module that collides with a library or a CLR namespace
+    is an error too.'
 - id: P-tooling-keeps-user-bytes
   status: draft
   source: docs/audits/ruling-audit-2026-11-21.md
@@ -329,6 +331,7 @@ laws:
   nearest_written_law: T2
   rulings: [R-OP, R-OC, R-NV, R-OS, R-OU, R-OB, R-Z, R-OV]
   against: [R-OC, R-DX]
+  note: 'R-QV (2026-11-24): `== None` with the literal is refused on the loose spelling too.'
 - id: P-untypeable-api-is-deviation
   status: draft
   source: docs/audits/ruling-audit-2026-11-21.md
@@ -420,6 +423,8 @@ laws:
   nearest_written_law: AP
   rulings: [R-EV, R-R, R-AV, R-A, R-FC, R-FW]
   against: [R-R]
+  note: 'R-RG (2026-11-24) lifts the refusal of user-written defaults: a default that is not a compile-time constant
+    is evaluated at each call.'
 - id: P-identity-never-runs-user-code
   status: draft
   source: docs/audits/ruling-audit-2026-11-21.md
@@ -455,6 +460,8 @@ laws:
     exist, R-AD and R-EW protect it.
   rulings: [R-GW, R-KM, R-BJ, R-FX, R-JC, R-DG]
   against: [R-AD, R-EW]
+  note: 'R-RC (2026-11-24) settles the disagreement in the boundary: break freely, keep the C# API sensible for
+    its callers.'
 - id: P-process-extensions-are-one-off
   status: draft
   source: docs/audits/ruling-audit-2026-11-21.md
@@ -519,3 +526,16 @@ laws:
   statement: A defect that breaks the documented install on a supported host is fixed at once as its own chore
     and released as a patch, and a known workaround is posted on the issue immediately.
   rulings: [R-GG, R-GI, R-GJ]
+- id: P-backed-enum-flavour
+  status: draft
+  source: docs/audits/ruling-audit-2026-11-21.md
+  anchor: '`backed-enum-flavour`'
+  scope: language
+  statement: A backed enum behaves as the Python enum flavour of its backing (IntEnum, StrEnum) for every operator.
+  boundary: 'No consistent boundary: string-backed enums are StrEnum for == and Enum for ordering, int-backed
+    the reverse. R-PK''s reason (''no .NET order to keep'') suggests ''keep .NET behaviour where it exists, else
+    refuse'', which R-ON does not fit.'
+  rulings: [R-OW, R-QG]
+  against: [R-ON, R-PK]
+  note: 'Not adopted: R-QW (2026-11-24) rules that an enum compares and orders only with its own type (L-enum-own-type).
+    Kept as the audit wrote it, without its invariant.'

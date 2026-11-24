@@ -187,7 +187,7 @@ results = [y * 2 for x in items if (y := expensive(x)) > 0]
 print(y)  # ERROR: 'y' does not exist in this scope
 ```
 
-**Note:** This differs from Python 3.8+, where walrus assignments leak. In Sharpy a name the walrus introduces cannot be read after the comprehension. A walrus over a local of the same function is an assignment and writes through, as Python does (R-QS); over a module variable or an enclosing function's local it is refused without `global` / `nonlocal`. See [walrus_operator.md](walrus_operator.md) for more details.
+**Note:** This differs from Python 3.8+, where walrus assignments leak. In Sharpy a name the walrus introduces cannot be read after the comprehension. A walrus over a local of the same function is an assignment and writes through, as Python does (R-QS); over a `let` or a parameter it is refused as any write to them is, and over a module variable or an enclosing function's local it is refused without `global` / `nonlocal`. See [walrus_operator.md](walrus_operator.md) for more details.
 
 **PEP 572 Prohibited Positions (SPY0704):**
 

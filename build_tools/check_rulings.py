@@ -83,6 +83,7 @@ RULINGS_DIR = Path("docs/process/rulings")
 ROUNDS_DIR = Path("docs/process/rounds")
 ROW_RE = re.compile(r"^\| *(~~)?(R-[A-Z]{1,3})(~~)? *\|(.*)$")
 ID_RE = re.compile(r"^R-[A-Z]{1,3}$")
+DATE_RE = re.compile(r"^\d{4}-\d{2}-\d{2}$")
 
 KINDS = (
     "language",
@@ -270,6 +271,14 @@ def _case_problems(owner: str, index: int, case: object, strict: bool) -> Iterab
             yield f"{where}: evidence `{field}` is not an observation of kind {', '.join(kinds)}: {evidence.get(field)!r}"
     if ("twin" in evidence) == (evidence.get("python") == "no-twin"):
         yield f"{where}: evidence has a `twin` exactly when `python` is not `no-twin`"
+    for field in ("files", "twin_files"):
+        beside = evidence.get(field)
+        if beside is not None and not (
+            isinstance(beside, dict) and beside and all(isinstance(k, str) and isinstance(v, str) for k, v in beside.items())
+        ):
+            yield f"{where}: evidence `{field}` maps a file name to its text"
+    if "twin_files" in evidence and "twin" not in evidence:
+        yield f"{where}: evidence has `twin_files` only beside a `twin`"
     if strict and not ruling_evidence.is_observation(evidence.get("after"), ruling_evidence.DECIDED_KINDS):
         yield f"{where}: a new ruling's evidence needs `after`, the observation the ruling decides ({', '.join(ruling_evidence.DECIDED_KINDS)})"
 
@@ -294,6 +303,8 @@ def _ruling_problems(record: dict) -> Iterable[str]:
     for field in ("date", "issue"):
         if not record.get(field):
             yield f"a new ruling needs `{field}`"
+    if record.get("date") and not DATE_RE.match(str(record["date"])):
+        yield f"`date` must be YYYY-MM-DD (rulings are ordered by it): {record['date']!r}"
     options = record.get("options")
     if (
         not isinstance(options, list)

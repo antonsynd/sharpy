@@ -1764,7 +1764,7 @@ rulings:
     laws: [A2]
     law_cited: false
     confidence: medium
-  superseded_by: [R-RA]
+  amended_by: [R-RA]
 - id: R-CW
   seed: audit-2026-11-21
   round: '2026-09-20'
@@ -2420,6 +2420,7 @@ rulings:
     law_cited: false
     confidence: medium
   amends: [R-DW]
+  amended_by: [R-QV]
 - id: R-EI
   seed: audit-2026-11-21
   round: '2026-09-20'
@@ -2456,6 +2457,7 @@ rulings:
     laws: [A2, T4, T1]
     law_cited: false
     confidence: medium
+  amended_by: [R-QV]
 - id: R-EK
   seed: audit-2026-11-21
   round: '2026-09-20'
@@ -2665,6 +2667,7 @@ rulings:
     laws: []
     law_cited: false
     confidence: medium
+  amended_by: [R-QV]
 - id: R-EX
   seed: audit-2026-11-21
   round: '2026-09-20'
@@ -5771,6 +5774,7 @@ rulings:
     law_cited: false
     confidence: medium
   amends: [R-MJ]
+  amended_by: [R-QS]
   cases:
   - family: walrus-target
     coords:
@@ -5834,7 +5838,7 @@ rulings:
     laws: [S2]
     law_cited: true
     confidence: medium
-  amended_by: [R-MH]
+  amended_by: [R-MH, R-QS]
 - id: R-MK
   seed: audit-2026-11-21
   round: '2026-09-20'
@@ -7587,6 +7591,8 @@ rulings:
     confidence: medium
   amends: [R-ON]
   amended_by: [R-QW]
+  note: 'Its enum-operator case (string, eq, two-types: run) was removed when R-QW amended it; the case is R-QW''s
+    now, with the verdict refuse.'
 - id: R-QH
   seed: audit-2026-11-21
   round: '2026-09-20'
@@ -7772,24 +7778,25 @@ rulings:
   kind: language
   rule: '`:=` is assignment as an expression with no scope of its own: on a new name it declares a `let` in the
     block of the statement it sits in, on an existing `var` it writes, on a `let` or a parameter it is a compile
-    error, and across a function boundary it follows N6. A name slot in a statement header (`for`, `with ... as`,
-    `except ... as`, a `case` capture, a comprehension''s `for`) is always a new `let` for that construct''s body.
-    Where either would print something other than Python does, the program is a compile error.'
+    error (inside a comprehension too), and across a function boundary it follows N6; whether the name has a value
+    where it is read stays definite assignment''s. A name slot in a statement header (`for`, `with ... as`, `except
+    ... as`, a `case` capture, a comprehension''s `for`) is always a new `let` for that construct''s body. Where
+    either would print something other than Python does, the program is a compile error.'
   options:
   - text: assignment as an expression; a new name is a `let` of the enclosing statement's block
     chosen: true
     recommended: true
-  - text: 'an inline binder is required: `if (let x := 5) > 0`'
+  - text: 'an inline binder is required: `if (let x := 5) > 0` (not adopted now; it can be added later)'
   - text: always a new symbol unless `nonlocal` / `global`
   - text: the name is scoped to the `if` / `while` it is written in
   basis: precedent
-  laws: [R-GV, R-MH, N5, N6]
+  laws: [R-GV, N5, N6]
   decided_by: owner
   door: two-way
   breaks_running: true
   undo_breaks: false
   supersedes: [R-LR]
-  amends: [R-BK]
+  amends: [R-BK, R-MH, R-MJ]
   cases:
   - family: walrus-target
     coords:
@@ -7807,7 +7814,7 @@ rulings:
         runs:2
         2
       python: no-twin
-      after: refused:SPY0225
+      after: refused:code_not_ruled
   - family: walrus-target
     coords:
       position: statement
@@ -7835,7 +7842,7 @@ rulings:
         runs:2
       python: |
         runs:2
-      after: refused:SPY0225
+      after: refused:code_not_ruled
   - family: walrus-target
     coords:
       position: statement
@@ -7920,6 +7927,47 @@ rulings:
       after: |
         runs:[1, 2, 3]
         3
+  - family: walrus-target
+    coords:
+      position: comprehension-element
+      target: parameter
+    verdict: refuse
+    evidence:
+      program: |
+        def f(xs: list[int], last: int) -> int:
+            ys = [(last := x) for x in xs]
+            return last
+
+        def main() -> None:
+            print(f([1, 2, 3], 0))
+      twin: |
+        def f(xs: list[int], last: int) -> int:
+            ys = [(last := x) for x in xs]
+            return last
+
+        def main() -> None:
+            print(f([1, 2, 3], 0))
+        main()
+      sharpy: refused:SPY0600
+      python: |
+        runs:3
+      after: refused:code_not_ruled
+  - family: walrus-target
+    coords:
+      position: comprehension-element
+      target: let
+    verdict: refuse
+    evidence:
+      program: |
+        def main() -> None:
+            xs: list[int] = [1, 2, 3]
+            let last = 0
+            ys = [(last := x) for x in xs]
+            print(ys, last)
+      sharpy: |
+        runs:[1, 2, 3] 3
+      python: no-twin
+      after: refused:code_not_ruled
   - family: walrus-target
     coords:
       position: statement
@@ -8118,12 +8166,20 @@ rulings:
   recommended_note: the owner answered an open audit question; no recommendation was made first, so the flag sits
     on the chosen option
   basis: follows
-  laws: [L-footgun, R-OP]
+  laws: [L-footgun]
+  considered:
+  - id: R-OP
+    why: R-OP refuses `x == None` on the strict `T?` only; this extends the refusal to the literal on every type.
+      Its `==` on the loose spelling stands for operands that are not the literal
+  - id: R-DX
+    why: R-DX part 1 refused `== None` on a CLR reference type and R-ES lifted it; with R-ES replaced, part 1
+      is in effect again
   decided_by: owner
   door: two-way
   breaks_running: true
   undo_breaks: false
   supersedes: [R-ES]
+  amends: [R-EH, R-EJ, R-EW]
   cases:
   - family: none-equality
     coords:
@@ -8132,14 +8188,16 @@ rulings:
     evidence:
       program: |
         class P:
-            pass
+            def __eq__(self, other: P) -> bool:
+                return True
 
         def main() -> None:
             p: P = P()
             print(p == None)
       twin: |
         class P:
-            pass
+            def __eq__(self, other: P) -> bool:
+                return True
 
         def main() -> None:
             p: P = P()
@@ -8148,8 +8206,8 @@ rulings:
       sharpy: |
         runs:False
       python: |
-        runs:False
-      after: refused:SPY0222
+        runs:True
+      after: refused:code_not_ruled
   - family: none-equality
     coords:
       operand: clr-reference
@@ -8164,7 +8222,22 @@ rulings:
       sharpy: |
         runs:False
       python: no-twin
-      after: refused:SPY0222
+      after: refused:code_not_ruled
+  - family: none-equality
+    coords:
+      operand: loose-clr-reference
+    verdict: refuse
+    evidence:
+      program: |
+        from System.Text import StringBuilder
+
+        def main() -> None:
+            sb: StringBuilder | None = StringBuilder()
+            print(sb == None)
+      sharpy: |
+        runs:False
+      python: no-twin
+      after: refused:code_not_ruled
   - family: none-equality
     coords:
       operand: strict-optional
@@ -8243,7 +8316,7 @@ rulings:
       sharpy: |
         runs:False
       python: no-twin
-      after: refused:SPY0222
+      after: refused:code_not_ruled
   - family: enum-operator
     coords:
       backing: string
@@ -8264,7 +8337,7 @@ rulings:
       sharpy: |
         runs:True
       python: no-twin
-      after: refused:SPY0222
+      after: refused:code_not_ruled
   - family: enum-operator
     coords:
       backing: int
@@ -8349,7 +8422,7 @@ rulings:
             print(Color.RED < Level.LOW)
       sharpy: crashes:SPY0908
       python: no-twin
-      after: refused:SPY0222
+      after: refused:code_not_ruled
   - family: enum-operator
     coords:
       backing: string
@@ -8369,7 +8442,7 @@ rulings:
             print(Verb.GET < Word.GET)
       sharpy: crashes:SPY0908
       python: no-twin
-      after: refused:SPY0222
+      after: refused:code_not_ruled
   - family: enum-operator
     coords:
       backing: int
@@ -8410,7 +8483,7 @@ rulings:
       sharpy: |
         runs:True
       python: no-twin
-      after: refused:SPY0222
+      after: refused:code_not_ruled
 - id: R-QX
   date: '2026-11-24'
   issue: '#2785'
@@ -8473,8 +8546,8 @@ rulings:
   date: '2026-11-24'
   issue: '#2785'
   kind: library
-  rule: '`str` of an Optional is its constructor spelling, `Some(1)` or `None()`, as its `repr` is and as Result
-    and unions already print; a wrapped value never prints as its bare payload.'
+  rule: '`str` of an Optional is its constructor spelling, `Some(1)` or `None()`, as its `repr` is, as `Result`
+    prints today and as R-IM rules for unions; a wrapped value never prints as its bare payload.'
   options:
   - text: the constructor spelling for `str` too
     chosen: true
@@ -8541,7 +8614,7 @@ rulings:
     chosen: true
     recommended: true
   - text: refuse the narrowed store too
-  - text: add an `if var Some(x)` binding form
+  - text: add an `if var Some(x)` binding form (the owner's aside; not ruled)
   recommended_note: the owner answered an open audit question; no recommendation was made first, so the flag sits
     on the chosen option
   basis: precedent
@@ -8582,9 +8655,9 @@ rulings:
 - id: R-RA
   date: '2026-11-24'
   issue: '#2785'
-  kind: diagnostic
+  kind: language
   rule: A local module whose name collides with a stdlib module, a referenced library or a CLR namespace is a
-    compile error naming both, not a default-on warning with the local module winning.
+    compile error naming both; neither side wins silently or with a warning.
   options:
   - text: a compile error
     chosen: true
@@ -8595,9 +8668,41 @@ rulings:
   basis: follows
   laws: [P-collision-is-error]
   decided_by: owner
-  supersedes: [R-BA, R-CV]
-  note: 'No measured case: the evidence tool runs one file and this needs two. The decision changes a diagnostic''s
-    severity, which is why the kind is `diagnostic`.'
+  door: two-way
+  breaks_running: true
+  undo_breaks: false
+  supersedes: [R-BA]
+  amends: [R-CV]
+  cases:
+  - family: module-name-collision
+    coords:
+      other: stdlib-module
+    verdict: refuse
+    evidence:
+      program: |
+        from json import dumps
+
+        def main() -> None:
+            print(dumps(1))
+      files:
+        json.spy: |
+          def dumps(x: int) -> str:
+              return "local"
+      twin: |
+        from json import dumps
+
+        def main() -> None:
+            print(dumps(1))
+        main()
+      twin_files:
+        json.py: |
+          def dumps(x: int) -> str:
+              return "local"
+      sharpy: |
+        runs:1
+      python: |
+        runs:local
+      after: refused:code_not_ruled
 - id: R-RB
   date: '2026-11-24'
   issue: '#2785'
@@ -8626,6 +8731,12 @@ rulings:
   recommended_note: the owner answered an open audit question; no recommendation was made first, so the flag sits
     on the chosen option
   basis: choice
+  considered:
+  - id: R-AD
+    why: its decision stands; it is not reopened here. Its reason (C# consumers see the name) no longer makes
+      a door one-way before 1.0
+  - id: R-EW
+    why: its deviation stands; the same holds for its 'one-way for C# consumers'
   decided_by: owner
 - id: R-RD
   date: '2026-11-24'
@@ -8647,9 +8758,9 @@ rulings:
   date: '2026-11-24'
   issue: '#2785'
   kind: process
-  rule: Sharpy accepts a Python program where that is reasonable under static typing and .NET's limits, and never
-    gives it a different result; the listed designed deviations are the only exceptions; where Python has no twin,
-    a C# near-twin counts as evidence.
+  rule: Sharpy accepts a Python program where that is reasonable and fits the language (static typing and .NET's
+    restrictions apply), and never gives it a different result, under the same two qualifiers and, to a lesser
+    extent, what a C# developer expects for interop.
   options:
   - text: accept where reasonable, never a different result
     chosen: true
@@ -8841,10 +8952,10 @@ rulings:
   date: '2026-11-24'
   issue: '#2785'
   kind: language
-  rule: Every declaration has an initializer, locals included; a declaration with none is a compile error, which
-    retires R-AI's run-time unset check.
+  rule: A local declaration has an initializer; one with none is a compile error, as R-QI already rules for module-level
+    and `@static` declarations. This retires R-AI's run-time unset check. Fields are not covered (B7).
   options:
-  - text: an initializer is required everywhere
+  - text: a local declaration needs an initializer
     chosen: true
     recommended: true
   - text: keep uninitialized locals; a `with` that can swallow an error counts as may-not-have-assigned at compile
@@ -9089,3 +9200,20 @@ rulings:
       python: |
         runs:1
       after: refused:code_not_ruled
+- id: R-RL
+  date: '2026-11-24'
+  issue: '#2785'
+  kind: process
+  rule: A choice is a one-way door when it narrows what can be done later, or locks users into a call shape that
+    needs code fixes later; not by whether it refuses or accepts a Python program. With no known consumers, breaking
+    API changes are acceptable.
+  options:
+  - text: judge the door by what it forecloses and what it makes users rewrite
+    chosen: true
+    recommended: true
+  - text: refusing a program Python accepts is the one-way side
+  - text: accepting Python's value is the one-way side
+  recommended_note: the owner answered an open audit question; no recommendation was made first, so the flag sits
+    on the chosen option
+  basis: choice
+  decided_by: owner

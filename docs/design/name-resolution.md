@@ -154,8 +154,9 @@ Implemented by #2423.
   loop variable is **fresh per iteration**. Rust, Swift and C# `foreach` agree.
 - A walrus (`:=`) is **assignment as an expression** and has no scope of its own (R-QS, 2026-11-24).
   On a new name it declares a `let` in the block of the statement it sits in, so the name is visible
-  in both branches of an `if` and after it; on an existing `var` it writes; on a `let` or a parameter
-  it is an error; across a function boundary it is N6's store.
+  in both branches of an `if` and after it (definite assignment still decides whether it has a value
+  there: a walrus that may not have run leaves it unassigned); on an existing `var` it writes; on a
+  `let` or a parameter it is an error; across a function boundary it is N6's store.
 
 **Designed deviations from Python (the closed list):**
 
@@ -175,10 +176,12 @@ def main() -> None:
 
    The refusal applies to any visible binding the target reuses — local, enclosing or module. Without
    a later read the program is legal and prints what Python prints. A walrus inside a comprehension is
-   NOT a target of this kind: it is an assignment, so over a local of the same function it writes
-   through, as Python does (R-MH, R-QS; this replaces the owner ruling of 2026-11-06 that kept the
-   binding local to the comprehension). A walrus name that is new is usable inside the comprehension;
-   reading it after the comprehension is an error, since it has no value when the iterable is empty.
+   NOT a target of this kind: it is an assignment, so over a `var` local of the same function it
+   writes through, as Python does (R-MH, R-QS; this replaces the owner ruling of 2026-11-06 that kept
+   the binding local to the comprehension). Over a `let` or a parameter it is an error, as any write to
+   them is; over a module or enclosing-function name it is N6's store. A walrus name that is new is
+   usable inside the comprehension; reading it after the comprehension is an error, since it has no
+   value when the iterable is empty.
 3. Forward reads that Python rejects with `NameError` run (N1 + N3). This is an addition, not a
    divergence of output.
 

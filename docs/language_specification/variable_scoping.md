@@ -74,7 +74,7 @@ finally:
 
 **Walrus Operator Scoping:**
 
-The walrus operator (`:=`) assigns to the *containing scope*. In most cases this is the enclosing function or module. However, inside block-scoped constructs like comprehensions, the walrus variable is scoped to that block:
+The walrus operator (`:=`) is an assignment and has no scope of its own: a new name it introduces belongs to the block of the statement it sits in. Inside a comprehension, a new name cannot be read after the comprehension:
 
 <!-- spec-sweep: output -->
 ```python
@@ -106,7 +106,7 @@ def main() -> None:
     print(y)          # ERROR: 'y' does not exist in this scope
 ```
 
-**Note:** This differs from Python 3.8+, where walrus in comprehensions leaks to the outer scope. In Sharpy, the syntactic boundary equals the semantic boundary—comprehension delimiters (`[...]`, `{...}`) which fully contain all variables declared within. A walrus that reuses a visible outer name read after it is refused; see [walrus_operator.md](walrus_operator.md).
+**Note:** This differs from Python 3.8+, where a name a walrus introduces in a comprehension leaks to the outer scope. A walrus over a name that already exists is an assignment to it: over a local of the same function it writes through, as Python does; over a `let`, a parameter, or a module or enclosing-function name it is refused. See [walrus_operator.md](walrus_operator.md).
 
 ### Example
 

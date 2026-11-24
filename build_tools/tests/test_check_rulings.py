@@ -548,6 +548,31 @@ def test_a_ruling_answers_what_stood_when_it_was_made_not_what_came_after(tmp_pa
     assert [f.subjects for f in findings(tmp_path / "same", same_day)] == [("R-D", "R-E")]
 
 
+@pytest.mark.parametrize("date, ok", [("2026-11-22", True), ("2026-11-3", False), ("22 Nov 2026", False), ("2026-11-22T10:00", False)])
+def test_a_new_ruling_is_dated_as_a_calendar_date(tmp_path, date, ok):
+    # `considered` orders rulings by this text, so "2026-11-3" would sort after "2026-11-24".
+    found = findings(tmp_path, lambda d: rulings(d).append(strict(date=date)))
+    assert (found == []) is ok
+    assert ok or ("schema" in {f.check for f in found} and "YYYY-MM-DD" in found[0].message)
+
+
+@pytest.mark.parametrize(
+    "extra, ok",
+    [
+        ({"files": {"other.spy": "x = 1\n"}}, True),
+        ({"files": {}}, False),
+        ({"files": ["other.spy"]}, False),
+        ({"files": {"other.spy": 1}}, False),
+        ({"twin_files": {"other.py": "x = 1\n"}}, False),  # nothing to put it beside: the case has no twin
+    ],
+)
+def test_the_files_beside_a_program_are_a_map_of_name_to_text(tmp_path, extra, ok):
+    def edit(data):
+        rulings(data).append(strict(cases=[case("slice", "refuse", evidence={**evidence(REFUSED, REFUSED), **extra})]))
+
+    assert ([f.check for f in findings(tmp_path, edit)] == []) is ok
+
+
 # --- the door, and who may decide -----------------------------------------------------------------
 
 
@@ -971,11 +996,11 @@ def test_the_written_laws_are_all_anchored_in_their_sources(real):
 # check stopped firing, the ratchet's stale row would say so; these name the expectation outright.
 AUDITED = [
     ("charter-mark", ("R-CN", "R-GV")),  # 6.5: amended, the earlier row does not say so
-    ("charter-mark", ("R-DX", "R-ES")),
+    ("charter-mark", ("R-FR", "R-FV")),
     ("charter-mark", ("R-LK", "R-MB")),
 ]
 
-# The audit's conflicts that the owner ruled on 2026-11-24 (R-QS ... R-RK). Each fired before those
+# The audit's conflicts that the owner ruled on 2026-11-24 (R-QS ... R-RL). Each fired before those
 # records existed (they were the positive controls above); none may fire now.
 RULED = [
     ("collision", ("R-GV", "R-LR")),  # C1 -> R-QS
@@ -985,6 +1010,7 @@ RULED = [
     ("exception-in-law", ("N5", "R-MH")),  # L1 -> R-QS; N5's text is corrected
     ("charter-mark", ("R-BK", "R-GV")),
     ("charter-mark", ("R-BL", "R-GV")),
+    ("charter-mark", ("R-DX", "R-ES")),  # R-QV replaced R-ES; R-DX's row now says what happened to part 1
 ]
 
 
@@ -1029,7 +1055,7 @@ def test_the_enum_law_holds_both_backings_to_one_verdict(real):
 
 def test_every_ruling_of_2026_11_24_is_the_owners_and_has_a_charter_row(real):
     new = [r for r in real.rulings if "seed" not in r]
-    assert [r["id"] for r in new] == ["R-QS", "R-QT", "R-QU", "R-QV", "R-QW", "R-QX", "R-QY", "R-QZ", "R-RA", "R-RB", "R-RC", "R-RD", "R-RE", "R-RF", "R-RG", "R-RH", "R-RI", "R-RJ", "R-RK"]
+    assert [r["id"] for r in new] == ["R-QS", "R-QT", "R-QU", "R-QV", "R-QW", "R-QX", "R-QY", "R-QZ", "R-RA", "R-RB", "R-RC", "R-RD", "R-RE", "R-RF", "R-RG", "R-RH", "R-RI", "R-RJ", "R-RK", "R-RL"]
     for record in new:
         assert record["decided_by"] == "owner" and record["id"] in real.charter, record["id"]
         assert not real.charter[record["id"]][0], record["id"]  # not struck
@@ -1041,9 +1067,9 @@ def test_properly_marked_amendments_are_not_reported(real):
     assert ("charter-mark", ("R-ON", "R-QG")) not in found
     assert ("charter-mark", ("R-MH", "R-MJ")) not in found
     records = {r["id"]: r for r in real.rulings}
-    assert records["R-ON"]["amended_by"] == ["R-QG"] and records["R-MJ"][
-        "amended_by"
-    ] == ["R-MH"]
+    # R-MJ is amended a second time by R-QS (2026-11-24), and its row names that one too.
+    assert records["R-ON"]["amended_by"] == ["R-QG"] and records["R-MJ"]["amended_by"] == ["R-MH", "R-QS"]
+    assert ("charter-mark", ("R-MJ", "R-QS")) not in found
 
 
 def test_every_known_row_points_at_a_file_that_exists(real):
