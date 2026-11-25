@@ -54,7 +54,8 @@ internal partial class TypeChecker
     ///
     /// <para>Three arms, in order: exactly one overload accepts the argument COUNT, and it is
     /// validated like a single <c>__init__</c> (<see cref="ValidateSoleArityMatchingOverload"/>);
-    /// NO overload accepts the count, which is SPY0354 at the call; otherwise the set is resolved by
+    /// NO overload accepts the count, which is SPY0354 at the call (except a struct's zero-argument
+    /// construction, which binds its implicit parameterless constructor); otherwise the set is resolved by
     /// type (<see cref="SelectInitializerAmongArityPeers"/>): several overloads accept the count, or
     /// the one that does is variadic, which the count arm leaves alone. Returns the selected
     /// overload, or null when none was selected (an error was reported, or a spread argument left
@@ -70,6 +71,11 @@ internal partial class TypeChecker
         {
             return soleArityMatch;
         }
+
+        // A struct's implicit parameterless constructor is never removed (structs.md; C#'s
+        // `new S()` binds it whatever constructors are declared), so `S()` needs no overload.
+        if (typeSymbol.TypeKind == TypeKind.Struct && totalArgCount == 0 && !call.Arguments.Any(a => a is SpreadElement))
+            return null;
 
         if (ArityApplicableCount(initMethods, call) == 0)
         {

@@ -1,0 +1,15 @@
+# A struct's implicit parameterless constructor survives declared __init__ overloads
+# (structs.md; C#'s `new S()` binds it), so S() is no overload-count error.
+struct S:
+    a: int
+
+    def __init__(self, a: int):
+        self.a = a
+
+    def __init__(self, a: int, b: int):
+        self.a = a + b
+
+def main() -> None:
+    s = S()
+    print(s.a)
+    print(S(2, 3).a)

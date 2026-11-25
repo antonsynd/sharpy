@@ -5761,6 +5761,20 @@ internal partial class TypeChecker
     private static FunctionSymbol? SoleOrArityChosenInitializer(IReadOnlyList<FunctionSymbol> initMethods, FunctionCall call)
         => initMethods.Count == 1 ? initMethods[0] : ArityChosenCandidate(initMethods, call);
 
+    /// <summary>
+    /// <see cref="SoleOrArityChosenInitializer"/> for a construction WITHOUT written type arguments
+    /// (<c>C(...)</c>, <c>Outer.C(...)</c>). A generic class's formals are open there: one
+    /// <c>__init__</c>'s are re-checked against the binding inference closes
+    /// (<c>CheckConstructorCall</c>'s deferred validation), but an overload SET has neither that
+    /// inference nor that re-check, so an open <c>list[T]</c> / <c>T?</c> pushed onto an argument
+    /// would be recorded and emitted unclosed (CS0246 behind SPY0908). Such a set takes no formals.
+    /// </summary>
+    private static FunctionSymbol? UnwrittenConstructionInitializer(TypeSymbol type, FunctionCall call)
+    {
+        var initMethods = InitializerOverloadsOf(type);
+        return type.IsGeneric && initMethods.Count > 1 ? null : SoleOrArityChosenInitializer(initMethods, call);
+    }
+
     private static bool AcceptsArgumentCount(FunctionSymbol candidate, int argCount)
     {
         // `self` is never one of the call's arguments; the parameter lists of instance methods
@@ -5829,7 +5843,7 @@ internal partial class TypeChecker
         if (callee is MemberAccess qualifiedCallee
             && qualifiedCallee.Object is not SuperExpression
             && TryResolveTypeSymbolFromMemberAccess(qualifiedCallee) is { } qualifiedType
-            && SoleOrArityChosenInitializer(InitializerOverloadsOf(qualifiedType), call) is { IsGeneric: false } qualifiedInit)
+            && UnwrittenConstructionInitializer(qualifiedType, call) is { IsGeneric: false } qualifiedInit)
         {
             return (qualifiedInit, 1);
         }
@@ -5869,7 +5883,7 @@ internal partial class TypeChecker
             // Without it the argument had no expectation at all (SPY0227 on Some/None()).
             // Several __init__ overloads stay with the resolver (#1671's rule for sets) unless the
             // argument count leaves one (ArityChosenCandidate).
-            if (SoleOrArityChosenInitializer(InitializerOverloadsOf(ts), call) is { IsGeneric: false } initMethod)
+            if (UnwrittenConstructionInitializer(ts, call) is { IsGeneric: false } initMethod)
             {
                 return (initMethod, 1); // skip 'self' parameter
             }

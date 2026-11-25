@@ -259,6 +259,7 @@ public class InitializerCallRouteParityTests : IntegrationTestBase
         GenericBindingCells().Count.Should().Be(80,
             "5 generic routes x 2 orders x 2 slots x 2 constraints x 2 arguments");
         RigidSelectionCells().Count.Should().Be(4, "2 routes x 2 orders");
+        UnwrittenGenericSetCells().Count.Should().Be(8, "2 spellings x 2 orders x 2 context arguments");
     }
 
     // ── the type-parameter binding axis ──────────────────────────────────────────────────
@@ -436,6 +437,47 @@ public class InitializerCallRouteParityTests : IntegrationTestBase
         var cell = $"{route}/{order}";
         var outcome = RunVerdict(source, cell);
         outcome[..outcome.IndexOf('\n')].Should().Be("out:B", $"{cell}: {outcome}");
+    }
+
+    // ── an UNWRITTEN generic construction over a set never leaks ─────────────────────────
+    //
+    // `b: Box[int] = Box(args)` over `Box[T]` with several `__init__`: the arity-chosen overload's
+    // formals are OPEN here (`list[T]`, `T?`), and a set has neither inference nor the closed
+    // re-check a single `__init__` gets, so pushing them recorded an argument as `List<T>` /
+    // `Optional<T>` (CS0246 behind SPY0908). Whatever the checker answers, it answers itself.
+
+    public static TheoryData<bool, Order, bool> UnwrittenGenericSetCells()
+    {
+        var data = new TheoryData<bool, Order, bool>();
+        foreach (var qualified in new[] { false, true })
+        {
+            foreach (Order o in Enum.GetValues<Order>())
+            {
+                data.Add(qualified, o, true);
+                data.Add(qualified, o, false);
+            }
+        }
+        return data;
+    }
+
+    [Theory]
+    [MemberData(nameof(UnwrittenGenericSetCells))]
+    public void UnwrittenGenericConstructionOverASet_NeverLeaks(bool qualified, Order order, bool emptyList)
+    {
+        var (target, args) = emptyList ? ("xs: list[T], n: int", "[], 3") : ("v: T, w: T?", "5, None()");
+        var z = "    def __init__(self):\n        print(\"Z\")\n\n";
+        var a = $"    def __init__(self, {target}):\n        print(\"A\")\n\n";
+        var cls = "class Box[T]:\n" + (order == Order.TargetLater ? z + a : a + z);
+        var source = qualified
+            ? "class Outer:\n" + string.Concat(cls.Split('\n').Select(l => l.Length == 0 ? "\n" : "    " + l + "\n"))
+              + $"def main() -> None:\n    b: Outer.Box[int] = Outer.Box({args})\n"
+            : cls + $"def main() -> None:\n    b: Box[int] = Box({args})\n";
+
+        var result = CompileAndExecute(source);
+        result.RawDiagnostics.Should().NotContain(
+            d => d.Code == DiagnosticCodes.Infrastructure.GeneratedCodeCompilationError,
+            $"{(qualified ? "qualified" : "bare")}/{order}/{(emptyList ? "[]" : "None()")}: "
+            + result.FailureSummary() + "\n--- source ---\n" + source);
     }
 
     /// <summary>
