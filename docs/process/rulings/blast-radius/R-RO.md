@@ -2,7 +2,7 @@
 
 **Rule:** A derived __init__ assigns its own fields before super().__init__(...) (Swift order).
 
-Measured at `fee8f7cca` over 5853 programs (4092 analysed). One site is one __init__ of a class that has a base class; 292 sites were found.
+Measured at `c2568ee65` over 5853 programs (4092 analysed). One site is one __init__ of a class that has a base class; 292 sites were found.
 
 ## Sites by verdict
 
@@ -47,7 +47,7 @@ The axes:
 - **base**: What the class derives from.
   - `sharpy`: a class written in Sharpy
   - `dotnet`: a .NET class, which includes the built-in exception types
-- **fix**: The largest edit any one assignment needs to get ahead of the call.
+- **fix**: The largest edit among the assignments that have to move: on a refused site, those of the slots with no default; on a refused-if-let site, all of them. A site's detail gives the edit for every slot, the ones that could stay behind included.
   - `move`: a top-level `self.f = <value>` whose value reads only parameters, literals, module names and own fields assigned before it: cut and paste above the call
   - `restructure`: the assignment sits under control flow, or its value reads a local computed in the constructor: the value has to become one expression or a @static helper
   - `uses-self`: the value reads `self` beyond own fields already assigned (an inherited member, a method call, `self` passed on): it depends on state the base constructor sets, so the constructor needs a redesign
@@ -152,6 +152,7 @@ First error of the programs that do not compile, most common first: SPY0200 × 5
 ## What this probe cannot see
 
 - A write to a field from another file is not seen, so a field counted as possibly `let` may in fact have to be `var`: `refused-if-let` is an upper bound.
+- Only a `self.f = value` statement counts as an assignment of the constructor. A field stored only as the target of a `for` or a `with` is not seen as assigned after the call, and a `with ... as self.f` is not counted as a second write.
 - The arms of an `if` or a `match` count as one assignment of a field. A `try` body and its handlers do not: a field assigned in both is taken to be `var`. No ruling says yet how `let` treats that shape.
 - A base class in another file is resolved only when the file compiles on its own.
 - The probe does not check that moving an assignment keeps the program's meaning; `move` says the edit is mechanical, not that it was tried.
