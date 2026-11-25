@@ -1057,7 +1057,7 @@ def test_the_enum_law_holds_both_backings_to_one_verdict(real):
 
 def test_every_ruling_of_2026_11_24_is_the_owners_and_has_a_charter_row(real):
     new = [r for r in real.rulings if "seed" not in r]
-    assert [r["id"] for r in new if r["date"] == "2026-11-25"] == ["R-RO", "R-RP"]
+    assert [r["id"] for r in new if r["date"] == "2026-11-25"] == ["R-RO", "R-RP", "R-RQ", "R-RR", "R-RS"]
     assert [r["id"] for r in new if r["date"] == "2026-11-24"] == ["R-QS", "R-QT", "R-QU", "R-QV", "R-QW", "R-QX", "R-QY", "R-QZ", "R-RA", "R-RB", "R-RC", "R-RD", "R-RE", "R-RF", "R-RG", "R-RH", "R-RI", "R-RJ", "R-RK", "R-RL", "R-RM", "R-RN"]
     for record in new:
         assert record["decided_by"] == "owner" and record["id"] in real.charter, record["id"]
@@ -1065,22 +1065,29 @@ def test_every_ruling_of_2026_11_24_is_the_owners_and_has_a_charter_row(real):
 
 
 def test_the_field_rulings_amend_b7_and_refuse_every_unassigned_field(real):
-    # R-RM removes B7's exception: the type of a field no longer decides whether it may be left
-    # unassigned. A field runs only where some constructor assigns it: every __init__, the one an
-    # __init__ chains to, or the constructor the compiler writes for a dataclass.
+    # R-RM (2026-11-24) removed B7's exception; R-RQ (2026-11-25) restored it. What is left of R-RM
+    # is the reference-type field: it runs only where some constructor assigns it (every __init__,
+    # the one an __init__ chains to, or the constructor the compiler writes for a dataclass).
     records = {r["id"]: r for r in real.rulings}
-    assert records["R-GV"]["amended_by"] == ["R-RM"] and "R-GV" in records["R-RM"]["amends"]
-    assert ("charter-mark", ("R-GV", "R-RM")) not in keys(mod.run_checks(real))
+    assert records["R-GV"]["amended_by"] == ["R-RM", "R-RR"] and "R-GV" in records["R-RM"]["amends"]
+    found = keys(mod.run_checks(real))
+    assert ("charter-mark", ("R-GV", "R-RM")) not in found and ("charter-mark", ("R-RM", "R-RQ")) not in found
     verdicts = {(c["coords"]["type"], c["coords"]["assigned"]): c["verdict"] for c in records["R-RM"]["cases"]}
-    assert {t for t, _ in verdicts} == {"value-type", "reference-type", "nullable"}
+    assert {t for t, _ in verdicts} == {"reference-type"} and records["R-RM"]["amended_by"] == ["R-RQ"]
     assert {a for (_, a), v in verdicts.items() if v == "run"} == {"in-every-init", "by-chained-init", "by-synthesized-init"}
-    assert {t for (t, a), v in verdicts.items() if a == "in-no-init"} == {"value-type", "reference-type", "nullable"}
-    assert all(v == "refuse" for (_, a), v in verdicts.items() if a == "in-no-init")
+    assert verdicts[("reference-type", "in-no-init")] == "refuse"
+    # R-RQ: unassigned, only a `var` field of a type with a default runs.
+    unset = {(c["coords"]["binding"], c["coords"]["type"]): c["verdict"] for c in records["R-RQ"]["cases"] if c["family"] == "field-assignment"}
+    assert {k for k, v in unset.items() if v == "run"} == {("var", "value-type"), ("var", "nullable")}
+    assert unset[("var", "reference-type")] == unset[("let", "value-type")] == "refuse"
     # R-RN: before all fields are assigned, `self` runs in two uses only. The chaining call is one:
     # without it the rule would refuse every derived class.
     uses = {c["coords"]["use"]: c["verdict"] for c in records["R-RN"]["cases"]}
     assert {u for u, v in uses.items() if v == "run"} == {"assigned-field-read", "chaining-call"}
-    assert uses["method-call"] == "refuse"
+    assert uses["method-call"] == "refuse" and records["R-RN"]["amended_by"] == ["R-RQ"]
+    # ... and R-RQ lifts that for a class whose only unassigned fields are `var` value types.
+    (early,) = [c for c in records["R-RQ"]["cases"] if c["family"] == "self-before-fields"]
+    assert early["coords"] == {"use": "method-call", "unassigned": "var-value-type-only"} and early["verdict"] == "run"
 
 
 def test_the_super_call_ruling_reverses_only_own_field_assignments(real):
@@ -1105,9 +1112,25 @@ def test_an_auto_property_rests_on_zero_only_for_a_value_type(real):
     unset = {(c["coords"]["type"], c["coords"]["modifier"]): c["verdict"] for c in records["R-RP"]["cases"] if c["coords"]["assigned"] == "in-no-init"}
     assert unset[("value-type", "plain")] == "run"
     assert unset[("reference-type", "plain")] == unset[("reference-type", "get")] == "refuse"
-    field = {c["coords"]["type"]: c["verdict"] for c in records["R-RM"]["cases"] if c["coords"]["assigned"] == "in-no-init"}
-    assert field["value-type"] == "refuse"
     assert "R-RM" in [x["id"] for x in records["R-RP"]["considered"]]
+    # Since R-RQ a `var` field of a value type rests on zero too; a `let` one does not.
+    field = {c["coords"]["binding"]: c["verdict"] for c in records["R-RQ"]["cases"] if c["family"] == "field-assignment" and c["coords"]["type"] == "value-type"}
+    assert field == {"var": "run", "let": "refuse"}
+
+
+def test_a_struct_field_follows_the_field_rule_and_the_super_call_is_written(real):
+    records = {r["id"]: r for r in real.rulings}
+    # R-RR: by a constructor call, a reference-type struct field with nothing to assign it is
+    # refused; what .NET zeroes without a constructor (an array element) stays as it is.
+    cells = {(c["coords"]["given"], c["coords"]["made-by"], c["coords"]["type"]): c["verdict"] for c in records["R-RR"]["cases"]}
+    assert cells[("nothing", "call", "reference-type")] == "refuse" and cells[("nothing", "call", "value-type")] == "run"
+    assert cells[("init", "call", "reference-type")] == cells[("initializer", "call", "reference-type")] == "run"
+    assert cells[("init", "array-element", "reference-type")] == "run"
+    assert "R-GV" in records["R-RR"]["amends"] and ("charter-mark", ("R-GV", "R-RR")) not in keys(mod.run_checks(real))
+    # R-RS: the call may be left out only where the base has no __init__.
+    omitted = {c["coords"]["base-init"]: c["verdict"] for c in records["R-RS"]["cases"]}
+    assert {b for b, v in omitted.items() if v == "run"} == {"none"}
+    assert omitted["parameterless"] == omitted["needs-argument"] == omitted["calls-overridden-method"] == "refuse"
 
 
 def test_properly_marked_amendments_are_not_reported(real):

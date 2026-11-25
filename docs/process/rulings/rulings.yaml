@@ -3437,7 +3437,7 @@ rulings:
     law_cited: false
     confidence: medium
   amends: [R-CN, R-BK, R-BL]
-  amended_by: [R-RM]
+  amended_by: [R-RM, R-RR]
   cases:
   - family: walrus-target
     coords:
@@ -9258,79 +9258,22 @@ rulings:
   breaks_running: true
   undo_breaks: false
   amends: [R-GV]
+  amended_by: [R-RQ]
   note: 'The recorder''s reading, not the owner''s words, of what "assigned in every `__init__`" means at three
     edges: an `__init__` that chains to another with `self.__init__(...)` is assigned by the one it chains to;
     a constructor the compiler writes (a `@dataclass`''s) assigns every field from its parameters; a class with
-    such a field and no constructor at all has nothing to assign it and is refused. Auto-properties are R-RP''s
-    (2026-11-25). Not ruled: a struct''s implicit parameterless constructor, which .NET always provides. A struct
-    that declares `__init__` must already assign every field (SPY0252). Option 1 carries `recommended` because
-    the agent called it the best of the three before the owner answered.'
+    such a field and no constructor at all has nothing to assign it and is refused. Amended by R-RQ (2026-11-25):
+    a `var` field whose type has a default may rest on it, so this rule''s "whatever its type and whether it is
+    `let` or `var`" no longer holds; its three cases on value-type and nullable fields were removed and are R-RQ''s,
+    with a `binding` axis (measured then, with the keywordless spelling: an `int` field no `__init__` assigns
+    reads `0`, a `str | None` field `None`, and python3 raises `AttributeError`). Auto-properties are R-RP''s.
+    Structs are R-RR''s. A struct that declares `__init__` must already assign every field (SPY0252). Option 1
+    carries `recommended` because the agent called it the best of the three before the owner answered.'
   cases:
   - family: field-assignment
     coords:
-      type: value-type
-      assigned: in-no-init
-    verdict: refuse
-    evidence:
-      program: |
-        class P:
-            x: int
-
-            def __init__(self):
-                pass
-
-        def main() -> None:
-            p = P()
-            print(p.x)
-      twin: |
-        class P:
-            x: int
-
-            def __init__(self):
-                pass
-
-        def main() -> None:
-            p = P()
-            print(p.x)
-        main()
-      sharpy: |
-        runs:0
-      python: raises:AttributeError
-      after: refused:code_not_ruled
-  - family: field-assignment
-    coords:
-      type: nullable
-      assigned: in-no-init
-    verdict: refuse
-    evidence:
-      program: |
-        class P:
-            name: str | None
-
-            def __init__(self):
-                pass
-
-        def main() -> None:
-            p = P()
-            print(p.name)
-      twin: |
-        class P:
-            name: str | None
-
-            def __init__(self):
-                pass
-
-        def main() -> None:
-            p = P()
-            print(p.name)
-        main()
-      sharpy: |
-        runs:None
-      python: raises:AttributeError
-      after: refused:code_not_ruled
-  - family: field-assignment
-    coords:
       type: reference-type
+      binding: keywordless
       assigned: in-no-init
     verdict: refuse
     evidence:
@@ -9362,6 +9305,7 @@ rulings:
   - family: field-assignment
     coords:
       type: reference-type
+      binding: keywordless
       assigned: on-one-branch
     verdict: refuse
     evidence:
@@ -9395,6 +9339,7 @@ rulings:
   - family: field-assignment
     coords:
       type: reference-type
+      binding: keywordless
       assigned: in-one-of-two-inits
     verdict: refuse
     evidence:
@@ -9419,32 +9364,8 @@ rulings:
       after: refused:code_not_ruled
   - family: field-assignment
     coords:
-      type: value-type
-      assigned: class-has-no-init
-    verdict: refuse
-    evidence:
-      program: |
-        class P:
-            x: int
-
-        def main() -> None:
-            p = P()
-            print(p.x)
-      twin: |
-        class P:
-            x: int
-
-        def main() -> None:
-            p = P()
-            print(p.x)
-        main()
-      sharpy: |
-        runs:0
-      python: raises:AttributeError
-      after: refused:code_not_ruled
-  - family: field-assignment
-    coords:
       type: reference-type
+      binding: keywordless
       assigned: in-every-init
     verdict: run
     evidence:
@@ -9478,6 +9399,7 @@ rulings:
   - family: field-assignment
     coords:
       type: reference-type
+      binding: keywordless
       assigned: by-chained-init
     verdict: run
     evidence:
@@ -9504,6 +9426,7 @@ rulings:
   - family: field-assignment
     coords:
       type: reference-type
+      binding: keywordless
       assigned: by-synthesized-init
     verdict: run
     evidence:
@@ -9549,6 +9472,7 @@ rulings:
   door: two-way
   breaks_running: true
   undo_breaks: false
+  amended_by: [R-RQ]
   note: 'The owner''s words were on "refusing calls on `self` before all fields are assigned", the recorder''s
     example, with the reason that a reference type `T` is never null. These parts are the recorder''s reading
     of that and not the owner''s words: the direct read of an unassigned field; reading a property; `self` as
@@ -9557,11 +9481,14 @@ rulings:
     types, where the read would see `0` and not null. A departure from the run-time default (C# lets a constructor
     call a method that reads a field the constructor has not assigned yet); the defect it names is a non-nullable
     field read as null. This ruling''s text does not reach a base class''s `__init__` that calls a method a derived
-    class overrides; R-RO (2026-11-25) rules that case.'
+    class overrides; R-RO (2026-11-25) rules that case. Amended by R-RQ (2026-11-25): a `var` field that rests
+    on its type''s default counts as assigned, so the rule does not hold for a class whose only unassigned fields
+    are such fields.'
   cases:
   - family: self-before-fields
     coords:
       use: unassigned-field-read
+      unassigned: reference-type-field
     verdict: refuse
     evidence:
       program: |
@@ -9595,6 +9522,7 @@ rulings:
   - family: self-before-fields
     coords:
       use: method-call
+      unassigned: reference-type-field
     verdict: refuse
     evidence:
       program: |
@@ -9634,6 +9562,7 @@ rulings:
   - family: self-before-fields
     coords:
       use: self-as-argument
+      unassigned: reference-type-field
     verdict: refuse
     evidence:
       program: |
@@ -9673,6 +9602,7 @@ rulings:
   - family: self-before-fields
     coords:
       use: self-captured
+      unassigned: reference-type-field
     verdict: refuse
     evidence:
       program: |
@@ -9708,42 +9638,44 @@ rulings:
   - family: self-before-fields
     coords:
       use: assigned-field-read
+      unassigned: reference-type-field
     verdict: run
     evidence:
       program: |
         class P:
-            x: int
-            y: int
+            x: str
+            y: str
 
             def __init__(self):
-                self.x = 1
-                self.y = self.x + 1
+                self.x = "a"
+                self.y = self.x + "b"
 
         def main() -> None:
             p = P()
             print(p.y)
       twin: |
         class P:
-            x: int
-            y: int
+            x: str
+            y: str
 
             def __init__(self):
-                self.x = 1
-                self.y = self.x + 1
+                self.x = "a"
+                self.y = self.x + "b"
 
         def main() -> None:
             p = P()
             print(p.y)
         main()
       sharpy: |
-        runs:2
+        runs:ab
       python: |
-        runs:2
+        runs:ab
       after: |
-        runs:2
+        runs:ab
   - family: self-before-fields
     coords:
       use: chaining-call
+      unassigned: reference-type-field
     verdict: run
     evidence:
       program: |
@@ -9803,14 +9735,12 @@ rulings:
     C# 12 program: a field assigned in the constructor body is null when the base constructor calls an overridden
     method; a field initialized from a primary-constructor parameter is not, and statements ahead of the call
     can be hoisted into a static helper whose result the primary constructor takes (the cost of that shape was
-    not timed). Not ruled, or not measured: a derived `__init__` that writes no `super().__init__()` call, where
-    the base''s parameterless constructor runs implicitly (measured: the override prints `True` for `self.name
-    is None` today); a `@dataclass` with a base, whose generated constructor assigns its fields after the base
-    call (`dataclass.md`); a base that is a .NET class (the rule''s text covers it; not probed); an argument of
-    the base call that reads an own field assigned just above it (R-RN allows the read; the C# program does not
-    show it emitted). By the rule''s text an own-field assignment under `if`, or one whose value takes several
-    statements, is not allowed ahead of the call: the value goes in one expression or a `@static` helper, as R-ML
-    already steers.'
+    not timed). A derived `__init__` that writes no `super().__init__()` call is R-RS''s. Not ruled, or not measured:
+    a `@dataclass` with a base, whose generated constructor assigns its fields after the base call (`dataclass.md`);
+    a base that is a .NET class (the rule''s text covers it; not probed); an argument of the base call that reads
+    an own field assigned just above it (R-RN allows the read; the C# program does not show it emitted). By the
+    rule''s text an own-field assignment under `if`, or one whose value takes several statements, is not allowed
+    ahead of the call: the value goes in one expression or a `@static` helper, as R-ML already steers.'
   cases:
   - family: super-call-order
     coords:
@@ -10175,3 +10105,471 @@ rulings:
       sharpy: refused:SPY0426
       python: no-twin
       after: refused:SPY0426
+- id: R-RQ
+  date: '2026-11-25'
+  issue: '#1974'
+  kind: language
+  rule: 'A `var` field whose type has a default may be left unassigned and reads as that default: zero for a value
+    type, `None` for `T | None` and `T?`. A `let` field, and a field of a non-nullable reference type, has an
+    initializer or is assigned on every path of every `__init__`. This restores B7''s exception, which R-RM had
+    removed. A `var` field that rests on its default counts as assigned for R-RN.'
+  options:
+  - text: a `var` field whose type has a default may rest on it
+    chosen: true
+  - text: every field is assigned, as R-RM recorded
+    recommended: true
+  basis: precedent
+  laws: [R-GV]
+  considered:
+  - id: A3
+    why: the default here is what the declaration means when it has no initializer, not a value standing in for
+      an initializer that did not run
+  - id: L-same-result
+    why: 'the owner: "against Python, and that can be okay because we type our locals and our types are meaningful,
+      rather than pure annotations". A `var` declaration has no Python twin'
+  - id: R-RP
+    why: an auto-property with a setter and a `var` field now follow one rule for a value type
+  - id: R-RH
+    why: locals are not changed by this ruling; see the note
+  decided_by: owner
+  door: one-way
+  breaks_running: false
+  undo_breaks: true
+  amends: [R-RM, R-RN]
+  note: 'The owner, 2026-11-25: "i would say zero is fine... i know this is backtracking, but the idea is that
+    var can be reassigned (as can a property, at least one with a set, with only a get it''s not the case) so
+    if it has no initial value, a reasonable default makes sense. it saves keystrokes for something is meant to
+    be obvious"; and earlier that day, on R-RN: "if a class''s unassigned fields are all value types, then zero''d
+    out makes sense". The agent had recommended keeping R-RM. The recorder''s reading, not the owner''s words:
+    "a reasonable default" is the list B7 gave (a value type, `T | None`, `T?`); a `let` field of a value type
+    must still be assigned and counts as unassigned for R-RN, since the owner''s reason is that a `var` can be
+    reassigned; for R-RO a `var` field that rests on its default need not be assigned ahead of the base call,
+    and assigning it after the call is an ordinary write. Not ruled: locals (R-RH stands: the owner named typed
+    locals as a reason and did not say a local may be left unassigned; a local with a default brings back the
+    `with` that swallows an error); a get-only auto-property of a value type (R-RP and `properties.md` let it
+    rest on zero, and the owner''s reason, that it cannot be reassigned, points the other way). The `var` field
+    keyword does not parse today (SPY0103), so the cases show a refusal for that reason; with the keywordless
+    spelling an unassigned `int` field reads `0` today.'
+  cases:
+  - family: field-assignment
+    coords:
+      type: value-type
+      binding: var
+      assigned: in-no-init
+    verdict: run
+    evidence:
+      program: |
+        class P:
+            var x: int
+
+            def __init__(self):
+                pass
+
+        def main() -> None:
+            p = P()
+            print(p.x)
+      sharpy: refused:SPY0103
+      python: no-twin
+      after: |
+        runs:0
+  - family: field-assignment
+    coords:
+      type: nullable
+      binding: var
+      assigned: in-no-init
+    verdict: run
+    evidence:
+      program: |
+        class P:
+            var name: str | None
+
+            def __init__(self):
+                pass
+
+        def main() -> None:
+            p = P()
+            print(p.name)
+      sharpy: refused:SPY0103
+      python: no-twin
+      after: |
+        runs:None
+  - family: field-assignment
+    coords:
+      type: reference-type
+      binding: var
+      assigned: in-no-init
+    verdict: refuse
+    evidence:
+      program: |
+        class P:
+            var name: str
+
+            def __init__(self):
+                pass
+
+        def main() -> None:
+            p = P()
+            print(p.name)
+      sharpy: refused:SPY0103
+      python: no-twin
+      after: refused:code_not_ruled
+  - family: field-assignment
+    coords:
+      type: value-type
+      binding: let
+      assigned: in-no-init
+    verdict: refuse
+    evidence:
+      program: |
+        class P:
+            let x: int
+
+            def __init__(self):
+                pass
+
+        def main() -> None:
+            p = P()
+            print(p.x)
+      sharpy: refused:SPY0104
+      python: no-twin
+      after: refused:code_not_ruled
+  - family: self-before-fields
+    coords:
+      use: method-call
+      unassigned: var-value-type-only
+    verdict: run
+    evidence:
+      program: |
+        class P:
+            var x: int
+
+            def __init__(self):
+                self.show()
+                self.x = 1
+
+            def show(self) -> None:
+                print(self.x)
+
+        def main() -> None:
+            p = P()
+            print(p.x)
+      sharpy: refused:SPY0103
+      python: no-twin
+      after: |
+        runs:0
+        1
+- id: R-RR
+  date: '2026-11-25'
+  issue: '#1974'
+  kind: language
+  rule: 'R-RM, as R-RQ amends it, applies to a struct as to a class: a struct field of a non-nullable reference
+    type has an initializer or is assigned in every `__init__`, and a struct with such a field and neither is
+    a compile error. A struct that .NET produces without running a constructor (an element of a new array, `default`)
+    is still zeroed; that is a documented .NET limit.'
+  options:
+  - text: apply R-RM to structs; the array case stays a documented .NET limit
+    chosen: true
+    recommended: true
+  - text: refuse a non-nullable reference field in a struct
+  - text: accept it and document that a struct's zero value can hold a null
+  basis: follows
+  laws: [R-RM, A3]
+  decided_by: owner
+  door: two-way
+  breaks_running: true
+  undo_breaks: false
+  amends: [R-GV]
+  note: 'The owner, 2026-11-25: "apply R-RM", on the agent''s option "Apply R-RM to structs. Such a field needs
+    an initializer or an `__init__`, which closes the `S()` row. The array row stays as a documented .NET limit."
+    TO BE CONFIRMED with the owner: B12 of R-GV had already ruled this, and more strictly: such a field "needs
+    an initializer (`net10.0`: C# 10 struct field initializers) or a nullable type (`netstandard2.1`, C# 9)",
+    with no `__init__` route. The recorder missed B12 when it put the question, so the owner chose without it
+    in view. As recorded, this ruling adds the `__init__` route to B12; B12''s "value-typed struct fields keep
+    their zero default" is unchanged. Not measured: `netstandard2.1`, where C# 9 has no struct field initializers.'
+  cases:
+  - family: struct-field-assignment
+    coords:
+      type: reference-type
+      given: nothing
+      made-by: call
+    verdict: refuse
+    evidence:
+      program: |
+        struct S:
+            name: str
+
+        def main() -> None:
+            s = S()
+            print(s.name is None)
+      sharpy: |
+        runs:True
+      python: no-twin
+      after: refused:code_not_ruled
+  - family: struct-field-assignment
+    coords:
+      type: value-type
+      given: nothing
+      made-by: call
+    verdict: run
+    evidence:
+      program: |
+        struct S:
+            x: int
+
+        def main() -> None:
+            s = S()
+            print(s.x)
+      sharpy: |
+        runs:0
+      python: no-twin
+      after: |
+        runs:0
+  - family: struct-field-assignment
+    coords:
+      type: reference-type
+      given: init
+      made-by: call
+    verdict: run
+    evidence:
+      program: |
+        struct S:
+            name: str
+
+            def __init__(self, name: str):
+                self.name = name
+
+        def main() -> None:
+            s = S("a")
+            print(s.name)
+      sharpy: |
+        runs:a
+      python: no-twin
+      after: |
+        runs:a
+  - family: struct-field-assignment
+    coords:
+      type: reference-type
+      given: initializer
+      made-by: call
+    verdict: run
+    evidence:
+      program: |
+        struct S:
+            name: str = "a"
+
+        def main() -> None:
+            s = S()
+            print(s.name)
+      sharpy: |
+        runs:a
+      python: no-twin
+      after: |
+        runs:a
+  - family: struct-field-assignment
+    coords:
+      type: reference-type
+      given: init
+      made-by: array-element
+    verdict: run
+    evidence:
+      program: |
+        struct S:
+            name: str
+
+            def __init__(self, name: str):
+                self.name = name
+
+        def main() -> None:
+            xs: array[S] = array[S](2)
+            print(xs[0].name is None)
+      sharpy: |
+        runs:True
+      python: no-twin
+      after: |
+        runs:True
+- id: R-RS
+  date: '2026-11-25'
+  issue: '#1974'
+  kind: language
+  rule: A derived class's `__init__` writes `super().__init__(...)` when its base class has an `__init__`; leaving
+    the call out is a compile error.
+  options:
+  - text: require the call
+    chosen: true
+    recommended: true
+  - text: keep the call implicit and run it after the own-field assignments
+  - text: 'leave it as today: the base constructor runs implicitly, first'
+  basis: follows
+  laws: [L-same-result, R-RO]
+  decided_by: owner
+  door: two-way
+  breaks_running: true
+  undo_breaks: false
+  note: 'The owner, 2026-11-25: "require the call", on the agent''s option "A derived `__init__` must write `super().__init__(...)`
+    when its base declares an `__init__`". Today the base''s parameterless constructor runs implicitly ahead of
+    the derived body, where python3 does not run it at all, so a program prints a value where python3 raises `AttributeError`.
+    By a text count, 2 of the 186 derived classes in the fixtures that declare `__init__` under a same-file base
+    with an `__init__` leave the call out. The recorder''s reading, not the owner''s words: "has" covers an `__init__`
+    the base inherits. Not ruled: a base that is a .NET class (the agent said it would settle that the same way;
+    the owner did not take it up, and it is not counted). A derived class that declares no `__init__` is not touched:
+    the base''s runs, as in python3.'
+  cases:
+  - family: super-call-presence
+    coords:
+      base-init: parameterless
+      call: omitted
+    verdict: refuse
+    evidence:
+      program: |
+        class Base:
+            n: int
+
+            def __init__(self):
+                self.n = 1
+
+        class Child(Base):
+            name: str
+
+            def __init__(self):
+                self.name = "a"
+
+        def main() -> None:
+            c = Child()
+            print(c.name, c.n)
+      twin: |
+        class Base:
+            n: int
+
+            def __init__(self):
+                self.n = 1
+
+        class Child(Base):
+            name: str
+
+            def __init__(self):
+                self.name = "a"
+
+        def main() -> None:
+            c = Child()
+            print(c.name, c.n)
+        main()
+      sharpy: |
+        runs:a 1
+      python: raises:AttributeError
+      after: refused:code_not_ruled
+  - family: super-call-presence
+    coords:
+      base-init: needs-argument
+      call: omitted
+    verdict: refuse
+    evidence:
+      program: |
+        class Base:
+            n: int
+
+            def __init__(self, n: int):
+                self.n = n
+
+        class Child(Base):
+            name: str
+
+            def __init__(self):
+                self.name = "a"
+
+        def main() -> None:
+            c = Child()
+            print(c.name, c.n)
+      twin: |
+        class Base:
+            n: int
+
+            def __init__(self, n: int):
+                self.n = n
+
+        class Child(Base):
+            name: str
+
+            def __init__(self):
+                self.name = "a"
+
+        def main() -> None:
+            c = Child()
+            print(c.name, c.n)
+        main()
+      sharpy: crashes:SPY0908
+      python: raises:AttributeError
+      after: refused:code_not_ruled
+  - family: super-call-presence
+    coords:
+      base-init: calls-overridden-method
+      call: omitted
+    verdict: refuse
+    evidence:
+      program: |
+        class Base:
+            def __init__(self):
+                self.describe()
+
+            @virtual
+            def describe(self) -> None:
+                print("base")
+
+        class Child(Base):
+            name: str
+
+            def __init__(self):
+                self.name = "a"
+
+            @override
+            def describe(self) -> None:
+                print(self.name is None)
+
+        def main() -> None:
+            c = Child()
+            print(c.name)
+      sharpy: |
+        runs:True
+        a
+      python: no-twin
+      after: refused:code_not_ruled
+  - family: super-call-presence
+    coords:
+      base-init: none
+      call: omitted
+    verdict: run
+    evidence:
+      program: |
+        class Base:
+            def hello(self) -> str:
+                return "hi"
+
+        class Child(Base):
+            name: str
+
+            def __init__(self):
+                self.name = "a"
+
+        def main() -> None:
+            c = Child()
+            print(c.name, c.hello())
+      twin: |
+        class Base:
+            def hello(self) -> str:
+                return "hi"
+
+        class Child(Base):
+            name: str
+
+            def __init__(self):
+                self.name = "a"
+
+        def main() -> None:
+            c = Child()
+            print(c.name, c.hello())
+        main()
+      sharpy: |
+        runs:a hi
+      python: |
+        runs:a hi
+      after: |
+        runs:a hi

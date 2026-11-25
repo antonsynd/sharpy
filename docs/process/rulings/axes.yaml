@@ -3,7 +3,7 @@
 # axis must not matter (check `invariance`). Add a value here before using it in a case.
 #
 # The first five families are the ones the 2026-11-21 audit's verified conflicts needed; the rest were
-# added for the owner's rulings of 2026-11-24 (R-QS to R-RN) and of 2026-11-25 (R-RO, R-RP). All are listed by hand.
+# added for the owner's rulings of 2026-11-24 (R-QS to R-RN) and of 2026-11-25 (R-RO to R-RS). All are listed by hand.
 # Contract section 11 wants each axis to be the image of a compiler enumeration; #2486, #2487 and #2733
 # are where that is built, and these lists should be replaced by theirs as they land.
 families:
@@ -80,10 +80,12 @@ families:
     axes:
       other: [stdlib-module, referenced-library, clr-namespace]
   field-assignment:
-    doc: A class field with no initializer at its declaration, by its type and by where the class's `__init__`
-      methods assign it.
+    doc: 'A class field with no initializer at its declaration, by its type, by how it is declared (`keywordless`
+      is today''s `x: T` spelling, which B6 retires for `let` / `var`) and by where the class''s `__init__` methods
+      assign it.'
     axes:
       type: [value-type, reference-type, nullable]
+      binding: [keywordless, let, var]
       assigned: [in-every-init, by-chained-init, by-synthesized-init, in-no-init, on-one-branch, in-one-of-two-inits,
         class-has-no-init]
   self-before-fields:
@@ -91,6 +93,20 @@ families:
       that calls a method a derived class overrides is the `super-call-order` family's.
     axes:
       use: [unassigned-field-read, assigned-field-read, chaining-call, method-call, self-as-argument, self-captured]
+      unassigned: [reference-type-field, var-value-type-only]
+  struct-field-assignment:
+    doc: A struct field with no value at its declaration, by its type, by what gives it one, and by how the struct
+      value is made.
+    axes:
+      type: [reference-type, value-type]
+      given: [nothing, initializer, init]
+      made-by: [call, array-element]
+  super-call-presence:
+    doc: A derived class's `__init__` that does not write `super().__init__(...)`, by what the base class's `__init__`
+      is.
+    axes:
+      base-init: [none, parameterless, needs-argument, calls-overridden-method]
+      call: [omitted]
   super-call-order:
     doc: A derived class's `__init__`, by what stands ahead of `super().__init__(...)`, whether the class has
       fields of its own to assign, and what the base `__init__` does.
