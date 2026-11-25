@@ -63,6 +63,12 @@ internal static class OwnSlots
         OptionalType or NullableType => true,
         // A bare type parameter has no default the rulings name: T may be a reference type.
         TypeParameterType => false,
+        // SemanticType.IsValueType knows a struct, and not an enum or a struct with type arguments.
+        GenericType { GenericDefinition: { } definition } => IsValueType(definition),
+        UserDefinedType { Symbol: { } symbol } => IsValueType(symbol),
         _ => type.IsValueType,
     };
+
+    private static bool IsValueType(TypeSymbol symbol)
+        => symbol.ClrType?.IsValueType ?? symbol.TypeKind is TypeKind.Struct or TypeKind.Enum;
 }

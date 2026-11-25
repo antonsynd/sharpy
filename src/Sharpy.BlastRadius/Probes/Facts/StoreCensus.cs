@@ -93,16 +93,30 @@ internal sealed class StoreCensus
             HashSet<(TypeSymbol, string)>? assigned, bool inLoop)
         {
             var isSelf = member.Object is Identifier { Name: PythonNames.Self };
-            // The checker's own resolution names the declaring type; a `self.f` store it did not
-            // record belongs to the class the store is written in.
-            var owner = input.Semantic.GetMemberAccessResolution(member)?.Owner ?? (isSelf ? enclosing : null);
-            if (owner == null)
+            // The type the store goes through: the class it is written in for `self.f`, the
+            // receiver's type for `other.f`. The checker records a resolution only for a store
+            // through a type name (`Counter.total = 1`).
+            var through = input.Semantic.GetMemberAccessResolution(member)?.Owner
+                ?? (isSelf ? enclosing : SymbolOf(input.Semantic.GetExpressionType(member.Object)));
+            if (through == null)
                 return;
-            if (plain && isSelf && assigned != null && !inLoop && assigned.Add((owner, member.Member)))
+            // The member belongs to the class that declares it, which may be a base class.
+            var owner = TypeHierarchyService.FirstDeclaringType(through, member.Member) ?? through;
+            // Only a class's own __init__ makes the first assignment of its field: a store from
+            // a subclass's __init__ comes after the base __init__ has run.
+            if (plain && isSelf && ReferenceEquals(owner, enclosing) && assigned != null && !inLoop
+                && assigned.Add((owner, member.Member)))
                 return;
             census._writtenAgain.Add((owner, member.Member));
         }
     }
+
+    private static TypeSymbol? SymbolOf(SemanticType? type) => type switch
+    {
+        NullableType nullable => SymbolOf(nullable.UnderlyingType),
+        GenericType generic => generic.GenericDefinition,
+        _ => type?.DeclaringSymbol,
+    };
 
     private static IEnumerable<MemberAccess> MemberTargets(Expression target)
         => SyntaxFacts.TargetLeaves(target).OfType<MemberAccess>();

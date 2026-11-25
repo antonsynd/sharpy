@@ -82,7 +82,7 @@ internal static class Program
                         break;
                 }
             }
-            catch (Exception e) when (e is ArgumentException or FormatException)
+            catch (Exception e) when (e is ArgumentException or FormatException or OverflowException)
             {
                 Console.Error.WriteLine($"{e.Message}\n{Usage}");
                 return 2;
@@ -142,20 +142,31 @@ internal static class Program
     {
         try
         {
-            var info = new ProcessStartInfo("git", "rev-parse --short HEAD")
-            {
-                WorkingDirectory = repo,
-                RedirectStandardOutput = true,
-                RedirectStandardError = true,
-            };
-            using var git = Process.Start(info)!;
-            var sha = git.StandardOutput.ReadToEnd().Trim();
-            git.WaitForExit();
-            return git.ExitCode == 0 && sha.Length > 0 ? sha : "unknown";
+            var sha = Git(repo, "rev-parse --short HEAD");
+            if (sha is null or "")
+                return "unknown";
+            // The corpus, the compiler and the probe are all in the working tree: a report from a
+            // tree with changes is not reproducible at the commit, and says so.
+            return Git(repo, "status --porcelain") is "" ? sha : sha + "-dirty";
         }
         catch (Exception)
         {
             return "unknown";
         }
+    }
+
+    /// <summary>The trimmed output of a git command, or null when it fails.</summary>
+    private static string? Git(string repo, string arguments)
+    {
+        var info = new ProcessStartInfo("git", arguments)
+        {
+            WorkingDirectory = repo,
+            RedirectStandardOutput = true,
+            RedirectStandardError = true,
+        };
+        using var git = Process.Start(info)!;
+        var output = git.StandardOutput.ReadToEnd().Trim();
+        git.WaitForExit();
+        return git.ExitCode == 0 ? output : null;
     }
 }

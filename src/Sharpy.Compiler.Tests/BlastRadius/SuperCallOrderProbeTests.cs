@@ -30,7 +30,29 @@ public class SuperCallOrderProbeTests
         new("value", "int", true, "p", "self.n", "len(self.first)"),
         new("nullable", "str | None", true, "p", "str(self.n)", "self.first"),
         new("optional", "int?", true, "p", "Some(self.n)", "Some(len(self.first))"),
+        // Value types that SemanticType.IsValueType does not know as such.
+        new("enum", "Color", true, "p", "color_of(self.n)", "color_of(len(self.first))"),
+        new("tuple", "tuple[int, int]", true, "p", "(self.n, 1)", "(len(self.first), 1)"),
+        new("generic_struct", "Pair[int]", true, "p", "Pair[int](self.n)", "Pair[int](len(self.first))"),
     };
+
+    /// <summary>What the matrix's classes refer to.</summary>
+    private const string MatrixPrelude = """
+        enum Color:
+            RED = 1
+            GREEN = 2
+
+        struct Pair[T]:
+            item: T
+
+            def __init__(self, item: T):
+                self.item = item
+
+        def color_of(n: int) -> Color:
+            return Color.RED if n > 0 else Color.GREEN
+
+
+        """;
 
     private static readonly string[] Kinds = { "field", "property", "getonly" };
     private static readonly string[] Positions = { "top", "nested" };
@@ -130,9 +152,9 @@ public class SuperCallOrderProbeTests
     public void EveryCellOfTheMatrixGetsTheVerdictAndTheFixTheRuleGives()
     {
         var cells = Cells().ToList();
-        cells.Should().HaveCount(5 * 2 * 4 * 2 * 3 + 5 * 1 * 4 * 2 * 1, "the matrix is the product of its axes");
+        cells.Should().HaveCount(8 * 2 * 4 * 2 * 3 + 8 * 1 * 4 * 2 * 1, "the matrix is the product of its axes");
 
-        var source = new StringBuilder(BaseClass);
+        var source = new StringBuilder(MatrixPrelude + BaseClass);
         foreach (var cell in cells)
             source.Append(cell.Source());
         source.Append("def main() -> None:\n    pass\n");
@@ -292,6 +314,105 @@ public class SuperCallOrderProbeTests
             """).Single();
         site.Verdict.Should().Be("refused");
         site.Detail.Should().Contain("a: str").And.Contain("b: str");
+    }
+
+    [Fact]
+    public void AStoreFromOutsideTheClassOrFromASubclassMakesTheFieldVar()
+    {
+        var sites = Analyse(BaseClass + """
+            class ThroughAnother(Base):
+                count: int
+
+                def __init__(self):
+                    super().__init__()
+                    self.count = 0
+
+            def bump(c: ThroughAnother) -> None:
+                c.count = c.count + 1
+
+            class InASubclassMethod(Base):
+                count: int
+
+                def __init__(self):
+                    super().__init__()
+                    self.count = 0
+
+            class Writer(InASubclassMethod):
+                def reset(self) -> None:
+                    self.count = 5
+
+            class InASubclassInit(Base):
+                count: int
+
+                def __init__(self):
+                    super().__init__()
+                    self.count = 0
+
+            class Late(InASubclassInit):
+                def __init__(self):
+                    super().__init__()
+                    self.count = 5
+
+            class NeverAgain(Base):
+                count: int
+
+                def __init__(self):
+                    super().__init__()
+                    self.count = 0
+
+            def main() -> None:
+                pass
+            """).ToDictionary(s => s.Subject);
+
+        foreach (var written in new[] { "ThroughAnother", "InASubclassMethod", "InASubclassInit" })
+        {
+            sites[$"{written}.__init__"].Verdict.Should().Be("conforms", written);
+            sites[$"{written}.__init__"].Coords.Should().Contain("why", "var-only");
+        }
+
+        // Positive control: the same class with no second write could be `let`.
+        sites["NeverAgain.__init__"].Verdict.Should().Be("refused-if-let");
+    }
+
+    [Fact]
+    public void AValueThatReadsAnOwnFieldMovesOnlyAsEasilyAsThatFieldDoes()
+    {
+        var site = Analyse(BaseClass + """
+            class Chain(Base):
+                a: int
+                b: str
+
+                def __init__(self):
+                    super().__init__()
+                    self.a = self.n + 1
+                    self.b = str(self.a)
+
+            def main() -> None:
+                pass
+            """).Single();
+        // `b` must move, and its value reads `a`, whose own value reads an inherited field.
+        site.Verdict.Should().Be("refused");
+        site.Coords.Should().Contain("fix", "uses-self");
+    }
+
+    [Fact]
+    public void AValueThatCallsAFunctionDeclaredInTheConstructorIsNotAPlainMove()
+    {
+        var site = Analyse(BaseClass + """
+            class Helped(Base):
+                name: str
+
+                def __init__(self, p: str):
+                    super().__init__()
+                    def helper() -> str:
+                        return p + "!"
+                    self.name = helper()
+
+            def main() -> None:
+                pass
+            """).Single();
+        site.Verdict.Should().Be("refused");
+        site.Coords.Should().Contain("fix", "restructure");
     }
 
     [Fact]
@@ -494,6 +615,57 @@ public class SuperCallOrderProbeTests
         {
             Directory.Delete(root, recursive: true);
         }
+    }
+
+    [Fact]
+    public void LooseStatementsOfASpecBlockAreMovedWholeAndAConstantStaysWhereItIs()
+    {
+        var root = Directory.CreateTempSubdirectory("blast-hoist").FullName;
+        try
+        {
+            File.WriteAllText(Path.Combine(root, "page.md"), string.Join("\n",
+                "```python",
+                "text = \"\"\"", "several", "lines", "\"\"\"",
+                "print(text)",
+                "```", "",
+                "```python",
+                "const LIMIT: int = 3", "",
+                "def capped(n: int) -> int:", "    return n if n < LIMIT else LIMIT", "",
+                "print(capped(5))",
+                "```", ""));
+
+            Corpus.Enumerate("t", root, root).Select(Runner.Run).Select(o => (o.Skipped, o.ErrorCode))
+                .Should().Equal((null, null), (null, null));
+        }
+        finally
+        {
+            Directory.Delete(root, recursive: true);
+        }
+    }
+
+    /// <summary>
+    /// The tool reads a specification block with its own reader, not the sweep's
+    /// (<c>build_tools/spec_blocks.py</c>). This holds the two together: the sweep's allowlist is
+    /// every unmarked block that does not build, and analysis, which builds nothing, may refuse no
+    /// more than those.
+    /// </summary>
+    [Fact]
+    public void TheSpecificationBlocksTheToolCannotCompileAreNoMoreThanTheSweepAllows()
+    {
+        var spec = Path.Combine(FixtureRoots.RepositoryRoot, "docs", "language_specification");
+        var allowed = File.ReadLines(Path.Combine(FixtureRoots.RepositoryRoot, "build_tools", "spec_blocks_allowlist.txt"))
+            .Count(line => line.Length > 0 && !line.StartsWith('#'));
+
+        var outcomes = Corpus.Enumerate("spec", spec, spec).Select(Runner.Run).ToList();
+
+        outcomes.Count(o => o.Skipped == null).Should().BeGreaterThan(500, "positive control: the pages are read");
+        outcomes.Count(o => o.ErrorCode != null).Should().BeLessThanOrEqualTo(allowed);
+    }
+
+    [Fact]
+    public void AnExamplesCountTooLargeToReadIsAUsageError()
+    {
+        Program.Main(new[] { "run", "R-RO", "--examples", "99999999999" }).Should().Be(2);
     }
 
     /// <summary>

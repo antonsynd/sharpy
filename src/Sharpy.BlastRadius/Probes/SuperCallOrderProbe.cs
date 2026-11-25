@@ -116,6 +116,9 @@ internal sealed class SuperCallOrderProbe : IRuleProbe
     {
         "A write to a field from another file is not seen, so a field counted as possibly `let` may "
             + "in fact have to be `var`: `refused-if-let` is an upper bound.",
+        "The arms of an `if` or a `match` count as one assignment of a field. A `try` body and its "
+            + "handlers do not: a field assigned in both is taken to be `var`. No ruling says yet how "
+            + "`let` treats that shape.",
         "A base class in another file is resolved only when the file compiles on its own.",
         "The probe does not check that moving an assignment keeps the program's meaning; `move` "
             + "says the edit is mechanical, not that it was tried.",
@@ -216,8 +219,8 @@ internal sealed class SuperCallOrderProbe : IRuleProbe
         var slotByName = slots.ToDictionary(s => s.Name, StringComparer.Ordinal);
         var locals = SyntaxFacts.LocalNames(constructor);
         var seen = new HashSet<string>(StringComparer.Ordinal);
-        var movedNames = new HashSet<string>(StringComparer.Ordinal);
         var moved = new List<(Slot Slot, Fix Fix)>();
+        var fixOf = new Dictionary<string, Fix>(StringComparer.Ordinal);
 
         foreach (var (assignment, topLevel) in AssignmentsAfter(constructor, callIndex))
         {
@@ -231,8 +234,9 @@ internal sealed class SuperCallOrderProbe : IRuleProbe
                 // constructor reaches it (R-RQ): it is not one of the slots the rule moves.
                 if (slot.HasDefault && stores.WrittenAgain(type, slot.Name))
                     continue;
-                moved.Add((slot, topLevel ? ValueFix(assignment.Value, locals, movedNames) : Fix.Restructure));
-                movedNames.Add(slot.Name);
+                var fix = topLevel ? ValueFix(assignment.Value, locals, fixOf) : Fix.Restructure;
+                moved.Add((slot, fix));
+                fixOf[slot.Name] = fix;
             }
         }
 
@@ -269,7 +273,7 @@ internal sealed class SuperCallOrderProbe : IRuleProbe
     }
 
     /// <summary>What the value of a top-level assignment needs before it can stand ahead of the call.</summary>
-    private static Fix ValueFix(Expression value, HashSet<string> locals, HashSet<string> movedAhead)
+    private static Fix ValueFix(Expression value, HashSet<string> locals, Dictionary<string, Fix> movedAhead)
     {
         var fix = Fix.Move;
         Visit(value);
@@ -282,9 +286,12 @@ internal sealed class SuperCallOrderProbe : IRuleProbe
                 case SuperExpression:
                     fix = Fix.UsesSelf;
                     return;
-                // `self.f` where f is an own slot already assigned ahead: R-RN allows the read.
+                // `self.f` where f is an own slot that moves ahead as well: R-RN allows the read,
+                // and this value can stand ahead of the call only as easily as f's own can.
                 case MemberAccess { Object: Identifier { Name: PythonNames.Self } } member
-                    when movedAhead.Contains(member.Member):
+                    when movedAhead.TryGetValue(member.Member, out var earlier):
+                    if (fix < earlier)
+                        fix = earlier;
                     return;
                 case Identifier { Name: PythonNames.Self }:
                     fix = Fix.UsesSelf;

@@ -36,10 +36,10 @@ The whole corpus takes about a quarter of a minute.
 
 A specification block is read much as the specification sweep reads it
 (`build_tools/spec_blocks.py`): the blocks marked `spec-sweep: prelude` above it on the page are
-prepended, and loose top-level statements are moved into a `main()`. A site in a prelude is
-reported once, by the block that declares it. The reader is the tool's own, and it is a little
-stricter than the sweep: at `ce4e6beb1` it could not compile 74 unmarked blocks, where the sweep's
-allowlist holds 69.
+prepended, and loose top-level statements and variables are moved into a `main()`. A site in a
+prelude is reported once, by the block that declares it. The reader is the tool's own. A test
+holds it to the sweep: the unmarked blocks it cannot compile are no more than the rows of the
+sweep's allowlist (67 against 69 when the test was written).
 
 ## Reading a report
 
@@ -53,6 +53,10 @@ allowlist holds 69.
 - **What the probe cannot see.** Every probe states its limits and the report prints them.
 
 The JSON form (`--json`) lists every site, for a script or a second opinion.
+
+A report names the commit it was measured at. When the working tree had changes, the name ends in
+`-dirty`: the corpus, the compiler and the probe are all in the tree, so such a report cannot be
+reproduced from the commit. Commit first, then measure.
 
 ## Writing a probe
 
@@ -91,9 +95,11 @@ refusal, in the checker or a validator.
 
 ## Measurements on record
 
-| Rule | Report | Measured at |
-|---|---|---|
-| R-RO, the Swift order | [rulings/blast-radius/R-RO.md](rulings/blast-radius/R-RO.md) | `ce4e6beb1` |
+| Rule | Report |
+|---|---|
+| R-RO, the Swift order | [rulings/blast-radius/R-RO.md](rulings/blast-radius/R-RO.md) |
+
+Each report names the commit it was measured at in its first lines.
 
 Regenerate a report with
 `bash build_tools/blast_radius.sh run <rule> --md docs/process/rulings/blast-radius/<rule>.md --examples 3`.
@@ -101,8 +107,8 @@ Regenerate a report with
 ### R-RO against the text counts in its record
 
 The record of R-RO says, by a text count, that 123 of the 218 fixture `__init__` methods that call
-`super().__init__` assign a field after the call. Measured at `ce4e6beb1`, over the fixtures that
-compile today:
+`super().__init__` assign a field after the call. Measured over the fixtures that compile
+today (the figures are the report's):
 
 - 203 constructors call `super().__init__(...)`.
 - 36 are refused however the class is migrated: a field with no default is assigned after the call.

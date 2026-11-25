@@ -96,19 +96,23 @@ internal sealed class ProbeRunner
         var errors = failed.Diagnostics.Where(d => d.IsError).ToList();
         if (errors.Count == 0 || errors.Any(d => d.Code != DiagnosticCodes.Semantic.ModuleLevelExecutableStatement))
             return null;
-        var flagged = errors.Where(d => d.Line != null).Select(d => d.Line!.Value).ToHashSet();
-        if ((failed.Ast ?? _api.Parse(source).Ast) is not { } module)
+        var flagged = errors.Where(d => d.Line != null).Select(d => d.Line!.Value).ToList();
+        if (failed.Ast is not { } module)
             return null;
 
         var lines = source.Split('\n');
         var main = new List<string>();
-        foreach (var statement in module.Body)
+        for (var i = 0; i < module.Body.Length; i++)
         {
-            if (!flagged.Contains(statement.LineStart) && statement is not (VariableDeclaration or Assignment))
-                continue;
-            for (var line = statement.LineStart; line <= statement.LineEnd && line <= lines.Length; line++)
+            // A statement runs to the line before the next one. Its own LineEnd is not that line
+            // for every statement: it stops at the first line of a multi-line string.
+            var first = module.Body[i].LineStart;
+            var last = i + 1 < module.Body.Length ? module.Body[i + 1].LineStart - 1 : lines.Length;
+            var loose = flagged.Any(line => first <= line && line <= last)
+                || module.Body[i].UnwrapDecorated() is VariableDeclaration { IsConst: false } or Assignment;
+            for (var line = first; loose && line <= last; line++)
             {
-                main.Add("    " + lines[line - 1]);
+                main.Add(lines[line - 1].Length == 0 ? "" : "    " + lines[line - 1]);
                 lines[line - 1] = "";
             }
         }

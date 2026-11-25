@@ -48,7 +48,11 @@ internal static class SyntaxFacts
         _ => new[] { target },
     };
 
-    /// <summary>Names a function binds as locals: targets of assignments, declarations, loops and walruses.</summary>
+    /// <summary>
+    /// Names a function binds as locals: targets of assignments, declarations, loops, walruses and
+    /// <c>with</c> items, <c>except ... as</c> names, pattern captures, imports, and the functions
+    /// and types it declares.
+    /// </summary>
     public static HashSet<string> LocalNames(FunctionDef function)
     {
         var names = new HashSet<string>(StringComparer.Ordinal);
@@ -67,6 +71,34 @@ internal static class SyntaxFacts
                     break;
                 case WalrusExpression walrus:
                     names.Add(walrus.Target);
+                    break;
+                case WithStatement with:
+                    foreach (var item in with.Items.Where(i => i.Target != null))
+                        AddTargets(item.Target!);
+                    break;
+                case TryStatement attempt:
+                    names.UnionWith(attempt.Handlers.Select(h => h.Name).OfType<string>());
+                    break;
+                case BindingPattern binding:
+                    names.Add(binding.Name.Name);
+                    break;
+                case AsPattern alias:
+                    names.Add(alias.Name.Name);
+                    break;
+                case ImportStatement import:
+                    names.UnionWith(import.Names.Select(n => n.AsName ?? n.Name.Split('.')[0]));
+                    break;
+                case FromImportStatement import:
+                    names.UnionWith(import.Names.Select(n => n.AsName ?? n.Name));
+                    break;
+                case FunctionDef nested:
+                    names.Add(nested.Name);
+                    break;
+                case ClassDef nested:
+                    names.Add(nested.Name);
+                    break;
+                case StructDef nested:
+                    names.Add(nested.Name);
                     break;
             }
         }
