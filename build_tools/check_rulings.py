@@ -83,6 +83,7 @@ RULINGS_DIR = Path("docs/process/rulings")
 ROUNDS_DIR = Path("docs/process/rounds")
 ROW_RE = re.compile(r"^\| *(~~)?(R-[A-Z]{1,3})(~~)? *\|(.*)$")
 ID_RE = re.compile(r"^R-[A-Z]{1,3}$")
+DATE_RE = re.compile(r"^\d{4}-\d{2}-\d{2}$")
 
 KINDS = (
     "language",
@@ -270,6 +271,12 @@ def _case_problems(owner: str, index: int, case: object, strict: bool) -> Iterab
             yield f"{where}: evidence `{field}` is not an observation of kind {', '.join(kinds)}: {evidence.get(field)!r}"
     if ("twin" in evidence) == (evidence.get("python") == "no-twin"):
         yield f"{where}: evidence has a `twin` exactly when `python` is not `no-twin`"
+    for field, taken in (("files", ruling_evidence.BESIDE_PROGRAM), ("twin_files", ruling_evidence.BESIDE_TWIN)):
+        problem = ruling_evidence.beside_problem(evidence[field], taken) if field in evidence else None
+        if problem:
+            yield f"{where}: evidence `{field}`: {problem}"
+    if "twin_files" in evidence and "twin" not in evidence:
+        yield f"{where}: evidence has `twin_files` only beside a `twin`"
     if strict and not ruling_evidence.is_observation(evidence.get("after"), ruling_evidence.DECIDED_KINDS):
         yield f"{where}: a new ruling's evidence needs `after`, the observation the ruling decides ({', '.join(ruling_evidence.DECIDED_KINDS)})"
 
@@ -294,6 +301,8 @@ def _ruling_problems(record: dict) -> Iterable[str]:
     for field in ("date", "issue"):
         if not record.get(field):
             yield f"a new ruling needs `{field}`"
+    if record.get("date") and not DATE_RE.match(str(record["date"])):
+        yield f"`date` must be YYYY-MM-DD (rulings are ordered by it): {record['date']!r}"
     options = record.get("options")
     if (
         not isinstance(options, list)
@@ -783,13 +792,24 @@ def doors_of(record: dict) -> List[Dict[str, object]]:
 
 
 def door_of(record: dict) -> Optional[Dict[str, object]]:
-    """The widest door over a ruling's cases, or None when no case has complete evidence.
+    """The door of a ruling over all its cases, or None when no case has complete evidence.
 
-    Cases that tie agree on both facts, so which one is returned does not change `door`,
-    `breaks_running` or `undo_breaks`; the policy class is judged per case (check_owner_required).
+    A ruling breaks running programs if any of its cases does, and cannot be taken back cheaply if
+    any of its cases cannot: one case that refuses a running program and another that admits a new
+    one make a ruling that does both. The policy class is judged per case (check_owner_required).
     """
     doors = doors_of(record)
-    return max(doors, key=lambda d: (d["undo_breaks"], d["breaks_running"])) if doors else None
+    if not doors:
+        return None
+    breaks = any(d["breaks_running"] for d in doors)
+    undo = any(d["undo_breaks"] for d in doors)
+    deciding = [d for d in doors if d["undo_breaks"] or d["breaks_running"]] or doors
+    return {
+        "breaks_running": breaks,
+        "undo_breaks": undo,
+        "door": "one-way" if undo else "two-way",
+        "why": "; ".join(sorted({str(d["why"]) for d in deciding})),
+    }
 
 
 def policy_class(before: str, after: str, door: Dict[str, object]) -> str:
@@ -834,6 +854,7 @@ def check_owner_required(inputs: Inputs) -> Iterable[Finding]:
 
 def check_considered(inputs: Inputs) -> Iterable[Finding]:
     cases = live_cases(inputs)
+    dates = {r["id"]: str(r["date"]) for r in inputs.rulings if isinstance(r.get("id"), str) and r.get("date")}
     for record in inputs.rulings:
         if "seed" in record or not isinstance(record.get("id"), str):
             continue
@@ -851,7 +872,11 @@ def check_considered(inputs: Inputs) -> Iterable[Finding]:
             | set(_ids(record.get("supersedes")))
             | set(_ids(record.get("amends")))
         )
-        for missing in sorted(neighbours - answered - linked):
+        # A ruling answers what stood when it was made. One made on a later date could not have
+        # been considered; it is the later one that must answer this one.
+        mine = dates.get(record["id"])
+        later = {n for n in neighbours if mine and n in dates and dates[n] > mine}
+        for missing in sorted(neighbours - answered - linked - later):
             yield Finding(
                 "considered",
                 (record["id"], missing),

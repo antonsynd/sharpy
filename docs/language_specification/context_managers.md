@@ -216,6 +216,8 @@ after
 
 ### Definite assignment across a suppression-capable `with`
 
+> **Ruled, not yet implemented (R-RH and R-RT, 2026-11-24 and 2026-11-25).** A local will have a value from its declaration on: an initializer, or the default of its type for a `var` local of a value type, `T | None` or `T?`. The run-time check this section describes then has nothing left to check and is retired. The section describes what the compiler does today.
+
 Because `__exit__` may return `True` and swallow an exception raised **anywhere** in the body, the
 statement after the `with` is reachable with the body only partly executed — a bare local assigned
 inside the body may or may not have been assigned when control reaches the read. Sharpy resolves this

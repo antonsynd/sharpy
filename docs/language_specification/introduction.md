@@ -47,6 +47,8 @@ Given any language design question, apply the axioms in order:
 | Why `snake_case` in source but `PascalCase` in .NET? | Resolution → Zero-cost naming transformation |
 | Why do builtins like `len()` work on both Sharpy and .NET types? | Resolution → Zero-cost polymorphic dispatch |
 
+> **Ruled, not yet implemented (R-RQ, R-RP and R-RT, 2026-11-25).** "Can a variable be uninitialized? No" gains ruled exceptions: a `var` field or `var` local whose type has a default (a value type, `T | None`, `T?`), and an auto-property of a value type that has a setter, may be declared without an initializer and read as that default. Axiom 3's own sentence is not edited here.
+
 ## One-Liner Summary
 
 > **Sharpy = .NET runtime + Python syntax + static null-safe types, where .NET wins conflicts unless the compiler bridges them for free.**

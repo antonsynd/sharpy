@@ -171,7 +171,7 @@ print(name)  # ERROR: 'name' does not exist in this scope
 
 **Walrus Operator in Comprehensions:**
 
-Variables assigned using the walrus operator (`:=`) inside a comprehension are also comprehension-local. They do not leak to the containing scope:
+A name the walrus operator (`:=`) introduces inside a comprehension cannot be read after the comprehension:
 
 <!-- spec-sweep: error SPY0200 -->
 ```python
@@ -187,7 +187,7 @@ results = [y * 2 for x in items if (y := expensive(x)) > 0]
 print(y)  # ERROR: 'y' does not exist in this scope
 ```
 
-**Note:** This differs from Python 3.8+, where walrus assignments leak. In Sharpy, the syntactic boundary (`[...]` / `{...}`) is the semantic boundary: nothing leaks. A walrus that reuses a name already visible outside, with that name read after it, is refused rather than printing the outer value. See [walrus_operator.md](walrus_operator.md) for more details.
+**Note:** This differs from Python 3.8+, where walrus assignments leak. In Sharpy a name the walrus introduces cannot be read after the comprehension. A walrus over a local of the same function is an assignment and writes through, as Python does (R-QS); over a `let` or a parameter it is refused as any write to them is, and over a module variable or an enclosing function's local it is refused without `global` / `nonlocal`. See [walrus_operator.md](walrus_operator.md) for more details.
 
 **PEP 572 Prohibited Positions (SPY0704):**
 

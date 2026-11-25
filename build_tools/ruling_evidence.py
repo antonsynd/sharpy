@@ -115,6 +115,12 @@ import sys
 import types
 
 path, result = sys.argv[1], sys.argv[2]
+if len(sys.argv) > 3:
+    # The twin has modules beside it: isolated mode leaves the script's directory off the
+    # path, so put it first, where `python main.py` would have it.
+    import os
+
+    sys.path.insert(0, os.path.dirname(os.path.abspath(path)))
 sys.argv = [path]
 _open = open  # the twin may replace builtins.open
 
@@ -205,12 +211,48 @@ def _run(argv: List[str], cwd: Path) -> Tuple[int, str, str]:
     return done.returncode, done.stdout, done.stderr
 
 
-def measure_sharpy(program: str, sharpyc: Optional[Path] = None) -> str:
-    """Compile and run `program` (it needs a `main()`) with the built compiler; return its observation."""
+BESIDE_PROGRAM = ("main.spy",)
+BESIDE_TWIN = ("main.py", "runner.py", "result.txt")
+
+
+def beside_problem(files: object, taken: Tuple[str, ...]) -> Optional[str]:
+    """Why `files` cannot be written beside a program, or None. Shared with the record schema.
+
+    Names are compared without case: on a case-insensitive filesystem `Main.spy` is `main.spy`.
+    """
+    if not isinstance(files, dict) or not files:
+        return "it maps a file name to its text"
+    seen = {t.lower() for t in taken}
+    for name, text in files.items():
+        if not isinstance(name, str) or not isinstance(text, str):
+            return "it maps a file name to its text"
+        if not name or name in (".", "..") or Path(name).name != name or name.lower() in seen:
+            return f"a file beside the program needs a plain name of its own, other than {', '.join(taken)}: {name!r}"
+        seen.add(name.lower())
+    return None
+
+
+def _write_beside(directory: Path, files: Optional[Dict[str, str]], taken: Tuple[str, ...]) -> None:
+    """Write a case's other modules next to its main file."""
+    if not files:
+        return
+    problem = beside_problem(files, taken)
+    if problem:
+        raise EvidenceError(problem)
+    for name, text in files.items():
+        (directory / name).write_text(text, encoding="utf-8")
+
+
+def measure_sharpy(program: str, sharpyc: Optional[Path] = None, files: Optional[Dict[str, str]] = None) -> str:
+    """Compile and run `program` (it needs a `main()`) with the built compiler; return its observation.
+
+    `files` are other modules written beside it, for a case that needs more than one file.
+    """
     sharpyc = sharpyc or sharpyc_path()
     with tempfile.TemporaryDirectory(prefix="ruling-evidence-") as tmp:
         source = Path(tmp) / "main.spy"
         source.write_text(program, encoding="utf-8")
+        _write_beside(Path(tmp), files, BESIDE_PROGRAM)
         code, out, err = _run([str(sharpyc), "run", str(source)], Path(tmp))
     if RUN_BANNER not in out:
         error = SPY_ERROR_RE.search(out + "\n" + err)
@@ -231,14 +273,19 @@ def measure_sharpy(program: str, sharpyc: Optional[Path] = None) -> str:
     )
 
 
-def measure_python(program: str, python: Optional[str] = None) -> str:
-    """Run `program` under the python oracle in isolated mode; return its observation."""
+def measure_python(program: str, python: Optional[str] = None, files: Optional[Dict[str, str]] = None) -> str:
+    """Run `program` under the python oracle in isolated mode; return its observation.
+
+    `files` are other modules written beside it; with them the twin's directory is first on the path.
+    """
     python = python or sys.executable
     with tempfile.TemporaryDirectory(prefix="ruling-evidence-") as tmp:
         source, runner, result = (Path(tmp) / n for n in ("main.py", "runner.py", "result.txt"))
         source.write_text(program, encoding="utf-8")
         runner.write_text(PY_RUNNER, encoding="utf-8")
-        code, out, err = _run([python, "-I", str(runner), str(source), str(result)], Path(tmp))
+        _write_beside(Path(tmp), files, BESIDE_TWIN)
+        command = [python, "-I", str(runner), str(source), str(result)] + (["beside"] if files else [])
+        code, out, err = _run(command, Path(tmp))
         ended = result.read_text(encoding="utf-8") if result.is_file() else None
     if ended is None:
         raise EvidenceError(
@@ -291,17 +338,22 @@ def derive_door(before: str, after: str, python: str = "no-twin") -> Dict[str, o
 
 
 def evidence_block(
-    program: str, twin: Optional[str], sharpyc: Optional[Path], python: Optional[str]
+    program: str,
+    twin: Optional[str],
+    sharpyc: Optional[Path],
+    python: Optional[str],
+    files: Optional[Dict[str, str]] = None,
+    twin_files: Optional[Dict[str, str]] = None,
 ) -> Dict[str, object]:
-    block: Dict[str, object] = {
-        "program": program,
-        "sharpy": measure_sharpy(program, sharpyc),
-    }
-    if twin is None:
-        block["python"] = "no-twin"
-    else:
+    block: Dict[str, object] = {"program": program}
+    if files:
+        block["files"] = dict(files)
+    if twin is not None:
         block["twin"] = twin
-        block["python"] = measure_python(twin, python)
+        if twin_files:
+            block["twin_files"] = dict(twin_files)
+    block["sharpy"] = measure_sharpy(program, sharpyc, files)
+    block["python"] = "no-twin" if twin is None else measure_python(twin, python, twin_files)
     return block
 
 
@@ -313,13 +365,13 @@ def recheck(
     """Re-run each (owner, evidence) pair; return one line per program that drifted from its record."""
     drift: List[str] = []
     for owner, evidence in records:
-        seen = measure_sharpy(str(evidence["program"]), sharpyc)
+        seen = measure_sharpy(str(evidence["program"]), sharpyc, evidence.get("files"))
         if seen != evidence.get("sharpy"):
             drift.append(
                 f"{owner}: sharpy recorded {evidence.get('sharpy')!r}, now {seen!r}"
             )
         if "twin" in evidence:
-            seen = measure_python(str(evidence["twin"]), python)
+            seen = measure_python(str(evidence["twin"]), python, evidence.get("twin_files"))
             if seen != evidence.get("python"):
                 drift.append(
                     f"{owner}: python recorded {evidence.get('python')!r}, now {seen!r}"
@@ -354,6 +406,14 @@ def main(argv: Optional[List[str]] = None) -> int:
     measure.add_argument(
         "--python", dest="twin", type=Path, help="the python twin of the program"
     )
+    measure.add_argument(
+        "--with", dest="beside", type=Path, action="append", default=[],
+        help="another Sharpy module to write beside the program (repeatable)",
+    )
+    measure.add_argument(
+        "--python-with", dest="twin_beside", type=Path, action="append", default=[],
+        help="another python module to write beside the twin (repeatable)",
+    )
     door = sub.add_parser("door", help="print the door for three observations")
     door.add_argument("--before", required=True)
     door.add_argument("--after", required=True)
@@ -374,11 +434,19 @@ def main(argv: Optional[List[str]] = None) -> int:
             import yaml
 
             twin = args.twin.read_text(encoding="utf-8") if args.twin else None
+            if args.twin_beside and twin is None:
+                raise EvidenceError("--python-with needs --python: there is no twin to put the file beside")
+            for given in (args.beside, args.twin_beside):
+                names = [f.name.lower() for f in given]
+                if len(set(names)) != len(names):
+                    raise EvidenceError("two files given with one name; a file beside the program is written under its own name")
             block = evidence_block(
                 args.program.read_text(encoding="utf-8"),
                 twin,
                 args.sharpyc,
                 args.python_exe,
+                {f.name: f.read_text(encoding="utf-8") for f in args.beside},
+                {f.name: f.read_text(encoding="utf-8") for f in args.twin_beside},
             )
             print(
                 yaml.safe_dump(

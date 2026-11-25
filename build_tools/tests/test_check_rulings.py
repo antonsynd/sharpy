@@ -527,6 +527,54 @@ def test_a_family_with_answers_is_compared_by_answer(tmp_path):
     assert ("invariance", ("L1", "R-A", "R-C")) in keys(findings(tmp_path, edit))
 
 
+def test_a_ruling_answers_what_stood_when_it_was_made_not_what_came_after(tmp_path):
+    # R-D (2026-11-22) and a later R-E share a family. R-E must answer R-D; R-D cannot answer R-E.
+    def later(considered):
+        return strict("R-E", date="2026-11-23", cases=[case("search", "refuse", evidence=evidence(REFUSED, REFUSED))], considered=considered)
+
+    def edit(data, considered):
+        rulings(data).extend([strict(), later(considered)])
+
+    both = [{"id": "R-A", "why": "the operator site"}, {"id": "R-D", "why": "R-D is the slice"}]
+    assert findings(tmp_path / "ok", lambda d: edit(d, both)) == []
+    # `subjects` is (the ruling that must answer, the one it did not); a finding's key sorts them.
+    assert [f.subjects for f in findings(tmp_path / "missing", lambda d: edit(d, both[:1]))] == [("R-E", "R-D")]
+
+    # Made on the same day, each must answer the other.
+    def same_day(data):
+        rulings(data).extend([strict(), later(both)])
+        rulings(data)[-1]["date"] = "2026-11-22"
+
+    assert [f.subjects for f in findings(tmp_path / "same", same_day)] == [("R-D", "R-E")]
+
+
+@pytest.mark.parametrize("date, ok", [("2026-11-22", True), ("2026-11-3", False), ("22 Nov 2026", False), ("2026-11-22T10:00", False)])
+def test_a_new_ruling_is_dated_as_a_calendar_date(tmp_path, date, ok):
+    # `considered` orders rulings by this text, so "2026-11-3" would sort after "2026-11-24".
+    found = findings(tmp_path, lambda d: rulings(d).append(strict(date=date)))
+    assert (found == []) is ok
+    assert ok or ("schema" in {f.check for f in found} and "YYYY-MM-DD" in found[0].message)
+
+
+@pytest.mark.parametrize(
+    "extra, ok",
+    [
+        ({"files": {"other.spy": "x = 1\n"}}, True),
+        ({"files": {}}, False),
+        ({"files": ["other.spy"]}, False),
+        ({"files": {"other.spy": 1}}, False),
+        ({"files": {"../other.spy": "x = 1\n"}}, False),  # a name the measuring tool would refuse
+        ({"files": {"main.spy": "x = 1\n"}}, False),
+        ({"twin_files": {"other.py": "x = 1\n"}}, False),  # nothing to put it beside: the case has no twin
+    ],
+)
+def test_the_files_beside_a_program_are_a_map_of_name_to_text(tmp_path, extra, ok):
+    def edit(data):
+        rulings(data).append(strict(cases=[case("slice", "refuse", evidence={**evidence(REFUSED, REFUSED), **extra})]))
+
+    assert ([f.check for f in findings(tmp_path, edit)] == []) is ok
+
+
 # --- the door, and who may decide -----------------------------------------------------------------
 
 
@@ -536,6 +584,30 @@ def test_a_door_that_is_not_what_the_evidence_gives_fails(tmp_path):
 
     found = [f for f in findings(tmp_path, edit) if f.check == "door"]
     assert len(found) == 1 and "the evidence gives 'two-way'" in found[0].message
+
+
+def test_a_ruling_that_refuses_one_case_and_admits_another_does_both(tmp_path):
+    # One case refuses a running program (breaks it; relaxable), another admits a refused one
+    # (breaks nothing; cannot be taken back). The ruling breaks running programs AND is one-way.
+    both = dict(
+        decided_by="owner",
+        cases=[
+            case("slice", "refuse", evidence=evidence(RAN, REFUSED)),
+            case("search", "run", evidence=evidence(REFUSED, RAN)),
+        ],
+    )
+    for order in (0, 1):
+        cases = both["cases"][::-1] if order else both["cases"]
+
+        def edit(data, flags=None, cases=cases):
+            rulings(data).append(strict(**{**both, "cases": cases, **(flags or {})}))
+
+        truth = dict(door="one-way", breaks_running=True, undo_breaks=True)
+        assert findings(tmp_path / f"ok{order}", lambda d: edit(d, truth)) == [], order
+        # Either single case's own door is not the ruling's.
+        for n, wrong in enumerate((dict(door="one-way", breaks_running=False, undo_breaks=True), dict(door="two-way", breaks_running=True, undo_breaks=False))):
+            found = findings(tmp_path / f"bad{order}{n}", lambda d, w=wrong: edit(d, w))
+            assert found and {f.check for f in found} == {"door"}, (order, wrong)
 
 
 def test_an_admission_is_one_way_and_reserved_for_the_owner(tmp_path):
@@ -910,9 +982,10 @@ def test_the_real_tree_has_no_new_and_no_stale_finding(real):
 
 
 def test_every_charter_ruling_has_a_record(real):
-    assert len(real.charter) >= 460 and set(real.charter) == {
-        r["id"] for r in real.rulings if "seed" in r
-    }
+    # Every charter row has a record, and every seed record a charter row. A new (strict) ruling
+    # may be recorded before its row is written, so the two sets need not be equal.
+    seeds = {r["id"] for r in real.rulings if "seed" in r}
+    assert len(seeds) >= 460 and seeds <= set(real.charter) <= {r["id"] for r in real.rulings}
 
 
 def test_the_written_laws_are_all_anchored_in_their_sources(real):
@@ -924,27 +997,22 @@ def test_the_written_laws_are_all_anchored_in_their_sources(real):
 # Positive controls: what the audit verified by reading the rows is what the checks report. If a
 # check stopped firing, the ratchet's stale row would say so; these name the expectation outright.
 AUDITED = [
-    ("collision", ("R-GV", "R-LR")),  # C1: `:=` onto a `let`: an error, or unruled
-    ("collision", ("R-HH", "R-HT")),  # C2: a silent spec read two ways
-    ("invariance", ("P-backed-enum-flavour", "R-ON", "R-OW")),  # U1: int-backed enums
-    (
-        "invariance",
-        ("P-backed-enum-flavour", "R-PK", "R-QG"),
-    ),  # U1: string-backed enums
-    (
-        "invariance",
-        ("P-uniform-verdict-across-forms", "R-PI", "R-PL"),
-    ),  # U2: `==` refused, `in` answers
-    (
-        "invariance",
-        ("P-uniform-verdict-across-forms", "R-CH", "R-IM"),
-    ),  # U3: str of Optional and of Result
-    (
-        "exception-in-law",
-        ("N5", "R-MH"),
-    ),  # L1: the ruling overrode N5 and N5 was not changed
-    ("charter-mark", ("R-BK", "R-GV")),  # 6.5: amended, the earlier row does not say so
+    ("charter-mark", ("R-CN", "R-GV")),  # 6.5: amended, the earlier row does not say so
+    ("charter-mark", ("R-FR", "R-FV")),
+    ("charter-mark", ("R-LK", "R-MB")),
+]
+
+# The audit's conflicts that the owner ruled on 2026-11-24 (R-QS ... R-RL). Each fired before those
+# records existed (they were the positive controls above); none may fire now.
+RULED = [
+    ("collision", ("R-GV", "R-LR")),  # C1 -> R-QS
+    ("collision", ("R-HH", "R-HT")),  # C2 -> R-QT
+    ("invariance", ("P-uniform-verdict-across-forms", "R-PI", "R-PL")),  # U2 -> R-QX
+    ("invariance", ("P-uniform-verdict-across-forms", "R-CH", "R-IM")),  # U3 -> R-QY
+    ("exception-in-law", ("N5", "R-MH")),  # L1 -> R-QS; N5's text is corrected
+    ("charter-mark", ("R-BK", "R-GV")),
     ("charter-mark", ("R-BL", "R-GV")),
+    ("charter-mark", ("R-DX", "R-ES")),  # R-QV replaced R-ES; R-DX's row now says what happened to part 1
 ]
 
 
@@ -953,15 +1021,150 @@ def test_the_audited_conflicts_are_what_the_checks_report(real, key):
     assert key in keys(mod.run_checks(real))
 
 
+@pytest.mark.parametrize("key", RULED, ids=lambda k: f"{k[0]}:{'+'.join(k[1])}")
+def test_a_ruled_conflict_no_longer_fires(real, key):
+    assert key not in keys(mod.run_checks(real))
+
+
+def _without(real, rid):
+    """The real records as they would be had ruling `rid` not been recorded."""
+    rulings_ = [copy.deepcopy(r) for r in real.rulings if r["id"] != rid]
+    for record in rulings_:
+        for field in ("superseded_by", "amended_by"):
+            if rid in record.get(field, []):
+                record[field] = [x for x in record[field] if x != rid]
+                if not record[field]:
+                    del record[field]
+    return real._replace(rulings=rulings_)
+
+
+def test_the_walrus_ruling_is_what_settles_the_let_collision(real):
+    # Control for RULED: take R-QS away and R-LR is live again, so C1 fires as the audit found it.
+    assert ("collision", ("R-GV", "R-LR")) in keys(mod.run_checks(_without(real, "R-QS")))
+
+
+def test_the_enum_law_holds_both_backings_to_one_verdict(real):
+    # L-enum-own-type says the backing must not matter. Give the string backing another verdict
+    # for one cell and the law reports it, naming the int-backed ruling it now disagrees with.
+    assert not [f for f in mod.run_checks(real) if f.check == "invariance" and "L-enum-own-type" in f.subjects]
+    rulings_ = copy.deepcopy(real.rulings)
+    cell = {"backing": "string", "operator": "order", "operands": "one-type"}
+    (flipped,) = [c for c in next(r for r in rulings_ if r["id"] == "R-QW")["cases"] if c["coords"] == cell]
+    flipped["verdict"] = "refuse"
+    found = [f for f in mod.run_checks(real._replace(rulings=rulings_)) if f.check == "invariance"]
+    assert [f.subjects for f in found] == [("R-OW", "R-QW", "L-enum-own-type")]
+
+
+def test_every_ruling_of_2026_11_24_is_the_owners_and_has_a_charter_row(real):
+    new = [r for r in real.rulings if "seed" not in r]
+    assert [r["id"] for r in new if r["date"] == "2026-11-25"] == ["R-RO", "R-RP", "R-RQ", "R-RR", "R-RS", "R-RT", "R-RU"]
+    assert [r["id"] for r in new if r["date"] == "2026-11-24"] == ["R-QS", "R-QT", "R-QU", "R-QV", "R-QW", "R-QX", "R-QY", "R-QZ", "R-RA", "R-RB", "R-RC", "R-RD", "R-RE", "R-RF", "R-RG", "R-RH", "R-RI", "R-RJ", "R-RK", "R-RL", "R-RM", "R-RN"]
+    for record in new:
+        assert record["decided_by"] == "owner" and record["id"] in real.charter, record["id"]
+        assert not real.charter[record["id"]][0], record["id"]  # not struck
+
+
+def test_the_field_rulings_on_b7_say_which_unassigned_field_runs(real):
+    # R-RM (2026-11-24) removed B7's exception; R-RQ (2026-11-25) restored it. What is left of R-RM
+    # is the reference-type field: it runs only where some constructor assigns it (every __init__,
+    # the one an __init__ chains to, or the constructor the compiler writes for a dataclass).
+    records = {r["id"]: r for r in real.rulings}
+    assert records["R-GV"]["amended_by"] == ["R-RM", "R-RR"] and "R-GV" in records["R-RM"]["amends"]
+    found = keys(mod.run_checks(real))
+    assert ("charter-mark", ("R-GV", "R-RM")) not in found and ("charter-mark", ("R-RM", "R-RQ")) not in found
+    verdicts = {(c["coords"]["type"], c["coords"]["assigned"]): c["verdict"] for c in records["R-RM"]["cases"]}
+    assert {t for t, _ in verdicts} == {"reference-type"} and records["R-RM"]["amended_by"] == ["R-RQ"]
+    assert {a for (_, a), v in verdicts.items() if v == "run"} == {"in-every-init", "by-chained-init", "by-synthesized-init"}
+    assert verdicts[("reference-type", "in-no-init")] == "refuse"
+    # R-RQ: unassigned, only a `var` field of a type with a default runs.
+    unset = {(c["coords"]["binding"], c["coords"]["type"]): c["verdict"] for c in records["R-RQ"]["cases"] if c["family"] == "field-assignment"}
+    assert {k for k, v in unset.items() if v == "run"} == {("var", "value-type"), ("var", "nullable")}
+    assert unset[("var", "reference-type")] == unset[("let", "value-type")] == "refuse"
+    # R-RN: before all fields are assigned, `self` runs in two uses only. The chaining call is one:
+    # without it the rule would refuse every derived class.
+    uses = {c["coords"]["use"]: c["verdict"] for c in records["R-RN"]["cases"]}
+    assert {u for u, v in uses.items() if v == "run"} == {"assigned-field-read", "chaining-call"}
+    assert uses["method-call"] == "refuse" and records["R-RN"]["amended_by"] == ["R-RQ"]
+    # ... and R-RQ lifts that for a class whose only unassigned fields are `var` value types.
+    (early,) = [c for c in records["R-RQ"]["cases"] if c["family"] == "self-before-fields"]
+    assert early["coords"] == {"use": "method-call", "unassigned": "var-value-type-only"} and early["verdict"] == "run"
+
+
+def test_the_super_call_ruling_reverses_only_own_field_assignments(real):
+    # R-RO amends R-ML: ahead of `super().__init__()`, assignments to the class's own fields run
+    # (and are required); any other statement stays refused, as R-ML ruled.
+    records = {r["id"]: r for r in real.rulings}
+    assert records["R-ML"]["amended_by"] == ["R-RO"]
+    assert ("charter-mark", ("R-ML", "R-RO")) not in keys(mod.run_checks(real))
+    cells = {(c["coords"]["ahead"], c["coords"]["own-fields"]): c["verdict"] for c in records["R-RO"]["cases"]}
+    assert cells[("own-field-assignments", "assigned-in-init")] == "run"
+    assert cells[("other-statement", "assigned-in-init")] == "refuse"
+    assert cells[("nothing", "assigned-in-init")] == "refuse" and cells[("nothing", "none")] == "run"
+    # The case that left R-RN open: a base __init__ that calls an overridden method.
+    assert [c["verdict"] for c in records["R-RO"]["cases"] if c["coords"]["base-init"] == "calls-overridden-method"] == ["run"]
+    assert records["R-RO"]["door"] == "one-way"
+
+
+def test_an_auto_property_rests_on_zero_only_for_a_value_type(real):
+    # R-RP: unassigned, a value-type auto-property runs and a reference-type one is refused,
+    # whichever plain modifier it has. R-RM gives a value-type FIELD the other verdict.
+    records = {r["id"]: r for r in real.rulings}
+    unset = {(c["coords"]["type"], c["coords"]["modifier"]): c["verdict"] for c in records["R-RP"]["cases"] if c["coords"]["assigned"] == "in-no-init"}
+    assert unset[("value-type", "plain")] == "run"
+    assert unset[("reference-type", "plain")] == unset[("reference-type", "get")] == "refuse"
+    assert "R-RM" in [x["id"] for x in records["R-RP"]["considered"]]
+    # Since R-RQ a `var` field of a value type rests on zero too; a `let` one does not.
+    field = {c["coords"]["binding"]: c["verdict"] for c in records["R-RQ"]["cases"] if c["family"] == "field-assignment" and c["coords"]["type"] == "value-type"}
+    assert field == {"var": "run", "let": "refuse"}
+
+
+def test_a_var_local_follows_the_var_field_and_a_get_only_property_does_not(real):
+    records = {r["id"]: r for r in real.rulings}
+    # R-RT: with no initializer a local runs only as a `var` of a type with a default, as a field
+    # does under R-RQ; R-RH's keywordless local stays refused.
+    local = {(c["coords"]["binding"], c["coords"]["type"]): c["verdict"] for r in ("R-RH", "R-RT") for c in records[r]["cases"]}
+    assert {k for k, v in local.items() if v == "run"} == {("var", "value-type"), ("var", "nullable"), ("var", "optional")}
+    field = {(c["coords"]["binding"], c["coords"]["type"]): c["verdict"] for c in records["R-RQ"]["cases"] if c["family"] == "field-assignment"}
+    assert {k: local[k] for k in field} == field
+    assert records["R-RH"]["amended_by"] == ["R-RT"] and ("charter-mark", ("R-RH", "R-RT")) not in keys(mod.run_checks(real))
+    # R-RU: a get-only auto-property runs where it is given a value, at its declaration or in every
+    # __init__, and never on a zero default.
+    get = {(c["coords"]["type"], c["coords"]["assigned"]): c["verdict"] for r in ("R-RP", "R-RU") for c in records[r]["cases"] if c["coords"]["modifier"] == "get"}
+    assert {k for k, v in get.items() if v == "run"} == {("value-type", "at-declaration"), ("reference-type", "in-every-init")}
+    assert get[("value-type", "in-no-init")] == get[("reference-type", "in-no-init")] == "refuse"
+    assert records["R-RP"]["amended_by"] == ["R-RU"] and ("charter-mark", ("R-RP", "R-RU")) not in keys(mod.run_checks(real))
+
+
+def test_a_struct_field_follows_the_field_rule_and_the_super_call_is_written(real):
+    records = {r["id"]: r for r in real.rulings}
+    # R-RR: by a constructor call, a reference-type struct field with nothing to assign it is
+    # refused; what .NET zeroes without a constructor (an array element) stays as it is.
+    cells = {(c["coords"]["given"], c["coords"]["made-by"], c["coords"]["type"]): c["verdict"] for c in records["R-RR"]["cases"]}
+    assert cells[("nothing", "call", "reference-type")] == "refuse" and cells[("nothing", "call", "value-type")] == "run"
+    assert cells[("init", "call", "reference-type")] == cells[("initializer", "call", "reference-type")] == "run"
+    assert cells[("init", "array-element", "reference-type")] == "run"
+    assert cells[("nothing", "call", "nullable")] == cells[("nothing", "call", "optional")] == "run"
+    assert "R-GV" in records["R-RR"]["amends"] and ("charter-mark", ("R-GV", "R-RR")) not in keys(mod.run_checks(real))
+    # R-RS: the call may be left out only where the base has no __init__.
+    omitted = {c["coords"]["base-init"]: c["verdict"] for c in records["R-RS"]["cases"] if c["coords"]["call"] == "omitted"}
+    assert {b for b, v in omitted.items() if v == "run"} == {"none"}
+    assert omitted["parameterless"] == omitted["needs-argument"] == omitted["calls-overridden-method"] == "refuse"
+    # ... and an __init__ that chains to another of its own class is exempt (it cannot write both).
+    assert [c["verdict"] for c in records["R-RS"]["cases"] if c["coords"]["call"] == "chained-to-own-init"] == ["run"]
+    # R-RQ narrows three rulings, and each one's row says so.
+    assert [r for r in ("R-RM", "R-RN", "R-RO") if records[r].get("amended_by") != ["R-RQ"]] == []
+    assert not [k for k in keys(mod.run_checks(real)) if k[0] == "charter-mark" and k[1][1] == "R-RQ"]
+
+
 def test_properly_marked_amendments_are_not_reported(real):
     # R-ON's row says "Amended at call 46 by R-QG"; R-MJ's is narrowed by R-MH and says so.
     found = keys(mod.run_checks(real))
     assert ("charter-mark", ("R-ON", "R-QG")) not in found
     assert ("charter-mark", ("R-MH", "R-MJ")) not in found
     records = {r["id"]: r for r in real.rulings}
-    assert records["R-ON"]["amended_by"] == ["R-QG"] and records["R-MJ"][
-        "amended_by"
-    ] == ["R-MH"]
+    # R-MJ is amended a second time by R-QS (2026-11-24), and its row names that one too.
+    assert records["R-ON"]["amended_by"] == ["R-QG"] and records["R-MJ"]["amended_by"] == ["R-MH", "R-QS"]
+    assert ("charter-mark", ("R-MJ", "R-QS")) not in found
 
 
 def test_every_known_row_points_at_a_file_that_exists(real):
@@ -970,14 +1173,14 @@ def test_every_known_row_points_at_a_file_that_exists(real):
 
 
 def test_the_readme_template_passes_the_checks_it_documents(real):
-    # The template in docs/process/rulings/README.md, added to the real records. R-LR gets the
+    # The template in docs/process/rulings/README.md, added to the real records. R-QS gets the
     # matching `amended_by`, as the template's `amends` requires; nothing else is adjusted.
     text = (REPO / mod.RULINGS_DIR / "README.md").read_text(encoding="utf-8")
     block = text.split("```yaml\n", 1)[1].split("```", 1)[0]
     (template,) = yaml.safe_load(block)
     assert "seed" not in template
     rulings_ = copy.deepcopy(real.rulings)
-    next(r for r in rulings_ if r["id"] == "R-LR")["amended_by"] = [template["id"]]
+    next(r for r in rulings_ if r["id"] == "R-QS")["amended_by"] = [template["id"]]
     new, _, _ = mod.judge(real._replace(rulings=rulings_ + [template]))
-    # The one thing the template cannot have is a charter row naming it on R-LR.
-    assert [f.key[:2] for f in new] == [("charter-mark", ("R-LR", template["id"]))]
+    # The one thing the template cannot have is a charter row naming it on R-QS.
+    assert [f.key[:2] for f in new] == [("charter-mark", ("R-QS", template["id"]))]

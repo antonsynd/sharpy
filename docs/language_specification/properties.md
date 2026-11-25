@@ -82,6 +82,8 @@ named X, only one of the following are possible within a given class/struct/inte
 - `property get name: T` — getter-only; can have a default value or be set in constructor, then immutable
 - `property init name: T` — getter + init-only setter; **must** be set at declaration or in every constructor (no zero-initialization); immutable after construction
 
+> **Ruled, not yet implemented (R-RP and R-RU, 2026-11-25).** A get-only auto-property (`property get`) will need an initializer or an assignment in every `__init__`, whatever its type: it takes no zero default. A `property` or `property set` of a reference type will need the same; of a value type it keeps its zero default. The table describes what the compiler does today.
+
 **Auto-Property Initialization Rules:**
 
 | Modifier | Default Value | Zero-Init (value types) | Must set in `__init__` |

@@ -2,24 +2,23 @@
 # Two live cases with the same family and coordinates must agree (check `collision`); a law may say an
 # axis must not matter (check `invariance`). Add a value here before using it in a case.
 #
-# These five families are the ones the 2026-11-21 audit's verified conflicts needed, listed by hand.
+# The first five families are the ones the 2026-11-21 audit's verified conflicts needed; the rest were
+# added for the owner's rulings of 2026-11-24 (R-QS to R-RN) and of 2026-11-25 (R-RO to R-RU). All are listed by hand.
 # Contract section 11 wants each axis to be the image of a compiler enumeration; #2486, #2487 and #2733
 # are where that is built, and these lists should be replaced by theirs as they land.
 families:
   enum-operator:
-    doc: 'An operator applied to members of an enum that has values. `answer` is the python enum class the result
-      matches: a plain Enum (cross-type == is False, no ordering) or a valued one (IntEnum / StrEnum: compares
-      and orders by value).'
+    doc: 'An operator applied to members of an enum that has values, by backing, operator and what stands on the
+      other side. Ruled by R-QW: an enum compares and orders only with its own type.'
     axes:
       backing: [int, string]
       operator: [eq, order]
-      operands: [one-type, two-types]
-    answers: [plain-enum, valued-enum]
+      operands: [one-type, two-types, raw-value]
   walrus-target:
     doc: What `name := value` does, by where it is written and what `name` already is.
     axes:
       position: [statement, comprehension-element]
-      target: [new-name, existing-local, let, module, enclosing]
+      target: [new-name, existing-local, let, parameter, module, enclosing]
   equality-without-eq:
     doc: An equality question about two values whose type declares no `__eq__`.
     axes:
@@ -33,10 +32,95 @@ families:
       conversion: [str, repr]
     answers: [payload, constructor]
   spec-silent-acceptance:
-    doc: The spec does not say whether a program is legal, python3 and Sharpy disagree today, and a ruling picks
-      one. Two rulings here with the same coordinates are the same question; if they are not, the axis that separates
-      them is missing and adding it is the ruling.
+    doc: 'The spec does not say whether a program is legal, python3 and Sharpy disagree today, and a ruling picks
+      one. `csharp` says whether C# defines the form (R-QT): where it does and nothing conflicts, Sharpy may accept
+      what Python refuses.'
     axes:
       spec: [silent]
       python: [refuses, runs]
       sharpy-before: [refused, runs]
+      csharp: [defines, silent]
+  none-equality:
+    doc: '`== None` or `!= None` with the literal, by the type of the other operand.'
+    axes:
+      operand: [strict-optional, loose-nullable, user-class, clr-reference, loose-clr-reference]
+  optional-store:
+    doc: A store of a plain payload value to a `T?` name, outside or inside a narrowing of that name.
+    axes:
+      site: [plain, narrowed]
+  parameter-default:
+    doc: A parameter default that C# cannot store as a constant, by what it is and how it is spelled.
+    axes:
+      default: [collection-literal, call, tuple, earlier-parameter]
+      spelling: [equals, fat-arrow]
+  declaration-initializer:
+    doc: 'A declaration with no initializer, by where it stands, how it is declared (`keywordless` is today''s
+      `x: T`) and its type.'
+    axes:
+      host: [module, static-member, local]
+      binding: [keywordless, let, var]
+      type: [value-type, nullable, optional, reference-type]
+  expression-statement:
+    doc: An expression that is not a call, standing alone as a statement, by its form.
+    axes:
+      form: [conditional, lambda, module-name]
+  outer-name-use:
+    doc: A function's use of a name that belongs to its module, other than a declared write.
+    axes:
+      use: [read, create-by-global]
+  repr-placeholder:
+    doc: A library type whose text keeps a fixed placeholder where Python prints something the runtime does not
+      carry.
+    axes:
+      type: [defaultdict]
+  none-needle:
+    doc: A `None` held in a loosely typed variable, tested for membership at run time, by the kind of container.
+    axes:
+      container: [library-type-with-twin, opaque-or-clr]
+  module-name-collision:
+    doc: A local module with the name of a module or namespace that comes from elsewhere, by where the other one
+      comes from.
+    axes:
+      other: [stdlib-module, referenced-library, clr-namespace]
+  field-assignment:
+    doc: 'A class field with no initializer at its declaration, by its type, by how it is declared (`keywordless`
+      is today''s `x: T` spelling, which B6 retires for `let` / `var`) and by where the class''s `__init__` methods
+      assign it.'
+    axes:
+      type: [value-type, reference-type, nullable]
+      binding: [keywordless, let, var]
+      assigned: [in-every-init, by-chained-init, by-synthesized-init, in-no-init, on-one-branch, in-one-of-two-inits,
+        class-has-no-init]
+  self-before-fields:
+    doc: A use of `self` inside `__init__` before every field of the class has been assigned. A base `__init__`
+      that calls a method a derived class overrides is the `super-call-order` family's.
+    axes:
+      use: [unassigned-field-read, assigned-field-read, chaining-call, method-call, self-as-argument, self-captured]
+      unassigned: [reference-type-field, var-value-type-only]
+  struct-field-assignment:
+    doc: A struct field with no value at its declaration, by its type, by what gives it one, and by how the struct
+      value is made.
+    axes:
+      type: [reference-type, nullable, optional, value-type]
+      given: [nothing, initializer, init]
+      made-by: [call, array-element]
+  super-call-presence:
+    doc: A derived class's `__init__` that does not write `super().__init__(...)`, by what the base class's `__init__`
+      is and by whether it leaves the call out or chains to another `__init__` of its own class.
+    axes:
+      base-init: [none, parameterless, needs-argument, calls-overridden-method]
+      call: [omitted, chained-to-own-init]
+  super-call-order:
+    doc: A derived class's `__init__`, by what stands ahead of `super().__init__(...)`, whether the class has
+      fields of its own to assign, and what the base `__init__` does.
+    axes:
+      ahead: [nothing, own-field-assignments, other-statement]
+      own-fields: [assigned-in-init, none]
+      base-init: [assigns-fields, calls-overridden-method]
+  auto-property-assignment:
+    doc: An auto-property with no default at its declaration, by its type, its modifier and where `__init__` sets
+      it.
+    axes:
+      type: [value-type, reference-type]
+      modifier: [plain, get, init]
+      assigned: [at-declaration, in-every-init, in-no-init]

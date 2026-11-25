@@ -52,6 +52,8 @@ A *chaining call* is `self.__init__(...)` (another constructor of the same class
 
 Python runs statements written ahead of `super().__init__(...)` first. Sharpy refuses them instead of reordering them (see `constructor-chaining-call-first` in `docs/deviations.yaml`):
 
+> **Ruled, not yet implemented (R-RO, 2026-11-25).** Assignments to the class's own fields will be required *ahead of* `super().__init__(...)`, as in Swift, so that a base `__init__` never sees them unassigned; every other statement ahead of the call stays refused. This page and its examples describe what the compiler does today.
+
 <!-- spec-sweep: error SPY0292 -->
 ```python
 class Base:

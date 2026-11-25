@@ -76,13 +76,13 @@ laws:
   source: docs/design/name-resolution.md
   anchor: '### N5. Locals are ordered'
   statement: A local is visible from its declaration to the end of its block; loop, with, except and comprehension
-    targets are fresh bindings.
+    targets are fresh bindings; a walrus is assignment as an expression and has no scope of its own.
   cases:
   - family: walrus-target
     coords:
       position: comprehension-element
       target: existing-local
-    verdict: refuse
+    verdict: run
 - id: N6
   status: written
   source: docs/design/name-resolution.md
@@ -121,6 +121,43 @@ laws:
   anchor: '**Wrap .NET, expose Python**'
   statement: Core and Stdlib wrap .NET and expose Python names; absence is T?, expected failure is Result, bugs
     throw.
+- id: L-csharp-extends
+  status: written
+  source: docs/process/rounds/remediation-round-2026-09-20-batching.md
+  anchor: 'Law `L-csharp-extends`:'
+  statement: Where the spec is silent, Python is the guide; a form Python refuses is accepted with C#'s meaning
+    where C# defines it and nothing conflicts.
+  ruling: R-QT
+- id: L-enum-own-type
+  status: written
+  source: docs/process/rounds/remediation-round-2026-09-20-batching.md
+  anchor: 'Law `L-enum-own-type`:'
+  statement: A valued enum compares and orders only with its own type, by its backing value, whatever the backing.
+  ruling: R-QW
+  invariants:
+  - family: enum-operator
+    along: [backing]
+- id: L-zero-cost
+  status: written
+  source: docs/process/rounds/remediation-round-2026-09-20-batching.md
+  anchor: 'Law `L-zero-cost`:'
+  statement: Zero cost means no significant increase in memory or run time (0%, or under 1% at p99); interop complication
+    is weighed.
+  ruling: R-RD
+- id: L-same-result
+  status: written
+  source: docs/process/rounds/remediation-round-2026-09-20-batching.md
+  anchor: 'Law `L-same-result`:'
+  statement: Sharpy accepts a Python program where reasonable and fitting the language (static typing and .NET's
+    restrictions apply) and never gives it a different result, under the same qualifiers.
+  ruling: R-RE
+- id: L-footgun
+  status: written
+  source: docs/process/rounds/remediation-round-2026-09-20-batching.md
+  anchor: 'Law `L-footgun`:'
+  statement: 'A recognised Python footgun is never reproduced: refused with a steer where a natural alternative
+    spelling exists, fixed as a listed designed deviation where the natural spelling is the only one.'
+  ruling: R-RF
 - id: P-reversible-door
   status: draft
   source: docs/audits/ruling-audit-2026-11-21.md
@@ -135,6 +172,8 @@ laws:
     R-AW, R-HH, R-EW, R-DW, R-CW, R-CX, R-FM, R-FC, R-DJ, R-BR, R-ML, R-JG, R-KW, R-HJ, R-DH, R-GD, R-DL, R-FH,
     R-IA, R-OA, R-NU, R-HT, R-DZ, R-AX, R-FW, R-OW]
   against: [R-OY, R-QA, R-EU, R-QL, R-PL, R-OB, R-ND, R-MT, R-AI, R-HU]
+  note: 'R-RL (2026-11-24): refusal versus admission is not the only test of a door; what a choice forecloses,
+    and what it makes users rewrite, decide it.'
 - id: P-uniform-verdict-across-forms
   status: draft
   source: docs/audits/ruling-audit-2026-11-21.md
@@ -147,7 +186,7 @@ laws:
   nearest_written_law: N7
   rulings: [R-OY, R-PD, R-PE, R-PF, R-IA, R-OH, R-PI, R-MI, R-LS, R-CW, R-BU, R-MW, R-EI, R-ER, R-LH, R-KY, R-PT,
     R-R, R-II, R-AA, R-EE, R-CR, R-DP, R-IP, R-HH]
-  against: [R-EU, R-DZ, R-NU, R-ON]
+  against: [R-EU, R-DZ, R-NU, R-ON, R-PL, R-QX]
   invariants:
   - family: equality-without-eq
     along: [site]
@@ -209,7 +248,7 @@ laws:
     waits when its class fix is already scheduled.
   nearest_written_law: batch-issues SKILL step 3 (not a listed law)
   rulings: [R-JU, R-KI, R-CN, R-GF, R-GO, R-GU, R-HC, R-HQ, R-IX, R-JF, R-HY, R-IJ, R-JA]
-  against: [R-PM, R-GX, R-NB]
+  against: [R-PM, R-GX, R-NB, R-RB]
 - id: P-group-by-class-and-seam
   status: draft
   source: docs/audits/ruling-audit-2026-11-21.md
@@ -234,6 +273,8 @@ laws:
   nearest_written_law: N2
   rulings: [R-IZ, R-JZ, R-DH, R-AX, R-HJ, R-LD, R-CY, R-II, R-JO, R-AW, R-JI]
   against: [R-BA, R-CV]
+  note: 'R-RA (2026-11-24) removes the boundary: a local module that collides with a library or a CLR namespace
+    is an error too.'
 - id: P-tooling-keeps-user-bytes
   status: draft
   source: docs/audits/ruling-audit-2026-11-21.md
@@ -292,6 +333,7 @@ laws:
   nearest_written_law: T2
   rulings: [R-OP, R-OC, R-NV, R-OS, R-OU, R-OB, R-Z, R-OV]
   against: [R-OC, R-DX]
+  note: 'R-QV (2026-11-24): `== None` with the literal is refused on the loose spelling too.'
 - id: P-untypeable-api-is-deviation
   status: draft
   source: docs/audits/ruling-audit-2026-11-21.md
@@ -383,6 +425,8 @@ laws:
   nearest_written_law: AP
   rulings: [R-EV, R-R, R-AV, R-A, R-FC, R-FW]
   against: [R-R]
+  note: 'R-RG (2026-11-24) lifts the refusal of user-written defaults: a default that is not a compile-time constant
+    is evaluated at each call.'
 - id: P-identity-never-runs-user-code
   status: draft
   source: docs/audits/ruling-audit-2026-11-21.md
@@ -418,6 +462,8 @@ laws:
     exist, R-AD and R-EW protect it.
   rulings: [R-GW, R-KM, R-BJ, R-FX, R-JC, R-DG]
   against: [R-AD, R-EW]
+  note: 'R-RC (2026-11-24) settles the disagreement in the boundary: break freely, keep the C# API sensible for
+    its callers.'
 - id: P-process-extensions-are-one-off
   status: draft
   source: docs/audits/ruling-audit-2026-11-21.md
@@ -493,6 +539,5 @@ laws:
     refuse'', which R-ON does not fit.'
   rulings: [R-OW, R-QG]
   against: [R-ON, R-PK]
-  invariants:
-  - family: enum-operator
-    along: [operator, operands]
+  note: 'Not adopted: R-QW (2026-11-24) rules that an enum compares and orders only with its own type (L-enum-own-type).
+    Kept as the audit wrote it, without its invariant.'
