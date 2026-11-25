@@ -1,0 +1,31 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- A development tool, not a product: it measures how many existing programs a proposed
+       language rule would refuse or change (docs/process/blast-radius.md). Never packed. -->
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net10.0</TargetFramework>
+    <LangVersion>latest</LangVersion>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <AssemblyName>sharpy-blast</AssemblyName>
+    <RootNamespace>Sharpy.BlastRadius</RootNamespace>
+    <IsPackable>false</IsPackable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="Sharpy.Compiler.Tests" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Sharpy.Compiler\Sharpy.Compiler.csproj" />
+    <ProjectReference Include="..\Sharpy.Core\Sharpy.Core.csproj">
+      <Aliases>SharpyRT</Aliases>
+    </ProjectReference>
+    <!-- Analysis loads Sharpy.Stdlib.dll, and the packages it depends on, from beside Sharpy.Core.dll -->
+    <ProjectReference Include="..\Sharpy.Stdlib\Sharpy.Stdlib.csproj">
+      <Aliases>SharpyStdlib</Aliases>
+    </ProjectReference>
+  </ItemGroup>
+
+</Project>

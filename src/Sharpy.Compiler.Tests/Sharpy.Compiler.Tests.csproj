@@ -34,6 +34,8 @@
          project-wide NoWarn. -->
     <ProjectReference Include="../Sharpy.Lsp/Sharpy.Lsp.csproj" />
     <ProjectReference Include="../Sharpy.TestInfrastructure/Sharpy.TestInfrastructure.csproj" />
+    <!-- The blast-radius tool's probes are tested here (docs/process/blast-radius.md) -->
+    <ProjectReference Include="../Sharpy.BlastRadius/Sharpy.BlastRadius.csproj" />
     <ProjectReference Include="../Sharpy.Core/Sharpy.Core.csproj">
       <Aliases>SharpyRT</Aliases>
     </ProjectReference>

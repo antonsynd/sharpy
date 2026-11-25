@@ -1,0 +1,525 @@
+using System.Text;
+using System.Text.Json;
+using FluentAssertions;
+using Sharpy.BlastRadius;
+using Sharpy.BlastRadius.Probes;
+using Xunit;
+
+namespace Sharpy.Compiler.Tests.BlastRadius;
+
+/// <summary>
+/// The R-RO probe (<see cref="SuperCallOrderProbe"/>) against generated programs. The matrix is
+/// generated, not written by hand (contract §11): one class per cell, all in one module, analysed
+/// once. The expected verdict and fix come from <see cref="Expected"/>, which states the rule as a
+/// table and shares no code with the probe.
+/// </summary>
+public class SuperCallOrderProbeTests
+{
+    private static readonly ProbeRunner Runner = new(new SuperCallOrderProbe());
+
+    // ------------------------------------------------------------------ the generated matrix
+
+    private sealed record SlotType(string Name, string Annotation, bool HasDefault,
+        string FromParameter, string FromInherited, string FromEarlier);
+
+    private static readonly SlotType[] Types =
+    {
+        new("ref", "str", false, "p", "str(self.n)", "self.first"),
+        new("list", "list[int]", false, "p", "[self.n]", "[len(self.first)]"),
+        new("value", "int", true, "p", "self.n", "len(self.first)"),
+        new("nullable", "str | None", true, "p", "str(self.n)", "self.first"),
+        new("optional", "int?", true, "p", "Some(self.n)", "Some(len(self.first))"),
+    };
+
+    private static readonly string[] Kinds = { "field", "property", "getonly" };
+    private static readonly string[] Positions = { "top", "nested" };
+    private static readonly string[] Values = { "parameter", "local", "inherited", "earlier" };
+    private static readonly string[] Writes = { "once", "method", "twice" };
+
+    private sealed record Cell(SlotType Type, string Kind, string Position, string Value, string Write)
+    {
+        public string ClassName => $"C_{Type.Name}_{Kind}_{Position}_{Value}_{Write}";
+
+        public string Source()
+        {
+            var declaration = Kind switch
+            {
+                "field" => $"f: {Type.Annotation}",
+                "property" => $"property f: {Type.Annotation}",
+                _ => $"property get f: {Type.Annotation}",
+            };
+            var value = Value switch
+            {
+                "parameter" => Type.FromParameter,
+                "local" => "t",
+                "inherited" => Type.FromInherited,
+                _ => Type.FromEarlier,
+            };
+
+            var code = new StringBuilder();
+            code.Append($"class {ClassName}(Base):\n");
+            if (Value == "earlier")
+                code.Append("    first: str\n");
+            code.Append($"    {declaration}\n\n");
+            code.Append($"    def __init__(self, p: {Type.Annotation}, q: str, c: bool):\n");
+            code.Append("        super().__init__()\n");
+            if (Value == "earlier")
+                code.Append("        self.first = q\n");
+            if (Value == "local")
+                code.Append("        t = p\n");
+            if (Position == "nested")
+                code.Append($"        if c:\n            self.f = {value}\n        else:\n            self.f = {value}\n");
+            else
+                code.Append($"        self.f = {value}\n");
+            if (Write == "twice")
+                code.Append("        self.f = p\n");
+            if (Write == "method")
+                code.Append($"\n    def touch(self, p: {Type.Annotation}) -> None:\n        self.f = p\n");
+            return code.Append('\n').ToString();
+        }
+    }
+
+    private static IEnumerable<Cell> Cells()
+        => from type in Types
+           from kind in Kinds
+           from position in Positions
+           from value in Values
+           from write in Writes
+               // A get-only auto-property cannot be written outside __init__ or twice by design.
+           where kind != "getonly" || write == "once"
+           select new Cell(type, kind, position, value, write);
+
+    /// <summary>The rule as a table (R-RO, R-RQ, R-RP, R-RU), written without reading the probe.</summary>
+    private static (string Verdict, string? Fix, string? Why) Expected(Cell cell)
+    {
+        // Does the slot rest on a default? A get-only property never does; a field or a plain
+        // property does when its type has one.
+        var hasDefault = cell.Kind != "getonly" && cell.Type.HasDefault;
+        // A plain auto-property with a default is not a slot the rule knows at all.
+        var isSlot = cell.Kind != "property" || !hasDefault;
+        var writtenAgain = cell.Write != "once";
+        // `first: str` (the "earlier" value) is itself a reference-type field assigned after the call.
+        var firstMoves = cell.Value == "earlier";
+
+        var fMoves = isSlot && !(hasDefault && writtenAgain);
+        var fMustMove = isSlot && !hasDefault;
+        var fFix = cell.Position == "nested" ? "restructure"
+            : cell.Value switch
+            {
+                "local" => "restructure",
+                "inherited" => "uses-self",
+                // Reads `self.first`, an own field assigned ahead of it: allowed, so it moves with it.
+                _ => "move",
+            };
+
+        if (firstMoves)
+        {
+            // Refused for `first`; f's own fix counts only when f must move as well.
+            return ("refused", fMustMove ? fFix : "move", null);
+        }
+
+        if (fMustMove)
+            return ("refused", fFix, null);
+        if (fMoves)
+            return ("refused-if-let", fFix, null);
+        return ("conforms", null, isSlot ? "var-only" : "no-own-slots");
+    }
+
+    [Fact]
+    public void EveryCellOfTheMatrixGetsTheVerdictAndTheFixTheRuleGives()
+    {
+        var cells = Cells().ToList();
+        cells.Should().HaveCount(5 * 2 * 4 * 2 * 3 + 5 * 1 * 4 * 2 * 1, "the matrix is the product of its axes");
+
+        var source = new StringBuilder("class Base:\n    n: int\n\n    def __init__(self):\n        self.n = 1\n\n");
+        foreach (var cell in cells)
+            source.Append(cell.Source());
+        source.Append("def main() -> None:\n    pass\n");
+
+        var sites = Analyse(source.ToString()).ToDictionary(s => s.Subject);
+
+        var wrong = new List<string>();
+        foreach (var cell in cells)
+        {
+            var site = sites[$"{cell.ClassName}.__init__"];
+            var (verdict, fix, why) = Expected(cell);
+            var actual = (site.Verdict, site.Coords.GetValueOrDefault("fix"), site.Coords.GetValueOrDefault("why"));
+            if (actual != (verdict, fix, why))
+                wrong.Add($"{cell.ClassName}: expected {(verdict, fix, why)}, got {actual} [{site.Detail}]");
+        }
+
+        wrong.Should().BeEmpty();
+        // Positive control for the absences above: the matrix holds every verdict and every fix.
+        sites.Values.Select(s => s.Verdict).Distinct().Should().BeEquivalentTo("refused", "refused-if-let", "conforms");
+        sites.Values.Select(s => s.Coords.GetValueOrDefault("fix")).Where(f => f != null).Distinct()
+            .Should().BeEquivalentTo("move", "restructure", "uses-self");
+    }
+
+    // ------------------------------------------------------------------ cells outside the matrix
+
+    private const string BaseClass = "class Base:\n    n: int\n\n    def __init__(self):\n        self.n = 1\n\n";
+
+    [Fact]
+    public void AClassWithNoBaseClassIsNotASite()
+    {
+        Analyse("""
+            class Lone:
+                name: str
+
+                def __init__(self):
+                    self.name = "a"
+
+            def main() -> None:
+                pass
+            """).Should().BeEmpty();
+    }
+
+    [Fact]
+    public void AnInterfaceIsNotABaseClass()
+    {
+        Analyse("""
+            interface INamed:
+                def name(self) -> str:
+                    ...
+
+            class Thing(INamed):
+                label: str
+
+                def __init__(self):
+                    self.label = "a"
+
+                def name(self) -> str:
+                    return self.label
+
+            def main() -> None:
+                pass
+            """).Should().BeEmpty();
+    }
+
+    [Fact]
+    public void AConstructorWithNoSuperCallIsOutOfScopeAndSaysWhetherABaseDeclaresOne()
+    {
+        var sites = Analyse(BaseClass + """
+            class Plain:
+                def hello(self) -> str:
+                    return "hi"
+
+            class NoCallNoBaseInit(Plain):
+                name: str
+
+                def __init__(self):
+                    self.name = "a"
+
+            class Delegating(Base):
+                name: str
+
+                def __init__(self, name: str):
+                    super().__init__()
+                    self.name = name
+
+                def __init__(self):
+                    self.__init__("d")
+
+            def main() -> None:
+                pass
+            """);
+
+        var noCall = sites.Single(s => s.Subject == "NoCallNoBaseInit.__init__");
+        noCall.Verdict.Should().Be("out-of-scope");
+        noCall.Coords.Should().Contain("call", "none").And.Contain("base-init", "none");
+
+        var delegating = sites.Where(s => s.Subject == "Delegating.__init__").OrderBy(s => s.Line).ToList();
+        delegating.Select(s => s.Verdict).Should().Equal("refused", "out-of-scope");
+        delegating[1].Coords.Should().Contain("call", "self").And.Contain("base-init", "declared");
+    }
+
+    [Fact]
+    public void AParenthesizedSuperCallIsStillTheCall()
+    {
+        // The compiler's own predicate finds the call (AstHelper.TryGetConstructorInitializerCall);
+        // a text search for "super().__init__(" does not.
+        var site = Analyse(BaseClass + """
+            class Wrapped(Base):
+                tag: str
+
+                def __init__(self, tag: str):
+                    (super().__init__)()
+                    self.tag = tag
+
+            def main() -> None:
+                pass
+            """).Single();
+        site.Verdict.Should().Be("refused");
+        site.Coords.Should().Contain("fix", "move");
+    }
+
+    [Fact]
+    public void ABuiltInExceptionBaseIsADotnetBase()
+    {
+        var site = Analyse("""
+            class MyError(Exception):
+                code: int
+                detail: str
+
+                def __init__(self, code: int, detail: str):
+                    super().__init__(detail)
+                    self.code = code
+                    self.detail = detail
+
+            def main() -> None:
+                pass
+            """).Single();
+        site.Verdict.Should().Be("refused");
+        site.Coords.Should().Contain("base", "dotnet").And.Contain("fix", "move");
+        site.Detail.Should().Contain("code:").And.Contain("detail: str");
+    }
+
+    [Fact]
+    public void ATupleTargetAssignsEachOfItsFields()
+    {
+        var site = Analyse(BaseClass + """
+            class Pair(Base):
+                a: str
+                b: str
+
+                def __init__(self, a: str, b: str):
+                    super().__init__()
+                    self.a, self.b = a, b
+
+            def main() -> None:
+                pass
+            """).Single();
+        site.Verdict.Should().Be("refused");
+        site.Detail.Should().Contain("a: str").And.Contain("b: str");
+    }
+
+    [Fact]
+    public void AStoreInANestedFunctionIsNotAConstructorAssignment()
+    {
+        var site = Analyse(BaseClass + """
+            class Late(Base):
+                name: str
+
+                def __init__(self):
+                    super().__init__()
+                    def set_later() -> None:
+                        self.name = "later"
+                    set_later()
+
+            def main() -> None:
+                pass
+            """).Single();
+        // The store runs when set_later() does, not as a statement of the constructor.
+        site.Verdict.Should().Be("conforms");
+        site.Coords.Should().Contain("why", "none-after-call");
+    }
+
+    [Fact]
+    public void AFieldWithAnInitializerAndAStaticFieldAreNotSlots()
+    {
+        var site = Analyse(BaseClass + """
+            class Settled(Base):
+                label: str = "x"
+                @static
+                count: int = 0
+
+                def __init__(self):
+                    super().__init__()
+                    self.label = "y"
+
+            def main() -> None:
+                pass
+            """).Single();
+        site.Verdict.Should().Be("conforms");
+        site.Coords.Should().Contain("why", "no-own-slots");
+    }
+
+    [Fact]
+    public void ADataclassWithABaseIsNotRuledAndSaysWhatTheTextWouldGive()
+    {
+        var site = Analyse("""
+            @dataclass
+            class Point:
+                x: int
+
+            @dataclass
+            class Named(Point):
+                name: str
+
+            def main() -> None:
+                pass
+            """).Single();
+        site.Subject.Should().Be("Named");
+        site.Verdict.Should().Be("not-ruled");
+        site.Coords.Should().Contain("as-if", "refused");
+    }
+
+    [Fact]
+    public void AGenericBaseClassIsABaseClass()
+    {
+        var site = Analyse("""
+            class Box[T]:
+                item: T
+
+                def __init__(self, item: T):
+                    self.item = item
+
+            class Labelled(Box[int]):
+                label: str
+
+                def __init__(self, item: int, label: str):
+                    super().__init__(item)
+                    self.label = label
+
+            def main() -> None:
+                pass
+            """).Single();
+        site.Subject.Should().Be("Labelled.__init__");
+        site.Verdict.Should().Be("refused");
+        site.Coords.Should().Contain("base", "sharpy");
+    }
+
+    [Fact]
+    public void ANestedClassIsProbed()
+    {
+        var site = Analyse(BaseClass + """
+            class Outer:
+                class Inner(Base):
+                    name: str
+
+                    def __init__(self, name: str):
+                        super().__init__()
+                        self.name = name
+
+            def main() -> None:
+                pass
+            """).Single();
+        site.Subject.Should().Be("Inner.__init__");
+        site.Verdict.Should().Be("refused");
+    }
+
+    // ------------------------------------------------------------------ the corpus and the report
+
+    [Fact]
+    public void AProgramThatDoesNotCompileIsSkippedWithItsFirstErrorCode()
+    {
+        var outcome = Runner.Run(new CorpusItem("t", "t", "def main() -> None:\n    print(nope)\n", null, 0, null));
+        outcome.Skipped.Should().StartWith("does not compile today (SPY");
+        outcome.Sites.Should().BeEmpty();
+    }
+
+    [Fact]
+    public void TheCorpusReadsSpyFilesAndSpecBlocksAndSetsAsideWhatIsExpectedToFail()
+    {
+        var root = Directory.CreateTempSubdirectory("blast-corpus").FullName;
+        try
+        {
+            File.WriteAllText(Path.Combine(root, "ok.spy"), BaseClass + "def main() -> None:\n    pass\n");
+            File.WriteAllText(Path.Combine(root, "bad.spy"), "def main() -> None:\n    pass\n");
+            File.WriteAllText(Path.Combine(root, "bad.error"), "SPY0000");
+            Directory.CreateDirectory(Path.Combine(root, "multi"));
+            File.WriteAllText(Path.Combine(root, "multi", "main.spy"), "def main() -> None:\n    pass\n");
+            File.WriteAllText(Path.Combine(root, "multi", "lib.spy"), "x: int = 1\n");
+            File.WriteAllText(Path.Combine(root, "multi", "main.error"), "SPY0000");
+            Directory.CreateDirectory(Path.Combine(root, "obj"));
+            File.WriteAllText(Path.Combine(root, "obj", "generated.spy"), "x: int = 1\n");
+            File.WriteAllText(Path.Combine(root, "page.md"), string.Join("\n",
+                "# Page", "",
+                "```python",
+                "class Base:", "    n: int", "", "    def __init__(self):", "        self.n = 1", "",
+                "class Child(Base):", "    name: str", "", "    def __init__(self):",
+                "        super().__init__()", "        self.name = \"a\"", "",
+                "c = Child()", "print(c.name)",
+                "```", "",
+                "<!-- spec-sweep: error SPY0200 -->",
+                "```python", "print(nope)", "```", "",
+                "```text", "not a program", "```", ""));
+
+            var items = Corpus.Enumerate("t", root, root).ToList();
+            items.Select(i => i.Label).Should().Equal(
+                "bad.spy", "multi/lib.spy", "multi/main.spy", "ok.spy", "page.md:3", "page.md:22");
+            items.Where(i => i.SkipReason == Corpus.SkipExpectedError).Select(i => i.Label)
+                .Should().Equal("bad.spy", "multi/lib.spy", "multi/main.spy");
+            items.Single(i => i.Label == "page.md:22").SkipReason.Should().Be(Corpus.SkipFragment);
+
+            // The block ends in loose statements, which a module cannot hold: it is still read, and
+            // the site keeps its line in the page (fence line 3, `def __init__` on block line 10).
+            var block = Runner.Run(items.Single(i => i.Label == "page.md:3"));
+            block.Skipped.Should().BeNull();
+            var site = block.Sites.Single();
+            site.Subject.Should().Be("Child.__init__");
+            site.Line.Should().Be(13);
+        }
+        finally
+        {
+            Directory.Delete(root, recursive: true);
+        }
+    }
+
+    [Fact]
+    public void TheReportCountsSitesByAreaAndVerdictAndNamesEveryOne()
+    {
+        var refusedSource = BaseClass + "class A(Base):\n    name: str\n\n    def __init__(self):\n"
+            + "        super().__init__()\n        self.name = \"a\"\n\ndef main() -> None:\n    pass\n";
+        var outcomes = new[]
+        {
+            Runner.Run(new CorpusItem("one", "one/a.spy", refusedSource, null, 0, null)),
+            Runner.Run(new CorpusItem("one", "one/b.spy", refusedSource, null, 0, Corpus.SkipExpectedError)),
+            Runner.Run(new CorpusItem("two", "two/c.spy", BaseClass + "def main() -> None:\n    pass\n", null, 0, null)),
+        };
+        var report = new BlastReport
+        {
+            Probe = new SuperCallOrderProbe(),
+            Commit = "abc1234",
+            AreaOrder = new[] { "one", "two" },
+            Outcomes = outcomes,
+        };
+
+        using var json = JsonDocument.Parse(report.ToJson());
+        var areas = json.RootElement.GetProperty("areas").EnumerateArray().ToList();
+        areas[0].GetProperty("programs").GetInt32().Should().Be(2);
+        areas[0].GetProperty("analysed").GetInt32().Should().Be(1);
+        areas[0].GetProperty("verdicts").GetProperty("refused").GetInt32().Should().Be(1);
+        areas[1].GetProperty("verdicts").GetProperty("refused").GetInt32().Should().Be(0);
+        var site = json.RootElement.GetProperty("sites").EnumerateArray().Single();
+        site.GetProperty("program").GetString().Should().Be("one/a.spy");
+        site.GetProperty("coords").GetProperty("fix").GetString().Should().Be("move");
+
+        var markdown = report.ToMarkdown(examples: 3);
+        markdown.Should().Contain("# Blast radius of R-RO")
+            .And.Contain("| one | 2 | 1 | 1 | 1 | 0 | 0 | 0 | 0 |")
+            .And.Contain("| **all** | 3 | 2 | 1 | 1 | 0 | 0 | 0 | 0 |")
+            .And.Contain("| refused | base: sharpy, fix: move, slots: fields | 1 | 1 |")
+            .And.Contain("A.__init__: name: str (move)")
+            .And.Contain("| one | a fixture that is expected to fail | 1 |");
+    }
+
+    [Fact]
+    public void EveryVerdictAndAxisValueAProbeEmitsIsOneItDeclares()
+    {
+        var probe = new SuperCallOrderProbe();
+        var declaredVerdicts = probe.Verdicts.Select(v => v.Name).ToHashSet();
+        var declaredAxes = probe.Axes.ToDictionary(a => a.Name, a => a.Values.Select(v => v.Value).ToHashSet());
+
+        var source = new StringBuilder(BaseClass);
+        foreach (var cell in Cells())
+            source.Append(cell.Source());
+        source.Append("@dataclass\nclass Point:\n    x: int\n\n@dataclass\nclass Named(Point):\n    name: str\n\n");
+        source.Append("class Plain:\n    pass\n\nclass NoCall(Plain):\n    def __init__(self):\n        pass\n\n");
+        source.Append("def main() -> None:\n    pass\n");
+
+        foreach (var site in Analyse(source.ToString()))
+        {
+            declaredVerdicts.Should().Contain(site.Verdict);
+            foreach (var (axis, value) in site.Coords)
+                declaredAxes.Should().ContainKey(axis).WhoseValue.Should().Contain(value, $"axis {axis}");
+        }
+    }
+
+    private static IReadOnlyList<ProbeSite> Analyse(string source)
+    {
+        var outcome = Runner.Run(new CorpusItem("test", "test", source, null, 0, null));
+        outcome.Skipped.Should().BeNull("the test program must compile today");
+        return outcome.Sites;
+    }
+}
