@@ -396,6 +396,85 @@ public class SuperCallOrderProbeTests
     }
 
     [Fact]
+    public void AValueThatReadsAnOwnFieldWithAnInitializerIsAPlainMove()
+    {
+        var sites = Analyse(BaseClass + """
+            class Initialized(Base):
+                label: str = "x"
+                name: str
+
+                def __init__(self):
+                    super().__init__()
+                    self.name = self.label
+
+            class Inherited(Base):
+                name: str
+
+                def __init__(self):
+                    super().__init__()
+                    self.name = str(self.n)
+
+            def main() -> None:
+                pass
+            """).ToDictionary(s => s.Subject);
+
+        // `label` is assigned by its initializer, which runs before the base constructor.
+        sites["Initialized.__init__"].Coords.Should().Contain("fix", "move");
+        // Positive control: a field the base constructor assigns is not there yet.
+        sites["Inherited.__init__"].Coords.Should().Contain("fix", "uses-self");
+    }
+
+    [Fact]
+    public void ABranchThatLeavesTheConstructorDoesNotCountTowardsASecondWrite()
+    {
+        var sites = Analyse(BaseClass + """
+            class EarlyReturn(Base):
+                k: int
+
+                def __init__(self, c: bool):
+                    super().__init__()
+                    if c:
+                        self.k = 1
+                        return
+                    self.k = 2
+
+            class FallsThrough(Base):
+                k: int
+
+                def __init__(self, c: bool):
+                    super().__init__()
+                    if c:
+                        self.k = 1
+                    self.k = 2
+
+            def main() -> None:
+                pass
+            """).ToDictionary(s => s.Subject);
+
+        // `k` is written once on each path, so it could be `let`.
+        sites["EarlyReturn.__init__"].Verdict.Should().Be("refused-if-let");
+        // Positive control: without the return, the second store is a second write.
+        sites["FallsThrough.__init__"].Verdict.Should().Be("conforms");
+        sites["FallsThrough.__init__"].Coords.Should().Contain("why", "var-only");
+    }
+
+    [Fact]
+    public void AClassThatNamesObjectAsItsBaseHasNoBaseClass()
+    {
+        Analyse("""
+            class Spelled(object):
+                name: str
+
+                def __init__(self):
+                    super().__init__()
+                    self.name = "a"
+
+            def main() -> None:
+                pass
+            """).Should().BeEmpty();
+    }
+
+    [Fact]
     public void AValueThatCallsAFunctionDeclaredInTheConstructorIsNotAPlainMove()
     {
         var site = Analyse(BaseClass + """
@@ -618,6 +697,31 @@ public class SuperCallOrderProbeTests
     }
 
     [Fact]
+    public void AVariableOfAPreludeStaysAtModuleLevelWhenALaterBlockIsHoisted()
+    {
+        var root = Directory.CreateTempSubdirectory("blast-prelude-variable").FullName;
+        try
+        {
+            File.WriteAllText(Path.Combine(root, "page.md"), string.Join("\n",
+                "<!-- spec-sweep: prelude -->",
+                "```python",
+                "limit: int = 3",
+                "```", "",
+                "```python",
+                "def capped(n: int) -> int:", "    return n if n < limit else limit", "",
+                "print(capped(5))",
+                "```", ""));
+
+            Corpus.Enumerate("t", root, root).Select(Runner.Run).Select(o => (o.Skipped, o.ErrorCode))
+                .Should().Equal((null, null), (null, null));
+        }
+        finally
+        {
+            Directory.Delete(root, recursive: true);
+        }
+    }
+
+    [Fact]
     public void LooseStatementsOfASpecBlockAreMovedWholeAndAConstantStaysWhereItIs()
     {
         var root = Directory.CreateTempSubdirectory("blast-hoist").FullName;
@@ -662,10 +766,49 @@ public class SuperCallOrderProbeTests
         outcomes.Count(o => o.ErrorCode != null).Should().BeLessThanOrEqualTo(allowed);
     }
 
-    [Fact]
-    public void AnExamplesCountTooLargeToReadIsAUsageError()
+    [Theory]
+    [InlineData("0", 0)]
+    [InlineData("99999999999", 2)]
+    [InlineData("-3", 2)]
+    [InlineData("many", 2)]
+    public void AnExamplesCountThatIsNotACountIsAUsageError(string count, int exitCode)
     {
-        Program.Main(new[] { "run", "R-RO", "--examples", "99999999999" }).Should().Be(2);
+        var root = Directory.CreateTempSubdirectory("blast-cli").FullName;
+        try
+        {
+            File.WriteAllText(Path.Combine(root, "ok.spy"), "def main() -> None:\n    pass\n");
+            // Everything else about the call is valid, so only the count decides the exit code.
+            Program.Main(new[]
+            {
+                "run", "R-RO", "--repo", root, "--area", "t=.", "--md", Path.Combine(root, "out.md"), "--examples", count,
+            }).Should().Be(exitCode);
+        }
+        finally
+        {
+            Directory.Delete(root, recursive: true);
+        }
+    }
+
+    [Fact]
+    public void OnlyTheSweepsOwnMarkersSetASpecBlockAside()
+    {
+        var root = Directory.CreateTempSubdirectory("blast-markers").FullName;
+        try
+        {
+            File.WriteAllText(Path.Combine(root, "page.md"), string.Join("\n",
+                "<!-- spec-sweep: fragment -->", "```python", "x", "```", "",
+                "<!-- spec-sweep: error SPY0200 -->", "```python", "x", "```", "",
+                // Not a marker of the sweep (no code): the sweep compiles the block, and so does the tool.
+                "<!-- spec-sweep: error -->", "```python", "x", "```", "",
+                "<!-- spec-sweep: output -->", "```python", "x", "```", ""));
+
+            Corpus.Enumerate("t", root, root).Select(i => i.SkipReason)
+                .Should().Equal(Corpus.SkipFragment, Corpus.SkipFragment, null, null);
+        }
+        finally
+        {
+            Directory.Delete(root, recursive: true);
+        }
     }
 
     /// <summary>

@@ -81,9 +81,17 @@ internal sealed class StoreCensus
             foreach (var arm in arms)
             {
                 var onThisArm = new HashSet<(TypeSymbol, string)>(assigned);
+                Node? last = null;
                 foreach (var node in arm)
+                {
                     Walk(node, enclosing, onThisArm, inLoop);
-                after.UnionWith(onThisArm);
+                    last = node;
+                }
+
+                // An arm that leaves the constructor does not reach the statements after the
+                // branch, so what it assigned is not assigned there.
+                if (last is not (ReturnStatement or RaiseStatement))
+                    after.UnionWith(onThisArm);
             }
 
             assigned.UnionWith(after);

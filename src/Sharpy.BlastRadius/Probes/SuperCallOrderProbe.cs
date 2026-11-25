@@ -70,7 +70,9 @@ internal sealed class SuperCallOrderProbe : IRuleProbe
             ("sharpy", "a class written in Sharpy"),
             ("dotnet", "a .NET class, which includes the built-in exception types"),
         }),
-        new("fix", "The largest edit any one assignment needs to get ahead of the call.", new[]
+        new("fix", "The largest edit among the assignments that have to move: on a refused site, "
+            + "those of the slots with no default; on a refused-if-let site, all of them. A site's "
+            + "detail gives the edit for every slot, the ones that could stay behind included.", new[]
         {
             (FixMove, "a top-level `self.f = <value>` whose value reads only parameters, literals, "
                 + "module names and own fields assigned before it: cut and paste above the call"),
@@ -116,6 +118,9 @@ internal sealed class SuperCallOrderProbe : IRuleProbe
     {
         "A write to a field from another file is not seen, so a field counted as possibly `let` may "
             + "in fact have to be `var`: `refused-if-let` is an upper bound.",
+        "Only a `self.f = value` statement counts as an assignment of the constructor. A field "
+            + "stored only as the target of a `for` or a `with` is not seen as assigned after the "
+            + "call, and a `with ... as self.f` is not counted as a second write.",
         "The arms of an `if` or a `match` count as one assignment of a field. A `try` body and its "
             + "handlers do not: a field assigned in both is taken to be `var`. No ruling says yet how "
             + "`let` treats that shape.",
@@ -136,6 +141,9 @@ internal sealed class SuperCallOrderProbe : IRuleProbe
                 continue;
             if (input.Types.SymbolFor(classDef, classDef.Name, input.Symbols) is not { BaseType: { } baseType } type)
                 continue; // interfaces only, or an unresolved declaration: no base class
+
+            if (baseType.ClrType == typeof(object))
+                continue; // `class C(object)` is `class C`: there is no base constructor to order against
 
             var baseKind = baseType.ClrType != null ? "dotnet" : "sharpy";
             var slots = OwnSlots.Of(classDef, type);
@@ -220,7 +228,16 @@ internal sealed class SuperCallOrderProbe : IRuleProbe
         var locals = SyntaxFacts.LocalNames(constructor);
         var seen = new HashSet<string>(StringComparer.Ordinal);
         var moved = new List<(Slot Slot, Fix Fix)>();
-        var fixOf = new Dictionary<string, Fix>(StringComparer.Ordinal);
+        // Own members a value may read ahead of the call, and what each costs to have there. A
+        // member with an initializer costs nothing: its initializer runs before the base call.
+        var fixOf = SyntaxFacts.Members(classDef)
+            .Select(m => m switch
+            {
+                VariableDeclaration { InitialValue: not null } field => field.Name,
+                PropertyDef { DefaultValue: not null } property => property.Name,
+                _ => null,
+            })
+            .OfType<string>().Distinct().ToDictionary(name => name, _ => Fix.Move, StringComparer.Ordinal);
 
         foreach (var (assignment, topLevel) in AssignmentsAfter(constructor, callIndex))
         {
@@ -286,8 +303,9 @@ internal sealed class SuperCallOrderProbe : IRuleProbe
                 case SuperExpression:
                     fix = Fix.UsesSelf;
                     return;
-                // `self.f` where f is an own slot that moves ahead as well: R-RN allows the read,
-                // and this value can stand ahead of the call only as easily as f's own can.
+                // `self.f` where f is an own member already assigned ahead of the call (it has an
+                // initializer, or it moves ahead as well): R-RN allows the read, and this value
+                // can stand ahead of the call only as easily as f's own can.
                 case MemberAccess { Object: Identifier { Name: PythonNames.Self } } member
                     when movedAhead.TryGetValue(member.Member, out var earlier):
                     if (fix < earlier)

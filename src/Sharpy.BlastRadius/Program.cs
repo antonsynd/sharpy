@@ -68,6 +68,8 @@ internal static class Program
                         break;
                     case "--examples":
                         examples = int.Parse(Value(), CultureInfo.InvariantCulture);
+                        if (examples < 0)
+                            throw new ArgumentException("--examples takes a count, zero or more");
                         break;
                     case "--area":
                         var pair = Value().Split('=', 2);
@@ -162,7 +164,6 @@ internal static class Program
         {
             WorkingDirectory = repo,
             RedirectStandardOutput = true,
-            RedirectStandardError = true,
         };
         using var git = Process.Start(info)!;
         var output = git.StandardOutput.ReadToEnd().Trim();

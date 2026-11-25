@@ -50,7 +50,8 @@ internal static class Corpus
     // The markers of the specification sweep (build_tools/spec_blocks.py), which owns their meaning.
     private static readonly Regex FenceOpen = new(@"^```(python|spy|sharpy)\s*$", RegexOptions.Compiled);
     private static readonly Regex FenceClose = new(@"^```\s*$", RegexOptions.Compiled);
-    private static readonly Regex NotAProgram = new(@"<!--\s*spec-sweep:\s*(fragment|error)\b", RegexOptions.Compiled);
+    private static readonly Regex NotAProgram = new(
+        @"<!--\s*spec-sweep:\s*(fragment|error\s+SPY\d{4})\s*-->", RegexOptions.Compiled);
     private static readonly Regex Prelude = new(@"<!--\s*spec-sweep:\s*prelude\s*-->", RegexOptions.Compiled);
 
     /// <summary>

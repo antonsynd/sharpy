@@ -37,6 +37,7 @@ fi
 
 if [[ "${1:-}" == "run" ]]; then
     shift
-    exec dotnet "$BINARY" run "$@" --repo "$REPO_ROOT"
+    # Ahead of the caller's arguments, so a --repo of the caller's own wins.
+    exec dotnet "$BINARY" run --repo "$REPO_ROOT" "$@"
 fi
 exec dotnet "$BINARY" "$@"

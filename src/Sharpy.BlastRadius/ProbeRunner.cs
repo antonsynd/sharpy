@@ -45,7 +45,7 @@ internal sealed class ProbeRunner
             // A specification block is often a few declarations followed by loose statements, which
             // a module cannot hold (SPY0340). The statements go into a main() below, and every
             // declaration keeps its line.
-            if (!result.Success && item.Path == null && HoistLooseStatements(item.Source, result) is { } hoisted)
+            if (!result.Success && item.Path == null && HoistLooseStatements(item, result) is { } hoisted)
                 result = _api.Analyze(hoisted, _options);
         }
         catch (Exception e)
@@ -91,7 +91,7 @@ internal sealed class ProbeRunner
     /// so a name the example binds stays a local of the statements that use it. Null when SPY0340
     /// is not the only error.
     /// </summary>
-    private string? HoistLooseStatements(string source, SemanticResult failed)
+    private static string? HoistLooseStatements(CorpusItem item, SemanticResult failed)
     {
         var errors = failed.Diagnostics.Where(d => d.IsError).ToList();
         if (errors.Count == 0 || errors.Any(d => d.Code != DiagnosticCodes.Semantic.ModuleLevelExecutableStatement))
@@ -100,7 +100,7 @@ internal sealed class ProbeRunner
         if (failed.Ast is not { } module)
             return null;
 
-        var lines = source.Split('\n');
+        var lines = item.Source.Split('\n');
         var main = new List<string>();
         for (var i = 0; i < module.Body.Length; i++)
         {
@@ -108,8 +108,10 @@ internal sealed class ProbeRunner
             // for every statement: it stops at the first line of a multi-line string.
             var first = module.Body[i].LineStart;
             var last = i + 1 < module.Body.Length ? module.Body[i + 1].LineStart - 1 : lines.Length;
+            // A variable of a prelude stays at module level, where the page's later blocks read it.
             var loose = flagged.Any(line => first <= line && line <= last)
-                || module.Body[i].UnwrapDecorated() is VariableDeclaration { IsConst: false } or Assignment;
+                || (first > item.PreludeLines
+                    && module.Body[i].UnwrapDecorated() is VariableDeclaration { IsConst: false } or Assignment);
             for (var line = first; loose && line <= last; line++)
             {
                 main.Add(lines[line - 1].Length == 0 ? "" : "    " + lines[line - 1]);
