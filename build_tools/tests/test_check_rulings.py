@@ -1057,7 +1057,8 @@ def test_the_enum_law_holds_both_backings_to_one_verdict(real):
 
 def test_every_ruling_of_2026_11_24_is_the_owners_and_has_a_charter_row(real):
     new = [r for r in real.rulings if "seed" not in r]
-    assert [r["id"] for r in new] == ["R-QS", "R-QT", "R-QU", "R-QV", "R-QW", "R-QX", "R-QY", "R-QZ", "R-RA", "R-RB", "R-RC", "R-RD", "R-RE", "R-RF", "R-RG", "R-RH", "R-RI", "R-RJ", "R-RK", "R-RL", "R-RM", "R-RN"]
+    assert [r["id"] for r in new if r["date"] == "2026-11-25"] == ["R-RO", "R-RP"]
+    assert [r["id"] for r in new if r["date"] == "2026-11-24"] == ["R-QS", "R-QT", "R-QU", "R-QV", "R-QW", "R-QX", "R-QY", "R-QZ", "R-RA", "R-RB", "R-RC", "R-RD", "R-RE", "R-RF", "R-RG", "R-RH", "R-RI", "R-RJ", "R-RK", "R-RL", "R-RM", "R-RN"]
     for record in new:
         assert record["decided_by"] == "owner" and record["id"] in real.charter, record["id"]
         assert not real.charter[record["id"]][0], record["id"]  # not struck
@@ -1080,6 +1081,33 @@ def test_the_field_rulings_amend_b7_and_refuse_every_unassigned_field(real):
     uses = {c["coords"]["use"]: c["verdict"] for c in records["R-RN"]["cases"]}
     assert {u for u, v in uses.items() if v == "run"} == {"assigned-field-read", "chaining-call"}
     assert uses["method-call"] == "refuse"
+
+
+def test_the_super_call_ruling_reverses_only_own_field_assignments(real):
+    # R-RO amends R-ML: ahead of `super().__init__()`, assignments to the class's own fields run
+    # (and are required); any other statement stays refused, as R-ML ruled.
+    records = {r["id"]: r for r in real.rulings}
+    assert records["R-ML"]["amended_by"] == ["R-RO"]
+    assert ("charter-mark", ("R-ML", "R-RO")) not in keys(mod.run_checks(real))
+    cells = {(c["coords"]["ahead"], c["coords"]["own-fields"]): c["verdict"] for c in records["R-RO"]["cases"]}
+    assert cells[("own-field-assignments", "assigned-in-init")] == "run"
+    assert cells[("other-statement", "assigned-in-init")] == "refuse"
+    assert cells[("nothing", "assigned-in-init")] == "refuse" and cells[("nothing", "none")] == "run"
+    # The case that left R-RN open: a base __init__ that calls an overridden method.
+    assert [c["verdict"] for c in records["R-RO"]["cases"] if c["coords"]["base-init"] == "calls-overridden-method"] == ["run"]
+    assert records["R-RO"]["door"] == "one-way"
+
+
+def test_an_auto_property_rests_on_zero_only_for_a_value_type(real):
+    # R-RP: unassigned, a value-type auto-property runs and a reference-type one is refused,
+    # whichever plain modifier it has. R-RM gives a value-type FIELD the other verdict.
+    records = {r["id"]: r for r in real.rulings}
+    unset = {(c["coords"]["type"], c["coords"]["modifier"]): c["verdict"] for c in records["R-RP"]["cases"] if c["coords"]["assigned"] == "in-no-init"}
+    assert unset[("value-type", "plain")] == "run"
+    assert unset[("reference-type", "plain")] == unset[("reference-type", "get")] == "refuse"
+    field = {c["coords"]["type"]: c["verdict"] for c in records["R-RM"]["cases"] if c["coords"]["assigned"] == "in-no-init"}
+    assert field["value-type"] == "refuse"
+    assert "R-RM" in [x["id"] for x in records["R-RP"]["considered"]]
 
 
 def test_properly_marked_amendments_are_not_reported(real):

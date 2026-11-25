@@ -5871,6 +5871,7 @@ rulings:
     laws: [A1, T2]
     law_cited: false
     confidence: medium
+  amended_by: [R-RO]
 - id: R-MM
   seed: audit-2026-11-21
   round: '2026-09-20'
@@ -9260,10 +9261,10 @@ rulings:
   note: 'The recorder''s reading, not the owner''s words, of what "assigned in every `__init__`" means at three
     edges: an `__init__` that chains to another with `self.__init__(...)` is assigned by the one it chains to;
     a constructor the compiler writes (a `@dataclass`''s) assigns every field from its parameters; a class with
-    such a field and no constructor at all has nothing to assign it and is refused. Not ruled: an auto-property
-    (`properties.md` zero-initializes `property count: int`), and a struct''s implicit parameterless constructor,
-    which .NET always provides. A struct that declares `__init__` must already assign every field (SPY0252). Option
-    1 carries `recommended` because the agent called it the best of the three before the owner answered.'
+    such a field and no constructor at all has nothing to assign it and is refused. Auto-properties are R-RP''s
+    (2026-11-25). Not ruled: a struct''s implicit parameterless constructor, which .NET always provides. A struct
+    that declares `__init__` must already assign every field (SPY0252). Option 1 carries `recommended` because
+    the agent called it the best of the three before the owner answered.'
   cases:
   - family: field-assignment
     coords:
@@ -9555,10 +9556,8 @@ rulings:
     that the chaining call stays legal; and that the rule holds for a class whose unassigned fields are all value
     types, where the read would see `0` and not null. A departure from the run-time default (C# lets a constructor
     call a method that reads a field the constructor has not assigned yet); the defect it names is a non-nullable
-    field read as null. Not ruled: a base class''s `__init__` that calls a `@virtual` or `@abstract` method which
-    a derived class overrides. `super().__init__()` runs before the derived body, so the override reads the derived
-    class''s fields before they are assigned (measured: it prints `True` for `self.name is None`). This ruling''s
-    text does not reach that case.'
+    field read as null. This ruling''s text does not reach a base class''s `__init__` that calls a method a derived
+    class overrides; R-RO (2026-11-25) rules that case.'
   cases:
   - family: self-before-fields
     coords:
@@ -9748,6 +9747,152 @@ rulings:
     verdict: run
     evidence:
       program: |
+        class P:
+            name: str
+
+            def __init__(self, name: str):
+                self.name = name
+
+            def __init__(self):
+                self.__init__("a")
+
+        def main() -> None:
+            p = P()
+            print(p.name)
+      sharpy: |
+        runs:a
+      python: no-twin
+      after: |
+        runs:a
+- id: R-RO
+  date: '2026-11-25'
+  issue: '#1974'
+  kind: language
+  rule: In a class that has a base class, `__init__` assigns every field its own class declares without an initializer
+    before `super().__init__(...)`, as Swift does. Those assignments are the only statements allowed ahead of
+    the call, and a `super().__init__(...)` written before one of them is a compile error. When the base `__init__`
+    runs, the derived class's fields are therefore already assigned, also when it calls a method the derived class
+    overrides. `self.__init__(...)` stays the first statement.
+  options:
+  - text: own fields are assigned before `super().__init__()`, as Swift does
+    chosen: true
+    recommended: true
+  - text: refuse a call to a `@virtual` or `@abstract` method on `self`, and `self` as a value, inside `__init__`
+  - text: leave it as C#, Java and Kotlin do
+  basis: follows
+  laws: [A3, R-RN]
+  considered:
+  - id: R-RM
+    why: R-RM says every field is assigned by the end of `__init__`; this ruling says where, relative to the base
+      call
+  decided_by: owner
+  door: one-way
+  breaks_running: true
+  undo_breaks: true
+  amends: [R-ML]
+  note: 'The owner''s words were "your lean, like Swift", on the agent''s option "let a derived `__init__` assign
+    its own fields before `super().__init__()`, as Swift does". The recorder''s reading, not the owner''s words:
+    that the order is required and not only allowed (Swift requires it, and the gap stays open otherwise), so
+    the usual Python order, base call first and own fields after, is refused with a steer to move the assignments
+    up. By a text count that order is used by 123 of the 218 `__init__` methods in the fixtures that call `super().__init__`
+    (87 of 152 files). R-ML (owner, 2026-11-11: stay strict) refused every statement ahead of the call and rejected
+    lowering them because C# could not express it; this reverses R-ML for assignments to the class''s own fields
+    only. Measured in a scratch C# 12 program: a field assigned in the constructor body is null when the base
+    constructor calls an overridden method; a field initialized from a primary-constructor parameter is not, and
+    statements ahead of the call can be hoisted into a static helper whose result the primary constructor takes.
+    Not ruled: a derived `__init__` that writes no `super().__init__()` call, where the base''s parameterless
+    constructor runs implicitly (measured: the override prints `True` for `self.name is None` today).'
+  cases:
+  - family: super-call-order
+    coords:
+      ahead: own-field-assignments
+      own-fields: assigned-in-init
+      base-init: assigns-fields
+    verdict: run
+    evidence:
+      program: |
+        class Base:
+            n: int
+
+            def __init__(self):
+                self.n = 1
+
+        class Child(Base):
+            name: str
+
+            def __init__(self):
+                self.name = "a"
+                super().__init__()
+
+        def main() -> None:
+            c = Child()
+            print(c.name, c.n)
+      twin: |
+        class Base:
+            n: int
+
+            def __init__(self):
+                self.n = 1
+
+        class Child(Base):
+            name: str
+
+            def __init__(self):
+                self.name = "a"
+                super().__init__()
+
+        def main() -> None:
+            c = Child()
+            print(c.name, c.n)
+        main()
+      sharpy: refused:SPY0292
+      python: |
+        runs:a 1
+      after: |
+        runs:a 1
+  - family: super-call-order
+    coords:
+      ahead: own-field-assignments
+      own-fields: assigned-in-init
+      base-init: calls-overridden-method
+    verdict: run
+    evidence:
+      program: |
+        class Base:
+            def __init__(self):
+                self.describe()
+
+            @virtual
+            def describe(self) -> None:
+                print("base")
+
+        class Child(Base):
+            name: str
+
+            def __init__(self):
+                self.name = "a"
+                super().__init__()
+
+            @override
+            def describe(self) -> None:
+                print(self.name is None)
+
+        def main() -> None:
+            c = Child()
+            print(c.name)
+      sharpy: refused:SPY0292
+      python: no-twin
+      after: |
+        runs:False
+        a
+  - family: super-call-order
+    coords:
+      ahead: nothing
+      own-fields: assigned-in-init
+      base-init: assigns-fields
+    verdict: refuse
+    evidence:
+      program: |
         class Base:
             n: int
 
@@ -9786,5 +9931,237 @@ rulings:
         runs:a 1
       python: |
         runs:a 1
+      after: refused:code_not_ruled
+  - family: super-call-order
+    coords:
+      ahead: other-statement
+      own-fields: assigned-in-init
+      base-init: assigns-fields
+    verdict: refuse
+    evidence:
+      program: |
+        class Base:
+            n: int
+
+            def __init__(self):
+                self.n = 1
+
+        class Child(Base):
+            name: str
+
+            def __init__(self):
+                print("first")
+                super().__init__()
+                self.name = "a"
+
+        def main() -> None:
+            c = Child()
+            print(c.name, c.n)
+      twin: |
+        class Base:
+            n: int
+
+            def __init__(self):
+                self.n = 1
+
+        class Child(Base):
+            name: str
+
+            def __init__(self):
+                print("first")
+                super().__init__()
+                self.name = "a"
+
+        def main() -> None:
+            c = Child()
+            print(c.name, c.n)
+        main()
+      sharpy: refused:SPY0292
+      python: |
+        runs:first
+        a 1
+      after: refused:SPY0292
+  - family: super-call-order
+    coords:
+      ahead: nothing
+      own-fields: none
+      base-init: assigns-fields
+    verdict: run
+    evidence:
+      program: |
+        class Base:
+            n: int
+
+            def __init__(self):
+                self.n = 1
+
+        class Child(Base):
+            def __init__(self):
+                super().__init__()
+                print(self.n)
+
+        def main() -> None:
+            c = Child()
+            print(c.n)
+      twin: |
+        class Base:
+            n: int
+
+            def __init__(self):
+                self.n = 1
+
+        class Child(Base):
+            def __init__(self):
+                super().__init__()
+                print(self.n)
+
+        def main() -> None:
+            c = Child()
+            print(c.n)
+        main()
+      sharpy: |
+        runs:1
+        1
+      python: |
+        runs:1
+        1
       after: |
-        runs:a 1
+        runs:1
+        1
+- id: R-RP
+  date: '2026-11-25'
+  issue: '#1974'
+  kind: language
+  rule: An auto-property of a value type takes its zero default when nothing assigns it; an auto-property of a
+    reference type has an initializer or is set in every `__init__`.
+  options:
+  - text: value types keep the zero default; a reference type must be given a value
+    chosen: true
+    recommended: true
+  - text: every auto-property is given a value, as every field is (R-RM)
+  - text: leave a reference-type auto-property unchecked, as the compiler does today
+  recommended_note: the agent made no recommendation; it listed the question as not ruled. The flag sits on the
+    chosen option.
+  basis: follows
+  laws: [CR7, A3]
+  considered:
+  - id: R-RM
+    why: a field of a value type must be assigned and an auto-property of one may rest on zero; the owner ruled
+      both, a day apart, and `properties.md` already draws the line this way
+  decided_by: owner
+  door: two-way
+  breaks_running: true
+  undo_breaks: false
+  note: 'This is what the table in `properties.md` says for `property` and `property get`; the compiler checks
+    neither today. The recorder''s reading, not the owner''s words: `property init` keeps its stricter rule (no
+    zero default; SPY0426 today), since the owner was answering a question about `property count: int`; a write-only
+    `property set` of a reference type falls under the owner''s words, which changes its row of that table ("Must
+    set in `__init__`: No") and is not measured; and a reference-type auto-property that must be set counts as
+    a field for R-RN and R-RO (measured: read before it is set, it is null today).'
+  cases:
+  - family: auto-property-assignment
+    coords:
+      type: value-type
+      modifier: plain
+      assigned: in-no-init
+    verdict: run
+    evidence:
+      program: |
+        class P:
+            property count: int
+
+            def __init__(self):
+                pass
+
+        def main() -> None:
+            p = P()
+            print(p.count)
+      sharpy: |
+        runs:0
+      python: no-twin
+      after: |
+        runs:0
+  - family: auto-property-assignment
+    coords:
+      type: reference-type
+      modifier: plain
+      assigned: in-no-init
+    verdict: refuse
+    evidence:
+      program: |
+        class P:
+            property name: str
+
+            def __init__(self):
+                pass
+
+        def main() -> None:
+            p = P()
+            print(p.name)
+      sharpy: |
+        runs:None
+      python: no-twin
+      after: refused:code_not_ruled
+  - family: auto-property-assignment
+    coords:
+      type: reference-type
+      modifier: get
+      assigned: in-no-init
+    verdict: refuse
+    evidence:
+      program: |
+        class P:
+            property get name: str
+
+            def __init__(self):
+                pass
+
+        def main() -> None:
+            p = P()
+            print(p.name)
+      sharpy: |
+        runs:None
+      python: no-twin
+      after: refused:code_not_ruled
+  - family: auto-property-assignment
+    coords:
+      type: reference-type
+      modifier: plain
+      assigned: in-every-init
+    verdict: run
+    evidence:
+      program: |
+        class P:
+            property name: str
+
+            def __init__(self):
+                self.name = "a"
+
+        def main() -> None:
+            p = P()
+            print(p.name)
+      sharpy: |
+        runs:a
+      python: no-twin
+      after: |
+        runs:a
+  - family: auto-property-assignment
+    coords:
+      type: value-type
+      modifier: init
+      assigned: in-no-init
+    verdict: refuse
+    evidence:
+      program: |
+        class P:
+            property init count: int
+
+            def __init__(self):
+                pass
+
+        def main() -> None:
+            p = P()
+            print(p.count)
+      sharpy: refused:SPY0426
+      python: no-twin
+      after: refused:SPY0426
