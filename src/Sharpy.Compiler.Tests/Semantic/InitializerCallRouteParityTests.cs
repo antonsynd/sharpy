@@ -474,10 +474,19 @@ public class InitializerCallRouteParityTests : IntegrationTestBase
             : cls + $"def main() -> None:\n    b: Box[int] = Box({args})\n";
 
         var result = CompileAndExecute(source);
+        var seen = $"{(qualified ? "qualified" : "bare")}/{order}/{(emptyList ? "[]" : "None()")}: "
+            + result.FailureSummary() + "\n--- source ---\n" + source;
         result.RawDiagnostics.Should().NotContain(
-            d => d.Code == DiagnosticCodes.Infrastructure.GeneratedCodeCompilationError,
-            $"{(qualified ? "qualified" : "bare")}/{order}/{(emptyList ? "[]" : "None()")}: "
-            + result.FailureSummary() + "\n--- source ---\n" + source);
+            d => d.Code == DiagnosticCodes.Infrastructure.GeneratedCodeCompilationError, seen);
+
+        // Positive control: the checker reached the argument and answered — it runs, or it refuses
+        // the context argument itself (an absence of SPY0908 alone would also hold for a program
+        // that stopped parsing).
+        var firstError = result.RawDiagnostics.FirstOrDefault(d => d.IsError)?.Code;
+        (result.Success || firstError == (emptyList
+                ? DiagnosticCodes.Semantic.CannotInferType
+                : DiagnosticCodes.Semantic.InvalidNoneConstructor))
+            .Should().BeTrue(seen);
     }
 
     /// <summary>

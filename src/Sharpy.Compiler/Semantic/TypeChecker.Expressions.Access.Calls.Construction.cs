@@ -72,13 +72,16 @@ internal partial class TypeChecker
             return soleArityMatch;
         }
 
-        // A struct's implicit parameterless constructor is never removed (structs.md; C#'s
-        // `new S()` binds it whatever constructors are declared), so `S()` needs no overload.
-        if (typeSymbol.TypeKind == TypeKind.Struct && totalArgCount == 0 && !call.Arguments.Any(a => a is SpreadElement))
-            return null;
-
         if (ArityApplicableCount(initMethods, call) == 0)
         {
+            // A struct's implicit parameterless constructor is never removed (structs.md; C#'s
+            // `new S()` binds it whatever constructors are declared), so `S()` that NO declared
+            // overload accepts binds it rather than failing the count. A declared overload that
+            // does accept zero arguments is still selected (and warned or refused) by the arms
+            // around this one.
+            if (typeSymbol.TypeKind == TypeKind.Struct && totalArgCount == 0)
+                return null;
+
             ReportOverloadError(typeSymbol.Name, call,
                 ResolveInitializerSet(call, initMethods, argTypes, kwargTypes, totalArgCount, typeBinding),
                 totalArgCount, argTypes);

@@ -8,9 +8,9 @@
 # GENERATED, HUMAN-REVIEWED: bash build_tools/regenerate_corpus_pins.sh rewrites the rows and the `# total` lines; review
 # the diff (a new stem's rows are its own; a moved row of an existing stem is a finding until explained). A new key's cite row in
 # code-action-shape-allowlist.txt is written by hand (the loader names it), and so is a drained key's deletion.
-# total stems identity keys=14 rows=2114
+# total stems identity keys=14 rows=2116
 # total stems crlf keys=8 rows=285
-# total stems cr keys=8 rows=295
+# total stems cr keys=8 rows=296
 # total stems comment keys=7 rows=292
 extract-method identity diagnostics Formatting/module_docstring_then_statement # #2294
 extract-method identity diagnostics abstract_class_interface_stubs # #2294
@@ -186,6 +186,7 @@ extract-method identity diagnostics classes/shape_calculator # #2294
 extract-method identity diagnostics classes/simple_class_0039 # #2294
 extract-method identity diagnostics classes/simple_class_0043 # #2294
 extract-method identity diagnostics classes/static_prop_default_calls_static_method_2396 # #2294
+extract-method identity diagnostics classes/struct_overloaded_init_zero_arg_ambiguous # #2294
 extract-method identity diagnostics classes/super_init_not_first_0001 # #2294
 extract-method identity diagnostics clr_reference_none_equality # #2294
 extract-method identity diagnostics codegen/class_and_module_docstring # #2294
@@ -279,6 +280,7 @@ extract-method identity diagnostics decorators/decorator_args_empty_0001 # #2294
 extract-method identity diagnostics decorators/decorator_args_negative_0001 # #2294
 extract-method identity diagnostics decorators/deprecated_chaining_unselected_overload # #2294
 extract-method identity diagnostics decorators/deprecated_generic_call # #2294
+extract-method identity diagnostics decorators/deprecated_struct_zero_arg_overload # #2294
 extract-method identity diagnostics decorators/readonly_assign_error # #2294
 extract-method identity diagnostics deferred_overload_open_target_refused_1589 # #2294
 extract-method identity diagnostics deferred_overload_two_callables_1589 # #2294
@@ -2448,6 +2450,7 @@ extract-method cr diagnostics control_flow/walrus_while_host_index # #2294
 extract-method cr diagnostics dataclass_multiword_keyword_argument_1504 # #2294
 extract-method cr diagnostics decorators/bracket_attr_custom_on_method # #2294
 extract-method cr diagnostics decorators/bracket_attr_custom_on_struct # #2294
+extract-method cr diagnostics decorators/deprecated_struct_zero_arg_overload # #2294
 extract-method cr diagnostics definite_assignment/struct_field_assigned_before_try_ok_1664 # #2294
 extract-method cr diagnostics enums/enum_cross_type_equality_2670 # #2294
 extract-method cr diagnostics errors/invalid_cast # #2294
