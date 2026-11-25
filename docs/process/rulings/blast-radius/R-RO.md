@@ -2,7 +2,7 @@
 
 **Rule:** A derived __init__ assigns its own fields before super().__init__(...) (Swift order).
 
-Measured at `ce4e6beb1` over 5853 programs (4085 analysed). One site is one __init__ of a class that has a base class; 292 sites were found.
+Measured at `fee8f7cca` over 5853 programs (4092 analysed). One site is one __init__ of a class that has a base class; 292 sites were found.
 
 ## Sites by verdict
 
@@ -13,8 +13,8 @@ Measured at `ce4e6beb1` over 5853 programs (4085 analysed). One site is one __in
 | stdlib | 61 | 61 | 9 | 1 | 2 | 6 | 0 | 0 |
 | stdlib-tests | 375 | 358 | 8 | 3 | 0 | 5 | 0 | 0 |
 | benchmarks | 6 | 6 | 1 | 0 | 1 | 0 | 0 | 0 |
-| spec | 1295 | 762 | 20 | 5 | 1 | 9 | 4 | 1 |
-| **all** | 5853 | 4085 | 292 | 45 | 87 | 104 | 54 | 2 |
+| spec | 1295 | 769 | 20 | 5 | 1 | 9 | 4 | 1 |
+| **all** | 5853 | 4092 | 292 | 45 | 87 | 104 | 54 | 2 |
 
 Programs holding at least one site, by the worst verdict among their sites: 43 refused, 52 refused-if-let, 63 conforms, 37 out-of-scope, 2 not-ruled (197 programs).
 
@@ -145,13 +145,14 @@ A probe reads only programs that compile today. The rest are counted here and sa
 | conformance | does not compile today | 53 |
 | stdlib-tests | a fixture that is expected to fail | 17 |
 | spec | a spec block marked as a fragment or an error example | 459 |
-| spec | does not compile today | 74 |
+| spec | does not compile today | 67 |
 
-First error of the programs that do not compile, most common first: SPY0200 × 51, SPY0103 × 5, SPY0104 × 5, SPY0220 × 5, SPY0401 × 5, SPY0203 × 4, SPY0204 × 4, SPY0224 × 4.
+First error of the programs that do not compile, most common first: SPY0200 × 51, SPY0220 × 5, SPY0401 × 5, SPY0104 × 4, SPY0203 × 4, SPY0204 × 4, SPY0224 × 4, SPY0300 × 4.
 
 ## What this probe cannot see
 
 - A write to a field from another file is not seen, so a field counted as possibly `let` may in fact have to be `var`: `refused-if-let` is an upper bound.
+- The arms of an `if` or a `match` count as one assignment of a field. A `try` body and its handlers do not: a field assigned in both is taken to be `var`. No ruling says yet how `let` treats that shape.
 - A base class in another file is resolved only when the file compiles on its own.
 - The probe does not check that moving an assignment keeps the program's meaning; `move` says the edit is mechanical, not that it was tried.
 - Statements other than own-field assignments stay illegal ahead of the call (R-ML); a `restructure` site may need more than the one value rewritten.
