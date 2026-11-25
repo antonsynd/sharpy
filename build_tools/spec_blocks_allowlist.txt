@@ -4,8 +4,6 @@
 
 classes.md::574baff3a5  # SPY0203 first #2148
 comprehensions.md::737d0c007b  # SPY0600 first #2144
-constructors.md::316927b79a  # SPY0224 first #2423
-constructors.md::d86be9af34  # SPY0224 first #2423
 dotnet_interop.md::54faee6a05  # SPY0200 first #2185
 dunder_methods_recommendations.md::40343514fa  # SPY0202 first #2021
 dunder_methods_recommendations.md::fb9d3eada0  # SPY0202 first #2021

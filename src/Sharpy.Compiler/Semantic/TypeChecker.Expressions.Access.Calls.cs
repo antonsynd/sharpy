@@ -250,11 +250,12 @@ internal partial class TypeChecker
         // dispatch path, because each of them binds arguments and must see the same marks.
         RecordIterableArgumentMarks(call, callee);
 
-        // `super().__init__(...)` over an OVERLOADED base initializer: the same route every other
-        // initializer call takes (#1810, Decision 4). Runs here because it needs the argument types.
-        var superInitResult = CheckSuperInitializerCall(call, callee, argTypes, kwargTypes, totalArgCount);
-        if (superInitResult != null)
-            return superInitResult;
+        // `self.__init__(...)` / `super().__init__(...)` over an OVERLOADED initializer: the same
+        // selector a direct construction takes, over the whole overload set (#1810 Decision 4,
+        // #1721). Runs here because it needs the argument types.
+        var chainingInitResult = CheckChainingInitializerCall(call, callee, argTypes, kwargTypes, totalArgCount);
+        if (chainingInitResult != null)
+            return chainingInitResult;
 
         // super().__op__(args) lowering (#1740): an OPERATOR dunder tags the CALL node itself with
         // the cast-based lowering the emitter reads; any other super() call (a non-operator dunder or
@@ -6032,14 +6033,11 @@ internal partial class TypeChecker
             {
                 ValidateInitializerKeywordArguments(call, GetBaseType(_currentClass));
 
-                // #1594: fire SPY0466 on super().__init__() when the base __init__ is @deprecated.
-                var baseType = GetBaseType(_currentClass);
-                if (baseType != null)
-                {
-                    var baseInit = baseType.Methods.FirstOrDefault(m => m.Name == DunderNames.Init);
-                    if (baseInit != null)
-                        CheckDeprecatedUsage(baseInit, call);
-                }
+                // #1594: fire SPY0466 on super().__init__() when the base __init__ it binds to is
+                // @deprecated. A sole constructor is that target; over several, the overload
+                // CheckChainingInitializerCall selects is checked there.
+                if (GetBaseType(_currentClass) is { } baseType)
+                    CheckSoleInitializerDeprecation(baseType, call);
             }
         }
 
@@ -6092,10 +6090,9 @@ internal partial class TypeChecker
                 // already flagged as out-of-context or conflicting.
                 ValidateInitializerKeywordArguments(call, _currentClass);
 
-                // #1594: fire SPY0466 on self.__init__() when the class's own __init__ is @deprecated.
-                var selfInit = _currentClass.Methods.FirstOrDefault(m => m.Name == DunderNames.Init);
-                if (selfInit != null)
-                    CheckDeprecatedUsage(selfInit, call);
+                // #1594: fire SPY0466 on self.__init__() when the constructor it binds to is
+                // @deprecated (a sole one here; one of several in CheckChainingInitializerCall).
+                CheckSoleInitializerDeprecation(_currentClass, call);
             }
 
             if (_currentMethodName == DunderNames.Init)
@@ -6103,6 +6100,17 @@ internal partial class TypeChecker
         }
 
         return null;
+    }
+
+    /// <summary>
+    /// SPY0466 for a chaining call whose source-declared target has exactly ONE constructor, the
+    /// one it binds to. It used to read the first <c>__init__</c> in <c>Methods</c> whatever the
+    /// overload count, which warned on a deprecated overload the call did not bind to.
+    /// </summary>
+    private void CheckSoleInitializerDeprecation(TypeSymbol target, FunctionCall call)
+    {
+        if (ResolveInitializerConstructorSet(target) is ({ ClrType: null }, [var soleInit]))
+            CheckDeprecatedUsage(soleInit, call);
     }
 
     /// <summary>
@@ -6121,51 +6129,85 @@ internal partial class TypeChecker
     }
 
     /// <summary>
-    /// Resolves <c>super().__init__(...)</c> against the base class's <c>__init__</c> OVERLOADS
-    /// through the one resolver every other overload route uses, and refuses an ambiguity by name
-    /// (#1810, Decision 4: SPY0353 on every ambiguity route).
+    /// Resolves a constructor CHAINING call — <c>self.__init__(...)</c> (this class's constructors)
+    /// or <c>super().__init__(...)</c> (the base's) — over the target's whole <c>__init__</c>
+    /// overload set, through <see cref="SelectInitializerOverload"/>, the selector a direct
+    /// construction <c>P(...)</c> uses. The class is "an initializer call binds against the
+    /// target's overload set, not one overload", and its routes are construction × self × super.
     ///
-    /// <para>The base-member signature this route otherwise binds is deliberately
-    /// <c>SkipArgumentValidation</c> whenever the base declares more than one constructor — "defer to
-    /// the C# compiler" — and Roslyn's betterness is not Sharpy's, so an ambiguous
-    /// <c>super().__init__(x=1)</c> surfaced as SPY0908/CS0121 pointing INSIDE the second overload's
-    /// body while the identical <c>Base(x=1)</c> construction reported SPY0353 at the call. Two facts
-    /// come out of running the resolver here: the ambiguity refusal, at the CALL's span; and, when one
-    /// candidate wins, the winner's argument binding — which is what records the nullable-slot cast
-    /// that makes Roslyn agree on the <c>{int?, int | None}</c> pair (#1721).</para>
+    /// <para>Before, each chaining route bound against ONE overload. <c>self.__init__</c> was typed
+    /// as the FIRST-declared <c>__init__</c>, so a chain to any other overload was refused
+    /// (SPY0224 "expects 0 arguments", SPY0220 against the wrong slot), which is the example in
+    /// constructors.md's "Constructor Chaining". <c>super().__init__</c> checked nothing but an
+    /// ambiguity, so a wrong argument type or count was CS1503/CS1729 behind SPY0908. Both chaining
+    /// routes now get the construction route's three verdicts: the sole count match validated, no
+    /// count match SPY0354, same-count peers resolved by type (SPY0353 on an ambiguity). SPY0466
+    /// keys on the overload selected, not on whichever <c>__init__</c> was declared first.</para>
     ///
-    /// <para>Returns null — leaving the existing path untouched — for a single-candidate base, for a
-    /// call no candidate accepts (that stays deferred, so no program this route used to compile is
-    /// newly refused on APPLICABILITY), and for a unique winner. Only the ambiguity is reported.</para>
+    /// <para>A CLR-declared target keeps the ambiguity refusal alone: the bridge's constructor
+    /// parameter types are not trusted to refuse with (the same gap direct construction of a CLR
+    /// type documents), so a call no candidate accepts there stays with Roslyn. Returns null —
+    /// leaving the existing path untouched — for any other callee, and for a target with fewer
+    /// than two constructors, whose single signature the member seam already types.</para>
     /// </summary>
-    private SemanticType? CheckSuperInitializerCall(
+    private SemanticType? CheckChainingInitializerCall(
         FunctionCall call, Expression callee, List<SemanticType> argTypes,
         Dictionary<string, SemanticType> kwargTypes, int totalArgCount)
     {
-        if (callee is not MemberAccess { Object: SuperExpression, Member: DunderNames.Init }
-            || _currentClass == null)
-        {
+        if (callee is not MemberAccess { Member: DunderNames.Init } initAccess || _currentClass == null)
             return null;
+
+        var target = initAccess.Object switch
+        {
+            SuperExpression => GetBaseType(_currentClass),
+            Identifier { Name: PythonNames.Self } => _currentClass,
+            _ => null,
+        };
+        if (target == null)
+            return null;
+
+        var (owner, candidates) = ResolveInitializerConstructorSet(target);
+        if (owner == null || candidates.Count < 2)
+            return null;
+
+        if (owner.ClrType != null)
+        {
+            if (ArityApplicableCount(candidates, call) <= 1)
+                return null;
+
+            var resolution = ResolveOverloadCore(new OverloadResolutionContext(
+                candidates.ToList(), totalArgCount, argTypes,
+                SkipSelfParam: true, SkipUnknownTypes: true,
+                KeywordArgNames: ExtractKeywordArgNames(call), Call: call, KwargTypes: kwargTypes));
+            if (!resolution.IsAmbiguous)
+                return null;
+
+            ReportOverloadError(owner.Name, call, resolution, totalArgCount, argTypes);
+            return SemanticType.Void;
         }
 
-        if (GetBaseType(_currentClass) is not { } baseType)
-            return null;
+        var initMethods = candidates.ToList();
+        if (CheckSpreadIntoNonVariadic(call, owner.Name, initMethods[0].Parameters.Skip(1).ToList()))
+            return SemanticType.Void;
 
-        var candidates = ResolveInitializerConstructorCandidates(baseType);
-        if (candidates.Count < 2 || ArityApplicableCount(candidates, call) <= 1)
-            return null;
-
-        var resolution = ResolveOverloadCore(new OverloadResolutionContext(
-            candidates.ToList(), totalArgCount, argTypes,
-            SkipSelfParam: true, SkipUnknownTypes: true,
-            KeywordArgNames: ExtractKeywordArgNames(call), Call: call, KwargTypes: kwargTypes));
-
-        if (!resolution.IsAmbiguous)
-            return null;
-
-        ReportOverloadError(baseType.Name, call, resolution, totalArgCount, argTypes);
+        var selected = SelectInitializerOverload(call, owner, initMethods, argTypes, kwargTypes, totalArgCount,
+            ChainingTargetBinding(owner));
+        if (selected != null)
+            CheckDeprecatedUsage(selected, call);
         return SemanticType.Void;
     }
+
+    /// <summary>
+    /// How a chaining call's target constructors see their type parameters. The class's OWN
+    /// parameters (<c>self.__init__</c> inside <c>Box[T]</c>) stay open: the arguments are the
+    /// constructor's own values. A generic BASE is bound at the arguments the base clause wrote
+    /// (<c>class D(B[int])</c>), as <see cref="CloseOverBaseReference"/> binds the single-constructor
+    /// case, and stays open when they cannot be read.
+    /// </summary>
+    private TypeParameterBinding? ChainingTargetBinding(TypeSymbol owner)
+        => !ReferenceEquals(owner, _currentClass) && DirectBaseReferenceTypeArguments(owner) is { } typeArgs
+            ? WrittenTypeParameterBinding(owner, typeArgs)
+            : UnwrittenTypeParameterBinding(owner);
 
     /// <summary>
     /// The semantic half of #1740: classifies a <c>super()</c> call by what
@@ -6189,7 +6231,7 @@ internal partial class TypeChecker
     /// as a static C# operator — recorded here regardless, since the enclosing method's own emission
     /// shape is the emitter's concern (RoslynEmitter.Operators.cs:250/:313/:368), not this checker's.</para>
     ///
-    /// <para><c>__init__</c> is excluded: <see cref="CheckSuperInitializerCall"/> and the
+    /// <para><c>__init__</c> is excluded: <see cref="CheckChainingInitializerCall"/> and the
     /// constructor's own <c>base(...)</c> lowering own that call shape entirely, and <c>__init__</c>
     /// is never an operator dunder.</para>
     /// </summary>

@@ -1,0 +1,16 @@
+# A chaining call's argument is checked against the overload it binds to — here the only
+# one-argument overload, declared below the call — not against the first-declared __init__
+# (which reported SPY0224 "expects 0 arguments but got 1").
+
+class P:
+    x: int
+
+    def __init__(self):
+        self.__init__("s")
+
+    def __init__(self, n: int):
+        self.x = n
+
+
+def main() -> None:
+    print(P().x)

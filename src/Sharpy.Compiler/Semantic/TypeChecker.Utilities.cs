@@ -2617,17 +2617,7 @@ internal partial class TypeChecker
     /// </summary>
     private FunctionType CloseOverBaseReference(FunctionType signature, TypeSymbol? owner)
     {
-        if (_currentClass == null || owner == null || owner.TypeParameters.Count == 0)
-            return signature;
-
-        var baseRef = SemanticBinding.GetBaseTypeReference(_currentClass) ?? _currentClass.BaseTypeRef;
-        if (baseRef == null || !ReferenceEquals(baseRef.Definition, owner))
-            return signature;
-
-        var typeArgs = !baseRef.ResolvedTypeArguments.IsDefaultOrEmpty
-            ? baseRef.ResolvedTypeArguments.ToList()
-            : baseRef.TypeArgAnnotations.Select(a => _typeResolver.ResolveTypeAnnotation(a, AnnotationPosition.Value)).ToList();
-        if (typeArgs.Count != owner.TypeParameters.Count || typeArgs.Any(t => t is UnknownType))
+        if (owner == null || DirectBaseReferenceTypeArguments(owner) is not { } typeArgs)
             return signature;
 
         var substitution = new Dictionary<string, SemanticType>(StringComparer.Ordinal);
@@ -2635,6 +2625,30 @@ internal partial class TypeChecker
             substitution[owner.TypeParameters[i].Name] = typeArgs[i];
 
         return (FunctionType)TypeSubstitution.Apply(signature, substitution, substituteNamedUserTypes: true);
+    }
+
+    /// <summary>
+    /// The type arguments the CURRENT class's direct base reference writes for
+    /// <paramref name="owner"/>'s type parameters (<c>class D(Base[int8])</c> gives <c>[int8]</c>),
+    /// or null when <paramref name="owner"/> is not generic, is not the direct base, or an argument
+    /// cannot be read. Shared by <see cref="CloseOverBaseReference"/> and the overloaded
+    /// <c>super().__init__(...)</c> route, so both bind the base the same way.
+    /// </summary>
+    private List<SemanticType>? DirectBaseReferenceTypeArguments(TypeSymbol owner)
+    {
+        if (_currentClass == null || owner.TypeParameters.Count == 0)
+            return null;
+
+        var baseRef = SemanticBinding.GetBaseTypeReference(_currentClass) ?? _currentClass.BaseTypeRef;
+        if (baseRef == null || !ReferenceEquals(baseRef.Definition, owner))
+            return null;
+
+        var typeArgs = !baseRef.ResolvedTypeArguments.IsDefaultOrEmpty
+            ? baseRef.ResolvedTypeArguments.ToList()
+            : baseRef.TypeArgAnnotations.Select(a => _typeResolver.ResolveTypeAnnotation(a, AnnotationPosition.Value)).ToList();
+        return typeArgs.Count == owner.TypeParameters.Count && !typeArgs.Any(t => t is UnknownType)
+            ? typeArgs
+            : null;
     }
 
     /// <summary>
@@ -2657,23 +2671,33 @@ internal partial class TypeChecker
     /// </para>
     /// </summary>
     private IReadOnlyList<FunctionSymbol> ResolveInitializerConstructorCandidates(TypeSymbol targetType)
+        => ResolveInitializerConstructorSet(targetType).Candidates;
+
+    /// <summary>
+    /// The walk behind <see cref="ResolveInitializerConstructorCandidates"/>, with the type that
+    /// DECLARES the returned constructors: an initializer call binds against that type's whole
+    /// overload set, and the caller needs the owner to name it and to bind its type parameters.
+    /// <c>Owner</c> is null exactly when <c>Candidates</c> is empty.
+    /// </summary>
+    private (TypeSymbol? Owner, IReadOnlyList<FunctionSymbol> Candidates) ResolveInitializerConstructorSet(
+        TypeSymbol targetType)
     {
         var currentType = targetType;
         while (currentType != null)
         {
             // First type yielding constructors wins — return the full overload set.
             if (currentType.Constructors.Count > 0)
-                return currentType.Constructors;
+                return (currentType, currentType.Constructors);
 
             // CLR-backed type with no enumerated constructors: no metadata to validate
             // against, so signal callers to skip rather than reject valid kwargs.
             if (currentType.ClrType != null)
-                return Array.Empty<FunctionSymbol>();
+                return (null, Array.Empty<FunctionSymbol>());
 
             currentType = GetBaseType(currentType);
         }
 
-        return Array.Empty<FunctionSymbol>();
+        return (null, Array.Empty<FunctionSymbol>());
     }
 
     /// <summary>

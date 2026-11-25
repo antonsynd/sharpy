@@ -1,0 +1,79 @@
+# Twin of constructor_chaining_target_declared_later: the same constructors with every chain's
+# target declared ABOVE the constructor that calls it. Both orders must print the same output.
+
+class Point:
+    x: float
+    y: float
+
+    def __init__(self, x: float, y: float):
+        self.x = x
+        self.y = y
+
+    def __init__(self):
+        self.__init__(0.0, 0.0)
+
+    def __init__(self, xy: float):
+        self.__init__(xy, xy)
+
+class Tag:
+    n: int
+    label: str
+
+    def __init__(self, n: int):
+        self.n = n
+        self.label = "int"
+
+    def __init__(self, label: str):
+        self.n = len(label)
+        self.label = label
+
+    def __init__(self):
+        self.__init__(7)
+
+class Named:
+    n: int
+    name: str
+
+    def __init__(self, n: int, name: str):
+        self.n = n
+        self.name = name
+
+    def __init__(self):
+        self.__init__(name="k", n=4)
+
+class Box[T]:
+    v: T
+    n: int
+
+    def __init__(self, v: T, n: int):
+        self.v = v
+        self.n = n
+
+    def __init__(self, v: T):
+        self.__init__(v, 1)
+
+class Base:
+    size: int
+
+    def __init__(self, size: int):
+        self.size = size
+
+    def __init__(self):
+        self.size = 0
+
+class Derived(Base):
+    def __init__(self):
+        super().__init__(5)
+
+def main() -> None:
+    p = Point()
+    print(p.x, p.y)
+    q = Point(2.5)
+    print(q.x, q.y)
+    t = Tag()
+    print(t.n, t.label)
+    m = Named()
+    print(m.n, m.name)
+    b = Box[str]("q")
+    print(b.v, b.n)
+    print(Derived().size)

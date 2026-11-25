@@ -1,0 +1,14 @@
+# A chaining call that no __init__ overload accepts by count is refused naming the overload set.
+
+class P:
+    x: int
+
+    def __init__(self):
+        self.__init__(1, 2, 3)
+
+    def __init__(self, n: int):
+        self.x = n
+
+
+def main() -> None:
+    print(P().x)

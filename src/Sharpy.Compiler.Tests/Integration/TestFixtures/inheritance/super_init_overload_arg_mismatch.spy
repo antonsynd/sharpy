@@ -1,0 +1,21 @@
+# super().__init__ over an overloaded base binds through the same selector as a direct
+# construction of the base: the one one-argument overload's slot is checked. This was CS1503
+# behind SPY0908 — the route checked only for an ambiguity.
+
+class Base:
+    x: int
+
+    def __init__(self):
+        self.x = 0
+
+    def __init__(self, n: int):
+        self.x = n
+
+
+class Derived(Base):
+    def __init__(self):
+        super().__init__("s")
+
+
+def main() -> None:
+    print(Derived().x)

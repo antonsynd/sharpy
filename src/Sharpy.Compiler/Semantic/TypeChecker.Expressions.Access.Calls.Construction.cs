@@ -25,11 +25,12 @@ internal partial class TypeChecker
     /// SPY0353 like every other overload route (#1810, Decision 4) — they used to be left to Roslyn,
     /// which answered CS0121 behind SPY0908 and pointed inside a candidate's body. The same refusal
     /// now covers <c>super().__init__(...)</c>, through
-    /// <c>CheckSuperInitializerCall</c>.
+    /// <c>CheckChainingInitializerCall</c>, with <c>self.__init__(...)</c>.
     /// </summary>
     private FunctionSymbol? SelectInitializerAmongArityPeers(
         FunctionCall call, TypeSymbol typeSymbol, List<FunctionSymbol> initMethods,
-        List<SemanticType> argTypes, Dictionary<string, SemanticType> kwargTypes, int totalArgCount)
+        List<SemanticType> argTypes, Dictionary<string, SemanticType> kwargTypes, int totalArgCount,
+        TypeParameterBinding? typeBinding)
     {
         if (ArityApplicableCount(initMethods, call) <= 1)
             return null;
@@ -37,6 +38,7 @@ internal partial class TypeChecker
         var resolution = ResolveOverloadCore(new OverloadResolutionContext(
             initMethods, totalArgCount, argTypes,
             SkipSelfParam: true, SkipUnknownTypes: true,
+            TypeSubstitution: BindingSubstitution(typeBinding),
             KeywordArgNames: ExtractKeywordArgNames(call), Call: call, KwargTypes: kwargTypes));
         if (resolution.IsAmbiguous)
         {
@@ -50,8 +52,57 @@ internal partial class TypeChecker
         }
 
         ValidateCallArguments(call, init.Parameters.Skip(1).ToList(), argTypes, kwargTypes, totalArgCount,
-            UnwrittenTypeParameterBinding(typeSymbol), clrParameterNames: init.ClrMethodName != null);
+            typeBinding, clrParameterNames: init.ClrMethodName != null);
         return init;
+    }
+
+    /// <summary>
+    /// THE selector an initializer call binds through when its target declares several
+    /// <c>__init__</c> overloads, on every route that has one: a direct construction
+    /// (<c>P(...)</c>), and the chaining calls <c>self.__init__(...)</c> and
+    /// <c>super().__init__(...)</c> (<c>CheckChainingInitializerCall</c>). The whole overload set
+    /// is the candidate set, whatever order the overloads were declared in.
+    ///
+    /// <para>Three arms, in order: exactly one overload accepts the argument COUNT, and it is
+    /// validated like a single <c>__init__</c> (<see cref="ValidateSoleArityMatchingOverload"/>);
+    /// NO overload accepts the count, which is SPY0354 at the call (it was CS1729 behind SPY0908 on
+    /// all three routes, since nothing below Roslyn ever compared the count); several do, and they
+    /// are resolved by type (<see cref="SelectInitializerAmongArityPeers"/>). Returns the selected
+    /// overload, or null when none was selected (an error was reported, or a spread argument left
+    /// the count unknown).</para>
+    /// </summary>
+    private FunctionSymbol? SelectInitializerOverload(
+        FunctionCall call, TypeSymbol typeSymbol, List<FunctionSymbol> initMethods,
+        List<SemanticType> argTypes, Dictionary<string, SemanticType> kwargTypes, int totalArgCount,
+        TypeParameterBinding? typeBinding)
+    {
+        if (ValidateSoleArityMatchingOverload(call, initMethods, argTypes, kwargTypes, totalArgCount, typeBinding)
+            is { } soleArityMatch)
+        {
+            return soleArityMatch;
+        }
+
+        if (ArityApplicableCount(initMethods, call) == 0)
+        {
+            var resolution = ResolveOverloadCore(new OverloadResolutionContext(
+                initMethods, totalArgCount, argTypes,
+                SkipSelfParam: true, SkipUnknownTypes: true,
+                KeywordArgNames: ExtractKeywordArgNames(call), Call: call, KwargTypes: kwargTypes));
+            ReportOverloadError(typeSymbol.Name, call, resolution, totalArgCount, argTypes);
+            return null;
+        }
+
+        return SelectInitializerAmongArityPeers(
+            call, typeSymbol, initMethods, argTypes, kwargTypes, totalArgCount, typeBinding);
+    }
+
+    /// <summary>The substitution a binding carries, as the resolver's type map; null when it closes nothing.</summary>
+    private static Func<SemanticType, SemanticType>? BindingSubstitution(TypeParameterBinding? typeBinding)
+    {
+        if (typeBinding is not { Substitution.Count: > 0 } binding)
+            return null;
+
+        return t => TypeSubstitution.Apply(t, binding.Substitution, substituteNamedUserTypes: true);
     }
 
     /// <summary>
@@ -105,9 +156,8 @@ internal partial class TypeChecker
             if (CheckSpreadIntoNonVariadic(call, typeSymbol.Name, initParams))
                 return new UserDefinedType { Symbol = typeSymbol, Name = typeSymbol.Name };
 
-            var resolvedInit = ValidateSoleArityMatchingOverload(call, initMethods, argTypes, kwargTypes, totalArgCount,
-                UnwrittenTypeParameterBinding(typeSymbol))
-                ?? SelectInitializerAmongArityPeers(call, typeSymbol, initMethods, argTypes, kwargTypes, totalArgCount);
+            var resolvedInit = SelectInitializerOverload(call, typeSymbol, initMethods, argTypes, kwargTypes,
+                totalArgCount, UnwrittenTypeParameterBinding(typeSymbol));
             if (resolvedInit != null)
                 CheckDeprecatedUsage(resolvedInit, call);
         }
