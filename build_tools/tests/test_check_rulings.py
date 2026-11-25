@@ -1123,14 +1123,15 @@ def test_a_var_local_follows_the_var_field_and_a_get_only_property_does_not(real
     # R-RT: with no initializer a local runs only as a `var` of a type with a default, as a field
     # does under R-RQ; R-RH's keywordless local stays refused.
     local = {(c["coords"]["binding"], c["coords"]["type"]): c["verdict"] for r in ("R-RH", "R-RT") for c in records[r]["cases"]}
-    assert {k for k, v in local.items() if v == "run"} == {("var", "value-type"), ("var", "nullable")}
+    assert {k for k, v in local.items() if v == "run"} == {("var", "value-type"), ("var", "nullable"), ("var", "optional")}
     field = {(c["coords"]["binding"], c["coords"]["type"]): c["verdict"] for c in records["R-RQ"]["cases"] if c["family"] == "field-assignment"}
     assert {k: local[k] for k in field} == field
     assert records["R-RH"]["amended_by"] == ["R-RT"] and ("charter-mark", ("R-RH", "R-RT")) not in keys(mod.run_checks(real))
-    # R-RU: a get-only auto-property runs only with an initializer at its declaration.
+    # R-RU: a get-only auto-property runs where it is given a value, at its declaration or in every
+    # __init__, and never on a zero default.
     get = {(c["coords"]["type"], c["coords"]["assigned"]): c["verdict"] for r in ("R-RP", "R-RU") for c in records[r]["cases"] if c["coords"]["modifier"] == "get"}
-    assert {k for k, v in get.items() if v == "run"} == {("value-type", "at-declaration")}
-    assert get[("value-type", "in-no-init")] == get[("reference-type", "in-every-init")] == "refuse"
+    assert {k for k, v in get.items() if v == "run"} == {("value-type", "at-declaration"), ("reference-type", "in-every-init")}
+    assert get[("value-type", "in-no-init")] == get[("reference-type", "in-no-init")] == "refuse"
     assert records["R-RP"]["amended_by"] == ["R-RU"] and ("charter-mark", ("R-RP", "R-RU")) not in keys(mod.run_checks(real))
 
 

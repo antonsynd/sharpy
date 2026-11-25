@@ -59,7 +59,7 @@ families:
     axes:
       host: [module, static-member, local]
       binding: [keywordless, let, var]
-      type: [value-type, nullable, reference-type]
+      type: [value-type, nullable, optional, reference-type]
   expression-statement:
     doc: An expression that is not a call, standing alone as a statement, by its form.
     axes:

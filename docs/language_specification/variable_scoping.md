@@ -7,6 +7,8 @@
 > computed before it is read, or refuses the program. Sharpy never shows you a default value, and
 > never gives a Python-valid program a different meaning; where it cannot match Python, it refuses.**
 
+> **Ruled, not yet implemented (R-RQ and R-RT, 2026-11-25).** "Sharpy never shows you a default value" is about a value whose initializer has not run. A `var` field or `var` local declared with no initializer, where its type has a default (a value type, `T | None`, `T?`), will read as that default by rule.
+
 Adopted 2026-11-01. The rationale, the measured comparison with Python, C#, Rust and Swift, and the
 .NET emission are in [docs/design/name-resolution.md](../design/name-resolution.md). The rules:
 

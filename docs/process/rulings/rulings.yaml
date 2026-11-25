@@ -9262,16 +9262,18 @@ rulings:
   undo_breaks: false
   amends: [R-GV]
   amended_by: [R-RQ]
-  note: 'The recorder''s reading, not the owner''s words, of what "assigned in every `__init__`" means at three
-    edges: an `__init__` that chains to another with `self.__init__(...)` is assigned by the one it chains to;
-    a constructor the compiler writes (a `@dataclass`''s) assigns every field from its parameters; a class with
-    such a field and no constructor at all has nothing to assign it and is refused. Amended by R-RQ (2026-11-25):
-    a `var` field whose type has a default may rest on it, so this rule''s "whatever its type and whether it is
-    `let` or `var`" no longer holds; its three cases on value-type and nullable fields were removed and are R-RQ''s,
-    with a `binding` axis (measured then, with the keywordless spelling: an `int` field no `__init__` assigns
-    reads `0`, a `str | None` field `None`, and python3 raises `AttributeError`). Auto-properties are R-RP''s.
-    Structs are R-RR''s. A struct that declares `__init__` must already assign every field (SPY0252). Option 1
-    carries `recommended` because the agent called it the best of the three before the owner answered.'
+  note: 'Its rejected option, a `var` local left to its type''s default, is what R-RT (2026-11-25) later adopted
+    for a `var` local of a type with a default. The recorder''s reading, not the owner''s words, of what "assigned
+    in every `__init__`" means at three edges: an `__init__` that chains to another with `self.__init__(...)`
+    is assigned by the one it chains to; a constructor the compiler writes (a `@dataclass`''s) assigns every field
+    from its parameters; a class with such a field and no constructor at all has nothing to assign it and is refused.
+    Amended by R-RQ (2026-11-25): a `var` field whose type has a default may rest on it, so this rule''s "whatever
+    its type and whether it is `let` or `var`" no longer holds; its three cases on value-type and nullable fields
+    were removed and are R-RQ''s, with a `binding` axis (measured then, with the keywordless spelling: an `int`
+    field no `__init__` assigns reads `0`, a `str | None` field `None`, and python3 raises `AttributeError`).
+    Auto-properties are R-RP''s. Structs are R-RR''s. A struct that declares `__init__` must already assign every
+    field (SPY0252). Option 1 carries `recommended` because the agent called it the best of the three before the
+    owner answered.'
   cases:
   - family: field-assignment
     coords:
@@ -10139,7 +10141,7 @@ rulings:
   - id: R-RP
     why: an auto-property with a setter and a `var` field now follow one rule for a value type
   - id: R-RH
-    why: locals are not changed by this ruling; see the note
+    why: locals are not changed by this ruling; R-RT, later the same day, gives a `var` local the same rule
   decided_by: owner
   door: one-way
   breaks_running: false
@@ -10674,9 +10676,12 @@ rulings:
   laws: [R-RQ]
   considered:
   - id: T1
-    why: the agent had warned twice that a local with a default lets a `with` that swallows an error leave `0`
-      behind; the owner chose one rule for locals and fields. The `0` is then the declared default, not a value
-      left by code that did not run
+    why: the agent had warned that a local with a default lets a `with` that swallows an error leave `0` behind;
+      the owner chose one rule for locals and fields. That the `0` is then the declared default, not a value left
+      by code that did not run, is the recorder's way of squaring the two
+  - id: L-same-result
+    why: python3 raises `UnboundLocalError` where a `var` local reads its default; a `var` declaration has no
+      Python twin, and the owner accepted the same difference for fields (R-RQ)
   - id: R-QI
     why: 'module-level and `@static` declarations are not touched: the owner spoke of locals'
   decided_by: owner
@@ -10689,12 +10694,13 @@ rulings:
     (though those obviously must be set during __init__() anyway, the reason they exist is to be set once during
     __init__, maybe as part of some passed in params or other non-trivial code that can''t be done in a simple
     initializer or shouldn''t be, whereas a simple get would suffice in other cases)". The agent had kept R-RH.
-    The recorder''s reading, not the owner''s words: a `var` local that rests on its default may be read before
-    any assignment (that is what resting on it means), so definite assignment no longer applies to it; a `let`
-    local always has an initializer (SPY0104 today). R-AI''s run-time unset check stays retired: no local is unset.
-    Not ruled: a module-level or `@static` `var` (R-QI still asks for an initializer). The `var` keyword does
-    not parse on a local today (SPY0103), so the cases are refusals today for that reason; today''s keywordless
-    `x: int` read before assignment is SPY0600, and python3 raises `UnboundLocalError`.'
+    The recorder''s reading, not the owner''s words: that "except" means such a local reads as its type''s default,
+    with R-RQ''s list of defaults (the owner named the types, not the values); that it may therefore be read before
+    any assignment, so definite assignment no longer applies to it; a `let` local always has an initializer (SPY0104
+    today). R-AI''s run-time unset check stays retired: no local is unset. Not ruled: a module-level or `@static`
+    `var` (R-QI still asks for an initializer). A `docs/deviations.yaml` row is owed with the implementation,
+    as for R-RQ. The `var` keyword does not parse on a local today (SPY0103), so the cases are refusals today
+    for that reason; today''s keywordless `x: int` read before assignment is SPY0600, and python3 raises `UnboundLocalError`.'
   cases:
   - family: declaration-initializer
     coords:
@@ -10730,6 +10736,21 @@ rulings:
     coords:
       host: local
       binding: var
+      type: optional
+    verdict: run
+    evidence:
+      program: |
+        def main() -> None:
+            var s: str?
+            print(repr(s))
+      sharpy: refused:SPY0103
+      python: no-twin
+      after: |
+        runs:None()
+  - family: declaration-initializer
+    coords:
+      host: local
+      binding: var
       type: reference-type
     verdict: refuse
     evidence:
@@ -10759,15 +10780,18 @@ rulings:
   date: '2026-11-25'
   issue: '#1974'
   kind: language
-  rule: A get-only auto-property (`property get`) has an initializer at its declaration, whatever its type; it
-    takes no zero default.
+  rule: A get-only auto-property (`property get`) has an initializer at its declaration or is assigned in every
+    `__init__`, whatever its type; it takes no zero default.
   options:
-  - text: a get-only auto-property has an initializer
+  - text: a get-only auto-property has an initializer or is assigned in every `__init__`
     chosen: true
     recommended: true
+  - text: a get-only auto-property has an initializer; `__init__` alone is not enough
   - text: a get-only auto-property of a value type rests on zero (R-RP, `properties.md`)
-  recommended_note: the agent made no recommendation; it pointed out that the owner's reason for R-RQ (a `var`
-    can be reassigned) points this way. The flag sits on the chosen option.
+  recommended_note: 'The schema asks for exactly one `recommended` flag, and the agent recommended none of these
+    options: it pointed out that the owner''s reason for R-RQ (a `var` can be reassigned) argues against a zero
+    default, and later put options 1 and 2 to the owner without choosing. The flag sits on the chosen option only
+    to satisfy the schema.'
   basis: follows
   laws: [R-RQ]
   decided_by: owner
@@ -10779,15 +10803,24 @@ rulings:
     value types and nullable/optional types). get-only props must have an initializer. do we also have init props?
     (though those obviously must be set during __init__() anyway, the reason they exist is to be set once during
     __init__, maybe as part of some passed in params or other non-trivial code that can''t be done in a simple
-    initializer or shouldn''t be, whereas a simple get would suffice in other cases)". TO BE CONFIRMED with the
-    owner, because it is the recorder''s literal reading of "must have an initializer": a get-only auto-property
-    with no initializer that `__init__` assigns is refused too, and `property init` is the spelling for a value
-    set in `__init__`. `properties.md` says the opposite today ("`property get uuid: str  # Must be set in __init__`"),
-    and by a text count 13 of the 22 `property get` auto-properties in the fixtures have no initializer. Not ruled:
-    whether `__init__` may still assign a get-only auto-property that has an initializer (`properties.md` allows
-    it; measured: it runs and the assignment wins). The owner also asked whether init properties exist. They do:
-    `property init name: T` is set at its declaration or in every `__init__`, takes no zero default, and is read-only
-    afterwards (`properties.md`; measured: set in `__init__` it runs, never set it is SPY0426).'
+    initializer or shouldn''t be, whereas a simple get would suffice in other cases)". The recorder first read
+    "must have an initializer" literally, so that a get-only auto-property which only `__init__` assigns was refused,
+    and put that to the owner with its cost (`properties.md` shows the pattern; by a text count the fixtures hold
+    26 `property get` declarations, 15 of them with no initializer: 3 interface requirements, 3 at module level
+    and 9 in classes or structs, and 8 of the 15 are the `get` half of a split get / set pair). The owner, the
+    same day: "allowed also". So assignment in every `__init__` satisfies the rule, as it does for a reference-type
+    `property`; what the ruling removes is the zero default. "Get-only" here means a `property get` in a class
+    with no `property set` half. Not touched, and not ruled: an interface or `@abstract` requirement, which cannot
+    have an initializer (`properties_inheritance.md`); the `get` half of a split `property get` + `property set`
+    pair, which is one read-write property (#2382); a get-only auto-property of a struct or at module level; an
+    override. That a nullable or optional get-only auto-property must also be given a value is the recorder''s
+    reading of "whatever its type", which are the recorder''s words. Not ruled: whether `__init__` may still assign
+    a get-only auto-property that has an initializer (`properties.md` allows it; measured: it runs and the assignment
+    wins). The owner also asked whether init properties exist. They do: `property init name: T` is set at its
+    declaration or in every `__init__`, takes no zero default, and is read-only afterwards (`properties.md`; measured:
+    set in `__init__` it runs, never set it is SPY0426). Measured as well: a write to an init property after construction
+    is SPY0908 (the C# compiler''s CS8852 behind an internal error) and not a clean refusal; no issue covers it,
+    and a task was suggested to the owner.'
   cases:
   - family: auto-property-assignment
     coords:
@@ -10815,7 +10848,7 @@ rulings:
       type: reference-type
       modifier: get
       assigned: in-every-init
-    verdict: refuse
+    verdict: run
     evidence:
       program: |
         class P:
@@ -10830,7 +10863,8 @@ rulings:
       sharpy: |
         runs:a
       python: no-twin
-      after: refused:code_not_ruled
+      after: |
+        runs:a
   - family: auto-property-assignment
     coords:
       type: value-type

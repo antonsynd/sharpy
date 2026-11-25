@@ -235,6 +235,8 @@ def main():
 
 ## Bare Declarations
 
+> **Ruled, not yet implemented (R-RH and R-RT, 2026-11-24 and 2026-11-25).** A local declaration will need an initializer, except a `var` local whose type has a default (a value type, `T | None`, `T?`), which may be declared without one and reads as that default. This section describes what the compiler does today.
+
 Sharpy allows variable declarations without initialization (bare declarations). The variable must be assigned on all control-flow paths before it is read — use-before-assign is a compile-time error (SPY0600). See `variable_declaration.md` for details.
 
 ```spy
