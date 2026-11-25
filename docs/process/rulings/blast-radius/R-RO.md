@@ -2,7 +2,7 @@
 
 **Rule:** A derived __init__ assigns its own fields before super().__init__(...) (Swift order).
 
-Measured at `c2568ee65` over 5853 programs (4092 analysed). One site is one __init__ of a class that has a base class; 292 sites were found.
+Measured at `580d19a6c` over 5853 programs (4092 analysed). One site is one __init__ of a class that has a base class; 292 sites were found.
 
 ## Sites by verdict
 
@@ -31,22 +31,22 @@ Programs holding at least one site, by the worst verdict among their sites: 43 r
 | verdict | coordinates | sites | programs |
 |---|---|---|---|
 | refused | base: sharpy, fix: move, slots: fields | 32 | 31 |
-| refused | base: dotnet, fix: move, slots: fields | 13 | 12 |
+| refused | base: clr, fix: move, slots: fields | 13 | 12 |
 | refused-if-let | base: sharpy, fix: move, slots: fields | 84 | 61 |
-| refused-if-let | base: dotnet, fix: move, slots: fields | 3 | 2 |
+| refused-if-let | base: clr, fix: move, slots: fields | 3 | 2 |
 | conforms | base: sharpy, why: no-own-slots | 90 | 62 |
-| conforms | base: dotnet, why: no-own-slots | 12 | 8 |
+| conforms | base: clr, why: no-own-slots | 12 | 8 |
 | conforms | base: sharpy, why: var-only | 2 | 2 |
 | out-of-scope | base: sharpy, base-has-init: none, call: omitted | 47 | 35 |
 | out-of-scope | base: sharpy, base-has-init: declared, call: chained-to-own-init | 4 | 3 |
-| out-of-scope | base: dotnet, base-has-init: dotnet, call: omitted | 3 | 3 |
+| out-of-scope | base: clr, base-has-init: clr, call: omitted | 3 | 3 |
 | not-ruled | as-if: refused-if-let, base: sharpy | 2 | 2 |
 
 The axes:
 
 - **base**: What the class derives from.
   - `sharpy`: a class written in Sharpy
-  - `dotnet`: a .NET class, which includes the built-in exception types
+  - `clr`: a .NET class, which includes the built-in exception types
 - **fix**: The largest edit among the assignments that have to move: on a refused site, those of the slots with no default; on a refused-if-let site, all of them. A site's detail gives the edit for every slot, the ones that could stay behind included.
   - `move`: a top-level `self.f = <value>` whose value reads only parameters, literals, module names and own fields assigned before it: cut and paste above the call
   - `restructure`: the assignment sits under control flow, or its value reads a local computed in the constructor: the value has to become one expression or a @static helper
@@ -65,7 +65,7 @@ The axes:
 - **base-has-init**: For an out-of-scope site, whether a base class declares an __init__. With `call: omitted` this is R-RS's question: R-RS asks for the call where a base has one.
   - `declared`: a Sharpy base class, at some depth, declares __init__
   - `none`: no base class declares one
-  - `dotnet`: the chain reaches a .NET class first; R-RS does not rule that case
+  - `clr`: the chain reaches a .NET class first; R-RS does not rule that case
 - **as-if**: For a not-ruled site, the verdict the rule's text would give.
 
 ## Examples
@@ -76,7 +76,7 @@ The axes:
 - `src/Sharpy.Compiler.Tests/Integration/TestFixtures/classes/constructor_chaining_0073.spy:22` ColoredPoint.__init__: color: str (move)
 - `src/Sharpy.Compiler.Tests/Integration/TestFixtures/classes/dunder_eq_hash_inherited.spy:21` Derived.__init__: label: str (move)
 
-**refused** (base: dotnet, fix: move, slots: fields), 3 of 13:
+**refused** (base: clr, fix: move, slots: fields), 3 of 13:
 
 - `src/Sharpy.Compiler.Tests/Integration/TestFixtures/decorators/bracket_attr_custom_class.spy:7` MyTagAttribute.__init__: label: str (move)
 - `src/Sharpy.Compiler.Tests/Integration/TestFixtures/decorators/bracket_attr_custom_multi_param.spy:8` InfoAttribute.__init__: author: str (move); version: int32 (move)
@@ -88,7 +88,7 @@ The axes:
 - `src/Sharpy.Compiler.Tests/Integration/TestFixtures/access_modifiers/access_modifiers.spy:59` CheckingAccount.__init__: overdraft_limit: float64 (move)
 - `src/Sharpy.Compiler.Tests/Integration/TestFixtures/basics/bool_variables_0003.spy:17` StrictPolicy.__init__: require_both: bool (move)
 
-**refused-if-let** (base: dotnet, fix: move, slots: fields), 3 of 3:
+**refused-if-let** (base: clr, fix: move, slots: fields), 3 of 3:
 
 - `src/Sharpy.Compiler.Tests/Integration/TestFixtures/decorators/bracket_attr_custom_on_field.spy:8` RangeAttribute.__init__: min_val: int32 (move); max_val: int32 (move)
 - `src/Sharpy.Stdlib/spy/socket_module.spy:87` error.__init__: errno: int32 | None (move)
@@ -100,7 +100,7 @@ The axes:
 - `src/Sharpy.Compiler.Tests/Integration/TestFixtures/access_modifiers/access_naming_convention_methods.spy:25` Child.__init__
 - `src/Sharpy.Compiler.Tests/Integration/TestFixtures/basics/bool_variables_0003.spy:30` PermissivePolicy.__init__
 
-**conforms** (base: dotnet, why: no-own-slots), 3 of 12:
+**conforms** (base: clr, why: no-own-slots), 3 of 12:
 
 - `src/Sharpy.Compiler.Tests/Integration/TestFixtures/decorators/bracket_attr_custom_on_method.spy:5` TraceAttribute.__init__
 - `src/Sharpy.Compiler.Tests/Integration/TestFixtures/errors/exception_fstring_is_the_message_1480.spy:28` MyErr.__init__
@@ -123,7 +123,7 @@ The axes:
 - `src/Sharpy.Compiler.Tests/Integration/TestFixtures/classes/constructor_chaining_0073.spy:29` ColoredPoint.__init__: chains to self.__init__
 - `src/Sharpy.Compiler.Tests/Integration/TestFixtures/inheritance/super_init_call_0020.spy:30` RollingAverage.__init__: chains to self.__init__
 
-**out-of-scope** (base: dotnet, base-has-init: dotnet, call: omitted), 3 of 3:
+**out-of-scope** (base: clr, base-has-init: clr, call: omitted), 3 of 3:
 
 - `src/Sharpy.Compiler.Tests/Integration/TestFixtures/events/event_auto_clr_generic_subclass_1613.spy:12` ProgressEventArgs.__init__: no chaining call
 - `src/Sharpy.Compiler.Tests/Integration/TestFixtures/events/event_spec_downloader_1613.spy:12` ProgressEventArgs.__init__: no chaining call
