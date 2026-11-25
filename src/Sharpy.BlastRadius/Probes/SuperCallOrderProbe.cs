@@ -28,6 +28,9 @@ internal sealed class SuperCallOrderProbe : IRuleProbe
     public const string FixRestructure = "restructure";
     public const string FixUsesSelf = "uses-self";
 
+    /// <summary>A class that comes from a .NET assembly, not from Sharpy source.</summary>
+    public const string Clr = "clr";
+
     public const string CallOmitted = "omitted";
     public const string CallChained = "chained-to-own-init";
 
@@ -68,7 +71,7 @@ internal sealed class SuperCallOrderProbe : IRuleProbe
         new("base", "What the class derives from.", new[]
         {
             ("sharpy", "a class written in Sharpy"),
-            ("dotnet", "a .NET class, which includes the built-in exception types"),
+            (Clr, "a .NET class, which includes the built-in exception types"),
         }),
         new("fix", "The largest edit among the assignments that have to move: on a refused site, "
             + "those of the slots with no default; on a refused-if-let site, all of them. A site's "
@@ -106,7 +109,7 @@ internal sealed class SuperCallOrderProbe : IRuleProbe
         {
             ("declared", "a Sharpy base class, at some depth, declares __init__"),
             ("none", "no base class declares one"),
-            ("dotnet", "the chain reaches a .NET class first; R-RS does not rule that case"),
+            (Clr, "the chain reaches a .NET class first; R-RS does not rule that case"),
         }),
         new("as-if", "For a not-ruled site, the verdict the rule's text would give.", new[]
         {
@@ -145,7 +148,7 @@ internal sealed class SuperCallOrderProbe : IRuleProbe
             if (baseType.ClrType == typeof(object))
                 continue; // `class C(object)` is `class C`: there is no base constructor to order against
 
-            var baseKind = baseType.ClrType != null ? "dotnet" : "sharpy";
+            var baseKind = baseType.ClrType != null ? Clr : "sharpy";
             var slots = OwnSlots.Of(classDef, type);
             var constructors = SyntaxFacts.Members(classDef).OfType<FunctionDef>()
                 .Where(f => f.Name == DunderNames.Init).ToList();
@@ -281,7 +284,7 @@ internal sealed class SuperCallOrderProbe : IRuleProbe
         for (var ancestor = type.BaseType; ancestor != null; ancestor = ancestor.BaseType)
         {
             if (ancestor.ClrType != null)
-                return "dotnet";
+                return Clr;
             if (ancestor.Constructors.Count > 0)
                 return "declared";
         }

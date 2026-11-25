@@ -3,6 +3,7 @@ using System.Text.Json;
 using FluentAssertions;
 using Sharpy.BlastRadius;
 using Sharpy.BlastRadius.Probes;
+using Sharpy.Compiler.Project;
 using Sharpy.TestInfrastructure.Integration;
 using Xunit;
 
@@ -293,7 +294,7 @@ public class SuperCallOrderProbeTests
                 pass
             """).Single();
         site.Verdict.Should().Be("refused");
-        site.Coords.Should().Contain("base", "dotnet").And.Contain("fix", "move");
+        site.Coords.Should().Contain("base", "clr").And.Contain("fix", "move");
         site.Detail.Should().Contain("code:").And.Contain("detail: str");
     }
 
@@ -830,7 +831,7 @@ public class SuperCallOrderProbeTests
                 if (!fixture.IsMultiFile)
                     expected.Add(Path.GetFullPath(fixture.SpyFilePath));
                 else
-                    expected.UnionWith(Directory.EnumerateFiles(fixture.SpyFilePath, "*.spy", SearchOption.AllDirectories)
+                    expected.UnionWith(SourceGlob.EnumerateSourceFiles(fixture.SpyFilePath, "*.spy", SearchOption.AllDirectories)
                         .Select(Path.GetFullPath));
             }
 

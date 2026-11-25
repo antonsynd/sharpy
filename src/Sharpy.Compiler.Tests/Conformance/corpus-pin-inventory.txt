@@ -12,6 +12,12 @@
 #              gate: tuning-constant (evidence: the identifier), fixed-input (evidence: the named stems, or the member
 #              that reads no corpus). in: a count a new fixture can move, which plan-88736c D3 converted to a set file: none may remain.
 # A new hit is red until its row lands; an edited literal re-keys its row (red twice: unlisted, and a row with no hit).
+Sharpy.Compiler.Tests/BlastRadius/SuperCallOrderProbeTests.cs | areas[0].GetProperty("analysed").GetInt32().Should().Be(1); | ×1 | fixed-input | in-test outcomes of TheReportCountsSitesByAreaAndVerdictAndNamesEveryOne (three programs written in the test)
+Sharpy.Compiler.Tests/BlastRadius/SuperCallOrderProbeTests.cs | areas[0].GetProperty("programs").GetInt32().Should().Be(2); | ×1 | fixed-input | in-test outcomes of TheReportCountsSitesByAreaAndVerdictAndNamesEveryOne (three programs written in the test)
+Sharpy.Compiler.Tests/BlastRadius/SuperCallOrderProbeTests.cs | areas[0].GetProperty("verdicts").GetProperty("refused").GetInt32().Should().Be(1); | ×1 | fixed-input | in-test outcomes of TheReportCountsSitesByAreaAndVerdictAndNamesEveryOne (three programs written in the test)
+Sharpy.Compiler.Tests/BlastRadius/SuperCallOrderProbeTests.cs | areas[1].GetProperty("verdicts").GetProperty("refused").GetInt32().Should().Be(0); | ×1 | fixed-input | in-test outcomes of TheReportCountsSitesByAreaAndVerdictAndNamesEveryOne (three programs written in the test)
+Sharpy.Compiler.Tests/BlastRadius/SuperCallOrderProbeTests.cs | outcomes.Count(o => o.Skipped == null).Should().BeGreaterThan(500, "positive control: the pages are read"); | ×1 | floor | lower bound
+Sharpy.Compiler.Tests/BlastRadius/SuperCallOrderProbeTests.cs | site.Line.Should().Be(13); | ×1 | fixed-input | in-test page of TheCorpusReadsSpyFilesAndSpecBlocksAndSetsAsideWhatIsExpectedToFail (a temp directory, no corpus)
 Sharpy.Compiler.Tests/CodeGen/EmittedOptionalConstructionConformanceTests.cs | Assert.True(fixtures.Count > 0, | ×1 | floor | lower bound
 Sharpy.Compiler.Tests/CodeGen/EmittedOptionalConstructionConformanceTests.cs | Assert.True(scannedUnits > 0, | ×1 | floor | lower bound
 Sharpy.Compiler.Tests/CodeGen/EmittedOptionalConstructionConformanceTests.cs | Assert.True(snapshotFiles.Length > 0, | ×1 | floor | lower bound
