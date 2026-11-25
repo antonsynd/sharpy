@@ -3,7 +3,7 @@
 # axis must not matter (check `invariance`). Add a value here before using it in a case.
 #
 # The first five families are the ones the 2026-11-21 audit's verified conflicts needed; the rest were
-# added for the owner's rulings of 2026-11-24 (R-QS to R-RN) and of 2026-11-25 (R-RO to R-RS). All are listed by hand.
+# added for the owner's rulings of 2026-11-24 (R-QS to R-RN) and of 2026-11-25 (R-RO to R-RU). All are listed by hand.
 # Contract section 11 wants each axis to be the image of a compiler enumeration; #2486, #2487 and #2733
 # are where that is built, and these lists should be replaced by theirs as they land.
 families:
@@ -54,9 +54,12 @@ families:
       default: [collection-literal, call, tuple, earlier-parameter]
       spelling: [equals, fat-arrow]
   declaration-initializer:
-    doc: A declaration with no initializer, by where it stands.
+    doc: 'A declaration with no initializer, by where it stands, how it is declared (`keywordless` is today''s
+      `x: T`) and its type.'
     axes:
       host: [module, static-member, local]
+      binding: [keywordless, let, var]
+      type: [value-type, nullable, reference-type]
   expression-statement:
     doc: An expression that is not a call, standing alone as a statement, by its form.
     axes:
@@ -120,4 +123,4 @@ families:
     axes:
       type: [value-type, reference-type]
       modifier: [plain, get, init]
-      assigned: [in-every-init, in-no-init]
+      assigned: [at-declaration, in-every-init, in-no-init]

@@ -1057,7 +1057,7 @@ def test_the_enum_law_holds_both_backings_to_one_verdict(real):
 
 def test_every_ruling_of_2026_11_24_is_the_owners_and_has_a_charter_row(real):
     new = [r for r in real.rulings if "seed" not in r]
-    assert [r["id"] for r in new if r["date"] == "2026-11-25"] == ["R-RO", "R-RP", "R-RQ", "R-RR", "R-RS"]
+    assert [r["id"] for r in new if r["date"] == "2026-11-25"] == ["R-RO", "R-RP", "R-RQ", "R-RR", "R-RS", "R-RT", "R-RU"]
     assert [r["id"] for r in new if r["date"] == "2026-11-24"] == ["R-QS", "R-QT", "R-QU", "R-QV", "R-QW", "R-QX", "R-QY", "R-QZ", "R-RA", "R-RB", "R-RC", "R-RD", "R-RE", "R-RF", "R-RG", "R-RH", "R-RI", "R-RJ", "R-RK", "R-RL", "R-RM", "R-RN"]
     for record in new:
         assert record["decided_by"] == "owner" and record["id"] in real.charter, record["id"]
@@ -1116,6 +1116,22 @@ def test_an_auto_property_rests_on_zero_only_for_a_value_type(real):
     # Since R-RQ a `var` field of a value type rests on zero too; a `let` one does not.
     field = {c["coords"]["binding"]: c["verdict"] for c in records["R-RQ"]["cases"] if c["family"] == "field-assignment" and c["coords"]["type"] == "value-type"}
     assert field == {"var": "run", "let": "refuse"}
+
+
+def test_a_var_local_follows_the_var_field_and_a_get_only_property_does_not(real):
+    records = {r["id"]: r for r in real.rulings}
+    # R-RT: with no initializer a local runs only as a `var` of a type with a default, as a field
+    # does under R-RQ; R-RH's keywordless local stays refused.
+    local = {(c["coords"]["binding"], c["coords"]["type"]): c["verdict"] for r in ("R-RH", "R-RT") for c in records[r]["cases"]}
+    assert {k for k, v in local.items() if v == "run"} == {("var", "value-type"), ("var", "nullable")}
+    field = {(c["coords"]["binding"], c["coords"]["type"]): c["verdict"] for c in records["R-RQ"]["cases"] if c["family"] == "field-assignment"}
+    assert {k: local[k] for k in field} == field
+    assert records["R-RH"]["amended_by"] == ["R-RT"] and ("charter-mark", ("R-RH", "R-RT")) not in keys(mod.run_checks(real))
+    # R-RU: a get-only auto-property runs only with an initializer at its declaration.
+    get = {(c["coords"]["type"], c["coords"]["assigned"]): c["verdict"] for r in ("R-RP", "R-RU") for c in records[r]["cases"] if c["coords"]["modifier"] == "get"}
+    assert {k for k, v in get.items() if v == "run"} == {("value-type", "at-declaration")}
+    assert get[("value-type", "in-no-init")] == get[("reference-type", "in-every-init")] == "refuse"
+    assert records["R-RP"]["amended_by"] == ["R-RU"] and ("charter-mark", ("R-RP", "R-RU")) not in keys(mod.run_checks(real))
 
 
 def test_a_struct_field_follows_the_field_rule_and_the_super_call_is_written(real):
