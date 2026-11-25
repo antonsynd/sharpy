@@ -22,6 +22,10 @@ python3 build_tools/ruling_evidence.py recheck       # re-run every recorded pro
 
 Both also run as tests under `build_tools/tests/`, so CI runs them.
 
+A ruling's count of the programs it breaks comes from `bash build_tools/blast_radius.sh run <rule>`
+where the rule has a probe ([blast-radius.md](../blast-radius.md)); a count taken with a text
+search says so.
+
 ## Status
 
 The 460 records marked `seed:` were written by the audit. Their labels are a language model's

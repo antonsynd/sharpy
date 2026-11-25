@@ -30,6 +30,8 @@
     <InternalsVisibleTo Include="Sharpy.Lsp.Tests" />
     <!-- Allow Playground to access AstDumper for AST tab -->
     <InternalsVisibleTo Include="Sharpy.Playground" />
+    <!-- Allow the blast-radius tool to read the typed tree (AstHelper, NestedTypeIndex) -->
+    <InternalsVisibleTo Include="sharpy-blast" />
   </ItemGroup>
 
   <ItemGroup>
