@@ -29,7 +29,7 @@ struct Vector2:
 - Can implement interfaces (including interfaces with default methods)
 - Value semantics: copied when assigned or passed
 
-> **Ruled, not yet implemented (R-RR, 2026-11-25).** A struct field of a non-nullable reference type will need an initializer or an assignment in every `__init__`; a struct with such a field and neither will be refused. An element of a new array is still zero-initialized.
+> **Ruled, not yet implemented (R-RR, 2026-11-25).** A struct field of a reference type will need an initializer, a nullable type (`T | None`), an optional type (`T?`), or an assignment in every `__init__`; a struct with a field that has none of these will be refused. An element of a new array is still zero-initialized.
 
 **Default Initialization:**
 

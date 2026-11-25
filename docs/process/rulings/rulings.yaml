@@ -8955,8 +8955,8 @@ rulings:
   issue: '#2785'
   kind: language
   rule: 'A local declaration has an initializer; one with none is a compile error, as R-QI already rules for module-level
-    and `@static` declarations. This retires R-AI''s run-time unset check. Fields are not covered: B7, as R-RM
-    amends it, is their rule.'
+    and `@static` declarations. This retires R-AI''s run-time unset check. Fields are not covered: B7 is their
+    rule (R-RM, then R-RQ).'
   options:
   - text: a local declaration needs an initializer
     chosen: true
@@ -9466,8 +9466,8 @@ rulings:
   laws: [A3, T2]
   considered:
   - id: R-RM
-    why: R-RM says every field is assigned by the end of `__init__`; this ruling covers what happens before that
-      point
+    why: R-RM says which fields are assigned by the end of `__init__` (since R-RQ, all but a `var` field resting
+      on its default); this ruling covers what happens before that point
   decided_by: owner
   door: two-way
   breaks_running: true
@@ -9715,13 +9715,14 @@ rulings:
   laws: [A3, R-RN]
   considered:
   - id: R-RM
-    why: R-RM says every field is assigned by the end of `__init__`; this ruling says where, relative to the base
-      call
+    why: R-RM says which fields are assigned by the end of `__init__` (since R-RQ, all but a `var` field resting
+      on its default); this ruling says where, relative to the base call
   decided_by: owner
   door: one-way
   breaks_running: true
   undo_breaks: true
   amends: [R-ML]
+  amended_by: [R-RQ]
   note: 'The owner''s words were "your lean, like Swift", on the agent''s option "let a derived `__init__` assign
     its own fields before `super().__init__()`, as Swift does". The order is required, not only allowed, so the
     usual Python order, base call first and own fields after, is refused with a steer to move the assignments
@@ -9735,12 +9736,14 @@ rulings:
     C# 12 program: a field assigned in the constructor body is null when the base constructor calls an overridden
     method; a field initialized from a primary-constructor parameter is not, and statements ahead of the call
     can be hoisted into a static helper whose result the primary constructor takes (the cost of that shape was
-    not timed). A derived `__init__` that writes no `super().__init__()` call is R-RS''s. Not ruled, or not measured:
-    a `@dataclass` with a base, whose generated constructor assigns its fields after the base call (`dataclass.md`);
-    a base that is a .NET class (the rule''s text covers it; not probed); an argument of the base call that reads
-    an own field assigned just above it (R-RN allows the read; the C# program does not show it emitted). By the
-    rule''s text an own-field assignment under `if`, or one whose value takes several statements, is not allowed
-    ahead of the call: the value goes in one expression or a `@static` helper, as R-ML already steers.'
+    not timed). Amended by R-RQ (2026-11-25, the recorder''s reading of it): a `var` field that rests on its type''s
+    default is not one of the fields that must be assigned ahead of the call. A derived `__init__` that writes
+    no `super().__init__()` call is R-RS''s. Not ruled, or not measured: a `@dataclass` with a base, whose generated
+    constructor assigns its fields after the base call (`dataclass.md`); a base that is a .NET class (the rule''s
+    text covers it; not probed); an argument of the base call that reads an own field assigned just above it (R-RN
+    allows the read; the C# program does not show it emitted). By the rule''s text an own-field assignment under
+    `if`, or one whose value takes several statements, is not allowed ahead of the call: the value goes in one
+    expression or a `@static` helper, as R-ML already steers.'
   cases:
   - family: super-call-order
     coords:
@@ -9985,8 +9988,8 @@ rulings:
   laws: [CR7, A3]
   considered:
   - id: R-RM
-    why: a field of a value type must be assigned and an auto-property of one may rest on zero; the owner ruled
-      both, a day apart, and `properties.md` already draws the line this way
+    why: when this was ruled, R-RM required a field of a value type to be assigned while an auto-property of one
+      could rest on zero; R-RQ, later the same day, lets a `var` field rest on zero too
   decided_by: owner
   door: two-way
   breaks_running: true
@@ -10110,9 +10113,9 @@ rulings:
   issue: '#1974'
   kind: language
   rule: 'A `var` field whose type has a default may be left unassigned and reads as that default: zero for a value
-    type, `None` for `T | None` and `T?`. A `let` field, and a field of a non-nullable reference type, has an
-    initializer or is assigned on every path of every `__init__`. This restores B7''s exception, which R-RM had
-    removed. A `var` field that rests on its default counts as assigned for R-RN.'
+    type, `None` for `T | None`, `None()` for `T?`. A `let` field, and a field of a non-nullable reference type,
+    has an initializer or is assigned on every path of every `__init__`. This restores B7''s exception, which
+    R-RM had removed. A `var` field that rests on its default counts as assigned for R-RN.'
   options:
   - text: a `var` field whose type has a default may rest on it
     chosen: true
@@ -10135,7 +10138,7 @@ rulings:
   door: one-way
   breaks_running: false
   undo_breaks: true
-  amends: [R-RM, R-RN]
+  amends: [R-RM, R-RN, R-RO]
   note: 'The owner, 2026-11-25: "i would say zero is fine... i know this is backtracking, but the idea is that
     var can be reassigned (as can a property, at least one with a set, with only a get it''s not the case) so
     if it has no initial value, a reasonable default makes sense. it saves keystrokes for something is meant to
@@ -10147,9 +10150,15 @@ rulings:
     and assigning it after the call is an ordinary write. Not ruled: locals (R-RH stands: the owner named typed
     locals as a reason and did not say a local may be left unassigned; a local with a default brings back the
     `with` that swallows an error); a get-only auto-property of a value type (R-RP and `properties.md` let it
-    rest on zero, and the owner''s reason, that it cannot be reassigned, points the other way). The `var` field
-    keyword does not parse today (SPY0103), so the cases show a refusal for that reason; with the keywordless
-    spelling an unassigned `int` field reads `0` today.'
+    rest on zero, and the owner''s reason, that it cannot be reassigned, points the other way). This ruling is
+    about class fields: for a struct, B12 already says value-typed fields keep their zero default, and R-RR rules
+    the reference-typed ones. Not ruled: whether a struct''s `__init__` must still assign a `var` value-type field
+    (it must today: SPY0252, measured). The `var` field keyword does not parse today (SPY0103), so the cases show
+    a refusal for that reason; with the keywordless spelling an unassigned `int` field reads `0` today. B6 retires
+    the keywordless spelling in the same plan that checks B7 (P21b to P21c), so the check is expected to arrive
+    with the keywords; which lands first is not ruled. A `docs/deviations.yaml` row is owed with the implementation
+    (python3 raises `AttributeError` where a `var` field reads its default); none exists for today''s behaviour
+    either.'
   cases:
   - family: field-assignment
     coords:
@@ -10262,10 +10271,10 @@ rulings:
   date: '2026-11-25'
   issue: '#1974'
   kind: language
-  rule: 'R-RM, as R-RQ amends it, applies to a struct as to a class: a struct field of a non-nullable reference
-    type has an initializer or is assigned in every `__init__`, and a struct with such a field and neither is
-    a compile error. A struct that .NET produces without running a constructor (an element of a new array, `default`)
-    is still zeroed; that is a documented .NET limit.'
+  rule: A struct field of a reference type has an initializer, or a nullable type (`T | None`, which defaults
+    to `None`), or an optional type (`T?`, which defaults to `None()`), or is assigned in every `__init__`; a
+    struct with a field that has none of the four is a compile error. A struct that .NET produces without running
+    a constructor (an element of a new array, `default`) is still zeroed; that is a documented .NET limit.
   options:
   - text: apply R-RM to structs; the array case stays a documented .NET limit
     chosen: true
@@ -10281,11 +10290,17 @@ rulings:
   amends: [R-GV]
   note: 'The owner, 2026-11-25: "apply R-RM", on the agent''s option "Apply R-RM to structs. Such a field needs
     an initializer or an `__init__`, which closes the `S()` row. The array row stays as a documented .NET limit."
-    TO BE CONFIRMED with the owner: B12 of R-GV had already ruled this, and more strictly: such a field "needs
-    an initializer (`net10.0`: C# 10 struct field initializers) or a nullable type (`netstandard2.1`, C# 9)",
-    with no `__init__` route. The recorder missed B12 when it put the question, so the owner chose without it
-    in view. As recorded, this ruling adds the `__init__` route to B12; B12''s "value-typed struct fields keep
-    their zero default" is unchanged. Not measured: `netstandard2.1`, where C# 9 has no struct field initializers.'
+    B12 of R-GV had already ruled this, and more strictly: such a field "needs an initializer (`net10.0`: C# 10
+    struct field initializers) or a nullable type (`netstandard2.1`, C# 9)", with no `__init__` route; the recorder
+    missed B12 when it put the question. Told of B12, the owner confirmed and completed the rule the same day:
+    "for a reference type field of a struct, an initializer or a nullable type/optional type (which would default
+    to None and None() respectively) or set in __init__() (the first 3 are not exclusive of being set in __init__()
+    obviously). i think that covers it right? i think that also widens it to optionals, because before it was
+    just pure nullables (T | None)". So this ruling adds two routes to B12: assignment in every `__init__`, and
+    an optional type. B12''s "value-typed struct fields keep their zero default" is unchanged. The scope, a field
+    of non-nullable reference type, is the option''s own ("Such a field"); a value-typed or `let` struct field
+    is not touched here, and SPY0252 (a struct''s `__init__` assigns every field) stands as it is. Not measured:
+    `netstandard2.1`, where C# 9 has no struct field initializers.'
   cases:
   - family: struct-field-assignment
     coords:
@@ -10387,6 +10402,44 @@ rulings:
       python: no-twin
       after: |
         runs:True
+  - family: struct-field-assignment
+    coords:
+      type: nullable
+      given: nothing
+      made-by: call
+    verdict: run
+    evidence:
+      program: |
+        struct S:
+            name: str | None
+
+        def main() -> None:
+            s = S()
+            print(s.name)
+      sharpy: |
+        runs:None
+      python: no-twin
+      after: |
+        runs:None
+  - family: struct-field-assignment
+    coords:
+      type: optional
+      given: nothing
+      made-by: call
+    verdict: run
+    evidence:
+      program: |
+        struct S:
+            name: str?
+
+        def main() -> None:
+            s = S()
+            print(repr(s.name))
+      sharpy: |
+        runs:None()
+      python: no-twin
+      after: |
+        runs:None()
 - id: R-RS
   date: '2026-11-25'
   issue: '#1974'
@@ -10410,9 +10463,11 @@ rulings:
     the derived body, where python3 does not run it at all, so a program prints a value where python3 raises `AttributeError`.
     By a text count, 2 of the 186 derived classes in the fixtures that declare `__init__` under a same-file base
     with an `__init__` leave the call out. The recorder''s reading, not the owner''s words: "has" covers an `__init__`
-    the base inherits. Not ruled: a base that is a .NET class (the agent said it would settle that the same way;
-    the owner did not take it up, and it is not counted). A derived class that declares no `__init__` is not touched:
-    the base''s runs, as in python3.'
+    the base inherits; and an `__init__` that chains with `self.__init__(...)` is exempt, since SPY0351 forbids
+    writing both calls and the one it chains to writes the base call (measured: runs today). Not ruled: a base
+    that is a .NET class (the agent said it would settle that the same way; the owner did not take it up, and
+    it is not counted), so #2142, which is about a .NET base, is not settled by this ruling. A derived class that
+    declares no `__init__` is not touched: the base''s runs, as in python3.'
   cases:
   - family: super-call-presence
     coords:
@@ -10573,3 +10628,31 @@ rulings:
         runs:a hi
       after: |
         runs:a hi
+  - family: super-call-presence
+    coords:
+      base-init: needs-argument
+      call: chained-to-own-init
+    verdict: run
+    evidence:
+      program: |
+        class Base:
+            n: int
+
+            def __init__(self, n: int):
+                self.n = n
+
+        class Child(Base):
+            def __init__(self, n: int):
+                super().__init__(n)
+
+            def __init__(self):
+                self.__init__(7)
+
+        def main() -> None:
+            c = Child()
+            print(c.n)
+      sharpy: |
+        runs:7
+      python: no-twin
+      after: |
+        runs:7

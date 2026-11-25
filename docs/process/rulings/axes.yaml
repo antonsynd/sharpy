@@ -98,15 +98,15 @@ families:
     doc: A struct field with no value at its declaration, by its type, by what gives it one, and by how the struct
       value is made.
     axes:
-      type: [reference-type, value-type]
+      type: [reference-type, nullable, optional, value-type]
       given: [nothing, initializer, init]
       made-by: [call, array-element]
   super-call-presence:
     doc: A derived class's `__init__` that does not write `super().__init__(...)`, by what the base class's `__init__`
-      is.
+      is and by whether it leaves the call out or chains to another `__init__` of its own class.
     axes:
       base-init: [none, parameterless, needs-argument, calls-overridden-method]
-      call: [omitted]
+      call: [omitted, chained-to-own-init]
   super-call-order:
     doc: A derived class's `__init__`, by what stands ahead of `super().__init__(...)`, whether the class has
       fields of its own to assign, and what the base `__init__` does.

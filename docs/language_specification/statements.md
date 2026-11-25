@@ -271,7 +271,7 @@ class Person:
         self.age = age
 ```
 
-> **Ruled, not yet implemented (R-RQ, 2026-11-25).** Once fields are declared with `let` or `var`, a `var` field whose type has a default (a value type, `T | None`, `T?`) may be left unassigned and reads as that default; a `let` field and a field of a non-nullable reference type must be assigned, as the comment above says. The compiler checks neither today.
+> **Ruled, not yet implemented (R-RQ, 2026-11-25).** Once fields are declared with `let` or `var`, a `var` field of a class whose type has a default (a value type, `T | None`, `T?`) may be left unassigned and reads as that default; a `let` field and a field of a non-nullable reference type must be assigned, as the comment above says. The compiler checks neither today.
 
 ## Declaration Keywords
 

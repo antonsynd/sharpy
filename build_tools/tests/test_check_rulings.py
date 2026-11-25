@@ -1064,7 +1064,7 @@ def test_every_ruling_of_2026_11_24_is_the_owners_and_has_a_charter_row(real):
         assert not real.charter[record["id"]][0], record["id"]  # not struck
 
 
-def test_the_field_rulings_amend_b7_and_refuse_every_unassigned_field(real):
+def test_the_field_rulings_on_b7_say_which_unassigned_field_runs(real):
     # R-RM (2026-11-24) removed B7's exception; R-RQ (2026-11-25) restored it. What is left of R-RM
     # is the reference-type field: it runs only where some constructor assigns it (every __init__,
     # the one an __init__ chains to, or the constructor the compiler writes for a dataclass).
@@ -1126,11 +1126,17 @@ def test_a_struct_field_follows_the_field_rule_and_the_super_call_is_written(rea
     assert cells[("nothing", "call", "reference-type")] == "refuse" and cells[("nothing", "call", "value-type")] == "run"
     assert cells[("init", "call", "reference-type")] == cells[("initializer", "call", "reference-type")] == "run"
     assert cells[("init", "array-element", "reference-type")] == "run"
+    assert cells[("nothing", "call", "nullable")] == cells[("nothing", "call", "optional")] == "run"
     assert "R-GV" in records["R-RR"]["amends"] and ("charter-mark", ("R-GV", "R-RR")) not in keys(mod.run_checks(real))
     # R-RS: the call may be left out only where the base has no __init__.
-    omitted = {c["coords"]["base-init"]: c["verdict"] for c in records["R-RS"]["cases"]}
+    omitted = {c["coords"]["base-init"]: c["verdict"] for c in records["R-RS"]["cases"] if c["coords"]["call"] == "omitted"}
     assert {b for b, v in omitted.items() if v == "run"} == {"none"}
     assert omitted["parameterless"] == omitted["needs-argument"] == omitted["calls-overridden-method"] == "refuse"
+    # ... and an __init__ that chains to another of its own class is exempt (it cannot write both).
+    assert [c["verdict"] for c in records["R-RS"]["cases"] if c["coords"]["call"] == "chained-to-own-init"] == ["run"]
+    # R-RQ narrows three rulings, and each one's row says so.
+    assert [r for r in ("R-RM", "R-RN", "R-RO") if records[r].get("amended_by") != ["R-RQ"]] == []
+    assert not [k for k in keys(mod.run_checks(real)) if k[0] == "charter-mark" and k[1][1] == "R-RQ"]
 
 
 def test_properly_marked_amendments_are_not_reported(real):
