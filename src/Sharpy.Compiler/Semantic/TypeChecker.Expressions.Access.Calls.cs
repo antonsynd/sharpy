@@ -184,7 +184,7 @@ internal partial class TypeChecker
         // written generic constructor reference, or the callee's own function type — closed at the
         // written type arguments when there are any. Built once, before the loops; every argument
         // position and the deferred callable-reference seam below read it.
-        var formals = FormalSlots.For(call, callee, calleeType, earlyFuncSymbol, earlyParamOffset, calleeFunctionType);
+        var formals = FormalSlots.For(call, IsWrittenGenericTypeReference(callee), calleeType, earlyFuncSymbol, earlyParamOffset, calleeFunctionType);
         // Not a type test: each scope pushes the field's CURRENT value, so an enclosing type test's
         // operand and type argument survive rather than being cleared for this call's arguments. The
         // type-argument scope carries the conjunction — the second argument only names a type when
@@ -4697,7 +4697,7 @@ internal partial class TypeChecker
         }
 
         public static FormalSlots For(
-            FunctionCall call, Expression callee, SemanticType calleeType, FunctionSymbol? earlyFuncSymbol,
+            FunctionCall call, bool calleeIsGenericTypeReference, SemanticType calleeType, FunctionSymbol? earlyFuncSymbol,
             int earlyParamOffset, FunctionType? calleeFunctionType)
         {
             if (earlyFuncSymbol != null)
@@ -4713,7 +4713,7 @@ internal partial class TypeChecker
             // struct with one constructor, or one the argument count leaves (several that accept
             // it are the overload resolver's, and must not be guessed here — #1671's rule for
             // overload sets; see ArityChosenCandidate).
-            if (callee is IndexAccess
+            if (calleeIsGenericTypeReference
                 && calleeType is GenericType { GenericDefinition: { TypeKind: TypeKind.Class or TypeKind.Struct } definition } gt
                 && SoleOrArityChosenInitializer(InitializerOverloadsOf(definition), call) is { } init
                 && WrittenBinding(definition.TypeParameters, gt.TypeArguments) is { } ctorBinding)
@@ -5598,6 +5598,22 @@ internal partial class TypeChecker
         return builtinOverloads is { Count: > 1 } && builtinOverloads.Contains(bound);
     }
 
+    /// <summary>
+    /// Whether <paramref name="callee"/> is a WRITTEN generic type reference (<c>Box[int]</c>,
+    /// <c>difflib.Matcher[str]</c>, <c>Outer.Inner[int]</c>) — the thing being constructed — by the
+    /// recorded <see cref="GenericReferenceKind"/> fact, never by <c>type is GenericType</c>: an
+    /// indexed VALUE (<c>ops[0](...)</c>, a list element with a <c>__call__</c>) has a GenericType
+    /// expression type too, and its call is not a construction.
+    /// </summary>
+    private bool IsWrittenGenericTypeReference(Expression callee)
+        => callee is IndexAccess
+           && _semanticInfo.GetGenericReference(callee) is
+           {
+               Kind: GenericReferenceKind.GenericTypeRef
+                   or GenericReferenceKind.ModuleType
+                   or GenericReferenceKind.NestedTypeRef
+           };
+
     private bool CalleeDenotesOverloadSet(Expression callee, FunctionCall call)
     {
         switch (callee)
@@ -5627,7 +5643,8 @@ internal partial class TypeChecker
                 }
 
             // `Box[int](...)` — the written-binding spelling of the class arm above.
-            case IndexAccess when _semanticInfo.GetExpressionType(callee) is GenericType { GenericDefinition: { } definition }:
+            case IndexAccess when IsWrittenGenericTypeReference(callee)
+                && _semanticInfo.GetExpressionType(callee) is GenericType { GenericDefinition: { } definition }:
                 return IsUnresolvedSet(InitializerOverloadsOf(definition), call);
 
             case MemberAccess memberAccess:
@@ -5807,6 +5824,15 @@ internal partial class TypeChecker
         // argument count leaves, bound as the chaining call binds it.
         if (ChainingInitializerHint(call, callee) is { } chainingHint)
             return (chainingHint, 1);
+
+        // `Outer.C(...)` / `module.C(...)` — the qualified spelling of the constructor arm below.
+        if (callee is MemberAccess qualifiedCallee
+            && qualifiedCallee.Object is not SuperExpression
+            && TryResolveTypeSymbolFromMemberAccess(qualifiedCallee) is { } qualifiedType
+            && SoleOrArityChosenInitializer(InitializerOverloadsOf(qualifiedType), call) is { IsGeneric: false } qualifiedInit)
+        {
+            return (qualifiedInit, 1);
+        }
 
         // Method calls (obj.method(...)): resolve the method on the receiver type so lambda
         // arguments get their parameter types inferred from the receiver-substituted signature
@@ -6226,8 +6252,8 @@ internal partial class TypeChecker
     /// The type whose constructor SET a chaining call (<c>self.__init__(...)</c> or
     /// <c>super().__init__(...)</c>) binds against, or null when the call is not one or the target
     /// has fewer than two constructors. A chaining call the context checks already refused
-    /// (outside a constructor, not the hoisted first statement) is not selected too: one mistake,
-    /// one diagnostic.
+    /// (outside a constructor, not the hoisted first statement, or after another chaining call —
+    /// SPY0351 / SPY0292) is not selected too: one mistake, one diagnostic.
     /// </summary>
     private TypeSymbol? ChainingInitializerSetOwner(FunctionCall call, Expression callee)
     {
@@ -6242,7 +6268,8 @@ internal partial class TypeChecker
         };
         if (target == null
             || _currentMethodName != DunderNames.Init
-            || !ReferenceEquals(call, _hoistedInitializerCall))
+            || !ReferenceEquals(call, _hoistedInitializerCall)
+            || _hoistedInitializerCallRepeated)
         {
             return null;
         }

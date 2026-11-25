@@ -1,0 +1,26 @@
+# A nested class that shares a module-level @dataclass's name is not that dataclass: the
+# super().__init__ below binds against Outer.P's inherited constructor set, which no overload
+# of fits three arguments.
+class B:
+    v: int
+
+    def __init__(self, a: int):
+        self.v = a
+
+    def __init__(self, a: str, b: int):
+        self.v = b
+
+class Outer:
+    class P(B):
+        pass
+
+class D(Outer.P):
+    def __init__(self):
+        super().__init__("x", 2, 3)
+
+@dataclass
+class P:
+    x: int
+
+def main() -> None:
+    print(D().v)

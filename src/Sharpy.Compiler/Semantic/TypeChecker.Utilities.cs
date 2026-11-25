@@ -2541,7 +2541,7 @@ internal partial class TypeChecker
                 // A @dataclass declared LATER in this file has not been checked yet, so its synthesized
                 // __init__ is not in Constructors: its shape is unknown here, so keep the refusal below
                 // rather than assume the parameterless constructor.
-                if (currentType.ClrType == null && _moduleDataclassNames.Contains(currentType.Name))
+                if (_moduleDataclassSymbols.Contains(currentType))
                     break;
                 currentType = GetBaseType(currentType);
             }
@@ -2700,7 +2700,7 @@ internal partial class TypeChecker
             // A @dataclass declared LATER in this file has not been checked yet, so its synthesized
             // __init__ is not in Constructors: the set is unknown here, not its base's
             // (ValidateSuperMemberAccess's rule).
-            if (currentType.ClrType == null && _moduleDataclassNames.Contains(currentType.Name))
+            if (_moduleDataclassSymbols.Contains(currentType))
                 return null;
 
             // CLR-backed type with no enumerated constructors: no metadata to validate

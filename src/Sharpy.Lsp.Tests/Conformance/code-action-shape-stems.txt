@@ -8,10 +8,10 @@
 # GENERATED, HUMAN-REVIEWED: bash build_tools/regenerate_corpus_pins.sh rewrites the rows and the `# total` lines; review
 # the diff (a new stem's rows are its own; a moved row of an existing stem is a finding until explained). A new key's cite row in
 # code-action-shape-allowlist.txt is written by hand (the loader names it), and so is a drained key's deletion.
-# total stems identity keys=14 rows=2113
+# total stems identity keys=14 rows=2114
 # total stems crlf keys=8 rows=285
-# total stems cr keys=8 rows=294
-# total stems comment keys=7 rows=291
+# total stems cr keys=8 rows=295
+# total stems comment keys=7 rows=292
 extract-method identity diagnostics Formatting/module_docstring_then_statement # #2294
 extract-method identity diagnostics abstract_class_interface_stubs # #2294
 extract-method identity diagnostics access_modifiers/access_modifiers # #2294
@@ -163,6 +163,7 @@ extract-method identity diagnostics classes/dunder_str_0063 # #2294
 extract-method identity diagnostics classes/dunder_unary_0005 # #2294
 extract-method identity diagnostics classes/ellipsis_no_warning_0001 # #2294
 extract-method identity diagnostics classes/final_field_derived # #2294
+extract-method identity diagnostics classes/indexed_callable_value_is_not_construction # #2294
 extract-method identity diagnostics classes/indexer_setitem_value_param_1529 # #2294
 extract-method identity diagnostics classes/inheritance_with_override # #2294
 extract-method identity diagnostics classes/interface_explicit_plus_synthesized_isized_1746 # #2294
@@ -2479,6 +2480,7 @@ extract-method cr diagnostics indirect_callee/bound_callable_ref # #2294
 extract-method cr diagnostics inheritance/abstract_class_0020 # #2294
 extract-method cr diagnostics inheritance/class_inheritance_0031 # #2294
 extract-method cr diagnostics inheritance/super_init_call_0000 # #2294
+extract-method cr diagnostics inheritance/super_init_nested_base_shares_dataclass_name # #2294
 extract-method cr diagnostics inheritance/virtual_override_0014 # #2294
 extract-method cr diagnostics interop/clr_char_member_wrong_slot_refused_1705 # #2294
 extract-method cr diagnostics interop/clr_hashset_add_instance_1571 # #2294
@@ -2786,6 +2788,7 @@ extract-method comment diagnostics generics/type_ref_wrong_arity_nested_1192 # #
 extract-method comment diagnostics indirect_callee/bound_callable_ref # #2294
 extract-method comment diagnostics inheritance/abstract_class_0020 # #2294
 extract-method comment diagnostics inheritance/super_init_call_0000 # #2294
+extract-method comment diagnostics inheritance/super_init_nested_base_shares_dataclass_name # #2294
 extract-method comment diagnostics interface_definition/interface_definition # #2294
 extract-method comment diagnostics interop/bcl_member_on_builtin_receiver_typed # #2294
 extract-method comment diagnostics interop/clr_char_member_wrong_slot_refused_1705 # #2294

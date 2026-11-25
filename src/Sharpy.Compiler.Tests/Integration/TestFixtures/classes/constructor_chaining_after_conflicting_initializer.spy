@@ -1,0 +1,20 @@
+# A chaining call already refused for following another (SPY0351) is not also selected:
+# no SPY0354 for its argument count.
+class B:
+    def __init__(self, a: int):
+        pass
+
+class C(B):
+    def __init__(self, a: int):
+        super().__init__(a)
+
+    def __init__(self, a: str, b: str):
+        super().__init__(1)
+
+    def __init__(self, f: bool):
+        if f:
+            super().__init__(1)
+        self.__init__(1, 2, 3)
+
+def main() -> None:
+    print(1)

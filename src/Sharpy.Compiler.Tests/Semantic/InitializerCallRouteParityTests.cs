@@ -10,14 +10,15 @@ namespace Sharpy.Compiler.Tests.Semantic;
 /// <summary>
 /// The differential for INITIALIZER CALLS over an overloaded <c>__init__</c>: <b>an initializer
 /// call binds against the target's whole overload set, through one selector, on every route and in
-/// every declaration order</b>. The routes are a direct construction <c>C(args)</c>, a construction
-/// with written type arguments <c>C[int](args)</c>, the chaining call <c>self.__init__(args)</c> and
-/// the chaining call <c>super().__init__(args)</c>; each cell gives all four the SAME candidate set —
+/// every declaration order</b>. The routes are a direct construction <c>C(args)</c>, a qualified one
+/// <c>Outer.C(args)</c>, a construction with written type arguments <c>C[int](args)</c>, the chaining
+/// call <c>self.__init__(args)</c> and the chaining call <c>super().__init__(args)</c>; each cell
+/// gives all five the SAME candidate set —
 /// <c>Z</c> (no parameters) plus a shape's pair <c>A</c>/<c>B</c> — declared with the chain's target
 /// either below the constructor that calls it (<see cref="Order.TargetLater"/>) or above it
 /// (<see cref="Order.TargetFirst"/>).
 ///
-/// <para>Axes: route (4) × order (2) × shape (12) = 96 cells, none excluded. A shape either states
+/// <para>Axes: route (5) × order (2) × shape (12) = 120 cells, none excluded. A shape either states
 /// its verdict outright (an output, or a refusal code) or, for an argument whose type the call's
 /// context decides AMONG several overloads accepting the count, states only that every route
 /// answers as the construction route does: a candidate set gives such an argument no type
@@ -31,7 +32,7 @@ namespace Sharpy.Compiler.Tests.Semantic;
 /// </summary>
 public class InitializerCallRouteParityTests : IntegrationTestBase
 {
-    private const int RouteCount = 4;
+    private const int RouteCount = 5;
     private const int OrderCount = 2;
     private const int ShapeCount = 12;
 
@@ -44,6 +45,9 @@ public class InitializerCallRouteParityTests : IntegrationTestBase
     {
         /// <summary><c>C(args)</c> in <c>main</c>.</summary>
         Construction,
+
+        /// <summary><c>Outer.C(args)</c> in <c>main</c>, on a class nested in <c>Outer</c>.</summary>
+        QualifiedConstruction,
 
         /// <summary><c>C[int](args)</c> in <c>main</c>, on <c>class C[T]</c>: the written-binding construction route.</summary>
         WrittenGenericConstruction,
@@ -167,6 +171,9 @@ public class InitializerCallRouteParityTests : IntegrationTestBase
         return route switch
         {
             Route.Construction => source + $"def main() -> None:\n    C({args})\n",
+            Route.QualifiedConstruction => "class Outer:\n"
+                + string.Concat(source.Split('\n').Select(line => line.Length == 0 ? "\n" : "    " + line + "\n"))
+                + $"def main() -> None:\n    Outer.C({args})\n",
             Route.WrittenGenericConstruction => source + $"def main() -> None:\n    C[int]({args})\n",
             Route.SelfInit => source + "def main() -> None:\n    C()\n",
             Route.SuperInit => source
@@ -245,7 +252,7 @@ public class InitializerCallRouteParityTests : IntegrationTestBase
         Enum.GetValues<Route>().Length.Should().Be(RouteCount);
         Enum.GetValues<Order>().Length.Should().Be(OrderCount);
         Enum.GetValues<Shape>().Length.Should().Be(ShapeCount);
-        Cells().Count.Should().Be(96, "4 routes x 2 orders x 12 shapes, as the class remark states");
+        Cells().Count.Should().Be(120, "5 routes x 2 orders x 12 shapes, as the class remark states");
         Enum.GetValues<GenericRoute>().Length.Should().Be(5);
         Enum.GetValues<Slot>().Length.Should().Be(2);
         Enum.GetValues<Constraint>().Length.Should().Be(2);
@@ -432,23 +439,40 @@ public class InitializerCallRouteParityTests : IntegrationTestBase
     }
 
     /// <summary>
-    /// A chaining call the context checks refuse (here: outside a constructor) is not also run
-    /// through overload selection: one mistake, one diagnostic, and no SPY0354 for an argument
-    /// count no constructor was ever going to be asked about.
+    /// A chaining call the context checks refuse is not also run through overload selection: one
+    /// mistake, one diagnostic, and no SPY0354 for an argument count no constructor was ever going
+    /// to be asked about. Two refusals: outside a constructor (SPY0350), and after another chaining
+    /// call in the same constructor (SPY0351).
     /// </summary>
-    [Fact]
-    public void RefusedChainingCall_IsNotAlsoSelected()
+    [Theory]
+    [InlineData("outside-constructor")]
+    [InlineData("after-conflicting-initializer")]
+    public void RefusedChainingCall_IsNotAlsoSelected(string refusal)
     {
-        const string source =
-            "class C:\n"
-            + "    def __init__(self, n: int):\n        pass\n\n"
-            + "    def __init__(self):\n        pass\n\n"
-            + "    def reset(self) -> None:\n        self.__init__(1, 2, 3)\n\n"
-            + "def main() -> None:\n    C()\n";
+        var (source, code) = refusal switch
+        {
+            "outside-constructor" => (
+                "class C:\n"
+                + "    def __init__(self, n: int):\n        pass\n\n"
+                + "    def __init__(self):\n        pass\n\n"
+                + "    def reset(self) -> None:\n        self.__init__(1, 2, 3)\n\n"
+                + "def main() -> None:\n    C()\n",
+                DiagnosticCodes.Semantic.SelfInitOutsideConstructor),
+            "after-conflicting-initializer" => (
+                "class B:\n    def __init__(self, a: int):\n        pass\n\n"
+                + "class C(B):\n"
+                + "    def __init__(self, a: int):\n        super().__init__(a)\n\n"
+                + "    def __init__(self, a: str, b: str):\n        super().__init__(1)\n\n"
+                + "    def __init__(self, f: bool):\n        if f:\n            super().__init__(1)\n"
+                + "        self.__init__(1, 2, 3)\n\n"
+                + "def main() -> None:\n    print(1)\n",
+                DiagnosticCodes.Semantic.ConflictingConstructorInitializers),
+            _ => throw new ArgumentOutOfRangeException(nameof(refusal)),
+        };
         var result = CompileAndExecute(source);
         var codes = result.RawDiagnostics.Select(d => d.Code).ToList();
 
-        codes.Should().Contain(DiagnosticCodes.Semantic.SelfInitOutsideConstructor, result.FailureSummary());
+        codes.Should().Contain(code, result.FailureSummary());
         codes.Should().NotContain(DiagnosticCodes.Semantic.NoMatchingOverload, result.FailureSummary());
     }
 }
