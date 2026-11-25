@@ -12,11 +12,19 @@ internal sealed class BlastReport
     public required IReadOnlyList<string> AreaOrder { get; init; }
     public required IReadOnlyList<ItemOutcome> Outcomes { get; init; }
 
-    public IEnumerable<(ItemOutcome Outcome, ProbeSite Site)> Sites
-        => Outcomes.SelectMany(o => o.Sites.Select(s => (o, s)));
+    private IReadOnlyList<(ItemOutcome Outcome, ProbeSite Site)>? _sites;
 
+    public IReadOnlyList<(ItemOutcome Outcome, ProbeSite Site)> Sites
+        => _sites ??= Outcomes.SelectMany(o => o.Sites.Select(s => (o, s))).ToList();
+
+    /// <summary>Sites with this verdict, in one area or (null) in all of them.</summary>
     public int Count(string? area, string verdict)
         => Sites.Count(x => (area == null || x.Outcome.Item.Area == area) && x.Site.Verdict == verdict);
+
+    private IEnumerable<ItemOutcome> In(string? area)
+        => area == null ? Outcomes : Outcomes.Where(o => o.Item.Area == area);
+
+    private int Analysed(string? area) => In(area).Count(o => o.Skipped == null);
 
     // ------------------------------------------------------------------ JSON
 
@@ -33,14 +41,15 @@ internal sealed class BlastReport
             json.WriteStartArray("areas");
             foreach (var area in AreaOrder)
             {
-                var items = Outcomes.Where(o => o.Item.Area == area).ToList();
                 json.WriteStartObject();
                 json.WriteString("name", area);
-                json.WriteNumber("programs", items.Count);
-                json.WriteNumber("analysed", items.Count(o => o.Skipped == null));
+                json.WriteNumber("programs", In(area).Count());
+                json.WriteNumber("analysed", Analysed(area));
                 json.WriteStartObject("skipped");
-                foreach (var group in items.Where(o => o.Skipped != null).GroupBy(o => o.Skipped!)
-                             .OrderBy(g => g.Key, StringComparer.Ordinal))
+                var reasons = In(area).Where(o => o.Skipped != null)
+                    .GroupBy(o => o.ErrorCode == null ? o.Skipped! : $"{o.Skipped} ({o.ErrorCode})")
+                    .OrderBy(g => g.Key, StringComparer.Ordinal);
+                foreach (var group in reasons)
                     json.WriteNumber(group.Key, group.Count());
                 json.WriteEndObject();
                 json.WriteStartObject("verdicts");
@@ -82,15 +91,19 @@ internal sealed class BlastReport
         // One writer for every line: '\n' on every platform, and no culture-sensitive formatting.
         void Line(string text = "") => md.Append(text).Append('\n');
         var verdicts = Probe.Verdicts.Select(v => v.Name).ToList();
-        var total = Sites.Count();
+        // Sites of one verdict that share every coordinate, the largest group first.
+        var groups = verdicts.SelectMany(verdict => Sites.Where(x => x.Site.Verdict == verdict)
+            .GroupBy(x => string.Join(", ", x.Site.Coords.Select(kv => $"{kv.Key}: {kv.Value}")))
+            .OrderByDescending(g => g.Count()).ThenBy(g => g.Key, StringComparer.Ordinal)
+            .Select(g => (Verdict: verdict, Coords: g.Key, Sites: g.ToList()))).ToList();
 
         Line($"# Blast radius of {Probe.Rule}");
         Line();
         Line($"**Rule:** {Probe.Title}.");
         Line();
         Line($"Measured at `{Commit}` over {Outcomes.Count} programs "
-            + $"({Outcomes.Count(o => o.Skipped == null)} analysed). One site is one {Probe.SiteNoun}; "
-            + $"{total} sites were found.");
+            + $"({Analysed(null)} analysed). One site is one {Probe.SiteNoun}; "
+            + $"{Sites.Count} sites were found.");
         Line();
 
         Line("## Sites by verdict");
@@ -99,19 +112,18 @@ internal sealed class BlastReport
         Line("|---|---|---|---|" + string.Concat(verdicts.Select(_ => "---|")));
         foreach (var area in AreaOrder)
         {
-            var items = Outcomes.Where(o => o.Item.Area == area).ToList();
-            Line($"| {area} | {items.Count} | {items.Count(o => o.Skipped == null)} | "
-                + $"{items.Sum(o => o.Sites.Count)} | "
+            Line($"| {area} | {In(area).Count()} | {Analysed(area)} | {In(area).Sum(o => o.Sites.Count)} | "
                 + string.Join(" | ", verdicts.Select(v => Count(area, v))) + " |");
         }
-        Line($"| **all** | {Outcomes.Count} | {Outcomes.Count(o => o.Skipped == null)} | {total} | "
+        Line($"| **all** | {Outcomes.Count} | {Analysed(null)} | {Sites.Count} | "
             + string.Join(" | ", verdicts.Select(v => Count(null, v))) + " |");
         Line();
-        var files = Sites.GroupBy(x => x.Outcome.Item.Label).ToList();
+        // A probe lists its verdicts worst first, so a program's worst is the first one it holds.
+        var worst = Outcomes.Where(o => o.Sites.Count > 0)
+            .Select(o => verdicts.First(v => o.Sites.Any(s => s.Verdict == v))).ToList();
         Line("Programs holding at least one site, by the worst verdict among their sites: "
-            + string.Join(", ", verdicts.Select(v =>
-                $"{files.Count(f => verdicts.First(w => f.Any(x => x.Site.Verdict == w)) == v)} {v}"))
-            + $" ({files.Count} programs).");
+            + string.Join(", ", verdicts.Select(v => $"{worst.Count(w => w == v)} {v}"))
+            + $" ({worst.Count} programs).");
         Line();
 
         Line("## What each verdict means");
@@ -124,16 +136,10 @@ internal sealed class BlastReport
         Line();
         Line("| verdict | coordinates | sites | programs |");
         Line("|---|---|---|---|");
-        foreach (var verdict in verdicts)
+        foreach (var group in groups)
         {
-            var groups = Sites.Where(x => x.Site.Verdict == verdict)
-                .GroupBy(x => CoordText(x.Site))
-                .OrderByDescending(g => g.Count()).ThenBy(g => g.Key, StringComparer.Ordinal);
-            foreach (var group in groups)
-            {
-                Line($"| {verdict} | {group.Key} | {group.Count()} | "
-                    + $"{group.Select(x => x.Outcome.Item.Label).Distinct().Count()} |");
-            }
+            Line($"| {group.Verdict} | {group.Coords} | {group.Sites.Count} | "
+                + $"{group.Sites.Select(x => x.Outcome.Item.Label).Distinct().Count()} |");
         }
         Line();
         Line("The axes:");
@@ -150,25 +156,19 @@ internal sealed class BlastReport
         {
             Line("## Examples");
             Line();
-            foreach (var verdict in verdicts)
+            foreach (var group in groups)
             {
-                var groups = Sites.Where(x => x.Site.Verdict == verdict)
-                    .GroupBy(x => CoordText(x.Site))
-                    .OrderByDescending(g => g.Count()).ThenBy(g => g.Key, StringComparer.Ordinal);
-                foreach (var group in groups)
+                Line($"**{group.Verdict}** ({group.Coords}), {Math.Min(examples, group.Sites.Count)} of {group.Sites.Count}:");
+                Line();
+                foreach (var (outcome, site) in group.Sites.Take(examples))
                 {
-                    Line($"**{verdict}** ({group.Key}), {Math.Min(examples, group.Count())} of {group.Count()}:");
-                    Line();
-                    foreach (var (outcome, site) in group.Take(examples))
-                    {
-                        var where = outcome.Item.Path != null
-                            ? $"{outcome.Item.Label}:{site.Line}"
-                            : $"{outcome.Item.Label} (line {site.Line})";
-                        Line($"- `{where}` {site.Subject}"
-                            + (site.Detail.Length > 0 ? $": {site.Detail}" : ""));
-                    }
-                    Line();
+                    var where = outcome.Item.Path != null
+                        ? $"{outcome.Item.Label}:{site.Line}"
+                        : $"{outcome.Item.Label} (line {site.Line})";
+                    Line($"- `{where}` {site.Subject}"
+                        + (site.Detail.Length > 0 ? $": {site.Detail}" : ""));
                 }
+                Line();
             }
         }
 
@@ -180,16 +180,15 @@ internal sealed class BlastReport
         Line("|---|---|---|");
         foreach (var area in AreaOrder)
         {
-            var groups = Outcomes.Where(o => o.Item.Area == area && o.Skipped != null)
-                .GroupBy(o => SkipFamily(o.Skipped!))
+            var reasons = In(area).Where(o => o.Skipped != null).GroupBy(o => o.Skipped!)
                 .OrderByDescending(g => g.Count()).ThenBy(g => g.Key, StringComparer.Ordinal);
-            foreach (var group in groups)
+            foreach (var group in reasons)
                 Line($"| {area} | {group.Key} | {group.Count()} |");
         }
         Line();
-        var codes = Outcomes.Where(o => o.Skipped != null && o.Skipped.StartsWith("does not compile", StringComparison.Ordinal))
-            .GroupBy(o => o.Skipped!).OrderByDescending(g => g.Count()).ThenBy(g => g.Key, StringComparer.Ordinal)
-            .Take(8).Select(g => $"{g.Key.Replace("does not compile today ", "", StringComparison.Ordinal).Trim('(', ')')} × {g.Count()}").ToList();
+        var codes = Outcomes.Where(o => o.ErrorCode != null).GroupBy(o => o.ErrorCode!)
+            .OrderByDescending(g => g.Count()).ThenBy(g => g.Key, StringComparer.Ordinal)
+            .Take(8).Select(g => $"{g.Key} × {g.Count()}").ToList();
         if (codes.Count > 0)
         {
             Line("First error of the programs that do not compile, most common first: " + string.Join(", ", codes) + ".");
@@ -203,10 +202,4 @@ internal sealed class BlastReport
         Line("- Only the programs in this repository are read. They lean towards what the tests exercise.");
         return md.ToString();
     }
-
-    private static string CoordText(ProbeSite site)
-        => site.Coords.Count == 0 ? "" : string.Join(", ", site.Coords.Select(kv => $"{kv.Key}: {kv.Value}"));
-
-    private static string SkipFamily(string reason)
-        => reason.StartsWith("does not compile today", StringComparison.Ordinal) ? "does not compile today" : reason;
 }

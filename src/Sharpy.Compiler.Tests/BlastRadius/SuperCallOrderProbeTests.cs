@@ -3,6 +3,7 @@ using System.Text.Json;
 using FluentAssertions;
 using Sharpy.BlastRadius;
 using Sharpy.BlastRadius.Probes;
+using Sharpy.TestInfrastructure.Integration;
 using Xunit;
 
 namespace Sharpy.Compiler.Tests.BlastRadius;
@@ -131,7 +132,7 @@ public class SuperCallOrderProbeTests
         var cells = Cells().ToList();
         cells.Should().HaveCount(5 * 2 * 4 * 2 * 3 + 5 * 1 * 4 * 2 * 1, "the matrix is the product of its axes");
 
-        var source = new StringBuilder("class Base:\n    n: int\n\n    def __init__(self):\n        self.n = 1\n\n");
+        var source = new StringBuilder(BaseClass);
         foreach (var cell in cells)
             source.Append(cell.Source());
         source.Append("def main() -> None:\n    pass\n");
@@ -226,11 +227,11 @@ public class SuperCallOrderProbeTests
 
         var noCall = sites.Single(s => s.Subject == "NoCallNoBaseInit.__init__");
         noCall.Verdict.Should().Be("out-of-scope");
-        noCall.Coords.Should().Contain("call", "none").And.Contain("base-init", "none");
+        noCall.Coords.Should().Contain("call", "omitted").And.Contain("base-has-init", "none");
 
         var delegating = sites.Where(s => s.Subject == "Delegating.__init__").OrderBy(s => s.Line).ToList();
         delegating.Select(s => s.Verdict).Should().Equal("refused", "out-of-scope");
-        delegating[1].Coords.Should().Contain("call", "self").And.Contain("base-init", "declared");
+        delegating[1].Coords.Should().Contain("call", "chained-to-own-init").And.Contain("base-has-init", "declared");
     }
 
     [Fact]
@@ -404,7 +405,8 @@ public class SuperCallOrderProbeTests
     public void AProgramThatDoesNotCompileIsSkippedWithItsFirstErrorCode()
     {
         var outcome = Runner.Run(new CorpusItem("t", "t", "def main() -> None:\n    print(nope)\n", null, 0, null));
-        outcome.Skipped.Should().StartWith("does not compile today (SPY");
+        outcome.Skipped.Should().Be(ItemOutcome.DoesNotCompile);
+        outcome.ErrorCode.Should().StartWith("SPY");
         outcome.Sites.Should().BeEmpty();
     }
 
@@ -421,8 +423,14 @@ public class SuperCallOrderProbeTests
             File.WriteAllText(Path.Combine(root, "multi", "main.spy"), "def main() -> None:\n    pass\n");
             File.WriteAllText(Path.Combine(root, "multi", "lib.spy"), "x: int = 1\n");
             File.WriteAllText(Path.Combine(root, "multi", "main.error"), "SPY0000");
+            // A file below a multi-file fixture's directory is part of that fixture.
+            Directory.CreateDirectory(Path.Combine(root, "multi", "pkg"));
+            File.WriteAllText(Path.Combine(root, "multi", "pkg", "mod.spy"), "x: int = 1\n");
+            // Build output and crash-bundle copies are not programs of the corpus.
             Directory.CreateDirectory(Path.Combine(root, "obj"));
             File.WriteAllText(Path.Combine(root, "obj", "generated.spy"), "x: int = 1\n");
+            Directory.CreateDirectory(Path.Combine(root, ".sharpy-crash", "1"));
+            File.WriteAllText(Path.Combine(root, ".sharpy-crash", "1", "copy.spy"), "x: int = 1\n");
             File.WriteAllText(Path.Combine(root, "page.md"), string.Join("\n",
                 "# Page", "",
                 "```python",
@@ -437,9 +445,9 @@ public class SuperCallOrderProbeTests
 
             var items = Corpus.Enumerate("t", root, root).ToList();
             items.Select(i => i.Label).Should().Equal(
-                "bad.spy", "multi/lib.spy", "multi/main.spy", "ok.spy", "page.md:3", "page.md:22");
+                "bad.spy", "multi/lib.spy", "multi/main.spy", "multi/pkg/mod.spy", "ok.spy", "page.md:3", "page.md:22");
             items.Where(i => i.SkipReason == Corpus.SkipExpectedError).Select(i => i.Label)
-                .Should().Equal("bad.spy", "multi/lib.spy", "multi/main.spy");
+                .Should().Equal("bad.spy", "multi/lib.spy", "multi/main.spy", "multi/pkg/mod.spy");
             items.Single(i => i.Label == "page.md:22").SkipReason.Should().Be(Corpus.SkipFragment);
 
             // The block ends in loose statements, which a module cannot hold: it is still read, and
@@ -453,6 +461,67 @@ public class SuperCallOrderProbeTests
         finally
         {
             Directory.Delete(root, recursive: true);
+        }
+    }
+
+    [Fact]
+    public void ABlockOfASpecPageSeesThePreludesAboveItAndReportsOnlyItsOwnSites()
+    {
+        var root = Directory.CreateTempSubdirectory("blast-prelude").FullName;
+        try
+        {
+            File.WriteAllText(Path.Combine(root, "page.md"), string.Join("\n",
+                "<!-- spec-sweep: prelude -->",
+                "```python",
+                "class Base:", "    n: int", "", "    def __init__(self):", "        self.n = 1", "",
+                "class First(Base):", "    name: str", "", "    def __init__(self):",
+                "        super().__init__()", "        self.name = \"a\"",
+                "```", "",
+                "```python",
+                "class Second(Base):", "    name: str", "", "    def __init__(self):",
+                "        super().__init__()", "        self.name = \"b\"",
+                "```", ""));
+
+            var outcomes = Corpus.Enumerate("t", root, root).Select(Runner.Run).ToList();
+
+            outcomes.Select(o => o.Skipped).Should().Equal(null, null);
+            // `Base` reaches the second block through the prelude; `First` is reported once, by
+            // the block that declares it, and each site keeps its line in the page.
+            outcomes[0].Sites.Select(s => (s.Subject, s.Line)).Should().Equal(("First.__init__", 12));
+            outcomes[1].Sites.Select(s => (s.Subject, s.Line)).Should().Equal(("Second.__init__", 21));
+        }
+        finally
+        {
+            Directory.Delete(root, recursive: true);
+        }
+    }
+
+    /// <summary>
+    /// The corpus reader decides which fixtures are expected to fail from their sidecars, as the
+    /// test suite's own discovery does. The two share no code, so this holds them together.
+    /// </summary>
+    [Fact]
+    public void TheCorpusSetsAsideExactlyTheFixturesTheTestSuiteExpectsToFailOrSkips()
+    {
+        foreach (var root in FixtureRoots.All)
+        {
+            var setAside = Corpus.Enumerate("t", root.Path, root.Path)
+                .Where(i => i.SkipReason == Corpus.SkipExpectedError).Select(i => i.Path!).ToHashSet();
+
+            var expected = new HashSet<string>();
+            foreach (var fixture in FixtureDiscoveryHelper.DiscoverFixtures(root.Path, includeSkipped: true)
+                         .Where(f => f.ErrorFile != null || f.IsSkipped))
+            {
+                if (!fixture.IsMultiFile)
+                    expected.Add(Path.GetFullPath(fixture.SpyFilePath));
+                else
+                    expected.UnionWith(Directory.EnumerateFiles(fixture.SpyFilePath, "*.spy", SearchOption.AllDirectories)
+                        .Select(Path.GetFullPath));
+            }
+
+            expected.Should().NotBeEmpty("positive control: both roots hold fixtures that expect an error");
+            setAside.Except(expected).Should().BeEmpty("the corpus sets aside only what the suite expects to fail");
+            expected.Except(setAside).Should().BeEmpty("the corpus sets aside all the suite expects to fail");
         }
     }
 
@@ -494,26 +563,45 @@ public class SuperCallOrderProbeTests
             .And.Contain("| one | a fixture that is expected to fail | 1 |");
     }
 
-    [Fact]
-    public void EveryVerdictAndAxisValueAProbeEmitsIsOneItDeclares()
+    /// <summary>A probe whose one verdict and one axis value are set per test.</summary>
+    private sealed class FixedProbe(string verdict, string axis, string value) : IRuleProbe
     {
-        var probe = new SuperCallOrderProbe();
-        var declaredVerdicts = probe.Verdicts.Select(v => v.Name).ToHashSet();
-        var declaredAxes = probe.Axes.ToDictionary(a => a.Name, a => a.Values.Select(v => v.Value).ToHashSet());
+        public string Rule => "R-TEST";
+        public string Title => "test";
+        public string SiteNoun => "module";
+        public IReadOnlyList<VerdictInfo> Verdicts { get; } = new VerdictInfo[] { new("hit", "") };
+        public IReadOnlyList<AxisInfo> Axes { get; } = new AxisInfo[] { new("size", "", new[] { ("small", "") }) };
+        public IReadOnlyList<string> Limits { get; } = Array.Empty<string>();
 
-        var source = new StringBuilder(BaseClass);
-        foreach (var cell in Cells())
-            source.Append(cell.Source());
-        source.Append("@dataclass\nclass Point:\n    x: int\n\n@dataclass\nclass Named(Point):\n    name: str\n\n");
-        source.Append("class Plain:\n    pass\n\nclass NoCall(Plain):\n    def __init__(self):\n        pass\n\n");
-        source.Append("def main() -> None:\n    pass\n");
-
-        foreach (var site in Analyse(source.ToString()))
+        public IEnumerable<ProbeSite> Probe(ProbeInput input)
         {
-            declaredVerdicts.Should().Contain(site.Verdict);
-            foreach (var (axis, value) in site.Coords)
-                declaredAxes.Should().ContainKey(axis).WhoseValue.Should().Contain(value, $"axis {axis}");
+            yield return new ProbeSite
+            {
+                Subject = "m",
+                Line = 1,
+                Verdict = verdict,
+                Coords = new Dictionary<string, string> { [axis] = value },
+            };
         }
+    }
+
+    [Theory]
+    [InlineData("hit", "size", "small", true)]
+    [InlineData("miss", "size", "small", false)]
+    [InlineData("hit", "weight", "small", false)]
+    [InlineData("hit", "size", "large", false)]
+    public void ARunRefusesASiteWhoseVerdictOrCoordinateTheProbeDidNotDeclare(
+        string verdict, string axis, string value, bool declared)
+    {
+        // A report prints only what a probe declares, so an undeclared site would be counted and
+        // never explained. The runner holds every probe to this, over every program it reads.
+        var run = () => new ProbeRunner(new FixedProbe(verdict, axis, value))
+            .Run(new CorpusItem("t", "t", "def main() -> None:\n    pass\n", null, 0, null));
+
+        if (declared)
+            run().Sites.Should().ContainSingle();
+        else
+            run.Should().Throw<InvalidOperationException>().WithMessage("*does not declare*");
     }
 
     private static IReadOnlyList<ProbeSite> Analyse(string source)

@@ -1,6 +1,5 @@
 using Sharpy.Compiler.Parser.Ast;
 using Sharpy.Compiler.Semantic;
-using Sharpy.Compiler.Semantic.Validation;
 using Sharpy.Compiler.Shared;
 
 namespace Sharpy.BlastRadius.Probes;
@@ -28,6 +27,14 @@ internal sealed class SuperCallOrderProbe : IRuleProbe
     public const string FixMove = "move";
     public const string FixRestructure = "restructure";
     public const string FixUsesSelf = "uses-self";
+
+    public const string CallOmitted = "omitted";
+    public const string CallChained = "chained-to-own-init";
+
+    /// <summary>The edit one assignment needs, cheapest first.</summary>
+    private enum Fix { Move, Restructure, UsesSelf }
+
+    private static readonly string[] FixNames = { FixMove, FixRestructure, FixUsesSelf };
 
     public string Rule => "R-RO";
 
@@ -85,13 +92,15 @@ internal sealed class SuperCallOrderProbe : IRuleProbe
             ("none-after-call", "it declares some, and this constructor assigns none of them after the call"),
             ("var-only", "the ones assigned after the call have a default and are written again, so they are var"),
         }),
-        new("call", "For an out-of-scope site, what the constructor chains to.", new[]
+        // `call` and its values are the ones the rulings' own axis list uses (axes.yaml,
+        // super-call-presence).
+        new("call", "For an out-of-scope site, what the constructor writes in place of the call.", new[]
         {
-            ("self", "self.__init__(...)"),
-            ("none", "no chaining call"),
+            (CallOmitted, "no chaining call"),
+            (CallChained, "self.__init__(...)"),
         }),
-        new("base-init", "For an out-of-scope site, whether a base class declares an __init__. "
-            + "With `call: none` this is R-RS's question: R-RS asks for the call where a base has one.", new[]
+        new("base-has-init", "For an out-of-scope site, whether a base class declares an __init__. "
+            + "With `call: omitted` this is R-RS's question: R-RS asks for the call where a base has one.", new[]
         {
             ("declared", "a Sharpy base class, at some depth, declares __init__"),
             ("none", "no base class declares one"),
@@ -116,19 +125,18 @@ internal sealed class SuperCallOrderProbe : IRuleProbe
 
     public IEnumerable<ProbeSite> Probe(ProbeInput input)
     {
-        var index = NestedTypeIndex.Build(input.Ast, input.Symbols);
-        var stores = StoreCensus.Collect(input.Ast, input.Semantic, index, input.Symbols);
+        var stores = StoreCensus.Collect(input);
 
-        foreach (var classDef in Descendants(input.Ast).OfType<ClassDef>())
+        foreach (var classDef in SyntaxFacts.Descendants(input.Ast).OfType<ClassDef>())
         {
             if (classDef.BaseClasses.Length == 0)
                 continue;
-            if (index.SymbolFor(classDef, classDef.Name, input.Symbols) is not { BaseType: { } baseType } type)
+            if (input.Types.SymbolFor(classDef, classDef.Name, input.Symbols) is not { BaseType: { } baseType } type)
                 continue; // interfaces only, or an unresolved declaration: no base class
 
             var baseKind = baseType.ClrType != null ? "dotnet" : "sharpy";
-            var slots = OwnSlots(classDef, type);
-            var constructors = Members(classDef).OfType<FunctionDef>()
+            var slots = OwnSlots.Of(classDef, type);
+            var constructors = SyntaxFacts.Members(classDef).OfType<FunctionDef>()
                 .Where(f => f.Name == DunderNames.Init).ToList();
 
             if (type.IsDataclass && constructors.Count == 0)
@@ -154,20 +162,7 @@ internal sealed class SuperCallOrderProbe : IRuleProbe
             }
 
             foreach (var constructor in constructors)
-            {
-                var site = Judge(classDef, type, constructor, slots, stores, baseKind);
-                yield return type.IsDataclass
-                    ? site with
-                    {
-                        Verdict = NotRuled,
-                        Coords = new SortedDictionary<string, string>(
-                            site.Coords.ToDictionary(kv => kv.Key, kv => kv.Value), StringComparer.Ordinal)
-                        {
-                            ["as-if"] = site.Verdict,
-                        },
-                    }
-                    : site;
-            }
+                yield return Judge(classDef, type, constructor, slots, stores, baseKind);
         }
     }
 
@@ -176,28 +171,38 @@ internal sealed class SuperCallOrderProbe : IRuleProbe
         IReadOnlyList<Slot> slots, StoreCensus stores, string baseKind)
     {
         var coords = new SortedDictionary<string, string>(StringComparer.Ordinal) { ["base"] = baseKind };
-        ProbeSite Site(string verdict, string detail) => new()
+        ProbeSite Site(string verdict, string detail)
         {
-            Subject = $"{classDef.Name}.{DunderNames.Init}",
-            Line = constructor.LineStart,
-            Verdict = verdict,
-            Coords = coords,
-            Detail = detail,
-        };
+            // The owner has not ruled a @dataclass with a base: say what the rule's text would give.
+            if (type.IsDataclass)
+            {
+                coords["as-if"] = verdict;
+                verdict = NotRuled;
+            }
+
+            return new()
+            {
+                Subject = $"{classDef.Name}.{DunderNames.Init}",
+                Line = constructor.LineStart,
+                Verdict = verdict,
+                Coords = coords,
+                Detail = detail,
+            };
+        }
 
         var callIndex = AstHelper.FindConstructorInitializerIndex(constructor.Body);
         if (callIndex < 0)
         {
-            coords["call"] = "none";
-            coords["base-init"] = BaseInit(type);
+            coords["call"] = CallOmitted;
+            coords["base-has-init"] = BaseHasInit(type);
             return Site(OutOfScope, "no chaining call");
         }
 
         AstHelper.TryGetConstructorInitializerCall(constructor.Body[callIndex], out _, out var chainsToBase);
         if (!chainsToBase)
         {
-            coords["call"] = "self";
-            coords["base-init"] = BaseInit(type);
+            coords["call"] = CallChained;
+            coords["base-has-init"] = BaseHasInit(type);
             return Site(OutOfScope, "chains to self.__init__");
         }
 
@@ -209,26 +214,25 @@ internal sealed class SuperCallOrderProbe : IRuleProbe
 
         // What the constructor assigns after the call, in source order.
         var slotByName = slots.ToDictionary(s => s.Name, StringComparer.Ordinal);
-        var locals = LocalNames(constructor);
+        var locals = SyntaxFacts.LocalNames(constructor);
         var seen = new HashSet<string>(StringComparer.Ordinal);
         var movedNames = new HashSet<string>(StringComparer.Ordinal);
-        var moved = new List<(Slot Slot, string Fix, bool MustMove)>();
+        var moved = new List<(Slot Slot, Fix Fix)>();
 
         foreach (var (assignment, topLevel) in AssignmentsAfter(constructor, callIndex))
         {
-            foreach (var target in SelfTargets(assignment.Target))
+            foreach (var target in SyntaxFacts.TargetLeaves(assignment.Target).OfType<MemberAccess>())
             {
-                if (!slotByName.TryGetValue(target, out var slot) || !seen.Add(target))
+                if (target.Object is not Identifier { Name: PythonNames.Self }
+                    || !slotByName.TryGetValue(target.Member, out var slot) || !seen.Add(slot.Name))
                     continue;
 
-                var fix = !topLevel ? FixRestructure : ValueFix(assignment.Value, locals, movedNames);
-                var mustBeVar = stores.WrittenAgain(type, slot.Name);
                 // A slot with a default that has to be `var` may rest on that default until the
                 // constructor reaches it (R-RQ): it is not one of the slots the rule moves.
-                if (slot.HasDefault && mustBeVar)
+                if (slot.HasDefault && stores.WrittenAgain(type, slot.Name))
                     continue;
-                moved.Add((slot, fix, MustMove: !slot.HasDefault));
-                movedNames.Add(target);
+                moved.Add((slot, topLevel ? ValueFix(assignment.Value, locals, movedNames) : Fix.Restructure));
+                movedNames.Add(slot.Name);
             }
         }
 
@@ -238,24 +242,20 @@ internal sealed class SuperCallOrderProbe : IRuleProbe
             return Site(Conforms, "");
         }
 
-        var verdict = moved.Any(m => m.MustMove) ? Refused : RefusedIfLet;
         // A refused site is costed by the slots that must move; the others ride along if they can.
-        var counted = verdict == Refused ? moved.Where(m => m.MustMove).ToList() : moved;
-        coords["fix"] = counted.Max(m => FixRank(m.Fix)) switch
-        {
-            2 => FixUsesSelf,
-            1 => FixRestructure,
-            _ => FixMove,
-        };
+        var mustMove = moved.Where(m => !m.Slot.HasDefault).ToList();
+        var counted = mustMove.Count > 0 ? mustMove : moved;
+        coords["fix"] = FixNames[(int)counted.Max(m => m.Fix)];
         var anyField = counted.Any(m => !m.Slot.IsProperty);
         var anyProperty = counted.Any(m => m.Slot.IsProperty);
         coords["slots"] = anyField && anyProperty ? "both" : anyProperty ? "properties" : "fields";
 
-        return Site(verdict, string.Join("; ", moved.Select(m => $"{m.Slot.Describe()} ({m.Fix})")));
+        return Site(mustMove.Count > 0 ? Refused : RefusedIfLet,
+            string.Join("; ", moved.Select(m => $"{m.Slot.Describe()} ({FixNames[(int)m.Fix]})")));
     }
 
     /// <summary>Whether a Sharpy base class, at any depth, declares an <c>__init__</c>.</summary>
-    private static string BaseInit(TypeSymbol type)
+    private static string BaseHasInit(TypeSymbol type)
     {
         for (var ancestor = type.BaseType; ancestor != null; ancestor = ancestor.BaseType)
         {
@@ -268,36 +268,30 @@ internal sealed class SuperCallOrderProbe : IRuleProbe
         return "none";
     }
 
-    private static int FixRank(string fix) => fix switch
-    {
-        FixUsesSelf => 2,
-        FixRestructure => 1,
-        _ => 0,
-    };
-
     /// <summary>What the value of a top-level assignment needs before it can stand ahead of the call.</summary>
-    private static string ValueFix(Expression value, HashSet<string> locals, HashSet<string> movedAhead)
+    private static Fix ValueFix(Expression value, HashSet<string> locals, HashSet<string> movedAhead)
     {
-        var rank = 0;
+        var fix = Fix.Move;
         Visit(value);
-        return rank switch { 2 => FixUsesSelf, 1 => FixRestructure, _ => FixMove };
+        return fix;
 
         void Visit(Node node)
         {
             switch (node)
             {
                 case SuperExpression:
-                    rank = 2;
+                    fix = Fix.UsesSelf;
                     return;
                 // `self.f` where f is an own slot already assigned ahead: R-RN allows the read.
                 case MemberAccess { Object: Identifier { Name: PythonNames.Self } } member
                     when movedAhead.Contains(member.Member):
                     return;
                 case Identifier { Name: PythonNames.Self }:
-                    rank = 2;
+                    fix = Fix.UsesSelf;
                     return;
                 case Identifier identifier when locals.Contains(identifier.Name):
-                    rank = Math.Max(rank, 1);
+                    if (fix < Fix.Restructure)
+                        fix = Fix.Restructure;
                     return;
             }
 
@@ -314,320 +308,13 @@ internal sealed class SuperCallOrderProbe : IRuleProbe
     private static IEnumerable<(Assignment Assignment, bool TopLevel)> AssignmentsAfter(
         FunctionDef constructor, int callIndex)
     {
-        for (var i = callIndex + 1; i < constructor.Body.Length; i++)
+        foreach (var statement in constructor.Body.Skip(callIndex + 1))
         {
-            var statement = Unwrap(constructor.Body[i]);
-            if (statement is Assignment { Operator: AssignmentOperator.Assign } top)
+            foreach (var assignment in SyntaxFacts.InSameFunction(statement).OfType<Assignment>())
             {
-                yield return (top, true);
-                continue;
+                if (assignment.Operator == AssignmentOperator.Assign)
+                    yield return (assignment, ReferenceEquals(assignment, statement));
             }
-
-            foreach (var nested in DescendantsInSameFunction(statement).OfType<Assignment>())
-            {
-                if (nested.Operator == AssignmentOperator.Assign)
-                    yield return (nested, false);
-            }
-        }
-    }
-
-    /// <summary>The members <c>self.a</c>, <c>self.b</c> a target stores to: one, or the elements of a tuple target.</summary>
-    internal static IEnumerable<string> SelfTargets(Expression target)
-    {
-        switch (target)
-        {
-            case MemberAccess { Object: Identifier { Name: PythonNames.Self } } member:
-                yield return member.Member;
-                break;
-            case Parenthesized parenthesized:
-                foreach (var name in SelfTargets(parenthesized.Expression))
-                    yield return name;
-                break;
-            case TupleLiteral tuple:
-                foreach (var element in tuple.Elements)
-                {
-                    foreach (var name in SelfTargets(element))
-                        yield return name;
-                }
-                break;
-            case StarExpression star:
-                foreach (var name in SelfTargets(star.Operand))
-                    yield return name;
-                break;
-        }
-    }
-
-    /// <summary>Names a constructor binds as locals: targets of assignments, declarations, loops and walruses.</summary>
-    private static HashSet<string> LocalNames(FunctionDef constructor)
-    {
-        var names = new HashSet<string>(StringComparer.Ordinal);
-        foreach (var node in constructor.Body.SelectMany(DescendantsInSameFunction))
-        {
-            switch (node)
-            {
-                case Assignment assignment:
-                    AddNames(assignment.Target);
-                    break;
-                case VariableDeclaration declaration:
-                    names.Add(declaration.Name);
-                    break;
-                case ForStatement loop:
-                    AddNames(loop.Target);
-                    break;
-                case WalrusExpression walrus:
-                    names.Add(walrus.Target);
-                    break;
-            }
-        }
-
-        return names;
-
-        void AddNames(Expression target)
-        {
-            switch (target)
-            {
-                case Identifier identifier:
-                    names.Add(identifier.Name);
-                    break;
-                case Parenthesized parenthesized:
-                    AddNames(parenthesized.Expression);
-                    break;
-                case TupleLiteral tuple:
-                    foreach (var element in tuple.Elements)
-                        AddNames(element);
-                    break;
-                case StarExpression star:
-                    AddNames(star.Operand);
-                    break;
-            }
-        }
-    }
-
-    /// <summary>
-    /// The instance slots the class itself declares with no initializer: fields, and the
-    /// auto-properties that must be given a value (R-RP, R-RU).
-    /// </summary>
-    private static List<Slot> OwnSlots(ClassDef classDef, TypeSymbol type)
-    {
-        var slots = new List<Slot>();
-        foreach (var member in Members(classDef))
-        {
-            switch (member)
-            {
-                case VariableDeclaration { InitialValue: null, IsConst: false, Type: not null } field:
-                    if (type.Fields.FirstOrDefault(f => f.Name == field.Name) is { IsStatic: false } symbol
-                        && TypeClass.Of(symbol.Type) is { } fieldClass)
-                    {
-                        slots.Add(new Slot(field.Name, symbol.Type.GetDisplayName(), fieldClass,
-                            IsProperty: false, HasDefault: TypeClass.HasDefault(fieldClass)));
-                    }
-                    break;
-
-                case PropertyDef { IsFunctionStyle: false, DefaultValue: null, ExplicitInterface: null } property
-                    when property.Body.Length == 0:
-                    if (type.FindOwnProperty(property.Name) is { IsStatic: false, IsAbstract: false } propertySymbol
-                        && TypeClass.Of(propertySymbol.Type) is { } propertyClass)
-                    {
-                        // A get-only or init auto-property takes no zero default (R-RU, SPY0426);
-                        // a plain one does when its type has one (R-RP).
-                        var readOnly = property.Accessor is PropertyAccessor.Get or PropertyAccessor.Init;
-                        var hasDefault = !readOnly && TypeClass.HasDefault(propertyClass);
-                        if (!hasDefault)
-                        {
-                            slots.Add(new Slot(property.Name, propertySymbol.Type.GetDisplayName(),
-                                propertyClass, IsProperty: true, HasDefault: false));
-                        }
-                    }
-                    break;
-            }
-        }
-
-        return slots;
-    }
-
-    private static IEnumerable<Statement> Members(ClassDef classDef) => classDef.Body.Select(Unwrap);
-
-    private static Statement Unwrap(Statement statement)
-        => statement is DecoratedStatement decorated ? Unwrap(decorated.Statement) : statement;
-
-    internal static IEnumerable<Node> Descendants(Node node)
-    {
-        foreach (var child in node.GetChildNodes())
-        {
-            yield return child;
-            foreach (var below in Descendants(child))
-                yield return below;
-        }
-    }
-
-    /// <summary>The node and everything under it that runs as part of the same function body.</summary>
-    internal static IEnumerable<Node> DescendantsInSameFunction(Node node)
-    {
-        yield return node;
-        if (node is FunctionDef or LambdaExpression or ClassDef or StructDef)
-            yield break;
-        foreach (var child in node.GetChildNodes())
-        {
-            if (child is FunctionDef or LambdaExpression or ClassDef or StructDef)
-                continue;
-            foreach (var below in DescendantsInSameFunction(child))
-                yield return below;
-        }
-    }
-
-    internal sealed record Slot(string Name, string Type, string Class, bool IsProperty, bool HasDefault)
-    {
-        public string Describe() => $"{(IsProperty ? "property " : "")}{Name}: {Type}";
-    }
-}
-
-/// <summary>The four kinds of type the initialization rulings tell apart (R-RQ).</summary>
-internal static class TypeClass
-{
-    public const string ValueType = "value-type";
-    public const string Nullable = "nullable";
-    public const string Optional = "optional";
-    public const string ReferenceType = "reference-type";
-
-    /// <summary>Null when the type did not resolve: the probe then leaves the slot out.</summary>
-    public static string? Of(SemanticType type) => type switch
-    {
-        UnknownType => null,
-        OptionalType => Optional,
-        NullableType => Nullable,
-        // A bare type parameter has no default the rulings name: T may be a reference type.
-        TypeParameterType => ReferenceType,
-        { IsValueType: true } => ValueType,
-        _ => ReferenceType,
-    };
-
-    /// <summary>A value type rests on zero, <c>T | None</c> on <c>None</c>, <c>T?</c> on <c>None()</c>.</summary>
-    public static bool HasDefault(string typeClass) => typeClass != ReferenceType;
-}
-
-/// <summary>
-/// Every store to a member in one file, so a probe can tell a field that is assigned once in
-/// <c>__init__</c> (it could be <c>let</c>) from one that is written again (it has to be <c>var</c>).
-/// </summary>
-internal sealed class StoreCensus
-{
-    private readonly HashSet<(TypeSymbol Owner, string Member)> _writtenAgain = new();
-
-    public bool WrittenAgain(TypeSymbol owner, string member) => _writtenAgain.Contains((owner, member));
-
-    public static StoreCensus Collect(
-        Module module, SemanticInfo semantic, NestedTypeIndex index, SymbolTable symbols)
-    {
-        var census = new StoreCensus();
-        Walk(module, enclosing: null, assigned: null, inLoop: false);
-        return census;
-
-        // `assigned` is non-null while walking the straight-line body of an __init__: the fields a
-        // plain `self.f = …` has already assigned on the path to this node. The first such store on
-        // a path is the assignment a `let` field allows; any other store means the field is `var`.
-        void Walk(Node node, TypeSymbol? enclosing, HashSet<(TypeSymbol, string)>? assigned, bool inLoop)
-        {
-            switch (node)
-            {
-                case ClassDef classDef:
-                    enclosing = index.SymbolFor(classDef, classDef.Name, symbols);
-                    assigned = null;
-                    break;
-                case StructDef:
-                    enclosing = null;
-                    assigned = null;
-                    break;
-                case FunctionDef function:
-                    // A def nested in __init__ runs later, or more than once: not the first assignment.
-                    assigned = assigned == null && function.Name == DunderNames.Init ? new() : null;
-                    inLoop = false;
-                    break;
-                case LambdaExpression:
-                    assigned = null;
-                    break;
-                case WhileStatement or ForStatement:
-                    if (node is ForStatement loop)
-                    {
-                        foreach (var member in MemberTargets(loop.Target))
-                            Record(member, plain: false, enclosing, assigned, inLoop);
-                    }
-                    inLoop = true;
-                    break;
-                case Assignment assignment:
-                    foreach (var member in MemberTargets(assignment.Target))
-                        Record(member, assignment.Operator == AssignmentOperator.Assign, enclosing, assigned, inLoop);
-                    break;
-
-                // Branches are alternatives: a field assigned once on each is assigned once.
-                case IfStatement branch when assigned != null:
-                    Walk(branch.Test, enclosing, assigned, inLoop);
-                    var arms = new List<IEnumerable<Node>> { branch.ThenBody };
-                    arms.AddRange(branch.ElifClauses.Select(e => e.Body.Cast<Node>().Prepend(e.Test)));
-                    arms.Add(branch.ElseBody);
-                    WalkAlternatives(arms, enclosing, assigned, inLoop);
-                    return;
-                case MatchStatement match when assigned != null:
-                    Walk(match.Scrutinee, enclosing, assigned, inLoop);
-                    WalkAlternatives(match.Cases.Select(c => c.Body.Cast<Node>()), enclosing, assigned, inLoop);
-                    return;
-            }
-
-            foreach (var child in node.GetChildNodes())
-                Walk(child, enclosing, assigned, inLoop);
-        }
-
-        void WalkAlternatives(IEnumerable<IEnumerable<Node>> arms, TypeSymbol? enclosing,
-            HashSet<(TypeSymbol, string)> assigned, bool inLoop)
-        {
-            var after = new HashSet<(TypeSymbol, string)>(assigned);
-            foreach (var arm in arms)
-            {
-                var onThisArm = new HashSet<(TypeSymbol, string)>(assigned);
-                foreach (var node in arm)
-                    Walk(node, enclosing, onThisArm, inLoop);
-                after.UnionWith(onThisArm);
-            }
-
-            assigned.UnionWith(after);
-        }
-
-        void Record(MemberAccess member, bool plain, TypeSymbol? enclosing,
-            HashSet<(TypeSymbol, string)>? assigned, bool inLoop)
-        {
-            var isSelf = member.Object is Identifier { Name: PythonNames.Self };
-            // The checker's own resolution names the declaring type; a `self.f` store it did not
-            // record belongs to the class the store is written in.
-            var owner = semantic.GetMemberAccessResolution(member)?.Owner ?? (isSelf ? enclosing : null);
-            if (owner == null)
-                return;
-            if (plain && isSelf && assigned != null && !inLoop && assigned.Add((owner, member.Member)))
-                return;
-            census._writtenAgain.Add((owner, member.Member));
-        }
-    }
-
-    private static IEnumerable<MemberAccess> MemberTargets(Expression target)
-    {
-        switch (target)
-        {
-            case MemberAccess member:
-                yield return member;
-                break;
-            case Parenthesized parenthesized:
-                foreach (var member in MemberTargets(parenthesized.Expression))
-                    yield return member;
-                break;
-            case TupleLiteral tuple:
-                foreach (var element in tuple.Elements)
-                {
-                    foreach (var member in MemberTargets(element))
-                        yield return member;
-                }
-                break;
-            case StarExpression star:
-                foreach (var member in MemberTargets(star.Operand))
-                    yield return member;
-                break;
         }
     }
 }

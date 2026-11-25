@@ -1,10 +1,17 @@
 using Sharpy.Compiler.Parser.Ast;
 using Sharpy.Compiler.Semantic;
+using Sharpy.Compiler.Semantic.Validation;
 
 namespace Sharpy.BlastRadius.Probes;
 
 /// <summary>One analysed source file handed to a probe: the entry file's tree and its semantic facts.</summary>
-internal sealed record ProbeInput(Module Ast, SemanticInfo Semantic, SymbolTable Symbols);
+internal sealed record ProbeInput(Module Ast, SemanticInfo Semantic, SymbolTable Symbols)
+{
+    private NestedTypeIndex? _types;
+
+    /// <summary>From a class declaration, at any nesting depth, to its symbol.</summary>
+    public NestedTypeIndex Types => _types ??= NestedTypeIndex.Build(Ast, Symbols);
+}
 
 /// <summary>
 /// One place in a program where a rule applies. A probe reports every such place, not only the
@@ -37,6 +44,7 @@ internal sealed record AxisInfo(string Name, string Meaning, IReadOnlyList<(stri
 /// <summary>
 /// A proposed language rule written as a pass that only reports. It reads a program that compiles
 /// today and says, site by site, what the rule would do to it. It never refuses anything.
+/// A probe keeps no state between programs: the runner calls it from several threads.
 /// </summary>
 internal interface IRuleProbe
 {

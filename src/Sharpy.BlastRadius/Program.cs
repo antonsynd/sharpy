@@ -112,10 +112,12 @@ internal static class Program
                 return 2;
             }
 
-            var before = outcomes.Count;
-            foreach (var item in Corpus.Enumerate(area.Name, root, repo))
-                outcomes.Add(runner.Run(item));
-            Console.Error.WriteLine($"{area.Name}: {outcomes.Count - before} programs, {(int)clock.Elapsed.TotalSeconds}s");
+            // Analysis is nearly all of the run, and one item does not depend on another.
+            var items = Corpus.Enumerate(area.Name, root, repo).ToList();
+            var results = new ItemOutcome[items.Count];
+            Parallel.For(0, items.Count, i => results[i] = runner.Run(items[i]));
+            outcomes.AddRange(results);
+            Console.Error.WriteLine($"{area.Name}: {items.Count} programs, {(int)clock.Elapsed.TotalSeconds}s");
         }
 
         var report = new BlastReport

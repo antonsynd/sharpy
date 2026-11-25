@@ -11,6 +11,8 @@
     <AssemblyName>sharpy-blast</AssemblyName>
     <RootNamespace>Sharpy.BlastRadius</RootNamespace>
     <IsPackable>false</IsPackable>
+    <!-- Programs are analysed in parallel; with the workstation collector that gains almost nothing. -->
+    <ServerGarbageCollection>true</ServerGarbageCollection>
   </PropertyGroup>
 
   <ItemGroup>
