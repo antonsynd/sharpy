@@ -8,10 +8,10 @@
 # GENERATED, HUMAN-REVIEWED: bash build_tools/regenerate_corpus_pins.sh rewrites the rows and the `# total` lines; review
 # the diff (a new stem's rows are its own; a moved row of an existing stem is a finding until explained). A new key's cite row in
 # code-action-shape-allowlist.txt is written by hand (the loader names it), and so is a drained key's deletion.
-# total stems identity keys=14 rows=2098
-# total stems crlf keys=8 rows=284
-# total stems cr keys=8 rows=293
-# total stems comment keys=7 rows=288
+# total stems identity keys=14 rows=2113
+# total stems crlf keys=8 rows=285
+# total stems cr keys=8 rows=294
+# total stems comment keys=7 rows=291
 extract-method identity diagnostics Formatting/module_docstring_then_statement # #2294
 extract-method identity diagnostics abstract_class_interface_stubs # #2294
 extract-method identity diagnostics access_modifiers/access_modifiers # #2294
@@ -121,8 +121,14 @@ extract-method identity diagnostics classes/class_with_loop_0095 # #2294
 extract-method identity diagnostics classes/constructor_arg_conversions_1243 # #2294
 extract-method identity diagnostics classes/constructor_chaining_0073 # #2294
 extract-method identity diagnostics classes/constructor_chaining_basic # #2294
+extract-method identity diagnostics classes/constructor_chaining_empty_literal_into_count_match # #2294
+extract-method identity diagnostics classes/constructor_chaining_later_target_arg_mismatch # #2294
+extract-method identity diagnostics classes/constructor_chaining_no_matching_overload # #2294
 extract-method identity diagnostics classes/constructor_chaining_not_in_init # #2294
+extract-method identity diagnostics classes/constructor_chaining_target_declared_first # #2294
+extract-method identity diagnostics classes/constructor_chaining_target_declared_later # #2294
 extract-method identity diagnostics classes/constructor_overload_arg_mismatch_1243 # #2294
+extract-method identity diagnostics classes/constructor_overload_no_matching_count # #2294
 extract-method identity diagnostics classes/dict_optional_key_read_1807 # #2294
 extract-method identity diagnostics classes/dunder_arithmetic # #2294
 extract-method identity diagnostics classes/dunder_bool # #2294
@@ -270,6 +276,7 @@ extract-method identity diagnostics decorators/custom_decorator_simple_0050 # #2
 extract-method identity diagnostics decorators/custom_decorator_simple_0064 # #2294
 extract-method identity diagnostics decorators/decorator_args_empty_0001 # #2294
 extract-method identity diagnostics decorators/decorator_args_negative_0001 # #2294
+extract-method identity diagnostics decorators/deprecated_chaining_unselected_overload # #2294
 extract-method identity diagnostics decorators/deprecated_generic_call # #2294
 extract-method identity diagnostics decorators/readonly_assign_error # #2294
 extract-method identity diagnostics deferred_overload_open_target_refused_1589 # #2294
@@ -537,6 +544,10 @@ extract-method identity diagnostics inheritance/super_grandparent_method # #2294
 extract-method identity diagnostics inheritance/super_init_call_0000 # #2294
 extract-method identity diagnostics inheritance/super_init_call_0022 # #2294
 extract-method identity diagnostics inheritance/super_init_call_0087 # #2294
+extract-method identity diagnostics inheritance/super_init_dataclass_base_declared_later # #2294
+extract-method identity diagnostics inheritance/super_init_generic_base_overload_arg_mismatch # #2294
+extract-method identity diagnostics inheritance/super_init_overload_arg_mismatch # #2294
+extract-method identity diagnostics inheritance/super_init_overload_no_matching_count # #2294
 extract-method identity diagnostics inheritance/virtual_override_0001 # #2294
 extract-method identity diagnostics inheritance/virtual_override_calculator # #2294
 extract-method identity diagnostics inheritance/virtual_override_shapes # #2294
@@ -1779,6 +1790,8 @@ wrap-try identity diagnostics classes/class_instance_methods # #2296
 wrap-try identity diagnostics classes/class_with_loop_0049 # #2296
 wrap-try identity diagnostics classes/constructor_chaining_0027 # #2296
 wrap-try identity diagnostics classes/constructor_chaining_0073 # #2296
+wrap-try identity diagnostics classes/constructor_chaining_empty_literal_into_count_match # #2296
+wrap-try identity diagnostics classes/constructor_chaining_later_target_arg_mismatch # #2296
 wrap-try identity diagnostics classes/constructor_chaining_not_in_init # #2296
 wrap-try identity diagnostics classes/dunder_bool_0025 # #2296
 wrap-try identity diagnostics classes/dunder_bool_override_inheritance # #2296
@@ -1857,6 +1870,7 @@ wrap-try identity diagnostics decorators/decorator_args_builtin_error_0001 # #22
 wrap-try identity diagnostics decorators/decorator_args_dotted_0001 # #2296
 wrap-try identity diagnostics decorators/decorator_args_event_0001 # #2296
 wrap-try identity diagnostics decorators/decorator_args_mixed_0001 # #2296
+wrap-try identity diagnostics decorators/deprecated_chaining_unselected_overload # #2296
 wrap-try identity diagnostics deferred_overload_annotated_pin_1589 # #2296
 wrap-try identity diagnostics deferred_overload_selection_1589 # #2296
 wrap-try identity diagnostics definite_assignment/lambda_never_assigned_spy0600_1635 # #2296
@@ -1967,6 +1981,7 @@ wrap-try identity diagnostics inheritance/class_inheritance_0023 # #2296
 wrap-try identity diagnostics inheritance/constructor_forwarding_multilevel # #2296
 wrap-try identity diagnostics inheritance/super_init_call_0017 # #2296
 wrap-try identity diagnostics inheritance/super_init_call_0087 # #2296
+wrap-try identity diagnostics inheritance/super_init_overload_arg_mismatch # #2296
 wrap-try identity diagnostics inheritance/virtual_override_0001 # #2296
 wrap-try identity diagnostics inheritance/virtual_override_0025 # #2296
 wrap-try identity diagnostics inheritance/virtual_override_calculator # #2296
@@ -2124,6 +2139,7 @@ extract-method crlf diagnostics cast_operator_open_generic_filled_asbang_1235 # 
 extract-method crlf diagnostics classes/class_with_init # #2294
 extract-method crlf diagnostics classes/class_with_loop_0014 # #2294
 extract-method crlf diagnostics classes/constructor_arg_conversions_1243 # #2294
+extract-method crlf diagnostics classes/constructor_chaining_target_declared_first # #2294
 extract-method crlf diagnostics classes/dunder_eq_iequatable_explicit # #2294
 extract-method crlf diagnostics classes/dunder_len_0001 # #2294
 extract-method crlf diagnostics classes/pass_no_warning_0001 # #2294
@@ -2412,6 +2428,7 @@ extract-method cr diagnostics cast_operator_open_generic_filled_asbang_1235 # #2
 extract-method cr diagnostics class_with_init/init_augmented_store_2439 # #2294
 extract-method cr diagnostics classes/class_with_init # #2294
 extract-method cr diagnostics classes/class_with_loop_0014 # #2294
+extract-method cr diagnostics classes/constructor_chaining_target_declared_first # #2294
 extract-method cr diagnostics classes/dunder_len_0001 # #2294
 extract-method cr diagnostics classes/module_variable_shadowed_by_class_attribute_stores # #2294
 extract-method cr diagnostics codegen/class_and_module_docstring # #2294
@@ -2704,6 +2721,8 @@ extract-method comment diagnostics classes/class_instance_methods_0000 # #2294
 extract-method comment diagnostics classes/class_static_field # #2294
 extract-method comment diagnostics classes/class_static_field_method # #2294
 extract-method comment diagnostics classes/class_with_init # #2294
+extract-method comment diagnostics classes/constructor_chaining_generic_own_parameter_is_rigid # #2294
+extract-method comment diagnostics classes/constructor_chaining_target_declared_first # #2294
 extract-method comment diagnostics classes/dunder_eq_iequatable_explicit # #2294
 extract-method comment diagnostics classes/dunder_len_0001 # #2294
 extract-method comment diagnostics classes/dunder_len_override_inheritance # #2294
@@ -2947,6 +2966,7 @@ wrap-try comment diagnostics async/async_comprehension_nested_set # #2296
 wrap-try comment diagnostics basics/decimal_literal_exponent_forms # #2296
 wrap-try comment diagnostics cast_operator_open_generic_filled_asbang_1235 # #2296
 wrap-try comment diagnostics classes/constructor_arg_conversions_1243 # #2296
+wrap-try comment diagnostics classes/constructor_chaining_target_declared_first # #2296
 wrap-try comment diagnostics collections/list_literal_0017 # #2296
 wrap-try comment diagnostics collections/multi_for_set_comprehension # #2296
 wrap-try comment diagnostics dataclasses/dataclass_const_1794 # #2296

@@ -85,7 +85,8 @@ internal partial class TypeChecker
 
     /// <summary>
     /// The one resolution context every initializer-set route builds: the candidates' <c>self</c>
-    /// skipped, unknown argument types skipped, the call's keywords, and the target's binding.
+    /// skipped, unknown argument types skipped, the call's keywords, and the target's binding —
+    /// rigid on a chaining call, so selection and validation read a type parameter alike.
     /// </summary>
     private OverloadResolution ResolveInitializerSet(
         FunctionCall call, IReadOnlyList<FunctionSymbol> initMethods, List<SemanticType> argTypes,
@@ -94,7 +95,8 @@ internal partial class TypeChecker
             initMethods, totalArgCount, argTypes,
             SkipSelfParam: true, SkipUnknownTypes: true,
             TypeSubstitution: BindingSubstitution(typeBinding),
-            KeywordArgNames: ExtractKeywordArgNames(call), Call: call, KwargTypes: kwargTypes));
+            KeywordArgNames: ExtractKeywordArgNames(call), Call: call, KwargTypes: kwargTypes,
+            TypeParametersAreRigid: typeBinding?.Rigid == true));
 
     /// <summary>
     /// SPY0357 for a spread argument into an initializer SET: refused only when no overload is

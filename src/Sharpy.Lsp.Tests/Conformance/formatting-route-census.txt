@@ -18,10 +18,10 @@
 # total known-limit-S6ok identity ontype rows=13 n=45
 # total known-limit-S6ok identity range-line rows=13 n=45
 # total known-limit-S6ok identity range-whole rows=13 n=39
-# total refused-work identity range-block rows=7 n=9 withwork=2439
+# total refused-work identity range-block rows=7 n=9 withwork=2462
 # total refused-work identity range-line rows=4 n=10 withwork=138
-# total refused-work identity range-statement rows=1 n=1 withwork=1054
-# total refused-work identity range-whole rows=0 n=0 withwork=2263
+# total refused-work identity range-statement rows=1 n=1 withwork=1057
+# total refused-work identity range-whole rows=0 n=0 withwork=2279
 # total s7-parity-exempt identity full rows=490 n=490
 # total s7-parity-exempt identity ontype rows=484 n=484
 # total s7-parity-exempt identity range-line rows=484 n=484
@@ -32,24 +32,24 @@
 # total known-limit-S6ok comment ontype rows=2 n=18
 # total known-limit-S6ok comment range-line rows=2 n=18
 # total known-limit-S6ok comment range-whole rows=2 n=6
-# total refused-work comment range-block rows=1 n=4 withwork=2512
+# total refused-work comment range-block rows=1 n=4 withwork=2534
 # total refused-work comment range-line rows=0 n=0 withwork=33
-# total refused-work comment range-statement rows=0 n=0 withwork=732
-# total refused-work comment range-whole rows=0 n=0 withwork=3411
-# total s7-parity-exempt comment full rows=1673 n=1673
-# total s7-parity-exempt comment ontype rows=1667 n=1667
-# total s7-parity-exempt comment range-line rows=1667 n=1667
-# total s7-parity-exempt comment range-whole rows=1673 n=1673
+# total refused-work comment range-statement rows=0 n=0 withwork=735
+# total refused-work comment range-whole rows=0 n=0 withwork=3427
+# total s7-parity-exempt comment full rows=1675 n=1675
+# total s7-parity-exempt comment ontype rows=1669 n=1669
+# total s7-parity-exempt comment range-line rows=1669 n=1669
+# total s7-parity-exempt comment range-whole rows=1675 n=1675
 # total known-limit-S6k wide ontype rows=2 n=2
 # total known-limit-S6k wide range-line rows=2 n=2
 # total known-limit-S6ok wide full rows=13 n=39
 # total known-limit-S6ok wide ontype rows=13 n=45
 # total known-limit-S6ok wide range-line rows=13 n=45
 # total known-limit-S6ok wide range-whole rows=13 n=39
-# total refused-work wide range-block rows=1180 n=4399 withwork=13989
-# total refused-work wide range-line rows=196 n=2802 withwork=5180
-# total refused-work wide range-statement rows=254 n=374 withwork=7242
-# total refused-work wide range-whole rows=0 n=0 withwork=3405
+# total refused-work wide range-block rows=1194 n=4454 withwork=14115
+# total refused-work wide range-line rows=198 n=2847 withwork=5241
+# total refused-work wide range-statement rows=254 n=374 withwork=7297
+# total refused-work wide range-whole rows=0 n=0 withwork=3421
 # total s7-parity-exempt wide full rows=490 n=490
 # total s7-parity-exempt wide range-whole rows=490 n=490
 # total known-limit-S6k crlf ontype rows=2 n=2
@@ -2332,6 +2332,7 @@ s7-parity-exempt comment full classes/class_inheritance 1 # #2279
 s7-parity-exempt comment full classes/class_math_utils 1 # #2279
 s7-parity-exempt comment full classes/class_static_methods 1 # #2279
 s7-parity-exempt comment full classes/class_static_methods_0002 1 # #2279
+s7-parity-exempt comment full classes/constructor_chaining_empty_literal_into_count_match 1 # #2279
 s7-parity-exempt comment full classes/dict_optional_key_read_1807 1 # #2279
 s7-parity-exempt comment full classes/dunder_bool_0003 1 # #2279
 s7-parity-exempt comment full classes/dunder_bool_0021 1 # #2279
@@ -3068,6 +3069,7 @@ s7-parity-exempt comment full indirect_callee/paren_union_variant_ctor 1 # #2279
 s7-parity-exempt comment full inheritance/abstract_class_interface_stubs 1 # #2279
 s7-parity-exempt comment full inheritance/abstract_instantiation 1 # #2279
 s7-parity-exempt comment full inheritance/override_non_virtual 1 # #2279
+s7-parity-exempt comment full inheritance/super_init_constrained_generic_forwards_list 1 # #2279
 s7-parity-exempt comment full int8_conversion_call 1 # #2279
 s7-parity-exempt comment full int_parse 1 # #2279
 s7-parity-exempt comment full int_parse_edge_cases 1 # #2279
@@ -4004,6 +4006,7 @@ s7-parity-exempt comment ontype classes/class_inheritance 1 # #2279
 s7-parity-exempt comment ontype classes/class_math_utils 1 # #2279
 s7-parity-exempt comment ontype classes/class_static_methods 1 # #2279
 s7-parity-exempt comment ontype classes/class_static_methods_0002 1 # #2279
+s7-parity-exempt comment ontype classes/constructor_chaining_empty_literal_into_count_match 1 # #2279
 s7-parity-exempt comment ontype classes/dict_optional_key_read_1807 1 # #2279
 s7-parity-exempt comment ontype classes/dunder_bool_0003 1 # #2279
 s7-parity-exempt comment ontype classes/dunder_bool_0021 1 # #2279
@@ -4735,6 +4738,7 @@ s7-parity-exempt comment ontype indirect_callee/paren_union_variant_ctor 1 # #22
 s7-parity-exempt comment ontype inheritance/abstract_class_interface_stubs 1 # #2279
 s7-parity-exempt comment ontype inheritance/abstract_instantiation 1 # #2279
 s7-parity-exempt comment ontype inheritance/override_non_virtual 1 # #2279
+s7-parity-exempt comment ontype inheritance/super_init_constrained_generic_forwards_list 1 # #2279
 s7-parity-exempt comment ontype int8_conversion_call 1 # #2279
 s7-parity-exempt comment ontype int_parse 1 # #2279
 s7-parity-exempt comment ontype int_parse_edge_cases 1 # #2279
@@ -5671,6 +5675,7 @@ s7-parity-exempt comment range-line classes/class_inheritance 1 # #2279
 s7-parity-exempt comment range-line classes/class_math_utils 1 # #2279
 s7-parity-exempt comment range-line classes/class_static_methods 1 # #2279
 s7-parity-exempt comment range-line classes/class_static_methods_0002 1 # #2279
+s7-parity-exempt comment range-line classes/constructor_chaining_empty_literal_into_count_match 1 # #2279
 s7-parity-exempt comment range-line classes/dict_optional_key_read_1807 1 # #2279
 s7-parity-exempt comment range-line classes/dunder_bool_0003 1 # #2279
 s7-parity-exempt comment range-line classes/dunder_bool_0021 1 # #2279
@@ -6402,6 +6407,7 @@ s7-parity-exempt comment range-line indirect_callee/paren_union_variant_ctor 1 #
 s7-parity-exempt comment range-line inheritance/abstract_class_interface_stubs 1 # #2279
 s7-parity-exempt comment range-line inheritance/abstract_instantiation 1 # #2279
 s7-parity-exempt comment range-line inheritance/override_non_virtual 1 # #2279
+s7-parity-exempt comment range-line inheritance/super_init_constrained_generic_forwards_list 1 # #2279
 s7-parity-exempt comment range-line int8_conversion_call 1 # #2279
 s7-parity-exempt comment range-line int_parse 1 # #2279
 s7-parity-exempt comment range-line int_parse_edge_cases 1 # #2279
@@ -7339,6 +7345,7 @@ s7-parity-exempt comment range-whole classes/class_inheritance 1 # #2279
 s7-parity-exempt comment range-whole classes/class_math_utils 1 # #2279
 s7-parity-exempt comment range-whole classes/class_static_methods 1 # #2279
 s7-parity-exempt comment range-whole classes/class_static_methods_0002 1 # #2279
+s7-parity-exempt comment range-whole classes/constructor_chaining_empty_literal_into_count_match 1 # #2279
 s7-parity-exempt comment range-whole classes/dict_optional_key_read_1807 1 # #2279
 s7-parity-exempt comment range-whole classes/dunder_bool_0003 1 # #2279
 s7-parity-exempt comment range-whole classes/dunder_bool_0021 1 # #2279
@@ -8075,6 +8082,7 @@ s7-parity-exempt comment range-whole indirect_callee/paren_union_variant_ctor 1 
 s7-parity-exempt comment range-whole inheritance/abstract_class_interface_stubs 1 # #2279
 s7-parity-exempt comment range-whole inheritance/abstract_instantiation 1 # #2279
 s7-parity-exempt comment range-whole inheritance/override_non_virtual 1 # #2279
+s7-parity-exempt comment range-whole inheritance/super_init_constrained_generic_forwards_list 1 # #2279
 s7-parity-exempt comment range-whole int8_conversion_call 1 # #2279
 s7-parity-exempt comment range-whole int_parse 1 # #2279
 s7-parity-exempt comment range-whole int_parse_edge_cases 1 # #2279
@@ -8998,9 +9006,16 @@ refused-work wide range-block classes/constructor_arg_type_mismatch_1243 1 # #25
 refused-work wide range-block classes/constructor_chaining_0027 4 # #2538
 refused-work wide range-block classes/constructor_chaining_0073 6 # #2538
 refused-work wide range-block classes/constructor_chaining_basic 3 # #2538
+refused-work wide range-block classes/constructor_chaining_empty_literal_into_count_match 3 # #2538
+refused-work wide range-block classes/constructor_chaining_generic_own_parameter_is_rigid 3 # #2538
+refused-work wide range-block classes/constructor_chaining_later_target_arg_mismatch 2 # #2538
+refused-work wide range-block classes/constructor_chaining_no_matching_overload 2 # #2538
 refused-work wide range-block classes/constructor_chaining_not_in_init 2 # #2538
+refused-work wide range-block classes/constructor_chaining_target_declared_first 12 # #2538
+refused-work wide range-block classes/constructor_chaining_target_declared_later 12 # #2538
 refused-work wide range-block classes/constructor_kwonly_forward 4 # #2538
 refused-work wide range-block classes/constructor_overload_arg_mismatch_1243 2 # #2538
+refused-work wide range-block classes/constructor_overload_no_matching_count 2 # #2538
 refused-work wide range-block classes/dunder_arithmetic 4 # #2538
 refused-work wide range-block classes/dunder_bool 2 # #2538
 refused-work wide range-block classes/dunder_bool_0003 7 # #2538
@@ -9245,6 +9260,8 @@ refused-work wide range-block decorators/decorator_args_event_0001 1 # #2538
 refused-work wide range-block decorators/decorator_args_negative_0001 2 # #2538
 refused-work wide range-block decorators/decorator_args_property_0001 3 # #2538
 refused-work wide range-block decorators/decorator_args_typeof_0001 3 # #2538
+refused-work wide range-block decorators/deprecated_chaining_selected_overload 4 # #2538
+refused-work wide range-block decorators/deprecated_chaining_unselected_overload 5 # #2538
 refused-work wide range-block decorators/deprecated_ctor_overload_1536 5 # #2538
 refused-work wide range-block decorators/deprecated_overload_method 2 # #2538
 refused-work wide range-block decorators/deprecated_self_init 2 # #2538
@@ -9602,6 +9619,11 @@ refused-work wide range-block inheritance/super_init_call_0022 1 # #2538
 refused-work wide range-block inheritance/super_init_call_0046 5 # #2538
 refused-work wide range-block inheritance/super_init_call_0087 13 # #2538
 refused-work wide range-block inheritance/super_init_call_0097 3 # #2538
+refused-work wide range-block inheritance/super_init_constrained_generic_forwards_list 2 # #2538
+refused-work wide range-block inheritance/super_init_dataclass_base_declared_later 2 # #2538
+refused-work wide range-block inheritance/super_init_generic_base_overload_arg_mismatch 2 # #2538
+refused-work wide range-block inheritance/super_init_overload_arg_mismatch 2 # #2538
+refused-work wide range-block inheritance/super_init_overload_no_matching_count 2 # #2538
 refused-work wide range-block inheritance/virtual_override_0001 16 # #2538
 refused-work wide range-block inheritance/virtual_override_0014 10 # #2538
 refused-work wide range-block inheritance/virtual_override_0025 5 # #2538
@@ -10054,6 +10076,8 @@ refused-work wide range-line classes/class_with_init_0094 11 # #2538
 refused-work wide range-line classes/class_with_loop_0014 10 # #2538
 refused-work wide range-line classes/constructor_arg_conversions_1243 29 # #2538
 refused-work wide range-line classes/constructor_arg_type_mismatch_1243 3 # #2538
+refused-work wide range-line classes/constructor_chaining_generic_own_parameter_is_rigid 7 # #2538
+refused-work wide range-line classes/constructor_chaining_target_declared_first 38 # #2538
 refused-work wide range-line classes/dunder_eq_iequatable_explicit 5 # #2538
 refused-work wide range-line classes/dunder_eq_value_param_1719 4 # #2538
 refused-work wide range-line classes/dunder_len_0001 26 # #2538

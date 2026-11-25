@@ -2633,8 +2633,17 @@ internal partial class TypeChecker
         if (_currentClass == null || owner.TypeParameters.Count == 0)
             return null;
 
+        // The class's own parameters as its body's annotations resolve them (TypeResolver): a
+        // TypeParameterType's identity includes its constraints, so a bare name would not equal the
+        // `T: Foo` an argument is typed with.
         var ownArguments = _currentClass.TypeParameters
-            .Select(tp => (SemanticType)new TypeParameterType { Name = tp.Name })
+            .Select(tp => (SemanticType)new TypeParameterType
+            {
+                Name = tp.Name,
+                DeclaringType = _currentClass,
+                Constraints = tp.Constraints,
+                Variance = tp.Variance
+            })
             .ToList();
         foreach (var ancestor in GenericInstantiationWalker.EnumerateBaseChain(
             _currentClass, ownArguments, SemanticBinding, _typeResolver))
@@ -2687,6 +2696,12 @@ internal partial class TypeChecker
             // First type yielding constructors wins — its full overload set.
             if (currentType.Constructors.Count > 0)
                 return currentType;
+
+            // A @dataclass declared LATER in this file has not been checked yet, so its synthesized
+            // __init__ is not in Constructors: the set is unknown here, not its base's
+            // (ValidateSuperMemberAccess's rule).
+            if (currentType.ClrType == null && _moduleDataclassNames.Contains(currentType.Name))
+                return null;
 
             // CLR-backed type with no enumerated constructors: no metadata to validate
             // against, so signal callers to skip rather than reject valid kwargs.

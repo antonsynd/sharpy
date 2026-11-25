@@ -17,11 +17,13 @@ namespace Sharpy.Compiler.Tests.Semantic;
 /// either below the constructor that calls it (<see cref="Order.TargetLater"/>) or above it
 /// (<see cref="Order.TargetFirst"/>).
 ///
-/// <para>Axes: route (4) × order (2) × shape (10) = 80 cells, none excluded. A shape either states
+/// <para>Axes: route (4) × order (2) × shape (12) = 96 cells, none excluded. A shape either states
 /// its verdict outright (an output, or a refusal code) or, for an argument whose type the call's
-/// context decides, states only that every route answers as the construction route does: the
-/// construction route's answer for those is itself an open gap (an empty list or <c>None()</c>
-/// into an overloaded constructor is SPY0227), and a differential must not pin it.</para>
+/// context decides AMONG several overloads accepting the count, states only that every route
+/// answers as the construction route does: a candidate set gives such an argument no type
+/// (<c>overload_resolution.md</c>, #1671), and a differential must not pin which refusal follows.
+/// When the count leaves ONE overload, that overload is a resolved target and types the argument
+/// (an empty list, <c>None()</c>) on every route, so those shapes state their verdict.</para>
 ///
 /// <para>No cell may leak SPY0908: before the fix (aa21bedb) the self route was checked against the
 /// first-declared <c>__init__</c> alone, and the super, written-generic and plain construction
@@ -31,7 +33,7 @@ public class InitializerCallRouteParityTests : IntegrationTestBase
 {
     private const int RouteCount = 4;
     private const int OrderCount = 2;
-    private const int ShapeCount = 10;
+    private const int ShapeCount = 12;
 
     /// <summary>The construction route's verdict per (order, shape), which the context shapes compare against.</summary>
     private static readonly ConcurrentDictionary<(Order, Shape), string> ConstructionVerdicts = new();
@@ -82,11 +84,17 @@ public class InitializerCallRouteParityTests : IntegrationTestBase
         /// <summary>Two overloads accept the call equally well.</summary>
         Ambiguous,
 
-        /// <summary>An empty list literal: its type comes from the call's context.</summary>
+        /// <summary>An empty list literal, typed by the one overload that accepts the count.</summary>
         ContextEmptyList,
 
-        /// <summary><c>None()</c>: its type comes from the call's context.</summary>
+        /// <summary><c>None()</c>, typed by the one overload that accepts the count.</summary>
         ContextNoneCall,
+
+        /// <summary>An empty list literal where two overloads accept the count: the set types nothing.</summary>
+        ContextEmptyListAmongPeers,
+
+        /// <summary><c>None()</c> where two overloads accept the count: the set types nothing.</summary>
+        ContextNoneCallAmongPeers,
 
         /// <summary>The one overload accepting three arguments is variadic, and it takes them.</summary>
         VariadicPick,
@@ -106,6 +114,8 @@ public class InitializerCallRouteParityTests : IntegrationTestBase
         Shape.Ambiguous => ("n: int, m: int = 0", "n: int, s: str = \"q\"", "1"),
         Shape.ContextEmptyList => ("xs: list[str]", "xs: list[int], m: int", "[], 1"),
         Shape.ContextNoneCall => ("s: str", "v: int?, m: int", "None(), 2"),
+        Shape.ContextEmptyListAmongPeers => ("xs: list[str]", "xs: list[int]", "[]"),
+        Shape.ContextNoneCallAmongPeers => ("v: str?", "v: int?", "None()"),
         Shape.VariadicPick => ("*xs: int", "a: str, b: str", "1, 2, 3"),
         Shape.VariadicWrongType => ("*xs: int", "a: str, b: str", "\"x\""),
         _ => throw new ArgumentOutOfRangeException(nameof(shape)),
@@ -113,7 +123,8 @@ public class InitializerCallRouteParityTests : IntegrationTestBase
 
     /// <summary>
     /// The verdict a shape states outright — <c>out:</c> the program's output, or <c>code:</c> its
-    /// first error — or null for a context shape, whose verdict is "as the construction route".
+    /// first error — or null for a context shape among peers, whose verdict is "as the construction
+    /// route".
     /// </summary>
     private static string? StatedVerdict(Shape shape) => shape switch
     {
@@ -125,7 +136,9 @@ public class InitializerCallRouteParityTests : IntegrationTestBase
         Shape.Ambiguous => "code:" + DiagnosticCodes.Semantic.AmbiguousOverload,
         Shape.VariadicPick => "out:A",
         Shape.VariadicWrongType => "code:" + DiagnosticCodes.Semantic.TypeMismatch,
-        Shape.ContextEmptyList or Shape.ContextNoneCall => null,
+        Shape.ContextEmptyList => "out:B",
+        Shape.ContextNoneCall => "out:B",
+        Shape.ContextEmptyListAmongPeers or Shape.ContextNoneCallAmongPeers => null,
         _ => throw new ArgumentOutOfRangeException(nameof(shape)),
     };
 
@@ -232,17 +245,24 @@ public class InitializerCallRouteParityTests : IntegrationTestBase
         Enum.GetValues<Route>().Length.Should().Be(RouteCount);
         Enum.GetValues<Order>().Length.Should().Be(OrderCount);
         Enum.GetValues<Shape>().Length.Should().Be(ShapeCount);
-        Cells().Count.Should().Be(80, "4 routes x 2 orders x 10 shapes, as the class remark states");
-        GenericBindingCells().Count.Should().Be(16, "4 generic routes x 2 orders x 2 arguments");
+        Cells().Count.Should().Be(96, "4 routes x 2 orders x 12 shapes, as the class remark states");
+        Enum.GetValues<GenericRoute>().Length.Should().Be(5);
+        Enum.GetValues<Slot>().Length.Should().Be(2);
+        Enum.GetValues<Constraint>().Length.Should().Be(2);
+        GenericBindingCells().Count.Should().Be(80,
+            "5 generic routes x 2 orders x 2 slots x 2 constraints x 2 arguments");
+        RigidSelectionCells().Count.Should().Be(4, "2 routes x 2 orders");
     }
 
     // ── the type-parameter binding axis ──────────────────────────────────────────────────
     //
     // The cells above never mention a type parameter, so they cannot see how a route BINDS one.
-    // Here the target A is `__init__(self, v: T, n: int)`: inside the class (the self route) T is
-    // the class's own and rigid; through a base clause (the super routes, direct or through a
-    // non-generic middle class) and a written construction it is `str`. Either way an `int` into
-    // `v` is SPY0220 and a `str` (or a `T`) runs A.
+    // Here the target A is `__init__(self, v: <slot>, n: int)` with the slot `T` or `list[T]`:
+    // inside the class (the self route) and through a forwarding base clause `D[T](Base[T])`, T is
+    // the class's own and rigid; through `Base[str]` (direct or through a non-generic middle class)
+    // and a written construction it is `str`. Either way an `int` into `v` is SPY0220 and a right
+    // argument runs A. A constraint on T (`T: class`) is part of T's identity, so `list[T]` must
+    // still meet `list[T]` with it.
 
     public enum GenericRoute
     {
@@ -255,21 +275,47 @@ public class InitializerCallRouteParityTests : IntegrationTestBase
         /// <summary><c>super().__init__(.., 1)</c> in <c>class D(Mid)</c>, <c>class Mid(Base[str])</c>.</summary>
         SuperViaMiddle,
 
+        /// <summary><c>super().__init__(w, 1)</c> in <c>class D[T](Base[T])</c>, <c>w: T</c>.</summary>
+        SuperForwardsOwnParameter,
+
         /// <summary><c>C[str](.., 1)</c>.</summary>
         WrittenGenericConstruction,
     }
 
-    private static string GenericProgram(GenericRoute route, Order order, bool rightArgument)
+    public enum Slot
     {
-        var arg = rightArgument ? (route == GenericRoute.SelfInit ? "w" : "\"q\"") : "42";
+        /// <summary><c>v: T</c>.</summary>
+        Bare,
+
+        /// <summary><c>v: list[T]</c>: a type parameter compared inside a constructed type.</summary>
+        ListOf,
+    }
+
+    public enum Constraint
+    {
+        /// <summary><c>[T]</c>.</summary>
+        None,
+
+        /// <summary><c>[T: class]</c> on every declaration of T.</summary>
+        Class,
+    }
+
+    private static string GenericProgram(GenericRoute route, Order order, Slot slot, Constraint constraint, bool rightArgument)
+    {
+        var ownParameter = route is GenericRoute.SelfInit or GenericRoute.SuperForwardsOwnParameter;
+        var right = ownParameter ? "w" : "\"q\"";
+        var arg = !rightArgument ? "42" : slot == Slot.ListOf ? $"[{right}]" : right;
+        var slotType = slot == Slot.ListOf ? "list[T]" : "T";
+        var t = constraint == Constraint.Class ? "T: class" : "T";
+
         var z = route == GenericRoute.SelfInit
             ? $"    def __init__(self, w: T, tag: str, extra: str):\n        self.__init__({arg}, 1)\n\n"
             : "    def __init__(self):\n        print(\"Z\")\n\n";
-        var ab = "    def __init__(self, v: T, n: int):\n        print(\"A\")\n\n"
+        var ab = $"    def __init__(self, v: {slotType}, n: int):\n        print(\"A\")\n\n"
             + "    def __init__(self, s: str):\n        print(\"B\")\n\n";
         var body = order == Order.TargetLater ? z + ab : ab + z;
-        var cls = route is GenericRoute.SuperDirect or GenericRoute.SuperViaMiddle ? "Base" : "C";
-        var source = $"class {cls}[T]:\n{body}";
+        var cls = route is GenericRoute.SelfInit or GenericRoute.WrittenGenericConstruction ? "C" : "Base";
+        var source = $"class {cls}[{t}]:\n{body}";
 
         return route switch
         {
@@ -281,42 +327,108 @@ public class InitializerCallRouteParityTests : IntegrationTestBase
                 + "class Mid(Base[str]):\n    pass\n\n"
                 + $"class D(Mid):\n    def __init__(self):\n        super().__init__({arg}, 1)\n\n"
                 + "def main() -> None:\n    D()\n",
+            GenericRoute.SuperForwardsOwnParameter => source
+                + $"class D[{t}](Base[T]):\n    def __init__(self, w: T):\n        super().__init__({arg}, 1)\n\n"
+                + "def main() -> None:\n    D[str](\"q\")\n",
             GenericRoute.WrittenGenericConstruction => source + $"def main() -> None:\n    C[str]({arg}, 1)\n",
             _ => throw new ArgumentOutOfRangeException(nameof(route)),
         };
     }
 
-    public static TheoryData<GenericRoute, Order, bool> GenericBindingCells()
+    public static TheoryData<GenericRoute, Order, Slot, Constraint, bool> GenericBindingCells()
     {
-        var data = new TheoryData<GenericRoute, Order, bool>();
+        var data = new TheoryData<GenericRoute, Order, Slot, Constraint, bool>();
         foreach (GenericRoute r in Enum.GetValues<GenericRoute>())
         {
             foreach (Order o in Enum.GetValues<Order>())
             {
-                data.Add(r, o, true);
-                data.Add(r, o, false);
+                foreach (Slot sl in Enum.GetValues<Slot>())
+                {
+                    foreach (Constraint c in Enum.GetValues<Constraint>())
+                    {
+                        data.Add(r, o, sl, c, true);
+                        data.Add(r, o, sl, c, false);
+                    }
+                }
             }
         }
         return data;
     }
 
-    [Theory]
-    [MemberData(nameof(GenericBindingCells))]
-    public void InitializerCall_BindsTypeParameters_OnEveryRoute(GenericRoute route, Order order, bool rightArgument)
+    private string RunVerdict(string source, string cell)
     {
-        var source = GenericProgram(route, order, rightArgument);
         var result = CompileAndExecute(source);
         var seen = result.FailureSummary() + "\n--- source ---\n" + source;
 
         result.RawDiagnostics.Should().NotContain(
             d => d.Code == DiagnosticCodes.Infrastructure.GeneratedCodeCompilationError,
-            $"a type-parameter binding is decided by the checker, never leaked to Roslyn: {seen}");
+            $"a type-parameter binding is decided by the checker, never leaked to Roslyn: {cell}: {seen}");
 
-        var verdict = result.Success
+        return (result.Success
             ? "out:" + result.StandardOutput.Trim()
-            : "code:" + (result.RawDiagnostics.FirstOrDefault(d => d.IsError)?.Code ?? "<none>");
+            : "code:" + (result.RawDiagnostics.FirstOrDefault(d => d.IsError)?.Code ?? "<none>"))
+            + "\n" + seen;
+    }
+
+    [Theory]
+    [MemberData(nameof(GenericBindingCells))]
+    public void InitializerCall_BindsTypeParameters_OnEveryRoute(
+        GenericRoute route, Order order, Slot slot, Constraint constraint, bool rightArgument)
+    {
+        var cell = $"{route}/{order}/{slot}/{constraint}/{(rightArgument ? "right" : "wrong")}";
+        var outcome = RunVerdict(GenericProgram(route, order, slot, constraint, rightArgument), cell);
+        var verdict = outcome[..outcome.IndexOf('\n')];
+
         verdict.Should().Be(rightArgument ? "out:A" : "code:" + DiagnosticCodes.Semantic.TypeMismatch,
-            $"{route}/{order}/{(rightArgument ? "right" : "wrong")}: {seen}");
+            $"{cell}: {outcome}");
+    }
+
+    // ── rigid parameters SELECT as they validate ─────────────────────────────────────────
+    //
+    // A = `(v: T, n: int)`, B = `(s: str, n: object)`, called with `("s", 1)` where T is the
+    // class's own. T is a concrete type there, not a wildcard, so only B accepts a `str` — C#'s
+    // `: this("s", 1)` / `: base("s", 1)` binds B. Treating T as a wildcard in selection while
+    // validation reads it rigidly made A and B tie (SPY0353).
+
+    public enum RigidRoute
+    {
+        /// <summary><c>self.__init__("s", 1)</c> inside <c>class C[T]</c>.</summary>
+        SelfInit,
+
+        /// <summary><c>super().__init__("s", 1)</c> in <c>class D[T](Base[T])</c>.</summary>
+        SuperForwardsOwnParameter,
+    }
+
+    public static TheoryData<RigidRoute, Order> RigidSelectionCells()
+    {
+        var data = new TheoryData<RigidRoute, Order>();
+        foreach (RigidRoute r in Enum.GetValues<RigidRoute>())
+        {
+            foreach (Order o in Enum.GetValues<Order>())
+                data.Add(r, o);
+        }
+        return data;
+    }
+
+    [Theory]
+    [MemberData(nameof(RigidSelectionCells))]
+    public void RigidTypeParameter_SelectsAsItValidates(RigidRoute route, Order order)
+    {
+        var z = route == RigidRoute.SelfInit
+            ? "    def __init__(self):\n        self.__init__(\"s\", 1)\n\n"
+            : "    def __init__(self):\n        print(\"Z\")\n\n";
+        var ab = "    def __init__(self, v: T, n: int):\n        print(\"A\")\n\n"
+            + "    def __init__(self, s: str, n: object):\n        print(\"B\")\n\n";
+        var body = order == Order.TargetLater ? z + ab : ab + z;
+        var source = route == RigidRoute.SelfInit
+            ? $"class C[T]:\n{body}def main() -> None:\n    C[int]()\n"
+            : $"class Base[T]:\n{body}"
+              + "class D[T](Base[T]):\n    def __init__(self):\n        super().__init__(\"s\", 1)\n\n"
+              + "def main() -> None:\n    D[int]()\n";
+
+        var cell = $"{route}/{order}";
+        var outcome = RunVerdict(source, cell);
+        outcome[..outcome.IndexOf('\n')].Should().Be("out:B", $"{cell}: {outcome}");
     }
 
     /// <summary>
