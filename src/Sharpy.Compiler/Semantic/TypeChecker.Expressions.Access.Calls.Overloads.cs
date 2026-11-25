@@ -187,6 +187,10 @@ internal partial class TypeChecker
     /// named <c>self</c> may still carry the receiver there, and it is identified by SHAPE — the
     /// arguments match the TRAILING parameters. Only the operator-dunder path sets this; see
     /// <see cref="ResolveDunderOverload"/> for why the method-call paths must not.</param>
+    /// <param name="TypeParametersAreRigid">If true, a type parameter left in a formal after
+    /// <paramref name="TypeSubstitution"/> is a concrete type (the enclosing class's own <c>T</c>
+    /// seen from inside it), not a wildcard: an initializer chaining call sets it, as its
+    /// validation (<see cref="TypeParameterBinding.Rigid"/>) does.</param>
     internal record OverloadResolutionContext(
         IReadOnlyList<FunctionSymbol> Candidates,
         int TotalArgCount,
@@ -197,7 +201,8 @@ internal partial class TypeChecker
         IReadOnlyCollection<string>? KeywordArgNames = null,
         FunctionCall? Call = null,
         bool ReceiverIsLeadingParameter = false,
-        Dictionary<string, SemanticType>? KwargTypes = null);
+        Dictionary<string, SemanticType>? KwargTypes = null,
+        bool TypeParametersAreRigid = false);
 
     /// <summary>
     /// Resolves a binary operator-dunder / <c>__getitem__</c> overload (self + a single argument)
@@ -657,8 +662,10 @@ internal partial class TypeChecker
                 // parameters are closed in the binding — no wildcard is needed. When
                 // TypeSubstitution closed the parameters externally (explicit type args,
                 // receiver closing) or the candidate is non-generic, unclosed type parameters
-                // may still appear and are treated as wildcards.
+                // may still appear and are treated as wildcards — unless they are rigid (an
+                // initializer chaining call's own class parameters), where they are concrete.
                 if (binding.InferredTypeArguments == null
+                    && !context.TypeParametersAreRigid
                     && (expectedType is TypeParameterType || ContainsTypeParameter(expectedType)))
                 {
                     continue;

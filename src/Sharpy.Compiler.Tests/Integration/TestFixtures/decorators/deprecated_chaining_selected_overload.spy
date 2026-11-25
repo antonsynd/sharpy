@@ -1,0 +1,33 @@
+# SPY0466 on a chaining call keys on the overload the call BINDS to. Here the deprecated
+# overloads are the targets, and neither is declared first.
+
+class P:
+    x: int
+
+    def __init__(self):
+        self.__init__(3)
+
+    @deprecated("use P()")
+    def __init__(self, n: int):
+        self.x = n
+
+
+class Base:
+    x: int
+
+    def __init__(self):
+        self.x = 0
+
+    @deprecated("use Base()")
+    def __init__(self, n: int):
+        self.x = n
+
+
+class Derived(Base):
+    def __init__(self):
+        super().__init__(5)
+
+
+def main() -> None:
+    print(P().x)
+    print(Derived().x)

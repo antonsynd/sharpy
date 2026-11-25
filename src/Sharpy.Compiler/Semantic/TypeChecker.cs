@@ -282,7 +282,7 @@ internal partial class TypeChecker
     private bool _hoistedInitializerCallRepeated;
     // Names of the module's top-level @dataclass classes, read from the AST before any class is checked:
     // a subclass checked before its dataclass base must not assume an implicit constructor (#2508).
-    private HashSet<string> _moduleDataclassNames = new(StringComparer.Ordinal);
+    private HashSet<TypeSymbol> _moduleDataclassSymbols = new(ReferenceEqualityComparer.Instance);
 
     // Symbols of range(...)-loop induction variables currently in scope that are provably >= 0
     // (single-arg range, or non-negative-literal start with positive step) AND not reassigned in
@@ -667,10 +667,14 @@ internal partial class TypeChecker
         // Propagate SemanticBinding to sub-services
         _genericInference.SemanticBinding = SemanticBinding;
 
-        _moduleDataclassNames = module.Body.OfType<ClassDef>()
-            .Where(c => DataclassSynthesis.ReadOptions(c) != null)
-            .Select(c => c.Name)
-            .ToHashSet(StringComparer.Ordinal);
+        // By symbol, not name: a nested class sharing a module dataclass's name is not that
+        // dataclass (#2796 review).
+        _moduleDataclassSymbols = new HashSet<TypeSymbol>(
+            module.Body.OfType<ClassDef>()
+                .Where(c => DataclassSynthesis.ReadOptions(c) != null)
+                .Select(c => LookupTypeDefinitionSymbol(c, c.Name))
+                .OfType<TypeSymbol>(),
+            ReferenceEqualityComparer.Instance);
 
         // Pre-pass: resolve return types and parameter types for all module-level functions
         // so that forward references from class methods have resolved type information.

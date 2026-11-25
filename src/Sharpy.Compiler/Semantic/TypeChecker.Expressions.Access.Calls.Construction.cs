@@ -25,33 +25,105 @@ internal partial class TypeChecker
     /// SPY0353 like every other overload route (#1810, Decision 4) — they used to be left to Roslyn,
     /// which answered CS0121 behind SPY0908 and pointed inside a candidate's body. The same refusal
     /// now covers <c>super().__init__(...)</c>, through
-    /// <c>CheckSuperInitializerCall</c>.
+    /// <c>CheckChainingInitializerCall</c>, with <c>self.__init__(...)</c>.
     /// </summary>
     private FunctionSymbol? SelectInitializerAmongArityPeers(
-        FunctionCall call, TypeSymbol typeSymbol, List<FunctionSymbol> initMethods,
-        List<SemanticType> argTypes, Dictionary<string, SemanticType> kwargTypes, int totalArgCount)
+        FunctionCall call, TypeSymbol typeSymbol, IReadOnlyList<FunctionSymbol> initMethods,
+        List<SemanticType> argTypes, Dictionary<string, SemanticType> kwargTypes, int totalArgCount,
+        TypeParameterBinding? typeBinding)
     {
-        if (ArityApplicableCount(initMethods, call) <= 1)
-            return null;
-
-        var resolution = ResolveOverloadCore(new OverloadResolutionContext(
-            initMethods, totalArgCount, argTypes,
-            SkipSelfParam: true, SkipUnknownTypes: true,
-            KeywordArgNames: ExtractKeywordArgNames(call), Call: call, KwargTypes: kwargTypes));
-        if (resolution.IsAmbiguous)
-        {
-            ReportOverloadError(typeSymbol.Name, call, resolution, totalArgCount, argTypes);
-            return null;
-        }
-        if (resolution.Match is not { } init)
+        var resolution = ResolveInitializerSet(call, initMethods, argTypes, kwargTypes, totalArgCount, typeBinding);
+        if (resolution.IsAmbiguous || resolution.Match is not { } init)
         {
             ReportOverloadError(typeSymbol.Name, call, resolution, totalArgCount, argTypes);
             return null;
         }
 
         ValidateCallArguments(call, init.Parameters.Skip(1).ToList(), argTypes, kwargTypes, totalArgCount,
-            UnwrittenTypeParameterBinding(typeSymbol), clrParameterNames: init.ClrMethodName != null);
+            typeBinding, clrParameterNames: init.ClrMethodName != null);
         return init;
+    }
+
+    /// <summary>
+    /// THE selector an initializer call binds through when its target declares several
+    /// <c>__init__</c> overloads, on every route: a construction (<c>P(...)</c>, and
+    /// <c>Box[int](...)</c> with its written binding) and the chaining calls
+    /// <c>self.__init__(...)</c> and <c>super().__init__(...)</c>
+    /// (<c>CheckChainingInitializerCall</c>). The whole overload set is the candidate set, whatever
+    /// order the overloads were declared in.
+    ///
+    /// <para>Three arms, in order: exactly one overload accepts the argument COUNT, and it is
+    /// validated like a single <c>__init__</c> (<see cref="ValidateSoleArityMatchingOverload"/>);
+    /// NO overload accepts the count, which is SPY0354 at the call (except a struct's zero-argument
+    /// construction, which binds its implicit parameterless constructor); otherwise the set is resolved by
+    /// type (<see cref="SelectInitializerAmongArityPeers"/>): several overloads accept the count, or
+    /// the one that does is variadic, which the count arm leaves alone. Returns the selected
+    /// overload, or null when none was selected (an error was reported, or a spread argument left
+    /// the count unknown).</para>
+    /// </summary>
+    private FunctionSymbol? SelectInitializerOverload(
+        FunctionCall call, TypeSymbol typeSymbol, IReadOnlyList<FunctionSymbol> initMethods,
+        List<SemanticType> argTypes, Dictionary<string, SemanticType> kwargTypes, int totalArgCount,
+        TypeParameterBinding? typeBinding)
+    {
+        if (ValidateSoleArityMatchingOverload(call, initMethods, argTypes, kwargTypes, totalArgCount, typeBinding)
+            is { } soleArityMatch)
+        {
+            return soleArityMatch;
+        }
+
+        if (ArityApplicableCount(initMethods, call) == 0)
+        {
+            // A struct's implicit parameterless constructor is never removed (structs.md; C#'s
+            // `new S()` binds it whatever constructors are declared), so `S()` that NO declared
+            // overload accepts binds it rather than failing the count. A declared overload that
+            // does accept zero arguments is still selected (and warned or refused) by the arms
+            // around this one.
+            if (typeSymbol.TypeKind == TypeKind.Struct && totalArgCount == 0)
+                return null;
+
+            ReportOverloadError(typeSymbol.Name, call,
+                ResolveInitializerSet(call, initMethods, argTypes, kwargTypes, totalArgCount, typeBinding),
+                totalArgCount, argTypes);
+            return null;
+        }
+
+        return SelectInitializerAmongArityPeers(
+            call, typeSymbol, initMethods, argTypes, kwargTypes, totalArgCount, typeBinding);
+    }
+
+    /// <summary>
+    /// The one resolution context every initializer-set route builds: the candidates' <c>self</c>
+    /// skipped, unknown argument types skipped, the call's keywords, and the target's binding —
+    /// rigid on a chaining call, so selection and validation read a type parameter alike.
+    /// </summary>
+    private OverloadResolution ResolveInitializerSet(
+        FunctionCall call, IReadOnlyList<FunctionSymbol> initMethods, List<SemanticType> argTypes,
+        Dictionary<string, SemanticType> kwargTypes, int totalArgCount, TypeParameterBinding? typeBinding)
+        => ResolveOverloadCore(new OverloadResolutionContext(
+            initMethods, totalArgCount, argTypes,
+            SkipSelfParam: true, SkipUnknownTypes: true,
+            TypeSubstitution: BindingSubstitution(typeBinding),
+            KeywordArgNames: ExtractKeywordArgNames(call), Call: call, KwargTypes: kwargTypes,
+            TypeParametersAreRigid: typeBinding?.Rigid == true));
+
+    /// <summary>
+    /// SPY0357 for a spread argument into an initializer SET: refused only when no overload is
+    /// variadic, since any variadic overload can absorb it. Reading one overload's parameters (the
+    /// first declared) refused a spread a later variadic overload accepts.
+    /// </summary>
+    private bool CheckSpreadIntoNonVariadicInitializers(
+        FunctionCall call, string targetName, IReadOnlyList<FunctionSymbol> initMethods)
+        => !initMethods.Any(init => init.Parameters.Any(p => p.IsVariadic))
+            && CheckSpreadIntoNonVariadic(call, targetName, initMethods[0].Parameters.Skip(1).ToList());
+
+    /// <summary>The substitution a binding carries, as the resolver's type map; null when it closes nothing.</summary>
+    private static Func<SemanticType, SemanticType>? BindingSubstitution(TypeParameterBinding? typeBinding)
+    {
+        if (typeBinding is not { Substitution.Count: > 0 } binding)
+            return null;
+
+        return t => TypeSubstitution.Apply(t, binding.Substitution, substituteNamedUserTypes: true);
     }
 
     /// <summary>
@@ -64,9 +136,8 @@ internal partial class TypeChecker
     {
         CheckDeprecatedUsage(typeSymbol, call);
 
-        // Validate constructor arguments against __init__ parameters (skip 'self').
-        // Only validate when there's a single __init__ (no overloads) — overloaded
-        // constructors have complex resolution that the C# compiler handles.
+        // Validate constructor arguments against __init__ parameters (skip 'self'): a single
+        // __init__ directly, several through SelectInitializerOverload.
         var initMethods = typeSymbol.Methods.Where(m => m.Name == DunderNames.Init).ToList();
         // A generic type constructed WITHOUT written type arguments: its __init__ parameters are
         // open until inference below closes them, and the arguments are checked against the CLOSED
@@ -99,15 +170,11 @@ internal partial class TypeChecker
         }
         else if (initMethods.Count > 1)
         {
-            // Multiple __init__ overloads — only check spread into non-variadic
-            var firstInit = initMethods[0];
-            var initParams = firstInit.Parameters.Skip(1).ToList();
-            if (CheckSpreadIntoNonVariadic(call, typeSymbol.Name, initParams))
+            if (CheckSpreadIntoNonVariadicInitializers(call, typeSymbol.Name, initMethods))
                 return new UserDefinedType { Symbol = typeSymbol, Name = typeSymbol.Name };
 
-            var resolvedInit = ValidateSoleArityMatchingOverload(call, initMethods, argTypes, kwargTypes, totalArgCount,
-                UnwrittenTypeParameterBinding(typeSymbol))
-                ?? SelectInitializerAmongArityPeers(call, typeSymbol, initMethods, argTypes, kwargTypes, totalArgCount);
+            var resolvedInit = SelectInitializerOverload(call, typeSymbol, initMethods, argTypes, kwargTypes,
+                totalArgCount, UnwrittenTypeParameterBinding(typeSymbol));
             if (resolvedInit != null)
                 CheckDeprecatedUsage(resolvedInit, call);
         }

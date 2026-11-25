@@ -2520,25 +2520,14 @@ internal partial class TypeChecker
                 // and let C# do the overload resolution at compile time.
                 if (currentType.ClrType != null)
                 {
-                    return new FunctionType
-                    {
-                        ParameterTypes = new List<SemanticType>(),
-                        ReturnType = SemanticType.Void,
-                        SkipArgumentValidation = true
-                    };
+                    return DeferredInitializerSetSignature();
                 }
 
-                // When the parent has multiple constructor overloads, defer argument
-                // validation to the C# compiler — mirroring how direct constructor calls
-                // (CheckConstructorCall) skip strict validation for overloaded __init__.
+                // When the parent has multiple constructor overloads, the call names a SET:
+                // CheckChainingInitializerCall resolves it, as construction does.
                 if (currentType.Constructors.Count > 1)
                 {
-                    return new FunctionType
-                    {
-                        ParameterTypes = new List<SemanticType>(),
-                        ReturnType = SemanticType.Void,
-                        SkipArgumentValidation = true
-                    };
+                    return DeferredInitializerSetSignature();
                 }
 
                 var parentCtor = currentType.Constructors.FirstOrDefault();
@@ -2552,7 +2541,7 @@ internal partial class TypeChecker
                 // A @dataclass declared LATER in this file has not been checked yet, so its synthesized
                 // __init__ is not in Constructors: its shape is unknown here, so keep the refusal below
                 // rather than assume the parameterless constructor.
-                if (currentType.ClrType == null && _moduleDataclassNames.Contains(currentType.Name))
+                if (_moduleDataclassSymbols.Contains(currentType))
                     break;
                 currentType = GetBaseType(currentType);
             }
@@ -2573,17 +2562,11 @@ internal partial class TypeChecker
         if (parentMethod != null)
         {
             // __init__ is stored in both Methods and Constructors. When the owning type
-            // has multiple constructor overloads, defer argument validation to the C#
-            // compiler — mirroring how direct constructor calls (CheckConstructorCall)
-            // skip strict validation for overloaded __init__.
+            // has multiple constructor overloads, the call names a SET, which
+            // CheckChainingInitializerCall resolves.
             if (memberName == DunderNames.Init && methodOwner != null && methodOwner.Constructors.Count > 1)
             {
-                return new FunctionType
-                {
-                    ParameterTypes = new List<SemanticType>(),
-                    ReturnType = SemanticType.Void,
-                    SkipArgumentValidation = true
-                };
+                return DeferredInitializerSetSignature();
             }
 
             return CloseOverBaseReference(
@@ -2606,35 +2589,75 @@ internal partial class TypeChecker
     }
 
     /// <summary>
-    /// A base member's signature as the CURRENT class sees it: the direct base reference's written
-    /// type arguments substituted for the base's own parameters, so <c>super().__init__(7)</c> in
-    /// <c>class D(Base[int8])</c> binds <c>7</c> to <c>int8</c> rather than to an open <c>T</c>
-    /// every argument satisfies — the fourth binding source of #1797's callee-kind axis. Only the
-    /// DIRECT base reference is read: a member declared further up an unsubstituted chain keeps its
-    /// own parameters, as before. Source-declared references carry their arguments as annotations
-    /// (the bridge fills <see cref="BaseTypeReference.ResolvedTypeArguments"/> only for CLR bases),
-    /// so they are resolved here through the one annotation seam.
+    /// A base member's signature as the CURRENT class sees it: the arguments the base chain
+    /// composes for the member's owner substituted for its own parameters, so
+    /// <c>super().__init__(7)</c> in <c>class D(Base[int8])</c> binds <c>7</c> to <c>int8</c> rather
+    /// than to an open <c>T</c> every argument satisfies — the fourth binding source of #1797's
+    /// callee-kind axis. An owner reached through a non-generic middle class
+    /// (<c>class D(Mid)</c>, <c>class Mid(Base[int8])</c>) is bound the same way; reading only the
+    /// direct base reference left it open, and a wrong argument reached Roslyn (CS1503 behind
+    /// SPY0908). See <see cref="AncestorTypeArguments"/>.
     /// </summary>
     private FunctionType CloseOverBaseReference(FunctionType signature, TypeSymbol? owner)
     {
-        if (_currentClass == null || owner == null || owner.TypeParameters.Count == 0)
+        if (owner == null || AncestorTypeArguments(owner) is not { } typeArgs)
             return signature;
 
-        var baseRef = SemanticBinding.GetBaseTypeReference(_currentClass) ?? _currentClass.BaseTypeRef;
-        if (baseRef == null || !ReferenceEquals(baseRef.Definition, owner))
-            return signature;
+        return (FunctionType)SubstituteTypeParameters(
+            signature, owner.TypeParameters, typeArgs, substituteNamedUserTypes: true);
+    }
 
-        var typeArgs = !baseRef.ResolvedTypeArguments.IsDefaultOrEmpty
-            ? baseRef.ResolvedTypeArguments.ToList()
-            : baseRef.TypeArgAnnotations.Select(a => _typeResolver.ResolveTypeAnnotation(a, AnnotationPosition.Value)).ToList();
-        if (typeArgs.Count != owner.TypeParameters.Count || typeArgs.Any(t => t is UnknownType))
-            return signature;
+    /// <summary>
+    /// The type of an <c>__init__</c> access that names an overload SET (<c>self.__init__</c> or
+    /// <c>super().__init__</c> over several constructors, or a CLR base): no formals, so no
+    /// candidate's parameter types are pushed onto the arguments, and the call route resolves it.
+    /// </summary>
+    private static FunctionType DeferredInitializerSetSignature() => new()
+    {
+        ParameterTypes = new List<SemanticType>(),
+        ReturnType = SemanticType.Void,
+        SkipArgumentValidation = true
+    };
 
-        var substitution = new Dictionary<string, SemanticType>(StringComparer.Ordinal);
-        for (int i = 0; i < typeArgs.Count; i++)
-            substitution[owner.TypeParameters[i].Name] = typeArgs[i];
+    /// <summary>
+    /// The type arguments the CURRENT class's base chain composes for the ancestor
+    /// <paramref name="owner"/> (<c>class D(Base[int8])</c> gives <c>[int8]</c>, and so does
+    /// <c>class D(Mid)</c> over <c>class Mid(Base[int8])</c>), in terms of the current class's own
+    /// type parameters; null when <paramref name="owner"/> is not a generic ancestor or an argument
+    /// cannot be read. The one walk is <see cref="GenericInstantiationWalker.EnumerateBaseChain"/>.
+    /// Shared by <see cref="CloseOverBaseReference"/> and the overloaded <c>super().__init__(...)</c>
+    /// route, so both bind the base the same way.
+    /// </summary>
+    private List<SemanticType>? AncestorTypeArguments(TypeSymbol owner)
+    {
+        if (_currentClass == null || owner.TypeParameters.Count == 0)
+            return null;
 
-        return (FunctionType)TypeSubstitution.Apply(signature, substitution, substituteNamedUserTypes: true);
+        // The class's own parameters as its body's annotations resolve them (TypeResolver): a
+        // TypeParameterType's identity includes its constraints, so a bare name would not equal the
+        // `T: Foo` an argument is typed with.
+        var ownArguments = _currentClass.TypeParameters
+            .Select(tp => (SemanticType)new TypeParameterType
+            {
+                Name = tp.Name,
+                DeclaringType = _currentClass,
+                Constraints = tp.Constraints,
+                Variance = tp.Variance
+            })
+            .ToList();
+        foreach (var ancestor in GenericInstantiationWalker.EnumerateBaseChain(
+            _currentClass, ownArguments, SemanticBinding, _typeResolver))
+        {
+            if (!ReferenceEquals(ancestor.Definition, owner))
+                continue;
+
+            return ancestor.TypeArguments.Count == owner.TypeParameters.Count
+                && !ancestor.TypeArguments.Any(t => t is UnknownType)
+                    ? ancestor.TypeArguments.ToList()
+                    : null;
+        }
+
+        return null;
     }
 
     /// <summary>
@@ -2657,23 +2680,38 @@ internal partial class TypeChecker
     /// </para>
     /// </summary>
     private IReadOnlyList<FunctionSymbol> ResolveInitializerConstructorCandidates(TypeSymbol targetType)
+        => ResolveInitializerConstructorOwner(targetType)?.Constructors ?? (IReadOnlyList<FunctionSymbol>)Array.Empty<FunctionSymbol>();
+
+    /// <summary>
+    /// The walk behind <see cref="ResolveInitializerConstructorCandidates"/>: the type whose
+    /// <see cref="TypeSymbol.Constructors"/> an initializer call binds against, or null when there
+    /// are none to validate against. Callers that need to name the set or bind its type parameters
+    /// take the owner; the candidates are its <c>Constructors</c>.
+    /// </summary>
+    private TypeSymbol? ResolveInitializerConstructorOwner(TypeSymbol targetType)
     {
         var currentType = targetType;
         while (currentType != null)
         {
-            // First type yielding constructors wins — return the full overload set.
+            // First type yielding constructors wins — its full overload set.
             if (currentType.Constructors.Count > 0)
-                return currentType.Constructors;
+                return currentType;
+
+            // A @dataclass declared LATER in this file has not been checked yet, so its synthesized
+            // __init__ is not in Constructors: the set is unknown here, not its base's
+            // (ValidateSuperMemberAccess's rule).
+            if (_moduleDataclassSymbols.Contains(currentType))
+                return null;
 
             // CLR-backed type with no enumerated constructors: no metadata to validate
             // against, so signal callers to skip rather than reject valid kwargs.
             if (currentType.ClrType != null)
-                return Array.Empty<FunctionSymbol>();
+                return null;
 
             currentType = GetBaseType(currentType);
         }
 
-        return Array.Empty<FunctionSymbol>();
+        return null;
     }
 
     /// <summary>

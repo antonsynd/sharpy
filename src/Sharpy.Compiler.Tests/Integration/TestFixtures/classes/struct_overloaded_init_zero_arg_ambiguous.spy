@@ -1,0 +1,13 @@
+# Two declared __init__ overloads that each accept zero arguments make S() ambiguous: the
+# implicit parameterless constructor is the struct's only when NO declared overload fits.
+struct S:
+    x: int
+
+    def __init__(self, a: int = 1):
+        self.x = a
+
+    def __init__(self, s: str = ""):
+        self.x = 2
+
+def main() -> None:
+    print(S().x)

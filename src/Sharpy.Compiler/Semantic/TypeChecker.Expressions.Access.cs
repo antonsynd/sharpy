@@ -707,6 +707,9 @@ internal partial class TypeChecker
                 }
             }
 
+            if (ChainingInitializerSetType(memberAccess, udt.Symbol) is { } chainingSet)
+                return chainingSet;
+
             // Look for method (including inherited methods)
             var (method, methodOwner) = FindMethodInHierarchy(udt.Symbol, effectiveMember);
             if (method != null && methodOwner != null)
@@ -2072,6 +2075,9 @@ internal partial class TypeChecker
         if (prop != null && propOwner != null)
             return SubstituteMemberForReceiver(genDef, typeArgs, propOwner, prop.Type);
 
+        if (ChainingInitializerSetType(memberAccess, genDef) is { } chainingSet)
+            return chainingSet;
+
         var (method, methodOwner) = FindMethodInHierarchy(genDef, member);
         if (method != null && methodOwner != null)
         {
@@ -2097,6 +2103,21 @@ internal partial class TypeChecker
     /// </summary>
     private (PropertySymbol? Property, TypeSymbol? Owner) FindPropertyInHierarchy(TypeSymbol type, string propertyName)
         => TypeHierarchyService.FindProperty(type, propertyName, SemanticBinding);
+
+    /// <summary>
+    /// <c>self.__init__</c> on a class with several constructors names an overload SET, not one
+    /// method: typed as whichever <c>__init__</c> was declared first, a chain to any other overload
+    /// was refused (constructors.md's "Constructor Chaining" example). It is typed as
+    /// <c>super().__init__</c> over an overloaded base is (<see cref="DeferredInitializerSetSignature"/>),
+    /// over the same set <c>CheckChainingInitializerCall</c> resolves it against. Null for every
+    /// other access, which keeps its existing typing.
+    /// </summary>
+    private FunctionType? ChainingInitializerSetType(MemberAccess memberAccess, TypeSymbol receiver)
+        => memberAccess.Member == DunderNames.Init
+            && memberAccess.Object is Identifier { Name: PythonNames.Self }
+            && ResolveInitializerConstructorOwner(receiver) is { Constructors.Count: > 1 }
+                ? DeferredInitializerSetSignature()
+                : null;
 
     /// <summary>
     /// Finds a method by name in the type's hierarchy (including parent classes and interfaces).

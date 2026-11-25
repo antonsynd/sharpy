@@ -1,0 +1,25 @@
+# Calling an indexed VALUE whose class defines __call__ is not a construction, although the
+# value's type is generic: the call's arguments bind against __call__, never against an __init__
+# of the element's class, whether it has one constructor or several.
+class Op[T]:
+    def __init__(self):
+        pass
+
+    def __init__(self, seed: list[T]):
+        pass
+
+    def __call__(self, xs: list[str]) -> int:
+        return len(xs)
+
+class One[T]:
+    def __init__(self, seed: list[T]):
+        pass
+
+    def __call__(self, xs: list[str]) -> int:
+        return len(xs) * 10
+
+def main() -> None:
+    ops: list[Op[int]] = [Op[int]()]
+    print(ops[0](["a"]))
+    ones: list[One[int]] = [One[int]([1])]
+    print(ones[0](["a", "b"]))

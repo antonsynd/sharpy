@@ -1,0 +1,23 @@
+# super().__init__ into a @dataclass base declared later in the file: its synthesized __init__
+# is the target, not the grandparent's constructor set.
+class G:
+    tag: str
+
+    def __init__(self, a: int):
+        self.tag = "G1"
+
+    def __init__(self):
+        self.tag = "G0"
+
+class D(DC):
+    def __init__(self):
+        super().__init__("x", 2)
+
+@dataclass
+class DC(G):
+    name: str
+    n: int
+
+def main() -> None:
+    d = D()
+    print(d.name, d.n)

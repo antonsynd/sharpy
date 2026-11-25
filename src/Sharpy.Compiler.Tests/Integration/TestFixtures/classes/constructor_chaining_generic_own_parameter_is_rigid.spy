@@ -1,0 +1,18 @@
+# Inside Box[T], T is a concrete type, not a wildcard: only the (str, object) overload accepts
+# ("s", 1), which is what C#'s `: this("s", 1)` binds.
+class Box[T]:
+    tag: str
+
+    def __init__(self, v: T, n: int):
+        self.tag = "T,int"
+
+    def __init__(self, v: str, n: object):
+        self.tag = "str,object"
+
+    def __init__(self):
+        self.__init__("s", 1)
+
+def main() -> None:
+    print(Box[int]().tag)
+    print(Box[str]().tag)
+    print(Box[int](5, 1).tag)

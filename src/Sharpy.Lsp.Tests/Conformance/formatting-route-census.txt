@@ -18,60 +18,60 @@
 # total known-limit-S6ok identity ontype rows=13 n=45
 # total known-limit-S6ok identity range-line rows=13 n=45
 # total known-limit-S6ok identity range-whole rows=13 n=39
-# total refused-work identity range-block rows=7 n=9 withwork=2439
+# total refused-work identity range-block rows=7 n=9 withwork=2472
 # total refused-work identity range-line rows=4 n=10 withwork=138
-# total refused-work identity range-statement rows=1 n=1 withwork=1054
-# total refused-work identity range-whole rows=0 n=0 withwork=2263
-# total s7-parity-exempt identity full rows=490 n=490
-# total s7-parity-exempt identity ontype rows=484 n=484
-# total s7-parity-exempt identity range-line rows=484 n=484
-# total s7-parity-exempt identity range-whole rows=490 n=490
+# total refused-work identity range-statement rows=1 n=1 withwork=1057
+# total refused-work identity range-whole rows=0 n=0 withwork=2285
+# total s7-parity-exempt identity full rows=492 n=492
+# total s7-parity-exempt identity ontype rows=486 n=486
+# total s7-parity-exempt identity range-line rows=486 n=486
+# total s7-parity-exempt identity range-whole rows=492 n=492
 # total known-limit-S6k comment ontype rows=2 n=2
 # total known-limit-S6k comment range-line rows=2 n=2
 # total known-limit-S6ok comment full rows=2 n=6
 # total known-limit-S6ok comment ontype rows=2 n=18
 # total known-limit-S6ok comment range-line rows=2 n=18
 # total known-limit-S6ok comment range-whole rows=2 n=6
-# total refused-work comment range-block rows=1 n=4 withwork=2512
+# total refused-work comment range-block rows=1 n=4 withwork=2544
 # total refused-work comment range-line rows=0 n=0 withwork=33
-# total refused-work comment range-statement rows=0 n=0 withwork=732
-# total refused-work comment range-whole rows=0 n=0 withwork=3411
-# total s7-parity-exempt comment full rows=1673 n=1673
-# total s7-parity-exempt comment ontype rows=1667 n=1667
-# total s7-parity-exempt comment range-line rows=1667 n=1667
-# total s7-parity-exempt comment range-whole rows=1673 n=1673
+# total refused-work comment range-statement rows=0 n=0 withwork=735
+# total refused-work comment range-whole rows=0 n=0 withwork=3433
+# total s7-parity-exempt comment full rows=1677 n=1677
+# total s7-parity-exempt comment ontype rows=1671 n=1671
+# total s7-parity-exempt comment range-line rows=1671 n=1671
+# total s7-parity-exempt comment range-whole rows=1677 n=1677
 # total known-limit-S6k wide ontype rows=2 n=2
 # total known-limit-S6k wide range-line rows=2 n=2
 # total known-limit-S6ok wide full rows=13 n=39
 # total known-limit-S6ok wide ontype rows=13 n=45
 # total known-limit-S6ok wide range-line rows=13 n=45
 # total known-limit-S6ok wide range-whole rows=13 n=39
-# total refused-work wide range-block rows=1180 n=4399 withwork=13989
-# total refused-work wide range-line rows=196 n=2802 withwork=5180
-# total refused-work wide range-statement rows=254 n=374 withwork=7242
-# total refused-work wide range-whole rows=0 n=0 withwork=3405
-# total s7-parity-exempt wide full rows=490 n=490
-# total s7-parity-exempt wide range-whole rows=490 n=490
+# total refused-work wide range-block rows=1200 n=4471 withwork=14152
+# total refused-work wide range-line rows=200 n=2858 withwork=5259
+# total refused-work wide range-statement rows=254 n=374 withwork=7314
+# total refused-work wide range-whole rows=0 n=0 withwork=3427
+# total s7-parity-exempt wide full rows=492 n=492
+# total s7-parity-exempt wide range-whole rows=492 n=492
 # total known-limit-S6k crlf ontype rows=2 n=2
 # total known-limit-S6k crlf range-line rows=2 n=2
 # total known-limit-S6ok crlf full rows=13 n=39
 # total known-limit-S6ok crlf ontype rows=13 n=45
 # total known-limit-S6ok crlf range-line rows=13 n=45
 # total known-limit-S6ok crlf range-whole rows=13 n=39
-# total s7-parity-exempt crlf full rows=490 n=490
-# total s7-parity-exempt crlf ontype rows=484 n=484
-# total s7-parity-exempt crlf range-line rows=484 n=484
-# total s7-parity-exempt crlf range-whole rows=490 n=490
+# total s7-parity-exempt crlf full rows=492 n=492
+# total s7-parity-exempt crlf ontype rows=486 n=486
+# total s7-parity-exempt crlf range-line rows=486 n=486
+# total s7-parity-exempt crlf range-whole rows=492 n=492
 # total known-limit-S6k cr ontype rows=2 n=2
 # total known-limit-S6k cr range-line rows=2 n=2
 # total known-limit-S6ok cr full rows=13 n=39
 # total known-limit-S6ok cr ontype rows=13 n=45
 # total known-limit-S6ok cr range-line rows=13 n=45
 # total known-limit-S6ok cr range-whole rows=13 n=39
-# total s7-parity-exempt cr full rows=490 n=490
-# total s7-parity-exempt cr ontype rows=484 n=484
-# total s7-parity-exempt cr range-line rows=484 n=484
-# total s7-parity-exempt cr range-whole rows=490 n=490
+# total s7-parity-exempt cr full rows=492 n=492
+# total s7-parity-exempt cr ontype rows=486 n=486
+# total s7-parity-exempt cr range-line rows=486 n=486
+# total s7-parity-exempt cr range-whole rows=492 n=492
 known-limit-S6k identity ontype Formatting/byte_multiline_string 1 # #2274
 known-limit-S6k identity ontype Formatting/raw_multiline_string 1 # #2274
 known-limit-S6k identity range-line Formatting/byte_multiline_string 1 # #2274
@@ -176,6 +176,7 @@ s7-parity-exempt identity full classes/class_inheritance 1 # #2279
 s7-parity-exempt identity full classes/class_math_utils 1 # #2279
 s7-parity-exempt identity full classes/class_static_methods 1 # #2279
 s7-parity-exempt identity full classes/class_static_methods_0002 1 # #2279
+s7-parity-exempt identity full classes/constructor_chaining_after_conflicting_initializer 1 # #2279
 s7-parity-exempt identity full classes/dunder_eq_inherited_1719 1 # #2279
 s7-parity-exempt identity full classes/dunder_eq_none_dispatch_1719 1 # #2279
 s7-parity-exempt identity full classes/dunder_eq_operand_shapes_1719 1 # #2279
@@ -184,6 +185,7 @@ s7-parity-exempt identity full classes/dunder_eq_reversed_1719 1 # #2279
 s7-parity-exempt identity full classes/dunder_eq_value_param_1719 1 # #2279
 s7-parity-exempt identity full classes/dunder_ne_only_1719 1 # #2279
 s7-parity-exempt identity full classes/dunder_str_implicit_override 1 # #2279
+s7-parity-exempt identity full classes/indexed_callable_value_is_not_construction 1 # #2279
 s7-parity-exempt identity full classes/interface_same_instantiation_two_paths_1717 1 # #2279
 s7-parity-exempt identity full classes/method_overloading_0001 1 # #2279
 s7-parity-exempt identity full classes/nested_def_closure_counter 1 # #2279
@@ -665,6 +667,7 @@ s7-parity-exempt identity ontype classes/class_inheritance 1 # #2279
 s7-parity-exempt identity ontype classes/class_math_utils 1 # #2279
 s7-parity-exempt identity ontype classes/class_static_methods 1 # #2279
 s7-parity-exempt identity ontype classes/class_static_methods_0002 1 # #2279
+s7-parity-exempt identity ontype classes/constructor_chaining_after_conflicting_initializer 1 # #2279
 s7-parity-exempt identity ontype classes/dunder_eq_inherited_1719 1 # #2279
 s7-parity-exempt identity ontype classes/dunder_eq_none_dispatch_1719 1 # #2279
 s7-parity-exempt identity ontype classes/dunder_eq_operand_shapes_1719 1 # #2279
@@ -673,6 +676,7 @@ s7-parity-exempt identity ontype classes/dunder_eq_reversed_1719 1 # #2279
 s7-parity-exempt identity ontype classes/dunder_eq_value_param_1719 1 # #2279
 s7-parity-exempt identity ontype classes/dunder_ne_only_1719 1 # #2279
 s7-parity-exempt identity ontype classes/dunder_str_implicit_override 1 # #2279
+s7-parity-exempt identity ontype classes/indexed_callable_value_is_not_construction 1 # #2279
 s7-parity-exempt identity ontype classes/interface_same_instantiation_two_paths_1717 1 # #2279
 s7-parity-exempt identity ontype classes/method_overloading_0001 1 # #2279
 s7-parity-exempt identity ontype classes/nested_def_closure_counter 1 # #2279
@@ -1149,6 +1153,7 @@ s7-parity-exempt identity range-line classes/class_inheritance 1 # #2279
 s7-parity-exempt identity range-line classes/class_math_utils 1 # #2279
 s7-parity-exempt identity range-line classes/class_static_methods 1 # #2279
 s7-parity-exempt identity range-line classes/class_static_methods_0002 1 # #2279
+s7-parity-exempt identity range-line classes/constructor_chaining_after_conflicting_initializer 1 # #2279
 s7-parity-exempt identity range-line classes/dunder_eq_inherited_1719 1 # #2279
 s7-parity-exempt identity range-line classes/dunder_eq_none_dispatch_1719 1 # #2279
 s7-parity-exempt identity range-line classes/dunder_eq_operand_shapes_1719 1 # #2279
@@ -1157,6 +1162,7 @@ s7-parity-exempt identity range-line classes/dunder_eq_reversed_1719 1 # #2279
 s7-parity-exempt identity range-line classes/dunder_eq_value_param_1719 1 # #2279
 s7-parity-exempt identity range-line classes/dunder_ne_only_1719 1 # #2279
 s7-parity-exempt identity range-line classes/dunder_str_implicit_override 1 # #2279
+s7-parity-exempt identity range-line classes/indexed_callable_value_is_not_construction 1 # #2279
 s7-parity-exempt identity range-line classes/interface_same_instantiation_two_paths_1717 1 # #2279
 s7-parity-exempt identity range-line classes/method_overloading_0001 1 # #2279
 s7-parity-exempt identity range-line classes/nested_def_closure_counter 1 # #2279
@@ -1634,6 +1640,7 @@ s7-parity-exempt identity range-whole classes/class_inheritance 1 # #2279
 s7-parity-exempt identity range-whole classes/class_math_utils 1 # #2279
 s7-parity-exempt identity range-whole classes/class_static_methods 1 # #2279
 s7-parity-exempt identity range-whole classes/class_static_methods_0002 1 # #2279
+s7-parity-exempt identity range-whole classes/constructor_chaining_after_conflicting_initializer 1 # #2279
 s7-parity-exempt identity range-whole classes/dunder_eq_inherited_1719 1 # #2279
 s7-parity-exempt identity range-whole classes/dunder_eq_none_dispatch_1719 1 # #2279
 s7-parity-exempt identity range-whole classes/dunder_eq_operand_shapes_1719 1 # #2279
@@ -1642,6 +1649,7 @@ s7-parity-exempt identity range-whole classes/dunder_eq_reversed_1719 1 # #2279
 s7-parity-exempt identity range-whole classes/dunder_eq_value_param_1719 1 # #2279
 s7-parity-exempt identity range-whole classes/dunder_ne_only_1719 1 # #2279
 s7-parity-exempt identity range-whole classes/dunder_str_implicit_override 1 # #2279
+s7-parity-exempt identity range-whole classes/indexed_callable_value_is_not_construction 1 # #2279
 s7-parity-exempt identity range-whole classes/interface_same_instantiation_two_paths_1717 1 # #2279
 s7-parity-exempt identity range-whole classes/method_overloading_0001 1 # #2279
 s7-parity-exempt identity range-whole classes/nested_def_closure_counter 1 # #2279
@@ -2332,6 +2340,8 @@ s7-parity-exempt comment full classes/class_inheritance 1 # #2279
 s7-parity-exempt comment full classes/class_math_utils 1 # #2279
 s7-parity-exempt comment full classes/class_static_methods 1 # #2279
 s7-parity-exempt comment full classes/class_static_methods_0002 1 # #2279
+s7-parity-exempt comment full classes/constructor_chaining_after_conflicting_initializer 1 # #2279
+s7-parity-exempt comment full classes/constructor_chaining_empty_literal_into_count_match 1 # #2279
 s7-parity-exempt comment full classes/dict_optional_key_read_1807 1 # #2279
 s7-parity-exempt comment full classes/dunder_bool_0003 1 # #2279
 s7-parity-exempt comment full classes/dunder_bool_0021 1 # #2279
@@ -2358,6 +2368,7 @@ s7-parity-exempt comment full classes/dunder_len_truthiness 1 # #2279
 s7-parity-exempt comment full classes/dunder_ne_only_1719 1 # #2279
 s7-parity-exempt comment full classes/dunder_str_implicit_override 1 # #2279
 s7-parity-exempt comment full classes/field_comprehension_initializer_1685 1 # #2279
+s7-parity-exempt comment full classes/indexed_callable_value_is_not_construction 1 # #2279
 s7-parity-exempt comment full classes/init_self_comprehension_1685 1 # #2279
 s7-parity-exempt comment full classes/interface_base_name 1 # #2279
 s7-parity-exempt comment full classes/interface_explicit_plus_synthesized_isized_1746 1 # #2279
@@ -3068,6 +3079,7 @@ s7-parity-exempt comment full indirect_callee/paren_union_variant_ctor 1 # #2279
 s7-parity-exempt comment full inheritance/abstract_class_interface_stubs 1 # #2279
 s7-parity-exempt comment full inheritance/abstract_instantiation 1 # #2279
 s7-parity-exempt comment full inheritance/override_non_virtual 1 # #2279
+s7-parity-exempt comment full inheritance/super_init_constrained_generic_forwards_list 1 # #2279
 s7-parity-exempt comment full int8_conversion_call 1 # #2279
 s7-parity-exempt comment full int_parse 1 # #2279
 s7-parity-exempt comment full int_parse_edge_cases 1 # #2279
@@ -4004,6 +4016,8 @@ s7-parity-exempt comment ontype classes/class_inheritance 1 # #2279
 s7-parity-exempt comment ontype classes/class_math_utils 1 # #2279
 s7-parity-exempt comment ontype classes/class_static_methods 1 # #2279
 s7-parity-exempt comment ontype classes/class_static_methods_0002 1 # #2279
+s7-parity-exempt comment ontype classes/constructor_chaining_after_conflicting_initializer 1 # #2279
+s7-parity-exempt comment ontype classes/constructor_chaining_empty_literal_into_count_match 1 # #2279
 s7-parity-exempt comment ontype classes/dict_optional_key_read_1807 1 # #2279
 s7-parity-exempt comment ontype classes/dunder_bool_0003 1 # #2279
 s7-parity-exempt comment ontype classes/dunder_bool_0021 1 # #2279
@@ -4030,6 +4044,7 @@ s7-parity-exempt comment ontype classes/dunder_len_truthiness 1 # #2279
 s7-parity-exempt comment ontype classes/dunder_ne_only_1719 1 # #2279
 s7-parity-exempt comment ontype classes/dunder_str_implicit_override 1 # #2279
 s7-parity-exempt comment ontype classes/field_comprehension_initializer_1685 1 # #2279
+s7-parity-exempt comment ontype classes/indexed_callable_value_is_not_construction 1 # #2279
 s7-parity-exempt comment ontype classes/init_self_comprehension_1685 1 # #2279
 s7-parity-exempt comment ontype classes/interface_base_name 1 # #2279
 s7-parity-exempt comment ontype classes/interface_explicit_plus_synthesized_isized_1746 1 # #2279
@@ -4735,6 +4750,7 @@ s7-parity-exempt comment ontype indirect_callee/paren_union_variant_ctor 1 # #22
 s7-parity-exempt comment ontype inheritance/abstract_class_interface_stubs 1 # #2279
 s7-parity-exempt comment ontype inheritance/abstract_instantiation 1 # #2279
 s7-parity-exempt comment ontype inheritance/override_non_virtual 1 # #2279
+s7-parity-exempt comment ontype inheritance/super_init_constrained_generic_forwards_list 1 # #2279
 s7-parity-exempt comment ontype int8_conversion_call 1 # #2279
 s7-parity-exempt comment ontype int_parse 1 # #2279
 s7-parity-exempt comment ontype int_parse_edge_cases 1 # #2279
@@ -5671,6 +5687,8 @@ s7-parity-exempt comment range-line classes/class_inheritance 1 # #2279
 s7-parity-exempt comment range-line classes/class_math_utils 1 # #2279
 s7-parity-exempt comment range-line classes/class_static_methods 1 # #2279
 s7-parity-exempt comment range-line classes/class_static_methods_0002 1 # #2279
+s7-parity-exempt comment range-line classes/constructor_chaining_after_conflicting_initializer 1 # #2279
+s7-parity-exempt comment range-line classes/constructor_chaining_empty_literal_into_count_match 1 # #2279
 s7-parity-exempt comment range-line classes/dict_optional_key_read_1807 1 # #2279
 s7-parity-exempt comment range-line classes/dunder_bool_0003 1 # #2279
 s7-parity-exempt comment range-line classes/dunder_bool_0021 1 # #2279
@@ -5697,6 +5715,7 @@ s7-parity-exempt comment range-line classes/dunder_len_truthiness 1 # #2279
 s7-parity-exempt comment range-line classes/dunder_ne_only_1719 1 # #2279
 s7-parity-exempt comment range-line classes/dunder_str_implicit_override 1 # #2279
 s7-parity-exempt comment range-line classes/field_comprehension_initializer_1685 1 # #2279
+s7-parity-exempt comment range-line classes/indexed_callable_value_is_not_construction 1 # #2279
 s7-parity-exempt comment range-line classes/init_self_comprehension_1685 1 # #2279
 s7-parity-exempt comment range-line classes/interface_base_name 1 # #2279
 s7-parity-exempt comment range-line classes/interface_explicit_plus_synthesized_isized_1746 1 # #2279
@@ -6402,6 +6421,7 @@ s7-parity-exempt comment range-line indirect_callee/paren_union_variant_ctor 1 #
 s7-parity-exempt comment range-line inheritance/abstract_class_interface_stubs 1 # #2279
 s7-parity-exempt comment range-line inheritance/abstract_instantiation 1 # #2279
 s7-parity-exempt comment range-line inheritance/override_non_virtual 1 # #2279
+s7-parity-exempt comment range-line inheritance/super_init_constrained_generic_forwards_list 1 # #2279
 s7-parity-exempt comment range-line int8_conversion_call 1 # #2279
 s7-parity-exempt comment range-line int_parse 1 # #2279
 s7-parity-exempt comment range-line int_parse_edge_cases 1 # #2279
@@ -7339,6 +7359,8 @@ s7-parity-exempt comment range-whole classes/class_inheritance 1 # #2279
 s7-parity-exempt comment range-whole classes/class_math_utils 1 # #2279
 s7-parity-exempt comment range-whole classes/class_static_methods 1 # #2279
 s7-parity-exempt comment range-whole classes/class_static_methods_0002 1 # #2279
+s7-parity-exempt comment range-whole classes/constructor_chaining_after_conflicting_initializer 1 # #2279
+s7-parity-exempt comment range-whole classes/constructor_chaining_empty_literal_into_count_match 1 # #2279
 s7-parity-exempt comment range-whole classes/dict_optional_key_read_1807 1 # #2279
 s7-parity-exempt comment range-whole classes/dunder_bool_0003 1 # #2279
 s7-parity-exempt comment range-whole classes/dunder_bool_0021 1 # #2279
@@ -7365,6 +7387,7 @@ s7-parity-exempt comment range-whole classes/dunder_len_truthiness 1 # #2279
 s7-parity-exempt comment range-whole classes/dunder_ne_only_1719 1 # #2279
 s7-parity-exempt comment range-whole classes/dunder_str_implicit_override 1 # #2279
 s7-parity-exempt comment range-whole classes/field_comprehension_initializer_1685 1 # #2279
+s7-parity-exempt comment range-whole classes/indexed_callable_value_is_not_construction 1 # #2279
 s7-parity-exempt comment range-whole classes/init_self_comprehension_1685 1 # #2279
 s7-parity-exempt comment range-whole classes/interface_base_name 1 # #2279
 s7-parity-exempt comment range-whole classes/interface_explicit_plus_synthesized_isized_1746 1 # #2279
@@ -8075,6 +8098,7 @@ s7-parity-exempt comment range-whole indirect_callee/paren_union_variant_ctor 1 
 s7-parity-exempt comment range-whole inheritance/abstract_class_interface_stubs 1 # #2279
 s7-parity-exempt comment range-whole inheritance/abstract_instantiation 1 # #2279
 s7-parity-exempt comment range-whole inheritance/override_non_virtual 1 # #2279
+s7-parity-exempt comment range-whole inheritance/super_init_constrained_generic_forwards_list 1 # #2279
 s7-parity-exempt comment range-whole int8_conversion_call 1 # #2279
 s7-parity-exempt comment range-whole int_parse 1 # #2279
 s7-parity-exempt comment range-whole int_parse_edge_cases 1 # #2279
@@ -8997,10 +9021,18 @@ refused-work wide range-block classes/constructor_arg_conversions_1243 3 # #2538
 refused-work wide range-block classes/constructor_arg_type_mismatch_1243 1 # #2538
 refused-work wide range-block classes/constructor_chaining_0027 4 # #2538
 refused-work wide range-block classes/constructor_chaining_0073 6 # #2538
+refused-work wide range-block classes/constructor_chaining_after_conflicting_initializer 4 # #2538
 refused-work wide range-block classes/constructor_chaining_basic 3 # #2538
+refused-work wide range-block classes/constructor_chaining_empty_literal_into_count_match 3 # #2538
+refused-work wide range-block classes/constructor_chaining_generic_own_parameter_is_rigid 3 # #2538
+refused-work wide range-block classes/constructor_chaining_later_target_arg_mismatch 2 # #2538
+refused-work wide range-block classes/constructor_chaining_no_matching_overload 2 # #2538
 refused-work wide range-block classes/constructor_chaining_not_in_init 2 # #2538
+refused-work wide range-block classes/constructor_chaining_target_declared_first 12 # #2538
+refused-work wide range-block classes/constructor_chaining_target_declared_later 12 # #2538
 refused-work wide range-block classes/constructor_kwonly_forward 4 # #2538
 refused-work wide range-block classes/constructor_overload_arg_mismatch_1243 2 # #2538
+refused-work wide range-block classes/constructor_overload_no_matching_count 2 # #2538
 refused-work wide range-block classes/dunder_arithmetic 4 # #2538
 refused-work wide range-block classes/dunder_bool 2 # #2538
 refused-work wide range-block classes/dunder_bool_0003 7 # #2538
@@ -9063,6 +9095,7 @@ refused-work wide range-block classes/final_class_0001 2 # #2538
 refused-work wide range-block classes/final_field_derived 2 # #2538
 refused-work wide range-block classes/final_field_invalid_method 2 # #2538
 refused-work wide range-block classes/final_field_valid 2 # #2538
+refused-work wide range-block classes/indexed_callable_value_is_not_construction 5 # #2538
 refused-work wide range-block classes/indexer_setitem_value_param_1529 4 # #2538
 refused-work wide range-block classes/inheritance_with_override 7 # #2538
 refused-work wide range-block classes/init_self_comprehension_1685 1 # #2538
@@ -9121,6 +9154,8 @@ refused-work wide range-block classes/split_property_reader_declared_later_2384 
 refused-work wide range-block classes/static_init_source_order_0001 1 # #2538
 refused-work wide range-block classes/static_prop_default_calls_static_method_2396 2 # #2538
 refused-work wide range-block classes/static_prop_in_static_init_2396 2 # #2538
+refused-work wide range-block classes/struct_overloaded_init_implicit_parameterless 2 # #2538
+refused-work wide range-block classes/struct_overloaded_init_zero_arg_ambiguous 2 # #2538
 refused-work wide range-block classes/super_init_not_first_0001 2 # #2538
 refused-work wide range-block classes/weather_advisor_if_elif_else 15 # #2538
 refused-work wide range-block clr_reference_none_equality 1 # #2538
@@ -9245,9 +9280,12 @@ refused-work wide range-block decorators/decorator_args_event_0001 1 # #2538
 refused-work wide range-block decorators/decorator_args_negative_0001 2 # #2538
 refused-work wide range-block decorators/decorator_args_property_0001 3 # #2538
 refused-work wide range-block decorators/decorator_args_typeof_0001 3 # #2538
+refused-work wide range-block decorators/deprecated_chaining_selected_overload 4 # #2538
+refused-work wide range-block decorators/deprecated_chaining_unselected_overload 5 # #2538
 refused-work wide range-block decorators/deprecated_ctor_overload_1536 5 # #2538
 refused-work wide range-block decorators/deprecated_overload_method 2 # #2538
 refused-work wide range-block decorators/deprecated_self_init 2 # #2538
+refused-work wide range-block decorators/deprecated_struct_zero_arg_overload 2 # #2538
 refused-work wide range-block decorators/deprecated_super_init 1 # #2538
 refused-work wide range-block decorators/internal_visibility_0001 4 # #2538
 refused-work wide range-block decorators/must_use_class_discarded_1536 1 # #2538
@@ -9602,6 +9640,12 @@ refused-work wide range-block inheritance/super_init_call_0022 1 # #2538
 refused-work wide range-block inheritance/super_init_call_0046 5 # #2538
 refused-work wide range-block inheritance/super_init_call_0087 13 # #2538
 refused-work wide range-block inheritance/super_init_call_0097 3 # #2538
+refused-work wide range-block inheritance/super_init_constrained_generic_forwards_list 2 # #2538
+refused-work wide range-block inheritance/super_init_dataclass_base_declared_later 2 # #2538
+refused-work wide range-block inheritance/super_init_generic_base_overload_arg_mismatch 2 # #2538
+refused-work wide range-block inheritance/super_init_nested_base_shares_dataclass_name 2 # #2538
+refused-work wide range-block inheritance/super_init_overload_arg_mismatch 2 # #2538
+refused-work wide range-block inheritance/super_init_overload_no_matching_count 2 # #2538
 refused-work wide range-block inheritance/virtual_override_0001 16 # #2538
 refused-work wide range-block inheritance/virtual_override_0014 10 # #2538
 refused-work wide range-block inheritance/virtual_override_0025 5 # #2538
@@ -10054,6 +10098,8 @@ refused-work wide range-line classes/class_with_init_0094 11 # #2538
 refused-work wide range-line classes/class_with_loop_0014 10 # #2538
 refused-work wide range-line classes/constructor_arg_conversions_1243 29 # #2538
 refused-work wide range-line classes/constructor_arg_type_mismatch_1243 3 # #2538
+refused-work wide range-line classes/constructor_chaining_generic_own_parameter_is_rigid 7 # #2538
+refused-work wide range-line classes/constructor_chaining_target_declared_first 38 # #2538
 refused-work wide range-line classes/dunder_eq_iequatable_explicit 5 # #2538
 refused-work wide range-line classes/dunder_eq_value_param_1719 4 # #2538
 refused-work wide range-line classes/dunder_len_0001 26 # #2538
@@ -10087,6 +10133,7 @@ refused-work wide range-line decorators/bracket_attr_custom_on_struct 9 # #2538
 refused-work wide range-line decorators/bracket_attribute_is_not_abstract_1373 12 # #2538
 refused-work wide range-line decorators/custom_decorator_simple_0050 8 # #2538
 refused-work wide range-line decorators/decorator_args_builtin_error_0001 6 # #2538
+refused-work wide range-line decorators/deprecated_struct_zero_arg_overload 6 # #2538
 refused-work wide range-line decorators/deprecated_super_init 4 # #2538
 refused-work wide range-line decorators/must_use_class_discarded_1536 3 # #2538
 refused-work wide range-line definite_assignment/nested_def_never_assigned_1681 4 # #2538
@@ -10148,6 +10195,7 @@ refused-work wide range-line inheritance/abstract_class_0020 39 # #2538
 refused-work wide range-line inheritance/class_inheritance_0000 16 # #2538
 refused-work wide range-line inheritance/class_inheritance_0031 40 # #2538
 refused-work wide range-line inheritance/super_init_call_0000 31 # #2538
+refused-work wide range-line inheritance/super_init_nested_base_shares_dataclass_name 5 # #2538
 refused-work wide range-line inheritance/virtual_override_0014 40 # #2538
 refused-work wide range-line inheritance/virtual_override_0025 17 # #2538
 refused-work wide range-line interface_definition/interface_definition 24 # #2538
@@ -10503,6 +10551,7 @@ s7-parity-exempt wide full classes/class_inheritance 1 # #2279
 s7-parity-exempt wide full classes/class_math_utils 1 # #2279
 s7-parity-exempt wide full classes/class_static_methods 1 # #2279
 s7-parity-exempt wide full classes/class_static_methods_0002 1 # #2279
+s7-parity-exempt wide full classes/constructor_chaining_after_conflicting_initializer 1 # #2279
 s7-parity-exempt wide full classes/dunder_eq_inherited_1719 1 # #2279
 s7-parity-exempt wide full classes/dunder_eq_none_dispatch_1719 1 # #2279
 s7-parity-exempt wide full classes/dunder_eq_operand_shapes_1719 1 # #2279
@@ -10511,6 +10560,7 @@ s7-parity-exempt wide full classes/dunder_eq_reversed_1719 1 # #2279
 s7-parity-exempt wide full classes/dunder_eq_value_param_1719 1 # #2279
 s7-parity-exempt wide full classes/dunder_ne_only_1719 1 # #2279
 s7-parity-exempt wide full classes/dunder_str_implicit_override 1 # #2279
+s7-parity-exempt wide full classes/indexed_callable_value_is_not_construction 1 # #2279
 s7-parity-exempt wide full classes/interface_same_instantiation_two_paths_1717 1 # #2279
 s7-parity-exempt wide full classes/method_overloading_0001 1 # #2279
 s7-parity-exempt wide full classes/nested_def_closure_counter 1 # #2279
@@ -10993,6 +11043,7 @@ s7-parity-exempt wide range-whole classes/class_inheritance 1 # #2279
 s7-parity-exempt wide range-whole classes/class_math_utils 1 # #2279
 s7-parity-exempt wide range-whole classes/class_static_methods 1 # #2279
 s7-parity-exempt wide range-whole classes/class_static_methods_0002 1 # #2279
+s7-parity-exempt wide range-whole classes/constructor_chaining_after_conflicting_initializer 1 # #2279
 s7-parity-exempt wide range-whole classes/dunder_eq_inherited_1719 1 # #2279
 s7-parity-exempt wide range-whole classes/dunder_eq_none_dispatch_1719 1 # #2279
 s7-parity-exempt wide range-whole classes/dunder_eq_operand_shapes_1719 1 # #2279
@@ -11001,6 +11052,7 @@ s7-parity-exempt wide range-whole classes/dunder_eq_reversed_1719 1 # #2279
 s7-parity-exempt wide range-whole classes/dunder_eq_value_param_1719 1 # #2279
 s7-parity-exempt wide range-whole classes/dunder_ne_only_1719 1 # #2279
 s7-parity-exempt wide range-whole classes/dunder_str_implicit_override 1 # #2279
+s7-parity-exempt wide range-whole classes/indexed_callable_value_is_not_construction 1 # #2279
 s7-parity-exempt wide range-whole classes/interface_same_instantiation_two_paths_1717 1 # #2279
 s7-parity-exempt wide range-whole classes/method_overloading_0001 1 # #2279
 s7-parity-exempt wide range-whole classes/nested_def_closure_counter 1 # #2279
@@ -11539,6 +11591,7 @@ s7-parity-exempt crlf full classes/class_inheritance 1 # #2279
 s7-parity-exempt crlf full classes/class_math_utils 1 # #2279
 s7-parity-exempt crlf full classes/class_static_methods 1 # #2279
 s7-parity-exempt crlf full classes/class_static_methods_0002 1 # #2279
+s7-parity-exempt crlf full classes/constructor_chaining_after_conflicting_initializer 1 # #2279
 s7-parity-exempt crlf full classes/dunder_eq_inherited_1719 1 # #2279
 s7-parity-exempt crlf full classes/dunder_eq_none_dispatch_1719 1 # #2279
 s7-parity-exempt crlf full classes/dunder_eq_operand_shapes_1719 1 # #2279
@@ -11547,6 +11600,7 @@ s7-parity-exempt crlf full classes/dunder_eq_reversed_1719 1 # #2279
 s7-parity-exempt crlf full classes/dunder_eq_value_param_1719 1 # #2279
 s7-parity-exempt crlf full classes/dunder_ne_only_1719 1 # #2279
 s7-parity-exempt crlf full classes/dunder_str_implicit_override 1 # #2279
+s7-parity-exempt crlf full classes/indexed_callable_value_is_not_construction 1 # #2279
 s7-parity-exempt crlf full classes/interface_same_instantiation_two_paths_1717 1 # #2279
 s7-parity-exempt crlf full classes/method_overloading_0001 1 # #2279
 s7-parity-exempt crlf full classes/nested_def_closure_counter 1 # #2279
@@ -12028,6 +12082,7 @@ s7-parity-exempt crlf ontype classes/class_inheritance 1 # #2279
 s7-parity-exempt crlf ontype classes/class_math_utils 1 # #2279
 s7-parity-exempt crlf ontype classes/class_static_methods 1 # #2279
 s7-parity-exempt crlf ontype classes/class_static_methods_0002 1 # #2279
+s7-parity-exempt crlf ontype classes/constructor_chaining_after_conflicting_initializer 1 # #2279
 s7-parity-exempt crlf ontype classes/dunder_eq_inherited_1719 1 # #2279
 s7-parity-exempt crlf ontype classes/dunder_eq_none_dispatch_1719 1 # #2279
 s7-parity-exempt crlf ontype classes/dunder_eq_operand_shapes_1719 1 # #2279
@@ -12036,6 +12091,7 @@ s7-parity-exempt crlf ontype classes/dunder_eq_reversed_1719 1 # #2279
 s7-parity-exempt crlf ontype classes/dunder_eq_value_param_1719 1 # #2279
 s7-parity-exempt crlf ontype classes/dunder_ne_only_1719 1 # #2279
 s7-parity-exempt crlf ontype classes/dunder_str_implicit_override 1 # #2279
+s7-parity-exempt crlf ontype classes/indexed_callable_value_is_not_construction 1 # #2279
 s7-parity-exempt crlf ontype classes/interface_same_instantiation_two_paths_1717 1 # #2279
 s7-parity-exempt crlf ontype classes/method_overloading_0001 1 # #2279
 s7-parity-exempt crlf ontype classes/nested_def_closure_counter 1 # #2279
@@ -12512,6 +12568,7 @@ s7-parity-exempt crlf range-line classes/class_inheritance 1 # #2279
 s7-parity-exempt crlf range-line classes/class_math_utils 1 # #2279
 s7-parity-exempt crlf range-line classes/class_static_methods 1 # #2279
 s7-parity-exempt crlf range-line classes/class_static_methods_0002 1 # #2279
+s7-parity-exempt crlf range-line classes/constructor_chaining_after_conflicting_initializer 1 # #2279
 s7-parity-exempt crlf range-line classes/dunder_eq_inherited_1719 1 # #2279
 s7-parity-exempt crlf range-line classes/dunder_eq_none_dispatch_1719 1 # #2279
 s7-parity-exempt crlf range-line classes/dunder_eq_operand_shapes_1719 1 # #2279
@@ -12520,6 +12577,7 @@ s7-parity-exempt crlf range-line classes/dunder_eq_reversed_1719 1 # #2279
 s7-parity-exempt crlf range-line classes/dunder_eq_value_param_1719 1 # #2279
 s7-parity-exempt crlf range-line classes/dunder_ne_only_1719 1 # #2279
 s7-parity-exempt crlf range-line classes/dunder_str_implicit_override 1 # #2279
+s7-parity-exempt crlf range-line classes/indexed_callable_value_is_not_construction 1 # #2279
 s7-parity-exempt crlf range-line classes/interface_same_instantiation_two_paths_1717 1 # #2279
 s7-parity-exempt crlf range-line classes/method_overloading_0001 1 # #2279
 s7-parity-exempt crlf range-line classes/nested_def_closure_counter 1 # #2279
@@ -12997,6 +13055,7 @@ s7-parity-exempt crlf range-whole classes/class_inheritance 1 # #2279
 s7-parity-exempt crlf range-whole classes/class_math_utils 1 # #2279
 s7-parity-exempt crlf range-whole classes/class_static_methods 1 # #2279
 s7-parity-exempt crlf range-whole classes/class_static_methods_0002 1 # #2279
+s7-parity-exempt crlf range-whole classes/constructor_chaining_after_conflicting_initializer 1 # #2279
 s7-parity-exempt crlf range-whole classes/dunder_eq_inherited_1719 1 # #2279
 s7-parity-exempt crlf range-whole classes/dunder_eq_none_dispatch_1719 1 # #2279
 s7-parity-exempt crlf range-whole classes/dunder_eq_operand_shapes_1719 1 # #2279
@@ -13005,6 +13064,7 @@ s7-parity-exempt crlf range-whole classes/dunder_eq_reversed_1719 1 # #2279
 s7-parity-exempt crlf range-whole classes/dunder_eq_value_param_1719 1 # #2279
 s7-parity-exempt crlf range-whole classes/dunder_ne_only_1719 1 # #2279
 s7-parity-exempt crlf range-whole classes/dunder_str_implicit_override 1 # #2279
+s7-parity-exempt crlf range-whole classes/indexed_callable_value_is_not_construction 1 # #2279
 s7-parity-exempt crlf range-whole classes/interface_same_instantiation_two_paths_1717 1 # #2279
 s7-parity-exempt crlf range-whole classes/method_overloading_0001 1 # #2279
 s7-parity-exempt crlf range-whole classes/nested_def_closure_counter 1 # #2279
@@ -13543,6 +13603,7 @@ s7-parity-exempt cr full classes/class_inheritance 1 # #2279
 s7-parity-exempt cr full classes/class_math_utils 1 # #2279
 s7-parity-exempt cr full classes/class_static_methods 1 # #2279
 s7-parity-exempt cr full classes/class_static_methods_0002 1 # #2279
+s7-parity-exempt cr full classes/constructor_chaining_after_conflicting_initializer 1 # #2279
 s7-parity-exempt cr full classes/dunder_eq_inherited_1719 1 # #2279
 s7-parity-exempt cr full classes/dunder_eq_none_dispatch_1719 1 # #2279
 s7-parity-exempt cr full classes/dunder_eq_operand_shapes_1719 1 # #2279
@@ -13551,6 +13612,7 @@ s7-parity-exempt cr full classes/dunder_eq_reversed_1719 1 # #2279
 s7-parity-exempt cr full classes/dunder_eq_value_param_1719 1 # #2279
 s7-parity-exempt cr full classes/dunder_ne_only_1719 1 # #2279
 s7-parity-exempt cr full classes/dunder_str_implicit_override 1 # #2279
+s7-parity-exempt cr full classes/indexed_callable_value_is_not_construction 1 # #2279
 s7-parity-exempt cr full classes/interface_same_instantiation_two_paths_1717 1 # #2279
 s7-parity-exempt cr full classes/method_overloading_0001 1 # #2279
 s7-parity-exempt cr full classes/nested_def_closure_counter 1 # #2279
@@ -14032,6 +14094,7 @@ s7-parity-exempt cr ontype classes/class_inheritance 1 # #2279
 s7-parity-exempt cr ontype classes/class_math_utils 1 # #2279
 s7-parity-exempt cr ontype classes/class_static_methods 1 # #2279
 s7-parity-exempt cr ontype classes/class_static_methods_0002 1 # #2279
+s7-parity-exempt cr ontype classes/constructor_chaining_after_conflicting_initializer 1 # #2279
 s7-parity-exempt cr ontype classes/dunder_eq_inherited_1719 1 # #2279
 s7-parity-exempt cr ontype classes/dunder_eq_none_dispatch_1719 1 # #2279
 s7-parity-exempt cr ontype classes/dunder_eq_operand_shapes_1719 1 # #2279
@@ -14040,6 +14103,7 @@ s7-parity-exempt cr ontype classes/dunder_eq_reversed_1719 1 # #2279
 s7-parity-exempt cr ontype classes/dunder_eq_value_param_1719 1 # #2279
 s7-parity-exempt cr ontype classes/dunder_ne_only_1719 1 # #2279
 s7-parity-exempt cr ontype classes/dunder_str_implicit_override 1 # #2279
+s7-parity-exempt cr ontype classes/indexed_callable_value_is_not_construction 1 # #2279
 s7-parity-exempt cr ontype classes/interface_same_instantiation_two_paths_1717 1 # #2279
 s7-parity-exempt cr ontype classes/method_overloading_0001 1 # #2279
 s7-parity-exempt cr ontype classes/nested_def_closure_counter 1 # #2279
@@ -14516,6 +14580,7 @@ s7-parity-exempt cr range-line classes/class_inheritance 1 # #2279
 s7-parity-exempt cr range-line classes/class_math_utils 1 # #2279
 s7-parity-exempt cr range-line classes/class_static_methods 1 # #2279
 s7-parity-exempt cr range-line classes/class_static_methods_0002 1 # #2279
+s7-parity-exempt cr range-line classes/constructor_chaining_after_conflicting_initializer 1 # #2279
 s7-parity-exempt cr range-line classes/dunder_eq_inherited_1719 1 # #2279
 s7-parity-exempt cr range-line classes/dunder_eq_none_dispatch_1719 1 # #2279
 s7-parity-exempt cr range-line classes/dunder_eq_operand_shapes_1719 1 # #2279
@@ -14524,6 +14589,7 @@ s7-parity-exempt cr range-line classes/dunder_eq_reversed_1719 1 # #2279
 s7-parity-exempt cr range-line classes/dunder_eq_value_param_1719 1 # #2279
 s7-parity-exempt cr range-line classes/dunder_ne_only_1719 1 # #2279
 s7-parity-exempt cr range-line classes/dunder_str_implicit_override 1 # #2279
+s7-parity-exempt cr range-line classes/indexed_callable_value_is_not_construction 1 # #2279
 s7-parity-exempt cr range-line classes/interface_same_instantiation_two_paths_1717 1 # #2279
 s7-parity-exempt cr range-line classes/method_overloading_0001 1 # #2279
 s7-parity-exempt cr range-line classes/nested_def_closure_counter 1 # #2279
@@ -15001,6 +15067,7 @@ s7-parity-exempt cr range-whole classes/class_inheritance 1 # #2279
 s7-parity-exempt cr range-whole classes/class_math_utils 1 # #2279
 s7-parity-exempt cr range-whole classes/class_static_methods 1 # #2279
 s7-parity-exempt cr range-whole classes/class_static_methods_0002 1 # #2279
+s7-parity-exempt cr range-whole classes/constructor_chaining_after_conflicting_initializer 1 # #2279
 s7-parity-exempt cr range-whole classes/dunder_eq_inherited_1719 1 # #2279
 s7-parity-exempt cr range-whole classes/dunder_eq_none_dispatch_1719 1 # #2279
 s7-parity-exempt cr range-whole classes/dunder_eq_operand_shapes_1719 1 # #2279
@@ -15009,6 +15076,7 @@ s7-parity-exempt cr range-whole classes/dunder_eq_reversed_1719 1 # #2279
 s7-parity-exempt cr range-whole classes/dunder_eq_value_param_1719 1 # #2279
 s7-parity-exempt cr range-whole classes/dunder_ne_only_1719 1 # #2279
 s7-parity-exempt cr range-whole classes/dunder_str_implicit_override 1 # #2279
+s7-parity-exempt cr range-whole classes/indexed_callable_value_is_not_construction 1 # #2279
 s7-parity-exempt cr range-whole classes/interface_same_instantiation_two_paths_1717 1 # #2279
 s7-parity-exempt cr range-whole classes/method_overloading_0001 1 # #2279
 s7-parity-exempt cr range-whole classes/nested_def_closure_counter 1 # #2279

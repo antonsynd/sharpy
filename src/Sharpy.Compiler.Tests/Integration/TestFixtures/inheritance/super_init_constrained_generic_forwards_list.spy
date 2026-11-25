@@ -1,0 +1,25 @@
+# A constrained type parameter forwarded to an overloaded generic base: list[T] meets list[T]
+# with T's constraint on both sides.
+interface Foo:
+    def f(self) -> int: ...
+
+class Impl(Foo):
+    def f(self) -> int:
+        return 3
+
+class B[T: Foo]:
+    n: int
+
+    def __init__(self, xs: list[T]):
+        self.n = len(xs)
+
+    def __init__(self):
+        self.n = -1
+
+class D[T: Foo](B[T]):
+    def __init__(self, xs: list[T]):
+        super().__init__(xs)
+
+def main() -> None:
+    d = D[Impl]([Impl(), Impl()])
+    print(d.n)

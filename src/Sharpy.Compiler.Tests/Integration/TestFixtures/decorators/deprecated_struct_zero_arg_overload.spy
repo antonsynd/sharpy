@@ -1,0 +1,14 @@
+# A struct's declared zero-argument __init__ is selected over the implicit parameterless
+# constructor, so its @deprecated warning fires on S().
+struct S:
+    x: int
+
+    @deprecated("old")
+    def __init__(self):
+        self.x = 9
+
+    def __init__(self, *xs: int):
+        self.x = len(xs)
+
+def main() -> None:
+    print(S().x)

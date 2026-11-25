@@ -1,0 +1,20 @@
+# A generic base's overloads are bound at the base clause's written arguments: B[int] binds T to
+# int32, so "s" is refused at the argument (it was CS1503 behind SPY0908).
+
+class B[T]:
+    v: T
+
+    def __init__(self):
+        pass
+
+    def __init__(self, v: T):
+        self.v = v
+
+
+class D(B[int]):
+    def __init__(self):
+        super().__init__("s")
+
+
+def main() -> None:
+    print(D().v)

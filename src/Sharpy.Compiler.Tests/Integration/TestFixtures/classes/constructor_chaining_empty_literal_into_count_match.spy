@@ -1,0 +1,31 @@
+# An empty literal in a chaining call takes its type from the one __init__ overload that
+# accepts the argument count, as it does in a direct construction: the count leaves one
+# candidate, which is a resolved target (overload_resolution.md).
+class C:
+    xs: list[int]
+    d: dict[str, int]
+    m: int
+
+    def __init__(self, xs: list[int], d: dict[str, int], m: int):
+        self.xs = xs
+        self.d = d
+        self.m = m
+
+    def __init__(self):
+        self.__init__([], {}, 0)
+
+    def __init__(self, m: int):
+        self.__init__([m], {"k": m}, m)
+
+class D(C):
+    def __init__(self):
+        super().__init__([], {}, 9)
+
+def main() -> None:
+    a = C()
+    print(len(a.xs), len(a.d), a.m)
+    b = C(3)
+    print(a.xs, b.xs, b.d["k"])
+    c = C([], {}, 5)
+    print(len(c.xs), c.m)
+    print(D().m)
