@@ -1,0 +1,16 @@
+# A spread argument into an __init__ SET is refused only when no overload is variadic. A
+# later-declared variadic overload absorbs it, on the construction and chaining routes alike;
+# reading only the first-declared overload refused both (SPY0357).
+
+class P:
+    n: int
+    def __init__(self, a: int, b: int, c: int, d: int):
+        self.n = 0
+    def __init__(self, *xs: int):
+        self.n = len(xs)
+    def __init__(self):
+        self.__init__(*[4, 5, 6])
+def main() -> None:
+    xs: list[int] = [1, 2, 3]
+    print(P(*xs).n)
+    print(P().n)

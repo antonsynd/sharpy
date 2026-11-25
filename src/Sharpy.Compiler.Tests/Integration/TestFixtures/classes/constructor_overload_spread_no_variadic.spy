@@ -1,0 +1,12 @@
+# Negative twin of constructor_overload_spread_later_variadic: no overload is variadic, so the
+# spread is refused.
+
+class P:
+    n: int
+    def __init__(self, a: int):
+        self.n = a
+    def __init__(self, a: int, b: int):
+        self.n = a + b
+def main() -> None:
+    xs: list[int] = [1, 2]
+    print(P(*xs).n)
