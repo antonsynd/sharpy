@@ -2,19 +2,19 @@
 
 **Rule:** A derived __init__ assigns its own fields before super().__init__(...) (Swift order).
 
-Measured at `aa21bedb2` over 5853 programs (4060 analysed). One site is one __init__ of a class that has a base class; 292 sites were found.
+Measured at `ce4e6beb1` over 5853 programs (4085 analysed). One site is one __init__ of a class that has a base class; 292 sites were found.
 
 ## Sites by verdict
 
 | area | programs | analysed | sites | refused | refused-if-let | conforms | out-of-scope | not-ruled |
 |---|---|---|---|---|---|---|---|---|
-| fixtures | 3948 | 2784 | 254 | 36 | 83 | 84 | 50 | 1 |
+| fixtures | 3948 | 2783 | 254 | 36 | 83 | 84 | 50 | 1 |
 | conformance | 168 | 115 | 0 | 0 | 0 | 0 | 0 | 0 |
 | stdlib | 61 | 61 | 9 | 1 | 2 | 6 | 0 | 0 |
 | stdlib-tests | 375 | 358 | 8 | 3 | 0 | 5 | 0 | 0 |
 | benchmarks | 6 | 6 | 1 | 0 | 1 | 0 | 0 | 0 |
-| spec | 1295 | 736 | 20 | 5 | 1 | 9 | 4 | 1 |
-| **all** | 5853 | 4060 | 292 | 45 | 87 | 104 | 54 | 2 |
+| spec | 1295 | 762 | 20 | 5 | 1 | 9 | 4 | 1 |
+| **all** | 5853 | 4085 | 292 | 45 | 87 | 104 | 54 | 2 |
 
 Programs holding at least one site, by the worst verdict among their sites: 43 refused, 52 refused-if-let, 63 conforms, 37 out-of-scope, 2 not-ruled (197 programs).
 
@@ -37,9 +37,9 @@ Programs holding at least one site, by the worst verdict among their sites: 43 r
 | conforms | base: sharpy, why: no-own-slots | 90 | 62 |
 | conforms | base: dotnet, why: no-own-slots | 12 | 8 |
 | conforms | base: sharpy, why: var-only | 2 | 2 |
-| out-of-scope | base: sharpy, base-init: none, call: none | 47 | 35 |
-| out-of-scope | base: sharpy, base-init: declared, call: self | 4 | 3 |
-| out-of-scope | base: dotnet, base-init: dotnet, call: none | 3 | 3 |
+| out-of-scope | base: sharpy, base-has-init: none, call: omitted | 47 | 35 |
+| out-of-scope | base: sharpy, base-has-init: declared, call: chained-to-own-init | 4 | 3 |
+| out-of-scope | base: dotnet, base-has-init: dotnet, call: omitted | 3 | 3 |
 | not-ruled | as-if: refused-if-let, base: sharpy | 2 | 2 |
 
 The axes:
@@ -59,10 +59,10 @@ The axes:
   - `no-own-slots`: the class declares no field or auto-property without an initializer
   - `none-after-call`: it declares some, and this constructor assigns none of them after the call
   - `var-only`: the ones assigned after the call have a default and are written again, so they are var
-- **call**: For an out-of-scope site, what the constructor chains to.
-  - `self`: self.__init__(...)
-  - `none`: no chaining call
-- **base-init**: For an out-of-scope site, whether a base class declares an __init__. With `call: none` this is R-RS's question: R-RS asks for the call where a base has one.
+- **call**: For an out-of-scope site, what the constructor writes in place of the call.
+  - `omitted`: no chaining call
+  - `chained-to-own-init`: self.__init__(...)
+- **base-has-init**: For an out-of-scope site, whether a base class declares an __init__. With `call: omitted` this is R-RS's question: R-RS asks for the call where a base has one.
   - `declared`: a Sharpy base class, at some depth, declares __init__
   - `none`: no base class declares one
   - `dotnet`: the chain reaches a .NET class first; R-RS does not rule that case
@@ -111,19 +111,19 @@ The axes:
 - `src/Sharpy.Compiler.Tests/Integration/TestFixtures/inheritance/virtual_override_0001.spy:55` Mage.__init__
 - `src/Sharpy.Compiler.Tests/Integration/TestFixtures/properties/property_with_validation_0011.spy:54` SavingsAccount.__init__
 
-**out-of-scope** (base: sharpy, base-init: none, call: none), 3 of 47:
+**out-of-scope** (base: sharpy, base-has-init: none, call: omitted), 3 of 47:
 
 - `src/Sharpy.Compiler.Tests/Integration/TestFixtures/abstract_class_interface_stubs.spy:11` Circle.__init__: no chaining call
 - `src/Sharpy.Compiler.Tests/Integration/TestFixtures/builtins/constructor_reference_annotated_rebind.spy:24` Cat.__init__: no chaining call
 - `src/Sharpy.Compiler.Tests/Integration/TestFixtures/builtins/constructor_reference_annotated_rebind.spy:33` Dog.__init__: no chaining call
 
-**out-of-scope** (base: sharpy, base-init: declared, call: self), 3 of 4:
+**out-of-scope** (base: sharpy, base-has-init: declared, call: chained-to-own-init), 3 of 4:
 
 - `src/Sharpy.Compiler.Tests/Integration/TestFixtures/classes/constructor_chaining_0073.spy:26` ColoredPoint.__init__: chains to self.__init__
 - `src/Sharpy.Compiler.Tests/Integration/TestFixtures/classes/constructor_chaining_0073.spy:29` ColoredPoint.__init__: chains to self.__init__
 - `src/Sharpy.Compiler.Tests/Integration/TestFixtures/inheritance/super_init_call_0020.spy:30` RollingAverage.__init__: chains to self.__init__
 
-**out-of-scope** (base: dotnet, base-init: dotnet, call: none), 3 of 3:
+**out-of-scope** (base: dotnet, base-has-init: dotnet, call: omitted), 3 of 3:
 
 - `src/Sharpy.Compiler.Tests/Integration/TestFixtures/events/event_auto_clr_generic_subclass_1613.spy:12` ProgressEventArgs.__init__: no chaining call
 - `src/Sharpy.Compiler.Tests/Integration/TestFixtures/events/event_spec_downloader_1613.spy:12` ProgressEventArgs.__init__: no chaining call
@@ -140,14 +140,14 @@ A probe reads only programs that compile today. The rest are counted here and sa
 
 | area | reason | programs |
 |---|---|---|
-| fixtures | a fixture that is expected to fail | 1159 |
-| fixtures | does not compile today | 5 |
+| fixtures | a fixture that is expected to fail | 1161 |
+| fixtures | does not compile today | 4 |
 | conformance | does not compile today | 53 |
 | stdlib-tests | a fixture that is expected to fail | 17 |
 | spec | a spec block marked as a fragment or an error example | 459 |
-| spec | does not compile today | 100 |
+| spec | does not compile today | 74 |
 
-First error of the programs that do not compile, most common first: SPY0200 × 78, SPY0202 × 6, SPY0103 × 5, SPY0300 × 5, SPY0401 × 5, SPY0104 × 4, SPY0203 × 4, SPY0204 × 4.
+First error of the programs that do not compile, most common first: SPY0200 × 51, SPY0103 × 5, SPY0104 × 5, SPY0220 × 5, SPY0401 × 5, SPY0203 × 4, SPY0204 × 4, SPY0224 × 4.
 
 ## What this probe cannot see
 
