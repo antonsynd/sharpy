@@ -9526,11 +9526,11 @@ rulings:
   issue: '#1974'
   kind: language
   rule: 'Inside `__init__`, until every field of the class has been assigned, `self` may be used only to assign
-    a field, to read one already assigned, or in the chaining call (`super().__init__(...)` or `self.__init__(...)`)
-    that the spec puts first: reading a field not yet assigned, calling a method or reading a property on `self`,
-    and using `self` as a value (an argument, a stored or returned value, a capture in a lambda or a nested function)
-    are compile errors. Programs that would have run correctly are refused too, so that a field of a non-nullable
-    type is never observed as null.'
+    a field, to read one already assigned, or in the chaining call (`super().__init__(...)` or `self.__init__(...)`):
+    reading a field not yet assigned, calling a method or reading a property on `self`, and using `self` as a
+    value (an argument, a stored or returned value, a capture in a lambda or a nested function) are compile errors.
+    Programs that would have run correctly are refused too, so that a field of a non-nullable type is never observed
+    as null.'
   options:
   - text: refuse every such use of `self` until all fields are assigned
     chosen: true
@@ -9791,17 +9791,26 @@ rulings:
   undo_breaks: true
   amends: [R-ML]
   note: 'The owner''s words were "your lean, like Swift", on the agent''s option "let a derived `__init__` assign
-    its own fields before `super().__init__()`, as Swift does". The recorder''s reading, not the owner''s words:
-    that the order is required and not only allowed (Swift requires it, and the gap stays open otherwise), so
-    the usual Python order, base call first and own fields after, is refused with a steer to move the assignments
-    up. By a text count that order is used by 123 of the 218 `__init__` methods in the fixtures that call `super().__init__`
-    (87 of 152 files). R-ML (owner, 2026-11-11: stay strict) refused every statement ahead of the call and rejected
-    lowering them because C# could not express it; this reverses R-ML for assignments to the class''s own fields
-    only. Measured in a scratch C# 12 program: a field assigned in the constructor body is null when the base
-    constructor calls an overridden method; a field initialized from a primary-constructor parameter is not, and
-    statements ahead of the call can be hoisted into a static helper whose result the primary constructor takes.
-    Not ruled: a derived `__init__` that writes no `super().__init__()` call, where the base''s parameterless
-    constructor runs implicitly (measured: the override prints `True` for `self.name is None` today).'
+    its own fields before `super().__init__()`, as Swift does". The order is required, not only allowed, so the
+    usual Python order, base call first and own fields after, is refused with a steer to move the assignments
+    up. The recorder first read it so on its own; the owner, shown that consequence and the count below, confirmed
+    it the same day: "i think we should require the swift order, fields first, base constructor next. the reason
+    being the base constructor could call a virtual method... that would need to read that field". Not adopted:
+    requiring the order only where the base `__init__` can expose `self`. By a text count that order is used by
+    123 of the 218 `__init__` methods in the fixtures that call `super().__init__` (87 of 152 files). R-ML (owner,
+    2026-11-11: stay strict) refused every statement ahead of the call and rejected lowering them because C# could
+    not express it; this reverses R-ML for assignments to the class''s own fields only. Measured in a scratch
+    C# 12 program: a field assigned in the constructor body is null when the base constructor calls an overridden
+    method; a field initialized from a primary-constructor parameter is not, and statements ahead of the call
+    can be hoisted into a static helper whose result the primary constructor takes (the cost of that shape was
+    not timed). Not ruled, or not measured: a derived `__init__` that writes no `super().__init__()` call, where
+    the base''s parameterless constructor runs implicitly (measured: the override prints `True` for `self.name
+    is None` today); a `@dataclass` with a base, whose generated constructor assigns its fields after the base
+    call (`dataclass.md`); a base that is a .NET class (the rule''s text covers it; not probed); an argument of
+    the base call that reads an own field assigned just above it (R-RN allows the read; the C# program does not
+    show it emitted). By the rule''s text an own-field assignment under `if`, or one whose value takes several
+    statements, is not allowed ahead of the call: the value goes in one expression or a `@static` helper, as R-ML
+    already steers.'
   cases:
   - family: super-call-order
     coords:
@@ -10057,7 +10066,8 @@ rulings:
     zero default; SPY0426 today), since the owner was answering a question about `property count: int`; a write-only
     `property set` of a reference type falls under the owner''s words, which changes its row of that table ("Must
     set in `__init__`: No") and is not measured; and a reference-type auto-property that must be set counts as
-    a field for R-RN and R-RO (measured: read before it is set, it is null today).'
+    a field for R-RN and R-RO (measured: read before it is set, it is null today). Not ruled: a reference-type
+    auto-property of a struct, whose implicit parameterless constructor sets nothing.'
   cases:
   - family: auto-property-assignment
     coords:
