@@ -2520,25 +2520,14 @@ internal partial class TypeChecker
                 // and let C# do the overload resolution at compile time.
                 if (currentType.ClrType != null)
                 {
-                    return new FunctionType
-                    {
-                        ParameterTypes = new List<SemanticType>(),
-                        ReturnType = SemanticType.Void,
-                        SkipArgumentValidation = true
-                    };
+                    return DeferredInitializerSetSignature();
                 }
 
-                // When the parent has multiple constructor overloads, defer argument
-                // validation to the C# compiler — mirroring how direct constructor calls
-                // (CheckConstructorCall) skip strict validation for overloaded __init__.
+                // When the parent has multiple constructor overloads, the call names a SET:
+                // CheckChainingInitializerCall resolves it, as construction does.
                 if (currentType.Constructors.Count > 1)
                 {
-                    return new FunctionType
-                    {
-                        ParameterTypes = new List<SemanticType>(),
-                        ReturnType = SemanticType.Void,
-                        SkipArgumentValidation = true
-                    };
+                    return DeferredInitializerSetSignature();
                 }
 
                 var parentCtor = currentType.Constructors.FirstOrDefault();
@@ -2573,17 +2562,11 @@ internal partial class TypeChecker
         if (parentMethod != null)
         {
             // __init__ is stored in both Methods and Constructors. When the owning type
-            // has multiple constructor overloads, defer argument validation to the C#
-            // compiler — mirroring how direct constructor calls (CheckConstructorCall)
-            // skip strict validation for overloaded __init__.
+            // has multiple constructor overloads, the call names a SET, which
+            // CheckChainingInitializerCall resolves.
             if (memberName == DunderNames.Init && methodOwner != null && methodOwner.Constructors.Count > 1)
             {
-                return new FunctionType
-                {
-                    ParameterTypes = new List<SemanticType>(),
-                    ReturnType = SemanticType.Void,
-                    SkipArgumentValidation = true
-                };
+                return DeferredInitializerSetSignature();
             }
 
             return CloseOverBaseReference(
@@ -2620,12 +2603,21 @@ internal partial class TypeChecker
         if (owner == null || DirectBaseReferenceTypeArguments(owner) is not { } typeArgs)
             return signature;
 
-        var substitution = new Dictionary<string, SemanticType>(StringComparer.Ordinal);
-        for (int i = 0; i < typeArgs.Count; i++)
-            substitution[owner.TypeParameters[i].Name] = typeArgs[i];
-
-        return (FunctionType)TypeSubstitution.Apply(signature, substitution, substituteNamedUserTypes: true);
+        return (FunctionType)SubstituteTypeParameters(
+            signature, owner.TypeParameters, typeArgs, substituteNamedUserTypes: true);
     }
+
+    /// <summary>
+    /// The type of an <c>__init__</c> access that names an overload SET (<c>self.__init__</c> or
+    /// <c>super().__init__</c> over several constructors, or a CLR base): no formals, so no
+    /// candidate's parameter types are pushed onto the arguments, and the call route resolves it.
+    /// </summary>
+    private static FunctionType DeferredInitializerSetSignature() => new()
+    {
+        ParameterTypes = new List<SemanticType>(),
+        ReturnType = SemanticType.Void,
+        SkipArgumentValidation = true
+    };
 
     /// <summary>
     /// The type arguments the CURRENT class's direct base reference writes for
@@ -2671,33 +2663,32 @@ internal partial class TypeChecker
     /// </para>
     /// </summary>
     private IReadOnlyList<FunctionSymbol> ResolveInitializerConstructorCandidates(TypeSymbol targetType)
-        => ResolveInitializerConstructorSet(targetType).Candidates;
+        => ResolveInitializerConstructorOwner(targetType)?.Constructors ?? (IReadOnlyList<FunctionSymbol>)Array.Empty<FunctionSymbol>();
 
     /// <summary>
-    /// The walk behind <see cref="ResolveInitializerConstructorCandidates"/>, with the type that
-    /// DECLARES the returned constructors: an initializer call binds against that type's whole
-    /// overload set, and the caller needs the owner to name it and to bind its type parameters.
-    /// <c>Owner</c> is null exactly when <c>Candidates</c> is empty.
+    /// The walk behind <see cref="ResolveInitializerConstructorCandidates"/>: the type whose
+    /// <see cref="TypeSymbol.Constructors"/> an initializer call binds against, or null when there
+    /// are none to validate against. Callers that need to name the set or bind its type parameters
+    /// take the owner; the candidates are its <c>Constructors</c>.
     /// </summary>
-    private (TypeSymbol? Owner, IReadOnlyList<FunctionSymbol> Candidates) ResolveInitializerConstructorSet(
-        TypeSymbol targetType)
+    private TypeSymbol? ResolveInitializerConstructorOwner(TypeSymbol targetType)
     {
         var currentType = targetType;
         while (currentType != null)
         {
-            // First type yielding constructors wins — return the full overload set.
+            // First type yielding constructors wins — its full overload set.
             if (currentType.Constructors.Count > 0)
-                return (currentType, currentType.Constructors);
+                return currentType;
 
             // CLR-backed type with no enumerated constructors: no metadata to validate
             // against, so signal callers to skip rather than reject valid kwargs.
             if (currentType.ClrType != null)
-                return (null, Array.Empty<FunctionSymbol>());
+                return null;
 
             currentType = GetBaseType(currentType);
         }
 
-        return (null, Array.Empty<FunctionSymbol>());
+        return null;
     }
 
     /// <summary>

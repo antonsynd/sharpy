@@ -1,3 +1,4 @@
+using System.Collections.Concurrent;
 using FluentAssertions;
 using Sharpy.Compiler.Diagnostics;
 using Sharpy.TestInfrastructure.Integration;
@@ -9,30 +10,31 @@ namespace Sharpy.Compiler.Tests.Semantic;
 /// <summary>
 /// The differential for INITIALIZER CALLS over an overloaded <c>__init__</c>: <b>an initializer
 /// call binds against the target's whole overload set, through one selector, on every route and in
-/// every declaration order</b>. The routes are a direct construction <c>C(args)</c>, the chaining
-/// call <c>self.__init__(args)</c> and the chaining call <c>super().__init__(args)</c>; each cell
-/// gives all three the SAME candidate set — <c>Z</c> (no parameters) plus a shape's pair
-/// <c>A</c>/<c>B</c> — declared with the chain's target either below the constructor that calls it
-/// (<see cref="Order.TargetLater"/>) or above it (<see cref="Order.TargetFirst"/>).
+/// every declaration order</b>. The routes are a direct construction <c>C(args)</c>, a construction
+/// with written type arguments <c>C[int](args)</c>, the chaining call <c>self.__init__(args)</c> and
+/// the chaining call <c>super().__init__(args)</c>; each cell gives all four the SAME candidate set —
+/// <c>Z</c> (no parameters) plus a shape's pair <c>A</c>/<c>B</c> — declared with the chain's target
+/// either below the constructor that calls it (<see cref="Order.TargetLater"/>) or above it
+/// (<see cref="Order.TargetFirst"/>).
 ///
-/// <para>Axes: route (3) × order (2) × shape (8) = 48 cells, none excluded. A shape either states
+/// <para>Axes: route (4) × order (2) × shape (8) = 64 cells, none excluded. A shape either states
 /// its verdict outright (an output, or a refusal code) or, for an argument whose type the call's
 /// context decides, states only that every route answers as the construction route does: the
 /// construction route's answer for those is itself an open gap (an empty list or <c>None()</c>
 /// into an overloaded constructor is SPY0227), and a differential must not pin it.</para>
 ///
-/// <para>Measured at aa21bedb (before the fix): <c>self.__init__</c> was checked against the
-/// FIRST-declared <c>__init__</c> alone, so every self cell whose target was not first was refused
-/// (SPY0224 "expects 0 arguments but got 2", or SPY0220 against the wrong slot), which is the
-/// example in constructors.md's "Constructor Chaining"; <c>super().__init__</c> checked only for an
-/// ambiguity, so a wrong argument type or count was CS1503/CS1729 behind SPY0908; and a
-/// construction no overload accepts by count was CS1729 behind SPY0908. No cell may leak SPY0908.</para>
+/// <para>No cell may leak SPY0908: before the fix (aa21bedb) the self route was checked against the
+/// first-declared <c>__init__</c> alone, and the super, written-generic and plain construction
+/// routes left a wrong count or type to Roslyn.</para>
 /// </summary>
 public class InitializerCallRouteParityTests : IntegrationTestBase
 {
-    private const int RouteCount = 3;
+    private const int RouteCount = 4;
     private const int OrderCount = 2;
     private const int ShapeCount = 8;
+
+    /// <summary>The construction route's verdict per (order, shape), which the context shapes compare against.</summary>
+    private static readonly ConcurrentDictionary<(Order, Shape), string> ConstructionVerdicts = new();
 
     public InitializerCallRouteParityTests(ITestOutputHelper output) : base(output) { }
 
@@ -40,6 +42,9 @@ public class InitializerCallRouteParityTests : IntegrationTestBase
     {
         /// <summary><c>C(args)</c> in <c>main</c>.</summary>
         Construction,
+
+        /// <summary><c>C[int](args)</c> in <c>main</c>, on <c>class C[T]</c>: the written-binding construction route.</summary>
+        WrittenGenericConstruction,
 
         /// <summary><c>self.__init__(args)</c> as the body of <c>Z</c>; <c>main</c> runs <c>C()</c>.</summary>
         SelfInit,
@@ -127,13 +132,19 @@ public class InitializerCallRouteParityTests : IntegrationTestBase
         var z = $"    def __init__(self):\n        {zBody}\n\n";
         var ab = $"    def __init__(self, {a}):\n        print(\"A\")\n\n"
             + $"    def __init__(self, {b}):\n        print(\"B\")\n\n";
-        var cls = route == Route.SuperInit ? "Base" : "C";
+        var cls = route switch
+        {
+            Route.SuperInit => "Base",
+            Route.WrittenGenericConstruction => "C[T]",
+            _ => "C",
+        };
         var body = order == Order.TargetLater ? z + ab : ab + z;
         var source = $"class {cls}:\n{body}";
 
         return route switch
         {
             Route.Construction => source + $"def main() -> None:\n    C({args})\n",
+            Route.WrittenGenericConstruction => source + $"def main() -> None:\n    C[int]({args})\n",
             Route.SelfInit => source + "def main() -> None:\n    C()\n",
             Route.SuperInit => source
                 + $"class D(Base):\n    def __init__(self):\n        super().__init__({args})\n\n"
@@ -181,8 +192,20 @@ public class InitializerCallRouteParityTests : IntegrationTestBase
 
         // Stated shapes: the verdict is the shape's own. Context shapes: whatever the construction
         // route answers in the SAME order — one rule for every route, without pinning that answer.
-        var expected = StatedVerdict(shape)
-            ?? VerdictOf(Route.Construction, order, shape).Verdict;
+        // The construction cell of a context shape is the reference itself; it asserts only the
+        // SPY0908 rule above.
+        var expected = StatedVerdict(shape);
+        if (expected == null)
+        {
+            if (route == Route.Construction)
+            {
+                ConstructionVerdicts[(order, shape)] = verdict;
+                return;
+            }
+
+            expected = ConstructionVerdicts.GetOrAdd((order, shape),
+                key => VerdictOf(Route.Construction, key.Item1, key.Item2).Verdict);
+        }
 
         verdict.Should().Be(expected, $"{route}/{order}/{shape}: {seen}");
     }
@@ -199,6 +222,6 @@ public class InitializerCallRouteParityTests : IntegrationTestBase
         Enum.GetValues<Route>().Length.Should().Be(RouteCount);
         Enum.GetValues<Order>().Length.Should().Be(OrderCount);
         Enum.GetValues<Shape>().Length.Should().Be(ShapeCount);
-        Cells().Count.Should().Be(48, "3 routes x 2 orders x 8 shapes, as the class remark states");
+        Cells().Count.Should().Be(64, "4 routes x 2 orders x 8 shapes, as the class remark states");
     }
 }

@@ -259,6 +259,10 @@ public class DispatchSiteInventoryTests
         // each kind on every spelling and run each accepted one.
         ["Semantic/TypeChecker.Expressions.cs::TypeChecker.ResolveModifiedOperandKind"] = "refusal-net:InitializerDependencyDifferentialTests",
         ["Semantic/TypeChecker.Expressions.cs::TypeChecker.DescribeOperand"] = "refusal-net:InitializerDependencyDifferentialTests",
+        // The chaining-call target switch: super() names the base's constructors, self names the
+        // class's own, any other receiver is not a chaining call. The route x order x shape
+        // differential runs both arms against the construction route.
+        ["Semantic/TypeChecker.Expressions.Access.Calls.cs::TypeChecker.CheckChainingInitializerCall"] = "refusal-net:InitializerCallRouteParityTests",
         // ContainsSuperExpressionInExpression/InStatement deleted (#1740): the kind-enumerating
         // super() walker is gone, replaced by the materialized OperatorLowering/RequiresInstanceImpl
         // facts RoslynEmitter.Expressions.Access.cs and RoslynEmitter.Operators.cs's

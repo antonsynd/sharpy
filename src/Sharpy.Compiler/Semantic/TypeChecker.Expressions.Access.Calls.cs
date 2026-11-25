@@ -1209,8 +1209,7 @@ internal partial class TypeChecker
                 }
                 else if (initMethods.Count > 1)
                 {
-                    var initParams = initMethods[0].Parameters.Skip(1).ToList();
-                    if (CheckSpreadIntoNonVariadic(call, genericTypeSymbol.Name, initParams))
+                    if (CheckSpreadIntoNonVariadicInitializers(call, genericTypeSymbol.Name, initMethods))
                         return new GenericType
                         {
                             Name = genericTypeSymbol.Name,
@@ -1218,8 +1217,8 @@ internal partial class TypeChecker
                             GenericDefinition = genericTypeSymbol
                         };
 
-                    var resolvedInit = ValidateSoleArityMatchingOverload(call, initMethods, argTypes, kwargTypes,
-                        totalArgCount, WrittenTypeParameterBinding(genericTypeSymbol, typeArgs));
+                    var resolvedInit = SelectInitializerOverload(call, genericTypeSymbol, initMethods, argTypes,
+                        kwargTypes, totalArgCount, WrittenTypeParameterBinding(genericTypeSymbol, typeArgs));
                     if (resolvedInit != null)
                         CheckDeprecatedUsage(resolvedInit, call);
                 }
@@ -6104,12 +6103,12 @@ internal partial class TypeChecker
 
     /// <summary>
     /// SPY0466 for a chaining call whose source-declared target has exactly ONE constructor, the
-    /// one it binds to. It used to read the first <c>__init__</c> in <c>Methods</c> whatever the
-    /// overload count, which warned on a deprecated overload the call did not bind to.
+    /// one it binds to; over several, <see cref="CheckChainingInitializerCall"/> checks the one it
+    /// selects.
     /// </summary>
     private void CheckSoleInitializerDeprecation(TypeSymbol target, FunctionCall call)
     {
-        if (ResolveInitializerConstructorSet(target) is ({ ClrType: null }, [var soleInit]))
+        if (ResolveInitializerConstructorOwner(target) is { ClrType: null, Constructors: [var soleInit] })
             CheckDeprecatedUsage(soleInit, call);
     }
 
@@ -6131,24 +6130,15 @@ internal partial class TypeChecker
     /// <summary>
     /// Resolves a constructor CHAINING call — <c>self.__init__(...)</c> (this class's constructors)
     /// or <c>super().__init__(...)</c> (the base's) — over the target's whole <c>__init__</c>
-    /// overload set, through <see cref="SelectInitializerOverload"/>, the selector a direct
-    /// construction <c>P(...)</c> uses. The class is "an initializer call binds against the
-    /// target's overload set, not one overload", and its routes are construction × self × super.
+    /// overload set, through <see cref="SelectInitializerOverload"/>, the selector construction
+    /// uses: the sole count match validated, no count match SPY0354, same-count peers resolved by
+    /// type (SPY0353 on an ambiguity), and SPY0466 on the overload selected.
     ///
-    /// <para>Before, each chaining route bound against ONE overload. <c>self.__init__</c> was typed
-    /// as the FIRST-declared <c>__init__</c>, so a chain to any other overload was refused
-    /// (SPY0224 "expects 0 arguments", SPY0220 against the wrong slot), which is the example in
-    /// constructors.md's "Constructor Chaining". <c>super().__init__</c> checked nothing but an
-    /// ambiguity, so a wrong argument type or count was CS1503/CS1729 behind SPY0908. Both chaining
-    /// routes now get the construction route's three verdicts: the sole count match validated, no
-    /// count match SPY0354, same-count peers resolved by type (SPY0353 on an ambiguity). SPY0466
-    /// keys on the overload selected, not on whichever <c>__init__</c> was declared first.</para>
-    ///
-    /// <para>A CLR-declared target keeps the ambiguity refusal alone: the bridge's constructor
-    /// parameter types are not trusted to refuse with (the same gap direct construction of a CLR
-    /// type documents), so a call no candidate accepts there stays with Roslyn. Returns null —
-    /// leaving the existing path untouched — for any other callee, and for a target with fewer
-    /// than two constructors, whose single signature the member seam already types.</para>
+    /// <para>A CLR-declared target keeps only the ambiguity refusal: a direct construction of a CLR
+    /// type is decided by the CLR call-route seam, which this route does not reach, so a count or a
+    /// type no bridged constructor accepts stays with Roslyn. Returns null, leaving the existing
+    /// path untouched, for any other callee and for a target with fewer than two constructors,
+    /// whose single signature the member seam already types.</para>
     /// </summary>
     private SemanticType? CheckChainingInitializerCall(
         FunctionCall call, Expression callee, List<SemanticType> argTypes,
@@ -6163,31 +6153,24 @@ internal partial class TypeChecker
             Identifier { Name: PythonNames.Self } => _currentClass,
             _ => null,
         };
-        if (target == null)
+        if (target == null || ResolveInitializerConstructorOwner(target) is not { Constructors.Count: > 1 } owner)
             return null;
 
-        var (owner, candidates) = ResolveInitializerConstructorSet(target);
-        if (owner == null || candidates.Count < 2)
-            return null;
-
+        var initMethods = owner.Constructors;
         if (owner.ClrType != null)
         {
-            if (ArityApplicableCount(candidates, call) <= 1)
+            if (ArityApplicableCount(initMethods, call) <= 1
+                || ResolveInitializerSet(call, initMethods, argTypes, kwargTypes, totalArgCount, typeBinding: null)
+                    is not { IsAmbiguous: true } ambiguity)
+            {
                 return null;
+            }
 
-            var resolution = ResolveOverloadCore(new OverloadResolutionContext(
-                candidates.ToList(), totalArgCount, argTypes,
-                SkipSelfParam: true, SkipUnknownTypes: true,
-                KeywordArgNames: ExtractKeywordArgNames(call), Call: call, KwargTypes: kwargTypes));
-            if (!resolution.IsAmbiguous)
-                return null;
-
-            ReportOverloadError(owner.Name, call, resolution, totalArgCount, argTypes);
+            ReportOverloadError(owner.Name, call, ambiguity, totalArgCount, argTypes);
             return SemanticType.Void;
         }
 
-        var initMethods = candidates.ToList();
-        if (CheckSpreadIntoNonVariadic(call, owner.Name, initMethods[0].Parameters.Skip(1).ToList()))
+        if (CheckSpreadIntoNonVariadicInitializers(call, owner.Name, initMethods))
             return SemanticType.Void;
 
         var selected = SelectInitializerOverload(call, owner, initMethods, argTypes, kwargTypes, totalArgCount,
@@ -6198,14 +6181,14 @@ internal partial class TypeChecker
     }
 
     /// <summary>
-    /// How a chaining call's target constructors see their type parameters. The class's OWN
-    /// parameters (<c>self.__init__</c> inside <c>Box[T]</c>) stay open: the arguments are the
-    /// constructor's own values. A generic BASE is bound at the arguments the base clause wrote
-    /// (<c>class D(B[int])</c>), as <see cref="CloseOverBaseReference"/> binds the single-constructor
-    /// case, and stays open when they cannot be read.
+    /// How a chaining call's target constructors see their type parameters: a generic BASE is bound
+    /// at the arguments the base clause wrote (<c>class D(B[int])</c>), as
+    /// <see cref="CloseOverBaseReference"/> binds the single-constructor case. The class's OWN
+    /// parameters (<c>self.__init__</c> inside <c>Box[T]</c>), and a base whose arguments cannot be
+    /// read, stay open.
     /// </summary>
     private TypeParameterBinding? ChainingTargetBinding(TypeSymbol owner)
-        => !ReferenceEquals(owner, _currentClass) && DirectBaseReferenceTypeArguments(owner) is { } typeArgs
+        => DirectBaseReferenceTypeArguments(owner) is { } typeArgs
             ? WrittenTypeParameterBinding(owner, typeArgs)
             : UnwrittenTypeParameterBinding(owner);
 

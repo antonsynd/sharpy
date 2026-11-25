@@ -2105,30 +2105,23 @@ internal partial class TypeChecker
         => TypeHierarchyService.FindProperty(type, propertyName, SemanticBinding);
 
     /// <summary>
-    /// Finds a method by name in the type's hierarchy (including parent classes and interfaces).
+    /// <c>self.__init__</c> on a class with several constructors names an overload SET, not one
+    /// method: typed as whichever <c>__init__</c> was declared first, a chain to any other overload
+    /// was refused (constructors.md's "Constructor Chaining" example). It is typed as
+    /// <c>super().__init__</c> over an overloaded base is (<see cref="DeferredInitializerSetSignature"/>),
+    /// over the same set <c>CheckChainingInitializerCall</c> resolves it against. Null for every
+    /// other access, which keeps its existing typing.
     /// </summary>
-    /// <summary>
-    /// <c>self.__init__</c> on a class that declares several constructors names an overload SET,
-    /// not one method: typing it as whichever <c>__init__</c> was declared first is what refused a
-    /// chaining call to any later overload (SPY0224 "expects 0 arguments", constructors.md's
-    /// "Constructor Chaining" example). It is typed the way <c>super().__init__</c> over an
-    /// overloaded base already is (<see cref="ValidateSuperMemberAccess"/>): no formals, so no
-    /// candidate's parameter types are pushed onto the arguments, and the call is resolved over the
-    /// whole set by <c>CheckChainingInitializerCall</c>, the selector direct construction uses.
-    /// Null for every other access, which keeps its existing typing.
-    /// </summary>
-    private static FunctionType? ChainingInitializerSetType(MemberAccess memberAccess, TypeSymbol receiver)
+    private FunctionType? ChainingInitializerSetType(MemberAccess memberAccess, TypeSymbol receiver)
         => memberAccess.Member == DunderNames.Init
             && memberAccess.Object is Identifier { Name: PythonNames.Self }
-            && receiver.Constructors.Count > 1
-                ? new FunctionType
-                {
-                    ParameterTypes = new List<SemanticType>(),
-                    ReturnType = SemanticType.Void,
-                    SkipArgumentValidation = true
-                }
+            && ResolveInitializerConstructorOwner(receiver) is { Constructors.Count: > 1 }
+                ? DeferredInitializerSetSignature()
                 : null;
 
+    /// <summary>
+    /// Finds a method by name in the type's hierarchy (including parent classes and interfaces).
+    /// </summary>
     private (FunctionSymbol? Method, TypeSymbol? Owner) FindMethodInHierarchy(TypeSymbol type, string methodName)
         => TypeHierarchyService.FindMethod(type, methodName, SemanticBinding);
 

@@ -1036,7 +1036,6 @@ read/constant-kind/enum-member/StdlibModuleVariable/socket.AF_INET/from-import-a
 read/constant-kind/enum-member/StdlibModuleVariable/socket.AF_INET/import Ice # #2432 ice
 read/constant-kind/enum-member/StdlibModuleVariable/socket.AF_INET/import-as Ice # #2432 ice
 read/constant-kind/enum-member/StdlibModuleVariable/socket.AF_INET/star-import Ice # #2432 ice
-read/init-overload/InitDelegation/Later FalseRefusal # #2423 false-refusal
 read/lambda-default/ArrowLambda/ClassLiteralConst/Annotated/ConstInitializer/Earlier FalseRefusal # #2423 false-refusal
 read/lambda-default/ArrowLambda/ClassLiteralConst/Annotated/ConstInitializer/Earlier/outer=ModuleLiteralConst SilentWrong # #2423 silent-wrong
 read/lambda-default/ArrowLambda/ClassLiteralConst/Annotated/ConstInitializer/Later FalseRefusal # #2423 false-refusal
