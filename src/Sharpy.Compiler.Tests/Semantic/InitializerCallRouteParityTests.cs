@@ -17,7 +17,7 @@ namespace Sharpy.Compiler.Tests.Semantic;
 /// either below the constructor that calls it (<see cref="Order.TargetLater"/>) or above it
 /// (<see cref="Order.TargetFirst"/>).
 ///
-/// <para>Axes: route (4) × order (2) × shape (8) = 64 cells, none excluded. A shape either states
+/// <para>Axes: route (4) × order (2) × shape (10) = 80 cells, none excluded. A shape either states
 /// its verdict outright (an output, or a refusal code) or, for an argument whose type the call's
 /// context decides, states only that every route answers as the construction route does: the
 /// construction route's answer for those is itself an open gap (an empty list or <c>None()</c>
@@ -31,7 +31,7 @@ public class InitializerCallRouteParityTests : IntegrationTestBase
 {
     private const int RouteCount = 4;
     private const int OrderCount = 2;
-    private const int ShapeCount = 8;
+    private const int ShapeCount = 10;
 
     /// <summary>The construction route's verdict per (order, shape), which the context shapes compare against.</summary>
     private static readonly ConcurrentDictionary<(Order, Shape), string> ConstructionVerdicts = new();
@@ -87,6 +87,12 @@ public class InitializerCallRouteParityTests : IntegrationTestBase
 
         /// <summary><c>None()</c>: its type comes from the call's context.</summary>
         ContextNoneCall,
+
+        /// <summary>The one overload accepting three arguments is variadic, and it takes them.</summary>
+        VariadicPick,
+
+        /// <summary>The one overload accepting the count is variadic, and rejects the argument's type.</summary>
+        VariadicWrongType,
     }
 
     /// <summary>The self-free parameter lists of <c>A</c> and <c>B</c>, and the call's arguments.</summary>
@@ -100,6 +106,8 @@ public class InitializerCallRouteParityTests : IntegrationTestBase
         Shape.Ambiguous => ("n: int, m: int = 0", "n: int, s: str = \"q\"", "1"),
         Shape.ContextEmptyList => ("xs: list[str]", "xs: list[int], m: int", "[], 1"),
         Shape.ContextNoneCall => ("s: str", "v: int?, m: int", "None(), 2"),
+        Shape.VariadicPick => ("*xs: int", "a: str, b: str", "1, 2, 3"),
+        Shape.VariadicWrongType => ("*xs: int", "a: str, b: str", "\"x\""),
         _ => throw new ArgumentOutOfRangeException(nameof(shape)),
     };
 
@@ -115,6 +123,8 @@ public class InitializerCallRouteParityTests : IntegrationTestBase
         Shape.WrongType => "code:" + DiagnosticCodes.Semantic.TypeMismatch,
         Shape.NoCountFits => "code:" + DiagnosticCodes.Semantic.NoMatchingOverload,
         Shape.Ambiguous => "code:" + DiagnosticCodes.Semantic.AmbiguousOverload,
+        Shape.VariadicPick => "out:A",
+        Shape.VariadicWrongType => "code:" + DiagnosticCodes.Semantic.TypeMismatch,
         Shape.ContextEmptyList or Shape.ContextNoneCall => null,
         _ => throw new ArgumentOutOfRangeException(nameof(shape)),
     };
@@ -222,6 +232,111 @@ public class InitializerCallRouteParityTests : IntegrationTestBase
         Enum.GetValues<Route>().Length.Should().Be(RouteCount);
         Enum.GetValues<Order>().Length.Should().Be(OrderCount);
         Enum.GetValues<Shape>().Length.Should().Be(ShapeCount);
-        Cells().Count.Should().Be(64, "4 routes x 2 orders x 8 shapes, as the class remark states");
+        Cells().Count.Should().Be(80, "4 routes x 2 orders x 10 shapes, as the class remark states");
+        GenericBindingCells().Count.Should().Be(16, "4 generic routes x 2 orders x 2 arguments");
+    }
+
+    // ── the type-parameter binding axis ──────────────────────────────────────────────────
+    //
+    // The cells above never mention a type parameter, so they cannot see how a route BINDS one.
+    // Here the target A is `__init__(self, v: T, n: int)`: inside the class (the self route) T is
+    // the class's own and rigid; through a base clause (the super routes, direct or through a
+    // non-generic middle class) and a written construction it is `str`. Either way an `int` into
+    // `v` is SPY0220 and a `str` (or a `T`) runs A.
+
+    public enum GenericRoute
+    {
+        /// <summary><c>self.__init__(w, 1)</c> inside <c>class C[T]</c>, <c>w: T</c>.</summary>
+        SelfInit,
+
+        /// <summary><c>super().__init__(.., 1)</c> in <c>class D(Base[str])</c>.</summary>
+        SuperDirect,
+
+        /// <summary><c>super().__init__(.., 1)</c> in <c>class D(Mid)</c>, <c>class Mid(Base[str])</c>.</summary>
+        SuperViaMiddle,
+
+        /// <summary><c>C[str](.., 1)</c>.</summary>
+        WrittenGenericConstruction,
+    }
+
+    private static string GenericProgram(GenericRoute route, Order order, bool rightArgument)
+    {
+        var arg = rightArgument ? (route == GenericRoute.SelfInit ? "w" : "\"q\"") : "42";
+        var z = route == GenericRoute.SelfInit
+            ? $"    def __init__(self, w: T, tag: str, extra: str):\n        self.__init__({arg}, 1)\n\n"
+            : "    def __init__(self):\n        print(\"Z\")\n\n";
+        var ab = "    def __init__(self, v: T, n: int):\n        print(\"A\")\n\n"
+            + "    def __init__(self, s: str):\n        print(\"B\")\n\n";
+        var body = order == Order.TargetLater ? z + ab : ab + z;
+        var cls = route is GenericRoute.SuperDirect or GenericRoute.SuperViaMiddle ? "Base" : "C";
+        var source = $"class {cls}[T]:\n{body}";
+
+        return route switch
+        {
+            GenericRoute.SelfInit => source + "def main() -> None:\n    C[str](\"q\", \"t\", \"e\")\n",
+            GenericRoute.SuperDirect => source
+                + $"class D(Base[str]):\n    def __init__(self):\n        super().__init__({arg}, 1)\n\n"
+                + "def main() -> None:\n    D()\n",
+            GenericRoute.SuperViaMiddle => source
+                + "class Mid(Base[str]):\n    pass\n\n"
+                + $"class D(Mid):\n    def __init__(self):\n        super().__init__({arg}, 1)\n\n"
+                + "def main() -> None:\n    D()\n",
+            GenericRoute.WrittenGenericConstruction => source + $"def main() -> None:\n    C[str]({arg}, 1)\n",
+            _ => throw new ArgumentOutOfRangeException(nameof(route)),
+        };
+    }
+
+    public static TheoryData<GenericRoute, Order, bool> GenericBindingCells()
+    {
+        var data = new TheoryData<GenericRoute, Order, bool>();
+        foreach (GenericRoute r in Enum.GetValues<GenericRoute>())
+        {
+            foreach (Order o in Enum.GetValues<Order>())
+            {
+                data.Add(r, o, true);
+                data.Add(r, o, false);
+            }
+        }
+        return data;
+    }
+
+    [Theory]
+    [MemberData(nameof(GenericBindingCells))]
+    public void InitializerCall_BindsTypeParameters_OnEveryRoute(GenericRoute route, Order order, bool rightArgument)
+    {
+        var source = GenericProgram(route, order, rightArgument);
+        var result = CompileAndExecute(source);
+        var seen = result.FailureSummary() + "\n--- source ---\n" + source;
+
+        result.RawDiagnostics.Should().NotContain(
+            d => d.Code == DiagnosticCodes.Infrastructure.GeneratedCodeCompilationError,
+            $"a type-parameter binding is decided by the checker, never leaked to Roslyn: {seen}");
+
+        var verdict = result.Success
+            ? "out:" + result.StandardOutput.Trim()
+            : "code:" + (result.RawDiagnostics.FirstOrDefault(d => d.IsError)?.Code ?? "<none>");
+        verdict.Should().Be(rightArgument ? "out:A" : "code:" + DiagnosticCodes.Semantic.TypeMismatch,
+            $"{route}/{order}/{(rightArgument ? "right" : "wrong")}: {seen}");
+    }
+
+    /// <summary>
+    /// A chaining call the context checks refuse (here: outside a constructor) is not also run
+    /// through overload selection: one mistake, one diagnostic, and no SPY0354 for an argument
+    /// count no constructor was ever going to be asked about.
+    /// </summary>
+    [Fact]
+    public void RefusedChainingCall_IsNotAlsoSelected()
+    {
+        const string source =
+            "class C:\n"
+            + "    def __init__(self, n: int):\n        pass\n\n"
+            + "    def __init__(self):\n        pass\n\n"
+            + "    def reset(self) -> None:\n        self.__init__(1, 2, 3)\n\n"
+            + "def main() -> None:\n    C()\n";
+        var result = CompileAndExecute(source);
+        var codes = result.RawDiagnostics.Select(d => d.Code).ToList();
+
+        codes.Should().Contain(DiagnosticCodes.Semantic.SelfInitOutsideConstructor, result.FailureSummary());
+        codes.Should().NotContain(DiagnosticCodes.Semantic.NoMatchingOverload, result.FailureSummary());
     }
 }

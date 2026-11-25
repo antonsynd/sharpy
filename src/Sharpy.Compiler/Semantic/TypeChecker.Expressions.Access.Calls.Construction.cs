@@ -32,9 +32,6 @@ internal partial class TypeChecker
         List<SemanticType> argTypes, Dictionary<string, SemanticType> kwargTypes, int totalArgCount,
         TypeParameterBinding? typeBinding)
     {
-        if (ArityApplicableCount(initMethods, call) <= 1)
-            return null;
-
         var resolution = ResolveInitializerSet(call, initMethods, argTypes, kwargTypes, totalArgCount, typeBinding);
         if (resolution.IsAmbiguous || resolution.Match is not { } init)
         {
@@ -57,8 +54,9 @@ internal partial class TypeChecker
     ///
     /// <para>Three arms, in order: exactly one overload accepts the argument COUNT, and it is
     /// validated like a single <c>__init__</c> (<see cref="ValidateSoleArityMatchingOverload"/>);
-    /// NO overload accepts the count, which is SPY0354 at the call; several do, and they are
-    /// resolved by type (<see cref="SelectInitializerAmongArityPeers"/>). Returns the selected
+    /// NO overload accepts the count, which is SPY0354 at the call; otherwise the set is resolved by
+    /// type (<see cref="SelectInitializerAmongArityPeers"/>): several overloads accept the count, or
+    /// the one that does is variadic, which the count arm leaves alone. Returns the selected
     /// overload, or null when none was selected (an error was reported, or a spread argument left
     /// the count unknown).</para>
     /// </summary>

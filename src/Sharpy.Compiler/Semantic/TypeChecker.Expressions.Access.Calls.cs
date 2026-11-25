@@ -4067,10 +4067,17 @@ internal partial class TypeChecker
     /// The written instantiation (<c>Slot[int, str]</c>), used only to explain a mismatch;
     /// null when nothing was written.
     /// </param>
+    /// <param name="Rigid">
+    /// Every type parameter left after <paramref name="Substitution"/> is the ENCLOSING class's
+    /// own, in scope at the call, so a slot mentioning one is checked as written (an <c>int</c>
+    /// into <c>T</c> is refused) instead of being left to inference. A constructor chaining call
+    /// binds this way: no inference runs for it afterwards.
+    /// </param>
     private sealed record TypeParameterBinding(
         IReadOnlyDictionary<string, SemanticType> Substitution,
         IReadOnlySet<string> TypeParameterNames,
-        string? Origin);
+        string? Origin,
+        bool Rigid = false);
 
     /// <summary>
     /// Validates an overloaded constructor's arguments when exactly one overload can accept this
@@ -4336,6 +4343,9 @@ internal partial class TypeChecker
         var substituted = binding.Substitution.Count > 0
             ? TypeSubstitution.Apply(declared, binding.Substitution, substituteNamedUserTypes: true)
             : declared;
+
+        if (binding.Rigid)
+            return substituted;
 
         return ContainsTypeParameter(substituted)
                || MentionsTypeParameter(substituted, binding.TypeParameterNames)
@@ -6153,8 +6163,15 @@ internal partial class TypeChecker
             Identifier { Name: PythonNames.Self } => _currentClass,
             _ => null,
         };
-        if (target == null || ResolveInitializerConstructorOwner(target) is not { Constructors.Count: > 1 } owner)
+        // A chaining call the context checks already refused (outside a constructor, not the
+        // hoisted first statement) is not selected too: one mistake, one diagnostic.
+        if (target == null
+            || _currentMethodName != DunderNames.Init
+            || !ReferenceEquals(call, _hoistedInitializerCall)
+            || ResolveInitializerConstructorOwner(target) is not { Constructors.Count: > 1 } owner)
+        {
             return null;
+        }
 
         var initMethods = owner.Constructors;
         if (owner.ClrType != null)
@@ -6181,16 +6198,33 @@ internal partial class TypeChecker
     }
 
     /// <summary>
-    /// How a chaining call's target constructors see their type parameters: a generic BASE is bound
-    /// at the arguments the base clause wrote (<c>class D(B[int])</c>), as
-    /// <see cref="CloseOverBaseReference"/> binds the single-constructor case. The class's OWN
-    /// parameters (<c>self.__init__</c> inside <c>Box[T]</c>), and a base whose arguments cannot be
-    /// read, stay open.
+    /// How a chaining call's target constructors see their type parameters. The class's OWN
+    /// (<c>self.__init__</c> inside <c>Box[T]</c>) are rigid: the call is inside the class, so an
+    /// <c>int</c> into <c>T</c> is refused, as the single-constructor route refuses it. A generic
+    /// ANCESTOR is bound at the arguments the base chain composes for it (<c>class D(B[int])</c>,
+    /// or through a non-generic middle class), as <see cref="CloseOverBaseReference"/> binds the
+    /// single-constructor case, and what remains is the class's own, so rigid too. An ancestor
+    /// whose arguments cannot be read stays open.
     /// </summary>
     private TypeParameterBinding? ChainingTargetBinding(TypeSymbol owner)
-        => DirectBaseReferenceTypeArguments(owner) is { } typeArgs
-            ? WrittenTypeParameterBinding(owner, typeArgs)
-            : UnwrittenTypeParameterBinding(owner);
+    {
+        if (owner.TypeParameters.Count == 0)
+            return null;
+
+        if (ReferenceEquals(owner, _currentClass))
+        {
+            return new TypeParameterBinding(
+                new Dictionary<string, SemanticType>(StringComparer.Ordinal),
+                new HashSet<string>(StringComparer.Ordinal),
+                Origin: null,
+                Rigid: true);
+        }
+
+        return AncestorTypeArguments(owner) is { } typeArgs
+            && WrittenTypeParameterBinding(owner, typeArgs) is { } written
+                ? written with { Rigid = true }
+                : UnwrittenTypeParameterBinding(owner);
+    }
 
     /// <summary>
     /// The semantic half of #1740: classifies a <c>super()</c> call by what

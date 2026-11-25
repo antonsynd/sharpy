@@ -2589,18 +2589,18 @@ internal partial class TypeChecker
     }
 
     /// <summary>
-    /// A base member's signature as the CURRENT class sees it: the direct base reference's written
-    /// type arguments substituted for the base's own parameters, so <c>super().__init__(7)</c> in
-    /// <c>class D(Base[int8])</c> binds <c>7</c> to <c>int8</c> rather than to an open <c>T</c>
-    /// every argument satisfies — the fourth binding source of #1797's callee-kind axis. Only the
-    /// DIRECT base reference is read: a member declared further up an unsubstituted chain keeps its
-    /// own parameters, as before. Source-declared references carry their arguments as annotations
-    /// (the bridge fills <see cref="BaseTypeReference.ResolvedTypeArguments"/> only for CLR bases),
-    /// so they are resolved here through the one annotation seam.
+    /// A base member's signature as the CURRENT class sees it: the arguments the base chain
+    /// composes for the member's owner substituted for its own parameters, so
+    /// <c>super().__init__(7)</c> in <c>class D(Base[int8])</c> binds <c>7</c> to <c>int8</c> rather
+    /// than to an open <c>T</c> every argument satisfies — the fourth binding source of #1797's
+    /// callee-kind axis. An owner reached through a non-generic middle class
+    /// (<c>class D(Mid)</c>, <c>class Mid(Base[int8])</c>) is bound the same way; reading only the
+    /// direct base reference left it open, and a wrong argument reached Roslyn (CS1503 behind
+    /// SPY0908). See <see cref="AncestorTypeArguments"/>.
     /// </summary>
     private FunctionType CloseOverBaseReference(FunctionType signature, TypeSymbol? owner)
     {
-        if (owner == null || DirectBaseReferenceTypeArguments(owner) is not { } typeArgs)
+        if (owner == null || AncestorTypeArguments(owner) is not { } typeArgs)
             return signature;
 
         return (FunctionType)SubstituteTypeParameters(
@@ -2620,27 +2620,35 @@ internal partial class TypeChecker
     };
 
     /// <summary>
-    /// The type arguments the CURRENT class's direct base reference writes for
-    /// <paramref name="owner"/>'s type parameters (<c>class D(Base[int8])</c> gives <c>[int8]</c>),
-    /// or null when <paramref name="owner"/> is not generic, is not the direct base, or an argument
-    /// cannot be read. Shared by <see cref="CloseOverBaseReference"/> and the overloaded
-    /// <c>super().__init__(...)</c> route, so both bind the base the same way.
+    /// The type arguments the CURRENT class's base chain composes for the ancestor
+    /// <paramref name="owner"/> (<c>class D(Base[int8])</c> gives <c>[int8]</c>, and so does
+    /// <c>class D(Mid)</c> over <c>class Mid(Base[int8])</c>), in terms of the current class's own
+    /// type parameters; null when <paramref name="owner"/> is not a generic ancestor or an argument
+    /// cannot be read. The one walk is <see cref="GenericInstantiationWalker.EnumerateBaseChain"/>.
+    /// Shared by <see cref="CloseOverBaseReference"/> and the overloaded <c>super().__init__(...)</c>
+    /// route, so both bind the base the same way.
     /// </summary>
-    private List<SemanticType>? DirectBaseReferenceTypeArguments(TypeSymbol owner)
+    private List<SemanticType>? AncestorTypeArguments(TypeSymbol owner)
     {
         if (_currentClass == null || owner.TypeParameters.Count == 0)
             return null;
 
-        var baseRef = SemanticBinding.GetBaseTypeReference(_currentClass) ?? _currentClass.BaseTypeRef;
-        if (baseRef == null || !ReferenceEquals(baseRef.Definition, owner))
-            return null;
+        var ownArguments = _currentClass.TypeParameters
+            .Select(tp => (SemanticType)new TypeParameterType { Name = tp.Name })
+            .ToList();
+        foreach (var ancestor in GenericInstantiationWalker.EnumerateBaseChain(
+            _currentClass, ownArguments, SemanticBinding, _typeResolver))
+        {
+            if (!ReferenceEquals(ancestor.Definition, owner))
+                continue;
 
-        var typeArgs = !baseRef.ResolvedTypeArguments.IsDefaultOrEmpty
-            ? baseRef.ResolvedTypeArguments.ToList()
-            : baseRef.TypeArgAnnotations.Select(a => _typeResolver.ResolveTypeAnnotation(a, AnnotationPosition.Value)).ToList();
-        return typeArgs.Count == owner.TypeParameters.Count && !typeArgs.Any(t => t is UnknownType)
-            ? typeArgs
-            : null;
+            return ancestor.TypeArguments.Count == owner.TypeParameters.Count
+                && !ancestor.TypeArguments.Any(t => t is UnknownType)
+                    ? ancestor.TypeArguments.ToList()
+                    : null;
+        }
+
+        return null;
     }
 
     /// <summary>
