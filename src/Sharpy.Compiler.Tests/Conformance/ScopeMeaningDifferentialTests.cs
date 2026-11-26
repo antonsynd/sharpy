@@ -160,15 +160,36 @@ internal enum ScopeDefaultOwner
     ArrowLambda,
 }
 
+/// <summary>How a program reads the <c>__init__</c> a <c>@dataclass</c> synthesizes (the owner's ruling 30, #2423 comment
+/// 7179278898). Closed: a call that constructs the type; the type's name as a function value; <c>super().__init__</c> in a
+/// class deriving from it; <c>self.__init__</c> in the type itself; a deriving class that declares no <c>__init__</c> and is
+/// constructed with its base's; a deriving <c>@dataclass</c>, whose own <c>__init__</c> takes the base's fields first.</summary>
+internal enum ScopeInitReader
+{
+    Construction,
+    ConstructorReference,
+    SuperInit,
+    SelfInit,
+    Forwarding,
+    InheritedFields,
+}
+
+/// <summary>Whether what a reader hands an initializer is what it takes. Closed.</summary>
+internal enum ScopeInitFit
+{
+    Fits,
+    Misfits,
+}
+
 /// <summary>
 /// Stage 0 of plan-777361 (P78; verification contract §11), the owner's rulings of 2026-11-20 (#2423 comments
 /// 7030074628 item 1, 7039834146 item 5, 7042723494 items 7 to 9, 7046304965 items 12 and 13, 7049561049 items 17, 19 and 20,
-/// and 7050154806 item 22): the cells of rules N1, N2, N4 and N7 that the P77a pool
+/// and 7050154806 item 22) and of 2026-11-26 (comment 7179278898, item 30): the cells of rules N1, N2, N4 and N7 that the P77a pool
 /// (<see cref="NameResolutionDifferentialTests"/>) has no program for, as a generated test type of their own. A cell is
 /// a <see cref="NameCell"/>, and its tag and rule are READ from the rule table (<c>name-resolution-rules.txt</c>, #2487):
 /// the generator writes the program, what it prints when it runs and the codes a refusal may carry, and never a verdict.
 ///
-/// Seven cell sets. Every axis is the image of a compiler enumeration read by reflection, a census of the compiler's own
+/// Eight cell sets. Every axis is the image of a compiler enumeration read by reflection, a census of the compiler's own
 /// output, the P77a pool, or a set named closed; every value is generated or excluded with its reason
 /// (<see cref="Axes_EveryValueIsGeneratedOrExcluded"/>), and an exclusion that rests on what the compiler does today
 /// has a probe that goes red when it stops (<see cref="Exclusions_RestingOnTheCompiler_GoRedWhenItChanges"/>). The
@@ -186,6 +207,9 @@ internal enum ScopeDefaultOwner
 /// reader's placement (an import's forms, a type's alias, and for the program's own names <c>Spelling</c> × inside or outside
 /// the member's type, as the typed-read set's readers have them);</item>
 /// <item><c>init-overload</c>: <see cref="ScopeOverloadCaller"/> × order;</item>
+/// <item><c>dataclass-init</c> (D2; ruling 30): <see cref="ScopeInitReader"/> × <see cref="ScopeInitFit"/> × order × the site
+/// the dataclass is declared at (<c>ScopeKind</c>) × where a reader that is an expression stands (the positions at which the
+/// typed-read set reads a module function);</item>
 /// <item><c>lambda-default</c> (D4; ruling 19): <see cref="ScopeDefaultOwner"/> × the class-level initializer that holds the
 /// lambda (the positions at which the P77a pool runs a bare read of the member from its own type) × order × a module
 /// binding of the name;</item>
@@ -570,6 +594,83 @@ public sealed partial class ScopeMeaningDifferentialTests : IntegrationTestBase
     }
 
     // ------------------------------------------------------------------------------------------- //
+    // dataclass-init: the __init__ a @dataclass synthesizes is read whatever the order (D2; ruling 30)
+    // ------------------------------------------------------------------------------------------- //
+
+    /// <summary>
+    /// A read of the <c>__init__</c> a <c>@dataclass</c> synthesizes, with the dataclass above its reader and below it (the
+    /// owner's ruling 30, #2423 comment 7179278898, which folds the cells of comment 7171020757 into plan-777361). The checker
+    /// adds the synthesized <c>__init__</c> to the type when it reaches the class, so a reader above the class sees none
+    /// (measured @ 28f10cd51: a constructor reference that fits is SPY0342 there, one that does not is CS7036 behind SPY0908,
+    /// <c>super().__init__</c> is SPY0203, and a deriving dataclass gets no parameter for an inherited field).
+    ///
+    /// No verdict is written here but by the order-free rule (N1; D2's predicate): a cell does what its CONTROL does, the same
+    /// program with the dataclass declared first. A read that fits runs and prints the field's 5; one that does not is refused
+    /// under the code the control carries (<see cref="InitRead.Refusal"/>, <see cref="DataclassSite.ReferenceRefusal"/>). A
+    /// reader that is an expression stands at every slot <see cref="InitReaderSlots"/> derives, and hands what it makes (the
+    /// constructed value, the reference) to a helper declared below the dataclass at both orders, so the slot holds no read of
+    /// the dataclass's members (an untyped forward read of a member is the typed-read set's). The construction cell is the
+    /// slot's own control: it runs at both orders today, so a red cell beside it is red for what it reads of the initializer.
+    /// </summary>
+    private static IEnumerable<Case> DataclassInitCases()
+    {
+        foreach (var site in AllDataclassSites())
+        {
+            string F(string text) => text.Replace("{N}", site.Name, StringComparison.Ordinal);
+            foreach (var (reader, r) in InitReaders.OrderBy(e => e.Key))
+            {
+                foreach (var fit in Enum.GetValues<ScopeInitFit>())
+                {
+                    bool fits = fit == ScopeInitFit.Fits;
+                    // A pair with no program has no cell: it is excluded with its reason, or the axes fact says it is owed one.
+                    if (ExcludedInitFits.ContainsKey((reader, fit)) || (fits ? r.Fits : r.Misfits) is not { } text)
+                        continue;
+                    string read = F(text);
+                    string? helper = fits ? r.FitsHelper : r.MisfitsHelper;
+                    foreach (var slot in r.Shows == null ? InitReaderSlots.Select(s => ((ReadPosition Position, Harness.Nesting Nesting)?)s).ToArray() : new (ReadPosition Position, Harness.Nesting Nesting)?[] { null })
+                    {
+                        // The reader: a declaration of its own at module level, or an expression at the slot.
+                        var declared = new List<string>();
+                        string main;
+                        if (slot is not { } at)
+                        {
+                            declared.Add(read);
+                            main = Harness.MainPrinting(r.Shows!, null);
+                        }
+                        else if (ModulePlacedPositions.Contains(at.Position))
+                        {
+                            var placed = Harness.PlaceAtModule(at.Position, at.Nesting, read);
+                            declared.AddRange(placed.Lines);
+                            main = Harness.MainPrinting(placed.Access, null);
+                        }
+                        else
+                        {
+                            var placed = Harness.PlaceInClass(at.Position, at.Nesting, read);
+                            declared.Add(Harness.HostHeader(at.Position));
+                            declared.AddRange(placed.Members.Select(l => "    " + l));
+                            main = Harness.MainPrinting(placed.Access, placed.Setup);
+                        }
+                        foreach (var order in new[] { Harness.Order.Earlier, Harness.Order.Later })
+                        {
+                            var lines = new List<string>();
+                            if (declared.Any(l => l.Contains("ap(lambda", StringComparison.Ordinal)))
+                                lines.Add("def ap(f: () -> int) -> int:\n    return f()");
+                            lines.AddRange(order == Harness.Order.Earlier ? declared.Prepend(site.Declaration) : declared.Append(site.Declaration));
+                            // Last, so below the dataclass at both orders: what the helper reads of the dataclass is no forward read.
+                            if (helper != null)
+                                lines.Add(F(helper));
+                            // Python's `@dataclass` is an import the program does not write: no twin.
+                            yield return Draft(Key("read", "dataclass-init", reader, fit, order, site.Label, slot?.Position, slot?.Nesting), Family.Read, Lines(lines) + main,
+                                fits ? "5" : null, fits ? Array.Empty<string>() : new[] { r.Refusal ?? site.ReferenceRefusal }, twin: false,
+                                target: BindingKind.Constructor, position: slot?.Position);
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    // ------------------------------------------------------------------------------------------- //
     // lambda-default: a lambda's parameter default at a type body's level is evaluated in the type body (D4; ruling 19)
     // ------------------------------------------------------------------------------------------- //
 
@@ -707,8 +808,8 @@ public sealed partial class ScopeMeaningDifferentialTests : IntegrationTestBase
     // ------------------------------------------------------------------------------------------- //
 
     private static readonly Lazy<IReadOnlyList<Case>> Drafts = new(() =>
-        NoInitializerCases().Concat(TypedReadCases()).Concat(CalleeCases()).Concat(ConstantKindCases()).Concat(InitOverloadCases()).Concat(LambdaDefaultCases())
-            .Concat(AliasTargetCases()).ToList());
+        NoInitializerCases().Concat(TypedReadCases()).Concat(CalleeCases()).Concat(ConstantKindCases()).Concat(InitOverloadCases()).Concat(DataclassInitCases())
+            .Concat(LambdaDefaultCases()).Concat(AliasTargetCases()).ToList());
 
     /// <summary>The cells as generated, before the table is read: what <see cref="Harness.RuleTablePools"/> counts a row's cells over.</summary>
     internal static IReadOnlyList<NameCell> DraftCells() => Drafts.Value.Select(c => c.Cell).ToList();
@@ -777,6 +878,7 @@ public sealed partial class ScopeMeaningDifferentialTests : IntegrationTestBase
         ["callee"] = "#2423",
         ["constant-kind"] = "#2432",
         ["init-overload"] = "#2423",
+        ["dataclass-init"] = "#2423",
         ["lambda-default"] = "#2423",
         ["alias-target"] = "#2423",
     };
@@ -787,6 +889,11 @@ public sealed partial class ScopeMeaningDifferentialTests : IntegrationTestBase
     /// <summary>The class of an alias whose target reaches the alias itself (#2769): unruled, so the unused cells keep running
     /// and a red one is that tracker's.</summary>
     internal const string SelfReachingAlias = "#2769";
+
+    /// <summary>What a <c>dataclass-init</c> cell red at the EARLIER order is routed to: no issue. With the dataclass above its
+    /// reader no order is at fault, so the red is another class's, and no row can hold it under #2423 (an allowlist row cites an
+    /// issue): the generator owes the value an exclusion with its reason and probe first.</summary>
+    internal const string NoOrderAtFault = "UNROUTED";
 
     /// <summary>The class of a bare sibling read at-or-after its member under a module binding of the name (N2): the class-body
     /// rule's refusal is #2423's whatever the position, a constant one included.</summary>
@@ -843,6 +950,9 @@ public sealed partial class ScopeMeaningDifferentialTests : IntegrationTestBase
             issue = UntypedAtEitherOrder;
         if (r.Case.Cell.Key.Part<ScopeAliasTarget>() == ScopeAliasTarget.Itself)
             issue = SelfReachingAlias;
+        // A dataclass above its reader: the synthesized `__init__` is there to read, so the red is not the order's.
+        if (r.Case.Cell.Key.Route == "dataclass-init" && r.Case.Cell.Key.Part<Harness.Order>() == Harness.Order.Earlier)
+            issue = NoOrderAtFault;
         // N2's refusal, and a sibling read that is red BELOW its member alone (above it the same position gives the same
         // member its verdict): the class-body rule's order, whatever the position.
         if (r.Case.Cell.Key.Route == "constant-kind" && r.Case.Cell.Rule == "N2")
@@ -1067,6 +1177,18 @@ public sealed partial class ScopeMeaningDifferentialTests : IntegrationTestBase
         var refusedItself = new[] { Of(itself, Refused("SPY0202")) };
         Assert.Empty(RatchetFailures(refusedItself, Rows((itself, VerdictClass.FalseRefusal, "#2769 false-refusal"))));
         Assert.Contains("the route says '#2769", Assert.Single(RatchetFailures(refusedItself, Rows((itself, VerdictClass.FalseRefusal, "#2423 false-refusal")))));
+
+        // A dataclass's synthesized `__init__` read from above the dataclass is the order's cell (#2423); red with the dataclass
+        // ABOVE its reader it is no order's, and nothing routes it, so no row holds it.
+        var initLater = pool.First(c => c.Cell.Key!.Route == "dataclass-init" && c.Cell.Tag == SharpyTag.MustRun && c.Cell.Key.Part<Harness.Order>() == Harness.Order.Later);
+        var initEarlier = pool.Single(c => c.Cell.Id == Key(initLater.Cell.Key!.Parts.Select(p => p is Harness.Order ? Harness.Order.Earlier : p).ToArray()).Text);
+        Assert.Equal(SharpyTag.MustRun, initEarlier.Cell.Tag);
+        Assert.Empty(RatchetFailures(new[] { Of(initLater, Refused("SPY0342")) }, Rows((initLater, VerdictClass.FalseRefusal, "#2423 false-refusal"))));
+        Assert.Contains($"the route says '{NoOrderAtFault}", Assert.Single(RatchetFailures(new[] { Of(initEarlier, Refused("SPY0342")) }, Rows((initEarlier, VerdictClass.FalseRefusal, "#2423 false-refusal")))));
+        var initMisfit = pool.First(c => c.Cell.Key!.Route == "dataclass-init" && c.Cell.Tag == SharpyTag.MustRefuse && c.Cell.Key.Part<Harness.Order>() == Harness.Order.Later);
+        Assert.Empty(RatchetFailures(new[] { Of(initMisfit, Refused(initMisfit.Cell.SeedRefusalCodes!.Single())) }, none));
+        Assert.Empty(RatchetFailures(new[] { Of(initMisfit, Ice("CS7036")) }, Rows((initMisfit, VerdictClass.Ice, "#2423 ice"))));
+        Assert.Empty(RatchetFailures(new[] { Of(initMisfit, Refused("SPY0203")) }, Rows((initMisfit, VerdictClass.FalseRefusal, "#2423 wrong-code"))));
 
         // A lambda's default that does not read the member is the class-body rule's cell (#2423), never a constant position's.
         var lambdaDefault = pool.First(c => c.Cell.Key!.Route == "lambda-default" && c.Cell.Key.Part<ScopeDefaultOwner>() == ScopeDefaultOwner.Lambda && c.Cell.Key.Part<Harness.Order>() == Harness.Order.Earlier);

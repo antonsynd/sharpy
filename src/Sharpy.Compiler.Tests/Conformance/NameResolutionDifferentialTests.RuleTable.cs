@@ -158,6 +158,7 @@ public partial class NameResolutionDifferentialTests
         KeyAxis<ScopeAliasTarget>("aliasTarget"),
         KeyAxis<ScopeAliasUse>("aliasUse"),
         KeyAxis<ScopeOverloadCaller>("overloadCaller"),
+        KeyAxis<ScopeInitFit>("initFit"),
         new RuleAxis("route", c => One(c.Family == Family.Seed ? null : c.Key?.Route), null, new Dictionary<string, IReadOnlySet<string>>()),
         new RuleAxis("mark", c => c.Family == Family.Seed ? Array.Empty<string>() : c.Key?.Marks ?? Array.Empty<string>(), null, new Dictionary<string, IReadOnlySet<string>>(), SetValued: true),
         new RuleAxis("shape", c => One(c.Shape), null, new Dictionary<string, IReadOnlySet<string>>()),

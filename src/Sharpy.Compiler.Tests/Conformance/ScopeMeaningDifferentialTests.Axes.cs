@@ -139,6 +139,46 @@ public sealed partial class ScopeMeaningDifferentialTests
         [ALambdaDefaultInAPropertyDefault(false)] = new("class H:\n    property r: int = (lambda p1: int = 5: p1)()\ndef main() -> None:\n    print(H().r)\n", "SPY0908 CS0103", r => Refused(r, "SPY0908", "CS0103")),
         [ALambdaDefaultInAPropertyDefault(true)] = new("class H:\n    @static\n    property r: int = (lambda p1: int = 5: p1)()\ndef main() -> None:\n    print(H.r)\n", "SPY0908 CS0103", r => Refused(r, "SPY0908", "CS0103")),
         [ACallInAConstantOnlyPosition] = new("class H:\n    def r(self, p0: int = (lambda p1: int = 5: p1)()) -> int:\n        return p0\n" + TailMain, "SPY0401", r => Refused(r, "SPY0401")),
+        [NoSelfInitOnADataclass] = new(DataclassField + "    def again(self) -> None:\n        self.__init__(7)\n" + TailMain, "SPY0203", r => Refused(r, "SPY0203"),
+            Also: new[] { Prints(DataclassField + "    def __init__(self):\n        self.v = 7\ndef main() -> None:\n    print(DC().v)\n", "7") }),
+        [AConstructionIsCheckedAtNeitherOrder] = UncheckedConstruction("", "DC().v", above: true) with
+        {
+            Also = new[]
+            {
+                UncheckedConstruction("def r() -> int:\n    return DC().v\n", "r()", above: false),
+                UncheckedConstruction("class D(DC):\n    pass\n", "D().v", above: true),
+                UncheckedConstruction("class D(DC):\n    pass\n", "D().v", above: false),
+                UncheckedConstruction("@dataclass\nclass E(DC):\n    w: int\n", "E(5).v", above: true),
+                UncheckedConstruction("@dataclass\nclass E(DC):\n    w: int\n", "E(5).v", above: false),
+            },
+        },
+        [AClassInAFunctionDeclaresNoName] = new("def main() -> None:\n    @dataclass\n    class DC:\n        v: int\n    print(DC(5).v)\n", "SPY0200", r => Refused(r, "SPY0200"), Also: new BehaviourProbe[]
+        {
+            new("def main() -> None:\n    class DC:\n        v: int = 5\n    print(DC().v)\n", "SPY0200", r => Refused(r, "SPY0200")),
+            new("def main() -> None:\n    if True:\n        @dataclass\n        class DC:\n            v: int\n        print(DC(5).v)\n", "SPY0200", r => Refused(r, "SPY0200")),
+        }),
+        [OnlyAClassIsADataclass] = new("@dataclass\nstruct DC:\n    v: int\n" + TailMain, "SPY0380", r => Refused(r, "SPY0380"), Also: new BehaviourProbe[]
+        {
+            new("@dataclass\ninterface DC:\n    def f(self) -> int: ...\n" + TailMain, "SPY0380", r => Refused(r, "SPY0380")),
+            new("@dataclass\nenum DC:\n    RED = 1\n" + TailMain, "SPY0380", r => Refused(r, "SPY0380")),
+        }),
+        [AUnionTakesTheDecoratorUnread] = Prints("@dataclass\nunion DC:\n    case A()\n" + TailMain, "1", Also: new[] { Prints("union DC:\n    case A()\n" + TailMain, "1") }),
+        [ADelegateTakesNoDecorator] = new("@dataclass\ndelegate DC(x: int) -> int\n" + TailMain, "SPY0105", r => Refused(r, "SPY0105")),
+        [APlainBaseAddsNothing] = Prints(OverABase("class G:\n    pass\n", "def r() -> int:\n    return mk(DC)\n", above: true, "r()"), "5", Also: new BehaviourProbe[]
+        {
+            new(OverABase("class G:\n    pass\n", "def r() -> int:\n    return mk(DC)\n", above: false, "r()"), "SPY0342", r => Refused(r, "SPY0342")),
+        }),
+        [TheBaseInitIsBoundPastTheDataclass] = new(OverABase("class G:\n    def __init__(self):\n        pass\n", DerivedCallsSuper, above: true, "D().v"), "SPY0224", r => Refused(r, "SPY0224"), Also: new BehaviourProbe[]
+        {
+            new(OverABase("class G:\n    def __init__(self):\n        pass\n", DerivedCallsSuper, above: false, "D().v"), "SPY0224", r => Refused(r, "SPY0224")),
+        }),
+        [ABaseInitWithParametersIsUnruled] = new(OverABase("class G:\n    a: int = 0\n    def __init__(self, a: int):\n        self.a = a\n", "", above: true, "DC(5).v"), "SPY0908 CS7036", r => Refused(r, "SPY0908", "CS7036"),
+            Also: new BehaviourProbe[]
+            {
+                new(OverABase("class G:\n    a: int = 0\n    def __init__(self, a: int):\n        self.a = a\n", DerivedCallsSuper, above: true, "D().v"), "SPY0908 CS7036", r => Refused(r, "SPY0908", "CS7036")),
+                new(OverABase("class G:\n    a: int = 0\n    def __init__(self, a: int):\n        self.a = a\n", DerivedCallsSuper, above: false, "D().v"), "SPY0908 CS7036", r => Refused(r, "SPY0908", "CS7036")),
+            }),
+        [AReaderInsideTheDataclass] = Prints("def mk(f: (int) -> DC) -> int:\n    return f(5).v\n" + DataclassField + "    def t(self) -> int:\n        return mk(DC)\ndef main() -> None:\n    print(DC(1).t())\n", "5"),
         [InterfaceStaticIsRefused("method, read uncalled", "#2111")] = new("interface H:\n    @static\n    def x() -> int:\n        return 5\n    def m(self) -> int: ...\ndef main() -> None:\n    f: () -> int = H.x\n    print(f())\n", "SPY0908 CS0120", r => Refused(r, "SPY0908", "CS0120")),
     };
 
@@ -506,6 +546,7 @@ public sealed partial class ScopeMeaningDifferentialTests
     {
         ["typed-read"] = new Dictionary<Harness.Order, string> { [Harness.Order.Self] = AReadOfItself, [Harness.Order.Cycle] = AReadOfItself },
         ["init-overload"] = new Dictionary<Harness.Order, string> { [Harness.Order.Self] = ARecursion, [Harness.Order.Cycle] = ARecursion },
+        ["dataclass-init"] = new Dictionary<Harness.Order, string> { [Harness.Order.Self] = AReaderInsideTheDataclass, [Harness.Order.Cycle] = AReaderInsideTheDataclass },
         ["alias-target"] = new Dictionary<Harness.Order, string>(),
         ["constant-kind"] = new Dictionary<Harness.Order, string> { [Harness.Order.Self] = AReadOfItself, [Harness.Order.Cycle] = AReadOfItself },
         ["lambda-default"] = new Dictionary<Harness.Order, string> { [Harness.Order.Self] = AReadOfItself, [Harness.Order.Cycle] = AReadOfItself },
@@ -1366,6 +1407,136 @@ public sealed partial class ScopeMeaningDifferentialTests
     }
 
     // ------------------------------------------------------------------------------------------- //
+    // dataclass-init: reader × fit × order × site × reader slot
+    // ------------------------------------------------------------------------------------------- //
+
+    /// <summary>A reader of a synthesized <c>__init__</c>, <c>{N}</c> the dataclass's name where the reader stands. An EXPRESSION
+    /// reader (<paramref name="Shows"/> null) is an int-valued expression placed at each slot of <see cref="InitReaderSlots"/>;
+    /// any other is a declaration at module level, and <c>main</c> prints <paramref name="Shows"/>. A helper is declared last,
+    /// below the dataclass. <paramref name="Refusal"/> is the code the control of a read that does not fit carries, where every site's
+    /// control carries the same one.</summary>
+    internal sealed record InitRead(string Fits, string? Misfits = null, string? FitsHelper = null, string? MisfitsHelper = null, string? Shows = null, string? Refusal = null);
+
+    /// <summary>The readers, total over <see cref="ScopeInitReader"/> with <see cref="ExcludedInitReaders"/>. The dataclass has
+    /// one field, <c>v: int</c>, and every read that fits hands it 5.</summary>
+    internal static readonly IReadOnlyDictionary<ScopeInitReader, InitRead> InitReaders = new Dictionary<ScopeInitReader, InitRead>
+    {
+        [ScopeInitReader.Construction] = new("sh({N}(5))", FitsHelper: "def sh(d: {N}) -> int:\n    return d.v"),
+        [ScopeInitReader.ConstructorReference] = new("mk({N})", "mk({N})", "def mk(f: (int) -> {N}) -> int:\n    return f(5).v", "def mk(f: () -> {N}) -> int:\n    return 1"),
+        [ScopeInitReader.SuperInit] = new("class D({N}):\n    def __init__(self):\n        super().__init__(5)", "class D({N}):\n    def __init__(self):\n        super().__init__()",
+            Shows: "D().v", Refusal: "SPY0224"),
+        [ScopeInitReader.Forwarding] = new("class D({N}):\n    pass", Shows: "D(5).v"),
+        [ScopeInitReader.InheritedFields] = new("@dataclass\nclass E({N}):\n    w: int", Shows: "E(5, 6).v"),
+    };
+
+    private const string NoSelfInitOnADataclass = "a dataclass that declares an `__init__` synthesizes none (it runs its own), and one that declares none has no `self.__init__` to chain to: from a method the call is SPY0203";
+
+    internal static readonly IReadOnlyDictionary<ScopeInitReader, string> ExcludedInitReaders = new Dictionary<ScopeInitReader, string>
+    {
+        [ScopeInitReader.SelfInit] = NoSelfInitOnADataclass,
+    };
+
+    private const string AConstructionIsCheckedAtNeitherOrder = "#2021's class: a construction handed arguments the synthesized `__init__` does not take is SPY0908 CS7036 with the dataclass above the call as below it, of the dataclass and of a class or dataclass deriving from it. The checker binds the call at neither order, so the cell has no refusing control and its red is no order's";
+
+    /// <summary>The reader × fit pairs with no cell, total over the two enums with the pairs a cell carries.</summary>
+    internal static readonly IReadOnlyDictionary<(ScopeInitReader Reader, ScopeInitFit Fit), string> ExcludedInitFits = new Dictionary<(ScopeInitReader, ScopeInitFit), string>
+    {
+        [(ScopeInitReader.Construction, ScopeInitFit.Misfits)] = AConstructionIsCheckedAtNeitherOrder,
+        [(ScopeInitReader.Forwarding, ScopeInitFit.Misfits)] = AConstructionIsCheckedAtNeitherOrder,
+        [(ScopeInitReader.InheritedFields, ScopeInitFit.Misfits)] = AConstructionIsCheckedAtNeitherOrder,
+    };
+
+    /// <summary>A site a dataclass is declared at: its declaration, the name a reader outside it spells, and the code the
+    /// control of a constructor reference that does not fit carries there (measured @ 28f10cd51: a nested type's qualified name
+    /// handed to a function-typed slot it does not fit is the slot's own mismatch).</summary>
+    internal sealed record DataclassSite(string Label, string Declaration, string Name, string ReferenceRefusal);
+
+    /// <summary>The sites, total over <c>ScopeKind</c> with <see cref="ExcludedDataclassScopes"/>: the checker keeps the module's
+    /// dataclasses in a set of their own (<c>_moduleDataclassSymbols</c>), which a nested one is not in, so the two sites are two
+    /// routes to the same read. A type body is a class's: one enclosing type, by decision.</summary>
+    internal static readonly IReadOnlyDictionary<ScopeKind, DataclassSite[]> DataclassSites = new Dictionary<ScopeKind, DataclassSite[]>
+    {
+        [ScopeKind.Module] = new[] { new DataclassSite("module", "@dataclass\nclass DC:\n    v: int", "DC", "SPY0342") },
+        [ScopeKind.TypeBody] = new[] { new DataclassSite("nested", "class O:\n    @dataclass\n    class DC:\n        v: int", "O.DC", "SPY0220") },
+    };
+
+    private const string AClassInAFunctionDeclaresNoName = "a class declared in a function's body or a block declares no name a read finds, dataclass or not: its construction is SPY0200";
+
+    internal static readonly IReadOnlyDictionary<ScopeKind, string> ExcludedDataclassScopes = new Dictionary<ScopeKind, string>
+    {
+        [ScopeKind.FunctionLike] = AClassInAFunctionDeclaresNoName,
+        [ScopeKind.Block] = AClassInAFunctionDeclaresNoName,
+        [ScopeKind.InitializerHost] = NotADeclarationScope,
+        [ScopeKind.Transparent] = HoldsTypeParameters,
+    };
+
+    internal static IEnumerable<DataclassSite> AllDataclassSites() => DataclassSites.OrderBy(e => e.Key).SelectMany(e => e.Value);
+
+    private const string OnlyAClassIsADataclass = "`@dataclass` is a class's decorator: on a struct, an interface and an enum it is SPY0380";
+    private const string AUnionTakesTheDecoratorUnread = "a union takes the decorator and nothing reads it (`DataclassSynthesis.ReadOptions` reads a class declaration): no `__init__` is synthesized, and the program runs as it does without the decorator";
+    private const string ADelegateTakesNoDecorator = "a delegate takes no decorator at all: SPY0105";
+
+    /// <summary>The kinds of type <c>@dataclass</c> synthesizes an <c>__init__</c> for, total over <c>TypeKind</c> with
+    /// <see cref="ExcludedDataclassHosts"/>.</summary>
+    internal static readonly IReadOnlySet<TypeKind> DataclassHosts = new HashSet<TypeKind> { TypeKind.Class };
+
+    internal static readonly IReadOnlyDictionary<TypeKind, string> ExcludedDataclassHosts = new Dictionary<TypeKind, string>
+    {
+        [TypeKind.Struct] = OnlyAClassIsADataclass,
+        [TypeKind.Interface] = OnlyAClassIsADataclass,
+        [TypeKind.Enum] = OnlyAClassIsADataclass,
+        [TypeKind.Union] = AUnionTakesTheDecoratorUnread,
+        [TypeKind.Delegate] = ADelegateTakesNoDecorator,
+    };
+
+    private const string LeavesTheParametersAsTheyAre = "an option of the decorator that the synthesis of `__init__` does not read (`DataclassSynthesis.SynthesizeMembers`): the parameters are the fields' whatever its value";
+
+    /// <summary>The decorator's options, total over the properties of <c>DataclassOptions</c>: none is generated, and one that
+    /// changes what the synthesized <c>__init__</c> takes is owed its cells.</summary>
+    internal static readonly IReadOnlyDictionary<string, string> ExcludedDataclassOptions = new Dictionary<string, string>(StringComparer.Ordinal)
+    {
+        [nameof(DataclassOptions.Frozen)] = LeavesTheParametersAsTheyAre,
+        [nameof(DataclassOptions.Eq)] = LeavesTheParametersAsTheyAre,
+        [nameof(DataclassOptions.Repr)] = LeavesTheParametersAsTheyAre,
+    };
+
+    private const string APlainBaseAddsNothing = "a base that is no dataclass and declares no `__init__` adds no field and no initializer: the synthesized `__init__` is the one the generated cells read, and its cells would be theirs again. A reference that fits runs with the dataclass above its reader and is SPY0342 with it below, as the generated cell is (#2423, which holds that cell)";
+    private const string TheBaseInitIsBoundPastTheDataclass = "the base declares an `__init__` that takes no argument: `super().__init__(5)` in a class deriving from the dataclass is bound to the BASE's `__init__` and refused, SPY0224, with the dataclass above the call as below it (row 3 of #2423 comment 7171020757). No order is at fault, and no tracker holds the cell yet";
+    private const string ABaseInitWithParametersIsUnruled = "the base declares an `__init__` that takes an argument: the dataclass is SPY0908 CS7036 wherever it stands and whoever reads it, since its emitted constructor chains to a base constructor it hands nothing (rows 2 and 3 of #2423 comment 7171020757). What such a dataclass's `__init__` takes is unruled, so no cell has a verdict";
+
+    /// <summary>What the dataclass of a cell derives from, closed: nothing (the generated cells); another dataclass (the
+    /// <see cref="ScopeInitReader.InheritedFields"/> cells, where the generated dataclass is that base); a class that is no
+    /// dataclass, which declares no <c>__init__</c>, one without parameters or one with them. The last three have no cell.</summary>
+    internal static readonly IReadOnlyDictionary<string, string> ExcludedDataclassBases = new Dictionary<string, string>(StringComparer.Ordinal)
+    {
+        ["plain"] = APlainBaseAddsNothing,
+        ["plain-with-init"] = TheBaseInitIsBoundPastTheDataclass,
+        ["plain-with-init-parameters"] = ABaseInitWithParametersIsUnruled,
+    };
+
+    private const string AReaderInsideTheDataclass = "a reader in the dataclass's own body is no second declaration: there is no order of two to vary, and a method that hands its own class to a function-typed slot runs";
+
+    /// <summary>Where a reader that is an expression stands: READ from the typed-read set's readers, as the slots at which the
+    /// P77a pool runs a bare read of a module-level function declared above its reader. A dataclass's name is such a name (at
+    /// module level, taken by a call or a function-typed slot), so the axis is the image of <see cref="ReadPosition"/> and
+    /// <c>Nesting</c> under the pool's own rosters, and a slot the pool gains is a cell here with no edit.</summary>
+    internal static IReadOnlyList<(ReadPosition Position, Harness.Nesting Nesting)> InitReaderSlots
+        => TypedReaders.Where(r => r is { Kind: BindingKind.ModuleDef, Spelling: Harness.Spelling.Bare, Inside: false }).Select(r => (r.Position, r.Nesting)).Distinct().ToList();
+
+    private const string DataclassField = "@dataclass\nclass DC:\n    v: int\n";
+
+    private static BehaviourProbe UncheckedConstruction(string reader, string construction, bool above)
+        => new($"{(above ? DataclassField + reader : reader + DataclassField)}def main() -> None:\n    print({construction})\n", "SPY0908 CS7036", r => Refused(r, "SPY0908", "CS7036"));
+
+    private static string OverABase(string baseClass, string reader, bool above, string shows)
+    {
+        string dataclass = baseClass + "@dataclass\nclass DC(G):\n    v: int\n";
+        return $"def mk(f: (int) -> DC) -> int:\n    return f(5).v\n{(above ? dataclass + reader : reader + dataclass)}def main() -> None:\n    print({shows})\n";
+    }
+
+    private const string DerivedCallsSuper = "class D(DC):\n    def __init__(self):\n        super().__init__(5)\n";
+
+    // ------------------------------------------------------------------------------------------- //
     // lambda-default: owner × kind × annotation × position × order × outer
     // ------------------------------------------------------------------------------------------- //
 
@@ -1825,6 +1996,40 @@ public sealed partial class ScopeMeaningDifferentialTests
         // init-overload
         Carried("init-overload", Enum.GetValues<ScopeOverloadCaller>(), Part<ScopeOverloadCaller>);
 
+        // dataclass-init
+        var initCells = Route("dataclass-init").Select(c => (Case: c, Reader: c.Cell.Key!.Part<ScopeInitReader>()!.Value, Fit: c.Cell.Key.Part<ScopeInitFit>()!.Value, Order: c.Cell.Key.Part<Harness.Order>()!.Value,
+            Slot: c.Cell.Position is { } position ? ((ReadPosition Position, Harness.Nesting Nesting)?)(position, c.Cell.Key.Part<Harness.Nesting>() ?? Harness.Nesting.Direct) : null, Marks: Marks(c).ToHashSet(StringComparer.Ordinal))).ToList();
+        Partition("dataclass-init × reader", Enum.GetValues<ScopeInitReader>(), InitReaders.Keys, ExcludedInitReaders.Keys);
+        Carried("dataclass-init", InitReaders.Keys, Part<ScopeInitReader>);
+        Partition("dataclass-init × reader × fit", InitReaders.Keys.SelectMany(r => Enum.GetValues<ScopeInitFit>().Select(f => (Reader: r, Fit: f))), initCells.Select(c => (c.Reader, c.Fit)), ExcludedInitFits.Keys);
+        Partition("dataclass-init × site", Enum.GetValues<ScopeKind>(), DataclassSites.Keys, ExcludedDataclassScopes.Keys);
+        Partition("dataclass-init × host", Enum.GetValues<TypeKind>(), DataclassHosts, ExcludedDataclassHosts.Keys);
+        Partition("dataclass-init × option", typeof(DataclassOptions).GetProperties(BindingFlags.Public | BindingFlags.Instance).Select(p => p.Name), Array.Empty<string>(), ExcludedDataclassOptions.Keys);
+        foreach (var empty in DataclassSites.Where(e => e.Value.Length == 0).Select(e => e.Key))
+            problems.Add($"dataclass-init × site: {empty} is listed with no site");
+        if (InitReaderSlots.Count == 0)
+            problems.Add("dataclass-init × slot: the typed-read set has no reader of a module function, so a reader that is an expression stands nowhere");
+        // The product: every pair that has cells, at every site, at both orders; an expression at every slot, a declaration at none.
+        foreach (var pair in initCells.Select(c => (c.Reader, c.Fit)).Distinct())
+        {
+            var slots = InitReaders[pair.Reader].Shows == null ? InitReaderSlots.Select(s => ((ReadPosition Position, Harness.Nesting Nesting)?)s).ToList() : new List<(ReadPosition Position, Harness.Nesting Nesting)?> { null };
+            foreach (var site in AllDataclassSites())
+            {
+                foreach (var order in new[] { Harness.Order.Earlier, Harness.Order.Later })
+                {
+                    var at = initCells.Where(c => c.Reader == pair.Reader && c.Fit == pair.Fit && c.Order == order && c.Marks.Contains(site.Label)).Select(c => c.Slot).ToList();
+                    string Where((ReadPosition Position, Harness.Nesting Nesting)? slot) => slot is { } placed ? $"at {placed.Position}/{placed.Nesting}" : "as a declaration";
+                    foreach (var slot in slots.Where(owed => at.Count(a => Nullable.Equals(a, owed)) != 1))
+                        problems.Add($"dataclass-init: {pair.Reader} {pair.Fit} at the {site.Label} site, {order}, has {at.Count(a => Nullable.Equals(a, slot))} cells {Where(slot)}, and one is owed");
+                    foreach (var stray in at.Where(a => !slots.Contains(a)).Distinct())
+                        problems.Add($"dataclass-init: {pair.Reader} {pair.Fit} at the {site.Label} site, {order}, has a cell {Where(stray)}, where the reader does not stand");
+                }
+            }
+        }
+        // A read that does not fit names the one code its control carries, and a read that fits names none.
+        foreach (var c in initCells.Where(c => (c.Fit == ScopeInitFit.Misfits) != (c.Case.Cell.SeedRefusalCodes is { Count: 1 })))
+            problems.Add($"dataclass-init: {c.Case.Cell.Id} {(c.Fit == ScopeInitFit.Misfits ? "does not fit and names no one code its refusal carries" : "fits and names a refusal")}");
+
         // lambda-default
         var lambdaDefaults = Route("lambda-default").ToList();
         Carried("lambda-default", Enum.GetValues<ScopeDefaultOwner>(), Part<ScopeDefaultOwner>);
@@ -1891,6 +2096,7 @@ public sealed partial class ScopeMeaningDifferentialTests
             .Concat(ExcludedAdmissionTables.Values).Concat(ExcludedModuleMemberShapes.Values).Concat(ExcludedModuleCollections.Values).Concat(ExcludedAliasScopes.Values).Concat(ExcludedAliasTypeHosts.Values)
             .Concat(ExcludedOwnSpellings.Values).Concat(ExcludedOwnPlacements.Values).Concat(ExcludedEnumSpellings.Values).Concat(ExcludedImportKinds.Values)
             .Concat(ExcludedBuiltinReceivers.Values).Concat(ExcludedLambdaUses.Values).Concat(ExcludedLambdaDefaultPositions.Values)
+            .Concat(ExcludedInitReaders.Values).Concat(ExcludedInitFits.Values).Concat(ExcludedDataclassScopes.Values).Concat(ExcludedDataclassHosts.Values).Concat(ExcludedDataclassOptions.Values).Concat(ExcludedDataclassBases.Values)
             .Concat(AllConstantHosts().SelectMany(h => Enum.GetValues<Harness.Spelling>().Select(sp => OwnSpellingSkips(h.Host, sp, inside: true))).Where(r => r != null).Select(r => r!))
             .Concat(ExcludedAliasShapeProperties.Values).Concat(ExcludedOrders.Values.SelectMany(o => o.Values))
             .Concat(ExcludedConstScopes.Values).Concat(ExcludedConstTypeHosts.Values).Concat(ExcludedConstantReaders.Values).Concat(ExcludedClrTypeMemberShapes.Values)

@@ -277,6 +277,11 @@ MustRun #1938 family=Read route=constant-kind mark=struct-auto-property constant
 MustRefuse SPY0401 family=Read route=constant-kind admission=ParameterDefault,LambdaParameterDefault,PerInstanceFieldDefault,- mark=def,lambda,dataclass,struct,enum-member constantKind=OwnMember target=ModuleVar,ModuleComputedConst,ModuleProperty,ModuleDef,StaticField,StaticProperty,StaticMethod,ClassComputedConst,Builtin mark=bare-sibling mark!=in-method order=Later outer=None
 MustRefuse SPY0425 family=Read route=constant-kind admission=DecoratorArgument constantKind=OwnMember target=ModuleVar,ModuleComputedConst,ModuleProperty,ModuleDef,StaticField,StaticProperty,StaticMethod,ClassComputedConst,Builtin mark=bare-sibling mark!=in-method order=Later outer=None
 MustRun N1 family=Read route=init-overload
+# The `__init__` a `@dataclass` synthesizes is read whatever the order (D2; the owner's ruling 30, #2423 comment 7179278898): a
+# read that fits what it takes runs with the dataclass above its reader and below it, and one that does not is the checker's
+# refusal at both, under the code the earlier-declared control carries (the cell names it).
+MustRun N1 family=Read route=dataclass-init initFit=Fits
+MustRefuse N1-typed-read family=Read route=dataclass-init initFit=Misfits
 # A parameter default at a type body's level is evaluated in the type body, a lambda's as a `def`'s (D4; the owner's ruling 19):
 # a bare name in it is a sibling read, which the class-body rule decides (D3). `order=-` is a slot's control, a literal default.
 MustRun N4 family=Read route=lambda-default order=-
