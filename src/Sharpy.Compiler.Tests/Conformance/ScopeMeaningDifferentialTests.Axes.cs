@@ -236,8 +236,16 @@ public sealed partial class ScopeMeaningDifferentialTests
                 Prints(Ordered(DataclassField, RedefinesEq + "\n", above: false, "D(5) == D(6)"), "True"),
                 Prints(Ordered(DataclassField, RedefinesHash + "\n", above: true, "hash(D(5))"), "5"),
                 Prints(Ordered(DataclassField, RedefinesHash + "\n", above: false, "hash(D(5))"), "5"),
-                // The refusal the two do not have: the same redefinition of `__repr__`, with the dataclass declared first.
-                Refuses(Ordered(DataclassField, RedefinesRepr + "\n", above: true, "repr(D(5))"), "SPY0248"),
+            },
+        },
+        [ARedefinedReprIsRefusedUnderTheDataclass] = Refuses(Ordered(DataclassField, RedefinesRepr + "\n", above: true, "repr(D(5))"), "SPY0248") with
+        {
+            Also = new[]
+            {
+                // The form the specification and python agree with: the same class, the dataclass declared below it.
+                Prints(Ordered(DataclassField, RedefinesRepr + "\n", above: false, "repr(D(5))"), "D"),
+                // `__str__`, which the specification gives the same `ToString()`, in the refused form's place.
+                Prints(Ordered(DataclassField, RedefinesStr + "\n", above: true, "str(D(5))"), "D"),
             },
         },
         [TheBaseInitIsBoundPastTheDataclass] = Refuses(OverABase(BaseWithInit, DerivedCallsSuper, above: true, "D().v"), "SPY0224") with
@@ -2040,8 +2048,8 @@ public sealed partial class ScopeMeaningDifferentialTests
         [ScopeInitReader.InheritedFields] = ABaseInitWithParametersIsRefused,
     };
 
-    private const string AForwardedConstructionIsUnchecked = "a class that derives from one with a written `__init__` and declares none is constructed unchecked: handed a `str` for the `int` (`D(\"a\")`) it is SPY0908 CS1503 with the class above the deriving one as below it, where the class itself is SPY0220. The misfit has no refusing control, so no order is at fault, and no tracker holds the cell yet";
-    private const string AForwardedArgumentHasNoParameterType = "an empty list handed through a class that derives from the one with the `__init__` and declares none (`D([])`) is SPY0227 with the class above the deriving one as below it: the argument gets no type from the inherited parameter at either order, so no order is at fault, and no tracker holds the cell yet";
+    private const string AForwardedConstructionIsUnchecked = "a class that derives from one with a written `__init__` and declares none is constructed unchecked: handed a `str` for the `int` (`D(\"a\")`) it is SPY0908 CS1503 with the class above the deriving one as below it, where the class itself is SPY0220. The misfit has no refusing control, so no order is at fault, and #2021 holds the cell (its comment 7185651052)";
+    private const string AForwardedArgumentHasNoParameterType = "an empty list handed through a class that derives from the one with the `__init__` and declares none (`D([])`) is SPY0227 with the class above the deriving one as below it: the argument gets no type from the inherited parameter at either order, so no order is at fault, and #2021 holds the cell (its comment 7185651052)";
     private const string AMisfitOfTypeIsTheBaseCells = "a read that does not fit hands a value of another type whatever the parameter's type is: that is the base cell's misfit, and an argument shape varies what a read that fits hands";
 
     /// <summary>The argument × reader × fit triples with no cell, total over the three with the triples a cell carries
@@ -2071,6 +2079,7 @@ public sealed partial class ScopeMeaningDifferentialTests
     private const string RedefinesEq = "class D(DC):\n    def __eq__(self, other: object) -> bool:\n        return True";
     private const string RedefinesHash = "class D(DC):\n    def __hash__(self) -> int:\n        return 5";
     private const string RedefinesRepr = "class D(DC):\n    def __repr__(self) -> str:\n        return \"D\"";
+    private const string RedefinesStr = "class D(DC):\n    def __str__(self) -> str:\n        return \"D\"";
 
     private static string WithOverride(string redefinition) => redefinition.Replace("\n    def ", "\n    @override\n    def ", StringComparison.Ordinal);
 
@@ -2088,7 +2097,6 @@ public sealed partial class ScopeMeaningDifferentialTests
         [(ScopeDataclassMember.Repr, ScopeMemberRead.Used)] = new("def r() -> str:\n    return repr(DC(5))", "r()", "DC(v=5)", WhenCalled: true),
         [(ScopeDataclassMember.Repr, ScopeMemberRead.CalledByName)] = new("def r() -> str:\n    return DC(5).__repr__()", "r()", Refusal: "SPY0427"),
         [(ScopeDataclassMember.Repr, ScopeMemberRead.RedefinedWithOverride)] = new(WithOverride(RedefinesRepr), "repr(D(5))", "D", Python: false),
-        [(ScopeDataclassMember.Repr, ScopeMemberRead.RedefinedWithoutOverride)] = new(RedefinesRepr, "repr(D(5))", Refusal: "SPY0248"),
     };
 
     private const string TheInitIsItsOwnSets = "the generated `__init__` is the dataclass-init set's: its readers, fits and shapes are that set's axes";
@@ -2100,12 +2108,18 @@ public sealed partial class ScopeMeaningDifferentialTests
         [ScopeDataclassMember.Init] = TheInitIsItsOwnSets,
     };
 
-    private const string ARedefinitionWithoutOverrideRuns = "redefined in a deriving class without `@override`, `__eq__` and `__hash__` run with the dataclass above the class as below it, where `__repr__` is SPY0248 above: there is no refusal for an order to lose, so the two have no cell, and whether SPY0248 is owed them is no order's question; no tracker holds it yet";
+    private const string ARedefinitionWithoutOverrideRuns = "redefined in a deriving class without `@override`, `__eq__(self, other: object)` and `__hash__` run with the dataclass above the class as below it, and that is the specification's behaviour (dunder_methods.md: `@override` is implicit for an override of `System.Object`'s `Equals` and `GetHashCode`): the program is right at both orders and there is no refusal for an order to lose, so the two have no cell. #2802 holds the one member that departs, `__repr__`";
+    private const string ARedefinedReprIsRefusedUnderTheDataclass = "#2802's class: `__repr__` redefined without `@override` in a class deriving from a dataclass is SPY0248 with the dataclass above the class and runs (`D`) with it below. The specification makes `@override` optional there (dunder_methods.md: `__repr__` is `ToString()` as `__str__` is, an implicit override of `System.Object`'s), `__str__` in the same place runs, and python prints `D`: the form that runs is the right one, and the refusal is red where the dataclass is declared first, so no order is at fault and no row may call the running form a missing refusal";
 
+    /// <summary>The member × read pairs with no cell, total with <see cref="MemberReads"/> over the members it reads ×
+    /// <see cref="ScopeMemberRead"/>. No member has a cell redefined without <c>@override</c>: the specification lets the three
+    /// run, two do at both orders, and the third is refused only with the dataclass declared first (#2802), which is no
+    /// order's cell and no verdict to pin as right.</summary>
     internal static readonly IReadOnlyDictionary<(ScopeDataclassMember Member, ScopeMemberRead Read), string> ExcludedMemberReads = new Dictionary<(ScopeDataclassMember, ScopeMemberRead), string>
     {
         [(ScopeDataclassMember.Eq, ScopeMemberRead.RedefinedWithoutOverride)] = ARedefinitionWithoutOverrideRuns,
         [(ScopeDataclassMember.Hash, ScopeMemberRead.RedefinedWithoutOverride)] = ARedefinitionWithoutOverrideRuns,
+        [(ScopeDataclassMember.Repr, ScopeMemberRead.RedefinedWithoutOverride)] = ARedefinedReprIsRefusedUnderTheDataclass,
     };
 
     /// <summary>The names <c>DataclassSynthesis.SynthesizeMembers</c> looks for among the class's own methods before it adds

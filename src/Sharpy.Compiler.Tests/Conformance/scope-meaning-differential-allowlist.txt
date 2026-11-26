@@ -1236,7 +1236,6 @@ read/dataclass-init/SuperInit/Misfits/Later/nested/EnclosingType Ice # #2423 ice
 read/dataclass-member/Eq/CalledByName/Misfits/Later FalseRefusal # #2423 wrong-code
 read/dataclass-member/Hash/CalledByName/Misfits/Later FalseRefusal # #2423 wrong-code
 read/dataclass-member/Repr/CalledByName/Misfits/Later FalseRefusal # #2423 wrong-code
-read/dataclass-member/Repr/RedefinedWithoutOverride/Misfits/Later SilentWrong # #2423 missing-refusal
 read/lambda-default/ArrowLambda/ClassLiteralConst/Annotated/ConstInitializer/Earlier FalseRefusal # #2423 false-refusal
 read/lambda-default/ArrowLambda/ClassLiteralConst/Annotated/ConstInitializer/Earlier/outer=ModuleLiteralConst SilentWrong # #2423 silent-wrong
 read/lambda-default/ArrowLambda/ClassLiteralConst/Annotated/ConstInitializer/Later FalseRefusal # #2423 false-refusal

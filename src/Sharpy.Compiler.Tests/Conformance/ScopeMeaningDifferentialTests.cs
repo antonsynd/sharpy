@@ -292,7 +292,9 @@ internal enum ScopeDataclassMember
 
 /// <summary>How a program reads a generated member that is no <c>__init__</c> (ruling 37). A literal set, the shapes
 /// measured: through the operator or builtin that calls it (<c>==</c>, <c>hash()</c>, <c>repr()</c>); by its own name; and
-/// redefined in a deriving class, with <c>@override</c> and without.</summary>
+/// redefined in a deriving class, with <c>@override</c> and without. Without it no member has a cell
+/// (<see cref="ScopeMeaningDifferentialTests.ExcludedMemberReads"/>): the specification makes <c>@override</c> optional for
+/// the three, and the one refusal today (<c>__repr__</c>, with the dataclass declared first) is #2802's.</summary>
 internal enum ScopeMemberRead
 {
     Used,
@@ -990,10 +992,11 @@ public sealed partial class ScopeMeaningDifferentialTests : IntegrationTestBase
     /// <summary>
     /// A read of a member <c>@dataclass</c> generates beside <c>__init__</c>, with the dataclass above its reader and below it
     /// (the owner's ruling 37, #2423 comment 7183929991, which widens D2's clause to the generated members). The checker adds
-    /// them where it adds the <c>__init__</c>, so a reader above the dataclass sees none (measured @ 28f10cd51: a deriving
-    /// class that redefines <c>__repr__</c> without <c>@override</c> is SPY0248 below the dataclass and runs above it; a member
-    /// called by its name is SPY0427 below it and SPY0203 beside SPY0427 above it). The rule is the <c>dataclass-init</c>
-    /// set's: a cell does what its control does, the same program with the dataclass declared first.
+    /// them where it adds the <c>__init__</c>, so a reader above the dataclass sees none (measured @ 28f10cd51: a member
+    /// called by its name is SPY0427 below the dataclass and SPY0203 beside SPY0427 above it). The rule is the
+    /// <c>dataclass-init</c> set's: a cell does what its control does, the same program with the dataclass declared first.
+    /// That rule is why <c>__repr__</c> redefined without <c>@override</c> has no cell: its control is the form the
+    /// specification and python disagree with (SPY0248, #2802), and the form above the dataclass, which runs, is the right one.
     /// </summary>
     private static IEnumerable<Case> DataclassMemberCases()
     {
