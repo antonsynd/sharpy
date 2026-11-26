@@ -10909,3 +10909,116 @@ rulings:
       python: no-twin
       after: |
         runs:t
+- id: R-RV
+  date: '2026-11-26'
+  issue: '#2789'
+  kind: language
+  rule: A `@dataclass` whose base class's `__init__` has a required parameter is refused at its declaration, with
+    a steer to write `__init__` by hand.
+  options:
+  - text: refuse the declaration, with a steer to write `__init__` by hand
+    chosen: true
+    recommended: true
+  - text: 'as python3: the generated `__init__` takes the dataclass''s own fields and never runs the base''s'
+  basis: precedent
+  laws: [R-RS]
+  considered:
+  - id: R-RO
+    why: R-RO orders the statements of an `__init__` the programmer writes; this ruling is about the one the compiler
+      generates, which R-RO's record lists as not ruled
+  decided_by: owner
+  door: two-way
+  breaks_running: false
+  undo_breaks: false
+  note: 'The owner, 2026-11-26, in the P78 plan session: "go with your recommendations on both". The recorder''s recommendation
+    for this one read: "refusing the declaration with a steer to write `__init__` by hand, which matches R-RS";
+    the recorder had said python3 never runs the base `__init__` there, which .NET cannot do, since a base constructor
+    always runs. Recorded on #2423 (comment 7180845467, item 33) and #2789 (comment 7180845714). Today the declaration
+    alone is an internal error: the generated constructor writes no base call and the base has no parameterless
+    constructor (CS7036 behind SPY0908), whether or not the dataclass is constructed. It is R-RS''s needs-argument
+    case on a host where the programmer cannot write the call. Measured with the compiler built at product code
+    28f10cd51, CPython 3.15.2. The steer can be followed today: the same dataclass with a written `__init__(self,
+    x: int, n: int)` that calls `super().__init__(n)` and then assigns `self.x` runs and prints `5 2`, as python3
+    does; with the assignment ahead of the call it is SPY0292 today, the order R-RO rules. The recorder''s reading,
+    not the owner''s words: a required parameter is one with no default. Not ruled: the diagnostic code; a base
+    whose `__init__` takes no argument (measured: the base''s runs implicitly and the program prints `5 1`, where
+    python3 raises `AttributeError` on the base''s field) or only defaulted ones (prints `5 3`; python3 `AttributeError`);
+    a base that inherits its `__init__`; a base that is a .NET class. An option the recorder did not put to the
+    owner: a generated `__init__` that also takes the base''s parameters and passes them on.'
+  cases:
+  - family: dataclass-base-init
+    coords:
+      base-init: needs-argument
+    verdict: refuse
+    evidence:
+      program: |
+        class Base:
+            n: int
+
+            def __init__(self, n: int):
+                self.n = n
+
+        @dataclass
+        class Point(Base):
+            x: int
+
+        def main() -> None:
+            print("declared")
+      twin: |
+        from dataclasses import dataclass
+
+        class Base:
+            n: int
+
+            def __init__(self, n: int):
+                self.n = n
+
+        @dataclass
+        class Point(Base):
+            x: int
+
+        def main() -> None:
+            print("declared")
+        main()
+      sharpy: crashes:SPY0908
+      python: |
+        runs:declared
+      after: refused:code_not_ruled
+  - family: dataclass-base-init
+    coords:
+      base-init: none
+    verdict: run
+    evidence:
+      program: |
+        class Base:
+            def hello(self) -> str:
+                return "hi"
+
+        @dataclass
+        class Point(Base):
+            x: int
+
+        def main() -> None:
+            p = Point(5)
+            print(p.x, p.hello())
+      twin: |
+        from dataclasses import dataclass
+
+        class Base:
+            def hello(self) -> str:
+                return "hi"
+
+        @dataclass
+        class Point(Base):
+            x: int
+
+        def main() -> None:
+            p = Point(5)
+            print(p.x, p.hello())
+        main()
+      sharpy: |
+        runs:5 hi
+      python: |
+        runs:5 hi
+      after: |
+        runs:5 hi
