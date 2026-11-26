@@ -745,14 +745,10 @@ def test_corpus_parses_and_known_rows_hold():
         for name, plan in plans.items()
     }
     # one row per verdict the corpus holds, each read by hand against step 2
-    if "plan-777361.md" in got:
+    if "plan-remediation-round-2026-08-13.md" in got:
         assert (
-            got["plan-777361.md"] == cpr.REFUSE
-        )  # full, NEEDS REVISION (pass 5 @ a5fac608e); it was the DRAFT row, ASK
-    if "plan-0667c5.md" in got:
-        assert (
-            got["plan-0667c5.md"] == cpr.ASK
-        )  # full, PASS WITH CORRECTIONS, no Scope line (stamped before 2026-09-27)
+            got["plan-remediation-round-2026-08-13.md"] == cpr.ASK
+        )  # no stamp and no DRAFT marker: not verified (a finished plan, not one in flight)
     if "plan-ed89b6.md" in got:
         assert got["plan-ed89b6.md"] == cpr.REFUSE  # light, NEEDS REVISION
     if "plan-05dd79.md" in got:
