@@ -35,7 +35,9 @@ audit verified by reading the rows.
 
 The twenty-nine records without `seed:` (R-QS to R-RU) are the owner's rulings of 2026-11-24 and
 2026-11-25: twenty answer that audit; R-RM and R-RN followed from the owner's reading of R-RH, and
-R-RO to R-RU from the questions those two left open. They meet the full schema below, and each case has a program that was run.
+R-RO to R-RU from the questions those two left open. R-RV, of 2026-11-26, answers one case R-RS left
+open: a `@dataclass` over a base whose `__init__` needs an argument. All thirty meet the full schema
+below, and each case has a program that was run.
 
 The families in `axes.yaml` are hand-listed, one set per question ruled so far. Issues #2486, #2487 and #2733 are where the
 lists get derived from the compiler; replace these with theirs as they land.
