@@ -747,8 +747,12 @@ def test_corpus_parses_and_known_rows_hold():
     # one row per verdict the corpus holds, each read by hand against step 2
     if "plan-777361.md" in got:
         assert (
-            got["plan-777361.md"] == cpr.ASK
-        )  # DRAFT by the owner's ruling (#2423 comment 7050154806)
+            got["plan-777361.md"] == cpr.REFUSE
+        )  # full, NEEDS REVISION (pass 5 @ a5fac608e); it was the DRAFT row, ASK
+    if "plan-0667c5.md" in got:
+        assert (
+            got["plan-0667c5.md"] == cpr.ASK
+        )  # full, PASS WITH CORRECTIONS, no Scope line (stamped before 2026-09-27)
     if "plan-ed89b6.md" in got:
         assert got["plan-ed89b6.md"] == cpr.REFUSE  # light, NEEDS REVISION
     if "plan-05dd79.md" in got:
