@@ -20,6 +20,8 @@ namespace Sharpy.Compiler.Tests.Conformance;
 /// <c>x: object</c> (python's own "declares, binds nothing": inside a function it still makes the name local, which
 /// dropping the line would not); <c>@static</c>/<c>const</c>/<c>property</c> inside a dataclass are python class
 /// attributes, unannotated, because they are not constructor parameters; <c>@lru_cache</c> adds its import (C50);
+/// <c>@override</c> on a method is python's <c>typing.override</c>, with its import (plan-777361's stage 0: a redefined
+/// dunder of a dataclass; the 8951 pool has no cell that spells it);
 /// a docstring is printed; a callable held in a type body is <c>staticmethod(…)</c> and a dataclass field with an
 /// unhashable default is an unannotated class attribute, because python raises on the plain spelling of each.
 /// </summary>
@@ -84,6 +86,7 @@ internal static class TwinRenderer
         private bool _usesDataclass;
         private bool _usesEnum;
         private bool _usesLruCache;
+        private bool _usesOverride;
         private bool _usesSome;
 
         public Walker(string source) => _source = source;
@@ -101,6 +104,8 @@ internal static class TwinRenderer
                 output.Append("from enum import Enum\n");
             if (_usesLruCache)
                 output.Append("from functools import lru_cache\n");
+            if (_usesOverride)
+                output.Append("from typing import override\n");
             if (_usesSome && !module.Body.OfType<ClassDef>().Any(c => c.Name == "Some"))
             {
                 output.Append("class Some:\n");
@@ -349,6 +354,11 @@ internal static class TwinRenderer
                 {
                     _usesLruCache = true;
                     Line(indent, DecoratorText(decorator));
+                }
+                else if (decorator.Name == "override" && decorator.Arguments.IsEmpty && decorator.KeywordArguments.IsEmpty)
+                {
+                    _usesOverride = true;
+                    Line(indent, "@override");
                 }
                 else
                 {

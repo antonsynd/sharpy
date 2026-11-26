@@ -286,17 +286,21 @@ MustRun N1 family=Read route=init-overload
 MustRun N1 family=Read route=dataclass-init initFit=Fits
 MustRefuse N1-typed-read family=Read route=dataclass-init initFit=Misfits
 # An `__init__` the class writes is read whatever the order too (D2; the owner's ruling 36, #2423 comment 7183929991): above
-# its class a reader has the arity and not the parameter types today. A read that fits runs at both orders, an empty list
-# and a generic class's type parameter among what it hands; one that hands a value of another type is the checker's refusal
-# at both, under the code the earlier-declared control carries.
+# its class a reader has the arity and not the parameter types today. A read that fits runs at both orders, an empty list,
+# an empty dict and a generic class's type parameter among what it hands; one that hands a value of another type, the wrong
+# number of arguments or a keyword the `__init__` does not take is the checker's refusal at both, under the code the
+# earlier-declared control carries. So it is over a struct and a nested class, from a method and a module initializer,
+# and in a ring of two classes (ruling 40, #2423 comment 7198842844).
 MustRun N1 family=Read route=written-init initFit=Fits
 MustRefuse N1-typed-read family=Read route=written-init initFit=Misfits
 # So are the other members a `@dataclass` generates, `__eq__`, `__hash__` and `__repr__` (D2; ruling 37, the same comment):
-# a read through `==`, `hash()` or `repr()`, a redefinition with `@override` or (`__eq__` with `__hash__`) without it, a
-# call through `super()` in a redefinition and `==` against an operand of a deriving type run at both orders; a member
-# called by its own name is refused at both under the control's code. Two reads have no cell, since the form with the
-# dataclass declared first is the defect: `__repr__` redefined without `@override` (#2802) and `==` against an equal
-# `object` (#2804). Against an unequal `object` that form is right, and the read is not generated.
+# a read through `==`, `hash()` or `repr()`, a redefinition with `@override` or without it, a call by name from a dunder
+# method of a deriving class (through `super()` or `self`; ruling 40) and `==` against an operand of a deriving type or an
+# unequal `object` run at both orders; a member called by its own name from anywhere else is refused at both under the
+# control's code. `__repr__` redefined without `@override` runs too, and is refused today with the dataclass declared
+# first: #2802's defect, which this plan closes (ruling 41, the same comment as ruling 40). Two reads have no cell, since
+# the form with the dataclass declared first is a defect another issue holds: `==` against an equal `object` (#2804) and a
+# `__str__` that calls `self.__repr__()` (#2057).
 MustRun N1 family=Read route=dataclass-member initFit=Fits
 MustRefuse N1-typed-read family=Read route=dataclass-member initFit=Misfits
 # A parameter default at a type body's level is evaluated in the type body, a lambda's as a `def`'s (D4; the owner's ruling 19):
