@@ -35,6 +35,16 @@ namespace Sharpy.Compiler.Tests.Conformance;
 /// Stdlib), a referenced type's member (the subclasses of <c>ClrMemberResolution</c>, a field refined by what C# reads as a
 /// constant: <c>FieldInfo.IsLiteral</c>, or a <c>DecimalConstantAttribute</c>), the program's own enum
 /// (<c>EnumMemberAccessKind</c>), and any other name of the program (<see cref="BindingKind"/>)</description></item>
+/// <item><term>dataclass-init × site, × host, × option</term><description><c>ScopeKind</c>, <c>TypeKind</c> (<c>Enum.GetValues</c>)
+/// and the public properties of <c>DataclassOptions</c> (reflection)</description></item>
+/// <item><term>dataclass-init × reader slot</term><description><see cref="ReadPosition"/> × <c>Nesting</c>, as the typed-read set
+/// reads a module function (<see cref="InitReaderSlots"/>)</description></item>
+/// <item><term>dataclass-init × reader, × fit, × base, × field default, × reference slot, × through, × name, × placement</term>
+/// <description>closed literal sets, each an enum with its partition (<see cref="ScopeInitReader"/>, <see cref="ScopeInitFit"/>,
+/// <see cref="ScopeDataclassBase"/>, <see cref="ScopeFieldDefault"/>, <see cref="ScopeReferenceSlot"/>,
+/// <see cref="ScopeInitThrough"/>, <see cref="ScopeDataclassName"/>, <see cref="ScopeInitPlacement"/>): the compiler has no
+/// enumeration of how a program reads a synthesized <c>__init__</c>. The last six are projected: each value varied alone from
+/// the matrix's first (<see cref="InitProjections"/>)</description></item>
 /// <item><term>lambda-default × owner, × position</term><description><c>LambdaExpression.IsArrowSyntax</c> with the <c>def</c>
 /// control, and the positions at which the P77a pool runs a bare read of the member from its own type
 /// (<see cref="LambdaDefaultPositions"/>)</description></item>
@@ -139,8 +149,14 @@ public sealed partial class ScopeMeaningDifferentialTests
         [ALambdaDefaultInAPropertyDefault(false)] = new("class H:\n    property r: int = (lambda p1: int = 5: p1)()\ndef main() -> None:\n    print(H().r)\n", "SPY0908 CS0103", r => Refused(r, "SPY0908", "CS0103")),
         [ALambdaDefaultInAPropertyDefault(true)] = new("class H:\n    @static\n    property r: int = (lambda p1: int = 5: p1)()\ndef main() -> None:\n    print(H.r)\n", "SPY0908 CS0103", r => Refused(r, "SPY0908", "CS0103")),
         [ACallInAConstantOnlyPosition] = new("class H:\n    def r(self, p0: int = (lambda p1: int = 5: p1)()) -> int:\n        return p0\n" + TailMain, "SPY0401", r => Refused(r, "SPY0401")),
-        [NoSelfInitOnADataclass] = new(DataclassField + "    def again(self) -> None:\n        self.__init__(7)\n" + TailMain, "SPY0203", r => Refused(r, "SPY0203"),
-            Also: new[] { Prints(DataclassField + "    def __init__(self):\n        self.v = 7\ndef main() -> None:\n    print(DC().v)\n", "7") }),
+        [NoSelfInitOnADataclass] = Refuses(DataclassField + "    def again(self) -> None:\n        self.__init__(7)\n" + TailMain, "SPY0350") with
+        {
+            Also = new[]
+            {
+                Refuses(PlainField + "    def again(self) -> None:\n        self.__init__(7)\n" + TailMain, "SPY0350"),
+                Prints(DataclassField + "    def __init__(self):\n        self.v = 7\ndef main() -> None:\n    print(DC().v)\n", "7"),
+            },
+        },
         [AConstructionIsCheckedAtNeitherOrder] = UncheckedConstruction("", "DC().v", above: true) with
         {
             Also = new[]
@@ -148,37 +164,131 @@ public sealed partial class ScopeMeaningDifferentialTests
                 UncheckedConstruction("def r() -> int:\n    return DC().v\n", "r()", above: false),
                 UncheckedConstruction("class D(DC):\n    pass\n", "D().v", above: true),
                 UncheckedConstruction("class D(DC):\n    pass\n", "D().v", above: false),
+                // Below, the deriving class's declaration alone compiles: the one defect of the probe above is its construction.
+                Prints(Ordered(DataclassField, "class D(DC):\n    pass\n", above: false, "1"), "1"),
                 UncheckedConstruction("@dataclass\nclass E(DC):\n    w: int\n", "E(5).v", above: true),
-                UncheckedConstruction("@dataclass\nclass E(DC):\n    w: int\n", "E(5).v", above: false),
+                Prints(Ordered(DataclassField, "@dataclass\nclass E(DC):\n    w: int\n", above: true, "1"), "1"),
             },
         },
-        [AClassInAFunctionDeclaresNoName] = new("def main() -> None:\n    @dataclass\n    class DC:\n        v: int\n    print(DC(5).v)\n", "SPY0200", r => Refused(r, "SPY0200"), Also: new BehaviourProbe[]
+        [AClassInAFunctionDeclaresNoName] = Refuses("def main() -> None:\n    @dataclass\n    class DC:\n        v: int\n    print(1)\n", "SPY0708") with
         {
-            new("def main() -> None:\n    class DC:\n        v: int = 5\n    print(DC().v)\n", "SPY0200", r => Refused(r, "SPY0200")),
-            new("def main() -> None:\n    if True:\n        @dataclass\n        class DC:\n            v: int\n        print(DC(5).v)\n", "SPY0200", r => Refused(r, "SPY0200")),
-        }),
+            Also = new[]
+            {
+                Refuses("def main() -> None:\n    class DC:\n        v: int = 5\n    print(1)\n", "SPY0708"),
+                Refuses("def main() -> None:\n    if True:\n        @dataclass\n        class DC:\n            v: int\n    print(1)\n", "SPY0708"),
+                Refuses("@dataclass\nclass Rd:\n    w: int\n    def t(self) -> int:\n        class D(Rd):\n            pass\n        return 1\n" + TailMain, "SPY0708"),
+            },
+        },
         [OnlyAClassIsADataclass] = new("@dataclass\nstruct DC:\n    v: int\n" + TailMain, "SPY0380", r => Refused(r, "SPY0380"), Also: new BehaviourProbe[]
         {
             new("@dataclass\ninterface DC:\n    def f(self) -> int: ...\n" + TailMain, "SPY0380", r => Refused(r, "SPY0380")),
             new("@dataclass\nenum DC:\n    RED = 1\n" + TailMain, "SPY0380", r => Refused(r, "SPY0380")),
         }),
-        [AUnionTakesTheDecoratorUnread] = Prints("@dataclass\nunion DC:\n    case A()\n" + TailMain, "1", Also: new[] { Prints("union DC:\n    case A()\n" + TailMain, "1") }),
+        // What tells "accepted unchecked" from "read": the unknown decorator runs on a union too, and is refused on a class.
+        [AUnionTakesADecoratorUnchecked] = Prints("@dataclass\nunion DC:\n    case A()\n" + TailMain, "1", Also: new[]
+        {
+            Prints("@nonsense\nunion DC:\n    case A()\n" + TailMain, "1"),
+            Refuses("@nonsense\nclass DC:\n    v: int = 1\n" + TailMain, "SPY0444"),
+        }),
         [ADelegateTakesNoDecorator] = new("@dataclass\ndelegate DC(x: int) -> int\n" + TailMain, "SPY0105", r => Refused(r, "SPY0105")),
+        [AnOptionLeavesTheParameters(OptionSpelling(nameof(DataclassOptions.Frozen)))] = OptionProbe(OptionSpelling(nameof(DataclassOptions.Frozen))),
+        [AnOptionLeavesTheParameters(OptionSpelling(nameof(DataclassOptions.Eq)))] = OptionProbe(OptionSpelling(nameof(DataclassOptions.Eq))),
+        [AnOptionLeavesTheParameters(OptionSpelling(nameof(DataclassOptions.Repr)))] = OptionProbe(OptionSpelling(nameof(DataclassOptions.Repr))),
         [APlainBaseAddsNothing] = Prints(OverABase("class G:\n    pass\n", "def r() -> int:\n    return mk(DC)\n", above: true, "r()"), "5", Also: new BehaviourProbe[]
         {
             new(OverABase("class G:\n    pass\n", "def r() -> int:\n    return mk(DC)\n", above: false, "r()"), "SPY0342", r => Refused(r, "SPY0342")),
         }),
-        [TheBaseInitIsBoundPastTheDataclass] = new(OverABase("class G:\n    def __init__(self):\n        pass\n", DerivedCallsSuper, above: true, "D().v"), "SPY0224", r => Refused(r, "SPY0224"), Also: new BehaviourProbe[]
+        [TheBaseInitIsBoundPastTheDataclass] = Refuses(OverABase(BaseWithInit, DerivedCallsSuper, above: true, "D().v"), "SPY0224") with
         {
-            new(OverABase("class G:\n    def __init__(self):\n        pass\n", DerivedCallsSuper, above: false, "D().v"), "SPY0224", r => Refused(r, "SPY0224")),
-        }),
-        [ABaseInitWithParametersIsUnruled] = new(OverABase("class G:\n    a: int = 0\n    def __init__(self, a: int):\n        self.a = a\n", "", above: true, "DC(5).v"), "SPY0908 CS7036", r => Refused(r, "SPY0908", "CS7036"),
+            Also = new[]
+            {
+                Refuses(OverABase(BaseWithInit, DerivedCallsSuper, above: false, "D().v"), "SPY0224"),
+                Crashes(OverABase(BaseWithInit, DerivedCallsSuperWithNothing, above: true, "D().v"), "CS7036"),
+                Crashes(OverABase(BaseWithInit, DerivedCallsSuperWithNothing, above: false, "D().v"), "CS7036"),
+            },
+        },
+        [ABaseInitWithParametersIsRefused] = new(OverABase("class G:\n    a: int = 0\n    def __init__(self, a: int):\n        self.a = a\n", "", above: true, "DC(5).v"), "SPY0908 CS7036", r => Refused(r, "SPY0908", "CS7036"),
             Also: new BehaviourProbe[]
             {
                 new(OverABase("class G:\n    a: int = 0\n    def __init__(self, a: int):\n        self.a = a\n", DerivedCallsSuper, above: true, "D().v"), "SPY0908 CS7036", r => Refused(r, "SPY0908", "CS7036")),
                 new(OverABase("class G:\n    a: int = 0\n    def __init__(self, a: int):\n        self.a = a\n", DerivedCallsSuper, above: false, "D().v"), "SPY0908 CS7036", r => Refused(r, "SPY0908", "CS7036")),
             }),
         [AReaderInsideTheDataclass] = Prints("def mk(f: (int) -> DC) -> int:\n    return f(5).v\n" + DataclassField + "    def t(self) -> int:\n        return mk(DC)\ndef main() -> None:\n    print(DC(1).t())\n", "5"),
+        [ADerivingHostLosesTheDefault] = Crashes(Ordered(DefaultedDataclass + "\n", "class D(DC):\n    pass\n", above: true, "D().v"), "CS7036") with
+        {
+            Also = new[]
+            {
+                Crashes(Ordered(DefaultedDataclass + "\n", "class D(DC):\n    pass\n", above: false, "D().v"), "CS7036"),
+                Crashes(Ordered(DefaultedDataclass + "\n", "@dataclass\nclass E(DC):\n    w: int = 6\n", above: true, "E().v"), "CS7036"),
+                Prints(Ordered(DefaultedDataclass + "\n", "@dataclass\nclass E(DC):\n    w: int = 6\n", above: false, "E().v"), "3"),
+            },
+        },
+        [AConstructedGenericIsNoReference] = Refuses(Ordered(GenericDataclass, "def r() -> int:\n    return mk(DC[int])\n", above: true, "r()", GenericHelper), "SPY0339") with
+        {
+            Also = new[]
+            {
+                Refuses(Ordered(GenericDataclass, "def r() -> int:\n    return mk(DC[int])\n", above: false, "r()", GenericHelper), "SPY0339"),
+                Refuses(Ordered("class DC[T]:\n    v: T\n    def __init__(self, v: T):\n        self.v = v\n", "def r() -> int:\n    return mk(DC[int])\n", above: true, "r()", GenericHelper), "SPY0339"),
+            },
+        },
+        [ADataclassOverAConstructedGeneric] = Crashes(Ordered(GenericDataclass, "@dataclass\nclass E(DC[int]):\n    w: int\n", above: true, "E(5, 6).v"), "CS0246") with
+        {
+            Also = new[] { Crashes(Ordered(GenericDataclass, "@dataclass\nclass E(DC[int]):\n    w: int\n", above: false, "E(5, 6).v"), "CS1729") },
+        },
+        [ATypeNestedTwoDeepIsNoReference] = Crashes(Ordered(DeepClass("@dataclass\n", "v: int"), "def r() -> int:\n    return mk(O.P.DC)\n", above: true, "r()", DeepHelper), "CS0119") with
+        {
+            Also = new[]
+            {
+                Crashes(Ordered(DeepClass("@dataclass\n", "v: int"), "def r() -> int:\n    return mk(O.P.DC)\n", above: false, "r()", DeepHelper), "CS0119"),
+                Crashes(Ordered(DeepClass("", "v: int = 0\ndef __init__(self, v: int):\n    self.v = v"), "def r() -> int:\n    return mk(O.P.DC)\n", above: true, "r()", DeepHelper), "CS0119"),
+            },
+        },
+        [AnAliasIsNotConstructed] = Crashes(Ordered(DataclassField + "type A = DC\n", "def r() -> int:\n    return A(5).v\n", above: true, "r()"), "CS0103") with
+        {
+            Also = new[]
+            {
+                Crashes(Ordered(DataclassField + "type A = DC\n", "def r() -> int:\n    return A(5).v\n", above: false, "r()"), "CS0103"),
+                Crashes(Ordered(PlainField + "type A = DC\n", "def r() -> int:\n    return A(5).v\n", above: true, "r()"), "CS0103"),
+            },
+        },
+        [AnAliasIsNoBase] = Refuses(Ordered(DataclassField + "type A = DC\n", "class D(A):\n    pass\n", above: true, "D(5).v"), "SPY0202") with
+        {
+            Also = new[]
+            {
+                Refuses(Ordered(DataclassField + "type A = DC\n", "class D(A):\n    pass\n", above: false, "D(5).v"), "SPY0202"),
+                Refuses(Ordered(DataclassField + "type A = DC\n", "class D(A):\n    def __init__(self):\n        super().__init__(5)\n", above: true, "D().v"), "SPY0202"),
+                Refuses(Ordered(DataclassField + "type A = DC\n", "@dataclass\nclass E(A):\n    w: int\n", above: true, "E(5, 6).v"), "SPY0202"),
+                Refuses(Ordered(PlainField + "type A = DC\n", "class D(A):\n    pass\n", above: true, "D(5).v"), "SPY0202"),
+            },
+        },
+        [ADataclassOverAForwardingClass] = Crashes(Ordered(DataclassField, "class Mid(DC):\n    pass\n@dataclass\nclass E(Mid):\n    w: int\n", above: true, "E(5, 6).v"), "CS1729", "CS7036") with
+        {
+            Also = new[]
+            {
+                Crashes(Ordered(DataclassField, "class Mid(DC):\n    pass\n@dataclass\nclass E(Mid):\n    w: int\n", above: false, "E(5, 6).v"), "CS1729", "CS7036"),
+                // The dataclass over the forwarding class is the defect: the forwarding class alone runs.
+                Prints(Ordered(DataclassField, "class Mid(DC):\n    pass\n", above: true, "Mid(5).v"), "5"),
+            },
+        },
+        [MapChecksNoElement] = Crashes(Ordered(DataclassField, "def r() -> int:\n    return len(list(map(DC, [\"a\"])))\n", above: true, "r()"), "CS1503") with
+        {
+            Also = new[]
+            {
+                Crashes(Ordered(PlainField, "def r() -> int:\n    return len(list(map(DC, [\"a\"])))\n", above: true, "r()"), "CS1503"),
+                // The slot's own control: handed what the field takes, the reference runs.
+                Prints(Ordered(DataclassField, "def r() -> int:\n    return list(map(DC, [5]))[0].v\n", above: true, "r()"), "5"),
+            },
+        },
+        [ABareNestedNameIsAnotherQuestionFirst] = Prints(Enclosed("@dataclass\n", "v: int", "def r(self) -> int:\n    return mk(DC)", above: true), "5") with
+        {
+            Also = new[]
+            {
+                Refuses(Enclosed("@dataclass\n", "v: int", "def r(self) -> int:\n    return mk(DC)", above: false), "SPY0342"),
+                Crashes(Enclosed("@dataclass\n", "v: int", "def r(self) -> int:\n    return DC(5).v", above: true), "CS1955"),
+                Crashes(Enclosed("@dataclass\n", "v: int", "def r(self) -> int:\n    return DC(5).v", above: false), "CS1955"),
+                Crashes(Enclosed("", "v: int = 0\ndef __init__(self, v: int):\n    self.v = v", "def r(self) -> int:\n    return DC(5).v", above: true), "CS1955"),
+            },
+        },
         [InterfaceStaticIsRefused("method, read uncalled", "#2111")] = new("interface H:\n    @static\n    def x() -> int:\n        return 5\n    def m(self) -> int: ...\ndef main() -> None:\n    f: () -> int = H.x\n    print(f())\n", "SPY0908 CS0120", r => Refused(r, "SPY0908", "CS0120")),
     };
 
@@ -546,7 +656,7 @@ public sealed partial class ScopeMeaningDifferentialTests
     {
         ["typed-read"] = new Dictionary<Harness.Order, string> { [Harness.Order.Self] = AReadOfItself, [Harness.Order.Cycle] = AReadOfItself },
         ["init-overload"] = new Dictionary<Harness.Order, string> { [Harness.Order.Self] = ARecursion, [Harness.Order.Cycle] = ARecursion },
-        ["dataclass-init"] = new Dictionary<Harness.Order, string> { [Harness.Order.Self] = AReaderInsideTheDataclass, [Harness.Order.Cycle] = AReaderInsideTheDataclass },
+        ["dataclass-init"] = new Dictionary<Harness.Order, string> { [Harness.Order.Self] = AReaderInsideTheDataclass },
         ["alias-target"] = new Dictionary<Harness.Order, string>(),
         ["constant-kind"] = new Dictionary<Harness.Order, string> { [Harness.Order.Self] = AReadOfItself, [Harness.Order.Cycle] = AReadOfItself },
         ["lambda-default"] = new Dictionary<Harness.Order, string> { [Harness.Order.Self] = AReadOfItself, [Harness.Order.Cycle] = AReadOfItself },
@@ -1407,38 +1517,56 @@ public sealed partial class ScopeMeaningDifferentialTests
     }
 
     // ------------------------------------------------------------------------------------------- //
-    // dataclass-init: reader × fit × order × site × reader slot
+    // dataclass-init: reader × fit × order × site × reader slot, and the projected axes
     // ------------------------------------------------------------------------------------------- //
 
-    /// <summary>A reader of a synthesized <c>__init__</c>, <c>{N}</c> the dataclass's name where the reader stands. An EXPRESSION
-    /// reader (<paramref name="Shows"/> null) is an int-valued expression placed at each slot of <see cref="InitReaderSlots"/>;
-    /// any other is a declaration at module level, and <c>main</c> prints <paramref name="Shows"/>. A helper is declared last,
-    /// below the dataclass. <paramref name="Refusal"/> is the code the control of a read that does not fit carries, where every site's
-    /// control carries the same one.</summary>
+    /// <summary>A reader of a synthesized <c>__init__</c>, written over an <see cref="InitShape"/>. An EXPRESSION reader
+    /// (<paramref name="Shows"/> null) is an int-valued expression placed at a slot; any other is a declaration at module level,
+    /// and <c>main</c> prints <paramref name="Shows"/>. A helper is declared last, below the dataclass.
+    /// <paramref name="Refusal"/> is the code the control of a read that does not fit carries, where every shape's control
+    /// carries the same one.</summary>
     internal sealed record InitRead(string Fits, string? Misfits = null, string? FitsHelper = null, string? MisfitsHelper = null, string? Shows = null, string? Refusal = null);
 
-    /// <summary>The readers, total over <see cref="ScopeInitReader"/> with <see cref="ExcludedInitReaders"/>. The dataclass has
-    /// one field, <c>v: int</c>, and every read that fits hands it 5.</summary>
+    /// <summary>What a reader's program is written over: the dataclass's declaration; the name a reader spells (<c>{N}</c>) and
+    /// the one a type position spells (<c>{T}</c>); what a read that fits hands (<c>{A}</c>) and the types of what the
+    /// <c>__init__</c> takes (<c>{P}</c>); what a read that does not fit hands (<c>{X}</c>) and offers to take (<c>{M}</c>); the
+    /// default a deriving dataclass's own field needs after a defaulted one (<c>{W}</c>); what a cell that runs prints; the code
+    /// the control of a constructor reference that does not fit carries (null where no such cell is generated); a declaration
+    /// that stands above the reader at both orders, so that the one forward read is the dataclass's; and whether python runs
+    /// the program with the same meaning where the dataclass stands first.</summary>
+    internal sealed record InitShape(string Declaration, string Name, string? ReferenceRefusal, string? Type = null, string Args = "5", string Params = "int", string MisfitArgs = "",
+        string MisfitParams = "", string DerivedDefault = "", string Prints = "5", string? Above = null, bool Twin = false)
+    {
+        public string Fill(string text) => text
+            .Replace("{N}", Name, StringComparison.Ordinal).Replace("{T}", Type ?? Name, StringComparison.Ordinal)
+            .Replace("{A}", Args, StringComparison.Ordinal).Replace("{P}", Params, StringComparison.Ordinal)
+            .Replace("{X}", MisfitArgs, StringComparison.Ordinal).Replace("{M}", MisfitParams, StringComparison.Ordinal)
+            .Replace("{W}", DerivedDefault, StringComparison.Ordinal);
+    }
+
+    /// <summary>The readers, total over <see cref="ScopeInitReader"/> with <see cref="ExcludedInitReaders"/>. Over the matrix's
+    /// shape the dataclass has one field, <c>v: int</c>, and every read that fits hands it 5.</summary>
     internal static readonly IReadOnlyDictionary<ScopeInitReader, InitRead> InitReaders = new Dictionary<ScopeInitReader, InitRead>
     {
-        [ScopeInitReader.Construction] = new("sh({N}(5))", FitsHelper: "def sh(d: {N}) -> int:\n    return d.v"),
-        [ScopeInitReader.ConstructorReference] = new("mk({N})", "mk({N})", "def mk(f: (int) -> {N}) -> int:\n    return f(5).v", "def mk(f: () -> {N}) -> int:\n    return 1"),
-        [ScopeInitReader.SuperInit] = new("class D({N}):\n    def __init__(self):\n        super().__init__(5)", "class D({N}):\n    def __init__(self):\n        super().__init__()",
+        [ScopeInitReader.Construction] = new("sh({N}({A}))", FitsHelper: "def sh(d: {T}) -> int:\n    return d.v"),
+        [ScopeInitReader.ConstructorReference] = new("mk({N})", "mk({N})", "def mk(f: ({P}) -> {T}) -> int:\n    return f({A}).v", "def mk(f: ({M}) -> {T}) -> int:\n    return 1"),
+        [ScopeInitReader.SuperInit] = new("class D({N}):\n    def __init__(self):\n        super().__init__({A})", "class D({N}):\n    def __init__(self):\n        super().__init__({X})",
             Shows: "D().v", Refusal: "SPY0224"),
-        [ScopeInitReader.Forwarding] = new("class D({N}):\n    pass", Shows: "D(5).v"),
-        [ScopeInitReader.InheritedFields] = new("@dataclass\nclass E({N}):\n    w: int", Shows: "E(5, 6).v"),
+        [ScopeInitReader.Forwarding] = new("class D({N}):\n    pass", Shows: "D({A}).v"),
+        [ScopeInitReader.InheritedFields] = new("@dataclass\nclass E({N}):\n    w: int{W}", Shows: "E({A}, 6).v"),
     };
 
-    private const string NoSelfInitOnADataclass = "a dataclass that declares an `__init__` synthesizes none (it runs its own), and one that declares none has no `self.__init__` to chain to: from a method the call is SPY0203";
+    private const string NoSelfInitOnADataclass = "a dataclass that declares an `__init__` synthesizes none (it runs its own), and one that declares none has no `self.__init__` to chain to: from a method the call is SPY0350, as it is in any class";
 
     internal static readonly IReadOnlyDictionary<ScopeInitReader, string> ExcludedInitReaders = new Dictionary<ScopeInitReader, string>
     {
         [ScopeInitReader.SelfInit] = NoSelfInitOnADataclass,
     };
 
-    private const string AConstructionIsCheckedAtNeitherOrder = "#2021's class: a construction handed arguments the synthesized `__init__` does not take is SPY0908 CS7036 with the dataclass above the call as below it, of the dataclass and of a class or dataclass deriving from it. The checker binds the call at neither order, so the cell has no refusing control and its red is no order's";
+    private const string AConstructionIsCheckedAtNeitherOrder = "#2021's class: a construction handed arguments the synthesized `__init__` does not take is SPY0908 CS7036 with the dataclass above the call as below it, of the dataclass and of a class deriving from it; of a dataclass deriving from it, it is SPY0908 CS7036 with the dataclass above (below, that deriving dataclass's declaration alone is the generated cell's red). The checker binds the call at neither order, so the cell has no refusing control and its red is no order's";
 
-    /// <summary>The reader × fit pairs with no cell, total over the two enums with the pairs a cell carries.</summary>
+    /// <summary>The reader × fit pairs with no cell, total over the two enums with the pairs a cell carries. They hold over
+    /// every shape: no projection or placement generates one.</summary>
     internal static readonly IReadOnlyDictionary<(ScopeInitReader Reader, ScopeInitFit Fit), string> ExcludedInitFits = new Dictionary<(ScopeInitReader, ScopeInitFit), string>
     {
         [(ScopeInitReader.Construction, ScopeInitFit.Misfits)] = AConstructionIsCheckedAtNeitherOrder,
@@ -1448,19 +1576,34 @@ public sealed partial class ScopeMeaningDifferentialTests
 
     /// <summary>A site a dataclass is declared at: its declaration, the name a reader outside it spells, and the code the
     /// control of a constructor reference that does not fit carries there (measured @ 28f10cd51: a nested type's qualified name
-    /// handed to a function-typed slot it does not fit is the slot's own mismatch).</summary>
-    internal sealed record DataclassSite(string Label, string Declaration, string Name, string ReferenceRefusal);
+    /// handed to a function-typed slot it does not fit is the slot's own mismatch). A PROJECTED site is no part of the matrix:
+    /// it is one more value of the axis, generated as <see cref="InitProjections"/> are.</summary>
+    internal sealed record DataclassSite(string Label, string Declaration, string Name, string? ReferenceRefusal, bool Projected = false)
+    {
+        public InitShape Shape => new(Declaration, Name, ReferenceRefusal, Twin: Projected);
+    }
+
+    private const string ModuleDataclass = "@dataclass\nclass DC:\n    v: int";
 
     /// <summary>The sites, total over <c>ScopeKind</c> with <see cref="ExcludedDataclassScopes"/>: the checker keeps the module's
     /// dataclasses in a set of their own (<c>_moduleDataclassSymbols</c>), which a nested one is not in, so the two sites are two
-    /// routes to the same read. A type body is a class's: one enclosing type, by decision.</summary>
+    /// routes to the same read. A type body is a class's: one enclosing type, by decision. Projected (ruling 35): a module's
+    /// dataclass with a type parameter, read by its constructed name, and a dataclass nested two deep.</summary>
     internal static readonly IReadOnlyDictionary<ScopeKind, DataclassSite[]> DataclassSites = new Dictionary<ScopeKind, DataclassSite[]>
     {
-        [ScopeKind.Module] = new[] { new DataclassSite("module", "@dataclass\nclass DC:\n    v: int", "DC", "SPY0342") },
-        [ScopeKind.TypeBody] = new[] { new DataclassSite("nested", "class O:\n    @dataclass\n    class DC:\n        v: int", "O.DC", "SPY0220") },
+        [ScopeKind.Module] = new[]
+        {
+            new DataclassSite("module", ModuleDataclass, "DC", "SPY0342"),
+            new DataclassSite("generic", "@dataclass\nclass DC[T]:\n    v: T", "DC[int]", null, Projected: true),
+        },
+        [ScopeKind.TypeBody] = new[]
+        {
+            new DataclassSite("nested", "class O:\n    @dataclass\n    class DC:\n        v: int", "O.DC", "SPY0220"),
+            new DataclassSite("deep", "class O:\n    class P:\n        @dataclass\n        class DC:\n            v: int", "O.P.DC", null, Projected: true),
+        },
     };
 
-    private const string AClassInAFunctionDeclaresNoName = "a class declared in a function's body or a block declares no name a read finds, dataclass or not: its construction is SPY0200";
+    private const string AClassInAFunctionDeclaresNoName = "a class cannot be declared in a function's body or a block, dataclass or not: SPY0708";
 
     internal static readonly IReadOnlyDictionary<ScopeKind, string> ExcludedDataclassScopes = new Dictionary<ScopeKind, string>
     {
@@ -1473,7 +1616,7 @@ public sealed partial class ScopeMeaningDifferentialTests
     internal static IEnumerable<DataclassSite> AllDataclassSites() => DataclassSites.OrderBy(e => e.Key).SelectMany(e => e.Value);
 
     private const string OnlyAClassIsADataclass = "`@dataclass` is a class's decorator: on a struct, an interface and an enum it is SPY0380";
-    private const string AUnionTakesTheDecoratorUnread = "a union takes the decorator and nothing reads it (`DataclassSynthesis.ReadOptions` reads a class declaration): no `__init__` is synthesized, and the program runs as it does without the decorator";
+    private const string AUnionTakesADecoratorUnchecked = "#2797's class: a decorator on a union is accepted and never checked. `@dataclass union` runs, and so does `@nonsense union`, where an unknown decorator on a class is SPY0444: nothing says the decorator was read, so no cell has a dataclass to read there";
     private const string ADelegateTakesNoDecorator = "a delegate takes no decorator at all: SPY0105";
 
     /// <summary>The kinds of type <c>@dataclass</c> synthesizes an <c>__init__</c> for, total over <c>TypeKind</c> with
@@ -1485,36 +1628,237 @@ public sealed partial class ScopeMeaningDifferentialTests
         [TypeKind.Struct] = OnlyAClassIsADataclass,
         [TypeKind.Interface] = OnlyAClassIsADataclass,
         [TypeKind.Enum] = OnlyAClassIsADataclass,
-        [TypeKind.Union] = AUnionTakesTheDecoratorUnread,
+        [TypeKind.Union] = AUnionTakesADecoratorUnchecked,
         [TypeKind.Delegate] = ADelegateTakesNoDecorator,
     };
 
-    private const string LeavesTheParametersAsTheyAre = "an option of the decorator that the synthesis of `__init__` does not read (`DataclassSynthesis.SynthesizeMembers`): the parameters are the fields' whatever its value";
+    /// <summary>Why an option of the decorator has no cell: the synthesis of <c>__init__</c> does not read it
+    /// (<c>DataclassSynthesis.SynthesizeMembers</c>), so the parameters are the fields' whatever its value, and its probes say
+    /// so by running the generated cell's program under it, set and unset, at both orders.</summary>
+    private static string AnOptionLeavesTheParameters(string option)
+        => $"`@dataclass({option}=…)` is an option the synthesis of `__init__` does not read: the parameters are the fields' whatever its value. A reference that fits runs with the dataclass above its reader and is SPY0342 with it below, with the option set and unset, as the generated cell is (#2423, which holds that cell)";
+
+    private static string OptionSpelling(string property) => property.ToLowerInvariant();
 
     /// <summary>The decorator's options, total over the properties of <c>DataclassOptions</c>: none is generated, and one that
     /// changes what the synthesized <c>__init__</c> takes is owed its cells.</summary>
     internal static readonly IReadOnlyDictionary<string, string> ExcludedDataclassOptions = new Dictionary<string, string>(StringComparer.Ordinal)
     {
-        [nameof(DataclassOptions.Frozen)] = LeavesTheParametersAsTheyAre,
-        [nameof(DataclassOptions.Eq)] = LeavesTheParametersAsTheyAre,
-        [nameof(DataclassOptions.Repr)] = LeavesTheParametersAsTheyAre,
+        [nameof(DataclassOptions.Frozen)] = AnOptionLeavesTheParameters(OptionSpelling(nameof(DataclassOptions.Frozen))),
+        [nameof(DataclassOptions.Eq)] = AnOptionLeavesTheParameters(OptionSpelling(nameof(DataclassOptions.Eq))),
+        [nameof(DataclassOptions.Repr)] = AnOptionLeavesTheParameters(OptionSpelling(nameof(DataclassOptions.Repr))),
     };
 
-    private const string APlainBaseAddsNothing = "a base that is no dataclass and declares no `__init__` adds no field and no initializer: the synthesized `__init__` is the one the generated cells read, and its cells would be theirs again. A reference that fits runs with the dataclass above its reader and is SPY0342 with it below, as the generated cell is (#2423, which holds that cell)";
-    private const string TheBaseInitIsBoundPastTheDataclass = "the base declares an `__init__` that takes no argument: `super().__init__(5)` in a class deriving from the dataclass is bound to the BASE's `__init__` and refused, SPY0224, with the dataclass above the call as below it (row 3 of #2423 comment 7171020757). No order is at fault, and no tracker holds the cell yet";
-    private const string ABaseInitWithParametersIsUnruled = "the base declares an `__init__` that takes an argument: the dataclass is SPY0908 CS7036 wherever it stands and whoever reads it, since its emitted constructor chains to a base constructor it hands nothing (rows 2 and 3 of #2423 comment 7171020757). What such a dataclass's `__init__` takes is unruled, so no cell has a verdict";
-
-    /// <summary>What the dataclass of a cell derives from, closed: nothing (the generated cells); another dataclass (the
-    /// <see cref="ScopeInitReader.InheritedFields"/> cells, where the generated dataclass is that base); a class that is no
-    /// dataclass, which declares no <c>__init__</c>, one without parameters or one with them. The last three have no cell.</summary>
-    internal static readonly IReadOnlyDictionary<string, string> ExcludedDataclassBases = new Dictionary<string, string>(StringComparer.Ordinal)
+    private static BehaviourProbe OptionProbe(string option)
     {
-        ["plain"] = APlainBaseAddsNothing,
-        ["plain-with-init"] = TheBaseInitIsBoundPastTheDataclass,
-        ["plain-with-init-parameters"] = ABaseInitWithParametersIsUnruled,
+        string Program(string value, bool above)
+        {
+            string dataclass = $"@dataclass({option}={value})\nclass DC:\n    v: int\n";
+            const string Reader = "def r() -> int:\n    return mk(DC)\n";
+            return $"{(above ? dataclass + Reader : Reader + dataclass)}def mk(f: (int) -> DC) -> int:\n    return f(5).v\ndef main() -> None:\n    print(r())\n";
+        }
+        BehaviourProbe Below(string value) => new(Program(value, above: false), "SPY0342", r => Refused(r, "SPY0342"));
+        return Prints(Program("True", above: true), "5", Also: new[] { Below("True"), Prints(Program("False", above: true), "5"), Below("False") });
+    }
+
+    // --- the projected axes: one value varied alone from the matrix's first --- //
+
+    private const string APlainBaseAddsNothing = "a base that is no dataclass and declares no `__init__` adds no field and no initializer: the synthesized `__init__` is the one the generated cells read, and its cells would be theirs again. A reference that fits runs with the dataclass above its reader and is SPY0342 with it below, as the generated cell is (#2423, which holds that cell)";
+    private const string ABaseInitWithParametersIsRefused = "#2789's class, by the owner's ruling 33 (#2423 comment 7180845467): over a base whose `__init__` takes an argument the dataclass's declaration is to be refused, with a steer to write `__init__` by hand, so no read of it has a cell. Today the dataclass is SPY0908 CS7036 wherever it stands and whoever reads it, since its emitted constructor chains to a base constructor it hands nothing (rows 2 and 3 of #2423 comment 7171020757)";
+
+    /// <summary>The bases with no cell at all, total over <see cref="ScopeDataclassBase"/> with <see cref="DataclassBases"/> and
+    /// the matrix's own value (no base).</summary>
+    internal static readonly IReadOnlyDictionary<ScopeDataclassBase, string> ExcludedDataclassBases = new Dictionary<ScopeDataclassBase, string>
+    {
+        [ScopeDataclassBase.Plain] = APlainBaseAddsNothing,
+        [ScopeDataclassBase.PlainWithInitParameters] = ABaseInitWithParametersIsRefused,
+    };
+
+    internal static readonly IReadOnlyDictionary<ScopeDataclassBase, InitShape> DataclassBases = new Dictionary<ScopeDataclassBase, InitShape>
+    {
+        [ScopeDataclassBase.PlainWithInit] = new(BaseWithInit + "@dataclass\nclass DC(G):\n    v: int", "DC", "SPY0342", Twin: true),
+    };
+
+    private const string DefaultedDataclass = "@dataclass\nclass DC:\n    v: int = 3";
+
+    /// <summary>The defaulted field's two reads, total over <see cref="ScopeFieldDefault"/> with the matrix's own value. The
+    /// default is 3 and a read that hands a value hands 5, so a cell prints which of the two the field took.</summary>
+    internal static readonly IReadOnlyDictionary<ScopeFieldDefault, InitShape> FieldDefaults = new Dictionary<ScopeFieldDefault, InitShape>
+    {
+        [ScopeFieldDefault.Overridden] = new(DefaultedDataclass, "DC", "SPY0342", MisfitArgs: "5, 6", MisfitParams: "str", DerivedDefault: " = 6", Twin: true),
+        [ScopeFieldDefault.Taken] = new(DefaultedDataclass, "DC", null, Args: "", Params: "", DerivedDefault: " = 6", Prints: "3", Twin: true),
+    };
+
+    /// <summary>The types a reader names in the dataclass's stead, total over <see cref="ScopeInitThrough"/> with the matrix's
+    /// own value. The deriving type stands above its reader at both orders: the one forward read is the dataclass's.</summary>
+    internal static readonly IReadOnlyDictionary<ScopeInitThrough, InitShape> InitThroughs = new Dictionary<ScopeInitThrough, InitShape>
+    {
+        [ScopeInitThrough.ForwardingClass] = new(ModuleDataclass, "Mid", "SPY0342", Above: "class Mid(DC):\n    pass", Twin: true),
+        [ScopeInitThrough.DerivingDataclass] = new(ModuleDataclass, "Em", "SPY0342", Args: "5, 6", Params: "int, int", Above: "@dataclass\nclass Em(DC):\n    u: int", Twin: true),
+    };
+
+    private const string ABareNestedNameIsAnotherQuestionFirst = "from inside its enclosing type a nested dataclass's BARE name is another question before it is order's, and the owner's ruling 35 (#2423 comment 7181238911) generates the reader there under the qualified name. Handed to a function-typed slot from a method, the bare name runs with the dataclass above the method (N1 keeps a class-body name invisible by its bare name in a method) and is SPY0342 with it below; called as a constructor it is SPY0908 CS1955 at both orders, as the bare name of a nested class that writes its `__init__` is";
+
+    /// <summary>The names with no cell, total over <see cref="ScopeDataclassName"/> with <see cref="DataclassNames"/> and the
+    /// matrix's own value.</summary>
+    internal static readonly IReadOnlyDictionary<ScopeDataclassName, string> ExcludedDataclassNames = new Dictionary<ScopeDataclassName, string>
+    {
+        [ScopeDataclassName.BareSibling] = ABareNestedNameIsAnotherQuestionFirst,
+    };
+
+    /// <summary>An alias stands with the dataclass, below it: python calls no alias (<c>TypeAliasType</c> is not callable), so
+    /// the cells have no twin.</summary>
+    internal static readonly IReadOnlyDictionary<ScopeDataclassName, InitShape> DataclassNames = new Dictionary<ScopeDataclassName, InitShape>
+    {
+        [ScopeDataclassName.Alias] = new(ModuleDataclass + "\ntype A = DC", "A", "SPY0342", Type: "DC"),
+    };
+
+    /// <summary>The slots a reference is handed to, total over <see cref="ScopeReferenceSlot"/> with the matrix's own value (a
+    /// parameter). Each is the constructor reference's program at that slot: a declaration of its own, read by <c>r()</c>.</summary>
+    internal static readonly IReadOnlyDictionary<ScopeReferenceSlot, InitRead> ReferenceSlots = new Dictionary<ScopeReferenceSlot, InitRead>
+    {
+        [ScopeReferenceSlot.KeywordArgument] = new("def r() -> int:\n    return mk(f={N})", "def r() -> int:\n    return mk(f={N})",
+            "def mk(f: ({P}) -> {T}) -> int:\n    return f({A}).v", "def mk(f: ({M}) -> {T}) -> int:\n    return 1", Shows: "r()"),
+        [ScopeReferenceSlot.AnnotatedLocal] = new("def r() -> int:\n    f: ({P}) -> {T} = {N}\n    return f({A}).v", "def r() -> int:\n    f: ({M}) -> {T} = {N}\n    return 1", Shows: "r()"),
+        [ScopeReferenceSlot.ModuleVariable] = new("g: ({P}) -> {T} = {N}\ndef r() -> int:\n    return g({A}).v", "g: ({M}) -> {T} = {N}\ndef r() -> int:\n    return 1", Shows: "r()"),
+        [ScopeReferenceSlot.InstanceField] = new("class W:\n    f: ({P}) -> {T} = {N}\ndef r() -> int:\n    return W().f({A}).v", "class W:\n    f: ({M}) -> {T} = {N}\ndef r() -> int:\n    return 1", Shows: "r()"),
+        [ScopeReferenceSlot.Return] = new("def give() -> ({P}) -> {T}:\n    return {N}\ndef r() -> int:\n    return give()({A}).v", "def give() -> ({M}) -> {T}:\n    return {N}\ndef r() -> int:\n    return 1", Shows: "r()"),
+        [ScopeReferenceSlot.ListElement] = new("def r() -> int:\n    fs: list[({P}) -> {T}] = [{N}]\n    return fs[0]({A}).v", "def r() -> int:\n    fs: list[({M}) -> {T}] = [{N}]\n    return 1", Shows: "r()"),
+        [ScopeReferenceSlot.TupleElement] = new("def r() -> int:\n    t: tuple[({P}) -> {T}, int] = ({N}, 1)\n    return t[0]({A}).v", "def r() -> int:\n    t: tuple[({M}) -> {T}, int] = ({N}, 1)\n    return 1", Shows: "r()"),
+        // The control of a read that does not fit is the callee's own refusal there: its type parameter has nothing to be.
+        [ScopeReferenceSlot.GenericParameter] = new("def r() -> int:\n    return gp({N}).v", "def r() -> int:\n    return gq({N})",
+            "def gp[T](f: ({P}) -> T) -> T:\n    return f({A})", "def gq[T](f: ({M}) -> T) -> int:\n    return 1", Shows: "r()", Refusal: "SPY0237"),
+        [ScopeReferenceSlot.BuiltinGenericParameter] = new("def r() -> int:\n    return list(map({N}, [{A}]))[0].v", Shows: "r()"),
+    };
+
+    /// <summary>One value of an axis the matrix holds at its first value: what the exclusions know it by
+    /// (<paramref name="Value"/>: the axis's enum value, or a projected site's label), the shape its cells are written over, and
+    /// the readers it has a program for.</summary>
+    internal sealed record InitProjection(object Value, InitShape Shape, IReadOnlyDictionary<ScopeInitReader, InitRead> Readers)
+    {
+        /// <summary>The site part of a cell's key: the projected site, or the module's.</summary>
+        public string Site => Value as string ?? ModuleSite;
+
+        /// <summary>The key part that says which value the cell carries; a projected site's label is its site part.</summary>
+        public object? Variant => Value is string ? null : Value;
+    }
+
+    private const string ModuleSite = "module";
+
+    /// <summary>The projections (the owner's ruling 35): each value generated under every reader and fit it has a program for,
+    /// at both orders, or excluded with its reason (<see cref="ExcludedProjections"/>). A reference slot is the constructor
+    /// reference's alone.</summary>
+    internal static IReadOnlyList<InitProjection> InitProjections => LazyInitProjections.Value;
+
+    private static readonly Lazy<IReadOnlyList<InitProjection>> LazyInitProjections = new(() =>
+    {
+        var module = DataclassSites[ScopeKind.Module].Single(s => s.Label == ModuleSite).Shape with { Twin = true };
+        return AllDataclassSites().Where(s => s.Projected).Select(s => new InitProjection(s.Label, s.Shape, InitReaders))
+            .Concat(DataclassBases.OrderBy(e => e.Key).Select(e => new InitProjection(e.Key, e.Value, InitReaders)))
+            .Concat(FieldDefaults.OrderBy(e => e.Key).Select(e => new InitProjection(e.Key, e.Value, InitReaders)))
+            .Concat(InitThroughs.OrderBy(e => e.Key).Select(e => new InitProjection(e.Key, e.Value, InitReaders)))
+            .Concat(DataclassNames.OrderBy(e => e.Key).Select(e => new InitProjection(e.Key, e.Value, InitReaders)))
+            .Concat(ReferenceSlots.OrderBy(e => e.Key).Select(e => new InitProjection(e.Key, module,
+                new Dictionary<ScopeInitReader, InitRead> { [ScopeInitReader.ConstructorReference] = e.Value })))
+            .ToList();
+    });
+
+    /// <summary>Where a projected reader that is an expression stands: one slot of <see cref="InitReaderSlots"/>, a function's
+    /// body, since the matrix holds the slot axis under the first value of every projected one.</summary>
+    internal static readonly IReadOnlyList<(ReadPosition Position, Harness.Nesting Nesting)> ProjectedSlots = new[] { (ReadPosition.FunctionBody, Harness.Nesting.Direct) };
+
+    private const string BaseWithInit = "class G:\n    def __init__(self):\n        pass\n";
+
+    private const string TheBaseInitIsBoundPastTheDataclass = "#2508's class (its comment 7180653024; row 3 of #2423 comment 7171020757): over a base whose `__init__` takes no argument, `super().__init__` in a class deriving from the dataclass is bound to the BASE's `__init__`, past the dataclass's own, with the dataclass above the call as below it. Handed the field it is SPY0224; handed nothing it is taken, and the dataclass's constructor is then SPY0908 CS7036. Red where the dataclass is declared first, so no order is at fault";
+    private const string ADerivingHostLosesTheDefault = "#2508's class (its comment 7181213880): a host deriving from a dataclass whose field has a default loses the default. Constructed with nothing, a deriving class with no `__init__` is SPY0908 CS7036 with the dataclass above it as below it, and a deriving dataclass is SPY0908 CS7036 with the dataclass above it (below, it runs). Red where the dataclass is declared first, so no order is at fault";
+    private const string ATakenDefaultHandsNothing = "a read that takes the default hands nothing, which is what a defaulted `__init__` takes: the read that does not fit hands a value, and is the overridden default's cell";
+    private const string AConstructedGenericIsNoReference = "a constructed generic type handed to a function-typed slot (`mk(DC[int])`) is SPY0339 with the class above the reference as below it, and for a class that writes its `__init__` as for a dataclass: no synthesized `__init__` is read there, no tracker holds the refusal, and whether the reference is to be accepted is not ruled";
+    private const string ADataclassOverAConstructedGeneric = "#2021's class (its comment 7181214084): a dataclass over a constructed generic dataclass keeps the base's type parameter in its generated constructor. It is SPY0908 CS0246 with the generic dataclass above it (and SPY0908 CS1729 below): red where the dataclass is declared first, so no order is at fault";
+    private const string ATypeNestedTwoDeepIsNoReference = "a type nested two deep handed to a function-typed slot by its qualified name (`mk(O.P.DC)`) is SPY0908 CS0119 with the type above the reference as below it, and for a class that writes its `__init__` as for a dataclass: no order is at fault, and no tracker holds the cell yet. One deep (`mk(O.DC)`) is the nested site's cells";
+    private const string AnAliasIsNotConstructed = "a type alias called as a constructor (`A(5)`) is SPY0908 CS0103 with the class above the call as below it, and for a class that writes its `__init__` as for a dataclass: no order is at fault, and no tracker holds the cell yet";
+    private const string AnAliasIsNoBase = "a type alias in a base list (`class D(A)`) is SPY0202 with the class above the deriving one as below it, and for a class that writes its `__init__` as for a dataclass: nothing derives through an alias, so no deriving reader has a cell there";
+    private const string ADataclassOverAForwardingClass = "a dataclass over a class that derives from a dataclass and is none itself gets no parameter for the inherited field: SPY0908 (CS1729 where it is constructed, CS7036 in its own constructor) with the dataclass above it as below it. Red where the dataclass is declared first, so no order is at fault, and no tracker holds the cell yet";
+    private const string MapChecksNoElement = "`map` checks no element against what the reference takes: handed a `str` for the field (`map(DC, [\"a\"])`) it is SPY0908 CS1503 with the class above the call, and for a class that writes its `__init__` as for a dataclass. A read that does not fit has no refusing control there, and no tracker holds the cell yet";
+
+    /// <summary>The projected value × reader × fit triples with no cell, each with its reason: total, per projection, over the
+    /// readers it has a program for and the fits <see cref="ExcludedInitFits"/> leaves, with the triples a cell carries
+    /// (<see cref="AxisProblems"/>). A triple that is red wherever the dataclass stands is not the order's cell.</summary>
+    internal static readonly IReadOnlyDictionary<(object Value, ScopeInitReader Reader, ScopeInitFit Fit), string> ExcludedProjections = new Dictionary<(object, ScopeInitReader, ScopeInitFit), string>
+    {
+        [(ScopeDataclassBase.PlainWithInit, ScopeInitReader.SuperInit, ScopeInitFit.Fits)] = TheBaseInitIsBoundPastTheDataclass,
+        [(ScopeDataclassBase.PlainWithInit, ScopeInitReader.SuperInit, ScopeInitFit.Misfits)] = TheBaseInitIsBoundPastTheDataclass,
+        [(ScopeFieldDefault.Taken, ScopeInitReader.Forwarding, ScopeInitFit.Fits)] = ADerivingHostLosesTheDefault,
+        [(ScopeFieldDefault.Taken, ScopeInitReader.InheritedFields, ScopeInitFit.Fits)] = ADerivingHostLosesTheDefault,
+        [(ScopeFieldDefault.Taken, ScopeInitReader.ConstructorReference, ScopeInitFit.Misfits)] = ATakenDefaultHandsNothing,
+        [(ScopeFieldDefault.Taken, ScopeInitReader.SuperInit, ScopeInitFit.Misfits)] = ATakenDefaultHandsNothing,
+        [("generic", ScopeInitReader.ConstructorReference, ScopeInitFit.Fits)] = AConstructedGenericIsNoReference,
+        [("generic", ScopeInitReader.ConstructorReference, ScopeInitFit.Misfits)] = AConstructedGenericIsNoReference,
+        [("generic", ScopeInitReader.InheritedFields, ScopeInitFit.Fits)] = ADataclassOverAConstructedGeneric,
+        [("deep", ScopeInitReader.ConstructorReference, ScopeInitFit.Fits)] = ATypeNestedTwoDeepIsNoReference,
+        [("deep", ScopeInitReader.ConstructorReference, ScopeInitFit.Misfits)] = ATypeNestedTwoDeepIsNoReference,
+        [(ScopeDataclassName.Alias, ScopeInitReader.Construction, ScopeInitFit.Fits)] = AnAliasIsNotConstructed,
+        [(ScopeDataclassName.Alias, ScopeInitReader.SuperInit, ScopeInitFit.Fits)] = AnAliasIsNoBase,
+        [(ScopeDataclassName.Alias, ScopeInitReader.SuperInit, ScopeInitFit.Misfits)] = AnAliasIsNoBase,
+        [(ScopeDataclassName.Alias, ScopeInitReader.Forwarding, ScopeInitFit.Fits)] = AnAliasIsNoBase,
+        [(ScopeDataclassName.Alias, ScopeInitReader.InheritedFields, ScopeInitFit.Fits)] = AnAliasIsNoBase,
+        [(ScopeInitThrough.ForwardingClass, ScopeInitReader.InheritedFields, ScopeInitFit.Fits)] = ADataclassOverAForwardingClass,
+        [(ScopeReferenceSlot.BuiltinGenericParameter, ScopeInitReader.ConstructorReference, ScopeInitFit.Misfits)] = MapChecksNoElement,
+    };
+
+    // --- the placements: where the reader stands against the dataclass --- //
+
+    /// <summary>The nested site's label, which a reader inside the enclosing type shares: its dataclass is the nested one.</summary>
+    private const string EnclosedSite = "nested";
+
+    /// <summary>The nested dataclass as a member of the reader's own type <c>H</c>, and the qualified name a reader there
+    /// spells. A constructor reference that does not fit is the slot's own mismatch, as at the nested site.</summary>
+    internal static readonly InitShape EnclosedShape = new(ModuleDataclass, "H.DC", "SPY0220");
+
+    /// <summary>Where an expression reader stands inside the enclosing type: the two bodies and the two initializers a class has
+    /// per instance and per type, each one of <see cref="InitReaderSlots"/> whose host is a plain class. The matrix holds the
+    /// other slots from outside the type.</summary>
+    internal static readonly IReadOnlyList<(ReadPosition Position, Harness.Nesting Nesting)> EnclosedSlots = new[]
+    {
+        (ReadPosition.MethodBody, Harness.Nesting.Direct),
+        (ReadPosition.StaticMethodBody, Harness.Nesting.Direct),
+        (ReadPosition.InstanceFieldInitializer, Harness.Nesting.Direct),
+        (ReadPosition.StaticInitializer, Harness.Nesting.Direct),
+    };
+
+    private const string OtherDataclassSite = ModuleSite;
+
+    /// <summary>The module's dataclass, read from a method of another dataclass.</summary>
+    internal static readonly InitShape OtherDataclassShape = new(ModuleDataclass, "DC", "SPY0342");
+
+    internal static readonly (ReadPosition Position, Harness.Nesting Nesting) OtherDataclassSlot = (ReadPosition.MethodBody, Harness.Nesting.Direct);
+
+    /// <summary>The orders of a reader in another dataclass: that dataclass below the one it reads, above it, and above it in a
+    /// ring.</summary>
+    internal static readonly Harness.Order[] OtherDataclassOrders = { Harness.Order.Earlier, Harness.Order.Later, Harness.Order.Cycle };
+
+    /// <summary>What the dataclass reads back of <c>Rd</c> in a ring, per reader: the same kind of read, one that fits, with a
+    /// helper of its own.</summary>
+    internal static readonly IReadOnlyDictionary<ScopeInitReader, (string Read, string Helper)> RingReads = new Dictionary<ScopeInitReader, (string, string)>
+    {
+        [ScopeInitReader.Construction] = ("shr(Rd(5))", "def shr(d: Rd) -> int:\n    return d.w"),
+        [ScopeInitReader.ConstructorReference] = ("mkr(Rd)", "def mkr(f: (int) -> Rd) -> int:\n    return f(5).w"),
     };
 
     private const string AReaderInsideTheDataclass = "a reader in the dataclass's own body is no second declaration: there is no order of two to vary, and a method that hands its own class to a function-typed slot runs";
+
+    /// <summary>The placements with no cell, total over <see cref="ScopeInitPlacement"/> with the placements a cell carries.</summary>
+    internal static readonly IReadOnlyDictionary<ScopeInitPlacement, string> ExcludedInitPlacements = new Dictionary<ScopeInitPlacement, string>
+    {
+        [ScopeInitPlacement.Itself] = AReaderInsideTheDataclass,
+    };
+
+    /// <summary>The placement × reader pairs with no cell: a reader that is a declaration stands in no method.</summary>
+    internal static readonly IReadOnlyDictionary<(ScopeInitPlacement Placement, ScopeInitReader Reader), string> ExcludedPlacementReaders = new Dictionary<(ScopeInitPlacement, ScopeInitReader), string>
+    {
+        [(ScopeInitPlacement.OtherDataclass, ScopeInitReader.SuperInit)] = AClassInAFunctionDeclaresNoName,
+        [(ScopeInitPlacement.OtherDataclass, ScopeInitReader.Forwarding)] = AClassInAFunctionDeclaresNoName,
+        [(ScopeInitPlacement.OtherDataclass, ScopeInitReader.InheritedFields)] = AClassInAFunctionDeclaresNoName,
+    };
 
     /// <summary>Where a reader that is an expression stands: READ from the typed-read set's readers, as the slots at which the
     /// P77a pool runs a bare read of a module-level function declared above its reader. A dataclass's name is such a name (at
@@ -1524,6 +1868,7 @@ public sealed partial class ScopeMeaningDifferentialTests
         => TypedReaders.Where(r => r is { Kind: BindingKind.ModuleDef, Spelling: Harness.Spelling.Bare, Inside: false }).Select(r => (r.Position, r.Nesting)).Distinct().ToList();
 
     private const string DataclassField = "@dataclass\nclass DC:\n    v: int\n";
+    private const string PlainField = "class DC:\n    v: int = 0\n    def __init__(self, v: int):\n        self.v = v\n";
 
     private static BehaviourProbe UncheckedConstruction(string reader, string construction, bool above)
         => new($"{(above ? DataclassField + reader : reader + DataclassField)}def main() -> None:\n    print({construction})\n", "SPY0908 CS7036", r => Refused(r, "SPY0908", "CS7036"));
@@ -1534,7 +1879,37 @@ public sealed partial class ScopeMeaningDifferentialTests
         return $"def mk(f: (int) -> DC) -> int:\n    return f(5).v\n{(above ? dataclass + reader : reader + dataclass)}def main() -> None:\n    print({shows})\n";
     }
 
+    private const string GenericDataclass = "@dataclass\nclass DC[T]:\n    v: T\n";
+    private const string GenericHelper = "def mk(f: (int) -> DC[int]) -> int:\n    return f(5).v\n";
+    private const string DeepHelper = "def mk(f: (int) -> O.P.DC) -> int:\n    return f(5).v\n";
+
+    /// <summary>A class nested two deep, <c>O.P.DC</c>, with its decorator and body.</summary>
+    private static string DeepClass(string decorator, string body)
+        => $"class O:\n    class P:\n{Indent(Indent(decorator + "class DC:\n" + Indent(body)))}\n";
+
+    /// <summary>A class <c>H</c> holding a nested <c>DC</c> and a method that reads it by its bare name, above the method or
+    /// below it; <c>main</c> prints the method's value.</summary>
+    private static string Enclosed(string decorator, string body, string reader, bool above)
+    {
+        string nested = Indent(decorator + "class DC:\n" + Indent(body));
+        string member = Indent(reader);
+        return $"class H:\n{(above ? nested + "\n" + member : member + "\n" + nested)}\ndef mk(f: (int) -> H.DC) -> int:\n    return f(5).v\ndef main() -> None:\n    print(H().r())\n";
+    }
+
     private const string DerivedCallsSuper = "class D(DC):\n    def __init__(self):\n        super().__init__(5)\n";
+    private const string DerivedCallsSuperWithNothing = "class D(DC):\n    def __init__(self):\n        super().__init__()\n";
+
+    /// <summary>A program of two declarations and what <c>main</c> prints: the class (and what stands with it) above the reader,
+    /// or below it.</summary>
+    private static string Ordered(string dataclass, string reader, bool above, string shows, string helper = "")
+        => $"{(above ? dataclass + reader : reader + dataclass)}{helper}def main() -> None:\n    print({shows})\n";
+
+    /// <summary>The generated C# does not compile: SPY0908, under one of <paramref name="cs"/> (C# reports two errors for some
+    /// programs, and which the diagnostic names first is its own business).</summary>
+    private static BehaviourProbe Crashes(string source, params string[] cs)
+        => new(source, $"SPY0908 {string.Join(" or ", cs)}", r => r.ErrorCodes.Contains("SPY0908") && cs.Contains(r.CsCode));
+
+    private static BehaviourProbe Refuses(string source, string code) => new(source, code, r => Refused(r, code));
 
     // ------------------------------------------------------------------------------------------- //
     // lambda-default: owner × kind × annotation × position × order × outer
@@ -1706,6 +2081,18 @@ public sealed partial class ScopeMeaningDifferentialTests
     // ------------------------------------------------------------------------------------------- //
     // The axes against their enumerations
     // ------------------------------------------------------------------------------------------- //
+
+    /// <summary>The projected value a <c>dataclass-init</c> cell carries: the part of its key that is a value of a projected
+    /// axis, or the label of a projected site; null for a cell of the matrix or of a placement.</summary>
+    internal static object? ProjectionOf(CellKey key)
+    {
+        foreach (var part in key.Parts)
+        {
+            if (part is ScopeDataclassBase or ScopeFieldDefault or ScopeReferenceSlot or ScopeInitThrough or ScopeDataclassName)
+                return part;
+        }
+        return AllDataclassSites().Where(s => s.Projected).Select(s => s.Label).FirstOrDefault(key.Marks.Contains);
+    }
 
     /// <summary>Each axis against its enumeration: a value is generated or carries its reason, never both, never neither; a
     /// generated value has a cell; and an axis read from the pool or a census is the image it says it is.</summary>
@@ -1998,37 +2385,112 @@ public sealed partial class ScopeMeaningDifferentialTests
 
         // dataclass-init
         var initCells = Route("dataclass-init").Select(c => (Case: c, Reader: c.Cell.Key!.Part<ScopeInitReader>()!.Value, Fit: c.Cell.Key.Part<ScopeInitFit>()!.Value, Order: c.Cell.Key.Part<Harness.Order>()!.Value,
-            Slot: c.Cell.Position is { } position ? ((ReadPosition Position, Harness.Nesting Nesting)?)(position, c.Cell.Key.Part<Harness.Nesting>() ?? Harness.Nesting.Direct) : null, Marks: Marks(c).ToHashSet(StringComparer.Ordinal))).ToList();
+            Slot: c.Cell.Position is { } position ? ((ReadPosition Position, Harness.Nesting Nesting)?)(position, c.Cell.Key.Part<Harness.Nesting>() ?? Harness.Nesting.Direct) : null, Marks: Marks(c).ToHashSet(StringComparer.Ordinal),
+            Placement: c.Cell.Key.Part<ScopeInitPlacement>() ?? ScopeInitPlacement.Apart, Projection: ProjectionOf(c.Cell.Key))).ToList();
+        var earlierAndLater = new[] { Harness.Order.Earlier, Harness.Order.Later };
+        string Where((ReadPosition Position, Harness.Nesting Nesting)? slot) => slot is { } placed ? $"at {placed.Position}/{placed.Nesting}" : "as a declaration";
+        // One cell at each slot owed and none elsewhere, at each order owed.
+        void Product(string what, IEnumerable<(ReadPosition Position, Harness.Nesting Nesting)?> cells, IReadOnlyList<(ReadPosition Position, Harness.Nesting Nesting)?> owed)
+        {
+            var at = cells.ToList();
+            foreach (var slot in owed.Where(o => at.Count(a => Nullable.Equals(a, o)) != 1))
+                problems.Add($"dataclass-init: {what} has {at.Count(a => Nullable.Equals(a, slot))} cells {Where(slot)}, and one is owed");
+            foreach (var stray in at.Where(a => !owed.Contains(a)).Distinct())
+                problems.Add($"dataclass-init: {what} has a cell {Where(stray)}, where the reader does not stand");
+        }
+        List<(ReadPosition Position, Harness.Nesting Nesting)?> SlotsOf(InitRead read, IReadOnlyList<(ReadPosition Position, Harness.Nesting Nesting)> expression)
+            => read.Shows == null ? expression.Select(s => ((ReadPosition Position, Harness.Nesting Nesting)?)s).ToList() : new List<(ReadPosition Position, Harness.Nesting Nesting)?> { null };
+
         Partition("dataclass-init × reader", Enum.GetValues<ScopeInitReader>(), InitReaders.Keys, ExcludedInitReaders.Keys);
         Carried("dataclass-init", InitReaders.Keys, Part<ScopeInitReader>);
-        Partition("dataclass-init × reader × fit", InitReaders.Keys.SelectMany(r => Enum.GetValues<ScopeInitFit>().Select(f => (Reader: r, Fit: f))), initCells.Select(c => (c.Reader, c.Fit)), ExcludedInitFits.Keys);
+        var matrix = initCells.Where(c => c.Placement == ScopeInitPlacement.Apart && c.Projection == null).ToList();
+        Partition("dataclass-init × reader × fit", InitReaders.Keys.SelectMany(r => Enum.GetValues<ScopeInitFit>().Select(f => (Reader: r, Fit: f))), matrix.Select(c => (c.Reader, c.Fit)), ExcludedInitFits.Keys);
         Partition("dataclass-init × site", Enum.GetValues<ScopeKind>(), DataclassSites.Keys, ExcludedDataclassScopes.Keys);
         Partition("dataclass-init × host", Enum.GetValues<TypeKind>(), DataclassHosts, ExcludedDataclassHosts.Keys);
         Partition("dataclass-init × option", typeof(DataclassOptions).GetProperties(BindingFlags.Public | BindingFlags.Instance).Select(p => p.Name), Array.Empty<string>(), ExcludedDataclassOptions.Keys);
-        foreach (var empty in DataclassSites.Where(e => e.Value.Length == 0).Select(e => e.Key))
-            problems.Add($"dataclass-init × site: {empty} is listed with no site");
+        foreach (var empty in DataclassSites.Where(e => !e.Value.Any(site => !site.Projected)).Select(e => e.Key))
+            problems.Add($"dataclass-init × site: {empty} is listed with no site of the matrix");
         if (InitReaderSlots.Count == 0)
             problems.Add("dataclass-init × slot: the typed-read set has no reader of a module function, so a reader that is an expression stands nowhere");
-        // The product: every pair that has cells, at every site, at both orders; an expression at every slot, a declaration at none.
-        foreach (var pair in initCells.Select(c => (c.Reader, c.Fit)).Distinct())
+        // The matrix: every pair that has cells, at every site that is not projected, at both orders; an expression at every slot, a declaration at none.
+        foreach (var pair in matrix.Select(c => (c.Reader, c.Fit)).Distinct())
         {
-            var slots = InitReaders[pair.Reader].Shows == null ? InitReaderSlots.Select(s => ((ReadPosition Position, Harness.Nesting Nesting)?)s).ToList() : new List<(ReadPosition Position, Harness.Nesting Nesting)?> { null };
-            foreach (var site in AllDataclassSites())
+            foreach (var site in AllDataclassSites().Where(s => !s.Projected))
             {
-                foreach (var order in new[] { Harness.Order.Earlier, Harness.Order.Later })
+                foreach (var order in earlierAndLater)
                 {
-                    var at = initCells.Where(c => c.Reader == pair.Reader && c.Fit == pair.Fit && c.Order == order && c.Marks.Contains(site.Label)).Select(c => c.Slot).ToList();
-                    string Where((ReadPosition Position, Harness.Nesting Nesting)? slot) => slot is { } placed ? $"at {placed.Position}/{placed.Nesting}" : "as a declaration";
-                    foreach (var slot in slots.Where(owed => at.Count(a => Nullable.Equals(a, owed)) != 1))
-                        problems.Add($"dataclass-init: {pair.Reader} {pair.Fit} at the {site.Label} site, {order}, has {at.Count(a => Nullable.Equals(a, slot))} cells {Where(slot)}, and one is owed");
-                    foreach (var stray in at.Where(a => !slots.Contains(a)).Distinct())
-                        problems.Add($"dataclass-init: {pair.Reader} {pair.Fit} at the {site.Label} site, {order}, has a cell {Where(stray)}, where the reader does not stand");
+                    Product($"{pair.Reader} {pair.Fit} at the {site.Label} site, {order},",
+                        matrix.Where(c => c.Reader == pair.Reader && c.Fit == pair.Fit && c.Order == order && c.Marks.Contains(site.Label)).Select(c => c.Slot), SlotsOf(InitReaders[pair.Reader], InitReaderSlots));
                 }
             }
         }
+        foreach (var stray in matrix.Where(c => c.Order is not (Harness.Order.Earlier or Harness.Order.Later)))
+            problems.Add($"dataclass-init: {stray.Case.Cell.Id} is the matrix's and stands at {stray.Order}");
+
+        // The projected axes: each enumeration is the matrix's own value, the projected ones and the ones excluded whole.
+        Partition("dataclass-init × base", Enum.GetValues<ScopeDataclassBase>(), DataclassBases.Keys.Append(ScopeDataclassBase.None), ExcludedDataclassBases.Keys);
+        Partition("dataclass-init × field default", Enum.GetValues<ScopeFieldDefault>(), FieldDefaults.Keys.Append(ScopeFieldDefault.None), Array.Empty<ScopeFieldDefault>());
+        Partition("dataclass-init × reference slot", Enum.GetValues<ScopeReferenceSlot>(), ReferenceSlots.Keys.Append(ScopeReferenceSlot.Parameter), Array.Empty<ScopeReferenceSlot>());
+        Partition("dataclass-init × through", Enum.GetValues<ScopeInitThrough>(), InitThroughs.Keys.Append(ScopeInitThrough.Itself), Array.Empty<ScopeInitThrough>());
+        Partition("dataclass-init × name", Enum.GetValues<ScopeDataclassName>(), DataclassNames.Keys.Append(ScopeDataclassName.Declared), ExcludedDataclassNames.Keys);
+        // A projection: every reader it has a program for, under every fit the matrix leaves, is a cell or carries its reason;
+        // and each one that is a cell stands at both orders, an expression at the projected slot.
+        foreach (var slot in ProjectedSlots.Concat(EnclosedSlots).Append(OtherDataclassSlot).Where(s => !InitReaderSlots.Contains(s)))
+            problems.Add($"dataclass-init × slot: {slot.Position}/{slot.Nesting} is no slot of the matrix, which is what holds the slot axis");
+        foreach (var slot in EnclosedSlots.Where(s => ModulePlacedPositions.Contains(s.Position) || Harness.HostHeader(s.Position) != "class H:"))
+            problems.Add($"dataclass-init × slot: {slot.Position}/{slot.Nesting} is no member of a plain class, which is what the enclosing type is");
+        foreach (var p in InitProjections)
+        {
+            var cells = initCells.Where(c => c.Placement == ScopeInitPlacement.Apart && Equals(c.Projection, p.Value)).ToList();
+            if (cells.Count == 0)
+                problems.Add($"dataclass-init × {p.Value}: the value is listed as projected and no cell carries it");
+            Partition($"dataclass-init × {p.Value} × reader × fit",
+                p.Readers.Keys.SelectMany(r => Enum.GetValues<ScopeInitFit>().Select(f => (Reader: r, Fit: f))).Where(pair => !ExcludedInitFits.ContainsKey(pair)),
+                cells.Select(c => (c.Reader, c.Fit)), ExcludedProjections.Keys.Where(k => Equals(k.Value, p.Value)).Select(k => (k.Reader, k.Fit)));
+            foreach (var pair in cells.Select(c => (c.Reader, c.Fit)).Distinct())
+            {
+                foreach (var order in earlierAndLater)
+                    Product($"{pair.Reader} {pair.Fit} under {p.Value}, {order},", cells.Where(c => c.Reader == pair.Reader && c.Fit == pair.Fit && c.Order == order).Select(c => c.Slot), SlotsOf(p.Readers[pair.Reader], ProjectedSlots));
+            }
+            foreach (var stray in cells.Where(c => c.Order is not (Harness.Order.Earlier or Harness.Order.Later) || !c.Marks.Contains(p.Site)))
+                problems.Add($"dataclass-init: {stray.Case.Cell.Id} is projected under {p.Value}, at the {p.Site} site and the two orders, and stands elsewhere");
+        }
+        foreach (var orphan in ExcludedProjections.Keys.Where(k => !InitProjections.Any(p => Equals(p.Value, k.Value))))
+            problems.Add($"dataclass-init: an exclusion names {orphan.Value}, which is no projected value");
+
+        // The placements: where the reader stands, each reader a cell there or excluded with its reason.
+        Partition("dataclass-init × placement", Enum.GetValues<ScopeInitPlacement>(), initCells.Select(c => c.Placement), ExcludedInitPlacements.Keys);
+        var placed = initCells.Where(c => c.Placement != ScopeInitPlacement.Apart).ToList();
+        Partition("dataclass-init × placement × reader", placed.Select(c => c.Placement).Distinct().SelectMany(p => InitReaders.Keys.Select(r => (Placement: p, Reader: r))),
+            placed.Select(c => (c.Placement, c.Reader)), ExcludedPlacementReaders.Keys);
+        foreach (var group in placed.GroupBy(c => (c.Placement, c.Reader)))
+        {
+            var orders = group.Key.Placement == ScopeInitPlacement.OtherDataclass ? OtherDataclassOrders : earlierAndLater;
+            var owed = group.Key.Placement == ScopeInitPlacement.OtherDataclass
+                ? new List<(ReadPosition Position, Harness.Nesting Nesting)?> { OtherDataclassSlot }
+                : SlotsOf(InitReaders[group.Key.Reader], EnclosedSlots);
+            foreach (var fit in Enum.GetValues<ScopeInitFit>().Where(f => !ExcludedInitFits.ContainsKey((group.Key.Reader, f))))
+            {
+                foreach (var order in orders)
+                    Product($"{group.Key.Reader} {fit} placed {group.Key.Placement}, {order},", group.Where(c => c.Fit == fit && c.Order == order).Select(c => c.Slot), owed);
+            }
+            foreach (var stray in group.Where(c => !orders.Contains(c.Order)))
+                problems.Add($"dataclass-init: {stray.Case.Cell.Id} is placed {group.Key.Placement} and stands at {stray.Order}");
+        }
+        // A ring is a reader in another dataclass that the dataclass reads back: the one order no other placement has.
+        foreach (var ring in initCells.Where(c => c.Order == Harness.Order.Cycle && c.Placement != ScopeInitPlacement.OtherDataclass))
+            problems.Add($"dataclass-init: {ring.Case.Cell.Id} stands in a ring and is no reader in another dataclass");
         // A read that does not fit names the one code its control carries, and a read that fits names none.
         foreach (var c in initCells.Where(c => (c.Fit == ScopeInitFit.Misfits) != (c.Case.Cell.SeedRefusalCodes is { Count: 1 })))
             problems.Add($"dataclass-init: {c.Case.Cell.Id} {(c.Fit == ScopeInitFit.Misfits ? "does not fit and names no one code its refusal carries" : "fits and names a refusal")}");
+        // A cell at another order than the first has its control, the same read with the dataclass declared first: what says
+        // whether its red is the order's.
+        var initIds = initCells.Select(c => c.Case.Cell.Id).ToHashSet(StringComparer.Ordinal);
+        foreach (var c in initCells.Where(c => InitControlId(c.Case.Cell) is { } control && !initIds.Contains(control)))
+            problems.Add($"dataclass-init: {c.Case.Cell.Id} has no control with the dataclass declared first, which is what says whether its red is the order's");
+        // A twin is python running the program: where the dataclass stands first, or the reader is a method's body.
+        foreach (var c in initCells.Where(c => c.Case.Twin && c.Order == Harness.Order.Later))
+            problems.Add($"dataclass-init: {c.Case.Cell.Id} is a twin with its reader above the dataclass, where python has no such program for a reader that is a declaration");
 
         // lambda-default
         var lambdaDefaults = Route("lambda-default").ToList();
@@ -2097,6 +2559,7 @@ public sealed partial class ScopeMeaningDifferentialTests
             .Concat(ExcludedOwnSpellings.Values).Concat(ExcludedOwnPlacements.Values).Concat(ExcludedEnumSpellings.Values).Concat(ExcludedImportKinds.Values)
             .Concat(ExcludedBuiltinReceivers.Values).Concat(ExcludedLambdaUses.Values).Concat(ExcludedLambdaDefaultPositions.Values)
             .Concat(ExcludedInitReaders.Values).Concat(ExcludedInitFits.Values).Concat(ExcludedDataclassScopes.Values).Concat(ExcludedDataclassHosts.Values).Concat(ExcludedDataclassOptions.Values).Concat(ExcludedDataclassBases.Values)
+            .Concat(ExcludedProjections.Values).Concat(ExcludedDataclassNames.Values).Concat(ExcludedInitPlacements.Values).Concat(ExcludedPlacementReaders.Values)
             .Concat(AllConstantHosts().SelectMany(h => Enum.GetValues<Harness.Spelling>().Select(sp => OwnSpellingSkips(h.Host, sp, inside: true))).Where(r => r != null).Select(r => r!))
             .Concat(ExcludedAliasShapeProperties.Values).Concat(ExcludedOrders.Values.SelectMany(o => o.Values))
             .Concat(ExcludedConstScopes.Values).Concat(ExcludedConstTypeHosts.Values).Concat(ExcludedConstantReaders.Values).Concat(ExcludedClrTypeMemberShapes.Values)

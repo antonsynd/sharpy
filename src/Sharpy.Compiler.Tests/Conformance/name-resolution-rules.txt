@@ -279,7 +279,10 @@ MustRefuse SPY0425 family=Read route=constant-kind admission=DecoratorArgument c
 MustRun N1 family=Read route=init-overload
 # The `__init__` a `@dataclass` synthesizes is read whatever the order (D2; the owner's ruling 30, #2423 comment 7179278898): a
 # read that fits what it takes runs with the dataclass above its reader and below it, and one that does not is the checker's
-# refusal at both, under the code the earlier-declared control carries (the cell names it).
+# refusal at both, under the code the earlier-declared control carries (the cell names it). The two rows hold every shape of
+# the set (ruling 35, comment 7181238911): a ring of two dataclasses (order=Cycle), a base with a parameterless `__init__`,
+# a defaulted field, each typed slot a reference is handed to, a generic or twice-nested dataclass, a read through a
+# deriving type or an alias, and a reader inside the enclosing type. None of them changes what must run.
 MustRun N1 family=Read route=dataclass-init initFit=Fits
 MustRefuse N1-typed-read family=Read route=dataclass-init initFit=Misfits
 # A parameter default at a type body's level is evaluated in the type body, a lambda's as a `def`'s (D4; the owner's ruling 19):
