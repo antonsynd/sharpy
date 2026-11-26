@@ -2228,7 +2228,9 @@ public sealed partial class ScopeMeaningDifferentialTests
     /// method of the deriving class is two (the owner's ruling 40): <c>__ne__</c> reads <c>__eq__</c>, and <c>__str__</c>
     /// reads <c>__hash__</c> and <c>__repr__</c>. <c>__eq__</c> and <c>__hash__</c> are redefined without <c>@override</c>,
     /// which the specification makes implicit for them and python's own spelling; <c>__repr__</c> is redefined both ways,
-    /// and without <c>@override</c> its cell is red with the dataclass declared first (#2802, which this plan closes:
+    /// and without <c>@override</c> it must run by the owner's ruling 44 (#2423 comment 7201023158: exempt as
+    /// <c>__str__</c> is), where the specification's exempt lists name <c>__str__</c>, <c>__eq__</c> and <c>__hash__</c>
+    /// until #2802's fix. That cell is red with the dataclass declared first (#2802, which this plan closes:
     /// <see cref="ControlsThePlanCloses"/>).</summary>
     internal static readonly IReadOnlyDictionary<(ScopeDataclassMember Member, ScopeMemberRead Read), MemberRead> MemberReads = new Dictionary<(ScopeDataclassMember, ScopeMemberRead), MemberRead>
     {
@@ -2255,7 +2257,9 @@ public sealed partial class ScopeMeaningDifferentialTests
         [(ScopeDataclassMember.Repr, ScopeMemberRead.Used)] = new("def r() -> str:\n    return repr(DC(5))", "r()", "DC(v=5)", WhenCalled: true),
         [(ScopeDataclassMember.Repr, ScopeMemberRead.CalledByName)] = new("def r() -> str:\n    return DC(5).__repr__()", "r()", Refusal: "SPY0427"),
         [(ScopeDataclassMember.Repr, ScopeMemberRead.RedefinedWithOverride)] = new(WithOverride(RedefinesRepr), "repr(D(5))", "D"),
-        // Must run, by the specification (dunder_methods.md) and in python: red with the dataclass declared first (#2802).
+        // Must run, by the owner's ruling 44 (#2423 comment 7201023158: `__repr__` is exempt as `__str__` is), which the
+        // specification's exempt lists do not say until #2802's fix; python prints `D` and has no rule on `@override`.
+        // Red with the dataclass declared first (#2802).
         [(ScopeDataclassMember.Repr, ScopeMemberRead.RedefinedWithoutOverride)] = new(RedefinesRepr, "repr(D(5))", "D"),
         [(ScopeDataclassMember.Repr, ScopeMemberRead.CalledThroughSuper)] = new(ReprThroughSuper, "repr(D(5))", "v=5)"),
         [(ScopeDataclassMember.Repr, ScopeMemberRead.CalledThroughSuperInAnotherDunder)] = new(StrThroughSuperRepr, "str(D(5))", "v=5)"),

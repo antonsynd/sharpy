@@ -11,7 +11,8 @@
 # to no issue (UNROUTED), and the value is owed an exclusion. One exception, by cell id
 # (ScopeMeaningDifferentialTests.ControlsThePlanCloses; the owner's ruling 41, #2423 comment 7198842844): a control the
 # plan closes on an issue of its own is that issue's row. `__repr__` redefined without `@override` under a dataclass
-# declared first is #2802's.
+# declared first is #2802's: it must run by the owner's ruling 44 (#2423 comment 7201023158), which the specification's
+# exempt lists (`__str__`, `__eq__`, `__hash__`) do not say until #2802's fix.
 # A row whose cell passes fails the test until it is deleted.
 # `wrong-code` is a must-refuse cell refused under a code its cell does not admit. The sweep writes the rows it would
 # list to .claude/tmp/scope-meaning-differential-proposed-allowlist.txt.

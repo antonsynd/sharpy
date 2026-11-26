@@ -185,8 +185,12 @@ internal enum ScopeInitFit
 /// of PR #2798). A literal set, the shapes measured: nothing; a class that is no dataclass and declares no <c>__init__</c>,
 /// one whose <c>__init__</c> takes no argument, one whose <c>__init__</c> takes one; a dataclass, which stands above the
 /// reader at both orders while the dataclass deriving from it moves; an interface; an <c>@abstract</c> class; a constructed
-/// generic class; and a CLR class (<c>Exception</c>). Each is generated under every reader (the owner's ruling 40, #2423
-/// comment 7198842844) but the base whose <c>__init__</c> takes an argument, which ruling 33 refuses. The four that add no
+/// generic class; and a CLR class (<c>Exception</c>). Each is generated (the owner's ruling 40, #2423 comment 7198842844)
+/// but the base whose <c>__init__</c> takes an argument, which ruling 33 refuses, and a generated one under every reader
+/// but one: over the base whose <c>__init__</c> takes no argument, <c>super().__init__</c> in a class deriving from the
+/// dataclass has no cell at either fit, because it is bound to the base's <c>__init__</c> past the dataclass's own
+/// wherever the dataclass stands (#2508's class:
+/// <see cref="ScopeMeaningDifferentialTests.ExcludedProjections"/>). The four that add no
 /// field and no initializer carry the verdicts of the cells with no base; under <c>Exception</c>, as under a class with an
 /// <c>__init__</c> and under a dataclass, a class that forwards to the dataclass from above it does not run (the third
 /// review of PR #2798). The compiler has no enumeration of what a class derives from, so a base named nowhere here has no
@@ -330,9 +334,12 @@ internal enum ScopeDataclassMember
 
 /// <summary>How a program reads a generated member that is no <c>__init__</c> (ruling 37). A literal set, the shapes
 /// measured: through the operator or builtin that calls it (<c>==</c>, <c>hash()</c>, <c>repr()</c>); by its own name;
-/// redefined in a deriving class, with <c>@override</c> and without (the specification makes <c>@override</c> optional for
-/// the three; <c>__repr__</c> without it is refused with the dataclass declared first, which is #2802's and this plan's to
-/// close: <see cref="ScopeMeaningDifferentialTests.ControlsThePlanCloses"/>); from the third review of PR #2798, the reads
+/// redefined in a deriving class, with <c>@override</c> and without (the specification makes <c>@override</c> implicit for
+/// <c>__eq__</c> and <c>__hash__</c>, and the owner's ruling 44, #2423 comment 7201023158, for <c>__repr__</c> as for
+/// <c>__str__</c>: the specification's exempt lists name three, <c>__str__</c>, <c>__eq__</c> and <c>__hash__</c>, until
+/// #2802's fix adds it; <c>__repr__</c> without it is refused with the dataclass declared first, which is #2802's and this
+/// plan's to close: <see cref="ScopeMeaningDifferentialTests.ControlsThePlanCloses"/>); from the third review of PR
+/// #2798, the reads
 /// that need the member from the checker: through <c>super()</c> in a deriving class's redefinition, and <c>==</c> against
 /// an operand of another type, one that derives from the dataclass and an <c>object</c>, unequal (a cell) and equal
 /// (#2804's, with no cell); and, by the owner's ruling 40 (#2423 comment 7198842844), from another dunder method of a
@@ -1090,7 +1097,8 @@ public sealed partial class ScopeMeaningDifferentialTests : IntegrationTestBase
     /// A read of a member <c>@dataclass</c> generates beside <c>__init__</c>, with the dataclass above its reader and below it
     /// (the owner's ruling 37, #2423 comment 7183929991, which widens D2's clause to the generated members). The checker adds
     /// them where it adds the <c>__init__</c>, so a reader above the dataclass that needs one from the checker finds none
-    /// (measured @ 28f10cd51): <c>super().__eq__</c>, <c>super().__hash__</c> and <c>super().__repr__</c> in a deriving
+    /// (each reading measured in the round that added it, the reads of ruling 40 last; the compiler's code @ 28f10cd51
+    /// throughout): <c>super().__eq__</c>, <c>super().__hash__</c> and <c>super().__repr__</c> in a deriving
     /// class's redefinition are SPY0203 there, and so is the member read from another dunder method of the deriving class,
     /// through <c>self</c> or <c>super()</c>; <c>==</c> against an operand of a deriving type or an unequal <c>object</c> is
     /// SPY0222; a member called by its name is SPY0427 below the dataclass and SPY0203 beside SPY0427 above it. Those reads
@@ -1099,12 +1107,18 @@ public sealed partial class ScopeMeaningDifferentialTests : IntegrationTestBase
     /// The other reads are controls, and guard no order (the third review of PR #2798): <c>==</c> between two of the
     /// dataclass, <c>hash()</c>, <c>repr()</c> and a redefinition that calls nothing of the base's need no member from the
     /// checker, so they run above the dataclass as below it today and pin what the emitted program prints, at both orders.
+    /// One of them does not: <c>__repr__</c> redefined without <c>@override</c> runs above the dataclass and is refused
+    /// below it (the next paragraph).
     ///
     /// The rule is the <c>dataclass-init</c> set's: a cell does what its control does, the same program with the dataclass
     /// declared first. That rule is why <c>==</c> against an equal <c>object</c> has no cell (its control prints what python
     /// does not: #2804) and why a <c>__str__</c> that calls <c>self.__repr__()</c> has none (its control dies at run time:
     /// #2057). One control is red and a cell all the same: <c>__repr__</c> redefined without <c>@override</c> must run, by
-    /// the specification and in python, and is SPY0248 with the dataclass declared first. That is #2802's, which this plan
+    /// the owner's ruling 44 (#2423 comment 7201023158: exempt as <c>__str__</c> is, implicitly an override at any depth),
+    /// and is SPY0248 with the dataclass declared first. The specification does not say so yet: its exempt lists
+    /// (dunder_invocation_rules.md, dotnet_interop.md) name <c>__str__</c>, <c>__eq__</c> and <c>__hash__</c>, and change
+    /// with #2802's fix. Python is the twin of what the program prints (<c>D</c>) and no vote on the refusal: it has no
+    /// rule that asks for <c>@override</c>. The red is #2802's, which this plan
     /// closes (the owner's ruling 41, #2423 comment 7198842844), so its row cites #2802 and no order
     /// (<see cref="ControlsThePlanCloses"/>). A redefinition of <c>__eq__</c> redefines <c>__hash__</c> with it, and the
     /// reverse, so that no cell rests on how the pairing rule reads an inherited half (dunder_methods.md; #2803).
@@ -1376,7 +1390,9 @@ public sealed partial class ScopeMeaningDifferentialTests : IntegrationTestBase
     /// closes that issue too, so the cell is generated with the right verdict and its row cites that issue, where any other
     /// red control is no row's (<see cref="NoOrderAtFault"/>). The exception is the control's alone: the same read at
     /// another order keeps the rule, and is no row's while its control is red. One today: <c>__repr__</c> redefined without
-    /// <c>@override</c> in a class deriving from a dataclass, SPY0248 with the dataclass declared first (#2802).</summary>
+    /// <c>@override</c> in a class deriving from a dataclass, SPY0248 with the dataclass declared first (#2802). It must run
+    /// by the owner's ruling 44 (#2423 comment 7201023158), not yet by the specification, whose exempt lists gain
+    /// <c>__repr__</c> with #2802's fix.</summary>
     internal static readonly IReadOnlyDictionary<string, string> ControlsThePlanCloses = new Dictionary<string, string>(StringComparer.Ordinal)
     {
         [Key("read", DataclassMemberRoute, ScopeDataclassMember.Repr, ScopeMemberRead.RedefinedWithoutOverride, ScopeInitFit.Fits, Harness.Order.Earlier).Text] = "#2802",

@@ -297,8 +297,10 @@ MustRefuse N1-typed-read family=Read route=written-init initFit=Misfits
 # a read through `==`, `hash()` or `repr()`, a redefinition with `@override` or without it, a call by name from a dunder
 # method of a deriving class (through `super()` or `self`; ruling 40) and `==` against an operand of a deriving type or an
 # unequal `object` run at both orders; a member called by its own name from anywhere else is refused at both under the
-# control's code. `__repr__` redefined without `@override` runs too, and is refused today with the dataclass declared
-# first: #2802's defect, which this plan closes (ruling 41, the same comment as ruling 40). Two reads have no cell, since
+# control's code. `__repr__` redefined without `@override` runs too, by the owner's ruling 44 (#2423 comment 7201023158:
+# exempt as `__str__` is; the specification's exempt lists name `__str__`, `__eq__` and `__hash__` until the fix), and is
+# refused today with the dataclass declared first: #2802's defect, which this plan closes (ruling 41, the same comment as
+# ruling 40). Two reads have no cell, since
 # the form with the dataclass declared first is a defect another issue holds: `==` against an equal `object` (#2804) and a
 # `__str__` that calls `self.__repr__()` (#2057).
 MustRun N1 family=Read route=dataclass-member initFit=Fits
