@@ -295,8 +295,8 @@ MustRefuse N1-typed-read family=Read route=written-init initFit=Misfits
 # a read through `==`, `hash()` or `repr()`, a redefinition with `@override` or (`__eq__` with `__hash__`) without it, a
 # call through `super()` in a redefinition and `==` against an operand of a deriving type run at both orders; a member
 # called by its own name is refused at both under the control's code. Two reads have no cell, since the form with the
-# dataclass declared first is the defect: `__repr__` redefined without `@override` (#2802) and `==` against an `object`
-# (#2804).
+# dataclass declared first is the defect: `__repr__` redefined without `@override` (#2802) and `==` against an equal
+# `object` (#2804). Against an unequal `object` that form is right, and the read is not generated.
 MustRun N1 family=Read route=dataclass-member initFit=Fits
 MustRefuse N1-typed-read family=Read route=dataclass-member initFit=Misfits
 # A parameter default at a type body's level is evaluated in the type body, a lambda's as a `def`'s (D4; the owner's ruling 19):

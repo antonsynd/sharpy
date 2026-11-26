@@ -1746,9 +1746,11 @@ public sealed partial class ScopeMeaningDifferentialTests
 
     /// <summary>The bases with cells. Over a dataclass, <c>G</c>, the base stands first at both orders and the deriving
     /// dataclass is the declaration that moves: its <c>__init__</c> takes the base's field, which a cell prints, and its own.
-    /// A CLR class (<c>Exception</c>) adds no field either, and is generated because one reader's verdict under it is no
-    /// other base's (the third review of PR #2798): a class that forwards to the dataclass, above it, runs with no base and
-    /// does not over <c>Exception</c>.</summary>
+    /// A CLR class (<c>Exception</c>) adds no field either, and is generated because one reader's verdict under it differs
+    /// from the one with no base and under the four bases excluded as adding nothing (the third review of PR #2798): a class
+    /// that forwards to the dataclass, above it, runs there and does not over <c>Exception</c>. The verdict is not
+    /// <c>Exception</c>'s alone: the same read does not run over a class with an <c>__init__</c> or over a dataclass, the two
+    /// other bases with cells.</summary>
     internal static readonly IReadOnlyDictionary<ScopeDataclassBase, InitShape> DataclassBases = new Dictionary<ScopeDataclassBase, InitShape>
     {
         [ScopeDataclassBase.PlainWithInit] = new(BaseWithInit + "@dataclass\nclass DC(G):\n    v: int", "DC", "SPY0342", Twin: true),
@@ -2048,9 +2050,9 @@ public sealed partial class ScopeMeaningDifferentialTests
         [ScopeInitReader.InheritedFields] = ABaseInitWithParametersIsRefused,
     };
 
-    private const string AForwardedConstructionIsUnchecked = "a class that derives from one with a written `__init__` and declares none is constructed unchecked: handed a `str` for the `int` (`D(\"a\")`) it is SPY0908 CS1503 with the class above the deriving one as below it, where the class itself is SPY0220. The misfit has no refusing control, so no order is at fault, and #2021 holds the cell (its comment 7185651052)";
+    private const string AForwardedConstructionIsUnchecked = "a class that derives from one with a written `__init__` and declares none is constructed unchecked: handed a `str` for the `int` (`D(\"a\")`) it is SPY0908 CS1503 with the class above the deriving one as below it, where the class itself is SPY0220. The misfit has no refusing control, so no order is at fault, and #2021 holds the cell (its comment 7185651052). The probe holds that form, over the `int` parameter. Handed a `str`, a deriving class over one whose parameter is a list, and one over a constructed generic class (`class D(DC[int])`), had the same pair of verdicts when the fourth review of PR #2798 ran them, and no probe holds that";
     private const string AForwardedArgumentHasNoParameterType = "an empty list handed through a class that derives from the one with the `__init__` and declares none (`D([])`) is SPY0227 with the class above the deriving one as below it: the argument gets no type from the inherited parameter at either order, so no order is at fault, and #2021 holds the cell (its comment 7185651052)";
-    private const string AMisfitOfTypeIsTheBaseCells = "an argument shape varies what a read that fits hands: the misfit of type is the base cell's, over the class whose parameter is an `int`. Handed another type, a list parameter repeats that cell, and a generic class takes the value as its type argument and fits (a misfit there has to spell the argument, `DC[int](\"a\")`, which is outside the star)";
+    private const string AMisfitOfTypeIsTheBaseCells = "an argument shape varies what a read that fits hands: the misfit of type is the base cell's, over the class whose parameter is an `int`. Handed a `str`, a list parameter repeats the base cell's pair of verdicts through a construction, a reference and `super().__init__`, and a generic class's parameter does through a reference (into a slot that takes a `str` and returns `DC[int]`) and through `super().__init__` (over `DC[int]`). A construction of the generic class is no misfit: it takes the value as its type argument and fits, so `DC(\"a\")` is the fitting cell's read with another value (a misfit there has to spell the argument, `DC[int](\"a\")`, which is outside the star). Each was measured once at both orders for the fourth review, and no probe holds it";
 
     /// <summary>The argument × reader × fit triples with no cell, total over the three with the triples a cell carries
     /// (<see cref="AxisProblems"/>).</summary>
@@ -2062,11 +2064,11 @@ public sealed partial class ScopeMeaningDifferentialTests
             [(ScopeInitArgument.EmptyList, ScopeInitReader.Construction, ScopeInitFit.Misfits)] = AMisfitOfTypeIsTheBaseCells,
             [(ScopeInitArgument.EmptyList, ScopeInitReader.ConstructorReference, ScopeInitFit.Misfits)] = AMisfitOfTypeIsTheBaseCells,
             [(ScopeInitArgument.EmptyList, ScopeInitReader.SuperInit, ScopeInitFit.Misfits)] = AMisfitOfTypeIsTheBaseCells,
-            [(ScopeInitArgument.EmptyList, ScopeInitReader.Forwarding, ScopeInitFit.Misfits)] = AMisfitOfTypeIsTheBaseCells,
+            [(ScopeInitArgument.EmptyList, ScopeInitReader.Forwarding, ScopeInitFit.Misfits)] = AForwardedConstructionIsUnchecked,
             [(ScopeInitArgument.TypeParameter, ScopeInitReader.Construction, ScopeInitFit.Misfits)] = AMisfitOfTypeIsTheBaseCells,
             [(ScopeInitArgument.TypeParameter, ScopeInitReader.ConstructorReference, ScopeInitFit.Misfits)] = AMisfitOfTypeIsTheBaseCells,
             [(ScopeInitArgument.TypeParameter, ScopeInitReader.SuperInit, ScopeInitFit.Misfits)] = AMisfitOfTypeIsTheBaseCells,
-            [(ScopeInitArgument.TypeParameter, ScopeInitReader.Forwarding, ScopeInitFit.Misfits)] = AMisfitOfTypeIsTheBaseCells,
+            [(ScopeInitArgument.TypeParameter, ScopeInitReader.Forwarding, ScopeInitFit.Misfits)] = AForwardedConstructionIsUnchecked,
         };
 
     // --- dataclass-member: member × read × order --- //
@@ -2095,10 +2097,15 @@ public sealed partial class ScopeMeaningDifferentialTests
     private const string PythonsDataclassIsUnhashable = "python's dataclass sets `__hash__` to None unless it is frozen: `hash()` of one, and `super().__hash__()` over one, are a TypeError";
 
     /// <summary>The reads, total over the generated members that are no <c>__init__</c> × <see cref="ScopeMemberRead"/> with
-    /// <see cref="ExcludedMemberReads"/>. A read through <c>super()</c> stands in the member's own redefinition, the one place
-    /// the specification lets a dunder be called by name; <c>__eq__</c> and <c>__hash__</c> are redefined without
-    /// <c>@override</c>, which the specification makes implicit for them and python's own spelling, and <c>__repr__</c>
-    /// with it (#2802).</summary>
+    /// <see cref="ExcludedMemberReads"/>. The specification lets a dunder be called by name inside any dunder method, as
+    /// <c>self.__other_dunder__()</c> and as <c>super().__dunder__()</c> (dunder_invocation_rules.md, its summary table). The
+    /// one such read with cells is through <c>super()</c> in the member's own redefinition. The cross-dunder reads have none:
+    /// <c>__ne__</c> through <c>self.__eq__(other)</c> and through <c>super().__eq__(other)</c>, and <c>__str__</c> through
+    /// <c>self.__hash__()</c> and through <c>super().__repr__()</c>, each ran with the dataclass above the deriving class and
+    /// was SPY0203 with it below when the fourth review of PR #2798 ran them. No probe holds that, and the list is open: any
+    /// dunder method of a deriving class may read any generated member so. <c>__eq__</c> and <c>__hash__</c> are redefined
+    /// without <c>@override</c>, which the specification makes implicit for them and python's own spelling, and
+    /// <c>__repr__</c> with it (#2802).</summary>
     internal static readonly IReadOnlyDictionary<(ScopeDataclassMember Member, ScopeMemberRead Read), MemberRead> MemberReads = new Dictionary<(ScopeDataclassMember, ScopeMemberRead), MemberRead>
     {
         [(ScopeDataclassMember.Eq, ScopeMemberRead.Used)] = new("def r() -> bool:\n    return DC(5) == DC(5)", "r()", "True", WhenCalled: true),
@@ -2130,7 +2137,7 @@ public sealed partial class ScopeMeaningDifferentialTests
     };
 
     private const string AnOperandIsEqualitysAlone = "an operand is `==`'s: `hash()` and `repr()` take none";
-    private const string AnObjectOperandIsComparedByReference = "#2804's class: against an operand typed `object` the generated `==` is reference equality. Over `o: object = DC(5)`, `DC(5) == o` prints `False` with the dataclass above the reader, where python prints `True`, and is SPY0222 with it below. The control is itself wrong, so the read has no cell: a cell does what its control does, and no row may pin `False` as right";
+    private const string AnObjectOperandIsComparedByReference = "#2804's class: against an operand typed `object` the generated `==` is reference equality. With equal operands (`o: object = DC(5)`, `DC(5) == o`) the read prints `False` with the dataclass above the reader, where python prints `True`, and is SPY0222 with it below. That form's control is itself wrong, so the form has no cell: a cell does what its control does, and no row may pin `False` as right. The form with an unequal operand (`o: object = DC(6)`) is not generated: its control prints `False` as python does, under either reading of #2804, and it is SPY0222 with the dataclass below, measured once with the fourth review of PR #2798 and held by no probe";
     private const string ARedefinedReprIsRefusedUnderTheDataclass = "#2802's class: `__repr__` redefined without `@override` in a class deriving from a dataclass is SPY0248 with the dataclass above the class and runs (`D`) with it below. The specification makes `@override` optional there (dunder_methods.md: `__repr__` is `ToString()` as `__str__` is, an implicit override of `System.Object`'s), `__str__` in the same place runs, and python prints `D`: the form that runs is the right one, and the refusal is red where the dataclass is declared first, so no order is at fault and no row may call the running form a missing refusal";
 
     /// <summary>The member × read pairs with no cell, total with <see cref="MemberReads"/> over the members it reads ×

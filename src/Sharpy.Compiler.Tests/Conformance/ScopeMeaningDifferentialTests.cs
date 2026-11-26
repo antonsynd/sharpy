@@ -185,9 +185,10 @@ internal enum ScopeInitFit
 /// of PR #2798). A literal set, the shapes measured: nothing; a class that is no dataclass and declares no <c>__init__</c>,
 /// one whose <c>__init__</c> takes no argument, one whose <c>__init__</c> takes one; a dataclass, which stands above the
 /// reader at both orders while the dataclass deriving from it moves; an interface; an <c>@abstract</c> class; a constructed
-/// generic class; and a CLR class (<c>Exception</c>), under which a class that forwards to the dataclass has a verdict no
-/// other base gives it (the third review of PR #2798). The compiler has no enumeration of what a class derives from, so a
-/// base named nowhere here has no cell.
+/// generic class; and a CLR class (<c>Exception</c>), under which a class that forwards to the dataclass has a verdict it
+/// has neither with no base nor under the four bases excluded as adding nothing (the third review of PR #2798; a class with
+/// an <c>__init__</c> and a dataclass give it that verdict too). The compiler has no enumeration of what a class derives
+/// from, so a base named nowhere here has no cell.
 /// <see cref="ScopeInitReader.InheritedFields"/> is the other half of a dataclass over a dataclass: there the generated
 /// dataclass is the base, and the deriving one is the reader.</summary>
 internal enum ScopeDataclassBase
@@ -302,7 +303,7 @@ internal enum ScopeDataclassMember
 /// the three; <c>__repr__</c> without it is #2802's, refused with the dataclass declared first, and has no cell); and, from
 /// the third review of PR #2798, the reads that need the member from the checker: through <c>super()</c> in a deriving
 /// class's redefinition, and <c>==</c> against an operand of another type, one that derives from the dataclass and
-/// <c>object</c> (#2804's, with no cell).</summary>
+/// <c>object</c> (with equal operands #2804's, with no cell; with unequal ones not generated).</summary>
 internal enum ScopeMemberRead
 {
     Used,
@@ -1023,9 +1024,11 @@ public sealed partial class ScopeMeaningDifferentialTests : IntegrationTestBase
     ///
     /// The rule is the <c>dataclass-init</c> set's: a cell does what its control does, the same program with the dataclass
     /// declared first. That rule is why <c>__repr__</c> redefined without <c>@override</c> has no cell (its control is the
-    /// form the specification and python disagree with: SPY0248, #2802) and why <c>==</c> against an <c>object</c> has none
-    /// (its control prints what python does not: #2804). A redefinition of <c>__eq__</c> redefines <c>__hash__</c> with it,
-    /// and the reverse, so that no cell rests on how the pairing rule reads an inherited half (dunder_methods.md; #2803).
+    /// form the specification and python disagree with: SPY0248, #2802) and why <c>==</c> against an equal <c>object</c> has
+    /// none (its control prints what python does not: #2804). Against an unequal <c>object</c> the control is right, and
+    /// that form is not generated: the rule does not exclude it. A redefinition of <c>__eq__</c> redefines <c>__hash__</c>
+    /// with it, and the reverse, so that no cell rests on how the pairing rule reads an inherited half (dunder_methods.md;
+    /// #2803).
     /// </summary>
     private static IEnumerable<Case> DataclassMemberCases()
     {
