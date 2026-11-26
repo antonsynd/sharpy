@@ -185,7 +185,9 @@ internal enum ScopeInitFit
 /// of PR #2798). A literal set, the shapes measured: nothing; a class that is no dataclass and declares no <c>__init__</c>,
 /// one whose <c>__init__</c> takes no argument, one whose <c>__init__</c> takes one; a dataclass, which stands above the
 /// reader at both orders while the dataclass deriving from it moves; an interface; an <c>@abstract</c> class; a constructed
-/// generic class. The compiler has no enumeration of what a class derives from, so a base named nowhere here has no cell.
+/// generic class; and a CLR class (<c>Exception</c>), under which a class that forwards to the dataclass has a verdict no
+/// other base gives it (the third review of PR #2798). The compiler has no enumeration of what a class derives from, so a
+/// base named nowhere here has no cell.
 /// <see cref="ScopeInitReader.InheritedFields"/> is the other half of a dataclass over a dataclass: there the generated
 /// dataclass is the base, and the deriving one is the reader.</summary>
 internal enum ScopeDataclassBase
@@ -198,6 +200,7 @@ internal enum ScopeDataclassBase
     Interface,
     AbstractClass,
     ConstructedGeneric,
+    ClrClass,
 }
 
 /// <summary>Whether the dataclass's field has a default, and what a read does about it (ruling 35). Closed: no default; a
@@ -215,7 +218,10 @@ internal enum ScopeFieldDefault
 /// argument, an annotated local, a module variable, an instance field, a return, a list element, a tuple element, a
 /// parameter whose function type returns the callee's own type parameter, and the same of a builtin (<c>map</c>); from the
 /// second review, a method's parameter, a constructor's, a local typed by an alias of the function type, a dict value, a
-/// <c>@static</c> field, a conditional's branch, a lambda's return and a re-assignment.</summary>
+/// <c>@static</c> field, a conditional's branch, a lambda's return and a re-assignment. Outside the list, named so that
+/// no one takes it for closed: the third review ran <c>append</c>, a subscript store, a lambda's argument, a nested
+/// <c>def</c>'s parameter, a property's default, <c>self.f =</c>, a set element and <c>yield</c>, each once and each with the
+/// listed slots' pair of verdicts. None has a cell, and no probe holds what it measured.</summary>
 internal enum ScopeReferenceSlot
 {
     Parameter,
@@ -291,16 +297,21 @@ internal enum ScopeDataclassMember
 }
 
 /// <summary>How a program reads a generated member that is no <c>__init__</c> (ruling 37). A literal set, the shapes
-/// measured: through the operator or builtin that calls it (<c>==</c>, <c>hash()</c>, <c>repr()</c>); by its own name; and
-/// redefined in a deriving class, with <c>@override</c> and without. Without it no member has a cell
-/// (<see cref="ScopeMeaningDifferentialTests.ExcludedMemberReads"/>): the specification makes <c>@override</c> optional for
-/// the three, and the one refusal today (<c>__repr__</c>, with the dataclass declared first) is #2802's.</summary>
+/// measured: through the operator or builtin that calls it (<c>==</c>, <c>hash()</c>, <c>repr()</c>); by its own name;
+/// redefined in a deriving class, with <c>@override</c> and without (the specification makes <c>@override</c> optional for
+/// the three; <c>__repr__</c> without it is #2802's, refused with the dataclass declared first, and has no cell); and, from
+/// the third review of PR #2798, the reads that need the member from the checker: through <c>super()</c> in a deriving
+/// class's redefinition, and <c>==</c> against an operand of another type, one that derives from the dataclass and
+/// <c>object</c> (#2804's, with no cell).</summary>
 internal enum ScopeMemberRead
 {
     Used,
     CalledByName,
     RedefinedWithOverride,
     RedefinedWithoutOverride,
+    CalledThroughSuper,
+    UsedAgainstADerivedOperand,
+    UsedAgainstAnObjectOperand,
 }
 
 /// <summary>
@@ -827,9 +838,12 @@ public sealed partial class ScopeMeaningDifferentialTests : IntegrationTestBase
     /// <summary>Whether python runs a cell's program with the same meaning: it has the shape and the read, and it binds the
     /// type's name before the read runs. A reader that is an expression is read when <c>main</c> calls its slot, or (an
     /// initializer) as the module loads, where the helper the reader hands its value to, which stands last, is not bound yet at
-    /// either order. A reader that is a declaration is read as the module loads unless it says otherwise. Measured, not
-    /// assumed: with python asked about every cell that must run, it ran these and no other (the sweep's python arm holds the
-    /// first half, <see cref="AxisProblems"/> the second).</summary>
+    /// either order. A reader that is a declaration is read as the module loads unless it says otherwise. The sweep holds
+    /// both halves: python is asked about every cell of <see cref="OrderFreeRoutes"/> that must run, a twin has to print
+    /// the model, and a cell declared no twin that python runs to the model is red (a false "no twin"). Two kinds of cell
+    /// are not put to python: one whose rendered twin is another program than python's own
+    /// (<see cref="NotPythonsProgram"/>), and one the twin renderer has no row for (<c>@override</c> among them), which
+    /// the sweep's report counts as unrendered.</summary>
     private static bool InitTwin(InitShape shape, InitRead r, Harness.Order order, (ReadPosition Position, Harness.Nesting Nesting)? slot)
         => shape.Twin && r.Python && (slot is not { } at || CalledSlots.Contains(at))
             // Above the type, every read of its name has to wait for `main`: a type that derives from it and stands with the
@@ -966,6 +980,12 @@ public sealed partial class ScopeMeaningDifferentialTests : IntegrationTestBase
     ///
     /// A star, as the owner said: the base cell is reader × fit × order over <see cref="ScopeInitArgument.Typed"/>, an
     /// expression at <see cref="ProjectedSlots"/>; an argument shape is varied alone, under the reads that fit.
+    ///
+    /// Outside the star, and named so that no one takes the set for closed (the third review of PR #2798 ran each once; none
+    /// has a cell, and no probe holds what it measured): an empty dict as the argument; a misfit of type that spells a
+    /// generic class's type argument (<c>DC[int]("a")</c>); a <c>struct</c> as the host; a nested class (<c>O.DC</c>); a reader
+    /// in a method or in a module initializer; a ring of two classes; a misfit of arity and an unknown keyword. The review
+    /// reports no verdict among them that a generated cell does not already carry.
     /// </summary>
     private static IEnumerable<Case> WrittenInitCases()
     {
@@ -992,11 +1012,20 @@ public sealed partial class ScopeMeaningDifferentialTests : IntegrationTestBase
     /// <summary>
     /// A read of a member <c>@dataclass</c> generates beside <c>__init__</c>, with the dataclass above its reader and below it
     /// (the owner's ruling 37, #2423 comment 7183929991, which widens D2's clause to the generated members). The checker adds
-    /// them where it adds the <c>__init__</c>, so a reader above the dataclass sees none (measured @ 28f10cd51: a member
-    /// called by its name is SPY0427 below the dataclass and SPY0203 beside SPY0427 above it). The rule is the
-    /// <c>dataclass-init</c> set's: a cell does what its control does, the same program with the dataclass declared first.
-    /// That rule is why <c>__repr__</c> redefined without <c>@override</c> has no cell: its control is the form the
-    /// specification and python disagree with (SPY0248, #2802), and the form above the dataclass, which runs, is the right one.
+    /// them where it adds the <c>__init__</c>, so a reader above the dataclass that needs one from the checker finds none
+    /// (measured @ 28f10cd51): <c>super().__eq__</c>, <c>super().__hash__</c> and <c>super().__repr__</c> in a deriving
+    /// class's redefinition are SPY0203 there; <c>==</c> against an operand of a deriving type is SPY0222; a member called by
+    /// its name is SPY0427 below the dataclass and SPY0203 beside SPY0427 above it. Those reads are the set's order cells.
+    ///
+    /// The other reads are controls, and guard no order (the third review of PR #2798): <c>==</c> between two of the
+    /// dataclass, <c>hash()</c>, <c>repr()</c> and a redefinition that calls nothing of the base's need no member from the
+    /// checker, so they run above the dataclass as below it today and pin what the emitted program prints, at both orders.
+    ///
+    /// The rule is the <c>dataclass-init</c> set's: a cell does what its control does, the same program with the dataclass
+    /// declared first. That rule is why <c>__repr__</c> redefined without <c>@override</c> has no cell (its control is the
+    /// form the specification and python disagree with: SPY0248, #2802) and why <c>==</c> against an <c>object</c> has none
+    /// (its control prints what python does not: #2804). A redefinition of <c>__eq__</c> redefines <c>__hash__</c> with it,
+    /// and the reverse, so that no cell rests on how the pairing rule reads an inherited half (dunder_methods.md; #2803).
     /// </summary>
     private static IEnumerable<Case> DataclassMemberCases()
     {
@@ -1004,13 +1033,16 @@ public sealed partial class ScopeMeaningDifferentialTests : IntegrationTestBase
         {
             foreach (var order in new[] { Harness.Order.Earlier, Harness.Order.Later })
             {
-                var lines = order == Harness.Order.Earlier ? new[] { ModuleDataclass, m.Reader } : new[] { m.Reader, ModuleDataclass };
+                var lines = (order == Harness.Order.Earlier ? new[] { ModuleDataclass, m.Reader } : new[] { m.Reader, ModuleDataclass }).ToList();
+                // Last, so below the dataclass at both orders: a type the reader names that is no part of what moves.
+                if (m.After != null)
+                    lines.Add(m.After);
                 bool fits = m.Refusal == null;
-                // A reader in a function's body is python's program at both orders; python has no `@override`, and its
-                // dataclass is unhashable unless frozen (MemberRead.Python).
+                // A reader in a function's body is python's program at both orders, unless the read says why python has
+                // none (MemberRead.NoTwin).
                 yield return Draft(Key("read", DataclassMemberRoute, member, read, fits ? ScopeInitFit.Fits : ScopeInitFit.Misfits, order), Family.Read,
                     Lines(lines) + Harness.MainPrinting(m.Shows, null), fits ? m.Prints : null, fits ? Array.Empty<string>() : new[] { m.Refusal! },
-                    twin: fits && m.Python && (order == Harness.Order.Earlier || m.WhenCalled), target: BindingKind.InstanceMethod);
+                    twin: fits && m.NoTwin == null && (order == Harness.Order.Earlier || m.WhenCalled), target: BindingKind.InstanceMethod);
             }
         }
     }
@@ -1255,6 +1287,23 @@ public sealed partial class ScopeMeaningDifferentialTests : IntegrationTestBase
     /// value an exclusion with its reason and probe first.</summary>
     internal const string NoOrderAtFault = "UNROUTED";
 
+    /// <summary>Why the twin renderer's program for a cell is not python's own, or null: such a cell is no twin whatever the
+    /// rendered program prints, and python is not asked about it. One kind today: a type alias that stands for its class
+    /// where the class is called (here handed to a function-typed slot, which calls it). The specification records the
+    /// deviation (type_aliases.md, "Transparency": an alias is its target in every position, call position included);
+    /// python's <c>type A = DC</c> makes a <c>TypeAliasType</c>, and calling it is a TypeError. The renderer writes the alias
+    /// as an assignment (<c>A = DC</c>), which runs and is another program.</summary>
+    internal static string? NotPythonsProgram(Case c)
+        => c.Cell.Key!.Part<ScopeDataclassName>() == ScopeDataclassName.Alias
+            ? "the specification records a deviation (type_aliases.md, Transparency): python's `type A = DC` is a TypeAliasType, which is not callable, and the renderer's `A = DC` is another program"
+            : null;
+
+    /// <summary>Whether the sweep puts a cell that is declared no twin to python all the same: every cell of
+    /// <see cref="OrderFreeRoutes"/> that must run, but one whose rendered program is not python's
+    /// (<see cref="NotPythonsProgram"/>). Python running it to the model says the declaration is false.</summary>
+    internal static bool AskedThoughNoTwin(Case c)
+        => !c.Twin && c.Cell.Tag == SharpyTag.MustRun && c.Cell.Key is { Route: { } route } && OrderFreeRoutes.Contains(route) && NotPythonsProgram(c) == null;
+
     /// <summary>The id of the control of a cell of <see cref="OrderFreeRoutes"/>, the same read with the type declared first, or
     /// null for a cell that is its own control or is no such cell.</summary>
     internal static string? InitControlId(NameCell cell)
@@ -1407,12 +1456,14 @@ public sealed partial class ScopeMeaningDifferentialTests : IntegrationTestBase
         var pool = GeneratedCases();
         var failures = TotalityFailures(pool);
 
-        // --- Python arm: one batch over the cells python runs with the same meaning. ---
+        // --- Python arm: one batch over the cells python runs with the same meaning, and over the cells of the order-free
+        // routes that say it does not (AskedThoughNoTwin): a "no twin" python runs to the model is a false one. ---
         var requests = new List<PyRequest>();
         var twinFailures = new Dictionary<int, string>();
+        var unrendered = new HashSet<int>();
         for (int i = 0; i < pool.Count; i++)
         {
-            if (!pool[i].Twin)
+            if (!pool[i].Twin && !AskedThoughNoTwin(pool[i]))
                 continue;
             try
             {
@@ -1420,10 +1471,20 @@ public sealed partial class ScopeMeaningDifferentialTests : IntegrationTestBase
             }
             catch (Exception ex) when (ex is NotSupportedException or InvalidOperationException)
             {
-                twinFailures[i] = $"renderer: {ex.Message}";
+                // No row of the renderer for the source: a twin has no program (a failure), and a cell that is none was not asked.
+                if (pool[i].Twin)
+                    twinFailures[i] = $"renderer: {ex.Message}";
+                else
+                    unrendered.Add(i);
             }
         }
         var pythonById = oracle.RunBatch(requests, PythonBatchTimeoutMs);
+        var asked = Enumerable.Range(0, pool.Count).Where(i => AskedThoughNoTwin(pool[i]) && !unrendered.Contains(i)).ToList();
+        foreach (int i in asked)
+        {
+            if (pythonById.TryGetValue(i, out var verdict) && Harness.ClassifyPython(verdict) == pool[i].Cell.Python)
+                failures.Add($"FalseNoTwin {pool[i].Cell.Id}: the cell is declared no twin, and python runs its rendered program and prints the modelled '{pool[i].Cell.Model}': make it a twin, or say why that program is not python's (NotPythonsProgram)");
+        }
 
         // --- Sharpy arm: production compile + execute, `run` and never `emit`. ---
         var results = new List<Result>(pool.Count);
@@ -1478,7 +1539,8 @@ public sealed partial class ScopeMeaningDifferentialTests : IntegrationTestBase
             red.OrderBy(r => r.Case.Cell.Id, StringComparer.Ordinal).Select(r => $"{r.Case.Cell.Id} {r.Class} # {ProposedCite(r, redIds)}"));
 
         var report = $"scope-meaning-differential: pool {pool.Count} ({pool.Count(c => c.Cell.Tag == SharpyTag.MustRun)} must-run, {pool.Count(c => c.Cell.Tag == SharpyTag.MustRefuse)} must-refuse), "
-            + $"python agreed {results.Count(r => r.Case.Twin && r.PythonFailure == null)}/{pool.Count(c => c.Twin)}, red {red.Count}, allowlist {rows.Count}, wall {wall.Elapsed.TotalSeconds:F1}s. "
+            + $"python agreed {results.Count(r => r.Case.Twin && r.PythonFailure == null)}/{pool.Count(c => c.Twin)}, declared no twin and asked {asked.Count} (unrendered {unrendered.Count}), "
+            + $"red {red.Count}, allowlist {rows.Count}, wall {wall.Elapsed.TotalSeconds:F1}s. "
             + string.Join(" ", results.GroupBy(r => r.Case.Cell.Key!.Route).Select(g => $"{g.Key}={g.Count()}/red {g.Count(r => IsRed(r.Class))}"))
             + " cites: " + string.Join(" ", rows.Values.GroupBy(r => r.Cite.Split(' ')[0]).OrderBy(g => g.Key, StringComparer.Ordinal).Select(g => $"{g.Key}={g.Count()}"));
         Output.WriteLine(report);

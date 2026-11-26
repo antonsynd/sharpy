@@ -229,14 +229,9 @@ public sealed partial class ScopeMeaningDifferentialTests
                 Prints(Ordered(ListTakingClass + "\n", "def r() -> int:\n    return DC([]).v\n", above: true, "r()"), "5"),
             },
         },
-        [ARedefinitionWithoutOverrideRuns] = Prints(Ordered(DataclassField, RedefinesEq + "\n", above: true, "D(5) == D(6)"), "True") with
+        [AnObjectOperandIsComparedByReference] = Prints(Ordered(DataclassField, AgainstAnObject + "\n", above: true, "r()"), "False") with
         {
-            Also = new[]
-            {
-                Prints(Ordered(DataclassField, RedefinesEq + "\n", above: false, "D(5) == D(6)"), "True"),
-                Prints(Ordered(DataclassField, RedefinesHash + "\n", above: true, "hash(D(5))"), "5"),
-                Prints(Ordered(DataclassField, RedefinesHash + "\n", above: false, "hash(D(5))"), "5"),
-            },
+            Also = new[] { Refuses(Ordered(DataclassField, AgainstAnObject + "\n", above: false, "r()"), "SPY0222") },
         },
         [ARedefinedReprIsRefusedUnderTheDataclass] = Refuses(Ordered(DataclassField, RedefinesRepr + "\n", above: true, "repr(D(5))"), "SPY0248") with
         {
@@ -1724,18 +1719,19 @@ public sealed partial class ScopeMeaningDifferentialTests
 
     // --- the projected axes: one value varied alone from the matrix's first --- //
 
-    private const string APlainBaseAddsNothing = "a base that is no dataclass and declares no `__init__` adds no field and no initializer: the synthesized `__init__` is the one the generated cells read, and its cells would be theirs again. A reference that fits runs with the dataclass above its reader and is SPY0342 with it below, as the generated cell is (#2423, which holds that cell)";
+    private const string OneReadIsHeld = "One read is held: a reference that fits runs with the dataclass above its reader and is SPY0342 with it below, as the generated cell is (#2423, which holds that cell). The other readers had the generated cells' verdicts under it when the reviews of PR #2798 ran them, and no probe holds that: a base under which a reader's verdict differs is owed its cells, as the CLR class's are";
+    private const string APlainBaseAddsNothing = "a base that is no dataclass and declares no `__init__` adds no field and no initializer, so the synthesized `__init__` takes what the generated cells' takes. " + OneReadIsHeld;
     private const string ABaseInitWithParametersIsRefused = "#2789's class, by the owner's ruling 33 (#2423 comment 7180845467): over a base whose `__init__` takes an argument the dataclass's declaration is to be refused, with a steer to write `__init__` by hand, so no read of it has a cell. Today the dataclass is SPY0908 CS7036 wherever it stands and whoever reads it, since its emitted constructor chains to a base constructor it hands nothing (rows 2 and 3 of #2423 comment 7171020757)";
 
     private const string AnInterface = "an interface";
     private const string AnAbstractClass = "an `@abstract` class with no field";
     private const string AConstructedGenericClass = "a constructed generic class with no field";
 
-    /// <summary>The plain base's reason, for a base of another kind that adds as little (the second review of PR #2798 ran each
-    /// under every reader, and each has the generated cells' verdicts): excluded as the plain base is, with its probe pair,
-    /// rather than generated, so that the four bases that add nothing stand alike and no row repeats a listed one.</summary>
+    /// <summary>The plain base's reason, for a base of another kind that adds as little: excluded as the plain base is, with
+    /// its probe pair, rather than generated, so that the four bases that add nothing stand alike and no row repeats a listed
+    /// one. The reason claims the one read its probe holds, and says the rest was measured and is not held.</summary>
     private static string ABaseAddsNothing(string what)
-        => $"{what} as the base adds no field and no initializer: the synthesized `__init__` is the one the generated cells read, and its cells would be theirs again. A reference that fits runs with the dataclass above its reader and is SPY0342 with it below, as the generated cell is (#2423, which holds that cell)";
+        => $"{what} as the base adds no field and no initializer, so the synthesized `__init__` takes what the generated cells' takes. {OneReadIsHeld}";
 
     /// <summary>The bases with no cell at all, total over <see cref="ScopeDataclassBase"/> with <see cref="DataclassBases"/> and
     /// the matrix's own value (no base).</summary>
@@ -1749,11 +1745,15 @@ public sealed partial class ScopeMeaningDifferentialTests
     };
 
     /// <summary>The bases with cells. Over a dataclass, <c>G</c>, the base stands first at both orders and the deriving
-    /// dataclass is the declaration that moves: its <c>__init__</c> takes the base's field, which a cell prints, and its own.</summary>
+    /// dataclass is the declaration that moves: its <c>__init__</c> takes the base's field, which a cell prints, and its own.
+    /// A CLR class (<c>Exception</c>) adds no field either, and is generated because one reader's verdict under it is no
+    /// other base's (the third review of PR #2798): a class that forwards to the dataclass, above it, runs with no base and
+    /// does not over <c>Exception</c>.</summary>
     internal static readonly IReadOnlyDictionary<ScopeDataclassBase, InitShape> DataclassBases = new Dictionary<ScopeDataclassBase, InitShape>
     {
         [ScopeDataclassBase.PlainWithInit] = new(BaseWithInit + "@dataclass\nclass DC(G):\n    v: int", "DC", "SPY0342", Twin: true),
         [ScopeDataclassBase.Dataclass] = new("@dataclass\nclass DC(G):\n    u: int", "DC", "SPY0342", Args: "5, 6", Params: "int, int", Twin: true, First: "@dataclass\nclass G:\n    v: int"),
+        [ScopeDataclassBase.ClrClass] = new("@dataclass\nclass DC(Exception):\n    v: int", "DC", "SPY0342", Twin: true),
     };
 
     private const string DefaultedDataclass = "@dataclass\nclass DC:\n    v: int = 3";
@@ -1783,20 +1783,20 @@ public sealed partial class ScopeMeaningDifferentialTests
         [ScopeDataclassName.BareSibling] = ABareNestedNameIsAnotherQuestionFirst,
     };
 
-    /// <summary>An alias stands with the dataclass, below it. Its twin is the twin renderer's: a type alias is python's
-    /// assignment (<c>A = DC</c>, the renderer's <c>type_alias</c> row), under which the alias is the class and is called as
-    /// one. Python's own <c>type</c> statement would be another program (a <c>TypeAliasType</c> is not callable).</summary>
+    /// <summary>An alias stands with the dataclass, below it. It must run, by the specification (type_aliases.md,
+    /// "Transparency"), and it is no twin: the renderer's <c>A = DC</c> is not python's program
+    /// (<see cref="NotPythonsProgram"/>).</summary>
     internal static readonly IReadOnlyDictionary<ScopeDataclassName, InitShape> DataclassNames = new Dictionary<ScopeDataclassName, InitShape>
     {
-        [ScopeDataclassName.Alias] = new(ModuleDataclass + "\ntype A = DC", "A", "SPY0342", Type: "DC", Twin: true),
+        [ScopeDataclassName.Alias] = new(ModuleDataclass + "\ntype A = DC", "A", "SPY0342", Type: "DC"),
     };
 
     /// <summary>The slots a reference is handed to, total over <see cref="ScopeReferenceSlot"/> with the matrix's own value (a
     /// parameter). Each is the constructor reference's program at that slot: a declaration of its own, read by <c>r()</c>. The
     /// reference stands in a function's body (<see cref="InitRead.WhenCalled"/>) but for a module variable and a field, whose
     /// initializer python evaluates as the module loads. A type that receives the reference (<c>W</c>) stands with the reader,
-    /// above it: declared below its caller, a method's parameter checks no reference at either order (CS1593 behind SPY0908,
-    /// for a class that writes its <c>__init__</c> too), which is no dataclass's cell.</summary>
+    /// above it, so that one declaration moves: the dataclass. The receiving type below its caller is another order, and
+    /// not this axis's.</summary>
     internal static readonly IReadOnlyDictionary<ScopeReferenceSlot, InitRead> ReferenceSlots = new Dictionary<ScopeReferenceSlot, InitRead>
     {
         [ScopeReferenceSlot.KeywordArgument] = new("def r() -> int:\n    return mk(f={N})", "def r() -> int:\n    return mk(f={N})",
@@ -1869,7 +1869,7 @@ public sealed partial class ScopeMeaningDifferentialTests
     private const string ADerivingHostLosesTheDefault = "#2508's class (its comment 7181213880): a host deriving from a dataclass whose field has a default loses the default. Constructed with nothing, a deriving class with no `__init__` is SPY0908 CS7036 with the dataclass above it as below it, and a deriving dataclass is SPY0908 CS7036 with the dataclass above it (below, it runs). Red where the dataclass is declared first, so no order is at fault";
     private const string ATakenDefaultHandsNothing = "a read that takes the default hands nothing, which is what a defaulted `__init__` takes: the read that does not fit hands a value, and is the overridden default's cell";
     private const string AConstructedGenericIsNoReference = "a constructed generic type handed to a function-typed slot (`mk(DC[int])`) is SPY0339 with the class above the reference as below it, and for a class that writes its `__init__` as for a dataclass: no synthesized `__init__` is read there, and whether the reference is to be accepted is filed for a ruling outside this plan (the owner's ruling 39, #2423 comment 7183929991)";
-    private const string ADataclassOverAConstructedGeneric = "#2021's class (its comment 7181214084): a dataclass over a constructed generic dataclass keeps the base's type parameter in its generated constructor. It is SPY0908 CS0246 with the generic dataclass above it (and SPY0908 CS1729 below): red where the dataclass is declared first, so no order is at fault";
+    private const string ADataclassOverAConstructedGeneric = "#2021's class (its comment 7181214084): a dataclass over a constructed generic dataclass keeps the base's type parameter in its generated constructor. It is SPY0908 CS0246 with the generic dataclass above it (and SPY0908 CS7036 beside CS1729 below): red where the dataclass is declared first, so no order is at fault";
     private const string ATypeNestedTwoDeepIsNoReference = "a type nested two deep handed to a function-typed slot by its qualified name (`mk(O.P.DC)`) is SPY0908 CS0119 with the type above the reference as below it, and for a class that writes its `__init__` as for a dataclass: no order is at fault, and #1941 holds the cell (its comment 7182693487). One deep (`mk(O.DC)`) is the nested site's cells";
     private const string AnAliasIsNotConstructed = "a type alias called as a constructor (`A(5)`) is SPY0908 CS0103 with the class above the call as below it, and for a class that writes its `__init__` as for a dataclass: no order is at fault, and #1925 holds the cell (its comment 7182693272)";
     private const string AnAliasIsNoBase = "a type alias in a base list (`class D(A)`) is SPY0202 with the class above the deriving one as below it, and for a class that writes its `__init__` as for a dataclass: nothing derives through an alias, so no deriving reader has a cell there (#1925 holds the cell: its comment 7182693272)";
@@ -2050,7 +2050,7 @@ public sealed partial class ScopeMeaningDifferentialTests
 
     private const string AForwardedConstructionIsUnchecked = "a class that derives from one with a written `__init__` and declares none is constructed unchecked: handed a `str` for the `int` (`D(\"a\")`) it is SPY0908 CS1503 with the class above the deriving one as below it, where the class itself is SPY0220. The misfit has no refusing control, so no order is at fault, and #2021 holds the cell (its comment 7185651052)";
     private const string AForwardedArgumentHasNoParameterType = "an empty list handed through a class that derives from the one with the `__init__` and declares none (`D([])`) is SPY0227 with the class above the deriving one as below it: the argument gets no type from the inherited parameter at either order, so no order is at fault, and #2021 holds the cell (its comment 7185651052)";
-    private const string AMisfitOfTypeIsTheBaseCells = "a read that does not fit hands a value of another type whatever the parameter's type is: that is the base cell's misfit, and an argument shape varies what a read that fits hands";
+    private const string AMisfitOfTypeIsTheBaseCells = "an argument shape varies what a read that fits hands: the misfit of type is the base cell's, over the class whose parameter is an `int`. Handed another type, a list parameter repeats that cell, and a generic class takes the value as its type argument and fits (a misfit there has to spell the argument, `DC[int](\"a\")`, which is outside the star)";
 
     /// <summary>The argument × reader × fit triples with no cell, total over the three with the triples a cell carries
     /// (<see cref="AxisProblems"/>).</summary>
@@ -2073,30 +2073,51 @@ public sealed partial class ScopeMeaningDifferentialTests
 
     /// <summary>A read of a generated member over the module's dataclass: the reader, what <c>main</c> prints, what that is
     /// when the cell runs, and the code its control carries when it does not (so the read does not fit).
-    /// <paramref name="WhenCalled"/> and <paramref name="Python"/> are <see cref="InitRead"/>'s.</summary>
-    internal sealed record MemberRead(string Reader, string Shows, string? Prints = null, string? Refusal = null, bool WhenCalled = false, bool Python = true);
+    /// <paramref name="WhenCalled"/> is <see cref="InitRead"/>'s; <paramref name="NoTwin"/> is why python has no program for
+    /// a read that runs, or null; <paramref name="After"/> is a declaration the reader names that stands last at both
+    /// orders, below the dataclass.</summary>
+    internal sealed record MemberRead(string Reader, string Shows, string? Prints = null, string? Refusal = null, bool WhenCalled = false, string? NoTwin = null, string? After = null);
 
-    private const string RedefinesEq = "class D(DC):\n    def __eq__(self, other: object) -> bool:\n        return True";
-    private const string RedefinesHash = "class D(DC):\n    def __hash__(self) -> int:\n        return 5";
+    // `__eq__` and `__hash__` are redefined together: no cell rests on whether an inherited half satisfies the pairing rule.
+    private const string RedefinesEqAndHash = "class D(DC):\n    def __eq__(self, other: object) -> bool:\n        return True\n    def __hash__(self) -> int:\n        return 5";
+    private const string EqThroughSuper = "class D(DC):\n    def __eq__(self, other: object) -> bool:\n        return super().__eq__(other)\n    def __hash__(self) -> int:\n        return 5";
+    private const string HashThroughSuper = "class D(DC):\n    def __eq__(self, other: object) -> bool:\n        return True\n    def __hash__(self) -> int:\n        return super().__hash__() - super().__hash__() + 5";
+    // What both a class named `DC` and one named `D` end their text with: the generated text spells the DECLARING class
+    // (`DC(v=5)`) where python spells the instance's (`D(v=5)`), which is #2804's and no order's.
+    private const string ReprThroughSuper = "class D(DC):\n    @override\n    def __repr__(self) -> str:\n        return super().__repr__().split(\"(\")[1]";
+    private const string AgainstAnObject = "def r() -> bool:\n    o: object = DC(5)\n    return DC(5) == o";
     private const string RedefinesRepr = "class D(DC):\n    def __repr__(self) -> str:\n        return \"D\"";
     private const string RedefinesStr = "class D(DC):\n    def __str__(self) -> str:\n        return \"D\"";
 
     private static string WithOverride(string redefinition) => redefinition.Replace("\n    def ", "\n    @override\n    def ", StringComparison.Ordinal);
 
+    private const string NoRowForOverride = "the twin renderer has no row for `@override`, so python is not asked (its `typing.override` runs the program: by hand, not by the sweep)";
+    private const string PythonsDataclassIsUnhashable = "python's dataclass sets `__hash__` to None unless it is frozen: `hash()` of one, and `super().__hash__()` over one, are a TypeError";
+
     /// <summary>The reads, total over the generated members that are no <c>__init__</c> × <see cref="ScopeMemberRead"/> with
-    /// <see cref="ExcludedMemberReads"/>. Python has no <c>@override</c>, and its dataclass is unhashable unless frozen: those
-    /// reads have no twin.</summary>
+    /// <see cref="ExcludedMemberReads"/>. A read through <c>super()</c> stands in the member's own redefinition, the one place
+    /// the specification lets a dunder be called by name; <c>__eq__</c> and <c>__hash__</c> are redefined without
+    /// <c>@override</c>, which the specification makes implicit for them and python's own spelling, and <c>__repr__</c>
+    /// with it (#2802).</summary>
     internal static readonly IReadOnlyDictionary<(ScopeDataclassMember Member, ScopeMemberRead Read), MemberRead> MemberReads = new Dictionary<(ScopeDataclassMember, ScopeMemberRead), MemberRead>
     {
         [(ScopeDataclassMember.Eq, ScopeMemberRead.Used)] = new("def r() -> bool:\n    return DC(5) == DC(5)", "r()", "True", WhenCalled: true),
         [(ScopeDataclassMember.Eq, ScopeMemberRead.CalledByName)] = new("def r() -> bool:\n    return DC(5).__eq__(DC(5))", "r()", Refusal: "SPY0427"),
-        [(ScopeDataclassMember.Eq, ScopeMemberRead.RedefinedWithOverride)] = new(WithOverride(RedefinesEq), "D(5) == D(6)", "True", Python: false),
-        [(ScopeDataclassMember.Hash, ScopeMemberRead.Used)] = new("def r() -> int:\n    return hash(DC(5)) - hash(DC(5)) + 5", "r()", "5", WhenCalled: true, Python: false),
+        [(ScopeDataclassMember.Eq, ScopeMemberRead.RedefinedWithOverride)] = new(WithOverride(RedefinesEqAndHash), "D(5) == D(6)", "True", NoTwin: NoRowForOverride),
+        [(ScopeDataclassMember.Eq, ScopeMemberRead.RedefinedWithoutOverride)] = new(RedefinesEqAndHash, "D(5) == D(6)", "True"),
+        [(ScopeDataclassMember.Eq, ScopeMemberRead.CalledThroughSuper)] = new(EqThroughSuper, "D(5) == D(5)", "True"),
+        // The operand's field differs, so the read prints `False` under either reading of #2804 (python compares the classes
+        // first; the generated `==` compares the fields): the cell holds that the checker types the read, not which is right.
+        [(ScopeDataclassMember.Eq, ScopeMemberRead.UsedAgainstADerivedOperand)] = new("def r() -> bool:\n    return DC(5) == D(6)", "r()", "False", WhenCalled: true, After: "class D(DC):\n    pass"),
+        [(ScopeDataclassMember.Hash, ScopeMemberRead.Used)] = new("def r() -> int:\n    return hash(DC(5)) - hash(DC(5)) + 5", "r()", "5", WhenCalled: true, NoTwin: PythonsDataclassIsUnhashable),
         [(ScopeDataclassMember.Hash, ScopeMemberRead.CalledByName)] = new("def r() -> int:\n    return DC(5).__hash__()", "r()", Refusal: "SPY0427"),
-        [(ScopeDataclassMember.Hash, ScopeMemberRead.RedefinedWithOverride)] = new(WithOverride(RedefinesHash), "hash(D(5))", "5", Python: false),
+        [(ScopeDataclassMember.Hash, ScopeMemberRead.RedefinedWithOverride)] = new(WithOverride(RedefinesEqAndHash), "hash(D(5))", "5", NoTwin: NoRowForOverride),
+        [(ScopeDataclassMember.Hash, ScopeMemberRead.RedefinedWithoutOverride)] = new(RedefinesEqAndHash, "hash(D(5))", "5"),
+        [(ScopeDataclassMember.Hash, ScopeMemberRead.CalledThroughSuper)] = new(HashThroughSuper, "hash(D(5))", "5", NoTwin: PythonsDataclassIsUnhashable),
         [(ScopeDataclassMember.Repr, ScopeMemberRead.Used)] = new("def r() -> str:\n    return repr(DC(5))", "r()", "DC(v=5)", WhenCalled: true),
         [(ScopeDataclassMember.Repr, ScopeMemberRead.CalledByName)] = new("def r() -> str:\n    return DC(5).__repr__()", "r()", Refusal: "SPY0427"),
-        [(ScopeDataclassMember.Repr, ScopeMemberRead.RedefinedWithOverride)] = new(WithOverride(RedefinesRepr), "repr(D(5))", "D", Python: false),
+        [(ScopeDataclassMember.Repr, ScopeMemberRead.RedefinedWithOverride)] = new(WithOverride(RedefinesRepr), "repr(D(5))", "D", NoTwin: NoRowForOverride),
+        [(ScopeDataclassMember.Repr, ScopeMemberRead.CalledThroughSuper)] = new(ReprThroughSuper, "repr(D(5))", "v=5)", NoTwin: NoRowForOverride),
     };
 
     private const string TheInitIsItsOwnSets = "the generated `__init__` is the dataclass-init set's: its readers, fits and shapes are that set's axes";
@@ -2108,18 +2129,22 @@ public sealed partial class ScopeMeaningDifferentialTests
         [ScopeDataclassMember.Init] = TheInitIsItsOwnSets,
     };
 
-    private const string ARedefinitionWithoutOverrideRuns = "redefined in a deriving class without `@override`, `__eq__(self, other: object)` and `__hash__` run with the dataclass above the class as below it, and that is the specification's behaviour (dunder_methods.md: `@override` is implicit for an override of `System.Object`'s `Equals` and `GetHashCode`): the program is right at both orders and there is no refusal for an order to lose, so the two have no cell. #2802 holds the one member that departs, `__repr__`";
+    private const string AnOperandIsEqualitysAlone = "an operand is `==`'s: `hash()` and `repr()` take none";
+    private const string AnObjectOperandIsComparedByReference = "#2804's class: against an operand typed `object` the generated `==` is reference equality. Over `o: object = DC(5)`, `DC(5) == o` prints `False` with the dataclass above the reader, where python prints `True`, and is SPY0222 with it below. The control is itself wrong, so the read has no cell: a cell does what its control does, and no row may pin `False` as right";
     private const string ARedefinedReprIsRefusedUnderTheDataclass = "#2802's class: `__repr__` redefined without `@override` in a class deriving from a dataclass is SPY0248 with the dataclass above the class and runs (`D`) with it below. The specification makes `@override` optional there (dunder_methods.md: `__repr__` is `ToString()` as `__str__` is, an implicit override of `System.Object`'s), `__str__` in the same place runs, and python prints `D`: the form that runs is the right one, and the refusal is red where the dataclass is declared first, so no order is at fault and no row may call the running form a missing refusal";
 
     /// <summary>The member × read pairs with no cell, total with <see cref="MemberReads"/> over the members it reads ×
-    /// <see cref="ScopeMemberRead"/>. No member has a cell redefined without <c>@override</c>: the specification lets the three
-    /// run, two do at both orders, and the third is refused only with the dataclass declared first (#2802), which is no
-    /// order's cell and no verdict to pin as right.</summary>
+    /// <see cref="ScopeMemberRead"/>. Redefined without <c>@override</c>, the specification lets the three run: two are
+    /// cells, and <c>__repr__</c> is refused with the dataclass declared first (#2802), which is no order's cell and no
+    /// verdict to pin as right.</summary>
     internal static readonly IReadOnlyDictionary<(ScopeDataclassMember Member, ScopeMemberRead Read), string> ExcludedMemberReads = new Dictionary<(ScopeDataclassMember, ScopeMemberRead), string>
     {
-        [(ScopeDataclassMember.Eq, ScopeMemberRead.RedefinedWithoutOverride)] = ARedefinitionWithoutOverrideRuns,
-        [(ScopeDataclassMember.Hash, ScopeMemberRead.RedefinedWithoutOverride)] = ARedefinitionWithoutOverrideRuns,
         [(ScopeDataclassMember.Repr, ScopeMemberRead.RedefinedWithoutOverride)] = ARedefinedReprIsRefusedUnderTheDataclass,
+        [(ScopeDataclassMember.Eq, ScopeMemberRead.UsedAgainstAnObjectOperand)] = AnObjectOperandIsComparedByReference,
+        [(ScopeDataclassMember.Hash, ScopeMemberRead.UsedAgainstADerivedOperand)] = AnOperandIsEqualitysAlone,
+        [(ScopeDataclassMember.Hash, ScopeMemberRead.UsedAgainstAnObjectOperand)] = AnOperandIsEqualitysAlone,
+        [(ScopeDataclassMember.Repr, ScopeMemberRead.UsedAgainstADerivedOperand)] = AnOperandIsEqualitysAlone,
+        [(ScopeDataclassMember.Repr, ScopeMemberRead.UsedAgainstAnObjectOperand)] = AnOperandIsEqualitysAlone,
     };
 
     /// <summary>The names <c>DataclassSynthesis.SynthesizeMembers</c> looks for among the class's own methods before it adds
@@ -2806,12 +2831,13 @@ public sealed partial class ScopeMeaningDifferentialTests
         Partition("dataclass-init × python at the slot", InitReaderSlots, CalledSlots, SlotsWithNoTwin.Keys);
         foreach (var c in initCells)
         {
-            string? none = c.Placement == ScopeInitPlacement.Apart && c.Projection is ScopeReferenceSlot handed && !ReferenceSlots[handed].Python ? "the twin renderer has no row for an alias of a function type"
+            string? none = NotPythonsProgram(c.Case)
+                ?? (c.Placement == ScopeInitPlacement.Apart && c.Projection is ScopeReferenceSlot handed && !ReferenceSlots[handed].Python ? "the twin renderer has no row for an alias of a function type"
                 : c.Order != Harness.Order.Earlier && c.Projection is ScopeInitThrough ? "the type its reader names derives from the dataclass and stands above it: python evaluates that base list as the module loads, a NameError"
                 : c.Slot is { } at ? SlotsWithNoTwin.GetValueOrDefault(at)
                 : c.Placement == ScopeInitPlacement.EnclosingType ? "its reader is a sibling class that names `H.DC` in the body of `H`, which python has not bound yet"
                 : c.Order == Harness.Order.Earlier || InABodyAlone((c.Projection is ScopeReferenceSlot slot ? ReferenceSlots[slot] : InitReaders[c.Reader]).Fits, "{N}") ? null
-                : ADeclarationIsReadAsTheModuleLoads;
+                : ADeclarationIsReadAsTheModuleLoads);
             Twin(c.Case, none);
         }
 
@@ -2853,11 +2879,17 @@ public sealed partial class ScopeMeaningDifferentialTests
         }
         foreach (var stray in members.Where(c => !earlierAndLater.Contains(c.Order)))
             problems.Add($"dataclass-member: {stray.Case.Cell.Id} stands at {stray.Order}, and the set has the two orders");
+        // A reader that redefines one half of the equality contract redefines the other: whether an inherited half satisfies
+        // the pairing rule (dunder_methods.md; #2803 notes the reading) is not this set's to assume.
+        foreach (var e in MemberReads.Where(e => e.Value.Reader.Contains("def __eq__", StringComparison.Ordinal) != e.Value.Reader.Contains("def __hash__", StringComparison.Ordinal)))
+            problems.Add($"dataclass-member: {e.Key.Member} {e.Key.Read} redefines one of `__eq__` and `__hash__` alone, and the set rests on no reading of the pairing rule");
         foreach (var c in members)
         {
             var read = MemberReads[(c.Member, c.Read)];
-            Twin(c.Case, !read.Python ? "python has no `@override`, and its dataclass is unhashable unless frozen"
-                : c.Order == Harness.Order.Earlier || InABodyAlone(read.Reader, "DC") ? null : ADeclarationIsReadAsTheModuleLoads);
+            Twin(c.Case, read.NoTwin ?? (c.Order == Harness.Order.Earlier || InABodyAlone(read.Reader, "DC") ? null : ADeclarationIsReadAsTheModuleLoads));
+            // The renderer's reason is checked where it is given: a source it has a row for is put to python by the sweep.
+            if (read.NoTwin == NoRowForOverride && !read.Reader.Contains("@override", StringComparison.Ordinal))
+                problems.Add($"dataclass-member: {c.Case.Cell.Id} is no twin for want of an `@override` row, and its reader has no `@override`");
         }
 
         // The three sets on the order-free rule. A read that does not fit names the one code its control carries, and a read
