@@ -285,6 +285,17 @@ MustRun N1 family=Read route=init-overload
 # deriving type or an alias, and a reader inside the enclosing type. None of them changes what must run.
 MustRun N1 family=Read route=dataclass-init initFit=Fits
 MustRefuse N1-typed-read family=Read route=dataclass-init initFit=Misfits
+# An `__init__` the class writes is read whatever the order too (D2; the owner's ruling 36, #2423 comment 7183929991): above
+# its class a reader has the arity and not the parameter types today. A read that fits runs at both orders, an empty list
+# and a generic class's type parameter among what it hands; one that hands a value of another type is the checker's refusal
+# at both, under the code the earlier-declared control carries.
+MustRun N1 family=Read route=written-init initFit=Fits
+MustRefuse N1-typed-read family=Read route=written-init initFit=Misfits
+# So are the other members a `@dataclass` generates, `__eq__`, `__hash__` and `__repr__` (D2; ruling 37, the same comment):
+# a read through `==`, `hash()` or `repr()` and a redefinition under `@override` run at both orders; a member called by its
+# own name, and `__repr__` redefined without `@override`, are refused at both under the control's code.
+MustRun N1 family=Read route=dataclass-member initFit=Fits
+MustRefuse N1-typed-read family=Read route=dataclass-member initFit=Misfits
 # A parameter default at a type body's level is evaluated in the type body, a lambda's as a `def`'s (D4; the owner's ruling 19):
 # a bare name in it is a sibling read, which the class-body rule decides (D3). `order=-` is a slot's control, a literal default.
 MustRun N4 family=Read route=lambda-default order=-
