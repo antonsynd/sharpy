@@ -277,6 +277,34 @@ MustRun #1938 family=Read route=constant-kind mark=struct-auto-property constant
 MustRefuse SPY0401 family=Read route=constant-kind admission=ParameterDefault,LambdaParameterDefault,PerInstanceFieldDefault,- mark=def,lambda,dataclass,struct,enum-member constantKind=OwnMember target=ModuleVar,ModuleComputedConst,ModuleProperty,ModuleDef,StaticField,StaticProperty,StaticMethod,ClassComputedConst,Builtin mark=bare-sibling mark!=in-method order=Later outer=None
 MustRefuse SPY0425 family=Read route=constant-kind admission=DecoratorArgument constantKind=OwnMember target=ModuleVar,ModuleComputedConst,ModuleProperty,ModuleDef,StaticField,StaticProperty,StaticMethod,ClassComputedConst,Builtin mark=bare-sibling mark!=in-method order=Later outer=None
 MustRun N1 family=Read route=init-overload
+# The `__init__` a `@dataclass` synthesizes is read whatever the order (D2; the owner's ruling 30, #2423 comment 7179278898): a
+# read that fits what it takes runs with the dataclass above its reader and below it, and one that does not is the checker's
+# refusal at both, under the code the earlier-declared control carries (the cell names it). The two rows hold every shape of
+# the set (ruling 35, comment 7181238911): a ring of two dataclasses (order=Cycle), a base with a parameterless `__init__`,
+# a defaulted field, each typed slot a reference is handed to, a generic or twice-nested dataclass, a read through a
+# deriving type or an alias, and a reader inside the enclosing type. None of them changes what must run.
+MustRun N1 family=Read route=dataclass-init initFit=Fits
+MustRefuse N1-typed-read family=Read route=dataclass-init initFit=Misfits
+# An `__init__` the class writes is read whatever the order too (D2; the owner's ruling 36, #2423 comment 7183929991): above
+# its class a reader has the arity and not the parameter types today. A read that fits runs at both orders, an empty list,
+# an empty dict and a generic class's type parameter among what it hands; one that hands a value of another type, the wrong
+# number of arguments or a keyword the `__init__` does not take is the checker's refusal at both, under the code the
+# earlier-declared control carries. So it is over a struct and a nested class, from a method and a module initializer,
+# and in a ring of two classes (ruling 40, #2423 comment 7198842844).
+MustRun N1 family=Read route=written-init initFit=Fits
+MustRefuse N1-typed-read family=Read route=written-init initFit=Misfits
+# So are the other members a `@dataclass` generates, `__eq__`, `__hash__` and `__repr__` (D2; ruling 37, the same comment):
+# a read through `==`, `hash()` or `repr()`, a redefinition with `@override` or without it, a call by name from a dunder
+# method of a deriving class (through `super()` or `self`; ruling 40) and `==` against an operand of a deriving type or an
+# unequal `object` run at both orders; a member called by its own name from anywhere else is refused at both under the
+# control's code. `__repr__` redefined without `@override` runs too, by the owner's ruling 44 (#2423 comment 7201023158:
+# exempt as `__str__` is; the specification's exempt lists name `__str__`, `__eq__` and `__hash__` until the fix), and is
+# refused today with the dataclass declared first: #2802's defect, which this plan closes (ruling 41, the same comment as
+# ruling 40). Two reads have no cell, since
+# the form with the dataclass declared first is a defect another issue holds: `==` against an equal `object` (#2804) and a
+# `__str__` that calls `self.__repr__()` (#2057).
+MustRun N1 family=Read route=dataclass-member initFit=Fits
+MustRefuse N1-typed-read family=Read route=dataclass-member initFit=Misfits
 # A parameter default at a type body's level is evaluated in the type body, a lambda's as a `def`'s (D4; the owner's ruling 19):
 # a bare name in it is a sibling read, which the class-body rule decides (D3). `order=-` is a slot's control, a literal default.
 MustRun N4 family=Read route=lambda-default order=-
