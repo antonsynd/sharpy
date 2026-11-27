@@ -89,12 +89,12 @@ Check for the class, not the instance.
 - Code ported from another project's source (CPython especially) without its licence notice, and package metadata that no longer matches what ships. Files that do not call themselves ports are found only by reading against the upstream.
 
 **Tracker**
-- Class versus cell, regression versus newly found gap, real signal versus bookkeeping. A rising open count during heavy review is discovery; count user-visible bugs fixed and reviewer-found defects per merged PR instead.
+- Class versus cell, regression versus newly found gap, real signal versus bookkeeping. A rising open count during heavy review is discovery; count user-visible bugs fixed and reviewer-found defects per merged PR.
 - Issues left open after their fix reached `dev` (closure is `/close-issues` on evidence, never a `fix #N` keyword); closures that skip the class-closure check.
 
 ## Driving lanes (only with `--merge` or the owner's ask)
 
-- One worker per lane, each in its own worktree (`isolation: worktree`), on `claude/<lane>` cut from fresh `origin/dev`. The brief pastes contract §9's block verbatim and states the goal, the repo-wide guards to run (each as an exact command line: a guard left out of the brief is one the worker does not run), the commit trailers, and what the hand-back must contain (head sha, counts, mutation records, a draft PR body). Workers push only to their own `claude/<lane>` branch and write nothing else to GitHub; you open the PR.
+- One worker per lane, each in its own worktree (`isolation: worktree`), on `claude/<lane>` cut from fresh `origin/dev`. The brief pastes contract §9's block verbatim and states the goal, the repo-wide guards to run (each as an exact command line), the commit trailers, and what the hand-back must contain (head sha, counts, mutation records, a draft PR body). Workers push only to their own `claude/<lane>` branch and write nothing else to GitHub; you open the PR.
 - Lanes share one `dotnet` lock: past three or four dotnet-heavy lanes, they queue for tens of minutes. Workers commit and push each green step and run commands in the foreground.
 - No push for two hours: ask the worker for status.
 - **Merge** only on README item 6's conditions, with the review line as `/implement-plan` › Cleanup and Report step 4 defines it; and additionally only after the worker handed back and you read the last fix round against the findings. Run the review for every lane PR, including one item 6 does not count as code.
