@@ -12,6 +12,7 @@ by the session that changes a mechanism and by /health-watch.
 
 from __future__ import annotations
 
+import collections
 import copy
 import datetime
 import os
@@ -36,6 +37,17 @@ FROZEN_ATTEMPT = ("date", "what", "source", "predicted")
 FROZEN_OBSERVED = ("date", "sha", "value", "by")
 # The seed's attempts predate the ledger and may say this. An attempt added later may not.
 NO_PREDICTION = "none recorded"
+# A new attempt's `predicted`, lower-cased letters only, may not be one of these or contain the sentinel.
+NOT_A_PREDICTION = {
+    "",
+    "none",
+    "na",
+    "tbd",
+    "todo",
+    "unknown",
+    "noprediction",
+    "notrecorded",
+}
 
 
 def _is_date(value: Any) -> bool:
@@ -168,16 +180,19 @@ def lost(base: Any, head: Any) -> List[str]:
         ("attempts", FROZEN_ATTEMPT, "attempt"),
         ("observed", FROZEN_OBSERVED, "observation"),
     ):
-        kept = set(_rows(head, part, keys))
+        gone = collections.Counter(_rows(base, part, keys))
+        gone.subtract(
+            _rows(head, part, keys)
+        )  # a count, so one of two equal rows is missed too
         out += [
             f"{r[0]} {noun} of {r[1]}: deleted or reworded"
-            for r in _rows(base, part, keys)
-            if r not in kept
+            for r, n in gone.items()
+            for _ in range(n)
         ]
     old = set(_rows(base, "attempts", FROZEN_ATTEMPT))
-    blank = ("", "none", re.sub(r"[^a-z]", "", NO_PREDICTION))
     for r in _rows(head, "attempts", FROZEN_ATTEMPT):
-        if r not in old and re.sub(r"[^a-z]", "", r[4].lower()) in blank:
+        said = re.sub(r"[^a-z]", "", r[4].lower())
+        if r not in old and (said in NOT_A_PREDICTION or "nonerecorded" in said):
             out.append(f"{r[0]} attempt of {r[1]}: new, with no prediction")
     return out
 
@@ -520,6 +535,24 @@ LOSSES = [
         ),
         "M1 attempt of 2026-12-01: new, with no prediction",
     ),
+    _case(
+        "new attempt with the sentinel inside a phrase",
+        lambda d: _m1(d)["attempts"].append(
+            {
+                "date": D(2026, 12, 1),
+                "what": "Later.",
+                "predicted": "N/A: none recorded yet",
+            }
+        ),
+        "M1 attempt of 2026-12-01: new, with no prediction",
+    ),
+    _case(
+        "new attempt that says TBD",
+        lambda d: _m1(d)["attempts"].append(
+            {"date": D(2026, 12, 1), "what": "Later.", "predicted": "TBD"}
+        ),
+        "M1 attempt of 2026-12-01: new, with no prediction",
+    ),
 ]
 
 
@@ -530,13 +563,24 @@ def test_one_loss_gives_the_named_finding(mutate: Callable, expected: List[str])
     assert lost(sample(), data) == expected
 
 
+def test_one_of_two_equal_observations_deleted_is_a_loss():
+    base = sample()
+    _m1(base)["observed"].insert(0, dict(_m1(base)["observed"][0]))
+    assert lost(base, base) == []
+    assert lost(base, sample()) == ["M1 observation of 2026-11-17: deleted or reworded"]
+
+
 def test_appending_judging_and_removing_lose_nothing():
     data = sample()
     _m1(data)["attempts"].append(
         {
             "date": D(2026, 12, 1),
             "what": "A third rule.",
+            "where": ["CLAUDE.md"],
+            "source": "R-ZZ",
             "predicted": "passes fall to 2",
+            "state": "live",
+            "outcome": "unjudged",
         }
     )
     _a1(data).update(state="removed", where=[], note="gone")
@@ -546,6 +590,7 @@ def test_appending_judging_and_removing_lose_nothing():
     )
     _m1(data).update(wanted="at most 3")
     assert lost(sample(), data) == []
+    assert findings(data, REPO) == []
 
 
 def test_a_removed_mechanism_needs_no_path():

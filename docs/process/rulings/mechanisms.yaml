@@ -30,7 +30,8 @@
 #   outcome    held | not-held | unjudged, against `predicted`, or against the problem's `wanted`
 #              when none was recorded; `judged` is the date of the observation it was judged on
 #   frozen     once merged, an attempt's date, what, source and predicted and every observed row
-#              never change; where, state, outcome, judged, note and a problem's own text may
+#              never change; where, state, outcome, judged, note and a problem's own text can
+#   order      attempts and observed rows are in date order; `sha` is the commit measured
 
 problems:
   - id: M1
@@ -162,7 +163,7 @@ problems:
           A pin on the side-table count that may only fall (MaximumSideTableFieldCount in
           SemanticInfoMergeConformanceTests.cs, read by scorecard_metrics.py); a raise needs the
           owner's word quoted in the pull request body.
-        where: [build_tools/scorecard_metrics.py]
+        where: [src/Sharpy.Compiler.Tests/Semantic/SemanticInfoMergeConformanceTests.cs, build_tools/scorecard_metrics.py]
         source: "R-LK; #2443"
         predicted: none recorded
         state: live
@@ -239,11 +240,14 @@ problems:
           - .claude/skills/health-watch/SKILL.md
         source: "owner, 2026-11-27 (session): \"i do want it, i agree with you recs and analysis\""
         predicted: >-
-          By the second health check after it merges: every merged change to a hook, a check script, a
-          ratchet or a rule has its attempt here, and at least one attempt recorded as not-held has
-          been changed, replaced or put to the owner for removal. If neither happens, the ledger is required
-          reading that changed nothing and should itself go (M3).
+          By the second health check after it merges, both of these: (a) at least one pull request
+          that changes a file under .claude/hooks, .claude/skills, build_tools/check_*.py,
+          build_tools/scorecard-baseline.json, CLAUDE.md, docs/process/README.md or
+          docs/design/verification-contract.md has merged, and every such pull request added an
+          attempt here; (b) at least one attempt recorded as not-held has been changed or replaced,
+          or the owner has ruled on its removal. If either fails, the ledger is required reading
+          that changed nothing and should itself go (M3).
         state: live
         outcome: unjudged
     observed:
-      - {date: 2026-11-27, sha: 4b1827a8f, value: "0 of 8 hooks and 6 of 8 check scripts cite the issue or ruling behind them; 10 of the 11 seeded attempts had no recorded prediction", by: health watch 2026-11-27}
+      - {date: 2026-11-27, sha: 4b1827a8f, value: "context, not this measure (there is no window before the ledger): 0 of 6 hooks and 6 of 8 check scripts cite the issue or ruling behind them; 10 of the 11 seeded attempts had no recorded prediction", by: health watch 2026-11-27}
