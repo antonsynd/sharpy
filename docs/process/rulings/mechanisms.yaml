@@ -4,31 +4,30 @@
 # Why it exists: a rule, cap, gate or ratchet says what to do, not which problem it answers, what
 # was tried before it, or whether it worked. A session that changes one without that history repeats
 # an earlier attempt or tightens a guard whose reason it cannot see. The shape follows
-# arXiv:2611.18856, where a memory of root causes alone did not help and the attempts with their
-# predicted and observed outcomes did.
+# arXiv:2611.18856, where a memory of root causes alone gave mixed results and the attempts with
+# their predicted and observed outcomes scored highest (one run per condition outside coding).
 #
 # Who reads it: a session about to add, change or remove a process mechanism (a rule in CLAUDE.md,
 # docs/process or a skill, a hook, a check script, a ratchet, a stop rule) reads ALL of it first,
-# and so does /health-watch at setup. Workers on product code do not.
+# and so does /health-watch at each check. Workers on product code do not. It is not in the counted
+# read set, so its bytes are a cost no ratchet sees: keep an entry to what the next change needs.
 #
 # Who writes it:
 #   - The session that adds or changes a mechanism appends an attempt to the problem it answers (a
-#     new problem only when none explains the failure), with `predicted` written before the first
-#     measurement. An attempt is never deleted: a mechanism that is replaced or removed keeps its
-#     record with `state: replaced` or `removed`.
-#   - /health-watch appends to `observed` at each check that measures the problem, and sets each
-#     live attempt's `held`. It proposes removal of a mechanism that has not held; removal is the
-#     owner's.
+#     new problem only when none explains the failure), in the same pull request, with `predicted`
+#     written before the first measurement. An attempt is never deleted or reworded: a mechanism
+#     that is replaced or removed keeps its record with `state: replaced` or `removed`.
+#   - /health-watch proposes `observed` rows and each live attempt's `outcome` in its health-page
+#     entry; they land here by pull request on the owner's ask. It proposes removal of a mechanism
+#     that has not held; removal is the owner's.
 #
-# Fields (build_tools/tests/test_mechanisms_ledger.py checks them):
-#   problem:  id, name (the root cause, one sentence), measure (how the value is taken), wanted
-#             (the target, from the goals document), attempts, observed
-#   attempt:  date, what, where (paths that carry it today; each must exist while `state: live`),
-#             source (the ruling, pull request or document that put it in), predicted (what it was
-#             expected to change, or `none recorded`, which means it is judged against `wanted`),
-#             state (live | replaced | removed), held (yes | no | unjudged), and with yes or no:
-#             judged (the date of the observation it was judged on) and optionally note
-#   observed: date, sha, value, by; in date order
+# The check is `pytest build_tools/tests/test_mechanisms_ledger.py`. What a field means:
+#   date       the day the mechanism took effect: its ruling, or its merge
+#   where      the files that carry it today; each must exist while `state: live`
+#   predicted  what it was expected to change. `none recorded` is allowed in the seed only
+#   outcome    held | not-held | unjudged, against `predicted`, or against the problem's `wanted`
+#              when none was recorded; `judged` is the date of the observation it was judged on
+#   frozen     date, what, source and predicted never change once merged; the rest may
 
 problems:
   - id: M1
@@ -42,7 +41,7 @@ problems:
         source: R-LW
         predicted: none recorded
         state: live
-        held: "no"
+        outcome: not-held
         judged: 2026-11-17
       - date: 2026-11-17
         what: >-
@@ -52,14 +51,14 @@ problems:
         source: "PR #2725; handoff-2026-11-17-arc.md section 4"
         predicted: none recorded
         state: live
-        held: "no"
+        outcome: not-held
         judged: 2026-11-27
         note: >-
           The rule was followed as written: passes 3 to 6 of P78 each ran on the owner's word. The
           count still passed the cap, so asking the owner for another pass is not what limits it.
     observed:
       - {date: 2026-11-17, sha: af14cc69f, value: "6, 2, 5 over three plans", by: handoff-2026-11-17-arc.md section 3}
-      - {date: 2026-11-27, sha: a5fac608e, value: "P78: 6, still a draft, body 20,476 of 20,480 bytes", by: health watch 2026-11-27}
+      - {date: 2026-11-27, sha: 4b1827a8f, value: "P78: 6, still a draft, body 20,476 of 20,480 bytes", by: health watch 2026-11-27}
 
   - id: M2
     name: A behaviour change merges with a regression its own reviews did not find.
@@ -72,7 +71,7 @@ problems:
         source: "owner, 2026-11-11 (process README item 6)"
         predicted: none recorded
         state: live
-        held: "no"
+        outcome: not-held
         judged: 2026-11-27
         note: >-
           The line was current on 6 of 6 merged PRs. #2796 had four reviews, each "merge after
@@ -86,7 +85,7 @@ problems:
         source: "handoff-2026-11-17-arc.md sections 5 and 7, decision 4"
         predicted: none recorded
         state: live
-        held: "no"
+        outcome: not-held
         judged: 2026-11-27
         note: >-
           #2806's axis is not among the five named kinds: a formal typed by a type parameter beside
@@ -109,16 +108,18 @@ problems:
         source: "commit dbe31fa1f"
         predicted: none recorded
         state: live
-        held: "yes"
+        outcome: not-held
         judged: 2026-11-27
-        note: Both counted values fell. CLAUDE.md is still above its 8 KB target.
+        note: >-
+          Both counted values fell, which is all a ratchet can do. Against `wanted` it has not held:
+          CLAUDE.md is still above 8 KB.
       - date: 2026-11-17
         what: "A rule with no counter: the read set is not up; a new skill or section deletes as much as it adds."
         where: [docs/process/handoff-2026-11-17-arc.md]
         source: handoff-2026-11-17-arc.md section 3
         predicted: none recorded
         state: live
-        held: "no"
+        outcome: not-held
         judged: 2026-11-27
         note: >-
           The counted part fell and the uncounted part rose. Two process documents landed outside
@@ -140,7 +141,7 @@ problems:
         source: handoff-2026-11-17-arc.md section 4
         predicted: none recorded
         state: live
-        held: unjudged
+        outcome: unjudged
         note: >-
           Judged when P77's and P78's verification records merge. Until a stage-0 row records the
           code or output it fails with, a row can change its wrong answer and stay green (#2798's review).
@@ -159,7 +160,7 @@ problems:
         source: "R-LK; #2443"
         predicted: none recorded
         state: live
-        held: "no"
+        outcome: not-held
         judged: 2026-11-27
         note: >-
           Three raises since the low of 84: one without the owner's word (#2699), two with it
@@ -179,25 +180,25 @@ problems:
         source: "handoff-2026-11-17-arc.md section 4 (owner, 2026-11-18: \"accept all 4\")"
         predicted: none recorded
         state: live
-        held: "yes"
+        outcome: held
         judged: 2026-11-27
-        note: One case. It was filed half an hour past the day.
+        note: One case.
     observed:
       - {date: 2026-11-17, sha: af14cc69f, value: "red 30 h unseen", by: handoff-2026-11-17-arc.md section 1}
-      - {date: 2026-11-27, sha: a5fac608e, value: "1 nightly red (2026-11-24), filed as #2787 after 24.5 h, naming the test", by: health watch 2026-11-27}
+      - {date: 2026-11-27, sha: a5fac608e, value: "1 nightly red (2026-11-24), filed as #2787 23 h after the run failed, naming the test", by: health watch 2026-11-27}
 
   - id: M7
     name: A ruling record can claim the owner decided it without the owner's words behind it.
     measure: "`python3 build_tools/check_rulings.py`, and a reviewer's mutation of an owner quote"
     wanted: a record that names the owner fails the check unless its words are the charter row's
     attempts:
-      - date: 2026-11-22
+      - date: 2026-11-24
         what: check_rulings.py requires `decided_by` and fails an owner-required decision an agent took.
         where: [build_tools/check_rulings.py]
         source: "PR #2785"
         predicted: none recorded
         state: live
-        held: "no"
+        outcome: not-held
         judged: 2026-11-27
         note: >-
           Writing `decided_by: owner` met it. A reviewer rewrote R-RO's quote to its opposite and the
@@ -210,7 +211,7 @@ problems:
         source: "PR #2808; PR #2809"
         predicted: A changed word in a quote, or a new owner record with no quoted row, turns the check red.
         state: live
-        held: unjudged
+        outcome: unjudged
         note: It ties the record to the row. It does not prove who spoke.
     observed:
       - {date: 2026-11-27, sha: a5fac608e, value: "a copied one-way ruling marked decided_by owner: exit 0; a quote rewritten to its opposite: green", by: health watch 2026-11-27}
