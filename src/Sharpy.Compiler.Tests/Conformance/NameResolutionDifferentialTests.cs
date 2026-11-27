@@ -383,7 +383,7 @@ public partial class NameResolutionDifferentialTests
         // SPY0222: `abs += 1` under a builtin is refused as a type error before N6's own refusal exists (#2424).
         // SPY0336 / SPY0342: `max += 1` / `int += 1` above the module binding reads the builtin as a value, and that refuses first.
         ["N6"] = new[] { "SPY0200", "SPY0222", "SPY0336", "SPY0342" },
-        // N1-arity: nothing refuses today (the CS1729 ICE is #2423's), so the entry is a ratchet: a refusal under this rule is red until it names its code.
+        // N1-arity: nothing refuses today (the CS1729 ICE is #2021's, ruling 47), so the entry is a ratchet: a refusal under this rule is red until it names its code.
         ["N1-arity"] = Array.Empty<string>(),
         // The owner's ruling on a comprehension's walrus: SPY0600 refuses the read today, by accident of #2144's gap; the rule's own code lands with #2425.
         ["S2-walrus"] = new[] { "SPY0600" },
@@ -575,8 +575,12 @@ public partial class NameResolutionDifferentialTests
                     "CS1955" when cell.Family == Family.Local && cell.Rule is "S3" or "N5-declared-later" => "#2425",
                     // `T !E` with no `Ok`: the spec has no implicit wrap, and the refusal is the cure.
                     "CS0029" when cell.Rule == "kind:result-wrap" => "#2249",
+                    // A class that declares no `__init__`, called with an argument: the call is not checked against the constructor it gets,
+                    // whatever the class is named, so no binding is at fault and the cell is #2021's (the owner's ruling 47, #2423 comment
+                    // 7208261340). Under any other rule the code has no route: a constructor call a name decides is red until it is triaged.
+                    "CS1729" when cell.Rule == "N1-arity" => "#2021",
                     // The checker and the emitter disagree on which binding a call means (#2150's route); N1 makes them agree.
-                    "CS1955" or "CS8917" or "CS1729" or "CS0029" or "CS1501" => "#2423",
+                    "CS1955" or "CS8917" or "CS0029" or "CS1501" => "#2423",
                     // A method's read of an import beside a same-named earlier member: the checker reads the import and the emitter
                     // qualifies it through the program's own module.
                     "CS0117" when cell.Outer == BindingKind.ImportedName => "#2423",
