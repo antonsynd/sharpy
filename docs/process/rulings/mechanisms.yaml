@@ -131,6 +131,7 @@ problems:
     observed:
       - {date: 2026-11-17, sha: af14cc69f, value: "read set 299,372 (286,358 at the previous handoff); procedure key 143,159; CLAUDE.md 9,304", by: handoff-2026-11-17-arc.md sections 1 and 3}
       - {date: 2026-11-27, sha: a5fac608e, value: "read set 301,323; procedure key 142,673; CLAUDE.md 9,205", by: health watch 2026-11-27}
+      - {date: 2026-11-27, sha: 5084f62bc, value: "read set 301,317. The equal cut that paid for #2810's additions removed a rule, not only rationale (local dev advances only by git pull); restored in the next pull request", by: health watch 2026-11-27}
 
   - id: M4
     name: Known-red allowlist rows accumulate and are not drained.
