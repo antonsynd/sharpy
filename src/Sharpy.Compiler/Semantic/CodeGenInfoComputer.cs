@@ -298,7 +298,7 @@ internal class CodeGenInfoComputer
                 IsConstant = false,
                 HasExecutionOrderIssues = false,
                 // Split accessors merge into one module property: every def of its member key decides.
-                StaticStorage = RecordModuleValue(propDef.Name, StaticStorageFacts.ForProperty(memberDefs)),
+                StaticStorage = NoteStorage(StaticStorageFacts.ForProperty(memberDefs)),
             });
         }
     }
@@ -311,20 +311,6 @@ internal class CodeGenInfoComputer
     {
         if (storage == StaticStorage.Guarded)
             _declaresGuardedValue = true;
-        return storage;
-    }
-
-    /// <summary>
-    /// <see cref="NoteStorage"/> for a MODULE value, which also records the fact declarer-side under
-    /// this file's path and the value's name on the shared binding: the record
-    /// <see cref="ImportedStaticFacts.ImportedStorage"/> reads when an importer's symbol is not the
-    /// declared one (the cold module-variable identity split: findings ledger, P77 T2; P78 / #2423).
-    /// </summary>
-    private StaticStorage? RecordModuleValue(string name, StaticStorage? storage)
-    {
-        NoteStorage(storage);
-        if (storage is { } recorded && !string.IsNullOrEmpty(_sourceFilePath))
-            ImportFacts.SetModuleValueStorage(_sourceFilePath, name, recorded);
         return storage;
     }
 
@@ -359,7 +345,7 @@ internal class CodeGenInfoComputer
                 // A variable emitted as a Main() local is no module value (#2125, out of P77's contract).
                 StaticStorage = hasIssues
                     ? null
-                    : RecordModuleValue(varDecl.Name, StaticStorageFacts.Classify(varDecl.InitialValue != null, isCSharpConst: false)),
+                    : NoteStorage(StaticStorageFacts.Classify(varDecl.InitialValue != null, isCSharpConst: false)),
             });
             _processedModuleLevelVars.Add(varDecl.Name);
         }
@@ -383,7 +369,7 @@ internal class CodeGenInfoComputer
                 IsConstant = true,
                 IsCompileTimeConstant = isCompileTime,
                 HasExecutionOrderIssues = false,
-                StaticStorage = RecordModuleValue(constDecl.Name, StaticStorageFacts.Classify(constDecl.InitialValue != null, isCompileTime)),
+                StaticStorage = NoteStorage(StaticStorageFacts.Classify(constDecl.InitialValue != null, isCompileTime)),
             });
         }
     }
@@ -509,12 +495,11 @@ internal class CodeGenInfoComputer
     /// Copies each exported module value's storage facts onto the export <paramref name="module"/>'s
     /// qualified spelling binds (<c>import m</c>; <c>m.x</c>), through
     /// <see cref="ImportedStaticFacts.ImportedStorage"/>, the one importer-side predicate (plan-775c50
-    /// D2). An export that is the declared symbol carries the fact already (a const, a warm build's
-    /// restored variable). The copy exists for a cold build's module VARIABLE, whose export is
-    /// ModuleLoader's extracted symbol with no CodeGenInfo (findings ledger, P77 T2: the identity
-    /// split, candidate class P78 / #2423): delete it, and the binding's module-value map, once the
-    /// export is the declared symbol. Its spelling is the from-import rule's, the one the emitter's
-    /// qualified-member fallback already produces, and it is not module-level, so it moves no name.
+    /// D2). Every export of a Sharpy module is its declared symbol (a module variable's too, cold and
+    /// warm: plan-777361 D1), which carries the fact already; the copy writes it only where the
+    /// importer's own binding holds an info for the export without it. Its spelling is the
+    /// from-import rule's, the one the emitter's qualified-member fallback already produces, and it
+    /// is not module-level, so it moves no name.
     /// </summary>
     private void CopyImportedValueStorage(ModuleSymbol module)
     {
@@ -623,10 +608,9 @@ internal class CodeGenInfoComputer
 
         // A from-imported value's storage facts are its DECLARATION's (plan-775c50 D2), read through
         // the one importer-side predicate: an aliased import binds a clone, and its importer must pick
-        // the same store and sweep arms the declaring module does. In a cold build a module VARIABLE's
-        // clone roots at ModuleLoader's extracted symbol, not the declared one, and the predicate reads
-        // the declarer's keyed record instead (findings ledger, P77 T2: the identity split, candidate
-        // class P78 / #2423). A .NET module's member has no record here (D10's attributes).
+        // the same store and sweep arms the declaring module does. The clone roots at the declared
+        // symbol for every value kind, a module variable's included (plan-777361 D1). A .NET module's
+        // member has no record here (D10's attributes).
         var (importedStorage, importedOnGenericHost) = ImportedStaticFacts.ImportedStorage(ImportFacts, symbol);
 
         SetCodeGenInfo(symbol, new CodeGenInfo

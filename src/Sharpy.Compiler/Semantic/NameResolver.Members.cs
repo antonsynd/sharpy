@@ -546,6 +546,39 @@ internal partial class NameResolver
     }
 
     /// <summary>
+    /// Declares a module-level variable, annotated or <c>auto</c> (plan-777361 D1, rule N1): its
+    /// symbol exists from this pass on, so a body above the declaration binds it and an importer's
+    /// export is this object, cold and warm. <c>TypeChecker.CheckVariableDeclaration</c> completes it
+    /// (its type) and creates none. A name this module already binds — the first declaration of the
+    /// same variable (#2125), a const, function, type, alias or property — is left as it is, and the
+    /// checker reports this declaration's collision at it exactly as it did before the symbol moved
+    /// here. A module <c>let</c> is declared too: SPY0340 refuses it, and the symbol only keeps a
+    /// read of it from becoming a second diagnostic.
+    /// </summary>
+    private void ResolveModuleVariableDeclaration(VariableDeclaration varDecl)
+    {
+        _logger.LogDebug($"Resolving module variable declaration: {varDecl.Name}");
+
+        // A builtin has no source location and a declaration shadows it, as Scope.Define allows.
+        if (_symbolTable.Lookup(varDecl.Name, searchParents: false) is { DeclarationLine: not null })
+            return;
+
+        _symbolTable.Define(new VariableSymbol
+        {
+            Name = varDecl.Name,
+            Kind = SymbolKind.Variable,
+            IsNameBacktickEscaped = varDecl.IsNameBacktickEscaped,
+            DeclaringFilePath = _currentFilePath,
+            DeclarationSpan = varDecl.Span,
+            DeclarationLine = varDecl.LineStart,
+            DeclarationColumn = varDecl.ColumnStart,
+            NameDeclarationLine = varDecl.NameLineStart,
+            NameDeclarationColumn = varDecl.NameColumnStart,
+            NameDeclarationColumnEnd = varDecl.NameColumnEnd
+        });
+    }
+
+    /// <summary>
     /// The accessors one module-level property declaration contributes. Mirrors class-level accessor
     /// classification (see ResolvePropertyDeclaration): auto-properties (Accessor.None) and
     /// <c>property get</c> declare a getter, <c>property set</c> declares a setter. An <c>init</c>

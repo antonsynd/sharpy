@@ -479,7 +479,8 @@ public partial class NameResolutionDifferentialTests
 
         // Measured literals: 40 declared kinds judged, 5 of them TryDeclareMember's Symbol-typed wrapper (a field or a method), 11 written forms and targets, 8 type definitions.
         (declaring, baseTyped, written, typeDefinitions).Should().Be((40, 5, 11, 8));
-        declaringRows.Should().Be(28, "the declared kinds on declaring rows, read against their phase and node");
+        // 30 since NameResolver declares a module variable and a module `let` (plan-777361 D1).
+        declaringRows.Should().Be(30, "the declared kinds on declaring rows, read against their phase and node");
     }
 
     // ------------------------------------------------------------------------------------------- //

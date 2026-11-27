@@ -69,9 +69,8 @@ internal static class StaticStorageFacts
 /// <see cref="ModuleSymbol"/>'s <see cref="CodeGenInfo.HasSweep"/> and a from-import's
 /// <see cref="ModuleLayout.HasSweep"/>.</para>
 /// <para><b>An imported value's storage.</b> <see cref="ImportedStorage"/>: the declaration's own
-/// CodeGenInfo when the imported symbol reaches it, else the declarer's keyed record — the bridge for a
-/// module VARIABLE, whose cold export is not its declared symbol (findings ledger, P77 T2: the
-/// identity split, candidate class P78 / #2423).</para>
+/// CodeGenInfo, which every imported symbol reaches — a module variable's export is its declared
+/// symbol, cold and warm (plan-777361 D1).</para>
 /// </summary>
 internal static class ImportedStaticFacts
 {
@@ -121,18 +120,10 @@ internal static class ImportedStaticFacts
     public static (StaticStorage? Storage, bool IsOnGenericHost) ImportedStorage(SemanticBinding facts, Symbol imported)
     {
         var declaration = imported.DeclarationRoot();
-        if (facts.GetCodeGenInfo(declaration) is { StaticStorage: { } storage } declared)
-            return (storage, declared.IsOnGenericHost);
-
-        // The identity bridge (findings ledger, P77 T2; candidate class P78 / #2423): in a cold build
-        // a module VARIABLE's export is ModuleLoader's extracted symbol, not the declared one the
-        // checker created, so its declaration's CodeGenInfo is unreachable from it; the declaring
-        // module's keyed record answers instead. A module value has no host, so no generic host.
-        // Delete this arm and SemanticBinding's module-value map once one symbol is both.
-        if (declaration is VariableSymbol { DeclaringFilePath: { Length: > 0 } path }
-            && facts.GetModuleValueStorage(path, declaration.Name) is { } recorded)
-            return (recorded, false);
-
-        return (null, false);
+        // A module variable's export is its declared symbol, cold and warm (plan-777361 D1), so the
+        // declaration's own CodeGenInfo answers for every value kind: no keyed bridge record.
+        return facts.GetCodeGenInfo(declaration) is { StaticStorage: { } storage } declared
+            ? (storage, declared.IsOnGenericHost)
+            : (null, false);
     }
 }

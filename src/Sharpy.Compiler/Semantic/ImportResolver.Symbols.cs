@@ -371,6 +371,12 @@ internal partial class ImportResolver
         }
 
         var scope = symbolTable.CurrentScope;
+        // A module variable is declared before imports bind (plan-777361 D1). An explicit import of
+        // its name takes the slot as it did when the checker declared the variable, so the
+        // variable's own declaration keeps its SPY0204 at the declaration (D6: an import its module
+        // redeclares). A star import never displaces a module-level declaration (below).
+        if (alias != null && IsDeclaredModuleVariable(scope, registerName))
+            scope.Remove(registerName);
         if (symbolTable.TryDefine(symbol))
         {
             scope.RecordImportBinding(registerName, binding with { IsStar = alias == null });
@@ -386,6 +392,20 @@ internal partial class ImportResolver
                 IsError: true, refused.At));
         return false;
     }
+
+    /// <summary>
+    /// Whether <paramref name="scope"/>, a module scope, binds <paramref name="name"/> to a module
+    /// variable its own source declares (plan-777361 D1): a non-const, non-property variable with a
+    /// source location that no import bound. Imports bind before the checker runs, so nothing else
+    /// of that shape is in a module scope then.
+    /// </summary>
+    private static bool IsDeclaredModuleVariable(Scope scope, string name)
+        => SymbolTable.ClassifyScope(scope.Name) == SymbolTable.ScopeKind.Module
+            && scope.Lookup(name, searchParent: false) is VariableSymbol
+            {
+                IsConstant: false, IsModuleProperty: false, IsParameter: false, DeclarationLine: not null
+            }
+            && scope.LookupImportBinding(name) == null;
 
     /// <summary>
     /// The SPY0204 text for an import whose name is already bound in its scope — with the site to

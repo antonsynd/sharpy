@@ -350,8 +350,9 @@ internal static class NameResolutionRosters
     internal const int FunctionSymbolDeclaredBoolCensus = 10;
 
     /// <summary>Binder sites whose receiver type is <c>SymbolTable</c> or <c>Scope</c> (finding 6): the plan's 67 on the
-    /// four <c>SymbolTable</c> receivers, plus <c>_globalScope</c> ×3, <c>merged</c> and <c>CurrentScope</c> ×2.</summary>
-    internal const int BinderSiteCensus = 73;
+    /// four <c>SymbolTable</c> receivers, plus <c>_globalScope</c> ×3, <c>merged</c> and <c>CurrentScope</c> ×2; plus
+    /// NameResolver's module variable (plan-777361 D1).</summary>
+    internal const int BinderSiteCensus = 74;
 
     /// <summary><c>TypeAnnotation</c>-typed AST properties: 23 since P93 D4 added <c>ComparisonChain.HeadCheckType</c>.</summary>
     internal const int TypeAnnotationScalarCensus = 23;
@@ -562,7 +563,8 @@ internal static class NameResolutionRosters
     internal static readonly IReadOnlyDictionary<string, BinderImage> BinderSites = Roster.Map(
         // STORE forms
         ("TypeChecker.Statements.cs:CheckAssignment(newSymbol)", BinderImage.Store(StoreForm.Assign, BindingKind.LocalVar, BindingKind.LocalLet, BindingKind.LambdaTypedLocal)),
-        ("TypeChecker.Statements.cs:CheckVariableDeclaration(newSymbol)", BinderImage.Store(StoreForm.LetOrVar, BindingKind.ModuleVar, BindingKind.ModuleLet, BindingKind.LocalVar, BindingKind.LocalLet, BindingKind.LambdaTypedLocal)),
+        // A module variable or `let` is NameResolver's declaration (plan-777361 D1): this store declares locals only.
+        ("TypeChecker.Statements.cs:CheckVariableDeclaration(newSymbol)", BinderImage.Store(StoreForm.LetOrVar, BindingKind.LocalVar, BindingKind.LocalLet, BindingKind.LambdaTypedLocal)),
         ("TypeChecker.Expressions.cs:CheckWalrusExpression(newSymbol)", BinderImage.Store(StoreForm.Walrus, BindingKind.LocalVar, BindingKind.Inner)),
         (CheckModifiedArgumentSite, BinderImage.StoreAndLocal(StoreForm.OutLet, LocalTarget.OutLet, BindingKind.LocalLet)),
 
@@ -585,6 +587,7 @@ internal static class NameResolutionRosters
         ("NameResolver.Members.cs:TryDeclareMember(member)", BinderImage.Declaring(
             BindingKind.StaticField, BindingKind.StaticMethod, BindingKind.InstanceField, BindingKind.InstanceMethod, BindingKind.Constructor)),
         ("NameResolver.Members.cs:ResolveConstantDeclaration(varSymbol)", BinderImage.Declaring(BindingKind.ModuleLiteralConst, BindingKind.ModuleComputedConst)),
+        ("NameResolver.Members.cs:ResolveModuleVariableDeclaration(new VariableSymbol)", BinderImage.Declaring(BindingKind.ModuleVar, BindingKind.ModuleLet)),
         ("TypeChecker.Statements.cs:CheckVariableDeclaration(constSymbol)", BinderImage.Declaring(BindingKind.LocalLiteralConst, BindingKind.LocalComputedConst)),
         ("TypeChecker.Statements.cs:DefineTypeBodyConstFields(field)", BinderImage.Declaring(BindingKind.ClassLiteralConst, BindingKind.ClassComputedConst)),
         ("NameResolver.Members.cs:ResolveModulePropertyDeclaration(propSymbol)", BinderImage.Declaring(BindingKind.ModuleProperty)),

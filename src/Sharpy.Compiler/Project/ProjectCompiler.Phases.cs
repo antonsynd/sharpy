@@ -297,8 +297,8 @@ internal partial class ProjectCompiler
                                 // This is the one place a star import binds its names — so the names it
                                 // BOUND are recorded here too, each beside the symbol it bound (#2371, D5 (i);
                                 // #2385): a name a declaration of this file keeps is refused to the star and
-                                // absent, and a module variable that takes a name over later is filtered out
-                                // after type checking by identity (CodeGenInfoComputer).
+                                // absent — a module variable of this file included, which is declared before
+                                // imports bind (plan-777361 D1).
                                 var boundNames = new List<FromImportBoundName>();
                                 unit.FromImportBoundNames[fromImport] = boundNames;
                                 foreach (var (name, symbol) in symbolsToImport)
@@ -398,6 +398,9 @@ internal partial class ProjectCompiler
                                         // object whose CodeGenInfo names the emitted member. Re-derived from
                                         // the import spelling instead, `from lib import CAP_P as c` read
                                         // `LibModule.CAP_P` for the declared `CapP` (CS0117 behind SPY0908).
+                                        // A module variable's declaration is in its module's scope from
+                                        // name resolution on (plan-777361 D1), so its twin roots there too,
+                                        // and the checker reads the clone's type through it.
                                         else if (importAlias.AsName != null && registryBinding == null
                                             && symbolToRegister is VariableSymbol { OriginSymbol: { } extractedOrigin } aliasVar
                                             && ResolveOwnExportedSymbol(moduleInfo, lookupName, extractedOrigin) is { } ownDeclaration)

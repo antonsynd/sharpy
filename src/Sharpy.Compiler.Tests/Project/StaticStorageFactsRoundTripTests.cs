@@ -389,6 +389,144 @@ public class StaticStorageFactsRoundTripTests : IDisposable
         failures.Should().BeEmpty("each cell carries D2's facts on both builds:\n  " + string.Join("\n  ", failures));
     }
 
+    // ------------------------------------------------------------------------------------------- //
+    // A module variable's export is its declared symbol (plan-777361 D1, A3)
+    // ------------------------------------------------------------------------------------------- //
+
+    /// <summary>The spellings an importer reaches a module value by.</summary>
+    public enum ImporterForm
+    {
+        Import,
+        ImportAs,
+        FromImport,
+        FromImportAs,
+        Star,
+    }
+
+    internal static readonly ImporterForm[] ImporterForms = Enum.GetValues<ImporterForm>();
+
+    /// <summary>The module variables of the identity specimen: an annotated one and an <c>auto</c> one.</summary>
+    internal static readonly string[] IdentityVariables = { "mv", "av" };
+
+    private const string IdentityLibSource = "def seven() -> int:\n    return 7\n\nmv: int = 3\nav: auto = seven()\n";
+
+    /// <summary>The importer module of one form: it reads every identity variable through that form.</summary>
+    internal static (string File, string Source) IdentityImporter(ImporterForm form)
+    {
+        var reads = form switch
+        {
+            ImporterForm.Import => ("import lib", "lib.mv + lib.av"),
+            ImporterForm.ImportAs => ("import lib as L", "L.mv + L.av"),
+            ImporterForm.FromImport => ("from lib import mv, av", "mv + av"),
+            ImporterForm.FromImportAs => ("from lib import mv as amv, av as aav", "amv + aav"),
+            ImporterForm.Star => ("from lib import *", "mv + av"),
+            _ => throw new ArgumentOutOfRangeException(nameof(form)),
+        };
+        var name = "f_" + form.ToString().ToLowerInvariant();
+        return ($"{name}.spy", $"{reads.Item1}\n\ndef read() -> int:\n    return {reads.Item2}\n");
+    }
+
+    /// <summary>The symbol <paramref name="form"/>'s importer binds for lib's <paramref name="variable"/>.</summary>
+    internal static Symbol? BoundExport(Scope? importer, ImporterForm form, string variable)
+    {
+        Symbol? Export(string moduleName)
+            => importer?.Lookup(moduleName, searchParent: false) is ModuleSymbol module
+                && module.Exports.TryGetValue(variable, out var export) ? export : null;
+        return form switch
+        {
+            ImporterForm.Import => Export("lib"),
+            ImporterForm.ImportAs => Export("L"),
+            ImporterForm.FromImport or ImporterForm.Star => importer?.Lookup(variable, searchParent: false),
+            // An aliased from-import binds a clone under the new name; its origin is the export.
+            ImporterForm.FromImportAs => importer?.Lookup("a" + variable, searchParent: false)?.DeclarationRoot(),
+            _ => throw new ArgumentOutOfRangeException(nameof(form)),
+        };
+    }
+
+    /// <summary>
+    /// plan-777361 A3 (D1): a module variable's export is its declared symbol — the one object lib's
+    /// module scope binds and, on a cold build, the one its declaration names — for every importer
+    /// form, annotated and <c>auto</c>, cold and warm (lib served from the cache). The cold cells are
+    /// what M3 turns red: a symbol the checker creates at the declaration again is not the export
+    /// NameResolver's symbol became in Phase 4. Each bound export also carries the declaration's
+    /// storage fact (Guarded), with no keyed bridge record to fall back on.
+    /// </summary>
+    [Fact]
+    public void AModuleVariablesExport_IsItsDeclaredSymbol_PerImporterForm_ColdAndWarm()
+    {
+        var dir = Path.Combine(_tempDir, "identity");
+        var lib = Write(dir, "lib.spy", IdentityLibSource);
+        var importers = ImporterForms.Select(f => (Form: f, Importer: IdentityImporter(f))).ToList();
+        var importerPaths = importers.Select(i => Write(dir, i.Importer.File, i.Importer.Source)).ToList();
+        string Main(string touch) => $"# {touch}\n"
+            + string.Join("\n", importers.Select(i => $"import {Path.GetFileNameWithoutExtension(i.Importer.File)}"))
+            + "\n\ndef main() -> None:\n    print("
+            + string.Join(", ", importers.Select(i => $"{Path.GetFileNameWithoutExtension(i.Importer.File)}.read()"))
+            + ")\n";
+        var main = Write(dir, "main.spy", Main("build 1"));
+        var config = Config(dir, new[] { lib, main }.Concat(importerPaths).ToArray());
+
+        var cold = Build(config);
+        cold.Success.Should().BeTrue("the specimen must compile. Diagnostics:\n" + Diagnostics(cold));
+        var coldModel = cold.ProjectModel!;
+
+        // Warm: every importer is touched, so each re-binds its imports against lib's RESTORED symbols.
+        Write(dir, "main.spy", Main("build 2"));
+        foreach (var (form, importer) in importers)
+            Write(dir, importer.File, "# build 2\n" + importer.Source);
+        var warm = Build(config);
+        warm.Success.Should().BeTrue("the warm build must compile. Diagnostics:\n" + Diagnostics(warm));
+        Skipped(warm).Should().Equal(new[] { "lib.spy" },
+            "the positive control of every warm cell: lib is served from the cache, every importer is not");
+
+        var failures = new List<string>();
+        var cells = 0;
+        foreach (var (build, model) in new[] { ("cold", coldModel), ("warm", warm.ProjectModel!) })
+        {
+            var libUnit = model.Units.Values.Single(u => Path.GetFileName(u.FilePath) == "lib.spy");
+            // The module scope itself: a served unit captures none of its own (it is never name-resolved).
+            var libScope = model.GlobalSymbols!.GetModuleScope(libUnit.ModulePath);
+            foreach (var variable in IdentityVariables)
+            {
+                var declared = libScope?.Lookup(variable, searchParent: false) as VariableSymbol;
+                if (declared == null)
+                {
+                    failures.Add($"{build} lib: no module variable '{variable}' in its scope");
+                    continue;
+                }
+
+                // Cold, lib is checked here, so its declaration names its symbol: the scope's one.
+                if (build == "cold")
+                {
+                    var declaration = libUnit.Ast!.Body.OfType<VariableDeclaration>().Single(d => d.Name == variable);
+                    if (!ReferenceEquals(model.SemanticInfo!.GetDeclarationSymbol(declaration), declared))
+                        failures.Add($"cold lib: the declaration of '{variable}' names another symbol than lib's scope binds");
+                }
+
+                foreach (var (form, importer) in importers)
+                {
+                    cells++;
+                    var scope = model.Units.Values.Single(u => Path.GetFileName(u.FilePath) == importer.File).ModuleScope;
+                    var bound = BoundExport(scope, form, variable);
+                    if (!ReferenceEquals(bound, declared))
+                    {
+                        failures.Add($"{build} {form} {variable}: the export is "
+                            + (bound == null ? "<unbound>" : $"another {bound.GetType().Name} than the declared symbol"));
+                        continue;
+                    }
+                    var fact = model.SemanticBinding.GetCodeGenInfo(declared) is { } info
+                        ? Render(info.StaticStorage, info.IsOnGenericHost) : "<NO CodeGenInfo>";
+                    if (fact != Render(StaticStorage.Guarded, false))
+                        failures.Add($"{build} {form} {variable}: expected {Render(StaticStorage.Guarded, false)}, got {fact}");
+                }
+            }
+        }
+
+        _output.WriteLine($"{cells} cells, {failures.Count} failure(s)");
+        cells.Should().Be(2 * IdentityVariables.Length * ImporterForms.Length, "every form x variable x build is a cell");
+        failures.Should().BeEmpty("a module variable's export is its declared symbol:\n  " + string.Join("\n  ", failures));
+    }
+
     /// <summary>
     /// The conservative arm (lead's ruling on T2): in a deferred import cycle the member checked first
     /// imports a peer with no record yet and reads HasSweep true, and the peer, checked second, reads

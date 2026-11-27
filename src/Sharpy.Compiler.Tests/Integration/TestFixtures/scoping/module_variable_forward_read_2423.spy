@@ -1,0 +1,10 @@
+# N1 (plan-777361 D1): a module variable, annotated or `auto`, is visible throughout its module,
+# above its declaration too, as a function, class or const is.
+def show() -> None:
+    print(limit, doubled)
+
+limit: int = 3
+doubled: auto = limit * 2
+
+def main() -> None:
+    show()

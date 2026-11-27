@@ -135,13 +135,6 @@ public class SemanticBinding
     // persisted on the incremental cache's FileCacheEntry and restored on a warm build.
     private readonly ConcurrentDictionary<string, bool> _moduleHasSweep = new(StringComparer.Ordinal);
 
-    // Each module value's StaticStorage (plan-775c50 D2), keyed by (normalized file path, name):
-    // recorded declarer-side by CodeGenInfoComputer, read only by ImportedStaticFacts.ImportedStorage.
-    // The bridge for the cold module-variable identity split (findings ledger, P77 T2; candidate
-    // class P78 / #2423): delete it once a module variable's export is its declared symbol. Not on
-    // the cache: a warm export IS the restored declared symbol, which carries the fact itself.
-    private readonly ConcurrentDictionary<(string Path, string Name), StaticStorage> _moduleValueStorage = new();
-
     // Phase-gating freeze flags - prevent mutations after a phase completes.
     // Volatile for thread safety when per-file bindings are frozen concurrently.
     private volatile bool _inheritanceFrozen;
@@ -710,9 +703,6 @@ public class SemanticBinding
 
         foreach (var (path, hasSweep) in other._moduleHasSweep)
             _moduleHasSweep.TryAdd(path, hasSweep);
-
-        foreach (var (key, storage) in other._moduleValueStorage)
-            _moduleValueStorage.TryAdd(key, storage);
     }
 
     #region Module Resolution
@@ -769,24 +759,6 @@ public class SemanticBinding
     /// </summary>
     public bool? GetModuleHasSweep(string filePath)
         => _moduleHasSweep.TryGetValue(Utilities.PathNormalizer.Normalize(filePath), out var hasSweep) ? hasSweep : null;
-
-    /// <summary>
-    /// Records a module value's <see cref="StaticStorage"/> (plan-775c50 D2) under its declaring file
-    /// and name: written by the declaring module's <c>CodeGenInfoComputer</c>. The cold
-    /// module-variable identity bridge (findings ledger, P77 T2; P78 / #2423).
-    /// </summary>
-    public void SetModuleValueStorage(string filePath, string name, StaticStorage storage)
-        => _moduleValueStorage[(Utilities.PathNormalizer.Normalize(filePath), name)] = storage;
-
-    /// <summary>
-    /// The <see cref="StaticStorage"/> the module at <paramref name="filePath"/> recorded for its value
-    /// <paramref name="name"/>, or null. Read through <see cref="ImportedStaticFacts.ImportedStorage"/>,
-    /// the one importer-side predicate.
-    /// </summary>
-    public StaticStorage? GetModuleValueStorage(string filePath, string name)
-        => _moduleValueStorage.TryGetValue((Utilities.PathNormalizer.Normalize(filePath), name), out var storage)
-            ? storage
-            : null;
 
     /// <summary>
     /// Sets the re-exported symbols for a FromImportStatement.

@@ -843,6 +843,9 @@ internal partial class TypeChecker
     private bool TryRefuseBareClassAttributeStore(
         string targetName, Node bindingNode, BareStoreForm form, int line, int column, TextSpan? span)
     {
+        if (TryRefuseStoreAboveModuleVariable(targetName, line, column, span))
+            return true;
+
         // The store set stays fields and properties (#1803; lead ruling (a), 2026-10-28). The ONE
         // membership predicate also names methods and events now (P21h D8, for the read steer), and
         // this refusal filters on the member's KIND: a method or event is not storage, so a bare store

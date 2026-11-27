@@ -109,6 +109,17 @@ internal partial class NameResolver
             ResolveDeclaration(statement);
         }
 
+        // Module variables last (plan-777361 D1, N1): every module-level variable, annotated or
+        // `auto`, is declared here as a `const` is, so a body above its declaration binds it.
+        // Last, so a name any other declaration of this module holds keeps that meaning and the
+        // variable's own declaration reports the collision when the checker reaches it, as before.
+        foreach (var statement in module.Body)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            if (statement is VariableDeclaration { IsConst: false } variable)
+                ResolveModuleVariableDeclaration(variable);
+        }
+
         _logger.LogInfo($"Completed name resolution pass 1 ({module.Body.Length} statements processed)");
     }
 

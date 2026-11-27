@@ -1115,6 +1115,20 @@ internal partial class TypeChecker
             && !existingSymbol.IsDeclaredAt(varDecl))
             return;
 
+        // A module variable is NameResolver's symbol (plan-777361 D1): the checker completes it and
+        // creates none, so an importer's export and a body above the declaration read this object.
+        var declaresModuleVariable = IsModuleVariableDeclaration(varDecl);
+        // The file is part of the identity: an imported variable declared at the same span of
+        // another file is not this declaration's symbol.
+        if (declaresModuleVariable && existingSymbol is VariableSymbol declaredVariable
+            && declaredVariable.IsDeclaredAt(varDecl)
+            && string.Equals(declaredVariable.DeclaringFilePath, _currentFilePath, StringComparison.Ordinal)
+            && _symbolTable.CurrentScope.LookupImportBinding(varDecl.Name) == null)
+        {
+            CompleteDeclaredVariable(varDecl, declaredVariable, declaredType);
+            return;
+        }
+
         // A hoisted def/class with this name makes the declaration a duplicate definition —
         // Scope.Define would throw on the collision.
         if (TryReportNonVariableRedefinition(varDecl.Name, varDecl.LineStart, varDecl.ColumnStart, varDecl.Span,
@@ -1182,6 +1196,19 @@ internal partial class TypeChecker
             // The Scope.Define will replace the existing symbol
         }
 
+        if (declaresModuleVariable)
+        {
+            // A second module-level declaration of a variable's name (#2125, unchanged: the first
+            // value stands) binds the first one's symbol, which NameResolver declared; the checker
+            // makes no second module variable. Nothing else reaches here at module level.
+            if (existingSymbol is VariableSymbol firstDeclaration)
+            {
+                _semanticInfo.SetDeclarationSymbol(varDecl, firstDeclaration);
+                _semanticInfo.SetTargetBinding(varDecl, new TargetBinding(TargetBindingKind.Declares));
+            }
+            return;
+        }
+
         var newSymbol = new VariableSymbol
         {
             Name = varDecl.Name,
@@ -1198,8 +1225,19 @@ internal partial class TypeChecker
             DeclaringFilePath = _currentFilePath
         };
         _symbolTable.Define(newSymbol);
-        SemanticBinding.SetVariableType(newSymbol, declaredType);
-        _semanticInfo.SetDeclarationSymbol(varDecl, newSymbol);
+        CompleteDeclaredVariable(varDecl, newSymbol, declaredType);
+    }
+
+    /// <summary>
+    /// Writes a variable declaration's checked facts onto its symbol: the type, the declaration
+    /// binding and the list backing. The symbol is the checker's own for a local, and NameResolver's
+    /// for a module variable (plan-777361 D1), which the checker completes and never replaces.
+    /// </summary>
+    private void CompleteDeclaredVariable(VariableDeclaration varDecl, VariableSymbol symbol, SemanticType declaredType)
+    {
+        symbol.Type = declaredType;
+        SemanticBinding.SetVariableType(symbol, declaredType);
+        _semanticInfo.SetDeclarationSymbol(varDecl, symbol);
         _semanticInfo.SetTargetBinding(varDecl, new TargetBinding(TargetBindingKind.Declares));
 
         // A local declared with an explicit list[T] annotation emits as a concrete Sharpy.List<T>
@@ -1207,8 +1245,48 @@ internal partial class TypeChecker
         // path (#1052). Inferred locals go through `var` and may bind a CLR array, so they default
         // to Unknown (not recorded here).
         if (varDecl.Type != null && declaredType is GenericType { Name: BuiltinNames.List })
-            _listBackingKinds[newSymbol] = ListBackingKind.SharpyList;
+            _listBackingKinds[symbol] = ListBackingKind.SharpyList;
     }
+
+    /// <summary>
+    /// A bare store with no <c>global</c>, in any assignment form, from a function-like scope to a
+    /// module variable of this module declared BELOW the store: SPY0200, the code and message it drew
+    /// while a module variable was declared only when the checker reached it. N1 makes the variable
+    /// visible to every read above it (plan-777361 D1); a store is N6's, which refuses it at both
+    /// orders once P79 lands, and until then nothing refused before may run with a meaning python
+    /// gives it no way to have (tie-break 1).
+    /// </summary>
+    // TODO(#2424): interim — P79's N6 refusal replaces this (owner ruling (b), P78 T1)
+    private bool TryRefuseStoreAboveModuleVariable(string name, int line, int column, Text.TextSpan? span)
+    {
+        if (_currentFunctionReturnType == null
+            || _symbolTable.Lookup(name) is not VariableSymbol { IsConstant: false, IsModuleProperty: false } variable
+            || !string.Equals(variable.DeclaringFilePath, _currentFilePath, StringComparison.Ordinal)
+            || variable.DeclarationLine is not int declarationLine)
+            return false;
+
+        Scope? module = _symbolTable.CurrentScope;
+        while (module != null && SymbolTable.ClassifyScope(module.Name) != SymbolTable.ScopeKind.Module)
+            module = module.Parent;
+        if (module == null || !ReferenceEquals(module.Lookup(name, searchParent: false), variable)
+            || module.LookupImportBinding(name) != null)
+            return false;
+
+        if (declarationLine < line || (declarationLine == line && (variable.DeclarationColumn ?? 0) <= column))
+            return false;
+
+        AddError($"Undefined identifier '{name}'", line, column,
+            code: DiagnosticCodes.Semantic.UndefinedVariable, span: span);
+        return true;
+    }
+
+    /// <summary>
+    /// Whether <paramref name="varDecl"/> declares a module variable (plan-777361 D1): a non-const
+    /// declaration directly in the module body, whose symbol NameResolver created.
+    /// </summary>
+    private bool IsModuleVariableDeclaration(VariableDeclaration varDecl)
+        => !varDecl.IsConst && !AtNonDeclaringPosition
+            && SymbolTable.ClassifyScope(_symbolTable.CurrentScope.Name) == SymbolTable.ScopeKind.Module;
 
     private void CheckReturn(ReturnStatement returnStmt)
     {

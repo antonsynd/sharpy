@@ -516,10 +516,21 @@ internal partial class TypeChecker
     /// Gets the type for a VariableSymbol from SemanticBinding.
     /// Falls back to symbol.Type for symbols not tracked by this binding.
     /// </summary>
+    /// <remarks>
+    /// An aliased from-import binds a clone of the export, made at import binding, before any
+    /// declaration is checked; its own type is that moment's copy (for a module variable's
+    /// <c>auto</c>, ModuleLoader's unresolved annotation). The export is the declared symbol
+    /// (plan-777361 D1), so the clone reads the type its declaration was checked to.
+    /// </remarks>
     private SemanticType GetVariableType(VariableSymbol symbol)
     {
         var bindingType = SemanticBinding.GetVariableType(symbol);
-        return bindingType != SemanticType.Unknown ? bindingType : symbol.Type;
+        if (bindingType != SemanticType.Unknown)
+            return bindingType;
+        if (symbol.OriginSymbol != null && symbol.DeclarationRoot() is VariableSymbol { Type: not UnknownType } declaration
+            && !ReferenceEquals(declaration, symbol))
+            return declaration.Type;
+        return symbol.Type;
     }
 
     /// <summary>

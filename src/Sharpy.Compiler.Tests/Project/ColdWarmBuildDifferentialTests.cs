@@ -222,6 +222,66 @@ def main() -> None:
     }
 
     /// <summary>
+    /// plan-777361 A3 (D1), per importer form: a module variable's export is its declared symbol, so a
+    /// warm build (lib served from the cache, the importer recompiled against lib's restored symbols)
+    /// binds the object lib's scope binds and emits and reports what the cold build does. lib reads
+    /// its own variables from a function ABOVE their declarations (N1), so the declared symbol is
+    /// the one every read binds, and one is <c>auto</c>, whose type exists only once lib is checked.
+    /// </summary>
+    [Theory]
+    [MemberData(nameof(ImporterFormCases))]
+    public void AModuleVariablesExport_IsItsDeclaredSymbol_ColdAndWarm(StaticStorageFactsRoundTripTests.ImporterForm form)
+    {
+        const string libSource = "def total() -> int:\n    return mv + av\n\nmv: int = 3\nav: auto = mv * 2\n";
+        var (importerFile, importerSource) = StaticStorageFactsRoundTripTests.IdentityImporter(form);
+        var importerModule = Path.GetFileNameWithoutExtension(importerFile);
+        // Each touch is a trailing comment: no line moves, so the emitted C# of a correct warm build
+        // is the cold build's to the byte.
+        string MainFor(string touch)
+            => $"import lib\nimport {importerModule}\n\ndef main() -> None:\n    print(lib.total(), {importerModule}.read())\n# {touch}\n";
+
+        var area = "export_" + form.ToString().ToLowerInvariant();
+        var lib = Write(area, "lib.spy", libSource);
+        var importer = Write(area, importerFile, importerSource);
+        var main = Write(area, "main.spy", MainFor("build 1"));
+        var config = Config(area, lib, importer, main);
+
+        var cold = Build(config);
+        cold.Success.Should().BeTrue("the specimen must compile. Diagnostics:\n" + Diagnostics(cold));
+
+        Write(area, importerFile, importerSource + "# build 2\n");
+        Write(area, "main.spy", MainFor("build 2"));
+        var warm = Build(config);
+        warm.Success.Should().BeTrue("the warm build must compile. Diagnostics:\n" + Diagnostics(warm));
+        Skipped(warm).Should().BeEquivalentTo(new[] { "lib.spy" },
+            "lib is the file served from the cache, and the importer re-binds against its restored symbols");
+
+        foreach (var (build, result) in new[] { ("cold", cold), ("warm", warm) })
+        {
+            var model = result.ProjectModel!;
+            // The module scope itself: a served unit captures none of its own (it is never name-resolved).
+            var libScope = model.GlobalSymbols!.GetModuleScope(
+                model.Units.Values.Single(u => Path.GetFileName(u.FilePath) == "lib.spy").ModulePath);
+            var importerScope = model.Units.Values.Single(u => Path.GetFileName(u.FilePath) == importerFile).ModuleScope;
+            foreach (var variable in StaticStorageFactsRoundTripTests.IdentityVariables)
+            {
+                var declared = libScope?.Lookup(variable, searchParent: false);
+                declared.Should().BeOfType<Sharpy.Compiler.Semantic.VariableSymbol>($"{build}: lib's scope binds its variable '{variable}'");
+                StaticStorageFactsRoundTripTests.BoundExport(importerScope, form, variable).Should().BeSameAs(declared,
+                    $"{build} {form}: the export of '{variable}' is its declared symbol");
+            }
+        }
+
+        // The importer's C# reads lib's restored symbols on the warm build: nothing may differ.
+        Generated(cold).Count.Should().BeGreaterThanOrEqualTo(3, "lib, the importer and main each emit C#");
+        Generated(warm).Should().BeEquivalentTo(Generated(cold), "a warm build emits what the cold build emits");
+        Diagnostics(warm).Should().Be(Diagnostics(cold), "a warm build reports what the cold build reports");
+    }
+
+    public static IEnumerable<object[]> ImporterFormCases()
+        => StaticStorageFactsRoundTripTests.ImporterForms.Select(f => new object[] { f });
+
+    /// <summary>
     /// A downstream file that MISUSES the cached type, so the compiler has to say out loud what it
     /// thinks that type is.
     /// </summary>

@@ -1,0 +1,11 @@
+# plan-777361 T1, owner ruling (b): a bare store with no `global` from a function to a module
+# variable declared BELOW it stays refused (SPY0200), as it was before module variables were
+# declared first, until P79's N6 refusal covers both orders (#2424). A read of it runs (N1).
+def bump() -> None:
+    later += 1
+
+later: int = 5
+
+def main() -> None:
+    bump()
+    print(later)
