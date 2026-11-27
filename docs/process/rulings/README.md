@@ -1,6 +1,6 @@
 # Ruling records
 
-These files hold the owner's rulings, each a charter row, as data, so a script can check what
+All of these files but `mechanisms.yaml` hold the owner's rulings, each a charter row, as data, so a script can check what
 prose cannot: that a ruling names its law, that a replaced ruling says so, that two rulings do not
 give one case two answers.
 
@@ -11,6 +11,7 @@ give one case two answers.
 | `axes.yaml` | The closed lists a *case* is named from |
 | `policy.yaml` | Which decisions an agent may take without the owner. A draft; the owner's to set |
 | `known-findings.yaml` | Findings that wait for the owner. A ratchet |
+| `mechanisms.yaml` | The process mechanisms tried against each process problem, with what was measured after. Read whole before changing one; its header says who writes it and how it is checked |
 
 ```bash
 python3 build_tools/check_rulings.py                 # no compiler needed

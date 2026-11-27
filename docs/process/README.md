@@ -85,8 +85,8 @@ The same lane shape holds for every change that is not a plan stage — a `/batc
 call, a chore or band commit, a skill or doc edit, a version bump (owner, 2026-11-11): cut
 `claude/<lane>` from `origin/dev`, commit there, `/push`, open a pull request into `dev`, and merge it
 as item 6 says (a band commit that changes code waits for its review). `dev`
-is the integration branch; nothing is pushed to it directly, and local `dev` advances only by
-`git pull origin dev` after a merge.
+is the integration branch; nothing is pushed to it directly. A process-mechanism change reads
+`rulings/mechanisms.yaml` whole and appends its attempt in its pull request.
 
 `mainline` is the release branch and is reached from `dev` only, never from a lane: the owner merges
 `dev` into `mainline` (`Merge dev into mainline — release X.Y.Z`, or a pull request with base
