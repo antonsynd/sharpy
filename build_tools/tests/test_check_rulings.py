@@ -1346,6 +1346,14 @@ def test_properly_marked_amendments_are_not_reported(real):
     assert ("charter-mark", ("R-MJ", "R-QS")) not in found
 
 
+def test_the_parked_owner_words_are_exactly_these(real):
+    # Owner's words the lead cell does not quote, waiting for the owner to supply them. This set only
+    # shrinks: a new entry would let a session record an "owner" ruling and park its unquoted words,
+    # so adding one is the owner's to allow.
+    parked = {(tuple(row["subjects"]), row.get("where")) for row in real.known if row["check"] == "owner-required"}
+    assert parked == {(("R-RD",), "owner_words 1"), (("R-RR",), "owner_words 2")}
+
+
 def test_every_known_row_points_at_a_file_that_exists(real):
     for row in real.known:
         assert (REPO / str(row["ref"]).split(" ")[0]).is_file(), row
