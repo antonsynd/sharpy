@@ -1169,7 +1169,7 @@ STRICT_RULINGS = {
     "R-RA": ("2026-11-24", "6f46a7675fbfa65b"),
     "R-RB": ("2026-11-24", "5d653461c6f4d3fa"),
     "R-RC": ("2026-11-24", "a4788c1857c448cd"),
-    "R-RD": ("2026-11-24", "a7b30129788a7945"),
+    "R-RD": ("2026-11-24", "fc17d051ea54e167"),
     "R-RE": ("2026-11-24", "f508f570a3dacaf7"),
     "R-RF": ("2026-11-24", "40642070ff07cfd5"),
     "R-RG": ("2026-11-24", "d0b18d318c54937d"),
@@ -1363,7 +1363,7 @@ def test_the_parked_owner_words_are_exactly_these(real):
     # shrinks: a new entry would let a session record an "owner" ruling and park its unquoted words,
     # so adding one is the owner's to allow.
     parked = {(tuple(row["subjects"]), row.get("where")) for row in real.known if row["check"] == "owner-required"}
-    assert parked == {(("R-RD",), "owner_words 1"), (("R-RR",), "owner_words 2")}
+    assert parked == set()
 
 
 def test_every_known_row_points_at_a_file_that_exists(real):
