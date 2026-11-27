@@ -11,6 +11,11 @@ using Xunit.Abstractions;
 using Harness = Sharpy.Compiler.Tests.Conformance.NameResolutionDifferentialTests;
 using TypeKind = Sharpy.Compiler.Semantic.TypeKind;
 
+// A switch over an axis enum of this file names every value and has no default arm, so a value the enum gains is CS8509
+// here, an error under warnings-as-errors, until its arm is written. CS8524 is the same check for an UNNAMED value (a cast
+// integer), which no generator meets: `Enum.GetValues` yields the named ones alone.
+#pragma warning disable CS8524
+
 namespace Sharpy.Compiler.Tests.Conformance;
 
 /// <summary>Whether a declaration says its first value: R-QI's axis. Closed: a declaration has an initializer, has
@@ -160,6 +165,15 @@ internal enum ScopeDefaultOwner
     ArrowLambda,
 }
 
+/// <summary>How a lambda that gives a parameter a default is used, read back from its parsed program
+/// (<c>ScopeMeaningDifferentialTests.LambdaUses</c>). Closed: it is the callee of a call where it stands, or it is not, and
+/// is then a value (stored, handed or returned) whose later call goes through a function type.</summary>
+internal enum ScopeLambdaUse
+{
+    CalledWhereItStands,
+    AValue,
+}
+
 /// <summary>How a program reads the <c>__init__</c> a <c>@dataclass</c> synthesizes (the owner's ruling 30, #2423 comment
 /// 7179278898). Closed: a call that constructs the type; the type's name as a function value; <c>super().__init__</c> in a
 /// class deriving from it; <c>self.__init__</c> in the type itself; a deriving class that declares no <c>__init__</c> and is
@@ -194,7 +208,7 @@ internal enum ScopeInitFit
 /// field and no initializer carry the verdicts of the cells with no base; under <c>Exception</c>, as under a class with an
 /// <c>__init__</c> and under a dataclass, a class that forwards to the dataclass from above it does not run (the third
 /// review of PR #2798). The compiler has no enumeration of what a class derives from, so a base named nowhere here has no
-/// cell.
+/// cell: the set is closed by decision (rulings 35 and 40).
 /// <see cref="ScopeInitReader.InheritedFields"/> is the other half of a dataclass over a dataclass: there the generated
 /// dataclass is the base, and the deriving one is the reader.</summary>
 internal enum ScopeDataclassBase
@@ -220,9 +234,9 @@ internal enum ScopeFieldDefault
 }
 
 /// <summary>The typed slot a constructor reference is handed to (ruling 35: the two reviews of PR #2798 ran each). A
-/// literal set and an open one, since the compiler has no enumeration of the places a function type stands at; the values
-/// are the slots measured, and a slot named nowhere here has no cell. A function's parameter (the base matrix), a keyword
-/// argument, an annotated local, a module variable, an instance field, a return, a list element, a tuple element, a
+/// literal set, closed by decision (rulings 35 and 40), since the compiler has no enumeration of the places a function type
+/// stands at; the values are the slots measured, and a slot named nowhere here has no cell. A function's parameter (the
+/// base matrix), a keyword argument, an annotated local, a module variable, an instance field, a return, a list element, a tuple element, a
 /// parameter whose function type returns the callee's own type parameter, and the same of a builtin (<c>map</c>); from the
 /// second review, a method's parameter, a constructor's, a local typed by an alias of the function type, a dict value, a
 /// <c>@static</c> field, a conditional's branch, a lambda's return and a re-assignment; and, from the third review by the
@@ -483,7 +497,7 @@ public sealed partial class ScopeMeaningDifferentialTests : IntegrationTestBase
                         {
                             ScopeInitializer.Present => F(d.Text) + " = " + type.Literal,
                             ScopeInitializer.Absent => F(d.Text),
-                            _ => F(d.Accessor!),
+                            ScopeInitializer.AccessorBodies => F(d.Accessor!),
                         };
                         var lines = new List<string>();
                         if (type.Prelude != null)
@@ -763,7 +777,7 @@ public sealed partial class ScopeMeaningDifferentialTests : IntegrationTestBase
                     ScopeOverloadCaller.InitDelegation => ("def __init__(self):\n    self.__init__(7)", null, "P().x"),
                     ScopeOverloadCaller.MethodBody => ("def mk(self) -> int:\n    return P(7).x", null, "P(1).mk()"),
                     ScopeOverloadCaller.StaticInitializer => ("@static\nd: int = P(7).x", null, "P.d"),
-                    _ => ((string?)null, "def mk() -> int:\n    return P(7).x", "mk()"),
+                    ScopeOverloadCaller.ModuleFunction => ((string?)null, "def mk() -> int:\n    return P(7).x", "mk()"),
                 };
                 var members = new List<string> { "x: int = 0" };
                 if (member == null)
@@ -1220,7 +1234,7 @@ public sealed partial class ScopeMeaningDifferentialTests : IntegrationTestBase
     {
         ScopeAliasTarget.Declared => new[] { Harness.Order.Earlier, Harness.Order.Later },
         ScopeAliasTarget.Missing => new[] { Harness.Order.Earlier },
-        _ => new[] { Harness.Order.Self, Harness.Order.Cycle },
+        ScopeAliasTarget.Itself => new[] { Harness.Order.Self, Harness.Order.Cycle },
     };
 
     private static IEnumerable<Case> AliasTargetCases()
@@ -1247,8 +1261,8 @@ public sealed partial class ScopeMeaningDifferentialTests : IntegrationTestBase
                             {
                                 ScopeAliasTarget.Declared => shape.Declared,
                                 ScopeAliasTarget.Missing => "nosuch",
-                                _ when order == Harness.Order.Self => "K0" + generic,
-                                _ => "K1",
+                                ScopeAliasTarget.Itself when order == Harness.Order.Self => "K0" + generic,
+                                ScopeAliasTarget.Itself => "K1",
                             };
                             var aliases = new List<string> { $"type K0{generic} = " + shape.Target.Replace("{N}", named, StringComparison.Ordinal) };
                             if (target == ScopeAliasTarget.Itself && order == Harness.Order.Cycle)

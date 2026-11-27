@@ -44,10 +44,11 @@ namespace Sharpy.Compiler.Tests.Conformance;
 /// <see cref="ScopeDataclassBase"/>, <see cref="ScopeFieldDefault"/>, <see cref="ScopeReferenceSlot"/>,
 /// <see cref="ScopeInitThrough"/>, <see cref="ScopeDataclassName"/>, <see cref="ScopeInitPlacement"/>): the compiler has no
 /// enumeration of how a program reads a synthesized <c>__init__</c>. Base and reference slot are the shapes measured, and
-/// open; the others say in their summaries why they are closed. Five are projected, each value varied alone from the
-/// matrix's first (<see cref="InitProjections"/>): base, field default, reference slot, through and name, beside the two
-/// projected values of the site axis (<c>generic</c>, <c>deep</c>). Placement is no projection: it moves the reader
-/// (<see cref="EnclosedSlots"/>, <see cref="OtherDataclassOrders"/>)</description></item>
+/// the compiler enumerates neither: they are closed by decision (the owner's rulings 35 and 40), as plan-777361 closes the
+/// other <c>Scope*</c> enums; the others say in their summaries why they are closed. Five are projected, each value varied
+/// alone from the matrix's first (<see cref="InitProjections"/>): base, field default, reference slot, through and name,
+/// beside the two projected values of the site axis (<c>generic</c>, <c>deep</c>). Placement is no projection: it moves the
+/// reader (<see cref="EnclosedSlots"/>, partitioned against <see cref="PlainClassSlots"/>; <see cref="OtherDataclassOrders"/>)</description></item>
 /// <item><term>written-init × reader, × fit, × argument</term><description><see cref="ScopeInitReader"/> and
 /// <see cref="ScopeInitFit"/> again, and <see cref="ScopeInitArgument"/>, a literal set varied alone from its first value</description></item>
 /// <item><term>dataclass-member × member, × read</term><description>the names <c>DataclassSynthesis.SynthesizeMembers</c> looks for
@@ -56,6 +57,12 @@ namespace Sharpy.Compiler.Tests.Conformance;
 /// <item><term>lambda-default × owner, × position</term><description><c>LambdaExpression.IsArrowSyntax</c> with the <c>def</c>
 /// control, and the positions at which the P77a pool runs a bare read of the member from its own type
 /// (<see cref="LambdaDefaultPositions"/>)</description></item>
+/// <item><term>lambda-default × use</term><description><see cref="ScopeLambdaUse"/>, read back from each cell's parsed program
+/// (<see cref="LambdaUses"/>)</description></item>
+/// <item><term>constant-kind × lambda host spelling</term><description><c>LambdaExpression.IsArrowSyntax</c>, read back from each
+/// cell's parsed program (<see cref="ExcludedLambdaHostSpellings"/>)</description></item>
+/// <item><term>alias-target × target × order</term><description><see cref="ScopeAliasTarget"/> × <c>Order</c>
+/// (<see cref="AliasOrders"/>, <see cref="ExcludedAliasOrders"/>)</description></item>
 /// <item><term>alias-target × site</term><description><c>ScopeKind</c> × <c>TypeKind</c>: the scope an alias's binder declares into</description></item>
 /// <item><term>alias-target × shape</term><description>the public properties of the alias's three AST records
 /// (<c>TypeAlias</c>, <c>TypeAnnotation</c>, <c>FunctionType</c>): each place a target can hold a type's name</description></item>
@@ -127,10 +134,11 @@ public sealed partial class ScopeMeaningDifferentialTests
         [DelegateHasNoBody] = new("delegate D(x: int) -> int:\n    type K0 = int\n" + TailMain, "SPY0100", r => Refused(r, "SPY0100")),
         [EnumBodyHoldsNoConst] = new("enum H:\n    const K: int = 1\n    RED = 1\n" + TailMain, "SPY0101", r => Refused(r, "SPY0101")),
         [UnionBodyHoldsNoConst] = new("union H:\n    const K: int = 1\n    case A()\n" + TailMain, "SPY0104", r => Refused(r, "SPY0104")),
-        [LambdaTakesNoCallableSlot] = new("def five() -> int:\n    return 5\ndef main() -> None:\n    f = lambda p: () -> int = five: p\n    print(1)\n", "SPY0103", r => Refused(r, "SPY0103"), Also: new BehaviourProbe[]
+        [LambdaTakesNoCallableSlot] = new("def five() -> int:\n    return 5\ndef main() -> None:\n    f = lambda p: () -> int = five: p\n    print(1)\n", "SPY0103", r => Refused(r, "SPY0103")),
+        [AnArrowLambdaHostIsOut] = new("def five() -> int:\n    return 5\ndef main() -> None:\n    f = (p: () -> int = five) -> p\n    print(1)\n", "SPY0401", r => Refused(r, "SPY0401"), Also: new[]
         {
-            new("def five() -> int:\n    return 5\ndef main() -> None:\n    f = (p: () -> int = five) -> p\n    print(1)\n", "SPY0401", r => Refused(r, "SPY0401")),
-            new("import math\ndef main() -> None:\n    f = (p: (float) -> float = math.sqrt) -> p\n    print(1)\n", "SPY0908 CS1736", r => Refused(r, "SPY0908", "CS1736"), Stdlib: true),
+            new BehaviourProbe("import math\ndef main() -> None:\n    f = (p: (float) -> float = math.sqrt) -> p\n    print(1)\n", "SPY0908 CS1736", r => Refused(r, "SPY0908", "CS1736"), Stdlib: true),
+            Prints("import system\ndef main() -> None:\n    f = (p: system.DayOfWeek = system.DayOfWeek.Monday) -> p\n    print(f())\n", "DayOfWeek.Monday"),
         }),
         [AnIntEnum] = new("enum H:\n    RED = 1.5\n" + TailMain, "SPY0253", r => Refused(r, "SPY0253")),
         [AnEscapedNameIsMissingAsItsPlainOne] = new("type K0 = `nosuch`\ndef f(k: K0) -> int:\n    return 1\n" + TailMain, "SPY0202", r => Refused(r, "SPY0202"),
@@ -144,10 +152,7 @@ public sealed partial class ScopeMeaningDifferentialTests
         [ASiblingCaseIsNoName] = new("enum H:\n    RED = 5\n    BLUE = RED\ndef main() -> None:\n    print(H.BLUE.value)\n", "SPY0200", r => Refused(r, "SPY0200")),
         [NoSelfAtATypeBody] = new("class H:\n    const x: int = 5\n    const K: int = self.x\ndef main() -> None:\n    print(H.K)\n", "SPY0200", r => Refused(r, "SPY0200")),
         [AGenericMethodThroughItsType] = new("from system import Array\ndef main() -> None:\n    x: object = Array.resize\n    print(1)\n", "SPY0908 CS8917", r => Refused(r, "SPY0908", "CS8917")),
-        [LambdaTakesOneNameForAType] = new("import system\ndef main() -> None:\n    f = lambda p: system.DayOfWeek: p\n    print(1)\n", "SPY0103", r => Refused(r, "SPY0103"), Also: new[]
-        {
-            Prints("import system\ndef main() -> None:\n    f = (p: system.DayOfWeek = system.DayOfWeek.Monday) -> p\n    print(f())\n", "DayOfWeek.Monday"),
-        }),
+        [LambdaTakesOneNameForAType] = new("import system\ndef main() -> None:\n    f = lambda p: system.DayOfWeek: p\n    print(1)\n", "SPY0103", r => Refused(r, "SPY0103")),
         [AliasedIntEnumRead(EnumMemberAccessKind.IntValue)] = new(IntEnum + "\ntype A = E0\ndef main() -> None:\n    print(A.RED.value)\n", "SPY0908 CS1061", r => Refused(r, "SPY0908", "CS1061")),
         [AliasedIntEnumRead(EnumMemberAccessKind.IntName)] = new(IntEnum + "\ntype A = E0\ndef main() -> None:\n    print(A.RED.name)\n", "SPY0908 CS1061", r => Refused(r, "SPY0908", "CS1061")),
         [InterfaceStaticIsRefused("field")] = new("interface H:\n    @static\n    x: int = 5\n    def m(self) -> int: ...\ndef main() -> None:\n    print(H.x)\n", "SPY0908 CS0120", r => Refused(r, "SPY0908", "CS0120")),
@@ -732,6 +737,23 @@ public sealed partial class ScopeMeaningDifferentialTests
         [(ScopeAliasTarget.Itself, ScopeAliasUse.Used)] = OverflowsTheCompiler,
     };
 
+    private const string ADeclaredTargetIsNoRing = "the target names the program's class, which is not the alias: an alias that reaches itself, directly or through a ring, is the Itself target's cell";
+    private const string AMissingTargetHasNoDeclaration = "the target names nothing, so no declaration of it stands below the alias or anywhere else: the Earlier cell is the one program, and an alias that reaches itself is the Itself target's cell";
+    private const string ASelfReachingTargetHasNoSecondDeclaration = "the target is the alias itself (or the next alias of its ring), which stands where the alias does: there is no second declaration to stand above or below it, and the two orders it has are the direct read and the ring";
+
+    /// <summary>The target × order pairs with no cell, total over the two enums with the pairs a cell carries
+    /// (<see cref="AliasOrders"/>, which generates them).</summary>
+    internal static readonly IReadOnlyDictionary<(ScopeAliasTarget Target, Harness.Order Order), string> ExcludedAliasOrders = new Dictionary<(ScopeAliasTarget, Harness.Order), string>
+    {
+        [(ScopeAliasTarget.Declared, Harness.Order.Self)] = ADeclaredTargetIsNoRing,
+        [(ScopeAliasTarget.Declared, Harness.Order.Cycle)] = ADeclaredTargetIsNoRing,
+        [(ScopeAliasTarget.Missing, Harness.Order.Later)] = AMissingTargetHasNoDeclaration,
+        [(ScopeAliasTarget.Missing, Harness.Order.Self)] = AMissingTargetHasNoDeclaration,
+        [(ScopeAliasTarget.Missing, Harness.Order.Cycle)] = AMissingTargetHasNoDeclaration,
+        [(ScopeAliasTarget.Itself, Harness.Order.Earlier)] = ASelfReachingTargetHasNoSecondDeclaration,
+        [(ScopeAliasTarget.Itself, Harness.Order.Later)] = ASelfReachingTargetHasNoSecondDeclaration,
+    };
+
     /// <summary>The shapes whose name cannot be the alias itself, by label: every other shape has its self-reaching cells.</summary>
     internal static readonly IReadOnlyDictionary<string, string> ExcludedSelfReachingShapes = new Dictionary<string, string>(StringComparer.Ordinal)
     {
@@ -1011,9 +1033,18 @@ public sealed partial class ScopeMeaningDifferentialTests
     }
 
     // The lambda host is the `lambda` spelling (`ConstantReaders`), and both reasons are true of that spelling alone (the review
-    // of PR #2767, F10): the arrow spelling takes both slots, and the constant-kind set has no arrow-lambda host.
-    private const string LambdaTakesNoCallableSlot = "the host's lambda is the `lambda` spelling, whose parameter annotation cannot be a function type and take a default: `lambda p: () -> int = five: p` is SPY0103. The arrow spelling takes one: `(p: () -> int = five) -> p` is SPY0401, the refusal the position owes, and `(p: (float) -> float = math.sqrt) -> p` is SPY0908 CS1736, the defect the `def` host's cell holds red for the same member (#2432, which holds the program as a cell). An arrow-lambda host is " + ByItem26;
-    private const string LambdaTakesOneNameForAType = "the host's lambda is the `lambda` spelling, whose parameter annotation is one name: a type spelled through its module (`lambda p: system.DayOfWeek: p`) is SPY0103 with no default at all, so the slot cannot be declared there and the parse error is no constant position's verdict; the same type under a from-import is generated. The arrow spelling takes the dotted type and runs (`(p: system.DayOfWeek = system.DayOfWeek.Monday) -> p` prints `DayOfWeek.Monday`): an arrow-lambda host is " + ByItem26 + ", and no tracker holds that program, since it is green";
+    // of PR #2767, F10): the arrow spelling takes both slots, and has no host (`ExcludedLambdaHostSpellings`).
+    private const string LambdaTakesNoCallableSlot = "the host's lambda is the `lambda` spelling, whose parameter annotation cannot be a function type and take a default: `lambda p: () -> int = five: p` is SPY0103. The arrow spelling takes one, and is the host excluded as the reader's other spelling";
+    private const string LambdaTakesOneNameForAType = "the host's lambda is the `lambda` spelling, whose parameter annotation is one name: a type spelled through its module (`lambda p: system.DayOfWeek: p`) is SPY0103 with no default at all, so the slot cannot be declared there and the parse error is no constant position's verdict; the same type under a from-import is generated. The arrow spelling takes the dotted type, and is the host excluded as the reader's other spelling";
+    private const string AnArrowLambdaHostIsOut = "the arrow spelling of the lambda host, `(p: T = e) -> p`, which `ValidateLambdaDefaults` judges as it judges the `lambda` spelling the host is written in. It takes the two slots that spelling cannot: a function type, where `(p: () -> int = five) -> p` is SPY0401, the refusal the position owes, and `(p: (float) -> float = math.sqrt) -> p` is SPY0908 CS1736, the defect the `def` host's cell holds red for the same member (#2432, which holds the program as a cell); and a type spelled through its module, where `(p: system.DayOfWeek = system.DayOfWeek.Monday) -> p` prints `DayOfWeek.Monday`, and no tracker holds that program, since it is green. The host is " + ByItem26;
+
+    /// <summary>The spellings of a lambda that gives a parameter a default with no constant-kind host, keyed by
+    /// <c>LambdaExpression.IsArrowSyntax</c>: total over the flag with the spellings <see cref="LambdasWithADefault"/> reads back
+    /// from the constant-kind cells' programs.</summary>
+    internal static readonly IReadOnlyDictionary<bool, string> ExcludedLambdaHostSpellings = new Dictionary<bool, string>
+    {
+        [true] = AnArrowLambdaHostIsOut,
+    };
     private const string AnIntEnum = "the host is an int enum, whose member's value is an int: a `str` value declares a string enum, another host, and any other type is SPY0253";
 
     /// <summary>Why a host has no cell for a slot of <paramref name="type"/>, or null when it has one.</summary>
@@ -1948,8 +1979,8 @@ public sealed partial class ScopeMeaningDifferentialTests
     internal static readonly InitShape EnclosedShape = new(ModuleDataclass, "H.DC", "SPY0220");
 
     /// <summary>Where an expression reader stands inside the enclosing type: the two bodies and the two initializers a class has
-    /// per instance and per type, each one of <see cref="InitReaderSlots"/> whose host is a plain class. The matrix holds the
-    /// other slots from outside the type.</summary>
+    /// per instance and per type, each one of <see cref="PlainClassSlots"/>; every other slot of that set carries its reason in
+    /// <see cref="ExcludedEnclosedSlots"/>. The matrix holds the other slots from outside the type.</summary>
     internal static readonly IReadOnlyList<(ReadPosition Position, Harness.Nesting Nesting)> EnclosedSlots = new[]
     {
         (ReadPosition.MethodBody, Harness.Nesting.Direct),
@@ -1957,6 +1988,31 @@ public sealed partial class ScopeMeaningDifferentialTests
         (ReadPosition.InstanceFieldInitializer, Harness.Nesting.Direct),
         (ReadPosition.StaticInitializer, Harness.Nesting.Direct),
     };
+
+    /// <summary>The slots of <see cref="InitReaderSlots"/> a member of a plain class stands at: what the enclosing type's
+    /// reader could be placed at, and the universe <see cref="EnclosedSlots"/> and <see cref="ExcludedEnclosedSlots"/> partition.</summary>
+    internal static IReadOnlyList<(ReadPosition Position, Harness.Nesting Nesting)> PlainClassSlots
+        => InitReaderSlots.Where(s => !ModulePlacedPositions.Contains(s.Position) && Harness.HostHeader(s.Position) == "class H:").ToList();
+
+    private const string AnEnclosedSlotNotTaken = "a product the set does not take: dataclass-init is a star, and its enclosing-type placement moves the reader to the two bodies and the two initializers a class has per instance and per type (a method's body, a `@static` method's, an instance field's initializer, a `@static` one). Every other slot a member of a plain class stands at is the matrix's, which reads the dataclass from outside the type";
+
+    /// <summary>The slots of <see cref="PlainClassSlots"/> the enclosing type's reader does not stand at, each with its reason.</summary>
+    internal static readonly IReadOnlyDictionary<(ReadPosition Position, Harness.Nesting Nesting), string> ExcludedEnclosedSlots = new Dictionary<(ReadPosition, Harness.Nesting), string>
+    {
+        [(ReadPosition.InitBody, Harness.Nesting.Direct)] = AnEnclosedSlotNotTaken,
+        [(ReadPosition.AccessorGetBody, Harness.Nesting.Direct)] = AnEnclosedSlotNotTaken,
+        [(ReadPosition.AccessorSetBody, Harness.Nesting.Direct)] = AnEnclosedSlotNotTaken,
+        [(ReadPosition.NestedClassMethodBody, Harness.Nesting.Direct)] = AnEnclosedSlotNotTaken,
+        [(ReadPosition.NestedDefInMethod, Harness.Nesting.Direct)] = AnEnclosedSlotNotTaken,
+        [(ReadPosition.ConstInitializer, Harness.Nesting.Direct)] = AnEnclosedSlotNotTaken,
+        [(ReadPosition.StaticPropertyDefault, Harness.Nesting.Direct)] = AnEnclosedSlotNotTaken,
+        [(ReadPosition.InstancePropertyDefault, Harness.Nesting.Direct)] = AnEnclosedSlotNotTaken,
+    };
+
+    /// <summary>What the enclosing type's reader owes, DERIVED: every slot of <see cref="PlainClassSlots"/> no exclusion names.
+    /// The generator places the reader at <see cref="EnclosedSlots"/>, so a slot neither lists is a slot owed a cell it has not.</summary>
+    internal static IReadOnlyList<(ReadPosition Position, Harness.Nesting Nesting)> OwedEnclosedSlots
+        => PlainClassSlots.Where(s => !ExcludedEnclosedSlots.ContainsKey(s)).ToList();
 
     private const string OtherDataclassSite = ModuleSite;
 
@@ -2389,11 +2445,12 @@ public sealed partial class ScopeMeaningDifferentialTests
 
     private const string AStoredLambdaLosesItsDefault = "stored in a field and called later (`g: auto = lambda p1: int = 5: p1`, then `H.g()`), a lambda has lost its default: the field's type is a function type, which carries none, and the call is SPY0908 CS7036 with a LITERAL default, so no cell could show what the default read";
 
-    /// <summary>How the lambda of a cell is used, closed: called where it stands, or stored and called later. The cell prints the
-    /// default's value, which only the first shows today.</summary>
-    internal static readonly IReadOnlyDictionary<string, string> ExcludedLambdaUses = new Dictionary<string, string>(StringComparer.Ordinal)
+    /// <summary>The uses of a cell's lambda with no cell, total over <see cref="ScopeLambdaUse"/> with the uses
+    /// <see cref="LambdaUses"/> reads back from the cells' programs. The cell prints the default's value, which only a lambda
+    /// called where it stands shows today.</summary>
+    internal static readonly IReadOnlyDictionary<ScopeLambdaUse, string> ExcludedLambdaUses = new Dictionary<ScopeLambdaUse, string>
     {
-        ["stored"] = AStoredLambdaLosesItsDefault,
+        [ScopeLambdaUse.AValue] = AStoredLambdaLosesItsDefault,
     };
 
     /// <summary>The kinds a default reads by a bare name from its own class: READ from the typed-read set's readers, as the kinds
@@ -2432,10 +2489,30 @@ public sealed partial class ScopeMeaningDifferentialTests
 
     /// <summary>The lambdas of a source that give a parameter a default, by the compiler's own parser: each one's <c>IsArrowSyntax</c>.</summary>
     internal static List<bool> LambdasWithADefault(string source)
+        => ParsedLambdasWithADefault(source, out _).Select(l => l.IsArrowSyntax).ToList();
+
+    /// <summary>How each lambda of a source that gives a parameter a default is used, by the compiler's own parser: the callee of
+    /// a call (through any parentheses) is called where it stands, and any other lambda is a value.</summary>
+    internal static List<ScopeLambdaUse> LambdaUses(string source)
+    {
+        var lambdas = ParsedLambdasWithADefault(source, out var nodes);
+        var called = new HashSet<object>(ReferenceEqualityComparer.Instance);
+        foreach (var call in nodes.OfType<Sharpy.Compiler.Parser.Ast.FunctionCall>())
+        {
+            var callee = call.Function;
+            while (callee is Sharpy.Compiler.Parser.Ast.Parenthesized p)
+                callee = p.Expression;
+            called.Add(callee);
+        }
+        return lambdas.Select(l => called.Contains(l) ? ScopeLambdaUse.CalledWhereItStands : ScopeLambdaUse.AValue).ToList();
+    }
+
+    private static List<Sharpy.Compiler.Parser.Ast.LambdaExpression> ParsedLambdasWithADefault(string source, out List<Sharpy.Compiler.Parser.Ast.Node> nodes)
     {
         static IEnumerable<Sharpy.Compiler.Parser.Ast.Node> Descendants(Sharpy.Compiler.Parser.Ast.Node node) => node.GetChildNodes().SelectMany(Descendants).Prepend(node);
         var module = new Sharpy.Compiler.Parser.Parser(new Sharpy.Compiler.Lexer.Lexer(source).TokenizeAll()).ParseModule();
-        return Descendants(module).OfType<Sharpy.Compiler.Parser.Ast.LambdaExpression>().Where(l => l.Parameters.Any(p => p.DefaultValue != null)).Select(l => l.IsArrowSyntax).ToList();
+        nodes = Descendants(module).ToList();
+        return nodes.OfType<Sharpy.Compiler.Parser.Ast.LambdaExpression>().Where(l => l.Parameters.Any(p => p.DefaultValue != null)).ToList();
     }
 
     // ------------------------------------------------------------------------------------------- //
@@ -2685,6 +2762,7 @@ public sealed partial class ScopeMeaningDifferentialTests
         Carried("constant-kind", ownKinds, c => new[] { c.Cell.Target });
         Carried("constant-kind", Enum.GetValues<ScopeAnnotation>(), Part<ScopeAnnotation>);
         Partition("constant-kind × read form", Enum.GetValues<Harness.Form>(), Route("constant-kind").SelectMany(Part<Harness.Form>), ExcludedConstantForms.Keys);
+        Partition("constant-kind × lambda host spelling", new[] { false, true }, Route("constant-kind").SelectMany(c => LambdasWithADefault(c.Cell.Source)), ExcludedLambdaHostSpellings.Keys);
 
         // constant-kind: the spelling of the read and the placement of its reader, per where the member lives
         var constantCells = Route("constant-kind").ToList();
@@ -2903,10 +2981,11 @@ public sealed partial class ScopeMeaningDifferentialTests
         Partition("dataclass-init × name", Enum.GetValues<ScopeDataclassName>(), DataclassNames.Keys.Append(ScopeDataclassName.Declared), ExcludedDataclassNames.Keys);
         // A projection: every reader it has a program for, under every fit the matrix leaves, is a cell or carries its reason;
         // and each one that is a cell stands at both orders, an expression at the projected slot.
-        foreach (var slot in ProjectedSlots.Concat(EnclosedSlots).Append(OtherDataclassSlot).Where(s => !InitReaderSlots.Contains(s)))
+        foreach (var slot in ProjectedSlots.Append(OtherDataclassSlot).Where(s => !InitReaderSlots.Contains(s)))
             problems.Add($"dataclass-init × slot: {slot.Position}/{slot.Nesting} is no slot of the matrix, which is what holds the slot axis");
-        foreach (var slot in EnclosedSlots.Where(s => ModulePlacedPositions.Contains(s.Position) || Harness.HostHeader(s.Position) != "class H:"))
-            problems.Add($"dataclass-init × slot: {slot.Position}/{slot.Nesting} is no member of a plain class, which is what the enclosing type is");
+        // The enclosing type is a plain class: its reader stands at a slot of the matrix a member of one stands at, or the slot
+        // says why not. A slot outside that universe is no value of it (the matrix's, or a plain class member's).
+        Partition("dataclass-init × enclosed slot", PlainClassSlots, EnclosedSlots, ExcludedEnclosedSlots.Keys);
         foreach (var p in InitProjections)
         {
             var cells = initCells.Where(c => c.Placement == ScopeInitPlacement.Apart && Equals(c.Projection, p.Value)).ToList();
@@ -2937,7 +3016,7 @@ public sealed partial class ScopeMeaningDifferentialTests
             var orders = other ? OtherDataclassOrders : earlierAndLater;
             var owed = other
                 ? new List<(ReadPosition Position, Harness.Nesting Nesting)?> { OtherDataclassSlot }
-                : SlotsOf(InitReaders[group.Key.Reader], EnclosedSlots);
+                : SlotsOf(InitReaders[group.Key.Reader], OwedEnclosedSlots);
             // A reader in another dataclass stands under each ring: the dataclass with no base, and the one over a dataclass.
             var rings = other ? OtherDataclassRings.Select(b => b == ScopeDataclassBase.None ? null : (object?)b).ToArray() : new object?[] { null };
             foreach (var ring in rings)
@@ -3087,6 +3166,13 @@ public sealed partial class ScopeMeaningDifferentialTests
         Carried("lambda-default", Enum.GetValues<ScopeDefaultOwner>(), Part<ScopeDefaultOwner>);
         Partition("lambda-default × owner", Enum.GetValues<ScopeDefaultOwner>(), DefaultOwners.Keys, Array.Empty<ScopeDefaultOwner>());
         Partition("lambda-default × lambda spelling", new[] { false, true }, DefaultOwners.Values.Where(o => o.Arrow != null).Select(o => o.Arrow!.Value), Array.Empty<bool>());
+        Partition("lambda-default × use", Enum.GetValues<ScopeLambdaUse>(), lambdaDefaults.SelectMany(c => LambdaUses(c.Cell.Source)), ExcludedLambdaUses.Keys);
+        // The positive control of the read-back: the program an excluded use's probe runs is a lambda of that use.
+        foreach (var (use, reason) in ExcludedLambdaUses)
+        {
+            if (!BehaviourProbes.TryGetValue(reason, out var probe) || !LambdaUses(probe.Source).Contains(use))
+                problems.Add($"lambda-default × use: {use} is excluded, and the program its reason's probe runs holds no lambda of that use");
+        }
         if (LambdaDefaultKinds.Count == 0)
             problems.Add("lambda-default × kind: the 8951 pool runs no bare read of a member from a `def`'s default in its own class, so the set has no kind and no control");
         Carried("lambda-default", LambdaDefaultKinds, c => new[] { c.Cell.Target });
@@ -3133,6 +3219,9 @@ public sealed partial class ScopeMeaningDifferentialTests
         Partition("alias-target × target × use",
             Enum.GetValues<ScopeAliasTarget>().SelectMany(t => Enum.GetValues<ScopeAliasUse>().Select(u => (Target: t, Use: u))),
             Route("alias-target").Select(c => (Target: c.Cell.Key!.Part<ScopeAliasTarget>()!.Value, Use: c.Cell.Key.Part<ScopeAliasUse>()!.Value)), ExcludedAliasUses.Keys);
+        Partition("alias-target × target × order",
+            Enum.GetValues<ScopeAliasTarget>().SelectMany(t => Enum.GetValues<Harness.Order>().Select(o => (Target: t, Order: o))),
+            Route("alias-target").Select(c => (Target: c.Cell.Key!.Part<ScopeAliasTarget>()!.Value, Order: c.Cell.Key.Part<Harness.Order>()!.Value)), ExcludedAliasOrders.Keys);
         // A shape's name is the alias itself in some cell, or the shape says why it cannot be.
         var selfReaching = Route("alias-target").Where(c => c.Cell.Key!.Part<ScopeAliasTarget>() == ScopeAliasTarget.Itself).SelectMany(Marks).ToHashSet(StringComparer.Ordinal);
         Partition("alias-target × self-reaching shape", AliasShapes.Values.Select(v => v.Label).Distinct(), AliasShapes.Values.Select(v => v.Label).Where(selfReaching.Contains), ExcludedSelfReachingShapes.Keys);
@@ -3149,12 +3238,12 @@ public sealed partial class ScopeMeaningDifferentialTests
             .Concat(ExcludedOwnSpellings.Values).Concat(ExcludedOwnPlacements.Values).Concat(ExcludedEnumSpellings.Values).Concat(ExcludedImportKinds.Values)
             .Concat(ExcludedBuiltinReceivers.Values).Concat(ExcludedLambdaUses.Values).Concat(ExcludedLambdaDefaultPositions.Values)
             .Concat(ExcludedInitReaders.Values).Concat(ExcludedInitFits.Values).Concat(ExcludedDataclassScopes.Values).Concat(ExcludedDataclassHosts.Values).Concat(ExcludedDataclassOptions.Values).Concat(ExcludedDataclassBases.Values)
-            .Concat(ExcludedProjections.Values).Concat(ExcludedDataclassNames.Values).Concat(ExcludedInitPlacements.Values).Concat(ExcludedPlacementReaders.Values)
+            .Concat(ExcludedProjections.Values).Concat(ExcludedDataclassNames.Values).Concat(ExcludedInitPlacements.Values).Concat(ExcludedPlacementReaders.Values).Concat(ExcludedEnclosedSlots.Values)
             .Concat(ExcludedWrittenInitReaders.Values).Concat(ExcludedWrittenInits.Values).Concat(ExcludedWrittenVariations.Values).Concat(ExcludedDataclassMembers.Values).Concat(ExcludedMemberReads.Values)
             .Concat(AllConstantHosts().SelectMany(h => Enum.GetValues<Harness.Spelling>().Select(sp => OwnSpellingSkips(h.Host, sp, inside: true))).Where(r => r != null).Select(r => r!))
             .Concat(ExcludedAliasShapeProperties.Values).Concat(ExcludedOrders.Values.SelectMany(o => o.Values))
             .Concat(ExcludedConstScopes.Values).Concat(ExcludedConstTypeHosts.Values).Concat(ExcludedConstantReaders.Values).Concat(ExcludedClrTypeMemberShapes.Values)
-            .Concat(ExcludedOwnReads.Values).Concat(ExcludedConstantForms.Values).Concat(ExcludedAliasUses.Values).Concat(ExcludedSelfReachingShapes.Values)
+            .Concat(ExcludedOwnReads.Values).Concat(ExcludedConstantForms.Values).Concat(ExcludedAliasUses.Values).Concat(ExcludedAliasOrders.Values).Concat(ExcludedLambdaHostSpellings.Values).Concat(ExcludedSelfReachingShapes.Values)
             .Concat(AllConstantHosts().SelectMany(h => new[] { "int", "() -> int", "m0.T" }.Select(t => HostSkips(h.Host, t))).Where(r => r != null).Select(r => r!))
             .Concat(AllConstantHosts().SelectMany(h => TypedReads.Keys.Select(k => OwnKindSkips(h.Host, k, inside: true))).Where(r => r != null).Select(r => r!))
             .Concat(EnumReadKinds.Keys.SelectMany(k => Enum.GetValues<Harness.Spelling>().Select(sp => EnumReadSkips(sp, k))).Where(r => r != null).Select(r => r!))
