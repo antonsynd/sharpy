@@ -376,7 +376,6 @@ public partial class NameResolutionDifferentialTests
     [Theory]
     [InlineData("CS1955", BindingKind.ModuleVar, "#2423")]
     [InlineData("CS8917", BindingKind.ModuleVar, "#2423")]
-    [InlineData("CS1729", BindingKind.ModuleClass, "#2423")]
     [InlineData("CS0029", BindingKind.LocalVar, "#2423")]
     [InlineData("CS1501", BindingKind.ModuleVar, "#2423")]
     [InlineData("CS1061", BindingKind.StaticMethod, "#2423")]
@@ -398,6 +397,20 @@ public partial class NameResolutionDifferentialTests
         var cell = CellTagged(SharpyTag.MustRun, "1") with { Target = target };
 
         Assert.StartsWith(expected + " ", ProposedCite(cell, VerdictClass.Ice, Literal("SPY0908") with { CsCode = cs }), StringComparison.Ordinal);
+    }
+
+    /// <summary>The owner's ruling 47 (#2423 comment 7208261340): a class that declares no <c>__init__</c>, called with an argument, is
+    /// CS1729 whatever it is named, so its cell is #2021's and no name's. The control is the same code under any other rule, which
+    /// has no route: a constructor call a name decides is not sent to #2021 with it.</summary>
+    [Theory]
+    [InlineData("N1-arity", "#2021")]
+    [InlineData("N1", "UNROUTED(CS1729)")]
+    [InlineData("N1-type-error", "UNROUTED(CS1729)")]
+    internal void Cite_AConstructorNobodyWrote_RoutesByItsRule(string rule, string expected)
+    {
+        var cell = CellTagged(SharpyTag.MustRefuse, null) with { Target = BindingKind.ModuleClass, Outer = BindingKind.Builtin, Rule = rule };
+
+        Assert.StartsWith(expected + " ", ProposedCite(cell, VerdictClass.Ice, Literal("SPY0908") with { CsCode = "CS1729" }), StringComparison.Ordinal);
     }
 
     /// <summary>A union case reached through an alias refuses at both orders: the alias is the cause, not the order (#1925, not #2249).</summary>
