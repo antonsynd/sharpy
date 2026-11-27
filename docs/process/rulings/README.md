@@ -11,6 +11,7 @@ give one case two answers.
 | `axes.yaml` | The closed lists a *case* is named from |
 | `policy.yaml` | Which decisions an agent may take without the owner. A draft; the owner's to set |
 | `known-findings.yaml` | Findings that wait for the owner. A ratchet |
+| `mechanisms.yaml` | The process mechanisms tried against each process problem, with what was measured after. Read whole before changing one; its header says who writes it |
 
 ```bash
 python3 build_tools/check_rulings.py                 # no compiler needed
