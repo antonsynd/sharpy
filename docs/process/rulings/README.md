@@ -15,16 +15,10 @@ Background: [the 2026-11-21 ruling audit](../../audits/ruling-audit-2026-11-21.m
 | `known-findings.yaml` | Findings that wait for the owner. A ratchet |
 
 ```bash
-python3 build_tools/check_rulings.py                 # the gate; no compiler needed
+python3 build_tools/check_rulings.py                 # no compiler needed
 python3 build_tools/check_rulings.py --list-known    # also print what is waiting
 python3 build_tools/ruling_evidence.py recheck       # re-run every recorded program (needs sharpyc)
 ```
-
-Both also run as tests under `build_tools/tests/`, so CI runs them.
-
-A ruling's count of the programs it breaks comes from `bash build_tools/blast_radius.sh run <rule>`
-where the rule has a probe ([blast-radius.md](../blast-radius.md)); a count taken with a text
-search says so.
 
 ## Status
 
@@ -107,7 +101,10 @@ programs come to depend on it, and a refusal as two-way because it can be relaxe
 An agent may record a ruling itself (`decided_by: agent`) only for the decision classes
 `policy.yaml` marks `true`. Anything else needs `decided_by: owner` and the owner's words, each
 equal to a quote in its charter row's lead cell (this ties record to row; it cannot verify who
-spoke). Tests pin the strict ids, dates and words, `policy.yaml` and the families.
+spoke). Five lead cells also quote others (R-QW, R-RA, R-RR, R-RS, R-RV); for those the digest
+pin, not the checker, is the guard.
+Tests pin the strict ids, dates and words, `policy.yaml`, the families and the parked owner's words
+(a set that only shrinks; a new row is the owner's to allow), so the gate is pytest, not the script.
 
 ## What a failure means
 

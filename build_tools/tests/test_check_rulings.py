@@ -674,7 +674,8 @@ def test_an_owners_ruling_carries_the_owners_words_and_its_row_quotes_them(tmp_p
     assert messages("no-row", no_row) == ["the owner decided it and it has no charter row to quote the owner's words"]
     assert any("`owner_words` must list" in m for m in messages("no-words", lambda d, r: r.pop("owner_words")))
     for n, bad in enumerate((None, "the owner", "session 26 Nov", "PR #2785 review;session 2026-11-24", "session 2026-13-45",
-                             "https://github.com/anything", "https://github.com/o/r/pull/1", "https://github.com/o/r/wiki/1#issuecomment-2")):
+                             "https://github.com/anything", "https://github.com/o/r/pull/1", "https://github.com/o/r/wiki/1#issuecomment-2",
+                             "session 2026-11-24\n")):
         assert any("`source` must say" in m for m in messages(f"bad{n}", lambda d, r, b=bad: r.update(source=b))), bad
     for n, good in enumerate(("#2423 comment 7180845467", "PR #2785 review; session 2026-11-24", "https://github.com/o/r/pull/1#issuecomment-2",
                               "https://github.com/o/r.x/issues/3#issuecomment-4", "https://github.com/o/r/pull/5#pullrequestreview-6",
@@ -701,6 +702,17 @@ def test_owner_words_equal_a_quote_of_the_lead_cell_and_nothing_else(tmp_path):
     refused = ["`owner_words` must list the owner's words, verbatim, each one quote with no `\"` in it"]
     assert messages("splice", [OWNER_WORDS[0] + '" and "b']) == refused
     assert messages("inner", ['session: "' + OWNER_WORDS[0]]) == refused
+
+
+def test_a_lead_cell_with_an_odd_count_of_quote_marks_quotes_nothing(tmp_path):
+    # `12"` pairs with the owner's opening mark, so the only pair would be 'x, owner:', which is
+    # not the owner's words; with an odd count no quote is trusted.
+    def edit(data):
+        add_owners(data, owner_words=["x, owner:"])
+        data["charter"] = str(data["charter"]).rsplit("| R-D |", 1)[0] + '| R-D | #9 (a 12"x, owner:"w") | ruled |\n'
+
+    found = [f.message for f in findings(tmp_path, edit) if f.check == "owner-required"]
+    assert found == ["owner_words 1 is not a quote in its charter row's lead cell: 'x, owner:'"]
 
 
 def test_only_unquoted_owner_words_can_wait_and_not_an_agents_reserved_decision(tmp_path):

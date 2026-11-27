@@ -879,7 +879,7 @@ def _normal(text: str) -> str:
 
 
 def _source_part_ok(part: str) -> bool:
-    match = SOURCE_PART_RE.match(part)
+    match = SOURCE_PART_RE.fullmatch(part)
     if not match:
         return False
     try:
@@ -890,8 +890,10 @@ def _source_part_ok(part: str) -> bool:
 
 def lead_quotes(row: str) -> List[str]:
     """The quotes in a charter row's lead cell: the first column after the id, normalised."""
-    lead = re.split(r"(?<!\\)\|", row, maxsplit=1)[0]
-    return QUOTE_RE.findall(_normal(lead))
+    lead = _normal(re.split(r"(?<!\\)\|", row, maxsplit=1)[0])
+    if lead.count('"') % 2:
+        return []  # an odd count pairs the marks wrongly: no quote is trusted
+    return QUOTE_RE.findall(lead)
 
 
 def _owner_words_problems(record: dict, inputs: Inputs) -> Iterable[Tuple[str, str]]:
