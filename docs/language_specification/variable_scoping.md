@@ -108,7 +108,7 @@ def main() -> None:
     print(y)          # ERROR: 'y' does not exist in this scope
 ```
 
-**Note:** This differs from Python 3.8+, where a name a walrus introduces in a comprehension leaks to the outer scope. A walrus over a name that already exists is an assignment to it: over a local of the same function it writes through, as Python does; over a `let`, a parameter, or a module or enclosing-function name it is refused. See [walrus_operator.md](walrus_operator.md).
+**Note:** This differs from Python 3.8+, where a name a walrus introduces in a comprehension leaks to the outer scope. A walrus over a name that already exists is an assignment to it: over a local of the same function it writes through, as Python does; over a `let`, a parameter, or a module or enclosing-function name it is refused. Not all of this is built: [walrus_operator.md](walrus_operator.md) lists the shapes that do not hold yet.
 
 ### Example
 

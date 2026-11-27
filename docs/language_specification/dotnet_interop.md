@@ -168,7 +168,7 @@ The `tuple` receiver is exempt: its `.item1` / `.Item1` element spellings are ty
 
 ## Subclassing .NET Types
 
-A Sharpy class may extend a .NET class. Overriding one of its `abstract` or `virtual` methods follows the same rule as overriding a Sharpy base method: the override **requires** `@override` (see [inheritance.md](inheritance.md) and [dunder_invocation_rules.md](dunder_invocation_rules.md)), whether the base came from a .NET namespace or from a Sharpy module. The base method is found by the snake_case name, so `compare` overrides `Comparer<T>.Compare`. The only methods exempt are `__str__`, `__eq__` and `__hash__`, which implicitly override `System.Object` members at any depth. Implementing a .NET interface is not an override.
+A Sharpy class may extend a .NET class. Overriding one of its `abstract` or `virtual` methods follows the same rule as overriding a Sharpy base method: the override **requires** `@override` (see [inheritance.md](inheritance.md) and [dunder_invocation_rules.md](dunder_invocation_rules.md)), whether the base came from a .NET namespace or from a Sharpy module. The base method is found by the snake_case name, so `compare` overrides `Comparer<T>.Compare`. The only methods exempt are `__str__`, `__repr__`, `__eq__` and `__hash__`, which implicitly override `System.Object` members at any depth. Implementing a .NET interface is not an override.
 
 <!-- spec-sweep: output -->
 ```python
