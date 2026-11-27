@@ -16,7 +16,8 @@
 #   - The session that adds or changes a mechanism appends an attempt to the problem it answers (a
 #     new problem only when none explains the failure), in the same pull request, with `predicted`
 #     written before the first measurement. An attempt is never deleted or reworded: a mechanism
-#     that is replaced or removed keeps its record with `state: replaced` or `removed`.
+#     that is replaced or removed keeps its record with `state: replaced` or `removed`. This pull
+#     request's own mechanism is M8.
 #   - /health-watch proposes `observed` rows and each live attempt's `outcome` in its health-page
 #     entry; they land here by pull request on the owner's ask. It proposes removal of a mechanism
 #     that has not held; removal is the owner's.
@@ -24,10 +25,12 @@
 # The check is `pytest build_tools/tests/test_mechanisms_ledger.py`. What a field means:
 #   date       the day the mechanism took effect: its ruling, or its merge
 #   where      the files that carry it today; each must exist while `state: live`
-#   predicted  what it was expected to change. `none recorded` is allowed in the seed only
+#   predicted  what it was expected to change. `none recorded` stands only on the attempts of the
+#              seed; the check refuses it on an attempt the base branch does not have
 #   outcome    held | not-held | unjudged, against `predicted`, or against the problem's `wanted`
 #              when none was recorded; `judged` is the date of the observation it was judged on
-#   frozen     date, what, source and predicted never change once merged; the rest may
+#   frozen     once merged, an attempt's date, what, source and predicted and every observed row
+#              never change; where, state, outcome, judged, note and a problem's own text may
 
 problems:
   - id: M1
@@ -155,8 +158,11 @@ problems:
     wanted: at most 84 after P82 tranche 4; never up
     attempts:
       - date: 2026-11-06
-        what: A pin on the side-table count that may only fall; a raise needs the owner's word quoted in the pull request body.
-        where: [src/Sharpy.Compiler.Tests/Semantic/SemanticInfoMergeConformanceTests.cs]
+        what: >-
+          A pin on the side-table count that may only fall (MaximumSideTableFieldCount in
+          SemanticInfoMergeConformanceTests.cs, read by scorecard_metrics.py); a raise needs the
+          owner's word quoted in the pull request body.
+        where: [build_tools/scorecard_metrics.py]
         source: "R-LK; #2443"
         predicted: none recorded
         state: live
@@ -216,3 +222,28 @@ problems:
     observed:
       - {date: 2026-11-27, sha: a5fac608e, value: "a copied one-way ruling marked decided_by owner: exit 0; a quote rewritten to its opposite: green", by: health watch 2026-11-27}
       - {date: 2026-11-27, sha: 4b1827a8f, value: "0 new, 0 stale, 10 known findings; both of the lane reviewer's mutations red", by: health watch 2026-11-27}
+
+  - id: M8
+    name: A session changes a process mechanism without seeing which problem it answers or what was tried before.
+    measure: "/health-watch: the mechanism changes merged since the last check, and how many arrived with a ledger attempt"
+    wanted: every mechanism change arrives with its attempt and a prediction; a mechanism that has not held is changed or removed
+    attempts:
+      - date: 2026-11-27
+        what: >-
+          This ledger, read whole before a mechanism is changed and at each health check, with a
+          check that refuses a lost attempt or observation and a new attempt with no prediction.
+        where:
+          - docs/process/rulings/mechanisms.yaml
+          - build_tools/tests/test_mechanisms_ledger.py
+          - docs/process/README.md
+          - .claude/skills/health-watch/SKILL.md
+        source: "owner, 2026-11-27 (session): \"i do want it, i agree with you recs and analysis\""
+        predicted: >-
+          By the second health check after it merges: every merged change to a hook, a check script, a
+          ratchet or a rule has its attempt here, and at least one attempt recorded as not-held has
+          been changed, replaced or put to the owner for removal. If neither happens, the ledger is required
+          reading that changed nothing and should itself go (M3).
+        state: live
+        outcome: unjudged
+    observed:
+      - {date: 2026-11-27, sha: 4b1827a8f, value: "0 of 8 hooks and 6 of 8 check scripts cite the issue or ruling behind them; 10 of the 11 seeded attempts had no recorded prediction", by: health watch 2026-11-27}
