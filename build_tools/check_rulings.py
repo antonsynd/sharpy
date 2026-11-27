@@ -42,12 +42,15 @@ Checks (the name is what a finding and a known-findings row carry):
   invariance          a law says an axis does not matter, and two live cases that differ only
                       along it have different outcomes, without `differs_because` naming the law.
   door                a strict ruling whose `door`, `breaks_running` or `undo_breaks` is not what
-                      ruling_evidence.derive_door computes from its cases' evidence.
+                      ruling_evidence.derive_door computes from its cases' evidence, or a case whose
+                      `verdict` is not the kind of its `after`.
   considered          a strict ruling that does not answer, in `considered`, every live ruling
                       and law with a case in the same family. This is how "I looked and nothing
                       decides it" becomes a list that can be checked for completeness.
   owner-required      a strict ruling an agent decided (`decided_by: agent`) whose derived door is
-                      not one policy.yaml lets an agent take alone.
+                      not one policy.yaml lets an agent take alone; or one the owner decided that
+                      lacks `source` or `owner_words`, or whose `owner_words` are not each a whole
+                      quote in its charter row (so neither can be rewritten alone).
 
 The ratchet: every finding must be absent or listed in known-findings.yaml, and every row there
 must still fire. A new finding fails; so does a row whose finding is gone (delete the row). Only
@@ -84,6 +87,11 @@ ROUNDS_DIR = Path("docs/process/rounds")
 ROW_RE = re.compile(r"^\| *(~~)?(R-[A-Z]{1,3})(~~)? *\|(.*)$")
 ID_RE = re.compile(r"^R-[A-Z]{1,3}$")
 DATE_RE = re.compile(r"^\d{4}-\d{2}-\d{2}$")
+# Where the owner's words were given: parts joined by "; ", each a comment URL, an issue or PR comment
+# id, a PR review, or a session and its date.
+SOURCE_PART_RE = re.compile(
+    r"^(https://github\.com/\S+|#\d+ comment \d+|PR #\d+ review|session \d{4}-\d{2}-\d{2})$"
+)
 
 KINDS = (
     "language",
@@ -820,10 +828,24 @@ def policy_class(before: str, after: str, door: Dict[str, object]) -> str:
     return "admission_or_value_change"
 
 
+def decided_verdict(after: str) -> str:
+    """The verdict an `after` observation is: a refusal is `refuse`; a program that runs or raises runs."""
+    return "refuse" if ruling_evidence.kind_of(after) == "refused" else "run"
+
+
 def check_door(inputs: Inputs) -> Iterable[Finding]:
     for record in inputs.rulings:
         if "seed" in record or not isinstance(record.get("id"), str):
             continue
+        for index, case in enumerate(record.get("cases") or []):
+            after = case["evidence"].get("after") if isinstance(case.get("evidence"), dict) else None
+            if ruling_evidence.is_observation(after, ruling_evidence.DECIDED_KINDS) and case.get("verdict") != decided_verdict(after):
+                yield Finding(
+                    "door",
+                    (record["id"],),
+                    f"case {index + 1}: `verdict` is {case.get('verdict')!r}; its `after` ({after.strip()}) gives {decided_verdict(after)!r}",
+                    f"case {index + 1}",
+                )
         door = door_of(record)
         if door is None:
             continue
@@ -836,9 +858,36 @@ def check_door(inputs: Inputs) -> Iterable[Finding]:
                 )
 
 
+def _normal(text: str) -> str:
+    # A charter row is a markdown table cell, where `|` is written `\|`.
+    return " ".join(text.replace("\\|", "|").split())
+
+
+def _owner_words_problems(record: dict, inputs: Inputs) -> Iterable[str]:
+    source = record.get("source")
+    if not (isinstance(source, str) and all(SOURCE_PART_RE.match(part) for part in source.split("; "))):
+        yield f"`source` must say where the owner's words were given (a comment URL, `#N comment M`, `PR #N review` or `session YYYY-MM-DD`, joined by `; `): {source!r}"
+    words = record.get("owner_words")
+    if not (isinstance(words, list) and words and all(isinstance(w, str) and w.strip() for w in words)):
+        yield "`owner_words` must list the owner's words, verbatim, as the charter row quotes them"
+        return
+    if record["id"] not in inputs.charter:
+        yield "the owner decided it and it has no charter row to quote the owner's words"
+        return
+    row = _normal(inputs.charter[record["id"]][1])
+    for word in words:
+        # A whole quote: words that are only part of a longer quote are not what the row quotes.
+        if f'"{_normal(word)}"' not in row:
+            yield f"its `owner_words` are not in its charter row: {word!r}"
+
+
 def check_owner_required(inputs: Inputs) -> Iterable[Finding]:
     for record in inputs.rulings:
-        if "seed" in record or record.get("decided_by") != "agent":
+        if "seed" in record:
+            continue
+        if record.get("decided_by") != "agent":
+            for problem in _owner_words_problems(record, inputs):
+                yield Finding("owner-required", (record["id"],), problem)
             continue
         doors = doors_of(record)
         if not doors:
