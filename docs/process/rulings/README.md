@@ -1,10 +1,8 @@
 # Ruling records
 
-An owner ruling is a row of prose in a charter. These files hold the same rulings as data, so a
-script can check what prose cannot: that a ruling names its law, that a replaced ruling says so,
-that two rulings do not give one case two answers.
-
-Background: [the 2026-11-21 ruling audit](../../audits/ruling-audit-2026-11-21.md).
+These files hold the owner's rulings, each a charter row, as data, so a script can check what
+prose cannot: that a ruling names its law, that a replaced ruling says so, that two rulings do not
+give one case two answers.
 
 | File | Holds |
 |---|---|
@@ -15,32 +13,25 @@ Background: [the 2026-11-21 ruling audit](../../audits/ruling-audit-2026-11-21.m
 | `known-findings.yaml` | Findings that wait for the owner. A ratchet |
 
 ```bash
-python3 build_tools/check_rulings.py                 # the gate; no compiler needed
+python3 build_tools/check_rulings.py                 # no compiler needed
 python3 build_tools/check_rulings.py --list-known    # also print what is waiting
 python3 build_tools/ruling_evidence.py recheck       # re-run every recorded program (needs sharpyc)
 ```
 
-Both also run as tests under `build_tools/tests/`, so CI runs them.
-
 A ruling's count of the programs it breaks comes from `bash build_tools/blast_radius.sh run <rule>`
-where the rule has a probe ([blast-radius.md](../blast-radius.md)); a count taken with a text
-search says so.
+where the rule has a probe ([blast-radius.md](../blast-radius.md)); a text-search count says so.
 
 ## Status
 
-The 460 records marked `seed:` were written by the audit. Their labels are a language model's
-reading of each charter row and the owner has not reviewed them. The charter row stays the
-authority for a seed ruling's text. Fifteen of their cases are filled in, all from conflicts the
-audit verified by reading the rows.
+The [2026-11-21 ruling audit](../../audits/ruling-audit-2026-11-21.md) wrote the 460 records marked
+`seed:`; their labels are a language model's reading of each charter row, not reviewed by the owner.
+The charter row stays the authority for a seed ruling's text. Fifteen of their cases are filled in,
+from conflicts the audit verified.
 
-The twenty-nine records without `seed:` (R-QS to R-RU) are the owner's rulings of 2026-11-24 and
-2026-11-25: twenty answer that audit; R-RM and R-RN followed from the owner's reading of R-RH, and
-R-RO to R-RU from the questions those two left open. R-RV, of 2026-11-26, answers one case R-RS left
-open: a `@dataclass` over a base whose `__init__` needs an argument. All thirty meet the full schema
-below, and each case has a program that was run.
+The thirty records without `seed:` (R-QS to R-RV) are the owner's rulings of 2026-11-24 to 26. All
+meet the full schema below, and each case has a program that was run.
 
-The families in `axes.yaml` are hand-listed, one set per question ruled so far. Issues #2486, #2487 and #2733 are where the
-lists get derived from the compiler; replace these with theirs as they land.
+The families in `axes.yaml` are hand-listed until #2486, #2487 and #2733 derive them from the compiler.
 
 ## Adding a ruling
 
@@ -62,6 +53,8 @@ A record without `seed:` must provide all of this, and the check fails if it doe
     - {id: R-MH, why: "R-MH is the comprehension position"}
     - {id: N5, why: "N5's case is the comprehension position"}
   decided_by: owner         # owner | agent
+  source: "PR #2800 review" # a comment URL, `#N comment M`, `PR #N review` or `session <date>`
+  owner_words: [refuse it and name the var fix]   # each one quote of the row's lead cell
   door: two-way             # computed over all the cases; see below
   breaks_running: true
   undo_breaks: false
@@ -89,9 +82,8 @@ diagnostic code, `after` is `refused:code_not_ruled`.
 
 A case that needs more than one file adds `files:` (a map of file name to text, written beside the
 program) and, for the twin, `twin_files:`. On the command line: `measure prog.spy --with other.spy
---python twin.py --python-with other.py`. The compiler can also give `crashes:<code>`: an
-internal error such as SPY0908, or one of the emitter's own failures in the SPY05xx range. That is a defect to report. It is valid as `sharpy`, and a ruling
-can never decide it as `after`.
+--python twin.py --python-with other.py`. The compiler can also give `crashes:<code>` (SPY0908, or
+an emitter failure in SPY05xx): a defect to report, valid as `sharpy`, never as `after`.
 
 Three fields are computed, not chosen. `ruling_evidence.py door --before ... --after ...` prints
 them, and the `door` check compares:
@@ -108,7 +100,12 @@ done later, or makes users rewrite code later. The check treats an admission as 
 programs come to depend on it, and a refusal as two-way because it can be relaxed.
 
 An agent may record a ruling itself (`decided_by: agent`) only for the decision classes
-`policy.yaml` marks `true`. Anything else needs `decided_by: owner`.
+`policy.yaml` marks `true`. Anything else needs `decided_by: owner` and the owner's words, each
+equal to a quote in its charter row's lead cell (this ties record to row; it cannot verify who
+spoke). Five lead cells also quote others (R-QW, R-RA, R-RR, R-RS, R-RV); for those the digest
+pin, not the checker, is the guard.
+Tests pin the strict ids, dates and words, `policy.yaml`, the families and the parked owner's words
+(a set that only shrinks; a new row is the owner's to allow), so the gate is pytest, not the script.
 
 ## What a failure means
 
@@ -123,15 +120,14 @@ An agent may record a ruling itself (`decided_by: agent`) only for the decision 
 | `exception-in-law` | A ruling departs from a law that does not name it: the law's own section of its source, or a draft's `against` list | Name the ruling there |
 | `collision` | Two live rulings give one case two verdicts | Rule; then supersede or amend one |
 | `invariance` | A law says an axis does not matter and two cases differ along it | Rule; then change a case, or record `differs_because` with `exception_to` |
-| `door` | The stated door is not what the evidence gives | Use the computed values |
+| `door` | The stated door, or a `verdict`, is not what the evidence gives | Use the computed values |
 | `considered` | A related ruling was not answered (one made on a later date need not be) | Say why it does not decide this one |
-| `owner-required` | An agent took a decision `policy.yaml` reserves | The owner decides |
+| `owner-required` | An agent took a decision `policy.yaml` reserves, or the lead cell does not quote the owner's words | The owner decides |
 
 A finding that needs the owner goes in `known-findings.yaml` with a reference. Only `charter-mark`,
-`exception-in-law`, `collision` and `invariance` findings can wait there; anything else is a
-malformed record and is fixed. A collision or invariance row also carries `where`, the case, copied
-from the check's output, so one row covers exactly one finding. When it is ruled, change the
-records and delete the row; a row whose finding no longer fires fails the check.
+`exception-in-law`, `collision`, `invariance` and unquoted owner's words can wait there; anything
+else is fixed. A row's `where` is copied from the check's output, so it covers one finding. When it
+is ruled, change the records and delete the row; a row whose finding no longer fires fails the check.
 
 ## What this does not check
 

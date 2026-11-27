@@ -7794,6 +7794,10 @@ rulings:
   basis: precedent
   laws: [R-GV, N5, N6]
   decided_by: owner
+  source: 'PR #2785 review; session 2026-11-24'
+  owner_words:
+  - the let binding is immutable and an attempt to rebind it is an error, so R-GV
+  - so far sentence 2 makes sense
   door: two-way
   breaks_running: true
   undo_breaks: false
@@ -8082,6 +8086,9 @@ rulings:
   - id: R-HT
     why: 'the leading-zero literal is this case: C# defines it and nothing conflicts'
   decided_by: owner
+  source: 'PR #2785 review'
+  owner_words:
+  - if C# expands the behavior that Python doesn't have, without conflicts, we should allow the C# behavior
   door: one-way
   breaks_running: false
   undo_breaks: true
@@ -8122,6 +8129,9 @@ rulings:
   basis: precedent
   laws: [R-BN]
   decided_by: owner
+  source: 'PR #2785 review'
+  owner_words:
+  - we could eventually get rid of the placeholder, but it would need to be at zero (or near zero …) cost
   door: one-way
   breaks_running: false
   undo_breaks: true
@@ -8177,6 +8187,9 @@ rulings:
     why: R-DX part 1 refused `== None` on a CLR reference type and R-ES lifted it; with R-ES replaced, part 1
       is in effect again
   decided_by: owner
+  source: 'PR #2785 review'
+  owner_words:
+  - we should reject `== None` … and steer to `is None`
   door: two-way
   breaks_running: true
   undo_breaks: false
@@ -8292,6 +8305,11 @@ rulings:
     why: ordering within one int-backed type is this rule's int row and stands; its cross-type refusal is this
       rule's too
   decided_by: owner
+  source: 'PR #2785 review; session 2026-11-24'
+  owner_words:
+  - they aren't the same type at all, so there's no point in comparing them
+  - never a comparison across different string-backed enum types
+  - both are supposed to be errors
   door: one-way
   breaks_running: true
   undo_breaks: true
@@ -8502,6 +8520,9 @@ rulings:
   basis: precedent
   laws: [R-PL]
   decided_by: owner
+  source: 'PR #2785 review'
+  owner_words:
+  - it should always work, but by identity in this case because equality is not an option
   door: two-way
   breaks_running: false
   undo_breaks: false
@@ -8560,6 +8581,10 @@ rulings:
   basis: precedent
   laws: [R-IM]
   decided_by: owner
+  source: 'PR #2785 review'
+  owner_words:
+  - the wrapper types' print values are similar to literals (like __repr__), so `Some(1)` and `Ok(1)`. It also makes it transparent
+    that they are wrapped
   door: one-way
   breaks_running: true
   undo_breaks: true
@@ -8622,6 +8647,9 @@ rulings:
   basis: precedent
   laws: [R-T, R-G]
   decided_by: owner
+  source: 'PR #2785 review'
+  owner_words:
+  - i think this is sensible, no?
   door: two-way
   breaks_running: false
   undo_breaks: false
@@ -8670,6 +8698,10 @@ rulings:
   basis: follows
   laws: [P-collision-is-error]
   decided_by: owner
+  source: 'PR #2785 review'
+  owner_words:
+  - i think the boundary here is wrong … it's common to update a library and find that you have a naming conflict no? that prevents
+    silent bugs
   door: two-way
   breaks_running: true
   undo_breaks: false
@@ -8719,6 +8751,9 @@ rulings:
     on the chosen option
   basis: choice
   decided_by: owner
+  source: 'PR #2785 review'
+  owner_words:
+  - the user-visible features should come first … user-visible features often require major changes underneath
 - id: R-RC
   date: '2026-11-24'
   issue: '#2785'
@@ -8740,6 +8775,9 @@ rulings:
   - id: R-EW
     why: its deviation stands; the same holds for its 'one-way for C# consumers'
   decided_by: owner
+  source: 'PR #2785 review'
+  owner_words:
+  - break it freely, but it needs to ensure the C# API still makes sense and is ergonomic enough
 - id: R-RD
   date: '2026-11-24'
   issue: '#2785'
@@ -8756,6 +8794,9 @@ rulings:
   basis: new-law
   laws: [L-zero-cost]
   decided_by: owner
+  source: 'PR #2785 review'
+  owner_words:
+  - hard to qualify what that means. Maybe we need a survey
 - id: R-RE
   date: '2026-11-24'
   issue: '#2785'
@@ -8774,6 +8815,11 @@ rulings:
   basis: new-law
   laws: [L-same-result]
   decided_by: owner
+  source: 'PR #2785 review'
+  owner_words:
+  - Sharpy should accept it where reasonable and fits into the language (static typing and .NET restrictions apply), and never
+    give a different result (again considering static typing and .NET restrictions, and to some extent what C# devs might expect
+    for interop purposes, but less so this)
 - id: R-RF
   date: '2026-11-24'
   issue: '#2785'
@@ -8789,6 +8835,9 @@ rulings:
   basis: new-law
   laws: [L-footgun]
   decided_by: owner
+  source: session 2026-11-24
+  owner_words:
+  - okay, let's make that a law
 - id: R-RG
   date: '2026-11-24'
   issue: '#2785'
@@ -8804,6 +8853,10 @@ rulings:
   basis: follows
   laws: [L-footgun]
   decided_by: owner
+  source: session 2026-11-24
+  owner_words:
+  - i would err on actually making the default be a new instance each time, and deviate from python
+  - i also agree with retiring `=>` and letting `=` do both
   door: one-way
   breaks_running: true
   undo_breaks: true
@@ -8967,6 +9020,9 @@ rulings:
   basis: precedent
   laws: [R-QI]
   decided_by: owner
+  source: session 2026-11-24
+  owner_words:
+  - uninitialized decls) yes please
   door: two-way
   breaks_running: true
   undo_breaks: false
@@ -9011,6 +9067,9 @@ rulings:
   basis: precedent
   laws: [R-NX, R-OS]
   decided_by: owner
+  source: session 2026-11-24
+  owner_words:
+  - U7) okay
   door: two-way
   breaks_running: false
   undo_breaks: false
@@ -9056,6 +9115,11 @@ rulings:
   basis: follows
   laws: [RR]
   decided_by: owner
+  source: session 2026-11-24
+  owner_words:
+  - i don't mind the conditional run as a statement, but a linter should steer away from it
+  - the ternary is capable of having a side effect from evaluating, whereas the lambda declaration inline doesn't run any code
+    ever … same with the bare module name
   door: one-way
   breaks_running: false
   undo_breaks: true
@@ -9148,6 +9212,10 @@ rulings:
   basis: follows
   laws: [N6]
   decided_by: owner
+  source: session 2026-11-24
+  owner_words:
+  - sure i'll keep N6 as ruled, makes sense. reads are clear
+  - i would say no
   door: two-way
   breaks_running: false
   undo_breaks: false
@@ -9233,6 +9301,11 @@ rulings:
   - id: P-reversible-door
     why: the draft principle (refuse before admitting) stays a default; this ruling says what makes its exceptions
   decided_by: owner
+  source: 'PR #2785 review'
+  owner_words:
+  - it can't just be refusing Python is one-way, it depends on which narrows the potential later or locks users into API calls
+    that change shape in a way that needs code fixes later (e.g. add/remove args at call sites) … i have no real consumers i
+    know of so breaking API changes are okay in my book
   note: 'The door that check_rulings computes from a case''s evidence (an admission is one-way, a refusal two-way)
     is a proxy for this: an admission is treated as foreclosing because programs come to depend on it. It is a
     default the owner can overrule in a ruling''s text.'
@@ -9257,6 +9330,9 @@ rulings:
   - id: R-QI
     why: the same rule for module-level and `@static` declarations
   decided_by: owner
+  source: session 2026-11-24
+  owner_words:
+  - B make sense to me
   door: two-way
   breaks_running: true
   undo_breaks: false
@@ -9474,6 +9550,10 @@ rulings:
     why: R-RM says which fields are assigned by the end of `__init__` (since R-RQ, all but a `var` field resting
       on its default); this ruling covers what happens before that point
   decided_by: owner
+  source: session 2026-11-24
+  owner_words:
+  - we should close this too. i know some correct programs would be rejected, but a T reference type is supposed to be non-null
+    in Sharpy, it's not finnicky like C# where T can be nullable T
   door: two-way
   breaks_running: true
   undo_breaks: false
@@ -9723,6 +9803,10 @@ rulings:
     why: R-RM says which fields are assigned by the end of `__init__` (since R-RQ, all but a `var` field resting
       on its default); this ruling says where, relative to the base call
   decided_by: owner
+  source: session 2026-11-25
+  owner_words:
+  - 'inheritance: your lean, like Swift'
+  - i think we should require the swift order, fields first, base constructor next
   door: one-way
   breaks_running: true
   undo_breaks: true
@@ -9998,6 +10082,10 @@ rulings:
   - id: R-RU
     why: 'ruled later the same day: it takes the get-only modifier out of this ruling''s zero default'
   decided_by: owner
+  source: session 2026-11-25
+  owner_words:
+  - 'auto-props: value type properties get their zero default, ref type ones cannot and must be given an initializer or be set
+    in the constructor'
   door: two-way
   breaks_running: true
   undo_breaks: false
@@ -10143,6 +10231,13 @@ rulings:
   - id: R-RH
     why: locals are not changed by this ruling; R-RT, later the same day, gives a `var` local the same rule
   decided_by: owner
+  source: session 2026-11-25
+  owner_words:
+  - i would say zero is fine... i know this is backtracking, but the idea is that var can be reassigned (as can a property,
+    at least one with a set, with only a get it's not the case) so if it has no initial value, a reasonable default makes sense.
+    it saves keystrokes for something is meant to be obvious (though against Python, and that can be okay because we type our
+    locals and our types are meaningful, rather than pure annotations)
+  - if a class's unassigned fields are all value types, then zero'd out makes sense
   door: one-way
   breaks_running: false
   undo_breaks: true
@@ -10289,6 +10384,12 @@ rulings:
   basis: follows
   laws: [R-RM, A3]
   decided_by: owner
+  source: session 2026-11-25
+  owner_words:
+  - decision 2) apply R-RM
+  - for a reference type field of a struct, an initializer or a nullable type/optional type (which would default to None and
+    None() respectively) or set in __init__() (the first 3 are not exclusive of being set in __init__() obviously). i think
+    that covers it right? i think that also widens it to optionals, because before it was just pure nullables (T | None)
   door: two-way
   breaks_running: true
   undo_breaks: false
@@ -10460,6 +10561,9 @@ rulings:
   basis: follows
   laws: [L-same-result, R-RO]
   decided_by: owner
+  source: session 2026-11-25
+  owner_words:
+  - decision 3) require the call
   door: two-way
   breaks_running: true
   undo_breaks: false
@@ -10685,6 +10789,12 @@ rulings:
   - id: R-QI
     why: 'module-level and `@static` declarations are not touched: the owner spoke of locals'
   decided_by: owner
+  source: session 2026-11-25
+  owner_words:
+  - to keep things consistent, locals need an initializer (except local `var` for value types and nullable/optional types).
+    get-only props must have an initializer. do we also have init props? (though those obviously must be set during __init__()
+    anyway, the reason they exist is to be set once during __init__, maybe as part of some passed in params or other non-trivial
+    code that can't be done in a simple initializer or shouldn't be, whereas a simple get would suffice in other cases)
   door: one-way
   breaks_running: false
   undo_breaks: true
@@ -10795,6 +10905,12 @@ rulings:
   basis: follows
   laws: [R-RQ]
   decided_by: owner
+  source: session 2026-11-25
+  owner_words:
+  - allowed also
+  - get-only props must have an initializer. do we also have init props? (though those obviously must be set during __init__()
+    anyway, the reason they exist is to be set once during __init__, maybe as part of some passed in params or other non-trivial
+    code that can't be done in a simple initializer or shouldn't be, whereas a simple get would suffice in other cases)
   door: two-way
   breaks_running: true
   undo_breaks: false
@@ -10927,6 +11043,9 @@ rulings:
     why: R-RO orders the statements of an `__init__` the programmer writes; this ruling is about the one the compiler
       generates, which R-RO's record lists as not ruled
   decided_by: owner
+  source: session 2026-11-26
+  owner_words:
+  - go with your recommendations on both
   door: two-way
   breaks_running: false
   undo_breaks: false

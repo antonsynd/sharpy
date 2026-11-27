@@ -9,6 +9,7 @@ audit verified by reading the rows must be the ones the checks report.
 from __future__ import annotations
 
 import copy
+import hashlib
 import os
 import sys
 from pathlib import Path
@@ -92,6 +93,17 @@ def strict(rid: str = "R-D", **extra: object) -> dict:
         "considered": [{"id": "R-A", "why": "R-A is the operator site; this is a slice"}],
     }
     record.update(extra)
+    return record
+
+
+OWNER_WORDS = ["keep it as it is"]
+
+
+def add_owners(data: Dict[str, object], **extra: object) -> dict:
+    """Append a strict ruling the owner decided, with the charter row that quotes the owner's words."""
+    record = strict(**{"decided_by": "owner", "source": "session 2026-11-22", "owner_words": list(OWNER_WORDS), **extra})
+    rulings(data).append(record)
+    data["charter"] = f'{data["charter"]}| {record["id"]} | #9 (owner, session: "{OWNER_WORDS[0]}") | ruled |\n'
     return record
 
 
@@ -590,7 +602,6 @@ def test_a_ruling_that_refuses_one_case_and_admits_another_does_both(tmp_path):
     # One case refuses a running program (breaks it; relaxable), another admits a refused one
     # (breaks nothing; cannot be taken back). The ruling breaks running programs AND is one-way.
     both = dict(
-        decided_by="owner",
         cases=[
             case("slice", "refuse", evidence=evidence(RAN, REFUSED)),
             case("search", "run", evidence=evidence(REFUSED, RAN)),
@@ -600,7 +611,7 @@ def test_a_ruling_that_refuses_one_case_and_admits_another_does_both(tmp_path):
         cases = both["cases"][::-1] if order else both["cases"]
 
         def edit(data, flags=None, cases=cases):
-            rulings(data).append(strict(**{**both, "cases": cases, **(flags or {})}))
+            add_owners(data, **{**both, "cases": cases, **(flags or {})})
 
         truth = dict(door="one-way", breaks_running=True, undo_breaks=True)
         assert findings(tmp_path / f"ok{order}", lambda d: edit(d, truth)) == [], order
@@ -620,12 +631,7 @@ def test_an_admission_is_one_way_and_reserved_for_the_owner(tmp_path):
     assert ("owner-required", ("R-D",)) in keys(
         findings(tmp_path, lambda d: rulings(d).append(strict(**admit)))
     )
-    assert (
-        findings(
-            tmp_path, lambda d: rulings(d).append(strict(decided_by="owner", **admit))
-        )
-        == []
-    )
+    assert findings(tmp_path, lambda d: add_owners(d, **admit)) == []
 
 
 def test_the_policy_file_decides_what_an_agent_may_take(tmp_path):
@@ -641,6 +647,98 @@ def test_the_policy_file_decides_what_an_agent_may_take(tmp_path):
         rulings(data).append(strict(**admit))
 
     assert findings(tmp_path, edit) == []
+
+
+def test_an_owners_ruling_carries_the_owners_words_and_its_row_quotes_them(tmp_path):
+    assert findings(tmp_path / "ok", add_owners) == []
+
+    def messages(name, edit):
+        def both(data):
+            edit(data, add_owners(data))
+
+        return [f.message for f in findings(tmp_path / name, both) if f.check == "owner-required"]
+
+    def reworded_row(data, record):
+        data["charter"] = str(data["charter"]).replace(OWNER_WORDS[0], "change it")
+
+    def no_row(data, record):
+        data["charter"] = str(data["charter"]).rsplit("| R-D |", 1)[0]
+
+    assert messages("row", reworded_row) == ["owner_words 1 is not a quote in its charter row's lead cell: 'keep it as it is'"]
+    # Whitespace is normalised, and every entry is looked for.
+    assert messages("words", lambda d, r: r.update(owner_words=["keep  it\nas it is", "and more"])) == [
+        "owner_words 2 is not a quote in its charter row's lead cell: 'and more'"
+    ]
+    # Part of a quote is not the quote.
+    assert messages("part", lambda d, r: r.update(owner_words=["keep it"])) == ["owner_words 1 is not a quote in its charter row's lead cell: 'keep it'"]
+    assert messages("no-row", no_row) == ["the owner decided it and it has no charter row to quote the owner's words"]
+    assert any("`owner_words` must list" in m for m in messages("no-words", lambda d, r: r.pop("owner_words")))
+    for n, bad in enumerate((None, "the owner", "session 26 Nov", "PR #2785 review;session 2026-11-24", "session 2026-13-45",
+                             "https://github.com/anything", "https://github.com/o/r/pull/1", "https://github.com/o/r/wiki/1#issuecomment-2",
+                             "session 2026-11-24\n")):
+        assert any("`source` must say" in m for m in messages(f"bad{n}", lambda d, r, b=bad: r.update(source=b))), bad
+    for n, good in enumerate(("#2423 comment 7180845467", "PR #2785 review; session 2026-11-24", "https://github.com/o/r/pull/1#issuecomment-2",
+                              "https://github.com/o/r.x/issues/3#issuecomment-4", "https://github.com/o/r/pull/5#pullrequestreview-6",
+                              "https://github.com/o/r/pull/7#discussion_r8")):
+        assert messages(f"good{n}", lambda d, r, g=good: r.update(source=g)) == [], good
+
+
+def test_owner_words_equal_a_quote_of_the_lead_cell_and_nothing_else(tmp_path):
+    # The lead cell (first column after the id) quotes the owner; the rule column quotes a recorder's
+    # option and a one-letter string. Each bypass of a search over the whole row is refused.
+    def row(data, words):
+        record = add_owners(data, owner_words=words)
+        data["charter"] = str(data["charter"]).rsplit("| R-D |", 1)[0] + (
+            f'| R-D | #9 (owner, session: "{OWNER_WORDS[0]}" and "b") | ruled, on the option "admit it"; `"a"` |\n'
+        )
+        return record
+
+    def messages(name, words):
+        return [f.message for f in findings(tmp_path / name, lambda d: row(d, words)) if f.check == "owner-required"]
+
+    assert messages("ok", [OWNER_WORDS[0], "b"]) == []
+    assert messages("option", ["admit it"]) == ["owner_words 1 is not a quote in its charter row's lead cell: 'admit it'"]
+    assert messages("one-char", ["a"]) == ["owner_words 1 is not a quote in its charter row's lead cell: 'a'"]
+    refused = ["`owner_words` must list the owner's words, verbatim, each one quote with no `\"` in it"]
+    assert messages("splice", [OWNER_WORDS[0] + '" and "b']) == refused
+    assert messages("inner", ['session: "' + OWNER_WORDS[0]]) == refused
+
+
+def test_a_lead_cell_with_an_odd_count_of_quote_marks_quotes_nothing(tmp_path):
+    # `12"` pairs with the owner's opening mark, so the only pair would be 'x, owner:', which is
+    # not the owner's words; with an odd count no quote is trusted.
+    def edit(data):
+        add_owners(data, owner_words=["x, owner:"])
+        data["charter"] = str(data["charter"]).rsplit("| R-D |", 1)[0] + '| R-D | #9 (a 12"x, owner:"w") | ruled |\n'
+
+    found = [f.message for f in findings(tmp_path, edit) if f.check == "owner-required"]
+    assert found == ["owner_words 1 is not a quote in its charter row's lead cell: 'x, owner:'"]
+
+
+def test_only_unquoted_owner_words_can_wait_and_not_an_agents_reserved_decision(tmp_path):
+    def unquoted(data):
+        add_owners(data, owner_words=["not quoted"])
+        data["known"].append({"check": "owner-required", "subjects": ["R-D"], "where": "owner_words 1", "ref": "x"})
+
+    new, known, stale = judged(tmp_path / "words", unquoted)
+    assert new == [] and stale == [] and [f.where for f in known] == ["owner_words 1"]
+
+    def reserved(data):
+        rulings(data).append(strict(cases=[case("slice", "refuse", evidence=evidence(RAN, REFUSED))], breaks_running=True))
+        data["known"].append({"check": "owner-required", "subjects": ["R-D"], "where": "owner_words 1", "ref": "x"})
+
+    new, known, stale = judged(tmp_path / "agent", reserved)
+    assert known == [] and [f.check for f in new] == ["owner-required"] and len(stale) == 1
+
+
+@pytest.mark.parametrize("verdict, after", [("refuse", RAN), ("run", REFUSED), ("open", REFUSED), ("refuse", "raises:ValueError\n")])
+def test_a_cases_verdict_is_the_kind_of_its_after(tmp_path, verdict, after):
+    def edit(data):
+        rulings(data).append(strict(cases=[case("slice", verdict, evidence=evidence(after, after))]))
+
+    found = [f.message for f in findings(tmp_path, edit) if f.check == "door"]
+    gives = "refuse" if after == REFUSED else "run"
+    assert found == [f"case 1: `verdict` is {verdict!r}; its `after` ({after.strip()}) gives {gives!r}"]
 
 
 def test_refusing_a_running_program_is_reserved_for_the_owner(tmp_path):
@@ -1055,13 +1153,106 @@ def test_the_enum_law_holds_both_backings_to_one_verdict(real):
     assert [f.subjects for f in found] == [("R-OW", "R-QW", "L-enum-own-type")]
 
 
-def test_every_ruling_of_2026_11_24_is_the_owners_and_has_a_charter_row(real):
-    new = [r for r in real.rulings if "seed" not in r]
-    assert [r["id"] for r in new if r["date"] == "2026-11-25"] == ["R-RO", "R-RP", "R-RQ", "R-RR", "R-RS", "R-RT", "R-RU"]
-    assert [r["id"] for r in new if r["date"] == "2026-11-24"] == ["R-QS", "R-QT", "R-QU", "R-QV", "R-QW", "R-QX", "R-QY", "R-QZ", "R-RA", "R-RB", "R-RC", "R-RD", "R-RE", "R-RF", "R-RG", "R-RH", "R-RI", "R-RJ", "R-RK", "R-RL", "R-RM", "R-RN"]
-    for record in new:
-        assert record["decided_by"] == "owner" and record["id"] in real.charter, record["id"]
-        assert not real.charter[record["id"]][0], record["id"]  # not struck
+# Every strict record, with its date and a digest of its `owner_words`. A strict record added,
+# removed, redated or turned into a seed, and the owner's words changed in the record and its charter
+# row together, fail here, so each needs a visible edit of this list. An agent's record would carry
+# "agent" for the digest.
+STRICT_RULINGS = {
+    "R-QS": ("2026-11-24", "b816b141b52f0274"),
+    "R-QT": ("2026-11-24", "266880faae44a2d5"),
+    "R-QU": ("2026-11-24", "bbbe39da0a20facc"),
+    "R-QV": ("2026-11-24", "4f26a0ad4d279d94"),
+    "R-QW": ("2026-11-24", "0456363ced6120d3"),
+    "R-QX": ("2026-11-24", "7314cc3e670552c2"),
+    "R-QY": ("2026-11-24", "06537626f8e3e46a"),
+    "R-QZ": ("2026-11-24", "6f1e525c495bdbee"),
+    "R-RA": ("2026-11-24", "6f46a7675fbfa65b"),
+    "R-RB": ("2026-11-24", "5d653461c6f4d3fa"),
+    "R-RC": ("2026-11-24", "a4788c1857c448cd"),
+    "R-RD": ("2026-11-24", "a7b30129788a7945"),
+    "R-RE": ("2026-11-24", "f508f570a3dacaf7"),
+    "R-RF": ("2026-11-24", "40642070ff07cfd5"),
+    "R-RG": ("2026-11-24", "d0b18d318c54937d"),
+    "R-RH": ("2026-11-24", "e956f0e46a34e886"),
+    "R-RI": ("2026-11-24", "3286adc6187d23ac"),
+    "R-RJ": ("2026-11-24", "4ffeae17bdd7e7ad"),
+    "R-RK": ("2026-11-24", "d59e4c6ccf708fe8"),
+    "R-RL": ("2026-11-24", "afe30496f5a9bb7f"),
+    "R-RM": ("2026-11-24", "a9d73028af94cb1e"),
+    "R-RN": ("2026-11-24", "f81229ff1b7531d8"),
+    "R-RO": ("2026-11-25", "ab8402ec5b3a4836"),
+    "R-RP": ("2026-11-25", "3ba4753b5e08897b"),
+    "R-RQ": ("2026-11-25", "09aca3867221f0c6"),
+    "R-RR": ("2026-11-25", "a3bc578ba943c6fd"),
+    "R-RS": ("2026-11-25", "8bbaf37c32cfdf17"),
+    "R-RT": ("2026-11-25", "479f26d81c62cc42"),
+    "R-RU": ("2026-11-25", "fb8a7a1eed92fcec"),
+    "R-RV": ("2026-11-26", "0659dfbf517c4d6c"),
+}
+
+
+def words_digest(record: dict) -> str:
+    if record.get("decided_by") == "agent":
+        return "agent"
+    return hashlib.sha256("\n".join(record.get("owner_words") or []).encode("utf-8")).hexdigest()[:16]
+
+
+def test_the_strict_rulings_and_the_owners_words_are_pinned(real):
+    strict_ = [r for r in real.rulings if "seed" not in r]
+    assert {r["id"]: (str(r["date"]), words_digest(r)) for r in strict_} == STRICT_RULINGS
+    for record in strict_:
+        assert record["id"] in real.charter and not real.charter[record["id"]][0], record["id"]  # not struck
+
+
+def test_the_policy_is_pinned(real):
+    # Every `true` is the owner's to grant; changing a value is a visible edit here.
+    assert real.policy == {
+        "no_change": True,
+        "reversible_refusal": True,
+        "breaking_refusal": False,
+        "admission_or_value_change": False,
+        "kept_divergence": False,
+    }
+
+
+def test_the_families_are_pinned(real):
+    # A family of its own would put a ruling's cases beyond `collision` and `considered`; adding one
+    # is a visible edit here (until #2486 derives the families from the compiler).
+    assert list(real.families) == [
+        "enum-operator", "walrus-target", "equality-without-eq", "wrapper-str", "spec-silent-acceptance",
+        "none-equality", "optional-store", "parameter-default", "declaration-initializer", "expression-statement",
+        "outer-name-use", "repr-placeholder", "none-needle", "module-name-collision", "field-assignment",
+        "self-before-fields", "struct-field-assignment", "super-call-presence", "super-call-order",
+        "auto-property-assignment", "dataclass-base-init",
+    ]
+
+
+def _owner_required(inputs: mod.Inputs, rid: str) -> List[str]:
+    return [f.message for f in mod.run_checks(inputs) if f.check == "owner-required" and f.subjects == (rid,)]
+
+
+def test_an_owners_record_copied_under_a_new_id_does_not_quote_its_row(real):
+    # R-RO copied as R-RY with its cases in a family of its own, and a charter row that quotes nobody.
+    copied = copy.deepcopy(next(r for r in real.rulings if r["id"] == "R-RO"))
+    copied.update(id="R-RY", amends=[], date="2026-11-27")
+    copied.pop("amended_by", None)
+    for item in copied["cases"]:
+        item["family"] = "own-family"
+    families = dict(real.families, **{"own-family": real.families["super-call-order"]})
+    charter = dict(real.charter, **{"R-RY": (False, " #1 (agent) | x |")})
+    found = _owner_required(real._replace(rulings=real.rulings + [copied], families=families, charter=charter), "R-RY")
+    assert len(found) == 2 and all("is not a quote in its charter row's lead cell" in m for m in found)
+
+
+def test_rewriting_the_owners_words_in_the_row_alone_fails(real):
+    # R-RO's quote turned to its opposite in the charter row; the record still holds the words. The
+    # row quotes a longer version of it later, which is not the quote the record holds.
+    struck, text = real.charter["R-RO"]
+    quote = '"i think we should require the swift order, fields first, base constructor next"'
+    assert text.count(quote) == 1 and text.count(quote[:-1]) == 2
+    flipped = text.replace(quote, quote.replace("should require", "should not require"))
+    found = _owner_required(real._replace(charter=dict(real.charter, **{"R-RO": (struck, flipped)})), "R-RO")
+    assert found == ["owner_words 2 is not a quote in its charter row's lead cell: 'i think we should require the swift order, fields first, base constructor next'"]
 
 
 def test_the_field_rulings_on_b7_say_which_unassigned_field_runs(real):
@@ -1167,6 +1358,14 @@ def test_properly_marked_amendments_are_not_reported(real):
     assert ("charter-mark", ("R-MJ", "R-QS")) not in found
 
 
+def test_the_parked_owner_words_are_exactly_these(real):
+    # Owner's words the lead cell does not quote, waiting for the owner to supply them. This set only
+    # shrinks: a new entry would let a session record an "owner" ruling and park its unquoted words,
+    # so adding one is the owner's to allow.
+    parked = {(tuple(row["subjects"]), row.get("where")) for row in real.known if row["check"] == "owner-required"}
+    assert parked == {(("R-RD",), "owner_words 1"), (("R-RR",), "owner_words 2")}
+
+
 def test_every_known_row_points_at_a_file_that_exists(real):
     for row in real.known:
         assert (REPO / str(row["ref"]).split(" ")[0]).is_file(), row
@@ -1181,6 +1380,9 @@ def test_the_readme_template_passes_the_checks_it_documents(real):
     assert "seed" not in template
     rulings_ = copy.deepcopy(real.rulings)
     next(r for r in rulings_ if r["id"] == "R-QS")["amended_by"] = [template["id"]]
-    new, _, _ = mod.judge(real._replace(rulings=rulings_ + [template]))
+    # Its own charter row quotes the owner's words it carries.
+    row = " #1 (owner: " + "; ".join(f'"{w}"' for w in template["owner_words"]) + ") | ruled |"
+    charter = dict(real.charter, **{template["id"]: (False, row)})
+    new, _, _ = mod.judge(real._replace(rulings=rulings_ + [template], charter=charter))
     # The one thing the template cannot have is a charter row naming it on R-QS.
     assert [f.key[:2] for f in new] == [("charter-mark", ("R-QS", template["id"]))]

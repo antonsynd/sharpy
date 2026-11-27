@@ -42,18 +42,25 @@ Checks (the name is what a finding and a known-findings row carry):
   invariance          a law says an axis does not matter, and two live cases that differ only
                       along it have different outcomes, without `differs_because` naming the law.
   door                a strict ruling whose `door`, `breaks_running` or `undo_breaks` is not what
-                      ruling_evidence.derive_door computes from its cases' evidence.
+                      ruling_evidence.derive_door computes from its cases' evidence, or a case whose
+                      `verdict` is not the kind of its `after`.
   considered          a strict ruling that does not answer, in `considered`, every live ruling
                       and law with a case in the same family. This is how "I looked and nothing
                       decides it" becomes a list that can be checked for completeness.
   owner-required      a strict ruling an agent decided (`decided_by: agent`) whose derived door is
-                      not one policy.yaml lets an agent take alone.
+                      not one policy.yaml lets an agent take alone; or one the owner decided that
+                      lacks `source` or `owner_words`, or one of whose `owner_words` is not equal
+                      to a quote in its charter row's lead cell (the first column after the id).
+                      This ties the record to the row, so neither can be rewritten alone; it does
+                      not verify that the quote is the owner's.
 
 The ratchet: every finding must be absent or listed in known-findings.yaml, and every row there
 must still fire. A new finding fails; so does a row whose finding is gone (delete the row). Only
 the findings that wait for the owner or for a text can be listed (PARKABLE); a row names its
 finding exactly (check, subjects and, for a collision or an invariance, the case in `where`), so
-one row never covers two findings. A malformed record is fixed, never listed.
+one row never covers two findings. An `owner-required` finding about owner's words the lead cell
+does not quote can wait too, with `where: owner_words N`; an agent's reserved decision cannot. A
+malformed record is fixed, never listed.
 
 What this cannot see: whether a label is *right*. A `basis: follows` naming a law that does not
 decide the case passes. The case coordinates are the narrow part that is checked for truth: the
@@ -65,6 +72,7 @@ Exit status: 0 clean, 1 findings, 2 the inputs could not be read.
 from __future__ import annotations
 
 import argparse
+import datetime
 import itertools
 import re
 import sys
@@ -84,6 +92,14 @@ ROUNDS_DIR = Path("docs/process/rounds")
 ROW_RE = re.compile(r"^\| *(~~)?(R-[A-Z]{1,3})(~~)? *\|(.*)$")
 ID_RE = re.compile(r"^R-[A-Z]{1,3}$")
 DATE_RE = re.compile(r"^\d{4}-\d{2}-\d{2}$")
+# Where the owner's words were given: parts joined by "; ", each a comment URL, an issue or PR comment
+# id, a PR review, or a session and its date (a real calendar date).
+SOURCE_PART_RE = re.compile(
+    r"^(https://github\.com/[\w.-]+/[\w.-]+/(issues|pull)/\d+#(issuecomment-\d+|pullrequestreview-\d+|discussion_r\d+)"
+    r"|#\d+ comment \d+|PR #\d+ review|session (?P<date>\d{4}-\d{2}-\d{2}))$"
+)
+# A quote in a charter row's lead cell.
+QUOTE_RE = re.compile(r'"([^"]+)"')
 
 KINDS = (
     "language",
@@ -103,6 +119,13 @@ LINKS = (("supersedes", "superseded_by"), ("amends", "amended_by"))
 # into line. Each of their findings has a key no other finding shares, so a row covers exactly one.
 # Everything else is a defect in a record and is fixed, not parked.
 PARKABLE = ("charter-mark", "exception-in-law", "collision", "invariance")
+# An owner's words the lead cell does not quote wait for the owner to supply them; this is the one
+# owner-required finding that can be parked, and its `where` names the entry.
+OWNER_WORDS_WHERE = "owner_words "
+
+
+def parkable(check: object, where: object) -> bool:
+    return check in PARKABLE or (check == "owner-required" and str(where or "").startswith(OWNER_WORDS_WHERE))
 
 
 class Finding(NamedTuple):
@@ -390,11 +413,11 @@ def check_schema(inputs: Inputs) -> Iterable[Finding]:
         if not (isinstance(row, dict) and isinstance(row.get("check"), str) and _ids(row.get("subjects")) and row.get("ref")):
             yield Finding("schema", ("known-findings",), f"a row needs `check`, `subjects` and `ref`: {row!r}")
             continue
-        if row["check"] not in PARKABLE:
+        if not parkable(row["check"], row.get("where")):
             yield Finding(
                 "schema",
                 ("known-findings",),
-                f"a `{row['check']}` finding cannot wait in known-findings.yaml (only {', '.join(PARKABLE)} can); fix it",
+                f"a `{row['check']}` finding cannot wait in known-findings.yaml (only {', '.join(PARKABLE)} can, and an owner-required one `where: owner_words N`); fix it",
             )
         key = known_key(row)
         if key in rows_seen:
@@ -820,10 +843,24 @@ def policy_class(before: str, after: str, door: Dict[str, object]) -> str:
     return "admission_or_value_change"
 
 
+def decided_verdict(after: str) -> str:
+    """The verdict an `after` observation is: a refusal is `refuse`; a program that runs or raises runs."""
+    return "refuse" if ruling_evidence.kind_of(after) == "refused" else "run"
+
+
 def check_door(inputs: Inputs) -> Iterable[Finding]:
     for record in inputs.rulings:
         if "seed" in record or not isinstance(record.get("id"), str):
             continue
+        for index, case in enumerate(record.get("cases") or []):
+            after = case["evidence"].get("after") if isinstance(case.get("evidence"), dict) else None
+            if ruling_evidence.is_observation(after, ruling_evidence.DECIDED_KINDS) and case.get("verdict") != decided_verdict(after):
+                yield Finding(
+                    "door",
+                    (record["id"],),
+                    f"case {index + 1}: `verdict` is {case.get('verdict')!r}; its `after` ({after.strip()}) gives {decided_verdict(after)!r}",
+                    f"case {index + 1}",
+                )
         door = door_of(record)
         if door is None:
             continue
@@ -836,9 +873,54 @@ def check_door(inputs: Inputs) -> Iterable[Finding]:
                 )
 
 
+def _normal(text: str) -> str:
+    # A charter row is a markdown table cell, where `|` is written `\|`.
+    return " ".join(text.replace("\\|", "|").split())
+
+
+def _source_part_ok(part: str) -> bool:
+    match = SOURCE_PART_RE.fullmatch(part)
+    if not match:
+        return False
+    try:
+        return match.group("date") is None or bool(datetime.date.fromisoformat(match.group("date")))
+    except ValueError:
+        return False
+
+
+def lead_quotes(row: str) -> List[str]:
+    """The quotes in a charter row's lead cell: the first column after the id, normalised."""
+    lead = _normal(re.split(r"(?<!\\)\|", row, maxsplit=1)[0])
+    if lead.count('"') % 2:
+        return []  # an odd count pairs the marks wrongly: no quote is trusted
+    return QUOTE_RE.findall(lead)
+
+
+def _owner_words_problems(record: dict, inputs: Inputs) -> Iterable[Tuple[str, str]]:
+    source = record.get("source")
+    if not (isinstance(source, str) and all(_source_part_ok(part) for part in source.split("; "))):
+        yield f"`source` must say where the owner's words were given (a comment URL, `#N comment M`, `PR #N review` or `session YYYY-MM-DD`, joined by `; `): {source!r}", ""
+    words = record.get("owner_words")
+    if not (isinstance(words, list) and words and all(isinstance(w, str) and w.strip() and '"' not in w for w in words)):
+        yield "`owner_words` must list the owner's words, verbatim, each one quote with no `\"` in it", ""
+        return
+    if record["id"] not in inputs.charter:
+        yield "the owner decided it and it has no charter row to quote the owner's words", ""
+        return
+    quotes = lead_quotes(inputs.charter[record["id"]][1])
+    for index, word in enumerate(words):
+        # Equal to one quote of the lead cell: not part of a quote, not a quote elsewhere in the row.
+        if _normal(word) not in quotes:
+            yield f"owner_words {index + 1} is not a quote in its charter row's lead cell: {word!r}", f"{OWNER_WORDS_WHERE}{index + 1}"
+
+
 def check_owner_required(inputs: Inputs) -> Iterable[Finding]:
     for record in inputs.rulings:
-        if "seed" in record or record.get("decided_by") != "agent":
+        if "seed" in record:
+            continue
+        if record.get("decided_by") != "agent":
+            for problem, where in _owner_words_problems(record, inputs):
+                yield Finding("owner-required", (record["id"],), problem, where)
             continue
         doors = doors_of(record)
         if not doors:
@@ -912,7 +994,7 @@ def run_checks(inputs: Inputs) -> List[Finding]:
 def judge(inputs: Inputs) -> Tuple[List[Finding], List[Finding], List[dict]]:
     """Split the findings into (new, known) and list the known-findings rows that no longer fire."""
     findings = run_checks(inputs)
-    rows = {known_key(row): row for row in inputs.known if isinstance(row, dict) and row.get("check") in PARKABLE}
+    rows = {known_key(row): row for row in inputs.known if isinstance(row, dict) and parkable(row.get("check"), row.get("where"))}
     fired = {f.key for f in findings}
     new = [f for f in findings if f.key not in rows]
     known = [f for f in findings if f.key in rows]
