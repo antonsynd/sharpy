@@ -1,10 +1,8 @@
 # Ruling records
 
-An owner ruling is a row of prose in a charter. These files hold the same rulings as data, so a
-script can check what prose cannot: that a ruling names its law, that a replaced ruling says so,
-that two rulings do not give one case two answers.
-
-Background: [the 2026-11-21 ruling audit](../../audits/ruling-audit-2026-11-21.md).
+These files hold the owner's rulings, each a charter row, as data, so a script can check what
+prose cannot: that a ruling names its law, that a replaced ruling says so, that two rulings do not
+give one case two answers.
 
 | File | Holds |
 |---|---|
@@ -20,12 +18,15 @@ python3 build_tools/check_rulings.py --list-known    # also print what is waitin
 python3 build_tools/ruling_evidence.py recheck       # re-run every recorded program (needs sharpyc)
 ```
 
+A ruling's count of the programs it breaks comes from `bash build_tools/blast_radius.sh run <rule>`
+where the rule has a probe ([blast-radius.md](../blast-radius.md)); a text-search count says so.
+
 ## Status
 
-The 460 records marked `seed:` were written by the audit. Their labels are a language model's
-reading of each charter row and the owner has not reviewed them. The charter row stays the
-authority for a seed ruling's text. Fifteen of their cases are filled in, all from conflicts the
-audit verified by reading the rows.
+The [2026-11-21 ruling audit](../../audits/ruling-audit-2026-11-21.md) wrote the 460 records marked
+`seed:`; their labels are a language model's reading of each charter row, not reviewed by the owner.
+The charter row stays the authority for a seed ruling's text. Fifteen of their cases are filled in,
+from conflicts the audit verified.
 
 The thirty records without `seed:` (R-QS to R-RV) are the owner's rulings of 2026-11-24 to 26. All
 meet the full schema below, and each case has a program that was run.
