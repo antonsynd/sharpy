@@ -101,7 +101,7 @@ OWNER_WORDS = ["keep it as it is"]
 
 def add_owners(data: Dict[str, object], **extra: object) -> dict:
     """Append a strict ruling the owner decided, with the charter row that quotes the owner's words."""
-    record = strict(decided_by="owner", source="session 2026-11-22", owner_words=list(OWNER_WORDS), **extra)
+    record = strict(**{"decided_by": "owner", "source": "session 2026-11-22", "owner_words": list(OWNER_WORDS), **extra})
     rulings(data).append(record)
     data["charter"] = f'{data["charter"]}| {record["id"]} | #9 (owner, session: "{OWNER_WORDS[0]}") | ruled |\n'
     return record
@@ -664,19 +664,59 @@ def test_an_owners_ruling_carries_the_owners_words_and_its_row_quotes_them(tmp_p
     def no_row(data, record):
         data["charter"] = str(data["charter"]).rsplit("| R-D |", 1)[0]
 
-    assert messages("row", reworded_row) == ["its `owner_words` are not in its charter row: 'keep it as it is'"]
+    assert messages("row", reworded_row) == ["owner_words 1 is not a quote in its charter row's lead cell: 'keep it as it is'"]
     # Whitespace is normalised, and every entry is looked for.
     assert messages("words", lambda d, r: r.update(owner_words=["keep  it\nas it is", "and more"])) == [
-        "its `owner_words` are not in its charter row: 'and more'"
+        "owner_words 2 is not a quote in its charter row's lead cell: 'and more'"
     ]
     # Part of a quote is not the quote.
-    assert messages("part", lambda d, r: r.update(owner_words=["keep it"])) == ["its `owner_words` are not in its charter row: 'keep it'"]
+    assert messages("part", lambda d, r: r.update(owner_words=["keep it"])) == ["owner_words 1 is not a quote in its charter row's lead cell: 'keep it'"]
     assert messages("no-row", no_row) == ["the owner decided it and it has no charter row to quote the owner's words"]
     assert any("`owner_words` must list" in m for m in messages("no-words", lambda d, r: r.pop("owner_words")))
-    for n, bad in enumerate((None, "the owner", "session 26 Nov", "PR #2785 review;session 2026-11-24")):
+    for n, bad in enumerate((None, "the owner", "session 26 Nov", "PR #2785 review;session 2026-11-24", "session 2026-13-45",
+                             "https://github.com/anything", "https://github.com/o/r/pull/1", "https://github.com/o/r/wiki/1#issuecomment-2")):
         assert any("`source` must say" in m for m in messages(f"bad{n}", lambda d, r, b=bad: r.update(source=b))), bad
-    for n, good in enumerate(("#2423 comment 7180845467", "PR #2785 review; session 2026-11-24", "https://github.com/o/r/pull/1#issuecomment-2")):
+    for n, good in enumerate(("#2423 comment 7180845467", "PR #2785 review; session 2026-11-24", "https://github.com/o/r/pull/1#issuecomment-2",
+                              "https://github.com/o/r.x/issues/3#issuecomment-4", "https://github.com/o/r/pull/5#pullrequestreview-6",
+                              "https://github.com/o/r/pull/7#discussion_r8")):
         assert messages(f"good{n}", lambda d, r, g=good: r.update(source=g)) == [], good
+
+
+def test_owner_words_equal_a_quote_of_the_lead_cell_and_nothing_else(tmp_path):
+    # The lead cell (first column after the id) quotes the owner; the rule column quotes a recorder's
+    # option and a one-letter string. Each bypass of a search over the whole row is refused.
+    def row(data, words):
+        record = add_owners(data, owner_words=words)
+        data["charter"] = str(data["charter"]).rsplit("| R-D |", 1)[0] + (
+            f'| R-D | #9 (owner, session: "{OWNER_WORDS[0]}" and "b") | ruled, on the option "admit it"; `"a"` |\n'
+        )
+        return record
+
+    def messages(name, words):
+        return [f.message for f in findings(tmp_path / name, lambda d: row(d, words)) if f.check == "owner-required"]
+
+    assert messages("ok", [OWNER_WORDS[0], "b"]) == []
+    assert messages("option", ["admit it"]) == ["owner_words 1 is not a quote in its charter row's lead cell: 'admit it'"]
+    assert messages("one-char", ["a"]) == ["owner_words 1 is not a quote in its charter row's lead cell: 'a'"]
+    refused = ["`owner_words` must list the owner's words, verbatim, each one quote with no `\"` in it"]
+    assert messages("splice", [OWNER_WORDS[0] + '" and "b']) == refused
+    assert messages("inner", ['session: "' + OWNER_WORDS[0]]) == refused
+
+
+def test_only_unquoted_owner_words_can_wait_and_not_an_agents_reserved_decision(tmp_path):
+    def unquoted(data):
+        add_owners(data, owner_words=["not quoted"])
+        data["known"].append({"check": "owner-required", "subjects": ["R-D"], "where": "owner_words 1", "ref": "x"})
+
+    new, known, stale = judged(tmp_path / "words", unquoted)
+    assert new == [] and stale == [] and [f.where for f in known] == ["owner_words 1"]
+
+    def reserved(data):
+        rulings(data).append(strict(cases=[case("slice", "refuse", evidence=evidence(RAN, REFUSED))], breaks_running=True))
+        data["known"].append({"check": "owner-required", "subjects": ["R-D"], "where": "owner_words 1", "ref": "x"})
+
+    new, known, stale = judged(tmp_path / "agent", reserved)
+    assert known == [] and [f.check for f in new] == ["owner-required"] and len(stale) == 1
 
 
 @pytest.mark.parametrize("verdict, after", [("refuse", RAN), ("run", REFUSED), ("open", REFUSED), ("refuse", "raises:ValueError\n")])
@@ -1101,40 +1141,41 @@ def test_the_enum_law_holds_both_backings_to_one_verdict(real):
     assert [f.subjects for f in found] == [("R-OW", "R-QW", "L-enum-own-type")]
 
 
-# Every strict record, with a digest of its `owner_words`. A strict record added, removed or turned
-# into a seed, and the owner's words changed in the record and its charter row together, fail here,
-# so each needs a visible edit of this list. An agent's record would carry "agent" for the digest.
+# Every strict record, with its date and a digest of its `owner_words`. A strict record added,
+# removed, redated or turned into a seed, and the owner's words changed in the record and its charter
+# row together, fail here, so each needs a visible edit of this list. An agent's record would carry
+# "agent" for the digest.
 STRICT_RULINGS = {
-    "R-QS": "b816b141b52f0274",
-    "R-QT": "266880faae44a2d5",
-    "R-QU": "bbbe39da0a20facc",
-    "R-QV": "4f26a0ad4d279d94",
-    "R-QW": "0456363ced6120d3",
-    "R-QX": "7314cc3e670552c2",
-    "R-QY": "06537626f8e3e46a",
-    "R-QZ": "6f1e525c495bdbee",
-    "R-RA": "6f46a7675fbfa65b",
-    "R-RB": "5d653461c6f4d3fa",
-    "R-RC": "a4788c1857c448cd",
-    "R-RD": "a7b30129788a7945",
-    "R-RE": "f508f570a3dacaf7",
-    "R-RF": "40642070ff07cfd5",
-    "R-RG": "d0b18d318c54937d",
-    "R-RH": "e956f0e46a34e886",
-    "R-RI": "3286adc6187d23ac",
-    "R-RJ": "4ffeae17bdd7e7ad",
-    "R-RK": "d59e4c6ccf708fe8",
-    "R-RL": "afe30496f5a9bb7f",
-    "R-RM": "a9d73028af94cb1e",
-    "R-RN": "f81229ff1b7531d8",
-    "R-RO": "ab8402ec5b3a4836",
-    "R-RP": "3ba4753b5e08897b",
-    "R-RQ": "09aca3867221f0c6",
-    "R-RR": "a3bc578ba943c6fd",
-    "R-RS": "8bbaf37c32cfdf17",
-    "R-RT": "479f26d81c62cc42",
-    "R-RU": "fb8a7a1eed92fcec",
-    "R-RV": "0659dfbf517c4d6c",
+    "R-QS": ("2026-11-24", "b816b141b52f0274"),
+    "R-QT": ("2026-11-24", "266880faae44a2d5"),
+    "R-QU": ("2026-11-24", "bbbe39da0a20facc"),
+    "R-QV": ("2026-11-24", "4f26a0ad4d279d94"),
+    "R-QW": ("2026-11-24", "0456363ced6120d3"),
+    "R-QX": ("2026-11-24", "7314cc3e670552c2"),
+    "R-QY": ("2026-11-24", "06537626f8e3e46a"),
+    "R-QZ": ("2026-11-24", "6f1e525c495bdbee"),
+    "R-RA": ("2026-11-24", "6f46a7675fbfa65b"),
+    "R-RB": ("2026-11-24", "5d653461c6f4d3fa"),
+    "R-RC": ("2026-11-24", "a4788c1857c448cd"),
+    "R-RD": ("2026-11-24", "a7b30129788a7945"),
+    "R-RE": ("2026-11-24", "f508f570a3dacaf7"),
+    "R-RF": ("2026-11-24", "40642070ff07cfd5"),
+    "R-RG": ("2026-11-24", "d0b18d318c54937d"),
+    "R-RH": ("2026-11-24", "e956f0e46a34e886"),
+    "R-RI": ("2026-11-24", "3286adc6187d23ac"),
+    "R-RJ": ("2026-11-24", "4ffeae17bdd7e7ad"),
+    "R-RK": ("2026-11-24", "d59e4c6ccf708fe8"),
+    "R-RL": ("2026-11-24", "afe30496f5a9bb7f"),
+    "R-RM": ("2026-11-24", "a9d73028af94cb1e"),
+    "R-RN": ("2026-11-24", "f81229ff1b7531d8"),
+    "R-RO": ("2026-11-25", "ab8402ec5b3a4836"),
+    "R-RP": ("2026-11-25", "3ba4753b5e08897b"),
+    "R-RQ": ("2026-11-25", "09aca3867221f0c6"),
+    "R-RR": ("2026-11-25", "a3bc578ba943c6fd"),
+    "R-RS": ("2026-11-25", "8bbaf37c32cfdf17"),
+    "R-RT": ("2026-11-25", "479f26d81c62cc42"),
+    "R-RU": ("2026-11-25", "fb8a7a1eed92fcec"),
+    "R-RV": ("2026-11-26", "0659dfbf517c4d6c"),
 }
 
 
@@ -1146,7 +1187,7 @@ def words_digest(record: dict) -> str:
 
 def test_the_strict_rulings_and_the_owners_words_are_pinned(real):
     strict_ = [r for r in real.rulings if "seed" not in r]
-    assert {r["id"]: words_digest(r) for r in strict_} == STRICT_RULINGS
+    assert {r["id"]: (str(r["date"]), words_digest(r)) for r in strict_} == STRICT_RULINGS
     for record in strict_:
         assert record["id"] in real.charter and not real.charter[record["id"]][0], record["id"]  # not struck
 
@@ -1174,8 +1215,8 @@ def test_the_families_are_pinned(real):
     ]
 
 
-def _owner_required(inputs: mod.Inputs) -> List[str]:
-    return [f.message for f in mod.run_checks(inputs) if f.check == "owner-required"]
+def _owner_required(inputs: mod.Inputs, rid: str) -> List[str]:
+    return [f.message for f in mod.run_checks(inputs) if f.check == "owner-required" and f.subjects == (rid,)]
 
 
 def test_an_owners_record_copied_under_a_new_id_does_not_quote_its_row(real):
@@ -1187,8 +1228,8 @@ def test_an_owners_record_copied_under_a_new_id_does_not_quote_its_row(real):
         item["family"] = "own-family"
     families = dict(real.families, **{"own-family": real.families["super-call-order"]})
     charter = dict(real.charter, **{"R-RY": (False, " #1 (agent) | x |")})
-    found = _owner_required(real._replace(rulings=real.rulings + [copied], families=families, charter=charter))
-    assert len(found) == 2 and all("not in its charter row" in m for m in found)
+    found = _owner_required(real._replace(rulings=real.rulings + [copied], families=families, charter=charter), "R-RY")
+    assert len(found) == 2 and all("is not a quote in its charter row's lead cell" in m for m in found)
 
 
 def test_rewriting_the_owners_words_in_the_row_alone_fails(real):
@@ -1198,8 +1239,10 @@ def test_rewriting_the_owners_words_in_the_row_alone_fails(real):
     quote = '"i think we should require the swift order, fields first, base constructor next"'
     assert text.count(quote) == 1 and text.count(quote[:-1]) == 2
     flipped = text.replace(quote, quote.replace("should require", "should not require"))
-    found = _owner_required(real._replace(charter=dict(real.charter, **{"R-RO": (struck, flipped)})))
-    assert found == ["its `owner_words` are not in its charter row: 'i think we should require the swift order, fields first, base constructor next'"]
+    found = _owner_required(real._replace(charter=dict(real.charter, **{"R-RO": (struck, flipped)})), "R-RO")
+    assert found == ["owner_words 2 is not a quote in its charter row's lead cell: 'i think we should require the swift order, fields first, base constructor next'"]
+
+
 def test_the_field_rulings_on_b7_say_which_unassigned_field_runs(real):
     # R-RM (2026-11-24) removed B7's exception; R-RQ (2026-11-25) restored it. What is left of R-RM
     # is the reference-type field: it runs only where some constructor assigns it (every __init__,

@@ -11043,7 +11043,7 @@ rulings:
     why: R-RO orders the statements of an `__init__` the programmer writes; this ruling is about the one the compiler
       generates, which R-RO's record lists as not ruled
   decided_by: owner
-  source: 'session 2026-11-26; #2423 comment 7180845467'
+  source: session 2026-11-26
   owner_words:
   - go with your recommendations on both
   door: two-way

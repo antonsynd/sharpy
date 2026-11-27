@@ -59,7 +59,7 @@ A record without `seed:` must provide all of this, and the check fails if it doe
     - {id: N5, why: "N5's case is the comprehension position"}
   decided_by: owner         # owner | agent
   source: "PR #2800 review" # a comment URL, `#N comment M`, `PR #N review` or `session <date>`
-  owner_words: [refuse it and name the var fix]   # verbatim, as the charter row quotes them
+  owner_words: [refuse it and name the var fix]   # each one quote of the row's lead cell
   door: two-way             # computed over all the cases; see below
   breaks_running: true
   undo_breaks: false
@@ -105,9 +105,9 @@ done later, or makes users rewrite code later. The check treats an admission as 
 programs come to depend on it, and a refusal as two-way because it can be relaxed.
 
 An agent may record a ruling itself (`decided_by: agent`) only for the decision classes
-`policy.yaml` marks `true`. Anything else needs `decided_by: owner` and the owner's words, which its
-charter row quotes. Tests pin the strict ids with a digest of their words, `policy.yaml` and the
-families: changing any is a visible test edit.
+`policy.yaml` marks `true`. Anything else needs `decided_by: owner` and the owner's words, each
+equal to a quote in its charter row's lead cell (this ties record to row; it cannot verify who
+spoke). Tests pin the strict ids, dates and words, `policy.yaml` and the families.
 
 ## What a failure means
 
@@ -124,13 +124,12 @@ families: changing any is a visible test edit.
 | `invariance` | A law says an axis does not matter and two cases differ along it | Rule; then change a case, or record `differs_because` with `exception_to` |
 | `door` | The stated door, or a `verdict`, is not what the evidence gives | Use the computed values |
 | `considered` | A related ruling was not answered (one made on a later date need not be) | Say why it does not decide this one |
-| `owner-required` | An agent took a decision `policy.yaml` reserves, or the owner's words are not in the row | The owner decides |
+| `owner-required` | An agent took a decision `policy.yaml` reserves, or the lead cell does not quote the owner's words | The owner decides |
 
 A finding that needs the owner goes in `known-findings.yaml` with a reference. Only `charter-mark`,
-`exception-in-law`, `collision` and `invariance` findings can wait there; anything else is a
-malformed record and is fixed. A collision or invariance row also carries `where`, the case, copied
-from the check's output, so one row covers exactly one finding. When it is ruled, change the
-records and delete the row; a row whose finding no longer fires fails the check.
+`exception-in-law`, `collision`, `invariance` and unquoted owner's words can wait there; anything
+else is fixed. A row's `where` is copied from the check's output, so it covers one finding. When it
+is ruled, change the records and delete the row; a row whose finding no longer fires fails the check.
 
 ## What this does not check
 

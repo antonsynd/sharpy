@@ -1,7 +1,8 @@
 # Findings of build_tools/check_rulings.py that wait for the owner or for a text to be brought into line.
 # A ratchet: a finding not listed here fails the check, and so does a row whose finding no longer fires.
 # Only charter-mark, exception-in-law, collision and invariance findings may wait here; a collision or
-# invariance row also carries `where` (the case), as the check prints it.
+# invariance row also carries `where` (the case), as the check prints it. So may an owner-required
+# finding about owner's words the row's lead cell does not quote, with `where: owner_words N`.
 # When a question is ruled, change the records (or the law, or the charter row) and delete the row.
 findings:
   - check: charter-mark
@@ -54,3 +55,15 @@ findings:
     ref: docs/audits/ruling-audit-2026-11-21.md section 6.5
     note: >-
       An earlier ruling was narrowed by a later one and its charter row does not say so. Cure: name the later ruling on the earlier row.
+  - check: owner-required
+    subjects: [R-RD]
+    where: owner_words 1
+    ref: docs/process/rounds/remediation-round-2026-09-20-batching.md section 4, R-RD
+    note: >-
+      The lead cell of R-RD's row quotes no words of the owner; these are from the row's body. Cure: the owner supplies the words, and the lead cell quotes them.
+  - check: owner-required
+    subjects: [R-RR]
+    where: owner_words 2
+    ref: docs/process/rounds/remediation-round-2026-09-20-batching.md section 4, R-RR
+    note: >-
+      The row calls these the owner's own words, but they stand in its body, not its lead cell. Cure: the owner confirms them, and the lead cell quotes them.
