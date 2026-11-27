@@ -8794,9 +8794,9 @@ rulings:
   basis: new-law
   laws: [L-zero-cost]
   decided_by: owner
-  source: 'PR #2785 review'
+  source: 'PR #2785 review; session 2026-11-27'
   owner_words:
-  - hard to qualify what that means. Maybe we need a survey
+  - i confirm that definition
 - id: R-RE
   date: '2026-11-24'
   issue: '#2785'
