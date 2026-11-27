@@ -40,6 +40,14 @@ internal class TypeResolver
     private TypeSymbol? _currentTypeContext;
     private bool _isStaticContext;
 
+    /// <summary>
+    /// The aliases a declaration-site judgement (<see cref="JudgeTypeAliasTarget"/>) is expanding,
+    /// the judged alias first; null outside a judgement. An alias met again while it is in the set
+    /// reaches itself, directly or through a ring, and is not expanded a second time: its unused
+    /// declaration still runs (#2769, unruled), and expanding it would never end.
+    /// </summary>
+    private HashSet<TypeAliasSymbol>? _aliasesUnderJudgement;
+
     public TypeResolver(SymbolTable symbolTable, SemanticInfo semanticInfo, ICompilerLogger? logger = null,
         CancellationToken cancellationToken = default)
     {
@@ -82,6 +90,70 @@ internal class TypeResolver
 
     /// <summary>The static context <see cref="SetIsStaticContext"/> last set, for a caller that restores it.</summary>
     internal bool IsStaticContext => _isStaticContext;
+
+    /// <summary>
+    /// D10 (plan-777361): an alias names a type that exists. Resolves <paramref name="alias"/>'s target
+    /// in the scope the caller has entered — the one the alias is declared in, with every type, import
+    /// and sibling alias of it declared — so a target naming a missing type is SPY0202 at the alias
+    /// whether or not anything names it. A use site resolves the same target again when it expands
+    /// the alias; the bag collapses the identical diagnostic.
+    ///
+    /// <para>The annotation cache is off for the judgement: a use may already have cached the target
+    /// as it resolved in the USE's scope (a class's type parameter <c>T</c> for a module-level
+    /// <c>type K = T</c>), and the verdict is the declaration's. A generic alias's own parameters are
+    /// in scope (<see cref="ResolveInTypeParameterScope"/>). An alias that reaches itself
+    /// is not expanded again (<see cref="_aliasesUnderJudgement"/>).</para>
+    /// </summary>
+    internal void JudgeTypeAliasTarget(TypeAliasSymbol alias, TypeSymbol? typeContext, bool isStaticContext)
+    {
+        var previousContext = _currentTypeContext;
+        var previousStatic = _isStaticContext;
+        var previousJudgement = _aliasesUnderJudgement;
+        _currentTypeContext = typeContext;
+        _isStaticContext = isStaticContext;
+        _aliasesUnderJudgement = new HashSet<TypeAliasSymbol>(ReferenceEqualityComparer.Instance) { alias };
+        try
+        {
+            // The alias's own parameters in scope and the cache off (ResolveInTypeParameterScope);
+            // nothing is bound, so nothing is substituted. The position is ExpandTypeAlias's: an
+            // alias of `None` is legal as a return type, and refused at a value-slot use (#2004).
+            ResolveInTypeParameterScope(
+                alias.TypeParameters,
+                count: alias.TypeParameters.Count,
+                resolve: () => alias.TypeAnnotation != null
+                    ? ResolveTypeAnnotation(alias.TypeAnnotation, AnnotationPosition.Return)
+                    : alias.FunctionType != null ? ResolveFunctionType(alias.FunctionType) : SemanticType.Unknown,
+                boundArguments: Array.Empty<SemanticType>());
+        }
+        finally
+        {
+            _aliasesUnderJudgement = previousJudgement;
+            _isStaticContext = previousStatic;
+            _currentTypeContext = previousContext;
+        }
+    }
+
+    /// <summary>
+    /// Runs <paramref name="expand"/> for <paramref name="aliasSymbol"/> unless a judgement
+    /// (<see cref="JudgeTypeAliasTarget"/>) is already expanding it: then the alias reaches itself and
+    /// stands as <see cref="SemanticType.Unknown"/>, with no diagnostic (#2769). Outside a judgement
+    /// every expansion runs as before.
+    /// </summary>
+    private SemanticType ExpandUnlessSelfReaching(TypeAliasSymbol aliasSymbol, Func<SemanticType> expand)
+    {
+        if (_aliasesUnderJudgement == null)
+            return expand();
+        if (!_aliasesUnderJudgement.Add(aliasSymbol))
+            return SemanticType.Unknown;
+        try
+        {
+            return expand();
+        }
+        finally
+        {
+            _aliasesUnderJudgement.Remove(aliasSymbol);
+        }
+    }
 
     /// <param name="position">
     /// Whether the annotation is a return slot, where <c>None</c> means void, or a value slot, where
@@ -255,12 +327,12 @@ internal class TypeResolver
                 else
                 {
                     var typeArgs = annotation.TypeArguments.Select(ta => ResolveTypeAnnotation(ta, AnnotationPosition.Value)).ToList();
-                    result = ExpandGenericTypeAlias(aliasSymbol, typeArgs, annotation.IsOptional);
+                    result = ExpandUnlessSelfReaching(aliasSymbol, () => ExpandGenericTypeAlias(aliasSymbol, typeArgs, annotation.IsOptional));
                 }
             }
             else
             {
-                result = ExpandTypeAlias(aliasSymbol, annotation.IsOptional);
+                result = ExpandUnlessSelfReaching(aliasSymbol, () => ExpandTypeAlias(aliasSymbol, annotation.IsOptional));
             }
         }
         // Check for generic type

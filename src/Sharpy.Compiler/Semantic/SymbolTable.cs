@@ -598,6 +598,36 @@ public class SymbolTable : IGlobalSymbolTable
         }
     }
 
+    /// <summary>
+    /// Makes <paramref name="scope"/> — one already exited, its symbols and parent chain intact —
+    /// the current scope until the token is disposed, so a name is resolved where it was written
+    /// once everything that scope declares exists (D10: an alias's target is judged in the scope the
+    /// alias is declared in, after its later siblings are declared). Owns no ledger and records no
+    /// exited variable: nothing is defined in it.
+    /// </summary>
+    internal ScopeReentry ReenterScope(Scope scope) => new(this, scope);
+
+    /// <summary>The token returned by <see cref="ReenterScope"/>: pops the re-entered scope on dispose.</summary>
+    internal readonly struct ScopeReentry : IDisposable
+    {
+        private readonly SymbolTable _table;
+        private readonly Scope _scope;
+
+        internal ScopeReentry(SymbolTable table, Scope scope)
+        {
+            _table = table;
+            _scope = scope;
+            table._scopeStack.Push(scope);
+        }
+
+        public void Dispose()
+        {
+            if (!ReferenceEquals(_table._scopeStack.Peek(), _scope))
+                throw new InvalidOperationException($"The re-entered scope '{_scope.Name}' is not the current scope");
+            _table._scopeStack.Pop();
+        }
+    }
+
     public TypeSymbol? LookupType(string name)
     {
         return Lookup(name) as TypeSymbol;

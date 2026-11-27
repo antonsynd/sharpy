@@ -1304,7 +1304,7 @@ internal partial class TypeChecker
         {
             if (statement is TypeAlias typeAlias && IsDeclaredTypeBodyAlias(classSymbol, typeAlias))
             {
-                RegisterScopedTypeAlias(typeAlias);
+                RegisterScopedTypeAlias(typeAlias, typeBodyHost: classSymbol);
             }
         }
 
@@ -1575,7 +1575,7 @@ internal partial class TypeChecker
         {
             if (statement is TypeAlias typeAlias && IsDeclaredTypeBodyAlias(structSymbol, typeAlias))
             {
-                RegisterScopedTypeAlias(typeAlias);
+                RegisterScopedTypeAlias(typeAlias, typeBodyHost: structSymbol);
             }
         }
 
@@ -1659,7 +1659,7 @@ internal partial class TypeChecker
         {
             if (statement is TypeAlias typeAlias && IsDeclaredTypeBodyAlias(interfaceSymbol, typeAlias))
             {
-                RegisterScopedTypeAlias(typeAlias);
+                RegisterScopedTypeAlias(typeAlias, typeBodyHost: interfaceSymbol);
             }
         }
 

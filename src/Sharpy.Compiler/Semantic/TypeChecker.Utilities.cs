@@ -3224,13 +3224,17 @@ internal partial class TypeChecker
     /// a declaring position the second alias is NameResolver's SPY0204 and stays unreported here; a
     /// nested block opens its own scope, so an inner alias of the same name still shadows (B2).</para>
     /// </remarks>
-    private void RegisterScopedTypeAlias(TypeAlias typeAlias)
+    private void RegisterScopedTypeAlias(TypeAlias typeAlias, TypeSymbol? typeBodyHost = null)
     {
         // The same node met a second time (type-body pre-registration, then the body pass): already
         // registered. A same-NAMED alias declared at another node is a redeclaration (see remarks).
+        // At module level this is NameResolver's symbol, met here first.
         if (_symbolTable.Lookup(typeAlias.Name, searchParents: false) is TypeAliasSymbol registered
             && registered.IsDeclaredAt(typeAlias))
+        {
+            AwaitTargetJudgement(typeAlias, registered, typeBodyHost);
             return;
+        }
 
         // NameResolver owns the verdicts at a declaring position (see remarks).
         var reportHere = AtNonDeclaringPosition;
@@ -3275,6 +3279,54 @@ internal partial class TypeChecker
         }
 
         _symbolTable.Define(TypeAliasSymbol.CreateFrom(typeAlias, _currentFilePath));
+        if (_symbolTable.Lookup(typeAlias.Name, searchParents: false) is TypeAliasSymbol defined)
+            AwaitTargetJudgement(typeAlias, defined, typeBodyHost);
+    }
+
+    /// <summary>An alias whose target <see cref="JudgePendingTypeAliasTargets"/> judges: the scope it is
+    /// declared in and the context <c>Self</c> resolves against there.</summary>
+    private sealed record PendingAliasJudgement(TypeAliasSymbol Alias, Scope Scope, TypeSymbol? TypeContext, bool IsStaticContext);
+
+    private readonly List<PendingAliasJudgement> _pendingAliasJudgements = new();
+
+    /// <summary>The alias declarations already awaiting judgement, by node: a type body's alias is met at
+    /// its pre-registration and again in the body pass, and is judged once.</summary>
+    private readonly HashSet<TypeAlias> _aliasesAwaitingJudgement = new(ReferenceEqualityComparer.Instance);
+
+    /// <summary>
+    /// D10 (plan-777361): records <paramref name="alias"/> — declared at <paramref name="typeAlias"/>
+    /// in the current scope — for <see cref="JudgePendingTypeAliasTargets"/>. The judgement waits
+    /// because the scope is not yet whole: a later sibling alias or a later type of the module may be
+    /// what the target names (<c>type K0 = K1</c> above <c>type K1 = int</c> in one function body;
+    /// ruling 9: judge once every type and import is declared). A type body's alias resolves
+    /// <c>Self</c> against its host, as a use inside the body does; any other against the context
+    /// the resolver holds where the alias stands.
+    /// </summary>
+    private void AwaitTargetJudgement(TypeAlias typeAlias, TypeAliasSymbol alias, TypeSymbol? typeBodyHost)
+    {
+        if (!_aliasesAwaitingJudgement.Add(typeAlias))
+            return;
+        _pendingAliasJudgements.Add(typeBodyHost != null
+            ? new PendingAliasJudgement(alias, _symbolTable.CurrentScope, typeBodyHost, IsStaticContext: false)
+            : new PendingAliasJudgement(alias, _symbolTable.CurrentScope, _typeResolver.CurrentTypeContext, _typeResolver.IsStaticContext));
+    }
+
+    /// <summary>
+    /// D10 (plan-777361): an alias names a type that exists. Judges the target of every alias the
+    /// module declares — at module level, in a type body, a function or a block, named or not — in
+    /// the scope the alias is declared in, now that every scope of the module is whole. A target that
+    /// names a missing type is SPY0202 at the alias (<see cref="TypeResolver.JudgeTypeAliasTarget"/>).
+    /// </summary>
+    private void JudgePendingTypeAliasTargets()
+    {
+        foreach (var pending in _pendingAliasJudgements)
+        {
+            _cancellationToken.ThrowIfCancellationRequested();
+            using (_symbolTable.ReenterScope(pending.Scope))
+                _typeResolver.JudgeTypeAliasTarget(pending.Alias, pending.TypeContext, pending.IsStaticContext);
+        }
+
+        _pendingAliasJudgements.Clear();
     }
 
     /// <summary>

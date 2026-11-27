@@ -1,0 +1,21 @@
+# D10 controls (plan-777361): a target judged where its alias is declared sees every type and
+# sibling alias of that scope, wherever it stands: a later class, a later sibling alias, a ring
+# of aliases nobody names. (A dotted target through a later import: alias_target_through_later_import.)
+
+type Boxes = list[Later]
+
+class Later:
+    v: int = 4
+
+def g() -> int:
+    type Count = Next
+    type Next = int
+    if True:
+        type Ring[T] = list[Back]
+        type Back = Ring[int]
+    c: Count = 3
+    return c
+
+def main():
+    b: Boxes = [Later()]
+    print(b[0].v + g())

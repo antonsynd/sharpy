@@ -1,0 +1,14 @@
+# D10 (plan-777361): an alias names a type that exists, named or not. No annotation names
+# any of these aliases, and each target is judged where the alias is declared: SPY0202 at the target.
+type Handle = list[Missing]
+
+class Holder:
+    type Slot = () -> Absent
+
+def g() -> int:
+    if True:
+        type Pair = tuple[a: int, b: Nowhere]
+    return 1
+
+def main():
+    print(g())

@@ -765,6 +765,9 @@ internal partial class TypeChecker
             CheckStatement(statement);
         }
 
+        // D10: every alias's target, judged where the alias is declared, now that every scope is whole.
+        JudgePendingTypeAliasTargets();
+
         _narrowingFlow = previousFlow;
         _currentFacts = previousFacts;
 

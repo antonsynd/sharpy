@@ -8,7 +8,7 @@
 # GENERATED, HUMAN-REVIEWED: bash build_tools/regenerate_corpus_pins.sh rewrites the rows and the `# total` lines; review
 # the diff (a new stem's rows are its own; a moved row of an existing stem is a finding until explained). A new key's cite row in
 # code-action-shape-allowlist.txt is written by hand (the loader names it), and so is a drained key's deletion.
-# total stems identity keys=14 rows=2116
+# total stems identity keys=14 rows=2120
 # total stems crlf keys=8 rows=285
 # total stems cr keys=8 rows=296
 # total stems comment keys=7 rows=292
@@ -1424,6 +1424,8 @@ extract-method identity parse tuple_index_nested # #2294
 extract-method identity parse tuples/tuple_return # #2294
 extract-method identity parse type_alias_argument_position_1588 # #2294
 extract-method identity parse type_alias_builtin_function_name_2359 # #2294
+extract-method identity parse type_aliases/alias_target_declared_anywhere_runs # #2294
+extract-method identity parse type_aliases/alias_target_missing_unused # #2294
 extract-method identity parse type_aliases/generic_alias_func_type # #2294
 extract-method identity parse type_system/clr_namespace_snake_case_access # #2294
 extract-method identity parse type_system/clr_pascal_case_access # #2294
@@ -1520,6 +1522,7 @@ extract-variable identity diagnostics strings/d_string_fstring # #2294
 extract-variable identity diagnostics strings/d_string_fstring_mixed # #2294
 extract-variable identity diagnostics structs/struct_const_before_field_1794 # #2294
 extract-variable identity diagnostics terminators/const_at_eof_no_trailing_newline # #2294
+extract-variable identity diagnostics type_aliases/alias_target_declared_anywhere_runs # #2294
 extract-variable identity diagnostics type_system/coalesce_assign_payload_forms_1767 # #2294
 extract-variable identity diagnostics type_system/optional_wrapped_element_children # #2294
 extract-variable identity diagnostics type_system/small_width_constant_conversions # #2294
@@ -1710,6 +1713,7 @@ remove-annotation identity diagnostics structs/struct_default_all # #2296
 remove-annotation identity diagnostics structs/struct_underscore_members_1937 # #2296
 remove-annotation identity diagnostics truthiness_not_non_bool # #2296
 remove-annotation identity diagnostics tuples/tuple_type_mismatch # #2296
+remove-annotation identity diagnostics type_aliases/alias_target_declared_anywhere_runs # #2296
 remove-annotation identity diagnostics type_system/as_cast_class_hierarchy # #2296
 remove-annotation identity diagnostics type_system/as_cast_class_hierarchy_throws # #2296
 remove-annotation identity diagnostics type_system/as_cast_nullable_target_bang # #2296

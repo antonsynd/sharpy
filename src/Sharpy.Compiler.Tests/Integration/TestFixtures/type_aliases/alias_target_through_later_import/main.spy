@@ -1,0 +1,8 @@
+# D10 control (plan-777361, ruling 9): a module alias's dotted target is judged once every import
+# is declared, so an alias above its import, named by nothing, still runs.
+type Where = lib.Thing
+
+import lib
+
+def main():
+    print(lib.Thing().v)
