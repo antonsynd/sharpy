@@ -461,6 +461,7 @@ public class SymbolTable : IGlobalSymbolTable
     public void Define(Symbol symbol)
     {
         CurrentScope.Define(symbol);
+        RecordAliasDeclaringScope(symbol);
 
         if (_currentFunctionScopeId >= 0
             && _functionLedgers.TryGetValue(_currentFunctionScopeId, out var ledger))
@@ -478,8 +479,29 @@ public class SymbolTable : IGlobalSymbolTable
         if (CurrentScope.Contains(symbol.Name))
             return false;
         CurrentScope.Define(symbol);
+        RecordAliasDeclaringScope(symbol);
         return true;
     }
+
+    /// <summary>
+    /// The scope each type alias was first defined in: where it is declared (D10, plan-777361). A later
+    /// definition of the same symbol elsewhere — an import binding it into an importer's scope — is not
+    /// its declaration and does not move it.
+    /// </summary>
+    private readonly Dictionary<TypeAliasSymbol, Scope> _aliasDeclaringScopes = new(ReferenceEqualityComparer.Instance);
+
+    private void RecordAliasDeclaringScope(Symbol symbol)
+    {
+        if (symbol is TypeAliasSymbol alias)
+            _aliasDeclaringScopes.TryAdd(alias, CurrentScope);
+    }
+
+    /// <summary>
+    /// The scope <paramref name="alias"/> is declared in, or null for an alias this table never
+    /// defined (one restored from a cache, or another table's).
+    /// </summary>
+    internal Scope? DeclaringScopeOf(TypeAliasSymbol alias)
+        => _aliasDeclaringScopes.TryGetValue(alias, out var scope) ? scope : null;
 
     public Symbol? Lookup(string name, bool searchParents = true)
     {

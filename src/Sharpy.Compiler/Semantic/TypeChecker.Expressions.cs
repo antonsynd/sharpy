@@ -920,7 +920,7 @@ internal partial class TypeChecker
         if (aliasSymbol.TypeAnnotation == null)
             return SemanticType.Unknown;
 
-        var expanded = _typeResolver.ResolveTypeAnnotation(aliasSymbol.TypeAnnotation, AnnotationPosition.Value);
+        var expanded = _typeResolver.ResolveAliasTarget(aliasSymbol, AnnotationPosition.Value);
         if (expanded is BuiltinType bt)
         {
             var registryType = _symbolTable.BuiltinRegistry.GetType(bt.Name);
@@ -947,7 +947,7 @@ internal partial class TypeChecker
         if (aliasSymbol.TypeAnnotation == null)
             return SemanticType.Unknown;
 
-        var expanded = _typeResolver.ResolveTypeAnnotation(aliasSymbol.TypeAnnotation, AnnotationPosition.Value);
+        var expanded = _typeResolver.ResolveAliasTarget(aliasSymbol, AnnotationPosition.Value);
         if (expanded is BuiltinType)
         {
             var lookupName = aliasSymbol.TypeAnnotation.Name;

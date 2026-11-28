@@ -1589,7 +1589,7 @@ internal partial class TypeChecker
         if (typeSymbol == null && lookedUp is TypeAliasSymbol aliasSymbol
             && aliasSymbol.TypeAnnotation != null)
         {
-            var expanded = _typeResolver.ResolveTypeAnnotation(aliasSymbol.TypeAnnotation, AnnotationPosition.Value);
+            var expanded = _typeResolver.ResolveAliasTarget(aliasSymbol, AnnotationPosition.Value);
             typeSymbol = expanded switch
             {
                 UserDefinedType { Symbol: TypeSymbol ts } => ts,

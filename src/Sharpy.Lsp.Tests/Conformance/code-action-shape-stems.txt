@@ -8,7 +8,7 @@
 # GENERATED, HUMAN-REVIEWED: bash build_tools/regenerate_corpus_pins.sh rewrites the rows and the `# total` lines; review
 # the diff (a new stem's rows are its own; a moved row of an existing stem is a finding until explained). A new key's cite row in
 # code-action-shape-allowlist.txt is written by hand (the loader names it), and so is a drained key's deletion.
-# total stems identity keys=14 rows=2120
+# total stems identity keys=14 rows=2122
 # total stems crlf keys=8 rows=285
 # total stems cr keys=8 rows=296
 # total stems comment keys=7 rows=292
@@ -1426,6 +1426,8 @@ extract-method identity parse type_alias_argument_position_1588 # #2294
 extract-method identity parse type_alias_builtin_function_name_2359 # #2294
 extract-method identity parse type_aliases/alias_target_declared_anywhere_runs # #2294
 extract-method identity parse type_aliases/alias_target_missing_unused # #2294
+extract-method identity parse type_aliases/alias_target_shadowed_at_use # #2294
+extract-method identity parse type_aliases/alias_target_shadowed_at_use_twin # #2294
 extract-method identity parse type_aliases/generic_alias_func_type # #2294
 extract-method identity parse type_system/clr_namespace_snake_case_access # #2294
 extract-method identity parse type_system/clr_pascal_case_access # #2294

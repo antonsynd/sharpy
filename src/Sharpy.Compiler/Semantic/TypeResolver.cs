@@ -134,6 +134,30 @@ internal class TypeResolver
     }
 
     /// <summary>
+    /// D10 (plan-777361): what <paramref name="alias"/>'s target means at a use — resolved in the scope
+    /// the alias is declared in (<see cref="SymbolTable.DeclaringScopeOf"/>), as the declaration's
+    /// judgement resolves it, never in the use's: a name the use's scope binds and the alias's does not
+    /// (a function-local <c>type A = int</c> under a module <c>type K = A</c>, a class's type parameter
+    /// under a module <c>type K = T</c>) is not what the alias names. The one route every alias
+    /// expansion takes, in an annotation (<see cref="ResolveTypeAnnotation"/>'s alias arm) and in an
+    /// expression (the checker's callee, constructor-reference, receiver and export reads).
+    /// </summary>
+    internal SemanticType ResolveAliasTarget(TypeAliasSymbol alias, AnnotationPosition position)
+        => alias.TypeAnnotation == null
+            ? SemanticType.Unknown
+            : InDeclaringScope(alias, () => ResolveTypeAnnotation(alias.TypeAnnotation, position));
+
+    /// <summary>Runs <paramref name="resolve"/> with <paramref name="alias"/>'s declaring scope current; in the
+    /// use's scope when the table never defined the alias.</summary>
+    private SemanticType InDeclaringScope(TypeAliasSymbol alias, Func<SemanticType> resolve)
+    {
+        if (_symbolTable.DeclaringScopeOf(alias) is not { } scope)
+            return resolve();
+        using (_symbolTable.ReenterScope(scope))
+            return resolve();
+    }
+
+    /// <summary>
     /// Runs <paramref name="expand"/> for <paramref name="aliasSymbol"/> unless a judgement
     /// (<see cref="JudgeTypeAliasTarget"/>) is already expanding it: then the alias reaches itself and
     /// stands as <see cref="SemanticType.Unknown"/>, with no diagnostic (#2769). Outside a judgement
@@ -327,12 +351,15 @@ internal class TypeResolver
                 else
                 {
                     var typeArgs = annotation.TypeArguments.Select(ta => ResolveTypeAnnotation(ta, AnnotationPosition.Value)).ToList();
-                    result = ExpandUnlessSelfReaching(aliasSymbol, () => ExpandGenericTypeAlias(aliasSymbol, typeArgs, annotation.IsOptional));
+                    // The arguments are the use's; the body is the declaration's (ResolveAliasTarget).
+                    result = ExpandUnlessSelfReaching(aliasSymbol,
+                        () => InDeclaringScope(aliasSymbol, () => ExpandGenericTypeAlias(aliasSymbol, typeArgs, annotation.IsOptional)));
                 }
             }
             else
             {
-                result = ExpandUnlessSelfReaching(aliasSymbol, () => ExpandTypeAlias(aliasSymbol, annotation.IsOptional));
+                result = ExpandUnlessSelfReaching(aliasSymbol,
+                    () => InDeclaringScope(aliasSymbol, () => ExpandTypeAlias(aliasSymbol, annotation.IsOptional)));
             }
         }
         // Check for generic type

@@ -1,0 +1,9 @@
+# D10 (plan-777361): an imported alias means what it names where it is declared. Boxes names
+# lib.Thing; main never imports Thing, and the use resolves the target in lib, not here (it was
+# SPY0202, Thing resolved in main).
+from lib import Boxes, make
+
+def main():
+    b: Boxes = make()
+    print(len(b))
+    print(b[0].v)

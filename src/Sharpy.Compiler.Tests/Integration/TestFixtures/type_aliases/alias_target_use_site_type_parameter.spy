@@ -1,0 +1,11 @@
+# D10 (plan-777361): a module alias's target is resolved at module level. T is no type there, so
+# the alias is refused at its target, though the only use stands where a class binds T (this ran
+# and printed 4 when the use resolved the target in its own scope).
+type K = T
+
+class Box[T]:
+    def f(self, x: K) -> K:
+        return x
+
+def main():
+    print(Box[int]().f(4))

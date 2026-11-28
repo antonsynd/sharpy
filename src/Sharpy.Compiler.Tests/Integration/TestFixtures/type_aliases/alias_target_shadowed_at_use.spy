@@ -1,0 +1,15 @@
+# D10 (plan-777361): an alias's target means what it names where the alias is declared. K names
+# the module class A; inside g a local `type A = int` does not change what K names, so storing an
+# int in a K is refused (the use used to expand K in g's scope, to int, and print 3).
+class A:
+    v: int = 7
+
+type K = A
+
+def g() -> int:
+    type A = int
+    x: K = 3
+    return 1
+
+def main():
+    print(g())

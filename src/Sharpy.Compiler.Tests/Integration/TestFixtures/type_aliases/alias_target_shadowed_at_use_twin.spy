@@ -1,0 +1,23 @@
+# D10 controls (plan-777361): the shadowed case's twins. K names the module class A wherever it
+# is used: beside a local alias A (g, the first use of K) and with no shadow at all (u).
+class A:
+    v: int = 7
+
+type K = A
+
+def make() -> A:
+    return A()
+
+def g() -> int:
+    type A = int
+    n: A = 2
+    x: K = make()
+    return x.v + n
+
+def u() -> int:
+    y: K = make()
+    return y.v
+
+def main():
+    print(g())
+    print(u())
