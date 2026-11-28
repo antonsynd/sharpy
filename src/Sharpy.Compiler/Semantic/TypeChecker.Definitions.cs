@@ -123,31 +123,43 @@ internal partial class TypeChecker
         // Using `with` would create a new record, breaking reference sharing.
         functionSymbol.ReturnType = returnType;
 
-        // Generator wrap: if the body yields, wrap the return type so forward
-        // references see IEnumerable<T> before the def is visited. The visit-time
-        // ProcessGeneratorMetadata re-wraps after UpdateFunctionSymbol clobbers
-        // back to the element type, so this is idempotent-by-clobber — no skip guard.
-        if (ContainsYield(functionDef.Body)
-            && !DunderDetector.IsDunderMethod(functionDef.Name)
-            && returnType is not (VoidType or UnknownType))
+        // The body-derived signature facts, as the visit derives them (ProcessGeneratorMetadata,
+        // ProcessAsyncMetadata), so a use above the def — or above its class, which D2 types before
+        // any body (plan-777361, #2249) — reads what a use below it reads. The visit re-derives each
+        // after UpdateFunctionSymbol clobbers the return type back to the annotation's, so this is
+        // idempotent-by-clobber — no skip guard.
+        // Generator: every def whose body yields. A non-dunder's return type is wrapped so callers see
+        // IEnumerable<T>/IAsyncEnumerable<T>; a dunder (`__iter__`, `__reversed__`) keeps its element
+        // type, which SynthesisAnalyzer and the iteration arms read beside IsGenerator.
+        var isGenerator = ContainsYield(functionDef.Body);
+        if (isGenerator)
         {
-            var enumerableName = functionDef.IsAsync
-                ? CSharpTypeNames.IAsyncEnumerable
-                : CSharpTypeNames.IEnumerable;
-            functionSymbol.ReturnType = new GenericType
-            {
-                Name = enumerableName,
-                TypeArguments = new List<SemanticType> { returnType }
-            };
             functionSymbol.IsGenerator = true;
+            if (!DunderDetector.IsDunderMethod(functionDef.Name) && returnType is not (VoidType or UnknownType))
+            {
+                var enumerableName = functionDef.IsAsync
+                    ? CSharpTypeNames.IAsyncEnumerable
+                    : CSharpTypeNames.IEnumerable;
+                functionSymbol.ReturnType = new GenericType
+                {
+                    Name = enumerableName,
+                    TypeArguments = new List<SemanticType> { returnType }
+                };
+            }
         }
-        else if (functionDef.IsAsync
-            && functionDef.Name != DunderNames.Init
-            && !DunderDetector.IsDunderMethod(functionDef.Name)
-            && returnType is not (VoidType or UnknownType))
+
+        // Async: every async def but `__init__` (refused at the visit), a dunder included; a
+        // non-generator's return type is a Task, `-> None` a result-less one.
+        if (functionDef.IsAsync && functionDef.Name != DunderNames.Init)
         {
-            functionSymbol.ReturnType = new TaskType { ResultType = returnType };
             functionSymbol.IsAsync = true;
+            if (!isGenerator)
+            {
+                functionSymbol.ReturnType = new TaskType
+                {
+                    ResultType = returnType is VoidType or UnknownType ? null : returnType
+                };
+            }
         }
 
         _symbolTable.ExitScope();
