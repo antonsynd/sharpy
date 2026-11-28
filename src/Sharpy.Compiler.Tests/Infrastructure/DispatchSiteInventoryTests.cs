@@ -1232,4 +1232,100 @@ public class DispatchSiteInventoryTests
 
         return violations;
     }
+
+    // ══════════════════════════════════════════════════════════════════════
+    // The callee resolver's census (plan-777361 D5, A4, M4)
+    // ══════════════════════════════════════════════════════════════════════
+
+    /// <summary>The overload lookups a bare callee used to be resolved by, one name each.</summary>
+    private static readonly string[] BareCalleeLookupNames = { "LookupFunctionOverloads", "GetFunction", "GetFunctionOverloads" };
+
+    private const string CalleeResolverFile = "TypeChecker.CalleeResolution.cs";
+
+    /// <summary>
+    /// Every direct overload lookup left in the TypeChecker (each file declaring <c>partial class
+    /// TypeChecker</c>), keyed "file::method" with its count: the resolver's own, and the remainder
+    /// that is no bare-callee resolution, each with its reason. Measured @ 0125fb930: 33 sites in
+    /// <c>TypeChecker*.cs</c> plus 1 in <c>GenericReferenceResolver.cs</c> (a TypeChecker partial
+    /// the plan's count left out); 21 went behind the resolver, 2 were a dead helper's
+    /// (<c>NameDenotesMultipleDeclarations</c>, deleted), 11 remain.
+    /// </summary>
+    private static readonly Dictionary<string, (int Count, string Reason)> BareCalleeLookupRoster = new()
+    {
+        [$"{CalleeResolverFile}::BareCalleeOf"] = (1, "the resolver: the builtin registry's set, for a name that denotes the builtin"),
+        [$"{CalleeResolverFile}::OverloadListOf"] = (1, "the resolver: the overload list the bound user function belongs to"),
+        ["TypeChecker.ClassScopeRule.cs::IsBoundOutsideTheTypeBody"] = (1, "a class-body READ's fact (N2's outer binding), not a callee; D3's seam (T4)"),
+        ["TypeChecker.Definitions.cs::LookupFunctionSymbol"] = (1, "a declaration site: the symbol a def declared, not a call of it"),
+        ["TypeChecker.Expressions.Access.Calls.Overloads.cs::ConstructorReferenceFamilyOf"] = (2, "a resolved builtin TYPE's conversion family, keyed on the TypeSymbol the reference bound"),
+        ["TypeChecker.Expressions.Access.Calls.Overloads.cs::ConversionSignatureSatisfies"] = (1, "an already classified constructor reference's conversions (registry by design)"),
+        ["TypeChecker.Expressions.Access.Calls.Overloads.cs::ConstructorReferenceShapes"] = (1, "the same reference's conversions, for a diagnostic's candidate list"),
+        ["TypeChecker.Expressions.Access.Calls.cs::TryResolveBuiltinsQualifiedType"] = (1, "a qualified `builtins.X`: the registry by design, immune to shadowing (#1322)"),
+        ["TypeChecker.Expressions.Access.Calls.cs::CheckBuiltinsQualifiedCall"] = (1, "a qualified `builtins.X(...)` call: the registry by design (#1322)"),
+        ["TypeChecker.Expressions.Access.cs::CheckMemberAccessCore"] = (1, "a qualified `builtins.X` member in callee position (#1667)"),
+        ["TypeChecker.Expressions.cs::SynthesizePrimitiveFunctionType"] = (1, "a resolved builtin TYPE's conversions, keyed on the TypeSymbol"),
+        ["TypeChecker.Utilities.cs::LookupBySpelling"] = (1, "the bare read's own spelling rule (the builtin behind an escape-declared shadow): the walk the resolver calls"),
+    };
+
+    /// <summary>
+    /// D5's census: a bare callee resolves through ONE resolver, so the direct overload lookups left
+    /// in the TypeChecker are the resolver's own and the rostered remainder, exactly. A site sent back
+    /// to <c>LookupFunctionOverloads</c> or to the registry is an unrostered key (or a count above its
+    /// row); a remainder that goes behind the resolver is a phantom row.
+    /// </summary>
+    [Fact]
+    public void BareCalleeLookups_AreTheResolversOwnOrARosteredRemainder()
+    {
+        var semanticDir = Path.Combine(DispatchSiteScan.FindRepoRoot(), "src", "Sharpy.Compiler", "Semantic");
+        Assert.True(Directory.Exists(semanticDir), $"the semantic source directory must be locatable ({semanticDir})");
+
+        var found = new Dictionary<string, int>(StringComparer.Ordinal);
+        int partialFiles = 0;
+        foreach (var file in Directory.GetFiles(semanticDir, "*.cs", SearchOption.AllDirectories).OrderBy(f => f, StringComparer.Ordinal))
+        {
+            var root = CSharpSyntaxTree.ParseText(File.ReadAllText(file)).GetRoot();
+            var checker = root.DescendantNodes().OfType<ClassDeclarationSyntax>()
+                .Where(c => c.Identifier.ValueText == "TypeChecker").ToList();
+            if (checker.Count == 0)
+                continue;
+            partialFiles++;
+
+            foreach (var invocation in checker.SelectMany(c => c.DescendantNodes().OfType<InvocationExpressionSyntax>()))
+            {
+                if (invocation.Expression is not MemberAccessExpressionSyntax member
+                    || !BareCalleeLookupNames.Contains(member.Name.Identifier.ValueText, StringComparer.Ordinal))
+                {
+                    continue;
+                }
+
+                var method = invocation.Ancestors().OfType<MemberDeclarationSyntax>().FirstOrDefault() switch
+                {
+                    MethodDeclarationSyntax m => m.Identifier.ValueText,
+                    PropertyDeclarationSyntax p => p.Identifier.ValueText,
+                    ConstructorDeclarationSyntax => ".ctor",
+                    var other => other?.Kind().ToString() ?? "?",
+                };
+                var key = $"{Path.GetFileName(file)}::{method}";
+                found[key] = found.GetValueOrDefault(key) + 1;
+            }
+        }
+
+        Assert.True(partialFiles > 10, $"the scan is vacuous: it found {partialFiles} TypeChecker partial files");
+        Assert.True(found.ContainsKey($"{CalleeResolverFile}::BareCalleeOf"), "the scan is vacuous: it does not see the resolver's own lookup");
+
+        var violations = new List<string>();
+        foreach (var (key, count) in found.OrderBy(e => e.Key, StringComparer.Ordinal))
+        {
+            _output.WriteLine($"{key} x{count}");
+            if (!BareCalleeLookupRoster.TryGetValue(key, out var row))
+                violations.Add($"UNROSTERED: {key} x{count} — a bare callee goes through ResolveBareCallee (D5); a lookup that is no bare-callee resolution needs a row with its reason");
+            else if (row.Count != count)
+                violations.Add($"COUNT: {key} x{count}, rostered x{row.Count}");
+        }
+
+        foreach (var key in BareCalleeLookupRoster.Keys.Where(k => !found.ContainsKey(k)).OrderBy(k => k, StringComparer.Ordinal))
+            violations.Add($"PHANTOM: {key} — the site is gone; drain the row");
+
+        _output.WriteLine($"Census: {found.Values.Sum()} lookups in {found.Count} methods across {partialFiles} TypeChecker partial files");
+        Assert.True(violations.Count == 0, "The bare-callee lookup census differs from its roster:\n  " + string.Join("\n  ", violations));
+    }
 }

@@ -1649,12 +1649,8 @@ internal partial class TypeChecker
     /// </summary>
     private bool ResolvesToBuiltinRange()
     {
-        var resolved = _symbolTable.Lookup(BuiltinNames.Range, searchParents: true);
-        if (resolved == null)
-            return false;
-
-        var overloads = _symbolTable.BuiltinRegistry.GetFunctionOverloads(BuiltinNames.Range);
-        return overloads != null && overloads.Contains(resolved);
+        var range = ResolveBareCallee(BuiltinNames.Range);
+        return range.Function is { } resolved && range.BuiltinOverloads?.Contains(resolved) == true;
     }
 
     /// <summary>

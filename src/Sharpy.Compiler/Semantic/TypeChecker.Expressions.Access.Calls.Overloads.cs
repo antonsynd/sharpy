@@ -1137,28 +1137,20 @@ internal partial class TypeChecker
 
         var resolvedSymbol = _semanticInfo.GetIdentifierSymbol(id);
 
-        // A VariableSymbol shadows the builtin — skip.
-        if (resolvedSymbol is VariableSymbol)
+        // Only a function or a type the reference bound can be a builtin's method group: a
+        // VariableSymbol shadows the builtin — skip.
+        if (resolvedSymbol is not (FunctionSymbol or TypeSymbol))
             return;
 
-        // A user-declared FunctionSymbol shadows the builtin — skip. Only the builtin registry's
-        // own FunctionSymbol (identity check) gets the lowering. User functions emit through their
-        // own CodeGenInfo path, and at type-checking time CodeGenInfo is null for ALL symbols.
-        if (resolvedSymbol is FunctionSymbol fs)
-        {
-            var builtinFs = _symbolTable.BuiltinRegistry.GetFunction(id.Name);
-            if (builtinFs == null || !ReferenceEquals(fs, builtinFs))
-                return;
-        }
-        else if (resolvedSymbol is TypeSymbol)
-        {
-            if (_symbolTable.BuiltinRegistry.GetFunction(id.Name) == null)
-                return;
-        }
-        else
-        {
+        // A user-declared FunctionSymbol or type shadows the builtin — skip. Only the builtin
+        // registry's own symbol (identity, the callee resolver's answer for the bound symbol, D5)
+        // gets the lowering: the builtin function the name binds (its first overload, the one the
+        // global scope holds), or a builtin type with conversion functions. User functions emit
+        // through their own CodeGenInfo path, and at type-checking time CodeGenInfo is null for ALL
+        // symbols.
+        if (BareCalleeOf(id.Name, resolvedSymbol).BuiltinOverloads is not { Count: > 0 } builtinOverloads
+            || (resolvedSymbol is FunctionSymbol fs && !ReferenceEquals(fs, builtinOverloads[0])))
             return;
-        }
 
         var qualifiedName = "Sharpy.Builtins." +
             Shared.NameCasing.ResolveMethod(id.Name, id.IsNameBacktickEscaped);
@@ -2586,12 +2578,11 @@ internal partial class TypeChecker
         {
             case Identifier id:
                 {
-                    // A local/parameter binding shadows the declaration: after `g = xs.pop`, `g` is a
-                    // variable of function type, not a reference to an overload set.
-                    if (_symbolTable.Lookup(id.Name) is VariableSymbol)
-                        return null;
-                    var functionOverloads = _symbolTable.LookupFunctionOverloads(id.Name)
-                        ?? _symbolTable.BuiltinRegistry.GetFunctionOverloads(id.Name);
+                    // The set the bound name denotes (the callee resolver, D5). A local/parameter
+                    // binding shadows the declaration: after `g = xs.pop`, `g` is a variable of
+                    // function type, not a reference to an overload set; and a single user function
+                    // spelled like a builtin is its own target, not the builtin's set.
+                    var functionOverloads = ResolveBareCallee(id).Overloads;
                     return functionOverloads == null ? null : (functionOverloads, Identity);
                 }
 

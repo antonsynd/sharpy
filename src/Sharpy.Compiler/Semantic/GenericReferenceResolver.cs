@@ -1271,7 +1271,7 @@ internal partial class TypeChecker
     /// </summary>
     private bool IsBuiltinGenericFunction(string name, FunctionSymbol symbol)
     {
-        var overloads = _symbolTable.BuiltinRegistry.GetFunctionOverloads(name);
+        var overloads = BareCalleeOf(name, symbol).BuiltinOverloads;
         if (overloads == null)
             return false;
         foreach (var overload in overloads)

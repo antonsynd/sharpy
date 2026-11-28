@@ -575,18 +575,19 @@ internal partial class TypeChecker
         if (callee is not Identifier id)
             return (null, false);
 
+        // What the bare name denotes is the callee resolver's (D5): a variable spelled like a builtin
+        // or an overloaded function is the variable, and has no signature here.
+        var bareCallee = ResolveBareCallee(id);
+
         // A user-defined or imported overload SET is resolved from the argument types later; choosing
         // one of its members here would be a guess.
-        if (_symbolTable.LookupFunctionOverloads(id.Name) is { Count: > 1 })
+        if (bareCallee.UserOverloads is { Count: > 1 })
             return (null, false);
 
-        var symbol = _symbolTable.Lookup(id.Name) as FunctionSymbol;
-        var builtinOverloads = _symbolTable.BuiltinRegistry.GetFunctionOverloads(id.Name);
-
         List<FunctionSymbol> candidates;
-        if (builtinOverloads is { Count: > 0 } && (symbol == null || builtinOverloads.Contains(symbol)))
+        if (bareCallee.BuiltinOverloads is { Count: > 0 } builtinOverloads)
             candidates = builtinOverloads.Where(c => AcceptsCallShape(c, call)).ToList();
-        else if (symbol != null)
+        else if (bareCallee.Function is { } symbol)
             candidates = new List<FunctionSymbol> { symbol };
         else
             return (null, false);

@@ -3272,7 +3272,9 @@ internal partial class TypeChecker
         if (fallback.TypeParameters.Count == typeArgCount)
             return fallback;
 
-        var overloads = _symbolTable.BuiltinRegistry.GetFunctionOverloads(name);
+        // The set the bound symbol denotes (the callee resolver, D5): the registry's, only when
+        // `fallback` is the registry's own symbol.
+        var overloads = BareCalleeOf(name, fallback).BuiltinOverloads;
         if (overloads == null)
             return fallback;
 

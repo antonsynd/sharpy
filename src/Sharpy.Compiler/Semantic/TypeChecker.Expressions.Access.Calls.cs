@@ -282,9 +282,10 @@ internal partial class TypeChecker
             // have to agree: when they did not, the checker validated a bare `len()` against a
             // user `` class `len` `` while codegen emitted Sharpy.Builtins.Len() — a SPY0908 ICE
             // where a declaration elsewhere in the file changed the diagnosis of an unrelated call.
-            var symbol = CalleeSymbolOf(id);
-            if (symbol != null && id.IsNameBacktickEscaped != symbol.IsNameBacktickEscaped)
-                symbol = null;
+            var calleeBinding = ResolveBareCallee(id);
+            if (calleeBinding.Bound != null && id.IsNameBacktickEscaped != calleeBinding.Bound.IsNameBacktickEscaped)
+                calleeBinding = BareCalleeOf(id.Name, bound: null);
+            var symbol = calleeBinding.Bound;
 
             // A user binding that spells a builtin name shadows it, exactly as any inner binding
             // shadows an outer one — that is what makes `def double`, `def isinstance` and a
@@ -294,8 +295,7 @@ internal partial class TypeChecker
             // Sharpy.Builtins.Len and emitted as the user's Len, giving CS1503 -> SPY0908, and a
             // nested `def hash` silently ran the builtin (#1240, #1241). Identity decides, not the
             // name: when nothing shadows it, Lookup answers with the registry's own symbol.
-            var shadowsBuiltin = symbol != null
-                && !_symbolTable.BuiltinRegistry.IsBuiltinSymbol(symbol);
+            var shadowsBuiltin = !calleeBinding.DenotesBuiltin;
 
             if (shadowsBuiltin && _semanticInfo != null)
                 _semanticInfo.SetCalleeRouting(call, CalleeRouting.UserSymbol);
@@ -704,11 +704,9 @@ internal partial class TypeChecker
 
         if (!isQualifiedIsinstance)
         {
-            var resolvedCallee = _symbolTable.Lookup(isinstanceId!.Name);
-            var builtinIsinstance = _symbolTable.BuiltinRegistry.GetFunctionOverloads(BuiltinNames.Isinstance);
-            if (resolvedCallee is not FunctionSymbol calleeFunction
-                || builtinIsinstance == null
-                || !builtinIsinstance.Contains(calleeFunction))
+            var resolvedCallee = ResolveBareCallee(isinstanceId!);
+            if (resolvedCallee is not { DenotesBuiltin: true, Function: { } calleeFunction }
+                || resolvedCallee.Overloads?.Contains(calleeFunction) != true)
             {
                 return;
             }
@@ -1481,8 +1479,10 @@ internal partial class TypeChecker
     {
         var overloads = reference?.Kind switch
         {
-            GenericReferenceKind.Builtin => _symbolTable.BuiltinRegistry.GetFunctionOverloads(calleeName),
-            GenericReferenceKind.UserFunction => _symbolTable.LookupFunctionOverloads(calleeName),
+            // A bare callee (`identity[int](x)`, `map[int, int](...)`): the set the symbol the
+            // reference bound denotes (D5).
+            GenericReferenceKind.Builtin => BareCalleeOf(calleeName, reference.TargetSymbol).BuiltinOverloads,
+            GenericReferenceKind.UserFunction => BareCalleeOf(calleeName, reference.TargetSymbol).UserOverloads,
             GenericReferenceKind.ModuleFunction => LookupModuleFunctionOverloads(reference.ReceiverType, calleeName),
             GenericReferenceKind.InstanceMethod => LookupInstanceMethodOverloads(reference.ReceiverType, calleeName),
             _ => null,
@@ -1897,9 +1897,11 @@ internal partial class TypeChecker
         var keyArg = call.KeywordArguments.FirstOrDefault(k => k.Name == "key");
         // A bare function reference (user function or builtin) is callable even when its
         // value-position expression type is not surfaced as a FunctionType.
+        // What the bare name denotes is the resolver's (D5): a variable spelled like a builtin is
+        // the variable, and its type was judged above.
         if (keyArg?.Value is Identifier keyId
-            && (_symbolTable.Lookup(keyId.Name) is FunctionSymbol
-                || _symbolTable.BuiltinRegistry.GetFunctionOverloads(keyId.Name) != null))
+            && ResolveBareCallee(keyId) is var keyCallee
+            && (keyCallee.Function != null || keyCallee.BuiltinOverloads != null))
             return;
 
         AddError(
@@ -1938,23 +1940,19 @@ internal partial class TypeChecker
     private SemanticType? ResolveBuiltinOverload(
         Identifier id, List<SemanticType> argTypes, Dictionary<string, SemanticType> kwargTypes, int totalArgCount, FunctionCall call)
     {
-        var overloads = _symbolTable.BuiltinRegistry.GetFunctionOverloads(id.Name);
-        var isBuiltinWithOverloads = overloads != null && overloads.Count > 1;
-        if (!isBuiltinWithOverloads)
-            return null;
-
-        // Identity decides: ANY non-builtin symbol answering Lookup shadows the builtin,
-        // regardless of symbol kind. The old `as FunctionSymbol` let a VariableSymbol shadow
+        // Identity decides (D5's resolver): ANY non-builtin symbol the walk binds shadows the
+        // builtin, regardless of symbol kind. The old `as FunctionSymbol` let a VariableSymbol shadow
         // fall through (funcSymbol == null → builtin wins silently, #1326). The escape filter
         // is critical: a lookup for bare `str` may answer the user's escaped `class \`str\`` —
-        // that is not a shadow, it's a different namespace (#1241).
-        var lookupSymbol = _symbolTable.Lookup(id.Name);
-        if (lookupSymbol != null && id.IsNameBacktickEscaped != lookupSymbol.IsNameBacktickEscaped)
-            lookupSymbol = null;
-        if (lookupSymbol != null && !_symbolTable.BuiltinRegistry.IsBuiltinSymbol(lookupSymbol))
+        // that is not a shadow, it's a different namespace (#1241) — so a binding of the other
+        // spelling leaves the name to the builtin.
+        var callee = ResolveBareCallee(id);
+        if (callee.Bound != null && id.IsNameBacktickEscaped != callee.Bound.IsNameBacktickEscaped)
+            callee = BareCalleeOf(id.Name, bound: null);
+        if (callee.BuiltinOverloads is not { Count: > 1 } overloads)
             return null;
 
-        return ResolveBuiltinOverloadCore(id.Name, id, overloads!, argTypes, kwargTypes, totalArgCount, call);
+        return ResolveBuiltinOverloadCore(id.Name, id, overloads, argTypes, kwargTypes, totalArgCount, call);
     }
 
     /// <summary>
@@ -2763,16 +2761,16 @@ internal partial class TypeChecker
 
     /// <summary>
     /// Resolves calls to overloaded module-level functions defined in the current
-    /// compilation (i.e., not imported). Reads overloads from
-    /// SymbolTable.LookupFunctionOverloads and dispatches to the matching overload
-    /// by arity/signature. Imported overloads are handled separately by
+    /// compilation (i.e., not imported). Reads the overload list the bound symbol belongs to
+    /// from the callee resolver (<see cref="ResolveBareCallee(Identifier)"/>, D5) and dispatches
+    /// to the matching overload by arity/signature. Imported overloads are handled separately by
     /// ResolveImportedFunctionOverload.
     /// </summary>
     private SemanticType? ResolveUserDefinedFunctionOverload(
         Dictionary<string, SemanticType> kwargTypes,
         Identifier id, List<SemanticType> argTypes, int totalArgCount, FunctionCall call)
     {
-        var overloads = _symbolTable.LookupFunctionOverloads(id.Name);
+        var overloads = ResolveBareCallee(id).UserOverloads;
         if (overloads == null || overloads.Count <= 1)
             return null;
 
@@ -2805,29 +2803,23 @@ internal partial class TypeChecker
 
     /// <summary>
     /// Resolves overloaded functions that were imported via from-import (e.g., from os.path import join).
-    /// Uses the same overload resolution logic as ResolveModuleFunctionOverload but reads from
-    /// SymbolTable.LookupFunctionOverloads instead of ModuleSymbol.FunctionOverloads.
+    /// Uses the same overload resolution logic as ResolveModuleFunctionOverload but reads the
+    /// callee resolver's list (<see cref="ResolveBareCallee(Identifier)"/>, D5) instead of
+    /// ModuleSymbol.FunctionOverloads.
     /// </summary>
     private SemanticType? ResolveImportedFunctionOverload(
         Dictionary<string, SemanticType> kwargTypes,
         Identifier id, List<SemanticType> argTypes, int totalArgCount, FunctionCall call)
     {
-        var overloads = _symbolTable.LookupFunctionOverloads(id.Name);
+        // The shadow check (#1525) is the resolver's: it answers the list the BOUND symbol belongs
+        // to (the bound symbol IS one of the overloads, or both are clones of the same declaration,
+        // compared by the OriginSymbol chain's root), so a local definition of any kind shadows
+        // the imported overloads. Pure reference identity through the chain; no path agreement
+        // anywhere (the DeclaringFilePath comparison an earlier check replaced disabled itself
+        // silently when the extraction left the path null).
+        var overloads = ResolveBareCallee(id).UserOverloads;
         if (overloads == null || overloads.Count <= 1)
             return null;
-
-        // Shadow check: if the bound symbol IS one of the overloads — or both are clones of
-        // the same declaration, compared by following the OriginSymbol chain to its root —
-        // it is not shadowed and overload resolution proceeds. Otherwise a local definition
-        // shadows the imported overloads (#1525). Pure reference identity through the chain;
-        // no path agreement anywhere (the DeclaringFilePath comparison this replaced disabled
-        // itself silently when the extraction left the path null).
-        var funcSymbol = _symbolTable.Lookup(id.Name) as FunctionSymbol;
-        if (funcSymbol != null
-            && !overloads.Any(o => ReferenceEquals(o.DeclarationRoot(), funcSymbol.DeclarationRoot())))
-        {
-            return null;
-        }
 
         var kwNames = ExtractKeywordArgNames(call);
         var resolution = ResolveOverloadCore(
@@ -4986,11 +4978,8 @@ internal partial class TypeChecker
         if (call.Arguments.Length < 2 || call.Arguments[0] is not LambdaExpression)
             return false;
 
-        // Don't special-case a user-defined `map` that shadows the builtin.
-        var sym = _symbolTable.Lookup(mapId.Name) as FunctionSymbol;
-        var overloads = _symbolTable.BuiltinRegistry.GetFunctionOverloads(mapId.Name);
-        bool isBuiltinMap = overloads != null && (sym == null || overloads.Contains(sym));
-        if (!isBuiltinMap)
+        // Don't special-case a user binding of any kind (a `def`, a variable) that shadows the builtin.
+        if (ResolveBareCallee(mapId).BuiltinOverloads == null)
             return false;
 
         // Spreads change positional arity; keep the fast path simple and defer to the normal loop.
@@ -5543,62 +5532,6 @@ internal partial class TypeChecker
         };
 
     /// <summary>
-    /// Whether <paramref name="callee"/> denotes an overload <b>set</b> rather than one resolved
-    /// target. This is the gate on contextual (expected-type) information flowing into a call's
-    /// arguments: a literal's contextual type may come only from a RESOLVED target — a single
-    /// candidate, or an overload already chosen — never from a candidate set (#1671).
-    ///
-    /// <para>Without the gate the checker records an argument's type from whichever candidate the
-    /// name happened to bind to, and overload resolution then selects on that recorded type: with
-    /// <c>def h(xs: list[float])</c> declared before <c>def h(xs: list[int])</c>, <c>h([1, 2])</c>
-    /// bound the <c>float</c> overload purely because it was written first, while the same two
-    /// declarations in the other order bound the <c>int</c> one. Argument types are computed from
-    /// the arguments alone; applicability and betterness (<c>overload_resolution.md</c>) then run
-    /// on those types.</para>
-    ///
-    /// <para>The candidate sets consulted are the ones the resolution routes themselves read:
-    /// user and imported function overloads (<see cref="SymbolTable.LookupFunctionOverloads"/>),
-    /// builtin overloads (<see cref="Registry.BuiltinRegistry.GetFunctionOverloads"/>), module
-    /// exports (<see cref="LookupModuleFunctionOverloads"/>), instance methods
-    /// (<see cref="LookupInstanceMethodOverloads"/>) and reflected CLR method groups.</para>
-    /// </summary>
-    /// <summary>
-    /// Whether <paramref name="callee"/> denotes an overload <b>set</b> rather than one resolved
-    /// target. This is the gate on contextual (expected-type) information flowing into a call's
-    /// arguments: a literal's contextual type may come only from a RESOLVED target — a single
-    /// candidate, or an overload already chosen — never from a candidate set (#1671).
-    ///
-    /// <para>Without the gate the checker records an argument's type from whichever candidate the
-    /// name happened to bind to, and overload resolution then selects on that recorded type: with
-    /// <c>def h(xs: list[float])</c> declared before <c>def h(xs: list[int])</c>, <c>h([1, 2])</c>
-    /// bound the <c>float</c> overload purely because it was written first, while the same two
-    /// declarations in the other order bound the <c>int</c> one. Argument types are computed from
-    /// the arguments alone; applicability and betterness (<c>overload_resolution.md</c>) then run
-    /// on those types.</para>
-    ///
-    /// <para>The candidate sets consulted are the ones the resolution routes themselves read:
-    /// user and imported function overloads (<see cref="SymbolTable.LookupFunctionOverloads"/>),
-    /// builtin overloads (<see cref="Registry.BuiltinRegistry.GetFunctionOverloads"/>), module
-    /// exports (<see cref="LookupModuleFunctionOverloads"/>), instance methods
-    /// (<see cref="LookupInstanceMethodOverloads"/>) and reflected CLR method groups.</para>
-    /// </summary>
-    /// <summary>
-    /// Whether the bare name <paramref name="name"/> is answered by more than one declaration —
-    /// a user/imported overload list, or a builtin overload set the name actually denotes (a user
-    /// symbol shadowing a builtin name is its own, single target: SPY0212's rule). Unlike
-    /// <see cref="CalleeDenotesOverloadSet"/> this asks nothing about the call site, because its
-    /// caller holds an ARBITRARILY bound member of the set rather than the applicable one.
-    /// </summary>
-    private bool NameDenotesMultipleDeclarations(string name, FunctionSymbol bound)
-    {
-        if (_symbolTable.LookupFunctionOverloads(name) is { Count: > 1 })
-            return true;
-
-        var builtinOverloads = _symbolTable.BuiltinRegistry.GetFunctionOverloads(name);
-        return builtinOverloads is { Count: > 1 } && builtinOverloads.Contains(bound);
-    }
-
-    /// <summary>
     /// Whether <paramref name="callee"/> is a WRITTEN generic type reference (<c>Box[int]</c>,
     /// <c>difflib.Matcher[str]</c>, <c>Outer.Inner[int]</c>) — the thing being constructed — by the
     /// recorded <see cref="GenericReferenceKind"/> fact, never by <c>type is GenericType</c>: an
@@ -5614,32 +5547,43 @@ internal partial class TypeChecker
                    or GenericReferenceKind.NestedTypeRef
            };
 
+    /// <summary>
+    /// Whether <paramref name="callee"/> denotes an overload <b>set</b> rather than one resolved
+    /// target. This is the gate on contextual (expected-type) information flowing into a call's
+    /// arguments: a literal's contextual type may come only from a RESOLVED target — a single
+    /// candidate, or an overload already chosen — never from a candidate set (#1671).
+    ///
+    /// <para>Without the gate the checker records an argument's type from whichever candidate the
+    /// name happened to bind to, and overload resolution then selects on that recorded type: with
+    /// <c>def h(xs: list[float])</c> declared before <c>def h(xs: list[int])</c>, <c>h([1, 2])</c>
+    /// bound the <c>float</c> overload purely because it was written first, while the same two
+    /// declarations in the other order bound the <c>int</c> one. Argument types are computed from
+    /// the arguments alone; applicability and betterness (<c>overload_resolution.md</c>) then run
+    /// on those types.</para>
+    ///
+    /// <para>The candidate sets consulted are the ones the resolution routes themselves read:
+    /// a bare callee's user, imported or builtin set (the callee resolver,
+    /// <see cref="ResolveBareCallee(Identifier)"/>, D5), module
+    /// exports (<see cref="LookupModuleFunctionOverloads"/>), instance methods
+    /// (<see cref="LookupInstanceMethodOverloads"/>) and reflected CLR method groups.</para>
+    /// </summary>
     private bool CalleeDenotesOverloadSet(Expression callee, FunctionCall call)
     {
         switch (callee)
         {
             case Identifier id:
                 {
-                    if (IsUnresolvedSet(_symbolTable.LookupFunctionOverloads(id.Name), call))
+                    // The set the bound name denotes: a user or imported overload list, or a builtin
+                    // set only when the bare spelling actually denotes the builtin — a user symbol
+                    // that shadows the name is its own, single target (SPY0212's rule).
+                    var bareCallee = ResolveBareCallee(id);
+                    if (IsUnresolvedSet(bareCallee.Overloads, call))
                         return true;
 
                     // A class with several `__init__` overloads accepting this count is an overload
                     // set too — SelectInitializerAmongArityPeers resolves it by type (#1721).
-                    if (_symbolTable.Lookup(id.Name) is TypeSymbol constructed
-                        && IsUnresolvedSet(InitializerOverloadsOf(constructed), call))
-                        return true;
-
-                    // A builtin overload set counts only when the bare spelling actually denotes it:
-                    // a user symbol that shadows the name is its own, single target (SPY0212's rule).
-                    var builtinOverloads = _symbolTable.BuiltinRegistry.GetFunctionOverloads(id.Name);
-                    if (builtinOverloads is { Count: > 1 })
-                    {
-                        var bound = _symbolTable.Lookup(id.Name) as FunctionSymbol;
-                        return (bound == null || builtinOverloads.Contains(bound))
-                            && IsUnresolvedSet(builtinOverloads, call);
-                    }
-
-                    return false;
+                    return bareCallee.Bound is TypeSymbol constructed
+                        && IsUnresolvedSet(InitializerOverloadsOf(constructed), call);
                 }
 
             // `Box[int](...)` — the written-binding spelling of the class arm above.
@@ -5819,19 +5763,6 @@ internal partial class TypeChecker
     /// <param name="callee">The canonical (paren-stripped) callee — see the #1170 contract in
     /// <see cref="AstHelper.UnwrapParenthesized"/>.</param>
     /// <returns>The early-resolved function symbol and parameter offset (0 for functions, 1 for constructors skipping 'self').</returns>
-    /// <summary>
-    /// The symbol a bare callee names. A callee the identifier checker resolved to a class-body
-    /// sibling method (P21h D8; owner ruling F2, 2026-10-29: outside a method the member outranks an
-    /// outer binding of its name) names THAT method — recorded on the identifier with its sibling-read
-    /// fact — where a scope lookup by name would find the module function or builtin it shadows.
-    /// Every other callee is the scope lookup.
-    /// </summary>
-    private Symbol? CalleeSymbolOf(Identifier callee)
-        => _semanticInfo.GetClassBodySiblingRead(callee) != null
-            && _semanticInfo.GetIdentifierSymbol(callee) is FunctionSymbol siblingMethod
-                ? siblingMethod
-                : _symbolTable.Lookup(callee.Name);
-
     private (FunctionSymbol? Symbol, int ParamOffset) ResolveEarlyFunctionSymbol(FunctionCall call, Expression callee)
     {
         // `self.__init__(...)` / `super().__init__(...)` over a constructor SET: the overload the
@@ -5857,7 +5788,8 @@ internal partial class TypeChecker
         if (callee is not Identifier earlyId)
             return (null, 0);
 
-        var earlySymbol = CalleeSymbolOf(earlyId);
+        var earlyCallee = ResolveBareCallee(earlyId);
+        var earlySymbol = earlyCallee.Bound;
         if (earlySymbol is FunctionSymbol fs && !fs.IsGeneric)
         {
             // Only use early resolution for non-generic, non-overloaded functions.
@@ -5866,7 +5798,7 @@ internal partial class TypeChecker
             // (What this symbol may and may not contribute to a context-sensitive argument is
             // decided at the one seam that pushes expectations — see CheckCallArguments' #1671
             // gate — so this arm keeps its original, unrelated job.)
-            var overloads = _symbolTable.BuiltinRegistry.GetFunctionOverloads(earlyId.Name);
+            var overloads = earlyCallee.BuiltinOverloads;
             if (overloads == null || overloads.Count <= 1 || !overloads.Contains(fs))
             {
                 return (fs, 0);
@@ -7215,7 +7147,7 @@ internal partial class TypeChecker
         if (_symbolTable.Lookup(factoryName.Name) is TypeSymbol
             || _semanticInfo.GetIdentifierSymbol(factoryName) is TypeSymbol
             || Discovery.ClrTypeBridge.SpecialCases.TryGetWrapperCollectionName(factoryName.Name) != null
-            || _symbolTable.BuiltinRegistry.GetFunction(factoryName.Name) != null)
+            || ResolveBareCallee(factoryName).BuiltinOverloads is { Count: > 0 })
         {
             _semanticInfo.MarkTypeFactoryArgument(factoryName);
         }
