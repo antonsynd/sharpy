@@ -42,9 +42,11 @@ public class ScopeKindRosterTests
     /// <summary>
     /// <c>EnterScope(</c> call sites in the semantic pipeline, measured @ fb728b9be (41);
     /// re-measured @ 10c07bb60 (42) after <c>TypeChecker.Statements.cs</c>'s
-    /// <c>CheckVariableDeclaration</c> gained an <c>initializer:</c> push (#1685).
+    /// <c>CheckVariableDeclaration</c> gained an <c>initializer:</c> push (#1685); 45 since
+    /// <c>TypeChecker.DeclarationOrder.cs</c>'s <c>EnterTypeBody</c> enters a class, struct or union body
+    /// (existing families) to resolve its declared members before any body (plan-777361 D2).
     /// </summary>
-    private const int EnterScopeCallSiteCensus = 42;
+    private const int EnterScopeCallSiteCensus = 45;
 
     /// <summary>
     /// Families the pipeline never reaches through an <c>EnterScope(</c> literal because they are

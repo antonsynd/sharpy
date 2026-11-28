@@ -351,8 +351,8 @@ internal static class NameResolutionRosters
 
     /// <summary>Binder sites whose receiver type is <c>SymbolTable</c> or <c>Scope</c> (finding 6): the plan's 67 on the
     /// four <c>SymbolTable</c> receivers, plus <c>_globalScope</c> ×3, <c>merged</c> and <c>CurrentScope</c> ×2; plus
-    /// NameResolver's module variable (plan-777361 D1).</summary>
-    internal const int BinderSiteCensus = 74;
+    /// NameResolver's module variable (plan-777361 D1) and the type body D2's pre-pass enters (×2).</summary>
+    internal const int BinderSiteCensus = 76;
 
     /// <summary><c>TypeAnnotation</c>-typed AST properties: 23 since P93 D4 added <c>ComparisonChain.HeadCheckType</c>.</summary>
     internal const int TypeAnnotationScalarCensus = 23;
@@ -596,6 +596,8 @@ internal static class NameResolutionRosters
         ("TypeChecker.Definitions.cs:CheckClass(nestedType)", BinderImage.Declaring(BindingKind.NestedType)),
         ("TypeChecker.Definitions.cs:CheckStruct(nestedType)", BinderImage.Declaring(BindingKind.NestedType)),
         ("TypeChecker.Definitions.cs:CheckInterface(nestedType)", BinderImage.Declaring(BindingKind.NestedType)),
+        // A type body entered to resolve its declared members, or to check a value at its first read (plan-777361 D2).
+        ("TypeChecker.DeclarationOrder.cs:EnterTypeBody(nestedType)", BinderImage.Declaring(BindingKind.NestedType)),
         ("TypeChecker.Definitions.cs:RegisterFunctionParameters(paramSymbol)", BinderImage.Declaring(BindingKind.Parameter)),
         ("TypeChecker.Expressions.Access.Lambdas.cs:CheckLambda(paramSymbol)", BinderImage.Declaring(BindingKind.Inner)),
         ("TypeChecker.Definitions.cs:CheckModuleProperty(paramSymbol)", BinderImage.Declaring(BindingKind.Parameter)),
@@ -614,7 +616,7 @@ internal static class NameResolutionRosters
         ("SymbolTable.cs:Define(symbol)", BinderImage.Out(ExcludedAxis.CompilerInternal, "the SymbolTable.Define wrapper over Scope.Define: every other row is its caller")),
         ("SymbolTable.cs:TryDefine(symbol)", BinderImage.Out(ExcludedAxis.CompilerInternal, "the SymbolTable.TryDefine wrapper over Scope.Define: every other row is its caller")),
 
-        // Excluded: type parameters (16)
+        // Excluded: type parameters (17)
         ("NameResolver.Declarations.cs:ResolveClassDeclaration(typeParamSymbol)", BinderImage.Out(ExcludedAxis.TypeParametersAndDelegates, TypeParameter)),
         ("NameResolver.Declarations.cs:ResolveStructDeclaration(typeParamSymbol)", BinderImage.Out(ExcludedAxis.TypeParametersAndDelegates, TypeParameter)),
         ("NameResolver.Declarations.cs:ResolveInterfaceDeclaration(typeParamSymbol)", BinderImage.Out(ExcludedAxis.TypeParametersAndDelegates, TypeParameter)),
@@ -631,6 +633,7 @@ internal static class NameResolutionRosters
         ("TypeChecker.Definitions.cs:CheckInterface(typeParamSymbol)#2", BinderImage.Out(ExcludedAxis.TypeParametersAndDelegates, TypeParameter)),
         ("TypeChecker.Definitions.cs:CheckUnion(typeParamSymbol)", BinderImage.Out(ExcludedAxis.TypeParametersAndDelegates, TypeParameter)),
         ("TypeChecker.Definitions.cs:CheckDelegate(typeParamSymbol)", BinderImage.Out(ExcludedAxis.TypeParametersAndDelegates, TypeParameter)),
+        ("TypeChecker.DeclarationOrder.cs:EnterTypeBody(new TypeParameterSymbol)", BinderImage.Out(ExcludedAxis.TypeParametersAndDelegates, TypeParameter)),
 
         // Excluded: each with its axis
         ("NameResolver.Declarations.cs:ResolveDelegateDeclaration(typeSymbol)", BinderImage.Out(ExcludedAxis.TypeParametersAndDelegates, "the delegate kind has no value spelling (x)")),

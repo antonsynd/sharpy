@@ -1,0 +1,12 @@
+# plan-777361 D2: a method signature of a type declared below its reader is resolved before any
+# body, so the call's result is typed by its declared return: SPY0220.
+def show() -> None:
+    b: bool = Later().total()
+    print(b)
+
+class Later:
+    def total(self) -> int:
+        return 7
+
+def main() -> None:
+    show()

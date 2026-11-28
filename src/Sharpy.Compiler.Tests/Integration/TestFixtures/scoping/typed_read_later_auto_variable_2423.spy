@@ -1,0 +1,10 @@
+# plan-777361 D2: an `auto` module variable declared below its reader is checked at its first read,
+# in its own declaration's scope state, so the read is typed: SPY0220, as at the earlier order.
+def show() -> None:
+    b: bool = later
+    print(b)
+
+later: auto = 5
+
+def main() -> None:
+    show()

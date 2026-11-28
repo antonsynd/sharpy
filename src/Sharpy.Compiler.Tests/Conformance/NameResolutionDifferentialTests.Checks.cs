@@ -477,10 +477,10 @@ public partial class NameResolutionDifferentialTests
         }
         AssertNoProblems(problems, "a binder row says what the call site binds");
 
-        // Measured literals: 40 declared kinds judged, 5 of them TryDeclareMember's Symbol-typed wrapper (a field or a method), 11 written forms and targets, 8 type definitions.
-        (declaring, baseTyped, written, typeDefinitions).Should().Be((40, 5, 11, 8));
-        // 30 since NameResolver declares a module variable and a module `let` (plan-777361 D1).
-        declaringRows.Should().Be(30, "the declared kinds on declaring rows, read against their phase and node");
+        // Measured literals: 41 declared kinds judged, 5 of them TryDeclareMember's Symbol-typed wrapper (a field or a method), 11 written forms and targets, 8 type definitions.
+        // 41 and 31 since NameResolver declares a module variable and a module `let` (plan-777361 D1) and D2's type body re-registers a nested type.
+        (declaring, baseTyped, written, typeDefinitions).Should().Be((41, 5, 11, 8));
+        declaringRows.Should().Be(31, "the declared kinds on declaring rows, read against their phase and node");
     }
 
     // ------------------------------------------------------------------------------------------- //

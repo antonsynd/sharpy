@@ -329,12 +329,14 @@ public partial class NameResolutionDifferentialTests
         // D2.9: the imported outer's read is `len(digits)`, and over an int-valued member of the name that is the protocol refusal.
         [("N1-type-error", "SPY0320")] = 21,
         [("N2", "SPY0320")] = 7,
-        [("N2-module", "SPY0320")] = 2,
+        // 3 since plan-777361 D2: a later declaration's read is typed, and `len` of it refuses at the later order too.
+        [("N2-module", "SPY0320")] = 3,
         // The restored enum outer's read is `.RED`, and on a later const or an earlier int member that is the no-such-member refusal.
         [("N2", "SPY0203")] = 19,
         [("SPY0401", "SPY0203")] = 12,
         // A bare value in a `T !E` body above an earlier E: the return's type mismatch, the right direction until the kind's own refusal (#2249).
-        [("kind:result-wrap", "SPY0260")] = 1,
+        // 2 since plan-777361 D2: the later order's bare value is typed against its declared `T !E` too (#2249's cell drained).
+        [("kind:result-wrap", "SPY0260")] = 2,
         // N6's declaration shapes: `global` / `nonlocal` is refused whatever it names, until #2424 reinstates them and reaches the rule's own refusal.
         [("N6-declaration", "SPY0134")] = 32,
         // A method's name stored through a member access: the type mismatch or the via-type refusal, until #2424 and #2435 land SPY0606 there.

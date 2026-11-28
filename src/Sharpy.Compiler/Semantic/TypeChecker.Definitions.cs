@@ -1328,44 +1328,14 @@ internal partial class TypeChecker
         RecordCompletedBaseAnnotations(classSymbol);
         RecordBaseListReferences(classSymbol);
 
-        // Resolve field types first (before checking methods that might reference them)
-        for (int i = 0; i < classSymbol.Fields.Count; i++)
-        {
-            var fieldSymbol = classSymbol.Fields[i];
-            if (GetVariableType(fieldSymbol) == SemanticType.Unknown)
-            {
-                // Find the corresponding VariableDeclaration in the AST
-                var fieldDecl = classDef.Body
-                    .OfType<VariableDeclaration>()
-                    .FirstOrDefault(v => v.Name == fieldSymbol.Name);
-
-                if (fieldDecl != null)
-                {
-                    // In place, never a copy: a use checked before this body (a function declared above the
-                    // type) already bound this symbol, and the emitter reads the facts CodeGenInfoComputer
-                    // records on it (plan-775c50 D2, D4). A copy left that use on a symbol with none.
-                    var resolvedType = _typeResolver.ResolveTypeAnnotation(fieldDecl.Type, AnnotationPosition.Value);
-                    fieldSymbol.Type = resolvedType;
-                    SemanticBinding.SetVariableType(fieldSymbol, resolvedType);
-                }
-            }
-        }
-
         // Detect bracket attributes that are source generators
         DetectGeneratorAttributes(classDef);
 
-        // Process @dataclass decorator (after field types are resolved)
-        ProcessDataclassDecorator(classSymbol, classDef);
-
-        // Resolve property types (before checking methods that might reference them)
-        ResolvePropertyTypes(classSymbol, classDef.Body);
-
-        // Resolve event types (before checking methods that might reference them)
-        ResolveEventTypes(classSymbol, classDef.Body);
-
-        // Pre-pass: resolve method signatures so forward references between methods
-        // (e.g., __init__ calling a method declared later) see resolved return types.
-        ResolveClassMethodSignatures(classDef.Body);
+        // The declared members before any member is checked — field types, then the @dataclass
+        // members, property, event and method signature types (forward references between methods
+        // see resolved return types) — once: the module's pre-pass resolved them before any body of
+        // the module (plan-777361 D2).
+        ResolveDeclaredMembers(classDef, classSymbol, previousClass);
 
         // Check all members
         foreach (var statement in classDef.Body)
@@ -1629,38 +1599,8 @@ internal partial class TypeChecker
         // Detect bracket attributes that are source generators
         DetectGeneratorAttributes(structDef);
 
-        // Resolve field types first (before checking methods that might reference them)
-        for (int i = 0; i < structSymbol.Fields.Count; i++)
-        {
-            var fieldSymbol = structSymbol.Fields[i];
-            if (GetVariableType(fieldSymbol) == SemanticType.Unknown)
-            {
-                // Find the corresponding VariableDeclaration in the AST
-                var fieldDecl = structDef.Body
-                    .OfType<VariableDeclaration>()
-                    .FirstOrDefault(v => v.Name == fieldSymbol.Name);
-
-                if (fieldDecl != null)
-                {
-                    // In place, never a copy: a use checked before this body (a function declared above the
-                    // type) already bound this symbol, and the emitter reads the facts CodeGenInfoComputer
-                    // records on it (plan-775c50 D2, D4). A copy left that use on a symbol with none.
-                    var resolvedType = _typeResolver.ResolveTypeAnnotation(fieldDecl.Type, AnnotationPosition.Value);
-                    fieldSymbol.Type = resolvedType;
-                    SemanticBinding.SetVariableType(fieldSymbol, resolvedType);
-                }
-            }
-        }
-
-        // Resolve property types (before checking methods that might reference them)
-        ResolvePropertyTypes(structSymbol, structDef.Body);
-
-        // Resolve event types (before checking methods that might reference them)
-        ResolveEventTypes(structSymbol, structDef.Body);
-
-        // Pre-pass: resolve method signatures so forward references between methods
-        // (e.g., a method calling another declared later) see resolved return types.
-        ResolveClassMethodSignatures(structDef.Body);
+        // The declared members before any member is checked, once (plan-777361 D2; see CheckClass).
+        ResolveDeclaredMembers(structDef, structSymbol, previousClass);
 
         // Check all members
         foreach (var statement in structDef.Body)
@@ -1958,8 +1898,46 @@ internal partial class TypeChecker
                 _symbolTable.Define(typeParamSymbol);
             }
 
-            // Resolve field types. A case over a held name (an earlier case, a type parameter) was
-            // refused by the member seam (SPY0204, P21h D6) and is not a case of the union.
+            // Type-check union body methods. Set the current type context so 'self'
+            // and Self resolve to the union type (mirrors CheckClass).
+            var previousClass = _currentClass;
+            _currentClass = unionSymbol;
+            var previousTypeBody = _currentTypeBody;
+            _currentTypeBody = unionDef.Body;
+            _typeResolver.SetCurrentTypeContext(unionSymbol);
+
+            // Its case fields and method signatures, once (plan-777361 D2): the case fields in the
+            // context around the union, as before.
+            ResolveDeclaredMembers(unionDef, unionSymbol, previousClass);
+
+            foreach (var statement in unionDef.Body)
+            {
+                CheckStatement(statement);
+            }
+
+            _currentClass = previousClass;
+            _currentTypeBody = previousTypeBody;
+            _typeResolver.SetCurrentTypeContext(previousClass);
+        }
+        finally
+        {
+            _symbolTable.ExitScope();
+        }
+    }
+
+    /// <summary>
+    /// A union's case fields, resolved in the context around the union (<paramref name="outer"/>), as
+    /// CheckUnion has always resolved them. A case over a held name (an earlier case, a type
+    /// parameter) was refused by the member seam (SPY0204, P21h D6) and is not a case of the union.
+    /// </summary>
+    private void ResolveUnionCaseFields(UnionDef unionDef, TypeSymbol unionSymbol, TypeSymbol? outer)
+    {
+        var previousClass = _currentClass;
+        var previousTypeContext = _typeResolver.CurrentTypeContext;
+        _currentClass = outer;
+        _typeResolver.SetCurrentTypeContext(outer);
+        try
+        {
             for (int i = 0; i < unionDef.Cases.Length; i++)
             {
                 var caseDef = unionDef.Cases[i];
@@ -1996,27 +1974,11 @@ internal partial class TypeChecker
                     });
                 }
             }
-
-            // Type-check union body methods. Set the current type context so 'self'
-            // and Self resolve to the union type (mirrors CheckClass).
-            var previousClass = _currentClass;
-            _currentClass = unionSymbol;
-            var previousTypeBody = _currentTypeBody;
-            _currentTypeBody = unionDef.Body;
-            _typeResolver.SetCurrentTypeContext(unionSymbol);
-
-            foreach (var statement in unionDef.Body)
-            {
-                CheckStatement(statement);
-            }
-
-            _currentClass = previousClass;
-            _currentTypeBody = previousTypeBody;
-            _typeResolver.SetCurrentTypeContext(previousClass);
         }
         finally
         {
-            _symbolTable.ExitScope();
+            _currentClass = previousClass;
+            _typeResolver.SetCurrentTypeContext(previousTypeContext);
         }
     }
 

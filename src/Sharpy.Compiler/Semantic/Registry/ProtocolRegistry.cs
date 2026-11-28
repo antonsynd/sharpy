@@ -369,9 +369,11 @@ public static class ProtocolRegistry
     /// These dunders are implicitly treated as overrides (the @override decorator
     /// is accepted but not required):
     /// - __str__ → Object.ToString()
+    /// - __repr__ → Object.ToString(), as __str__ (#2802: a class deriving from a @dataclass redefines
+    ///   the synthesized one, whichever of the two is declared first — plan-777361 D2)
     /// - __eq__ → Object.Equals()
     /// - __hash__ → Object.GetHashCode()
     /// </summary>
     public static bool IsObjectOverrideDunder(string methodName)
-        => methodName is DunderNames.Str or DunderNames.Eq or DunderNames.Hash;
+        => methodName is DunderNames.Str or DunderNames.Repr or DunderNames.Eq or DunderNames.Hash;
 }

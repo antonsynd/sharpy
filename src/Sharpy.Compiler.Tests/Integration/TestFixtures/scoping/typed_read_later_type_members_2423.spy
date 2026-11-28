@@ -1,0 +1,15 @@
+# plan-777361 D2: each type's annotated members are resolved before any body, so a function above
+# the type reads its static field and its method's return as declared: SPY0220 at the first.
+def show() -> None:
+    b: bool = Later.count
+    print(b, Later().total())
+
+class Later:
+    @static
+    count: int = 5
+
+    def total(self) -> int:
+        return 7
+
+def main() -> None:
+    show()

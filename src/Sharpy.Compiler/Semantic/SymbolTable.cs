@@ -544,6 +544,60 @@ public class SymbolTable : IGlobalSymbolTable
         }
     }
 
+    /// <summary>
+    /// Makes <paramref name="declaringScope"/> — a module scope — the current scope with nothing
+    /// pushed above it and no enclosing function ledger, as it is when the module's own statements
+    /// are checked, until the token is disposed, which restores the stack, the ledger owner and the
+    /// exited-variable hints exactly (plan-777361 D2). The checker infers a module-level or
+    /// type-level value at its first read in its own declaration's scope state, wherever the read
+    /// stands.
+    /// </summary>
+    internal DeclarationScope EnterDeclarationScope(Scope declaringScope) => new(this, declaringScope);
+
+    /// <summary>The token <see cref="EnterDeclarationScope"/> returns.</summary>
+    internal readonly struct DeclarationScope : IDisposable
+    {
+        private readonly SymbolTable _table;
+        private readonly Scope[] _stack;
+        private readonly int[] _owners;
+        private readonly int _currentOwner;
+        private readonly KeyValuePair<string, (string BlockType, int Line)>[] _exited;
+
+        internal DeclarationScope(SymbolTable table, Scope declaringScope)
+        {
+            _table = table;
+            _stack = table._scopeStack.ToArray();
+            _owners = table._functionOwnerStack.ToArray();
+            _currentOwner = table._currentFunctionScopeId;
+            _exited = table._exitedVariables.ToArray();
+
+            var chain = new Stack<Scope>();
+            for (var scope = declaringScope; scope != null; scope = scope.Parent)
+                chain.Push(scope);
+            table._scopeStack.Clear();
+            foreach (var scope in chain)
+                table._scopeStack.Push(scope);
+            table._functionOwnerStack.Clear();
+            table._currentFunctionScopeId = -1;
+            table._exitedVariables.Clear();
+        }
+
+        public void Dispose()
+        {
+            // Stack.ToArray lists the top first, so the restore pushes from the bottom.
+            _table._scopeStack.Clear();
+            for (int i = _stack.Length - 1; i >= 0; i--)
+                _table._scopeStack.Push(_stack[i]);
+            _table._functionOwnerStack.Clear();
+            for (int i = _owners.Length - 1; i >= 0; i--)
+                _table._functionOwnerStack.Push(_owners[i]);
+            _table._currentFunctionScopeId = _currentOwner;
+            _table._exitedVariables.Clear();
+            foreach (var (name, info) in _exited)
+                _table._exitedVariables[name] = info;
+        }
+    }
+
     public TypeSymbol? LookupType(string name)
     {
         return Lookup(name) as TypeSymbol;

@@ -405,6 +405,14 @@ public class DispatchSiteInventoryTests
         // GetLruCacheMaxSize deleted: emitter reads FunctionSymbol.CacheMaxSize (#1716)
         ["Semantic/TypeChecker.cs::TypeChecker.CheckStatementCore"] = "guarded-by:CheckStatementCoreTotalityTests",
         ["Semantic/TypeChecker.Definitions.cs::TypeChecker.DetectGeneratorAttributes"] = "guarded-by:DeclarationKindDispatchTotalityTests",
+        // plan-777361 D2: the pre-pass reaches a class, struct or union body (and module variables and properties);
+        // every other declaration is resolved by its own checker, as before.
+        ["Semantic/TypeChecker.DeclarationOrder.cs::TypeChecker.CollectDeclarationSites"] = "documented-by-design:Semantic/TypeChecker.DeclarationOrder.cs:CollectDeclarationSites",
+        ["Semantic/TypeChecker.DeclarationOrder.cs::TypeChecker.EnterTypeBody"] = "documented-by-design:Semantic/TypeChecker.DeclarationOrder.cs:EnterTypeBody",
+        ["Semantic/TypeChecker.DeclarationOrder.cs::TypeChecker.ResolveDeclaredTypesBeforeBodies"] = "documented-by-design:Semantic/TypeChecker.DeclarationOrder.cs:ResolveDeclaredTypesBeforeBodies",
+        ["Semantic/TypeChecker.DeclarationOrder.cs::TypeChecker.ResolveOwnTypeDeclarations"] = "documented-by-design:Semantic/TypeChecker.DeclarationOrder.cs:ResolveOwnTypeDeclarations",
+        ["Semantic/TypeChecker.DeclarationOrder.cs::TypeChecker.TypeDefinitionBody"] = "documented-by-design:Semantic/TypeChecker.DeclarationOrder.cs:TypeDefinitionBody",
+        ["Semantic/TypeChecker.DeclarationOrder.cs::TypeChecker.TypeDefinitionName"] = "documented-by-design:Semantic/TypeChecker.DeclarationOrder.cs:TypeDefinitionName",
         // TypeChecker.ExtractCacheConfig: dispatch moved to AstHelper.TryGetLiteralValue (#1716)
         ["Semantic/TypeChecker.Expressions.Access.Calls.cs::TypeChecker.MarkTypeFactoryArguments"] = "refusal-net:FileBasedIntegrationTests",
         ["Semantic/TypeChecker.Expressions.Access.Calls.cs::TypeChecker.RecordIterableArgumentMarks"] = "refusal-net:FileBasedIntegrationTests",

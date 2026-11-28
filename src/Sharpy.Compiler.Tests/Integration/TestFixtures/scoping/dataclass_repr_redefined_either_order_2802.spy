@@ -1,0 +1,21 @@
+# #2802 (plan-777361 D2): `__repr__` redefined without @override in a class deriving from a
+# @dataclass is an implicit override of System.Object.ToString, as `__str__` is, whether the
+# dataclass is declared above the class or below it.
+@dataclass
+class Above:
+    v: int
+
+class FromAbove(Above):
+    def __repr__(self) -> str:
+        return "FromAbove"
+
+class FromBelow(Below):
+    def __repr__(self) -> str:
+        return "FromBelow"
+
+@dataclass
+class Below:
+    v: int
+
+def main() -> None:
+    print(repr(FromAbove(5)), repr(FromBelow(6)))

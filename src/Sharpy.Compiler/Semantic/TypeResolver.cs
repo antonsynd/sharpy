@@ -77,6 +77,12 @@ internal class TypeResolver
     /// </summary>
     public void SetIsStaticContext(bool isStatic) => _isStaticContext = isStatic;
 
+    /// <summary>The type context <see cref="SetCurrentTypeContext"/> last set, for a caller that restores it.</summary>
+    internal TypeSymbol? CurrentTypeContext => _currentTypeContext;
+
+    /// <summary>The static context <see cref="SetIsStaticContext"/> last set, for a caller that restores it.</summary>
+    internal bool IsStaticContext => _isStaticContext;
+
     /// <param name="position">
     /// Whether the annotation is a return slot, where <c>None</c> means void, or a value slot, where
     /// it is SPY0614 (#2004). No default: every caller states it.

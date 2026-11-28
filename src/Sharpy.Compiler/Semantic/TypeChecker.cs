@@ -524,6 +524,10 @@ internal partial class TypeChecker
     /// </remarks>
     private SemanticType GetVariableType(VariableSymbol symbol)
     {
+        // An unannotated module-level or type-level value is typed at its first read (plan-777361 D2).
+        if (_valueSites.Count > 0)
+            CheckValueAtFirstRead(symbol);
+
         var bindingType = SemanticBinding.GetVariableType(symbol);
         if (bindingType != SemanticType.Unknown)
             return bindingType;
@@ -746,8 +750,14 @@ internal partial class TypeChecker
         // its own narrowing scope; nested functions/lambdas get their own flow when checked.
         var previousFlow = _narrowingFlow;
         var previousFacts = _currentFacts;
-        _narrowingFlow = ComputeNarrowingFlow(module.Body);
+        _moduleNarrowingFlow = ComputeNarrowingFlow(module.Body);
+        _narrowingFlow = _moduleNarrowingFlow;
         _currentFacts = System.Array.Empty<Analysis.ControlFlow.NarrowingFact>();
+
+        // Pre-pass (plan-777361 D2): every declared type — annotated module variables and properties,
+        // each type's annotated members, nested types included — before any body or initializer, so
+        // no read is untyped because of where its declaration stands.
+        ResolveDeclaredTypesBeforeBodies(module);
 
         foreach (var statement in module.Body)
         {
@@ -941,7 +951,18 @@ internal partial class TypeChecker
                 break;
 
             case VariableDeclaration varDecl:
-                CheckVariableDeclaration(varDecl);
+                // A value its first read already checked is checked once (plan-777361 D2).
+                if (ClaimValueDeclarationCheck(varDecl))
+                {
+                    try
+                    {
+                        CheckVariableDeclaration(varDecl);
+                    }
+                    finally
+                    {
+                        CompleteValueDeclarationCheck(varDecl);
+                    }
+                }
                 break;
 
             case ReturnStatement returnStmt:

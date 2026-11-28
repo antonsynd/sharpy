@@ -1,0 +1,8 @@
+# plan-777361 D2: an unannotated module value is typed at its first read under an in-progress
+# mark, so two `auto` lambdas that read each other end: the read that re-enters its own inference
+# stays untyped, as before, and adds no refusal.
+a: auto = lambda: b()
+b: auto = lambda: a()
+
+def main() -> None:
+    print(1)

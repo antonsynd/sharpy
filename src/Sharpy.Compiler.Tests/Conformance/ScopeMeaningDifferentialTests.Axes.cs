@@ -253,13 +253,14 @@ public sealed partial class ScopeMeaningDifferentialTests
         },
         [AnObjectOperandIsComparedByReference] = Prints(Ordered(DataclassField, AgainstAnObject + "\n", above: true, "r()"), "False") with
         {
-            Also = new[] { Refuses(Ordered(DataclassField, AgainstAnObject + "\n", above: false, "r()"), "SPY0222") },
+            Also = new[] { Prints(Ordered(DataclassField, AgainstAnObject + "\n", above: false, "r()"), "False") },
         },
         // The run dies in a child process, which the harness waits for: no code, a non-zero exit and the runtime's own words.
         [AStrThatReadsItsOwnReprCallsItself] = new(Ordered(DataclassField, StrThroughSelfRepr + "\n", above: true, "str(D(5))"), "a run that dies of a stack overflow",
             r => r.ErrorCodes.Count == 0 && r.ExitCode is not (null or 0) && r.Stderr.Contains("Stack overflow", StringComparison.Ordinal), Also: new[]
             {
-                Refuses(Ordered(DataclassField, StrThroughSelfRepr + "\n", above: false, "str(D(5))"), "SPY0203"),
+                new(Ordered(DataclassField, StrThroughSelfRepr + "\n", above: false, "str(D(5))"), "a run that dies of a stack overflow",
+                    r => r.ErrorCodes.Count == 0 && r.ExitCode is not (null or 0) && r.Stderr.Contains("Stack overflow", StringComparison.Ordinal)),
                 // The `super()` spelling of the same read, which is the cell beside it, runs.
                 Prints(Ordered(DataclassField, StrThroughSuperRepr + "\n", above: true, "str(D(5))"), "v=5)"),
             }),
@@ -285,7 +286,7 @@ public sealed partial class ScopeMeaningDifferentialTests
             {
                 Crashes(Ordered(DefaultedDataclass + "\n", "class D(DC):\n    pass\n", above: false, "D().v"), "CS7036"),
                 Crashes(Ordered(DefaultedDataclass + "\n", "@dataclass\nclass E(DC):\n    w: int = 6\n", above: true, "E().v"), "CS7036"),
-                Prints(Ordered(DefaultedDataclass + "\n", "@dataclass\nclass E(DC):\n    w: int = 6\n", above: false, "E().v"), "3"),
+                Crashes(Ordered(DefaultedDataclass + "\n", "@dataclass\nclass E(DC):\n    w: int = 6\n", above: false, "E().v"), "CS7036"),
             },
         },
         [AConstructedGenericIsNoReference] = Refuses(Ordered(GenericDataclass, "def r() -> int:\n    return mk(DC[int])\n", above: true, "r()", GenericHelper), "SPY0339") with
@@ -298,7 +299,7 @@ public sealed partial class ScopeMeaningDifferentialTests
         },
         [ADataclassOverAConstructedGeneric] = Crashes(Ordered(GenericDataclass, "@dataclass\nclass E(DC[int]):\n    w: int\n", above: true, "E(5, 6).v"), "CS0246") with
         {
-            Also = new[] { Crashes(Ordered(GenericDataclass, "@dataclass\nclass E(DC[int]):\n    w: int\n", above: false, "E(5, 6).v"), "CS1729", "CS7036") },
+            Also = new[] { Crashes(Ordered(GenericDataclass, "@dataclass\nclass E(DC[int]):\n    w: int\n", above: false, "E(5, 6).v"), "CS0246") },
         },
         [ATypeNestedTwoDeepIsNoReference] = Crashes(Ordered(DeepClass("@dataclass\n", "v: int"), "def r() -> int:\n    return mk(O.P.DC)\n", above: true, "r()", DeepHelper), "CS0119") with
         {
@@ -348,7 +349,7 @@ public sealed partial class ScopeMeaningDifferentialTests
         {
             Also = new[]
             {
-                Refuses(Enclosed("@dataclass\n", "v: int", "def r(self) -> int:\n    return mk(DC)", above: false), "SPY0342"),
+                Prints(Enclosed("@dataclass\n", "v: int", "def r(self) -> int:\n    return mk(DC)", above: false), "5"),
                 Crashes(Enclosed("@dataclass\n", "v: int", "def r(self) -> int:\n    return DC(5).v", above: true), "CS1955"),
                 Crashes(Enclosed("@dataclass\n", "v: int", "def r(self) -> int:\n    return DC(5).v", above: false), "CS1955"),
                 Crashes(Enclosed("", "v: int = 0\ndef __init__(self, v: int):\n    self.v = v", "def r(self) -> int:\n    return DC(5).v", above: true), "CS1955"),
@@ -577,15 +578,15 @@ public sealed partial class ScopeMeaningDifferentialTests
     /// where the reader stood). The reads run in that pool; whether they are TYPED is what no cell here holds, and each
     /// placement's probes are the programs that say what they are today. A switch and no table, as <see cref="ACalleeBinderIsOut"/>.
     /// </summary>
-    private const string TheOrdersClass = ": D2's class, which the generated placements hold red (#2423, which holds the program as a cell)";
+    private const string TheOrdersClass = ": D2 resolves every declared type before any body (plan-777361), so no order is at fault";
 
     private static string AThirdPlacement(DeclaringRelation placement)
     {
-        const string BelowIsUntyped = "Handed to a `bool` slot, an annotated member's read is SPY0220 where the member stands above, and SPY0908 CS1503 where ";
+        const string TypedAtBoth = "Handed to a `bool` slot, an annotated member's read is SPY0220 where the member stands above and where ";
         (string where, string today) = placement switch
         {
-            DeclaringRelation.Base => ("in a subclass of the member's type (`class H(B)` reads `B.x`, `H.x` or `self.x`)", BelowIsUntyped + "the base stands below its subclass" + TheOrdersClass),
-            DeclaringRelation.Other => ("in a type unrelated to the member's (`class H` reads `B.x`)", BelowIsUntyped + "the member's type stands below the reader's" + TheOrdersClass),
+            DeclaringRelation.Base => ("in a subclass of the member's type (`class H(B)` reads `B.x`, `H.x` or `self.x`)", TypedAtBoth + "the base stands below its subclass" + TheOrdersClass),
+            DeclaringRelation.Other => ("in a type unrelated to the member's (`class H` reads `B.x`)", TypedAtBoth + "the member's type stands below the reader's" + TheOrdersClass),
             DeclaringRelation.Enclosing => ("in a type nested in the member's (`class I` in `H` reads `H.x`)",
                 "Handed to a `bool` slot, an annotated member's read is SPY0220 above and below the nested type, and an inferred one's (`x: auto = 5`) is SPY0908 CS1503 at both, as it is from every generated placement (#2417's class, which the generated rows hold)"),
             _ => throw new ArgumentOutOfRangeException(nameof(placement), placement, "the member's own type, or a placement the 8951 pool does not spell"),
@@ -593,9 +594,9 @@ public sealed partial class ScopeMeaningDifferentialTests
         return $"the reader stands {where}: the 8951 pool runs the read from there, and this set places the reader of a type's member in that type or outside every type. {today}. The placement is {ByItem26}";
     }
 
-    /// <summary>The probe of a read this set has no reader for: the reader above the member's type (untyped today) and below it (typed).</summary>
+    /// <summary>The probe of a read this set has no reader for: the reader above the member's type and below it, typed at both (D2).</summary>
     private static BehaviourProbe ThirdPlacementProbe(string member, string reader)
-        => new($"{Probe}\n{reader}{member}{TailMain}", "SPY0908 CS1503", r => Refused(r, "SPY0908", "CS1503"),
+        => new($"{Probe}\n{reader}{member}{TailMain}", "SPY0220", r => Refused(r, "SPY0220"),
             Also: new BehaviourProbe[] { new($"{Probe}\n{member}{reader}{TailMain}", "SPY0220", r => Refused(r, "SPY0220")) });
 
     private static string NestedReader(bool memberAbove, string member)
@@ -614,7 +615,7 @@ public sealed partial class ScopeMeaningDifferentialTests
         [DeclaringRelation.Enclosing] = AThirdPlacement(DeclaringRelation.Enclosing),
     };
 
-    private const string AGenericReceiver = "the member is read through its generic type's constructed name (`G[int].x`), which the 8951 pool spells by a label of its own and no `Spelling`; a typed-read kind is declared in a type with no type parameter. Handed to a `bool` slot, an annotated member's read is SPY0220 where the type stands above its reader, and SPY0908 CS1503 where it stands below" + TheOrdersClass + ". The receiver is " + ByItem26;
+    private const string AGenericReceiver = "the member is read through its generic type's constructed name (`G[int].x`), which the 8951 pool spells by a label of its own and no `Spelling`; a typed-read kind is declared in a type with no type parameter. Handed to a `bool` slot, an annotated member's read is SPY0220 where the type stands above its reader and where it stands below" + TheOrdersClass + ". The receiver is " + ByItem26;
 
     /// <summary>The reads the 8951 pool spells by a label of its own, with no <c>Spelling</c>, and no typed-read cell: keyed by
     /// the label, each one the pool spells a must-run read under (<see cref="TypedLabelledReads"/>), and no other. Found by
@@ -1737,7 +1738,7 @@ public sealed partial class ScopeMeaningDifferentialTests
     /// (<c>DataclassSynthesis.SynthesizeMembers</c>), so the parameters are the fields' whatever its value, and its probes say
     /// so by running the generated cell's program under it, set and unset, at both orders.</summary>
     private static string AnOptionLeavesTheParameters(string option)
-        => $"`@dataclass({option}=…)` is an option the synthesis of `__init__` does not read: the parameters are the fields' whatever its value. A reference that fits runs with the dataclass above its reader and is SPY0342 with it below, with the option set and unset, as the generated cell is (#2423, which holds that cell)";
+        => $"`@dataclass({option}=…)` is an option the synthesis of `__init__` does not read: the parameters are the fields' whatever its value. A reference that fits runs with the dataclass above its reader and below it (D2), with the option set and unset, as the generated cell does";
 
     private static string OptionSpelling(string property) => property.ToLowerInvariant();
 
@@ -1759,7 +1760,7 @@ public sealed partial class ScopeMeaningDifferentialTests
             const string Reader = "def r() -> int:\n    return mk(DC)\n";
             return $"{(above ? dataclass + Reader : Reader + dataclass)}def mk(f: (int) -> DC) -> int:\n    return f(5).v\ndef main() -> None:\n    print(r())\n";
         }
-        BehaviourProbe Below(string value) => new(Program(value, above: false), "SPY0342", r => Refused(r, "SPY0342"));
+        BehaviourProbe Below(string value) => Prints(Program(value, above: false), "5");
         return Prints(Program("True", above: true), "5", Also: new[] { Below("True"), Prints(Program("False", above: true), "5"), Below("False") });
     }
 
@@ -1817,7 +1818,7 @@ public sealed partial class ScopeMeaningDifferentialTests
         [ScopeInitThrough.DerivingDataclass] = new(ModuleDataclass, "Em", "SPY0342", Args: "5, 6", Params: "int, int", Above: "@dataclass\nclass Em(DC):\n    u: int", Twin: true),
     };
 
-    private const string ABareNestedNameIsAnotherQuestionFirst = "from inside its enclosing type a nested dataclass's BARE name is another question before it is order's, and the owner's ruling 35 (#2423 comment 7181238911) generates the reader there under the qualified name. Handed to a function-typed slot from a method, the bare name runs with the dataclass above the method (N1 keeps a class-body name invisible by its bare name in a method) and is SPY0342 with it below; called as a constructor it is SPY0908 CS1955 at both orders, as the bare name of a nested class that writes its `__init__` is. The owner's ruling 38 (#2423 comment 7183929991) keeps the bare spelling out: whether a method sees a nested class's bare name at all is N1's question, decided in implementation. #2397 holds the construction (its comment 7182693674) and #2423 comment 7182714360 the reference";
+    private const string ABareNestedNameIsAnotherQuestionFirst = "from inside its enclosing type a nested dataclass's BARE name is another question before it is order's, and the owner's ruling 35 (#2423 comment 7181238911) generates the reader there under the qualified name. Handed to a function-typed slot from a method, the bare name runs with the dataclass above the method and below it (D2; N1 keeps a class-body name invisible by its bare name in a method); called as a constructor it is SPY0908 CS1955 at both orders, as the bare name of a nested class that writes its `__init__` is. The owner's ruling 38 (#2423 comment 7183929991) keeps the bare spelling out: whether a method sees a nested class's bare name at all is N1's question, decided in implementation. #2397 holds the construction (its comment 7182693674) and #2423 comment 7182714360 the reference";
 
     /// <summary>The names with no cell, total over <see cref="ScopeDataclassName"/> with <see cref="DataclassNames"/> and the
     /// matrix's own value.</summary>
@@ -1934,10 +1935,10 @@ public sealed partial class ScopeMeaningDifferentialTests
     private const string BaseWithInit = "class G:\n    def __init__(self):\n        pass\n";
 
     private const string TheBaseInitIsBoundPastTheDataclass = "#2508's class (its comment 7180653024; row 3 of #2423 comment 7171020757): over a base whose `__init__` takes no argument, `super().__init__` in a class deriving from the dataclass is bound to the BASE's `__init__`, past the dataclass's own, with the dataclass above the call as below it. Handed the field it is SPY0224; handed nothing it is taken, and the dataclass's constructor is then SPY0908 CS7036. Red where the dataclass is declared first, so no order is at fault";
-    private const string ADerivingHostLosesTheDefault = "#2508's class (its comment 7181213880): a host deriving from a dataclass whose field has a default loses the default. Constructed with nothing, a deriving class with no `__init__` is SPY0908 CS7036 with the dataclass above it as below it, and a deriving dataclass is SPY0908 CS7036 with the dataclass above it (below, it runs). Red where the dataclass is declared first, so no order is at fault";
+    private const string ADerivingHostLosesTheDefault = "#2508's class (its comment 7181213880): a host deriving from a dataclass whose field has a default loses the default. Constructed with nothing, a deriving class with no `__init__` is SPY0908 CS7036 with the dataclass above it as below it, and a deriving dataclass is SPY0908 CS7036 with the dataclass above it as below it (D2 resolves the base's members first). Red where the dataclass is declared first, so no order is at fault";
     private const string ATakenDefaultHandsNothing = "a read that takes the default hands nothing, which is what a defaulted `__init__` takes: the read that does not fit hands a value, and is the overridden default's cell";
     private const string AConstructedGenericIsNoReference = "a constructed generic type handed to a function-typed slot (`mk(DC[int])`) is SPY0339 with the class above the reference as below it, and for a class that writes its `__init__` as for a dataclass: red where the type is declared first, so no order is at fault and no row may hold it. The owner has ruled that the reference is to run (ruling 42, #2423 comment 7199064429), #2801 tracks it, and the value is excluded until that lands";
-    private const string ADataclassOverAConstructedGeneric = "#2021's class (its comment 7181214084): a dataclass over a constructed generic dataclass keeps the base's type parameter in its generated constructor. It is SPY0908 CS0246 with the generic dataclass above it (and SPY0908 CS7036 beside CS1729 below): red where the dataclass is declared first, so no order is at fault";
+    private const string ADataclassOverAConstructedGeneric = "#2021's class (its comment 7181214084): a dataclass over a constructed generic dataclass keeps the base's type parameter in its generated constructor. It is SPY0908 CS0246 with the generic dataclass above it as below it (D2): red where the dataclass is declared first, so no order is at fault";
     private const string ATypeNestedTwoDeepIsNoReference = "a type nested two deep handed to a function-typed slot by its qualified name (`mk(O.P.DC)`) is SPY0908 CS0119 with the type above the reference as below it, and for a class that writes its `__init__` as for a dataclass: no order is at fault, and #1941 holds the cell (its comment 7182693487). One deep (`mk(O.DC)`) is the nested site's cells";
     private const string AnAliasIsNotConstructed = "a type alias called as a constructor (`A(5)`) is SPY0908 CS0103 with the class above the call as below it, and for a class that writes its `__init__` as for a dataclass: no order is at fault, and #1925 holds the cell (its comment 7182693272)";
     private const string AnAliasIsNoBase = "a type alias in a base list (`class D(A)`) is SPY0202 with the class above the deriving one as below it, and for a class that writes its `__init__` as for a dataclass: nothing derives through an alias, so no deriving reader has a cell there (#1925 holds the cell: its comment 7182693272)";
@@ -2331,8 +2332,8 @@ public sealed partial class ScopeMeaningDifferentialTests
     };
 
     private const string AnOperandIsEqualitysAlone = "an operand is `==`'s: `hash()` and `repr()` take none";
-    private const string AnObjectOperandIsComparedByReference = "#2804's class: against an operand typed `object` the generated `==` is reference equality. With equal operands (`o: object = DC(5)`, `DC(5) == o`) the read prints `False` with the dataclass above the reader, where python prints `True`, and is SPY0222 with it below. That form's control is itself wrong, so the form has no cell: a cell does what its control does, and no row may pin `False` as right. The form with an unequal operand is the cell beside it";
-    private const string AStrThatReadsItsOwnReprCallsItself = "#2057's class (its comment 7188927977): `__str__` and `__repr__` are one `ToString`, so a `__str__` that calls `self.__repr__()` calls itself. Over a dataclass declared first the program compiles and dies at run time of a stack overflow, where python prints the generated text; with the dataclass below it is SPY0203. The control is itself wrong, whatever the class derives from, so the read has no cell";
+    private const string AnObjectOperandIsComparedByReference = "#2804's class: against an operand typed `object` the generated `==` is reference equality. With equal operands (`o: object = DC(5)`, `DC(5) == o`) the read prints `False` with the dataclass above the reader as below it (D2), where python prints `True`. That form's control is itself wrong, so the form has no cell: a cell does what its control does, and no row may pin `False` as right. The form with an unequal operand is the cell beside it";
+    private const string AStrThatReadsItsOwnReprCallsItself = "#2057's class (its comment 7188927977): `__str__` and `__repr__` are one `ToString`, so a `__str__` that calls `self.__repr__()` calls itself. Over a dataclass declared above or below it (D2) the program compiles and dies at run time of a stack overflow, where python prints the generated text. The control is itself wrong, whatever the class derives from, so the read has no cell";
 
     /// <summary>The member × read pairs with no cell, total with <see cref="MemberReads"/> over the members it reads ×
     /// <see cref="ScopeMemberRead"/>.</summary>

@@ -114,7 +114,7 @@ print(str(dog))  # Output: Dog(Buddy)
 
 **Note:** The `@override` decorator is **required** when overriding inherited dunder methods, just like any other virtual method. All inheritable dunder methods from base classes are implicitly `@virtual`.
 
-**Exception:** `__str__`, `__eq__`, and `__hash__` are **implicitly treated as overrides** since they always override `System.Object` methods (`ToString()`, `Equals()`, `GetHashCode()`). The `@override` decorator is accepted but never required for these three dunders, at any inheritance depth.
+**Exception:** `__str__`, `__repr__`, `__eq__`, and `__hash__` are **implicitly treated as overrides** since they always override `System.Object` methods (`ToString()` for both `__str__` and `__repr__`, `Equals()`, `GetHashCode()`). The `@override` decorator is accepted but never required for these four dunders, at any inheritance depth — a `__repr__` redefined in a class deriving from a `@dataclass` included, whichever of the two is declared first.
 
 ```python
 class MyClass:
@@ -123,7 +123,7 @@ class MyClass:
     def __init__(self, value: int):
         self.value = value
 
-    # @override is optional for __str__, __eq__, __hash__ — they implicitly override System.Object
+    # @override is optional for __str__, __repr__, __eq__, __hash__ — they implicitly override System.Object
     def __str__(self) -> str:
         return f"MyClass({self.value})"
 

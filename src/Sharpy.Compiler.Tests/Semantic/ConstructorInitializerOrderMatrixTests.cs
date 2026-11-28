@@ -495,24 +495,38 @@ public class ConstructorInitializerOrderMatrixTests : IntegrationTestBase
             .Which.Message.Should().Contain("compute it inside the argument expression (or in a @static helper)");
     }
 
-    // A subclass written BEFORE its @dataclass base: the base is checked later, so its synthesized __init__
-    // is not known while the subclass is checked, and the implicit-constructor resolution (#2508) must not
-    // assume one. Pinned control: the same clean refusal as before #2508 (SPY0203), never SPY0908 or an
-    // invented arity. (CPython runs the defaults case, prints `F 1`, and raises TypeError for a missing
-    // required field.)
+    // A subclass written BEFORE its @dataclass base: every type's declared members, a dataclass's generated
+    // `__init__` included and its base's first, are resolved before any body (plan-777361 D2), so the
+    // subclass's `super().__init__(...)` is checked against the synthesized constructor exactly as it is
+    // with the base declared first — one verdict at both orders: the missing required field SPY0224, the
+    // other two run (CPython: TypeError for the missing field, `F 5` and `F 1` for the others). Before D2
+    // the later order was SPY0203, the base's `__init__` unknown while the subclass was checked (#2508's
+    // control, pinned then as the clean refusal).
     [Theory]
-    [InlineData("a: int", "")]
-    [InlineData("a: int", "5")]
-    [InlineData("a: int = 1", "")]
-    public void SuperInitOnALaterDataclassBase_KeepsTheCleanRefusal(string field, string args)
+    [InlineData("a: int", "", null, "SPY0224")]
+    [InlineData("a: int", "5", "F 5", null)]
+    [InlineData("a: int = 1", "", "F 1", null)]
+    public void SuperInitOnALaterDataclassBase_IsCheckedAsAnEarlierOne(string field, string args, string? stdout, string? code)
     {
-        var source = $"class F(DC):\n    def __init__(self):\n        super().__init__({args})\n        print(\"F\", self.a)\n\n"
-            + $"@dataclass\nclass DC:\n    {field}\n\ndef main():\n    F()\n";
+        const string Subclass = "class F(DC):\n    def __init__(self):\n        super().__init__({0})\n        print(\"F\", self.a)\n\n";
+        string Base = $"@dataclass\nclass DC:\n    {field}\n\n";
+        const string Main = "def main():\n    F()\n";
+        var sub = string.Format(Subclass, args);
 
-        var result = CompileAndExecute(source);
-
-        result.Success.Should().BeFalse(source);
-        result.RawDiagnostics.Where(d => d.IsError).Should().ContainSingle(source)
-            .Which.Should().Match<CompilerDiagnostic>(d => d.Code == DiagnosticCodes.Semantic.UndefinedMember && d.Line == 3);
+        foreach (var source in new[] { sub + Base + Main, Base + sub + Main })
+        {
+            var result = CompileAndExecute(source);
+            if (code == null)
+            {
+                result.Success.Should().BeTrue(source);
+                result.StandardOutput.Trim().Should().Be(stdout, source);
+            }
+            else
+            {
+                result.Success.Should().BeFalse(source);
+                result.RawDiagnostics.Where(d => d.IsError).Should().ContainSingle(source)
+                    .Which.Code.Should().Be(code, source);
+            }
+        }
     }
 }

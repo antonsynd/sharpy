@@ -1,0 +1,10 @@
+# plan-777361 D2: a read of a module variable declared below it is typed by its annotation, as a
+# read below it is: handing the int to a bool slot is SPY0220, never C# behind SPY0908.
+def show() -> None:
+    b: bool = later
+    print(b)
+
+later: int = 5
+
+def main() -> None:
+    show()

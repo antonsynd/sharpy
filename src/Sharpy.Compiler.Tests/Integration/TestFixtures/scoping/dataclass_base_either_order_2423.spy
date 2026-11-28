@@ -1,0 +1,22 @@
+# plan-777361 D2: a dataclass's generated members are resolved before any body, its base's first,
+# so a dataclass deriving from a dataclass declared BELOW it takes the base's fields as one
+# declared above it does.
+@dataclass
+class Early:
+    v: int
+
+@dataclass
+class OnEarly(Early):
+    w: int
+
+@dataclass
+class OnLate(Late):
+    w: int
+
+@dataclass
+class Late:
+    v: int
+
+def main() -> None:
+    print(OnEarly(1, 2))
+    print(OnLate(1, 2))
