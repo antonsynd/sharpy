@@ -141,14 +141,39 @@ public sealed partial class InitializerDependencyDifferentialTests
 
     internal const string NoFunctionToPlace = "the use sits in the value's own initializer text: there is no function to place";
 
-    private const string ModuleVariableBelowAFunction =
-        "a function declared above a module variable does not see it until rule N1 lands (#2423), which is not this plan's: its read is refused and its store binds a local";
+    private const string AStoreAboveAModuleVariableIsRefused =
+        "ruling (b), TODO(#2424): P79's N6 replaces this. A bare store with no `global` from a function declared above a module variable is refused (SPY0200), the interim of the owner's ruling (b) on P78 T1 (plan-777361), so a control of it, which runs today, has no cell; its other cells are rows citing #2424, and its reads have their cells (rule N1)";
+
+    /// <summary>The route of a bare store into a module variable from a function above it: ruling (b)'s interim refusal, #2424's.</summary>
+    private static readonly Route InterimStoreRoute = static (verdict, _, _) =>
+        verdict == VerdictClass.FalseRefusal ? "#2424 false-refusal" : ValueRoute(verdict);
+
+    private static bool IsInterimStore(FunctionPosition position, BindingKind holder, LocationUse use) =>
+        position != FunctionPosition.AfterHost && holder == BindingKind.ModuleVar && IsBareStore(use);
+
+    /// <summary>Whether a location cell is a control: a use of a ready value, or a plain store before the value's initializer
+    /// (kept, then replaced) or from a function that initializer calls (replaced by its result).</summary>
+    private static bool LocationIsControl(LocationUse use, When when) =>
+        when is When.Ready or When.ReadyAcrossAwait
+        || (IsPlainStore(use) && (when is When.BeforeInitializer or When.DuringInitializer or When.DuringInitializerThenRead));
+
+    /// <summary>Whether a cross cell is a control: a use that reads nothing back, of a value that is ready when it runs or is
+    /// made ready by it.</summary>
+    private static bool CrossIsControl(CrossHost user, CrossHost target, CrossOrder order, bool readBack) =>
+        !readBack && !UseRunsInsideTheTargetSweep(user, target, order);
+
+    /// <summary>The uses that store into the holder by its bare name, the forms the interim refusal of ruling (b) covers.</summary>
+    private static bool IsBareStore(LocationUse use) =>
+        use is LocationUse.Assign or LocationUse.Augmented or LocationUse.Walrus or LocationUse.TupleLeaf or LocationUse.NestedTupleLeaf
+            or LocationUse.StarLeaf;
 
     /// <summary>Why a cell has no copy at <paramref name="position"/>, or null. The first layout always has one.</summary>
-    internal static string? PositionExclusion(FunctionPosition position, BindingKind holder, When when = When.Ready) =>
+    internal static string? PositionExclusion(FunctionPosition position, BindingKind holder, When when = When.Ready, LocationUse? use = null, bool control = false) =>
         position == FunctionPosition.AfterHost ? null
         : when == When.InInitializerText ? NoFunctionToPlace
-        : holder == BindingKind.ModuleVar ? ModuleVariableBelowAFunction
+        // A module variable is visible above its declaration since rule N1 (plan-777361 D1): a function above it reads it, and
+        // its bare store is ruling (b)'s interim refusal, a row citing #2424 except where the cell is a control.
+        : control && use is { } stored && IsInterimStore(position, holder, stored) ? AStoreAboveAModuleVariableIsRefused
         : null;
 
     // ------------------------------------------------------------------------------------------- //
@@ -443,13 +468,8 @@ public sealed partial class InitializerDependencyDifferentialTests
     private static string RootName(string read) => read.Split('.', '[')[0];
 
     /// <summary>A holder a store in the initializer's own text has no cell on, with the program that shows why.</summary>
-    internal static readonly IReadOnlyDictionary<BindingKind, Exclusion> ExcludedTextHolders = new Dictionary<BindingKind, Exclusion>
-    {
-        [BindingKind.ModuleVar] = new(
-            "a module variable is invisible in its own initializer until rule N1 lands (#2423), which is not this plan's",
-            "def fill2(a: out int, by: int) -> int:\n    a = 41 + by\n    return 1\nt: int = fill2(out t, 1)\n" + MainPrintingT,
-            "SPY0200"),
-    };
+    /// <remarks>Empty since rule N1 (plan-777361 D1): a module variable is visible in its own initializer, and its cells are generated.</remarks>
+    internal static readonly IReadOnlyDictionary<BindingKind, Exclusion> ExcludedTextHolders = new Dictionary<BindingKind, Exclusion>();
 
     /// <summary>Why a use has no cell at a time, or null.</summary>
     internal static string? WhenExclusion(LocationUse use, BindingKind holder, When when)
@@ -654,7 +674,7 @@ public sealed partial class InitializerDependencyDifferentialTests
     internal static IEnumerable<Cell> LocationCells()
     {
         foreach (var (holder, form, kind, use, when) in LocationProduct())
-            foreach (var position in Enum.GetValues<FunctionPosition>().Where(p => PositionExclusion(p, holder, when) == null))
+            foreach (var position in Enum.GetValues<FunctionPosition>().Where(p => PositionExclusion(p, holder, when, use, LocationIsControl(use, when)) == null))
             {
                 var python = LocationPython(holder, form, use, when);
                 var (_, after, returned) = UseText(use, kind, "t", "1");
@@ -670,12 +690,11 @@ public sealed partial class InitializerDependencyDifferentialTests
                     Raises = raises ? CycleError : null,
                     // What runs today and must not move: a use of a ready value, and a plain store before the value's initializer
                     // (kept, then replaced) or from a function that initializer calls (replaced by its result).
-                    IsControl = when is When.Ready or When.ReadyAcrossAwait
-                        || (IsPlainStore(use) && (when is When.BeforeInitializer or When.DuringInitializer or When.DuringInitializerThenRead)),
+                    IsControl = LocationIsControl(use, when),
                     Python = python,
                     // The twin's value is a module name: python reaches it before its line has run.
                     NameErrorOn = python == PythonExpectation.NameError ? "t" : null,
-                    Route = LocationRoute(use, when),
+                    Route = IsInterimStore(position, holder, use) ? InterimStoreRoute : LocationRoute(use, when),
                 };
             }
     }
@@ -730,9 +749,6 @@ public sealed partial class InitializerDependencyDifferentialTests
     /// <summary>Why a pair of hosts has no cell, or null. Two classes are two hosts; a module is one.</summary>
     internal static string? PairExclusion(CrossHost user, CrossHost target) => user.IsModule && target.IsModule ? OneHost : null;
 
-    private const string LaterModuleVariable =
-        "the class reads back a module variable declared after it, which is invisible until rule N1 lands (#2423): not this plan's";
-
     /// <summary>The module's sweep reaches a module value and a plain class at its place. A closed generic type has none:
     /// its first use is the only thing that sweeps it.</summary>
     private static bool HasPosition(CrossHost host) => !host.IsGeneric;
@@ -774,7 +790,8 @@ public sealed partial class InitializerDependencyDifferentialTests
             return notAUse;
         if (ExcludedLocationCells.TryGetValue((use, target.Holder, target.Form), out var excluded))
             return excluded.Reason;
-        return user.IsModule && order == CrossOrder.TargetFirst && readBack ? LaterModuleVariable : null;
+        // A class reading back a module variable declared after it has its cell since rule N1 (plan-777361 D1).
+        return null;
     }
 
     private static string CrossId(CrossHost user, CrossHost target, CrossOrder order, LocationUse use, bool readBack) =>
@@ -847,7 +864,7 @@ public sealed partial class InitializerDependencyDifferentialTests
     internal static IEnumerable<Cell> CrossCells()
     {
         foreach (var (user, target, order, use, readBack) in CrossProduct())
-            foreach (var position in Enum.GetValues<FunctionPosition>().Where(p => PositionExclusion(p, target.Holder) == null))
+            foreach (var position in Enum.GetValues<FunctionPosition>().Where(p => PositionExclusion(p, target.Holder, use: use, control: CrossIsControl(user, target, order, readBack)) == null))
             {
                 var python = CrossPython(user, target, order, use, readBack);
                 var model = CrossModel(user, target, order, use, readBack);
@@ -861,28 +878,21 @@ public sealed partial class InitializerDependencyDifferentialTests
                     Raises = model == null ? CycleError : null,
                     // What runs today and must not move: a use that reads nothing back, of a value that is ready when it runs or
                     // is made ready by it. A store into a later class lands on the class's initialized value, as C# has it.
-                    IsControl = !readBack && !UseRunsInsideTheTargetSweep(user, target, order),
+                    IsControl = CrossIsControl(user, target, order, readBack),
                     Python = python,
                     // With the user first its function runs before the target host exists; with the target first, the read back names a user that does not.
                     NameErrorOn = python != PythonExpectation.NameError ? null : RootName(order == CrossOrder.UserFirst ? CrossName("B", target, "p") : CrossName("A", user, "x")),
-                    Route = static (verdict, _, _) => ValueRoute(verdict),
+                    Route = IsInterimStore(position, target.Holder, use) ? InterimStoreRoute : static (verdict, _, _) => ValueRoute(verdict),
                 };
             }
     }
 
-    /// <summary>The read back of a later module variable, on both class forms, and a plain store to each holder that is
-    /// no host: the programs the exclusions rest on.</summary>
+    /// <summary>A plain store to each holder that is no host: the programs the exclusions rest on. (The read back of a later
+    /// module variable has its cells since rule N1, plan-777361 D1.)</summary>
     private static IEnumerable<(string What, Exclusion Exclusion)> CrossExclusions() =>
-        (from user in CrossHosts()
-         where user.IsModule
-         from target in CrossHosts()
-         where !target.IsModule
-         select (
-             $"cross {user.Key}>{target.Key} read back, target first",
-             new Exclusion(LaterModuleVariable, CrossProgram(user, target, CrossOrder.TargetFirst, LocationUse.Assign, readBack: true, twin: false), "SPY0200")))
-        .Concat(ExcludedCrossHolders.Select(e => (
+        ExcludedCrossHolders.Select(e => (
             $"cross host BindingKind.{e.Key}",
-            new Exclusion(e.Value.Reason, LocationProgram(e.Key, HostForm.Plain, ValueKind.Int, LocationUse.Assign, When.Ready, twin: false), e.Value.Code))));
+            new Exclusion(e.Value.Reason, LocationProgram(e.Key, HostForm.Plain, ValueKind.Int, LocationUse.Assign, When.Ready, twin: false), e.Value.Code)));
 
     internal static List<string> CrossTotalityFailures(IReadOnlyList<Cell> pool)
     {
@@ -917,7 +927,7 @@ public sealed partial class InitializerDependencyDifferentialTests
                     foreach (var order in Enum.GetValues<CrossOrder>())
                         foreach (var readBack in new[] { false, true })
                         {
-                            var owedHere = !(user.IsModule && order == CrossOrder.TargetFirst && readBack);
+                            const bool owedHere = true;
                             if (owedHere != cells.Contains((user, target, order, use, readBack)))
                                 failures.Add($"{CrossId(user, target, order, use, readBack)} is {(owedHere ? "owed by the location family's uses and not generated" : "generated against its exclusion")}");
                         }
@@ -954,7 +964,7 @@ public sealed partial class InitializerDependencyDifferentialTests
                 foreach (var order in Enum.GetValues<CrossOrder>())
                     foreach (var use in Enum.GetValues<LocationUse>())
                         foreach (var readBack in new[] { false, true }.Where(r => CrossExclusion(user, target, order, use, r) == null))
-                            foreach (var position in Enum.GetValues<FunctionPosition>().Where(p => PositionExclusion(p, target.Holder) == null))
+                            foreach (var position in Enum.GetValues<FunctionPosition>().Where(p => PositionExclusion(p, target.Holder, use: use, control: !readBack && !UseRunsInsideTheTargetSweep(user, target, order)) == null))
                             {
                                 var id = CrossId(user, target, order, use, readBack);
                                 owed[PositionedId(id, position)] = !readBack && !UseRunsInsideTheTargetSweep(user, target, order);
@@ -1075,7 +1085,7 @@ public sealed partial class InitializerDependencyDifferentialTests
     internal static IEnumerable<Cell> OutObservationCells()
     {
         foreach (var (holder, form, kind, use, when, observed) in ObservedLocationProduct())
-            foreach (var position in Enum.GetValues<FunctionPosition>().Where(p => PositionExclusion(p, holder, when) == null))
+            foreach (var position in Enum.GetValues<FunctionPosition>().Where(p => PositionExclusion(p, holder, when, use, control: true) == null))
             {
                 if (!ReadyAt(when))
                 {
@@ -1110,7 +1120,7 @@ public sealed partial class InitializerDependencyDifferentialTests
                 };
             }
         foreach (var (user, target, order, use, observed) in ObservedCrossProduct())
-            foreach (var position in Enum.GetValues<FunctionPosition>().Where(p => PositionExclusion(p, target.Holder) == null))
+            foreach (var position in Enum.GetValues<FunctionPosition>().Where(p => PositionExclusion(p, target.Holder, use: use, control: true) == null))
             {
                 if (UseRunsInsideTheTargetSweep(user, target, order))
                 {
@@ -1245,13 +1255,13 @@ public sealed partial class InitializerDependencyDifferentialTests
                 foreach (var position in Enum.GetValues<FunctionPosition>())
                     owed.Add((
                         PositionedId(ObservedId(LocationId(cell.Holder, cell.Form, cell.Kind, cell.Use, cell.When), observed), position),
-                        ObservedWhenExclusion(cell.When) ?? PositionExclusion(position, cell.Holder, cell.When)));
+                        ObservedWhenExclusion(cell.When) ?? PositionExclusion(position, cell.Holder, cell.When, cell.Use, control: true)));
         foreach (var cell in CrossProduct().Where(c => uses.Contains(c.Use)))
             foreach (var observed in Enum.GetValues<OutObservation>())
                 foreach (var position in Enum.GetValues<FunctionPosition>())
                     owed.Add((
                         PositionedId(ObservedId(CrossId(cell.User, cell.Target, cell.Order, cell.Use, cell.ReadBack), observed), position),
-                        ObservedCrossExclusion(cell.User, cell.Target, cell.Order, cell.ReadBack) ?? PositionExclusion(position, cell.Target.Holder)));
+                        ObservedCrossExclusion(cell.User, cell.Target, cell.Order, cell.ReadBack) ?? PositionExclusion(position, cell.Target.Holder, use: cell.Use, control: true)));
         foreach (var (id, excluded) in owed)
         {
             if (byId.ContainsKey(id) == (excluded != null))
@@ -1271,9 +1281,9 @@ public sealed partial class InitializerDependencyDifferentialTests
 
         // An observed cell on a ready value tells the two emissions apart, and is a control: green today.
         var generated = Enum.GetValues<FunctionPosition>().SelectMany(position =>
-            location.Where(c => ReadyAt(c.When) && PositionExclusion(position, c.Holder, c.When) == null)
+            location.Where(c => ReadyAt(c.When) && PositionExclusion(position, c.Holder, c.When, c.Use, control: true) == null)
                 .Select(c => PositionedId(ObservedId(LocationId(c.Holder, c.Form, c.Kind, c.Use, c.When), c.Observed), position))
-            .Concat(cross.Where(c => !UseRunsInsideTheTargetSweep(c.User, c.Target, c.Order) && PositionExclusion(position, c.Target.Holder) == null)
+            .Concat(cross.Where(c => !UseRunsInsideTheTargetSweep(c.User, c.Target, c.Order) && PositionExclusion(position, c.Target.Holder, use: c.Use, control: true) == null)
                 .Select(c => PositionedId(ObservedId(CrossId(c.User, c.Target, c.Order, c.Use, readBack: false), c.Observed), position))));
         foreach (var id in generated)
         {
@@ -1289,24 +1299,21 @@ public sealed partial class InitializerDependencyDifferentialTests
         return failures;
     }
 
-    /// <summary>The programs the position axis's exclusions rest on: a read of a module variable from a function above
-    /// it, in one host and from a class's initializer, is refused; a store there binds a local. The initializer's own
-    /// text holds no function, which <see cref="ReasonsNoProgramShows"/> carries.</summary>
+    /// <summary>The programs the position axis's exclusions rest on: a control's bare store into a module variable from a
+    /// function above it, in one host and from a class's method with the module first, is refused (ruling (b)'s interim,
+    /// #2424). The initializer's own text holds no function, which <see cref="ReasonsNoProgramShows"/> carries.</summary>
     private static IEnumerable<(string What, Exclusion Exclusion)> PositionExclusions()
     {
-        foreach (var holder in LocationHolders.Where(h => PositionExclusion(FunctionPosition.BeforeHost, h) != null))
+        foreach (var holder in LocationHolders.Where(h => PositionExclusion(FunctionPosition.BeforeHost, h, use: LocationUse.Assign, control: true) != null))
         {
-            var reason = PositionExclusion(FunctionPosition.BeforeHost, holder)!;
-            yield return ($"position BeforeHost of BindingKind.{holder}, a read",
-                new Exclusion(reason, LocationProgram(holder, HostForm.Plain, ValueKind.Int, LocationUse.Read, When.Ready, twin: false, position: FunctionPosition.BeforeHost), "SPY0200"));
-            yield return ($"position BeforeHost of BindingKind.{holder}, a store",
-                new Exclusion(reason, LocationProgram(holder, HostForm.Plain, ValueKind.Int, LocationUse.Assign, When.Ready, twin: false, position: FunctionPosition.BeforeHost))
-                { Prints = $"5 {InitialValue}" });
+            var reason = PositionExclusion(FunctionPosition.BeforeHost, holder, use: LocationUse.Assign, control: true)!;
+            yield return ($"position BeforeHost of BindingKind.{holder}, a control's store",
+                new Exclusion(reason, LocationProgram(holder, HostForm.Plain, ValueKind.Int, LocationUse.Assign, When.Ready, twin: false, position: FunctionPosition.BeforeHost), "SPY0200"));
             foreach (var user in CrossHosts().Where(u => !u.IsModule))
             {
                 var target = new CrossHost(holder, HostForm.Plain);
-                yield return ($"position BeforeHost of cross {user.Key}>{target.Key}, a read",
-                    new Exclusion(reason, CrossProgram(user, target, CrossOrder.UserFirst, LocationUse.Read, readBack: false, twin: false, position: FunctionPosition.BeforeHost), "SPY0200"));
+                yield return ($"position BeforeHost of cross {user.Key}>{target.Key}, a control's store",
+                    new Exclusion(reason, CrossProgram(user, target, CrossOrder.TargetFirst, LocationUse.Assign, readBack: false, twin: false, position: FunctionPosition.BeforeHost), "SPY0200"));
             }
         }
         yield return ("position BeforeHost in an initializer's own text", new Exclusion(NoFunctionToPlace));
@@ -1457,7 +1464,8 @@ public sealed partial class InitializerDependencyDifferentialTests
                 foreach (var kind in Enum.GetValues<ValueKind>())
                     foreach (var use in Enum.GetValues<LocationUse>().Where(u => UseExclusion(u, kind, holder) == null && !ExcludedLocationCells.ContainsKey((u, holder, form))))
                         foreach (var when in Enum.GetValues<When>().Where(w => WhenExclusion(use, holder, w) == null))
-                            foreach (var position in Enum.GetValues<FunctionPosition>().Where(p => PositionExclusion(p, holder, when) == null))
+                            foreach (var position in Enum.GetValues<FunctionPosition>().Where(p => PositionExclusion(p, holder, when, use,
+                                (!IsOwnInitializer(when) && when != When.BeforeInitializer) || (IsPlainStore(use) && when != When.InInitializerText)) == null))
                             {
                                 // The function's place moves nothing: a control at one place is a control at the other.
                                 var id = LocationId(holder, form, kind, use, when);

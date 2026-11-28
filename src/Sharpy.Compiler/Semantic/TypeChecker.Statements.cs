@@ -1196,19 +1196,9 @@ internal partial class TypeChecker
             // The Scope.Define will replace the existing symbol
         }
 
-        if (declaresModuleVariable)
-        {
-            // A second module-level declaration of a variable's name (#2125, unchanged: the first
-            // value stands) binds the first one's symbol, which NameResolver declared; the checker
-            // makes no second module variable. Nothing else reaches here at module level.
-            if (existingSymbol is VariableSymbol firstDeclaration)
-            {
-                _semanticInfo.SetDeclarationSymbol(varDecl, firstDeclaration);
-                _semanticInfo.SetTargetBinding(varDecl, new TargetBinding(TargetBindingKind.Declares));
-            }
-            return;
-        }
-
+        // #2125: a second module-level declaration keeps its own checker symbol (today's verdict);
+        // NameResolver's first symbol is the export. It is the one module variable the checker still
+        // creates (plan-777361 D1, P21b), until #2125 rules the redeclaration.
         var newSymbol = new VariableSymbol
         {
             Name = varDecl.Name,

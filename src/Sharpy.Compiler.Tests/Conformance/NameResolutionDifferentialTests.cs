@@ -333,9 +333,6 @@ public partial class NameResolutionDifferentialTests
         // The restored enum outer's read is `.RED`, and on a later const or an earlier int member that is the no-such-member refusal.
         [("N2", "SPY0203")] = 19,
         [("SPY0401", "SPY0203")] = 12,
-        // R-KP's restored builtins: the read of an overloaded function or a type constructor as a value, ahead of N6.
-        [("N6", "SPY0336")] = 1,
-        [("N6", "SPY0342")] = 1,
         // A bare value in a `T !E` body above an earlier E: the return's type mismatch, the right direction until the kind's own refusal (#2249).
         [("kind:result-wrap", "SPY0260")] = 1,
         // N6's declaration shapes: `global` / `nonlocal` is refused whatever it names, until #2424 reinstates them and reaches the rule's own refusal.
@@ -380,9 +377,10 @@ public partial class NameResolutionDifferentialTests
         // N6's bullets: the declaration itself is SPY0134 until #2424 reinstates it.
         ["N6-declaration"] = new[] { "SPY0134" },
         ["N6-type-kind"] = new[] { "SPY0134", "SPY0222", "SPY0342", "SPY0346" },
-        // SPY0222: `abs += 1` under a builtin is refused as a type error before N6's own refusal exists (#2424).
-        // SPY0336 / SPY0342: `max += 1` / `int += 1` above the module binding reads the builtin as a value, and that refuses first.
-        ["N6"] = new[] { "SPY0200", "SPY0222", "SPY0336", "SPY0342" },
+        // SPY0200: a store above a module variable of its name is refused by the interim check of the owner's ruling (b) on P78 T1
+        // (plan-777361), until #2424's own refusal; the builtin it read before (`abs += 1` SPY0222, `max += 1` SPY0336,
+        // `int += 1` SPY0342) is no longer what the name means there.
+        ["N6"] = new[] { "SPY0200" },
         // N1-arity: nothing refuses today (the CS1729 ICE is #2021's, ruling 47), so the entry is a ratchet: a refusal under this rule is red until it names its code.
         ["N1-arity"] = Array.Empty<string>(),
         // The owner's ruling on a comprehension's walrus: SPY0600 refuses the read today, by accident of #2144's gap; the rule's own code lands with #2425.
@@ -404,7 +402,8 @@ public partial class NameResolutionDifferentialTests
         ["kind:SPY0225"] = new[] { "SPY0134", "SPY0225" },
         ["kind:SPY0290"] = new[] { "SPY0290", "SPY0401" },
         ["kind:SPY0340"] = new[] { "SPY0200", "SPY0340", "SPY0401" },
-        ["kind:enum-member-constant"] = new[] { "SPY0200" },
+        // A later module variable at an enum member's value binds since plan-777361 D1, and its CS0133 is #2432's: nothing refuses today.
+        ["kind:enum-member-constant"] = Array.Empty<string>(),
         ["kind:instance-at-initializer"] = new[] { "SPY0200", "SPY0230", "SPY0401" },
     };
 
@@ -590,8 +589,9 @@ public partial class NameResolutionDifferentialTests
                     // `.RED` on a method's own name: the member is what the name means here, and nothing refused the read of it.
                     "CS1061" when cell.Target == BindingKind.StaticMethod => "#2423",
                     "CS0149" or "CS0266" when cell.Target == BindingKind.StaticProperty => "#2417",
-                    // A later binding reaches the emitter untyped; N1's order-free resolution types it.
-                    "CS0149" or "CS0266" or "CS1503" => "#2423",
+                    // A later binding reaches the emitter untyped; N1's order-free resolution types it. CS0019 and CS1950 are the
+                    // same untyped read in a comprehension's filter and a dict spread, once the later module variable binds (plan-777361 D1).
+                    "CS0149" or "CS0266" or "CS1503" or "CS0019" or "CS1950" => "#2423",
                     // No default arm: an ICE nobody has triaged is red until a route names the check that cures it.
                     _ => $"UNROUTED({run.CsCode})",
                 };

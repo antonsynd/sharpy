@@ -158,9 +158,6 @@ public sealed partial class InitializerDependencyDifferentialTests
         where (form == HostForm.Plain || !endpoint.IsModule) && (kind == DefaultHostKind || (node.Kind == BindingKind.StaticField))
         select endpoint;
 
-    private const string ModuleVariableReadsItself =
-        "a module variable is invisible in its own initializer, and a later one in an earlier initializer, until rule N1 lands (#2423), which is not this plan's: a read in the text names neither";
-
     /// <summary>Why a route has no cell on an endpoint in a shape, or null. The text's own read of a module variable is
     /// rule N1's; and the direct route's pair is a ring cell (<see cref="RingCells"/>).</summary>
     internal static string? RouteExclusion(CycleRoute route, RouteEndpoint endpoint, RouteShape shape)
@@ -169,7 +166,8 @@ public sealed partial class InitializerDependencyDifferentialTests
             return null;
         if (shape == RouteShape.Pair)
             return "the text's own read of a second value is a ring cell on the slot Parenthesized.Expression";
-        return endpoint.Node.Kind == BindingKind.ModuleVar ? ModuleVariableReadsItself : null;
+        // A module variable's text names it, and a later one, since rule N1 (plan-777361 D1): its routes have cells.
+        return null;
     }
 
     private static string RouteId(CycleRoute route, RouteEndpoint endpoint, RouteShape shape, bool control) =>
@@ -306,10 +304,7 @@ public sealed partial class InitializerDependencyDifferentialTests
     }
 
     private static IEnumerable<(string What, Exclusion Exclusion)> RouteExclusions() =>
-        ExcludedRouteKinds.Select(e => ($"route BindingKind.{e.Key}", e.Value))
-            .Append((
-                "the direct route on a module variable",
-                new Exclusion(ModuleVariableReadsItself, RouteProgram(DirectRoute, new RouteEndpoint(NodeKinds.Single(n => n.Kind == BindingKind.ModuleVar), HostForm.Plain), RouteShape.Self, control: false, twin: false), "SPY0200")));
+        ExcludedRouteKinds.Select(e => ($"route BindingKind.{e.Key}", e.Value));
 
     internal static List<string> RouteTotalityFailures(IReadOnlyList<Cell> pool)
     {
@@ -362,8 +357,7 @@ public sealed partial class InitializerDependencyDifferentialTests
         var product = RouteProduct().ToList();
         foreach (var endpoint in endpoints)
         {
-            // A module variable's text cannot name it yet (rule N1): that exclusion carries its program.
-            if (!product.Any(c => c.Endpoint == endpoint && c.Route.IsCertain) && RouteExclusion(DirectRoute, endpoint, RouteShape.Self) != ModuleVariableReadsItself)
+            if (!product.Any(c => c.Endpoint == endpoint && c.Route.IsCertain))
                 failures.Add($"route endpoint {endpoint.Key} has no certain route: no cell of it is refused");
             if (!product.Any(c => c.Endpoint == endpoint && !c.Route.IsCertain && c.Shape == RouteShape.Pair))
                 failures.Add($"route endpoint {endpoint.Key} has no pair that closes through a callee");

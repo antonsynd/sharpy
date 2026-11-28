@@ -627,9 +627,10 @@ public partial class NameResolutionDifferentialTests
         // The Alias cells at the earlier order: the axis spells no twin. The twin would be a program the pool does not hold.
         // (read/str's load-time reads run with their model since plan-775c50 T4, so Sharpy reads it.)
         [UnreadNoOrderToPair] = 3,
-        // Seed reads of a later binding: python raises, and the seed table has no earlier order. 13 are refused (plan-775c50 T4: the 7 that
-        // ran with a wrong value now run with the model's; T9: the 5 SPY0618 refused run with it).
-        [UnreadSeedRaises] = 13,
+        // Seed reads of a later binding: python raises, and the seed table has no earlier order. 5 are refused (plan-775c50 T4: the 7 that
+        // ran with a wrong value now run with the model's; T9: the 5 SPY0618 refused run with it; plan-777361 T1: the 8 that read a
+        // later module variable run with it).
+        [UnreadSeedRaises] = 5,
         [UnreadDeviationRow] = 1,
     };
 

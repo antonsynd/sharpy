@@ -609,13 +609,8 @@ public sealed partial class InitializerDependencyDifferentialTests
     internal static IReadOnlyDictionary<BindingKind, Exclusion> ExcludedNodeKinds => LazyExcludedNodeKinds.Value;
 
     /// <summary>The kinds the slot's read cannot name yet. The reader is declared first, as python needs, so its read is a forward one.</summary>
-    internal static readonly IReadOnlyDictionary<BindingKind, Exclusion> ExcludedRingTargets = new Dictionary<BindingKind, Exclusion>
-    {
-        [BindingKind.ModuleVar] = new(
-            "a module variable declared later is invisible until rule N1 lands (#2423), which is not this plan's: the kind is a ring's reader and its closing value, never the slot's read",
-            "const x0: int = (y0)\ny0: int = x0 + 1\ndef main() -> None:\n    print(x0, y0)\n",
-            "SPY0200"),
-    };
+    /// <remarks>Empty since rule N1 (plan-777361 D1): a later module variable is a slot's read too.</remarks>
+    internal static readonly IReadOnlyDictionary<BindingKind, Exclusion> ExcludedRingTargets = new Dictionary<BindingKind, Exclusion>();
 
     /// <summary>The slots the ring cells ride: one evaluated whenever its parent is, one conditional, and the body of a
     /// nested function. Each is an entry of <see cref="Slots"/>, so its class is the map's.</summary>

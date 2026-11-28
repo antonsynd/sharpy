@@ -1,0 +1,33 @@
+# Known-red cells of InitializerDependencyDifferentialTests (plan-775c50; verification contract §11):
+#   <cell-id> <Ice|FalseRefusal|SilentWrong|RuntimeThrow> # #<issue> <lane>
+# A row whose cell passes fails the test until it is deleted. Rows are admitted here only for a ruled interim refusal
+# with an open issue: the owner's ruling (b) on P78 T1 (plan-777361) refuses a bare store with no `global` from a
+# function above a module variable (SPY0200) until P79's N6 refusal lands for both orders (#2424). Controls of it are
+# excluded with that reason instead (PositionExclusion).
+Location/Cross/Generic>Module/TargetFirst/Assign/ReadBack/FunctionFirst FalseRefusal # #2424 false-refusal
+Location/Cross/Generic>Module/TargetFirst/Augmented/ReadBack/FunctionFirst FalseRefusal # #2424 false-refusal
+Location/Cross/Generic>Module/TargetFirst/NestedTupleLeaf/ReadBack/FunctionFirst FalseRefusal # #2424 false-refusal
+Location/Cross/Generic>Module/TargetFirst/TupleLeaf/ReadBack/FunctionFirst FalseRefusal # #2424 false-refusal
+Location/Cross/Generic>Module/TargetFirst/Walrus/ReadBack/FunctionFirst FalseRefusal # #2424 false-refusal
+Location/Cross/Generic>Module/UserFirst/Assign/ReadBack/FunctionFirst FalseRefusal # #2424 false-refusal
+Location/Cross/Generic>Module/UserFirst/Augmented/ReadBack/FunctionFirst FalseRefusal # #2424 false-refusal
+Location/Cross/Generic>Module/UserFirst/NestedTupleLeaf/ReadBack/FunctionFirst FalseRefusal # #2424 false-refusal
+Location/Cross/Generic>Module/UserFirst/TupleLeaf/ReadBack/FunctionFirst FalseRefusal # #2424 false-refusal
+Location/Cross/Generic>Module/UserFirst/Walrus/ReadBack/FunctionFirst FalseRefusal # #2424 false-refusal
+Location/Cross/Plain>Module/TargetFirst/Assign/ReadBack/FunctionFirst FalseRefusal # #2424 false-refusal
+Location/Cross/Plain>Module/TargetFirst/Augmented/ReadBack/FunctionFirst FalseRefusal # #2424 false-refusal
+Location/Cross/Plain>Module/TargetFirst/NestedTupleLeaf/ReadBack/FunctionFirst FalseRefusal # #2424 false-refusal
+Location/Cross/Plain>Module/TargetFirst/TupleLeaf/ReadBack/FunctionFirst FalseRefusal # #2424 false-refusal
+Location/Cross/Plain>Module/TargetFirst/Walrus/ReadBack/FunctionFirst FalseRefusal # #2424 false-refusal
+Location/Cross/Plain>Module/UserFirst/Assign/FunctionFirst FalseRefusal # #2424 false-refusal
+Location/Cross/Plain>Module/UserFirst/Assign/ReadBack/FunctionFirst FalseRefusal # #2424 false-refusal
+Location/Cross/Plain>Module/UserFirst/Augmented/FunctionFirst FalseRefusal # #2424 false-refusal
+Location/Cross/Plain>Module/UserFirst/Augmented/ReadBack/FunctionFirst FalseRefusal # #2424 false-refusal
+Location/Cross/Plain>Module/UserFirst/NestedTupleLeaf/FunctionFirst FalseRefusal # #2424 false-refusal
+Location/Cross/Plain>Module/UserFirst/NestedTupleLeaf/ReadBack/FunctionFirst FalseRefusal # #2424 false-refusal
+Location/Cross/Plain>Module/UserFirst/TupleLeaf/FunctionFirst FalseRefusal # #2424 false-refusal
+Location/Cross/Plain>Module/UserFirst/TupleLeaf/ReadBack/FunctionFirst FalseRefusal # #2424 false-refusal
+Location/Cross/Plain>Module/UserFirst/Walrus/FunctionFirst FalseRefusal # #2424 false-refusal
+Location/Cross/Plain>Module/UserFirst/Walrus/ReadBack/FunctionFirst FalseRefusal # #2424 false-refusal
+Location/ModuleVar/Int/Augmented/BeforeInitializer/FunctionFirst FalseRefusal # #2424 false-refusal
+Location/ModuleVar/Int/Augmented/DuringInitializer/FunctionFirst FalseRefusal # #2424 false-refusal
