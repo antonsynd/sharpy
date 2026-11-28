@@ -8,7 +8,7 @@
 # GENERATED, HUMAN-REVIEWED: bash build_tools/regenerate_corpus_pins.sh rewrites the rows and the `# total` lines; review
 # the diff (a new stem's rows are its own; a moved row of an existing stem is a finding until explained). A new key's cite row in
 # code-action-shape-allowlist.txt is written by hand (the loader names it), and so is a drained key's deletion.
-# total stems identity keys=14 rows=2122
+# total stems identity keys=14 rows=2132
 # total stems crlf keys=8 rows=285
 # total stems cr keys=8 rows=296
 # total stems comment keys=7 rows=292
@@ -751,6 +751,8 @@ extract-method identity diagnostics properties/paren_ellipsis_abstract_property_
 extract-method identity diagnostics properties/property_auto_set_backing_field_collision_2395 # #2294
 extract-method identity diagnostics properties/property_inheritance_0012 # #2294
 extract-method identity diagnostics question_mark_in_finally # #2294
+extract-method identity diagnostics scoping/dataclass_base_either_order_2423 # #2294
+extract-method identity diagnostics scoping/store_above_module_variable_interim_2424 # #2294
 extract-method identity diagnostics self_init_positional_only_kw_1810 # #2294
 extract-method identity diagnostics self_type/self_interface_inherited_impl_1342 # #2294
 extract-method identity diagnostics self_type/self_interface_variant_self_1342 # #2294
@@ -1405,6 +1407,12 @@ extract-method identity parse question_mark_optional_wrong_return # #2294
 extract-method identity parse question_mark_result_error_subtype # #2294
 extract-method identity parse question_mark_result_wrong_return # #2294
 extract-method identity parse question_mark_with_coalesce # #2294
+extract-method identity parse scoping/module_variable_forward_read_2423 # #2294
+extract-method identity parse scoping/store_above_module_variable_interim_2424 # #2294
+extract-method identity parse scoping/typed_read_later_auto_variable_2423 # #2294
+extract-method identity parse scoping/typed_read_later_method_return_2423 # #2294
+extract-method identity parse scoping/typed_read_later_module_variable_2423 # #2294
+extract-method identity parse scoping/typed_read_later_type_members_2423 # #2294
 extract-method identity parse self_type/self_interface_inherited_impl_1342 # #2294
 extract-method identity parse single_evaluation_augmented_target # #2294
 extract-method identity parse single_evaluation_binary_operands # #2294
@@ -1586,6 +1594,7 @@ extract-variable identity parse lambdas/lambda_no_args_0001 # #2294
 extract-variable identity parse lambdas/lambda_subscript_body_then_arg # #2294
 extract-variable identity parse operators/comparison_chain_mixed_lowerings_1642 # #2294
 extract-variable identity parse operators/comparison_chain_strings_1642 # #2294
+extract-variable identity parse scoping/auto_lambda_ring_2423 # #2294
 extract-variable identity parse store_conversion_positions_1698 # #2294
 implement identity diagnostics abstract_class_interface_stubs # #2296
 implement identity diagnostics classes/dunder_len # #2296
@@ -1709,6 +1718,7 @@ remove-annotation identity diagnostics optionals/optional_unwrap_or # #2296
 remove-annotation identity diagnostics pattern_matching/match_expression_0042 # #2296
 remove-annotation identity diagnostics pattern_matching/match_type_binding_0004 # #2296
 remove-annotation identity diagnostics properties/property_auto_set_backing_field_collision_2395 # #2296
+remove-annotation identity diagnostics scoping/auto_lambda_ring_2423 # #2296
 remove-annotation identity diagnostics screaming_snake_constants # #2296
 remove-annotation identity diagnostics single_evaluation_augmented_target # #2296
 remove-annotation identity diagnostics structs/struct_default_all # #2296

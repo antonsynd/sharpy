@@ -18,10 +18,10 @@
 # total known-limit-S6ok identity ontype rows=13 n=45
 # total known-limit-S6ok identity range-line rows=13 n=45
 # total known-limit-S6ok identity range-whole rows=13 n=39
-# total refused-work identity range-block rows=7 n=9 withwork=2473
+# total refused-work identity range-block rows=7 n=9 withwork=2477
 # total refused-work identity range-line rows=4 n=10 withwork=138
-# total refused-work identity range-statement rows=1 n=1 withwork=1063
-# total refused-work identity range-whole rows=0 n=0 withwork=2290
+# total refused-work identity range-statement rows=1 n=1 withwork=1065
+# total refused-work identity range-whole rows=0 n=0 withwork=2299
 # total s7-parity-exempt identity full rows=493 n=493
 # total s7-parity-exempt identity ontype rows=487 n=487
 # total s7-parity-exempt identity range-line rows=487 n=487
@@ -32,24 +32,24 @@
 # total known-limit-S6ok comment ontype rows=2 n=18
 # total known-limit-S6ok comment range-line rows=2 n=18
 # total known-limit-S6ok comment range-whole rows=2 n=6
-# total refused-work comment range-block rows=1 n=4 withwork=2545
+# total refused-work comment range-block rows=1 n=4 withwork=2549
 # total refused-work comment range-line rows=0 n=0 withwork=33
 # total refused-work comment range-statement rows=0 n=0 withwork=741
-# total refused-work comment range-whole rows=0 n=0 withwork=3438
-# total s7-parity-exempt comment full rows=1679 n=1679
-# total s7-parity-exempt comment ontype rows=1673 n=1673
-# total s7-parity-exempt comment range-line rows=1673 n=1673
-# total s7-parity-exempt comment range-whole rows=1679 n=1679
+# total refused-work comment range-whole rows=0 n=0 withwork=3447
+# total s7-parity-exempt comment full rows=1682 n=1682
+# total s7-parity-exempt comment ontype rows=1676 n=1676
+# total s7-parity-exempt comment range-line rows=1676 n=1676
+# total s7-parity-exempt comment range-whole rows=1682 n=1682
 # total known-limit-S6k wide ontype rows=2 n=2
 # total known-limit-S6k wide range-line rows=2 n=2
 # total known-limit-S6ok wide full rows=13 n=39
 # total known-limit-S6ok wide ontype rows=13 n=45
 # total known-limit-S6ok wide range-line rows=13 n=45
 # total known-limit-S6ok wide range-whole rows=13 n=39
-# total refused-work wide range-block rows=1200 n=4471 withwork=14171
-# total refused-work wide range-line rows=200 n=2858 withwork=5259
-# total refused-work wide range-statement rows=254 n=374 withwork=7335
-# total refused-work wide range-whole rows=0 n=0 withwork=3432
+# total refused-work wide range-block rows=1201 n=4472 withwork=14200
+# total refused-work wide range-line rows=200 n=2858 withwork=5265
+# total refused-work wide range-statement rows=254 n=374 withwork=7362
+# total refused-work wide range-whole rows=0 n=0 withwork=3441
 # total s7-parity-exempt wide full rows=493 n=493
 # total s7-parity-exempt wide range-whole rows=493 n=493
 # total known-limit-S6k crlf ontype rows=2 n=2
@@ -3541,6 +3541,9 @@ s7-parity-exempt comment full question_mark_result_basic 1 # #2279
 s7-parity-exempt comment full question_mark_result_early_return 1 # #2279
 s7-parity-exempt comment full question_mark_result_wrong_return 1 # #2279
 s7-parity-exempt comment full question_mark_with_coalesce 1 # #2279
+s7-parity-exempt comment full scoping/auto_lambda_ring_2423 1 # #2279
+s7-parity-exempt comment full scoping/module_variable_forward_read_2423 1 # #2279
+s7-parity-exempt comment full scoping/typed_read_later_method_return_2423 1 # #2279
 s7-parity-exempt comment full screaming_snake_constants 1 # #2279
 s7-parity-exempt comment full self_init_positional_only_kw_1810 1 # #2279
 s7-parity-exempt comment full self_type/self_interface_generic_declaring_1342 1 # #2279
@@ -5214,6 +5217,9 @@ s7-parity-exempt comment ontype question_mark_result_basic 1 # #2279
 s7-parity-exempt comment ontype question_mark_result_early_return 1 # #2279
 s7-parity-exempt comment ontype question_mark_result_wrong_return 1 # #2279
 s7-parity-exempt comment ontype question_mark_with_coalesce 1 # #2279
+s7-parity-exempt comment ontype scoping/auto_lambda_ring_2423 1 # #2279
+s7-parity-exempt comment ontype scoping/module_variable_forward_read_2423 1 # #2279
+s7-parity-exempt comment ontype scoping/typed_read_later_method_return_2423 1 # #2279
 s7-parity-exempt comment ontype screaming_snake_constants 1 # #2279
 s7-parity-exempt comment ontype self_init_positional_only_kw_1810 1 # #2279
 s7-parity-exempt comment ontype self_type/self_interface_generic_declaring_1342 1 # #2279
@@ -6887,6 +6893,9 @@ s7-parity-exempt comment range-line question_mark_result_basic 1 # #2279
 s7-parity-exempt comment range-line question_mark_result_early_return 1 # #2279
 s7-parity-exempt comment range-line question_mark_result_wrong_return 1 # #2279
 s7-parity-exempt comment range-line question_mark_with_coalesce 1 # #2279
+s7-parity-exempt comment range-line scoping/auto_lambda_ring_2423 1 # #2279
+s7-parity-exempt comment range-line scoping/module_variable_forward_read_2423 1 # #2279
+s7-parity-exempt comment range-line scoping/typed_read_later_method_return_2423 1 # #2279
 s7-parity-exempt comment range-line screaming_snake_constants 1 # #2279
 s7-parity-exempt comment range-line self_init_positional_only_kw_1810 1 # #2279
 s7-parity-exempt comment range-line self_type/self_interface_generic_declaring_1342 1 # #2279
@@ -8566,6 +8575,9 @@ s7-parity-exempt comment range-whole question_mark_result_basic 1 # #2279
 s7-parity-exempt comment range-whole question_mark_result_early_return 1 # #2279
 s7-parity-exempt comment range-whole question_mark_result_wrong_return 1 # #2279
 s7-parity-exempt comment range-whole question_mark_with_coalesce 1 # #2279
+s7-parity-exempt comment range-whole scoping/auto_lambda_ring_2423 1 # #2279
+s7-parity-exempt comment range-whole scoping/module_variable_forward_read_2423 1 # #2279
+s7-parity-exempt comment range-whole scoping/typed_read_later_method_return_2423 1 # #2279
 s7-parity-exempt comment range-whole screaming_snake_constants 1 # #2279
 s7-parity-exempt comment range-whole self_init_positional_only_kw_1810 1 # #2279
 s7-parity-exempt comment range-whole self_type/self_interface_generic_declaring_1342 1 # #2279
@@ -9914,6 +9926,7 @@ refused-work wide range-block properties/property_with_validation_0008 5 # #2538
 refused-work wide range-block properties/property_with_validation_0011 15 # #2538
 refused-work wide range-block question_mark_result_error_subtype 1 # #2538
 refused-work wide range-block question_mark_with_coalesce 9 # #2538
+refused-work wide range-block scoping/typed_read_later_type_members_2423 1 # #2538
 refused-work wide range-block self_init_positional_only_kw_1810 2 # #2538
 refused-work wide range-block self_type/self_interface_generic_declaring_1342 3 # #2538
 refused-work wide range-block self_type/self_interface_inherited_impl_1342 6 # #2538
