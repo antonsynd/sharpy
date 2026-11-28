@@ -816,6 +816,23 @@ internal partial class TypeChecker
         return new StoreScope(this, savedExpectedType, savedParameterTypedArgument, savedStoreContext);
     }
 
+    /// <summary>
+    /// The store-free scope a declaration checked out of source order is checked in (plan-777361 D2,
+    /// <c>EnterDeclarationContext</c>): no expectation, no parameter-typed argument, no store context
+    /// — the declaration is its own module-level store, never an operand of the store in flight where
+    /// its first read or its type was needed. Disposing restores all three.
+    /// </summary>
+    private IDisposable EnterDeclarationStore()
+    {
+        var scope = new StoreScope(this, _expectedType, _parameterTypedArgument, _storeContext);
+
+        _expectedType = null;
+        _parameterTypedArgument = null;
+        _storeContext = null;
+
+        return scope;
+    }
+
     private sealed class StoreScope : IDisposable
     {
         private readonly TypeChecker _checker;

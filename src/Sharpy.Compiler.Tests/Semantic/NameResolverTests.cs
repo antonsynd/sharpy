@@ -1048,10 +1048,12 @@ const Y: int = 20
 
         Assert.False(resolver.Diagnostics.HasErrors);
 
-        // Regular variable should not be in symbol table at module level in Phase 1
-        // (only consts, functions, and types are handled at module level)
+        // A module variable is declared in Phase 1 as a const is (plan-777361 D1): NameResolver's
+        // symbol, which the checker completes. It is a variable, never a const.
         var xVar = symbolTable.LookupVariable("x");
-        Assert.Null(xVar); // Not a const, so not registered in Phase 1
+        Assert.NotNull(xVar);
+        Assert.False(xVar.IsConstant);
+        Assert.Equal(3, xVar.DeclarationLine);
 
         var yVar = symbolTable.LookupVariable("Y");
         Assert.NotNull(yVar);

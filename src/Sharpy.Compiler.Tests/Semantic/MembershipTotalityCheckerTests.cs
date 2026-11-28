@@ -310,16 +310,16 @@ public class MembershipTotalityCheckerTests
     }
 
     /// <summary>
-    /// D1 answers only where the class's <c>__next__</c> is typed: a <c>__next__</c> pair declared AFTER
-    /// its use is unresolved when the use is checked (#2249), and read as <c>object</c> it named an
-    /// <c>IEnumerable[object]</c> the class does not implement (CS1503 behind SPY0908). No D1 record;
-    /// the protocol refusal alone. The same class declared before the use answers
-    /// (<see cref="IteratingClass_AnswersMembership_WithItsSynthesizedElement"/>, <c>NextBag</c>).
+    /// D1 answers where the class's <c>__next__</c> is typed, and a <c>__next__</c> pair declared AFTER
+    /// its use is typed at the use (plan-777361 D2, #2249: every declared type's members are resolved
+    /// before any body is checked), so it answers as the same class declared before the use does
+    /// (<see cref="IteratingClass_AnswersMembership_WithItsSynthesizedElement"/>, <c>NextBag</c>): a
+    /// <c>Direct</c> record of its <c>__next__</c>'s element, and no refusal (CPython 3.15.2 prints
+    /// <c>True</c>). Before D2 the pair was unresolved there: no record, and SPY0320.
     /// </summary>
     [Fact]
-    public void NextPairDeclaredAfterItsUse_RecordsNoIterationElement()
+    public void NextPairDeclaredAfterItsUse_AnswersMembership_AsDeclaredBefore()
     {
-        // TODO(#2249): CPython answers True; a later class's signatures are unresolved at this use.
         const string source = """
             def main() -> None:
                 b: bool = 1 in LateNext()
@@ -341,9 +341,12 @@ public class MembershipTotalityCheckerTests
             """;
         var analysis = AnalyzeSource(source);
 
+        Assert.True(analysis.Errors.Count == 0, analysis.Describe());
         var membership = (BinaryOp)TestedExpression(analysis);
-        Assert.Null(analysis.Info.GetIterableProjection(membership.Right));
-        Assert.Equal(new[] { DiagnosticCodes.Semantic.ProtocolMissingMethod }, analysis.ErrorCodes.ToArray());
+        var projection = analysis.Info.GetIterableProjection(membership.Right);
+        Assert.NotNull(projection);
+        Assert.Equal(IterableProjectionKind.Direct, projection!.Kind);
+        Assert.Equal("int32", projection.ElementType.GetDisplayName());
     }
 
     /// <summary>

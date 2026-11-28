@@ -444,6 +444,9 @@ internal partial class TypeChecker
     {
         var saved = CaptureCheckerContext();
         ResetCheckerContextToModuleLevel();
+        // The expectation, the parameter-typed argument and the store context go through the store
+        // seam (TypeChecker.StoreConversion), never this record.
+        var store = EnterDeclarationStore();
         var scope = _symbolTable.EnterDeclarationScope(_declarationModuleScope ?? _symbolTable.CurrentScope);
         var narrowings = _narrowingContext.EnterIsolatedScope();
 
@@ -461,6 +464,7 @@ internal partial class TypeChecker
             narrowings.Dispose();
             scope.Dispose();
             RestoreCheckerContext(saved);
+            store.Dispose();
         });
     }
 
@@ -478,7 +482,6 @@ internal partial class TypeChecker
     /// <summary>The checker's position-dependent state: what a function, block, call, store or type body sets.</summary>
     private sealed record CheckerContext(
         SemanticType? CurrentFunctionReturnType,
-        SemanticType? ExpectedType,
         TypeSymbol? CurrentClass,
         ImmutableArray<Statement> CurrentTypeBody,
         TypeSymbol? TypeResolverContext,
@@ -495,8 +498,6 @@ internal partial class TypeChecker
         Expression? CurrentMemberAccessQualifier,
         bool InErrorRecoveredAnnotationSlot,
         HashSet<Expression>? CurrentCallArguments,
-        StoreContext? StoreContext,
-        Expression? ParameterTypedArgument,
         Expression? CurrentIterationSource,
         HashSet<Expression>? CurrentIndexArguments,
         ClassBodyReader? InitializerOwner,
@@ -521,11 +522,11 @@ internal partial class TypeChecker
         int PendingOverloadWatermark);
 
     private CheckerContext CaptureCheckerContext() => new(
-        _currentFunctionReturnType, _expectedType, _currentClass, _currentTypeBody,
+        _currentFunctionReturnType, _currentClass, _currentTypeBody,
         _typeResolver.CurrentTypeContext, _typeResolver.IsStaticContext, _functionTypeParametersInScope,
         _narrowingFlow, _currentFacts, _typeTestOperand, _typeTestTypeArgument, _matchSubjectOperand,
         _inTestFunction, _currentCallCallee, _currentStatementExpression, _currentMemberAccessQualifier,
-        _inErrorRecoveredAnnotationSlot, _currentCallArguments, _storeContext, _parameterTypedArgument,
+        _inErrorRecoveredAnnotationSlot, _currentCallArguments,
         _currentIterationSource, _currentIndexArguments, _initializerOwner, _currentCall, _indexStoreTarget,
         _plainStoreTarget, _inExceptBlock, _inFinally, _inLambdaBody, _inExceptStarBlock, _currentMethodName,
         _currentMethodSymbol, _currentMethodIsOverride, _currentMethodIsDunder, _currentFunctionIsGenerator,
@@ -535,7 +536,6 @@ internal partial class TypeChecker
     private void RestoreCheckerContext(CheckerContext c)
     {
         _currentFunctionReturnType = c.CurrentFunctionReturnType;
-        _expectedType = c.ExpectedType;
         _currentClass = c.CurrentClass;
         _currentTypeBody = c.CurrentTypeBody;
         _typeResolver.SetCurrentTypeContext(c.TypeResolverContext);
@@ -552,8 +552,6 @@ internal partial class TypeChecker
         _currentMemberAccessQualifier = c.CurrentMemberAccessQualifier;
         _inErrorRecoveredAnnotationSlot = c.InErrorRecoveredAnnotationSlot;
         _currentCallArguments = c.CurrentCallArguments;
-        _storeContext = c.StoreContext;
-        _parameterTypedArgument = c.ParameterTypedArgument;
         _currentIterationSource = c.CurrentIterationSource;
         _currentIndexArguments = c.CurrentIndexArguments;
         _initializerOwner = c.InitializerOwner;
@@ -581,14 +579,14 @@ internal partial class TypeChecker
     /// <summary>The state the module's own statements are checked in (CheckModule).</summary>
     private void ResetCheckerContextToModuleLevel()
         => RestoreCheckerContext(new CheckerContext(
-            CurrentFunctionReturnType: null, ExpectedType: null, CurrentClass: null, CurrentTypeBody: default,
+            CurrentFunctionReturnType: null, CurrentClass: null, CurrentTypeBody: default,
             TypeResolverContext: null, TypeResolverStatic: false,
             FunctionTypeParametersInScope: ImmutableHashSet<string>.Empty,
             NarrowingFlow: _moduleNarrowingFlow, CurrentFacts: System.Array.Empty<Analysis.ControlFlow.NarrowingFact>(),
             TypeTestOperand: null, TypeTestTypeArgument: null, MatchSubjectOperand: null, InTestFunction: false,
             CurrentCallCallee: null, CurrentStatementExpression: null, CurrentMemberAccessQualifier: null,
-            InErrorRecoveredAnnotationSlot: false, CurrentCallArguments: null, StoreContext: null,
-            ParameterTypedArgument: null, CurrentIterationSource: null, CurrentIndexArguments: null,
+            InErrorRecoveredAnnotationSlot: false, CurrentCallArguments: null,
+            CurrentIterationSource: null, CurrentIndexArguments: null,
             InitializerOwner: null, CurrentCall: null, IndexStoreTarget: null, PlainStoreTarget: null,
             InExceptBlock: false, InFinally: false, InLambdaBody: false, InExceptStarBlock: false,
             CurrentMethodName: null, CurrentMethodSymbol: null, CurrentMethodIsOverride: false,

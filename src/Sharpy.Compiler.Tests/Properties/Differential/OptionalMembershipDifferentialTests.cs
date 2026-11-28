@@ -66,10 +66,13 @@ namespace Sharpy.Compiler.Tests.Properties.Differential;
 /// comprehension filter);</item>
 /// <item><b>observation</b> — the cell's value, or its operand evaluation ORDER (#2645): the needle and the
 /// container (and a chain link's head operand) go through a tracing identity call, so the cell prints which was
-/// evaluated first and then its value.</item>
+/// evaluated first and then its value;</item>
+/// <item><b>declaration order</b> — a container the program declares (<see cref="DeclaredContainerRoster"/>: the
+/// <c>__contains__</c> classes, the ruled kind and the classes that only iterate) is declared ABOVE its use, or
+/// BELOW it (<see cref="DeclarationOrder"/>: a second set of the classes, prefixed <c>L</c>, at the end of the
+/// program). Plan-777361 D2 (#2249) types a later-declared class's members before any body is checked, so the
+/// order is an axis, no longer an exclusion; a container with no declaration has no order to vary.</item>
 /// </list>
-/// <para><b>Excluded axis.</b> Declaration order: every container is declared above its use
-/// (<see cref="DeclarationOrderExcluded"/>, #2249, with the program that must stay refused).</para>
 /// <para><b>Expected map</b> (<see cref="Expect"/>). COMPARED cells print CPython 3.15's values (the
 /// <c>.python-version</c> pin). HAND-EXPECTED cells — a typed needle the slot cannot hold (<see cref="SlotHolds"/>),
 /// refused by SPY0222 under the deviation <c>membership-needle-type-mismatch</c> (owner ruling B for bool, float and
@@ -287,32 +290,6 @@ public abstract class MembershipOperatorDifferentialBase : IntegrationTestBase
                 + "def main() -> None:\n    ys: list[K | None] = [K(1), None]\n    print(c[K](ys))\n",
                 DiagnosticCodes.Infrastructure.GeneratedCodeCompilationError),
         };
-
-    private const string LaterDeclaredBag =
-        "class IBag:\n    a: int\n    b: int\n    def __init__(self, a: int, b: int):\n        self.a = a\n"
-        + "        self.b = b\n    def __contains__(self, v: int) -> bool:\n        return v == self.a or v == self.b\n";
-
-    private const string LaterDeclaredUse = "def main():\n    x: int | None = None\n    print(x in IBag(1, 2))\n";
-
-    /// <summary>
-    /// The excluded axis "declaration order": the generator declares every container ABOVE its use
-    /// (<see cref="ProgramFor"/>). With the <c>__contains__</c> class declared BELOW the test, no needle slot
-    /// resolves at the check (a later-declared class's member types are not there yet), so the <c>T | None</c> needle
-    /// is neither lifted nor refused and reaches Roslyn. The entry names the reason and its tracker, the program
-    /// that shows it and the one code it must still be refused by; <c>Control</c> is the same program with
-    /// the class declared above, which must run and print <c>ControlOutput</c> (so the refusal is the
-    /// order's, not the program's). <see cref="DeclarationOrderExclusionProblem"/> compiles both: when the
-    /// defect is fixed it is red until the entry is deleted and declaration order becomes an axis.
-    /// </summary>
-    private static readonly (string Why, string Program, string RefusedBy, string Control, string ControlOutput)
-        DeclarationOrderExcluded =
-        ("a `__contains__` class declared below its use resolves no needle slot at the membership check (a "
-            + "later-declared class's member types are missing there, #2249), so `x: int | None; x in IBag(1, 2)` is "
-            + "SPY0908 (CS1503 `int?` to `int`) before and after plan-4e2867: declaration order is not an axis here",
-            LaterDeclaredUse + "\n" + LaterDeclaredBag,
-            DiagnosticCodes.Infrastructure.GeneratedCodeCompilationError,
-            LaterDeclaredBag + "\n" + LaterDeclaredUse,
-            "False\n");
 
     /// <summary>
     /// The payload axis against the compiler's type model: one entry per census key
@@ -631,6 +608,31 @@ public abstract class MembershipOperatorDifferentialBase : IntegrationTestBase
     /// (#2645: CPython evaluates the needle before the container).</summary>
     private enum Observation { Value, Order }
 
+    /// <summary>Where a declared container's class is, against its use: above it, or below it (the end of the
+    /// program, after <c>main</c>). Plan-777361 D2, #2249.</summary>
+    private enum DeclarationOrder { Above, Below }
+
+    /// <summary>The prefix of the classes a <see cref="DeclarationOrder.Below"/> cell uses: the same declarations,
+    /// renamed, at the end of the program.</summary>
+    private const string BelowPrefix = "L";
+
+    /// <summary>The containers the program declares, as a literal roster: the totality count reads its size, and
+    /// <see cref="IsDeclaredContainer"/> (which the generator uses) is asserted equal to it.</summary>
+    private static readonly Container[] DeclaredContainerRoster =
+    {
+        Container.ContainsDunder, Container.GetItemLen, Container.IterDunder, Container.GenericIterDunder,
+        Container.IterEnumerator, Container.GenericIterEnumerator, Container.IterEnumerable,
+        Container.GenericIterEnumerable, Container.IterGenerator, Container.GenericIterGenerator, Container.IterNext,
+        Container.GenericIterNext, Container.IterInherited, Container.GenericIterInherited,
+    };
+
+    /// <summary>A container whose class the program declares: a <c>__contains__</c> class or a user class.</summary>
+    private static bool IsDeclaredContainer(Container container) =>
+        container == Container.ContainsDunder || IsUserClass(container);
+
+    private static IEnumerable<DeclarationOrder> OrdersOf(Container container) =>
+        IsDeclaredContainer(container) ? Enum.GetValues<DeclarationOrder>() : new[] { DeclarationOrder.Above };
+
     /// <summary>The allowlist rows of the cells whose operand order alone diverges (the order fact's).</summary>
     private const string OrderRowPrefix = "Order/";
 
@@ -648,11 +650,15 @@ public abstract class MembershipOperatorDifferentialBase : IntegrationTestBase
         Enum.GetValues<Observation>().Where(o => o == Observation.Value || !OrderExcludedForms.ContainsKey(form));
 
     private sealed record Cell(int Id, Payload Payload, Container Container, bool OptionalElement, Form Form,
-        BinaryOperator Operator, Position Position, Observation Observation)
+        BinaryOperator Operator, Position Position, Observation Observation,
+        DeclarationOrder Order = DeclarationOrder.Above)
     {
         public string ContainerName => OptionalElement ? $"{Container}OfOptional" : Container.ToString();
         public string Key => $"{Payload.Name}/{ContainerName}/{Form}/{OperatorSpelling(Operator)}/{Position}"
-            + (Observation == Observation.Value ? "" : $"/{Observation}");
+            + (Observation == Observation.Value ? "" : $"/{Observation}")
+            + (Order == DeclarationOrder.Above ? "" : $"/Declared{Order}");
+        /// <summary>The class-name prefix of the declared container this cell uses.</summary>
+        public string BagPrefix => Order == DeclarationOrder.Below ? BelowPrefix : "";
         /// <summary>The allowlist row: the container × whether the needle can be None (<c>T | None</c> and the literal
         /// <c>None</c> share one row, as they share the rulings; an optional element has its own row, since a defect
         /// that only an optional element shows is a different class). Rows pin their exact cells, so the key's
@@ -721,7 +727,7 @@ public abstract class MembershipOperatorDifferentialBase : IntegrationTestBase
     private static Container[] Containers() => SpecRowMap.SelectMany(m => m.Generated)
         .Concat(RuledContainerKinds.SelectMany(k => k.Generated)).OrderBy(c => c).ToArray();
 
-    /// <summary>The full product of the axes; the two structural exclusions are an optional element on a fixed-slot
+    /// <summary>The full product of the axes (declaration order only for a declared container); the two structural exclusions are an optional element on a fixed-slot
     /// container, which has no spelling, and the forms <see cref="OptionalElementExcluded"/> names for a payload. A needle
     /// the container's slot cannot hold is a CELL (its expectation is the spec's refusal), never a skip.</summary>
     private static List<Cell> GenerateCells(IReadOnlyList<Payload> payloads)
@@ -730,18 +736,19 @@ public abstract class MembershipOperatorDifferentialBase : IntegrationTestBase
         var cells = new List<Cell>();
         foreach (var payload in payloads)
             foreach (var container in containers)
-                foreach (var optionalElement in IsElementTyped(container) ? new[] { false, true } : new[] { false })
-                    foreach (var form in Enum.GetValues<Form>())
-                    {
-                        if (optionalElement && OptionalElementExcluded.TryGetValue(payload.Name, out var excluded)
-                            && excluded.Forms.Contains(form))
-                            continue;
-                        foreach (var op in Operators)
-                            foreach (var position in Enum.GetValues<Position>())
-                                foreach (var observation in ObservationsOf(form))
-                                    cells.Add(new Cell(cells.Count, payload, container, optionalElement, form, op, position,
-                                        observation));
-                    }
+                foreach (var order in OrdersOf(container))
+                    foreach (var optionalElement in IsElementTyped(container) ? new[] { false, true } : new[] { false })
+                        foreach (var form in Enum.GetValues<Form>())
+                        {
+                            if (optionalElement && OptionalElementExcluded.TryGetValue(payload.Name, out var excluded)
+                                && excluded.Forms.Contains(form))
+                                continue;
+                            foreach (var op in Operators)
+                                foreach (var position in Enum.GetValues<Position>())
+                                    foreach (var observation in ObservationsOf(form))
+                                        cells.Add(new Cell(cells.Count, payload, container, optionalElement, form, op,
+                                            position, observation, order));
+                        }
         return cells;
     }
 
@@ -777,6 +784,7 @@ public abstract class MembershipOperatorDifferentialBase : IntegrationTestBase
     {
         var o = cell.OptionalElement;
         var items = o ? "a, c, z" : "a, c";
+        var l = cell.BagPrefix;
         return cell.Container switch
         {
             Container.Tuple => $"({items})",
@@ -786,12 +794,12 @@ public abstract class MembershipOperatorDifferentialBase : IntegrationTestBase
             Container.Dict => o ? "{a: 0, c: 1, z: 2}" : "{a: 0, c: 1}",
             Container.DictKeys => o ? "{a: 0, c: 1, z: 2}.keys()" : "{a: 0, c: 1}.keys()",
             Container.DictValues => o ? "{0: a, 1: c, 2: z}.values()" : "{0: a, 1: c}.values()",
-            Container.ContainsDunder => o ? $"OBag{bagArguments}(a, c, z)" : $"Bag{bagArguments}(a, c)",
-            Container.GetItemLen => o ? $"OSeqBag{bagArguments}(a, c, z)" : $"SeqBag{bagArguments}(a, c)",
+            Container.ContainsDunder => o ? $"{l}OBag{bagArguments}(a, c, z)" : $"{l}Bag{bagArguments}(a, c)",
+            Container.GetItemLen => o ? $"{l}OSeqBag{bagArguments}(a, c, z)" : $"{l}SeqBag{bagArguments}(a, c)",
             // A class that only iterates: constructed over the elements, or (a generic host) by its helper.
             _ when IterKindOf(cell.Container) is { GenericHost: false } kind
-                => o ? $"O{kind.Bag}{bagArguments}(a, c, z)" : $"{kind.Bag}{bagArguments}(a, c)",
-            _ when IterKindOf(cell.Container) is { GenericHost: true } kind => $"make_{kind.Bag}{(o ? "_o" : "")}({items})",
+                => o ? $"{l}O{kind.Bag}{bagArguments}(a, c, z)" : $"{l}{kind.Bag}{bagArguments}(a, c)",
+            _ when IterKindOf(cell.Container) is { GenericHost: true } kind => $"make_{l}{kind.Bag}{(o ? "_o" : "")}({items})",
             Container.Str => "\"ab\"",
             Container.Bytes => "bytes([1, 2])",
             Container.Range => "range(1, 3)",
@@ -817,6 +825,7 @@ public abstract class MembershipOperatorDifferentialBase : IntegrationTestBase
     {
         var o = cell.OptionalElement;
         var source = ContainerSource(cell, bagArguments);
+        var l = cell.BagPrefix;
         return cell.Container switch
         {
             Container.Tuple => (o ? $"tuple[{e}, {e}, {e}]" : $"tuple[{e}, {e}]", "xs", source),
@@ -826,10 +835,10 @@ public abstract class MembershipOperatorDifferentialBase : IntegrationTestBase
             Container.Dict => ($"dict[{e}, int]", "xs", source),
             Container.DictKeys => ($"dict[{e}, int]", "xs.keys()", ContainerSource(cell with { Container = Container.Dict })),
             Container.DictValues => ($"dict[int, {e}]", "xs.values()", o ? "{0: a, 1: c, 2: z}" : "{0: a, 1: c}"),
-            Container.ContainsDunder => (o ? "OBag[T]" : "Bag[T]", "xs", source),
-            Container.GetItemLen => (o ? "OSeqBag[T]" : "SeqBag[T]", "xs", source),
-            _ when IterKindOf(cell.Container) is { GenericHost: false } kind => (o ? $"O{kind.Bag}[T]" : $"{kind.Bag}[T]", "xs", source),
-            _ when IterKindOf(cell.Container) is { GenericHost: true } kind => ($"{kind.Bag}[{e}]", "xs", source),
+            Container.ContainsDunder => (o ? $"{l}OBag[T]" : $"{l}Bag[T]", "xs", source),
+            Container.GetItemLen => (o ? $"{l}OSeqBag[T]" : $"{l}SeqBag[T]", "xs", source),
+            _ when IterKindOf(cell.Container) is { GenericHost: false } kind => (o ? $"{l}O{kind.Bag}[T]" : $"{l}{kind.Bag}[T]", "xs", source),
+            _ when IterKindOf(cell.Container) is { GenericHost: true } kind => ($"{l}{kind.Bag}[{e}]", "xs", source),
             Container.Counter => ($"Counter[{e}]", "xs", source),
             Container.OrderedDict => ($"OrderedDict[{e}, int]", "xs", source),
             Container.ChainMap => ($"ChainMap[{e}, int]", "xs", source),
@@ -987,16 +996,17 @@ public abstract class MembershipOperatorDifferentialBase : IntegrationTestBase
             }
         }
 
-        void AddBags()
+        // The declared containers, their names prefixed by `l` (BelowPrefix for the set declared below its use).
+        void AddBags(string l)
         {
-            Add($"class Bag{bagClause}:");
+            Add($"class {l}Bag{bagClause}:");
             Add($"    items: list[{bagElement}]");
             Add($"    def __init__(self, a: {bagElement}, c: {bagElement}):");
             Add("        self.items = [a, c]");
             Add($"    def __contains__(self, item: {bagElement}) -> bool:");
             Add("        return item in self.items");
             Add("");
-            Add($"class OBag{bagClause}:");
+            Add($"class {l}OBag{bagClause}:");
             Add($"    items: list[{bagElement} | None]");
             Add($"    def __init__(self, a: {bagElement} | None, c: {bagElement} | None, z: {bagElement} | None):");
             Add("        self.items = [a, c, z]");
@@ -1060,17 +1070,17 @@ public abstract class MembershipOperatorDifferentialBase : IntegrationTestBase
                 })
             {
                 foreach (var kind in IterKinds.Where(k => !k.GenericHost))
-                    AddIterClass(stem + kind.Bag, bagClause, element, parameters, items, items.Trim('[', ']'), kind,
-                        $"{stem}{InheritedFrom(false)}{(generic && !python ? "[E]" : "")}");
+                    AddIterClass(l + stem + kind.Bag, bagClause, element, parameters, items, items.Trim('[', ']'), kind,
+                        $"{l}{stem}{InheritedFrom(false)}{(generic && !python ? "[E]" : "")}");
             }
             foreach (var kind in IterKinds.Where(k => k.GenericHost))
-                AddIterClass(kind.Bag, python ? "" : "[G]", "G", "items: list[G]", "items", "items", kind,
-                    $"{InheritedFrom(true)}{(python ? "" : "[G]")}");
+                AddIterClass(l + kind.Bag, python ? "" : "[G]", "G", "items: list[G]", "items", "items", kind,
+                    $"{l}{InheritedFrom(true)}{(python ? "" : "[G]")}");
             // A class with only the legacy sequence protocol (owner ruling R-OA: refused).
             foreach (var (name, element, parameters, items) in new[]
                 {
-                    ("SeqBag", bagElement, $"a: {bagElement}, c: {bagElement}", "[a, c]"),
-                    ("OSeqBag", $"{bagElement} | None",
+                    (l + "SeqBag", bagElement, $"a: {bagElement}, c: {bagElement}", "[a, c]"),
+                    (l + "OSeqBag", $"{bagElement} | None",
                         $"a: {bagElement} | None, c: {bagElement} | None, z: {bagElement} | None", "[a, c, z]"),
                 })
             {
@@ -1096,11 +1106,11 @@ public abstract class MembershipOperatorDifferentialBase : IntegrationTestBase
         Add("    print(cell, side)");
         Add("    return v");
         Add("");
-        // A Self payload's cells are in its declaration, so the __contains__ classes go above it: an argument checked
-        // against a __contains__ class declared BELOW the test is not refused today but reaches Roslyn (#2249: a
-        // later-declared class's member types are not there at the check), and declaration order is not an axis here.
+        // The declared containers of an Above cell go above every use: above a Self payload's declaration, whose
+        // methods the cells are; else above the cells. A Below cell's are at the end of the program (below).
+        var below = cells.Any(c => c.Order == DeclarationOrder.Below);
         if (method)
-            AddBags();
+            AddBags("");
         if ((python ? payload.PythonDeclaration : payload.SharpyDeclaration) is { } declaration)
         {
             foreach (var line in declaration.TrimEnd('\n').Split('\n'))
@@ -1116,7 +1126,7 @@ public abstract class MembershipOperatorDifferentialBase : IntegrationTestBase
             Add("");
         }
         if (!method)
-            AddBags();
+            AddBags("");
         // The CLR row's generic containers, each over `a, c` (element T) and `a, c, z` (element T | None, z = None).
         foreach (var optional in new[] { false, true })
         {
@@ -1133,13 +1143,14 @@ public abstract class MembershipOperatorDifferentialBase : IntegrationTestBase
             Add($"    xs: list[{e}] = [{items}]");
             Add($"    r: deque[{e}] = deque(xs)");
             Add("    return r");
-            foreach (var kind in IterKinds.Where(k => k.GenericHost))
-            {
-                Add($"def make_{kind.Bag}{suffix}({sig}) -> {kind.Bag}[{e}]:");
-                Add($"    xs: list[{e}] = [{items}]");
-                Add($"    r: {kind.Bag}[{e}] = {kind.Bag}(xs)");
-                Add("    return r");
-            }
+            foreach (var l in below ? new[] { "", BelowPrefix } : new[] { "" })
+                foreach (var kind in IterKinds.Where(k => k.GenericHost))
+                {
+                    Add($"def make_{l}{kind.Bag}{suffix}({sig}) -> {l}{kind.Bag}[{e}]:");
+                    Add($"    xs: list[{e}] = [{items}]");
+                    Add($"    r: {l}{kind.Bag}[{e}] = {l}{kind.Bag}(xs)");
+                    Add("    return r");
+                }
             Add($"def make_OrderedDict{suffix}({sig}) -> OrderedDict[{e}, int]:");
             Add($"    d: dict[{e}, int] = {dict}");
             Add($"    r: OrderedDict[{e}, int] = OrderedDict(d)");
@@ -1188,6 +1199,12 @@ public abstract class MembershipOperatorDifferentialBase : IntegrationTestBase
         else
             AddDriverBody("    ", p, generic ? "f" : "c");
         Add("    print(\"done\")");
+        // A Below cell's declared containers: below every use, after main (python's twin calls main() after them).
+        if (below)
+        {
+            Add("");
+            AddBags(BelowPrefix);
+        }
         return new Program(string.Join("\n", lines) + "\n", cellByLine);
     }
 
@@ -1433,9 +1450,8 @@ public abstract class MembershipOperatorDifferentialBase : IntegrationTestBase
         AssertCompositeAxisIsTheTypeKindImage();
         AssertPayloadAxisIsTheSemanticTypeCensus();
         AssertOptionalElementExclusionsStillHold();
-        // Measured here, asserted after the matrix: its control rests on the lift the matrix measures, so a
-        // regression there must not hide the cells that say which rows it broke.
-        var declarationOrderProblem = DeclarationOrderExclusionProblem();
+        // The generator's declared-container predicate is the literal roster, container by container.
+        Assert.Equal(DeclaredContainerRoster.OrderBy(c => c), Containers().Where(IsDeclaredContainer).OrderBy(c => c));
         AssertEveryExclusionHasAReason();
         // The generator's element-typed predicate is the literal roster, container by container.
         Assert.Equal(ElementTypedRoster.OrderBy(c => c), Containers().Where(IsElementTyped).OrderBy(c => c));
@@ -1454,7 +1470,12 @@ public abstract class MembershipOperatorDifferentialBase : IntegrationTestBase
         var elementTypedCount = ElementTypedRoster.Length;
         var formCount = Enum.GetValues<Form>().Length;
         var positionCount = Enum.GetValues<Position>().Length;
-        var containerVariants = containerCount + elementTypedCount;
+        // A declared container is generated once more, declared below its use, with each of its element variants.
+        var declaredCount = DeclaredContainerRoster.Length;
+        var declaredElementTypedCount = DeclaredContainerRoster.Count(ElementTypedRoster.Contains);
+        var orderCount = Enum.GetValues<DeclarationOrder>().Length;
+        var containerVariants = containerCount + elementTypedCount
+            + (orderCount - 1) * (declaredCount + declaredElementTypedCount);
         // A form is observed once per observation, less the (form, order) pairs OrderExcludedForms names.
         var observedFormCount = formCount * Enum.GetValues<Observation>().Length - OrderExcludedForms.Count;
         Assert.All(OrderExcludedForms, e => Assert.False(string.IsNullOrWhiteSpace(e.Value), $"{e.Key}: no reason"));
@@ -1469,15 +1490,17 @@ public abstract class MembershipOperatorDifferentialBase : IntegrationTestBase
             $"OptionalElementExcluded removes {excludedObservedForms} (payload, form, observation) triples; "
             + $"{OptionalElementExcludedObservedForms} are pinned");
         var expectedCount = (payloadCount * containerVariants * observedFormCount
-            - OptionalElementExcludedObservedForms * elementTypedCount) * Operators.Length * positionCount;
+            - OptionalElementExcludedObservedForms * (elementTypedCount + (orderCount - 1) * declaredElementTypedCount))
+            * Operators.Length * positionCount;
         Assert.Equal(2, Operators.Length);
         Assert.Equal(payloadCount, payloads.Count);
         Assert.True(expectedCount == allCells.Count,
             $"the generator made {allCells.Count} cells; the axes give {expectedCount} ({payloadCount} payloads x "
             + $"{containerVariants} container variants ({containerCount} containers, {elementTypedCount} with an optional "
-            + $"element) x {observedFormCount} observed forms ({formCount} forms, each by value and by order, less "
+            + $"element, the {declaredCount} declared ones ({declaredElementTypedCount} with an optional element) once "
+            + $"per further declaration order) x {observedFormCount} observed forms ({formCount} forms, each by value and by order, less "
             + $"{OrderExcludedForms.Count} order-excluded), less {OptionalElementExcludedObservedForms} excluded (payload, "
-            + $"form, observation) triples of the optional-element variant, x {Operators.Length} operators x "
+            + $"form, observation) triples of each optional-element variant, x {Operators.Length} operators x "
             + $"{positionCount} positions): a cell was dropped or invented");
         Assert.Equal(allCells.Count, allCells.Select(c => c.Key).Distinct(StringComparer.Ordinal).Count());
 
@@ -1502,9 +1525,9 @@ public abstract class MembershipOperatorDifferentialBase : IntegrationTestBase
         var report = (observation == Observation.Value ? "optional-membership-differential" : "membership-order-differential")
             + (plainNeedle ? "-plain" : "-none-needle");
 
-        // CPython: one program per payload × container (the runner passes a program as one argv string, which the OS
+        // CPython: one program per payload × container × declaration order (the runner passes a program as one argv string, which the OS
         // caps at 128 KiB), one batch.
-        var chunks = cells.GroupBy(c => (c.Payload, c.Container)).Select(g => (Name: $"{g.Key.Payload.Name}/{g.Key.Container}",
+        var chunks = cells.GroupBy(c => (c.Payload, c.Container, c.Order)).Select(g => (Name: $"{g.Key.Payload.Name}/{g.Key.Container}/{g.Key.Order}",
             Program: ProgramFor(g.Key.Payload, g.ToList(), python: true))).ToList();
         var py = oracle.RunBatch(chunks.Select((chunk, i) => new PyRequest(i, PythonPrelude + chunk.Program.Source + "main()\n")).ToList());
         var pythonById = new Dictionary<int, List<string>>();
@@ -1626,6 +1649,15 @@ public abstract class MembershipOperatorDifferentialBase : IntegrationTestBase
         Assert.Contains(refusedCells, c => pythonById[c.Id].Contains("True") && sharpyById[c.Id].RefusedBy is { } by
             && expectations[c.Id].MeetsRefusal(by));
         Assert.Equal(1, ElementTypedRoster.Count(IsRefusedByRuling));
+        // The declaration-order axis reaches the checker: a `__contains__` class declared below its use answers as its
+        // above twin does — a compared cell that runs and agrees with CPython (the program the axis was excluded by,
+        // #2249, was SPY0908 there) — and its twin is a cell of this fact.
+        var belowAgrees = cells.Where(c => c.Order == DeclarationOrder.Below && c.Container == Container.ContainsDunder
+            && expectations[c.Id].Compared && sharpyById[c.Id].Values is { } v && v.SequenceEqual(pythonById[c.Id])
+            && !divergent.Contains(c.Id)).ToList();
+        Assert.NotEmpty(belowAgrees);
+        Assert.All(belowAgrees.Take(1), c => Assert.Contains(cells, t => t.Order == DeclarationOrder.Above
+            && t.Key == c.Key.Replace("/DeclaredBelow", "", StringComparison.Ordinal)));
         if (observation == Observation.Order)
         {
             // The order observation reaches the oracle: CPython traces the needle before the container in every
@@ -1681,10 +1713,8 @@ public abstract class MembershipOperatorDifferentialBase : IntegrationTestBase
             File.WriteAllLines(problemPath, problems);
             Assert.Fail($"{problems.Count} pin problem line(s) against {AllowlistFileName}: every line is in {problemPath}; "
                 + $"a regenerated allowlist (rows' citations kept) is in {proposedPath}. First lines:\n"
-                + string.Join("\n", problems.Take(30))
-                + (declarationOrderProblem != null ? "\nAlso: " + declarationOrderProblem : ""));
+                + string.Join("\n", problems.Take(30)));
         }
-        Assert.True(declarationOrderProblem == null, declarationOrderProblem);
     }
 
     // ---------------------------------------------------------------------------------------------------------
@@ -3834,28 +3864,6 @@ public abstract class MembershipOperatorDifferentialBase : IntegrationTestBase
         }
     }
 
-    /// <summary>The declaration-order exclusion still holds: its program (the <c>__contains__</c> class below its
-    /// use) is refused by exactly the named code, and its control (the class above) runs and prints the lifted
-    /// answer. Returns the problem, or null. A problem is red when the defect is fixed, until the entry is deleted
-    /// and the order joins the axes.</summary>
-    private string? DeclarationOrderExclusionProblem()
-    {
-        var (_, program, refusedBy, control, controlOutput) = DeclarationOrderExcluded;
-        var controlRun = CompileAndExecute(control, "declaration_order_control.spy", executionTimeoutMs: 120_000);
-        if (!RanToCompletion(controlRun) || controlRun.StandardOutput.ReplaceLineEndings("\n") != controlOutput)
-            return "DeclarationOrderExcluded: its control (the class declared above its use) must run and print "
-                + $"[{controlOutput.TrimEnd()}]; it "
-                + (RanToCompletion(controlRun) ? $"printed [{controlRun.StandardOutput.TrimEnd()}]" : controlRun.FailureSummary())
-                + "\n" + control;
-        var run = CompileAndExecute(program, "declaration_order_exclusion.spy", executionTimeoutMs: 120_000);
-        var codes = run.RawDiagnostics.Where(d => d.IsError).Select(d => d.Code ?? "?").Distinct().OrderBy(c => c, StringComparer.Ordinal).ToList();
-        if (RanToCompletion(run) || codes.Count != 1 || codes[0] != refusedBy)
-            return $"DeclarationOrderExcluded says the program below is refused by {refusedBy}; it "
-                + (RanToCompletion(run) ? "now runs" : "is refused by " + string.Join(",", codes))
-                + ": delete the entry (declaration order then becomes an axis of the generator)\n" + program;
-        return null;
-    }
-
     /// <summary>The CLR row is the census: the roster's keys are exactly the public types of Sharpy.Core and
     /// Sharpy.Stdlib with a public instance single-argument <c>Contains</c>; each generates one container or names why
     /// not; and every container of the CLR row comes from the roster.</summary>
@@ -3893,9 +3901,6 @@ public abstract class MembershipOperatorDifferentialBase : IntegrationTestBase
         Assert.All(OptionalElementExcluded, e => Assert.True(
             !Blank(e.Value.Why) && System.Text.RegularExpressions.Regex.IsMatch(e.Value.Why, "#[0-9]+"),
             $"{e.Key}: an optional-element exclusion needs a reason and an issue"));
-        Assert.True(!Blank(DeclarationOrderExcluded.Why)
-            && System.Text.RegularExpressions.Regex.IsMatch(DeclarationOrderExcluded.Why, "#[0-9]+"),
-            "DeclarationOrderExcluded: an excluded axis needs a reason and an issue");
         Assert.All(SemanticTypeCensus.Where(e => e.Value.Payloads == 0),
             e => Assert.False(Blank(e.Value.Excluded), $"SemanticType census key {e.Key}: no exclusion reason"));
         Assert.All(ClrContainerRoster.Where(r => r.Value.Generated == null),
