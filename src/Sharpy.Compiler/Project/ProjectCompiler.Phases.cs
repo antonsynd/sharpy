@@ -443,7 +443,10 @@ internal partial class ProjectCompiler
                                         }
                                         // Bound or merged: the scope's symbol is what the name means here. A refused
                                         // binding drew SPY0204, so no code is generated from what is recorded for it.
-                                        if (SymbolTable.CurrentScope.Lookup(symbolName, searchParent: false) is { } boundSymbol)
+                                        // A merge into a star a module variable of this file took over leaves the
+                                        // file's OWN variable in the slot: the import bound nothing (plan-777361 D1).
+                                        if (SymbolTable.CurrentScope.Lookup(symbolName, searchParent: false) is { } boundSymbol
+                                            && !ImportResolver.IsDeclaredModuleVariable(SymbolTable.CurrentScope, symbolName))
                                             boundNames.Add(new FromImportBoundName(symbolName, boundSymbol));
                                     }
                                 }

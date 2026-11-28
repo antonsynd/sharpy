@@ -176,6 +176,23 @@ public class Scope
     internal ImportBinding? LookupImportBinding(string name)
         => _importBindings != null && _importBindings.TryGetValue(name, out var binding) ? binding : null;
 
+    private Dictionary<string, ImportBinding>? _takenOverStarBindings;
+
+    /// <summary>
+    /// Records the first star import that exported <paramref name="name"/> while a module variable of
+    /// this file held it (plan-777361 D1): the variable keeps the name, and the star binds nothing, as
+    /// a takeover of a star-bound name left it before module variables were declared ahead of imports.
+    /// A later explicit import of the name is judged against this record, as it was against the star's
+    /// binding. Written only by <see cref="ImportResolver.BindImportName"/>.
+    /// </summary>
+    internal void RecordTakenOverStarBinding(string name, ImportBinding binding)
+        => (_takenOverStarBindings ??= new Dictionary<string, ImportBinding>(StringComparer.Ordinal))
+            .TryAdd(name, binding);
+
+    /// <summary>The star import a module variable of this file took <paramref name="name"/> over from, or null.</summary>
+    internal ImportBinding? LookupTakenOverStarBinding(string name)
+        => _takenOverStarBindings != null && _takenOverStarBindings.TryGetValue(name, out var binding) ? binding : null;
+
     /// <summary>
     /// Replaces the binding that <paramref name="previous"/> occupies, in this scope or a parent
     /// scope, with <paramref name="updated"/>.

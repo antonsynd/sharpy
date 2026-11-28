@@ -299,9 +299,12 @@ internal partial class ImportResolver
     /// re-exporting module and directly, R-JK); a from-import of a different symbol, from another module OR THE SAME one
     /// (K1, #2359) → SPY0204 "already names 'm.x'"; another module → SPY0204 "already bound to
     /// module"; a module-level declaration → SPY0204 "already defined in this module (kind, line)".
-    /// A refused import binds NOTHING, so the declaration keeps its meaning. A module VARIABLE is the
-    /// one module binding declared AFTER the imports (by the type checker), so against it the import
-    /// binds and the variable is refused (the checker's SPY0204 at the variable).</para>
+    /// A refused import binds NOTHING, so the declaration keeps its meaning. A module VARIABLE is
+    /// declared before imports bind too (plan-777361 D1), but keeps the verdict it had when the checker
+    /// declared it after them: an explicit import of its name takes the slot and the variable is refused
+    /// (the checker's SPY0204 at the variable) — unless a star import of the same declaration came
+    /// first, which the variable takes over from both statements (the star's record,
+    /// <see cref="Scope.LookupTakenOverStarBinding"/>).</para>
     /// <para><b>A star import</b> (<c>from m import *</c>) never refuses a module-level declaration:
     /// a declaration of the file that spells a star-exported name takes the name over (nothing is
     /// reported here, and a module variable re-declares a star-imported variable, see
@@ -374,8 +377,14 @@ internal partial class ImportResolver
         // A module variable is declared before imports bind (plan-777361 D1). An explicit import of
         // its name takes the slot as it did when the checker declared the variable, so the
         // variable's own declaration keeps its SPY0204 at the declaration (D6: an import its module
-        // redeclares). A star import never displaces a module-level declaration (below).
-        if (alias != null && IsDeclaredModuleVariable(scope, registerName))
+        // redeclares). A star import never displaces a module-level declaration (below): the variable
+        // takes the star's name over, and the star is recorded as taken over, so an explicit import
+        // after it meets that star as it met the star's binding when the star bound first — the same
+        // declaration again merges (no displacement: the variable keeps the name from both
+        // statements), another symbol is R-IZ's refusal at the explicit import.
+        var declaredVariable = IsDeclaredModuleVariable(scope, registerName);
+        var takenOverStar = declaredVariable ? scope.LookupTakenOverStarBinding(registerName) : null;
+        if (alias != null && declaredVariable && takenOverStar == null)
             scope.Remove(registerName);
         if (symbolTable.TryDefine(symbol))
         {
@@ -386,10 +395,13 @@ internal partial class ImportResolver
         }
 
         var collision = CollisionMessage(scope.Lookup(registerName, searchParent: false),
-            scope.LookupImportBinding(registerName), symbol, binding, registerName, isStar: alias == null);
+            scope.LookupImportBinding(registerName) ?? takenOverStar, symbol, binding, registerName,
+            isStar: alias == null);
         if (collision is { } refused)
             report(new ImportBindingDiagnostic(refused.Message, DiagnosticCodes.Semantic.DuplicateDefinition,
                 IsError: true, refused.At));
+        else if (alias == null && declaredVariable)
+            scope.RecordTakenOverStarBinding(registerName, binding with { IsStar = true });
         return false;
     }
 
@@ -399,7 +411,7 @@ internal partial class ImportResolver
     /// source location that no import bound. Imports bind before the checker runs, so nothing else
     /// of that shape is in a module scope then.
     /// </summary>
-    private static bool IsDeclaredModuleVariable(Scope scope, string name)
+    internal static bool IsDeclaredModuleVariable(Scope scope, string name)
         => SymbolTable.ClassifyScope(scope.Name) == SymbolTable.ScopeKind.Module
             && scope.Lookup(name, searchParent: false) is VariableSymbol
             {
